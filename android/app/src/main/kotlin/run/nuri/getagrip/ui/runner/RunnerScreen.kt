@@ -278,6 +278,7 @@ fun RunnerHost(
                 PalmHand(
                     grip = grip,
                     newGripID = snapshot.newGripID,
+                    holdsGripCueForRest = snapshot.gripChangesNext,
                     side = snapshot.side ?: Side.both,
                     // The tour's first session step lights the palm — "your fingers hang off
                     // the palm at the top of the screen".
@@ -409,9 +410,13 @@ private fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
             // lets the fingers align beneath the physical camera region.
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = Metrics.hPadding)
-            // Reserve the same cutout-aware height used by the hand overlay.
-            .padding(top = PalmGeometry.TOTAL_HEIGHT.dp + cameraHandOffset() + 22.dp, bottom = Metrics.spacing),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            // The longest finger grows 9.5dp during its cue. Fourteen dp clears that
+            // expansion; the remaining space belongs to the graph, not an empty header.
+            .padding(
+                top = PalmGeometry.TOTAL_HEIGHT.dp + cameraHandOffset() + if (timerOnly) 22.dp else 14.dp,
+                bottom = if (timerOnly) Metrics.spacing else 12.dp,
+            ),
+        verticalArrangement = Arrangement.spacedBy(if (timerOnly) 12.dp else 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (timerOnly) {
@@ -425,7 +430,6 @@ private fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
             // DOWN to sit above the graph. They read just as well there: they are the two
             // numbers you check between pulls, not while pulling.
             GripNameRow(snapshot, palette, timerOnly = false)
-            GripChangeNotice(snapshot, palette)
             Prompt(snapshot, tint, timerOnly, device.state.isConnected)
             Hero(session, snapshot, palette, timerOnly)
             RepProgress(session, snapshot, palette)
@@ -460,6 +464,7 @@ private fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                     // an app receiving nothing, and there is no way to tell them apart by
                     // looking. Say it, and say what to do.
                     if (!snapshot.hasSignal) NoSignalNotice(device)
+                    GraphGripChangeCue(snapshot, palette, Modifier.matchParentSize())
                 }
             }
         }
@@ -489,7 +494,9 @@ internal fun GripNameRow(snapshot: RunnerSnapshot, palette: GripPalette, timerOn
         Text(
             // The full name fits here — the glyph no longer shares this row — so the short
             // form is only needed when a badge or a target chip is also present.
-            if (resting || snapshot.targetBand != null) grip.shortName else grip.line,
+            if (!timerOnly && snapshot.upcomingGrip != null) {
+                "${grip.shortName} → ${snapshot.upcomingGrip.shortName}"
+            } else if (resting || snapshot.targetBand != null) grip.shortName else grip.line,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium,
             color = palette.inkSecondary,
@@ -739,16 +746,18 @@ private fun heroStyle(tint: Color) = TextStyle(
 /// clipped one is not readable at all.
 private val heroAutoSize = TextAutoSize.StepBased(minFontSize = 40.sp, maxFontSize = HERO_SIZE)
 
-/// The rep's percent-complete bucket, isolated exactly like `LiveForceReadout`.
-///
-/// `RunnerSession.repProgressBucket` is published SEPARATELY from the snapshot precisely so a
-/// composable can depend on it alone: it steps at up to ~33 Hz, and reading it through the
-/// snapshot used to invalidate the whole screen at that rate to move a 4 dp bar.
+/// Settles between measured fractions at display refresh rate. Only this small
+/// composable reads sample-rate state; the rest of the runner stays on coarse updates.
 @Composable
 private fun RepProgress(session: RunnerSession, snapshot: RunnerSnapshot, palette: GripPalette) {
     if (snapshot.phase is RunnerPhase.Working) {
+        val progress by rememberPullProgress(
+            measured = session.repProgress,
+            phase = snapshot.phase,
+            reduced = run.nuri.getagrip.ui.theme.rememberReduceMotion(),
+        )
         LinearProgressIndicator(
-            progress = { session.repProgressBucket / 100f },
+            progress = { progress },
             color = palette.bleu,
             trackColor = palette.inkTertiary.copy(alpha = 0.2f),
             modifier = Modifier

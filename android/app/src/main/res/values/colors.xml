@@ -3,5 +3,4 @@
     <!-- The flat slate field (the `-flatBackground` fill on iOS). The mesh version is
          rendered by the app; the window only needs the ground colour. -->
     <color name="slate_field">#FFDDE1E7</color>
-    <color name="ic_launcher_background">#FFDDE1E7</color>
 </resources>

@@ -1,0 +1,30 @@
+Your routine, one tap from pulling.
+
+Get a Grip is a climbing finger-training app built around the routine you actually do. Set up your grips, holds, rests and hands once, then return to your daily session without digging through a library.
+
+TRAIN WITH LIVE FORCE FEEDBACK
+Connect a compatible Bluetooth force gauge and see your load on a live graph. Hold timing follows your measured effort, with clear cues for pulling, releasing and resting. Set target loads in kilograms or as a percentage of a saved maximum. Choose whether rest begins when you let go.
+
+MAKE EVERY SET CLEAR
+Build grips directly into your routine: edge depth, selected fingers and position, including finger curl. Alternate hands, train one side at a time or use both hands. Orange grip-change cues make the next grip easier to notice while keeping your metrics visible.
+
+KEEP YOUR DAILY RITUAL
+Create multiple named routines, set a daily session goal and use optional reminders. Review your workout history, time under tension and maximums. Export training records as CSV files when you want to review them elsewhere. Exports are shared only when you choose; nothing is automatically sent to an AI service.
+
+SHARE A ROUTINE
+Share a routine by QR code or link, and scan a friend's routine inside the app. Routine sharing works between Get a Grip on Android and iPhone.
+
+BUILT FOR ANDROID
+An ongoing notification keeps a supported Bluetooth session within reach while the app is in the background. English and French are included. Training data is stored on your device; Android system backup may be available according to your device and backup settings. There is no account to create, no subscription and no advertising.
+
+TRY IT WITHOUT A GAUGE
+Use timer-only sessions or explore demo mode before connecting hardware. Live force measurement requires a compatible Bluetooth force gauge. Tindeq Progressor support is hardware-tested; experimental support for other gauges is clearly identified in the app.
+
+Get a Grip is free and open source:
+https://github.com/plumbmybumb/get-a-grip
+
+Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice.
+
+Support: https://nuri.run/getagrip
+Privacy: https://nuri.run/getagrip/privacy
+Terms: https://nuri.run/getagrip/terms

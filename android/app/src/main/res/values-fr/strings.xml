@@ -277,6 +277,7 @@
     <string name="s_demo_device">Appareil de démo</string>
     <string name="s_device">Appareil</string>
     <string name="s_device_asleep">Appareil en veille</string>
+    <string name="s_device_compatibility">Compatibilité des capteurs</string>
     <string name="s_diagnostics">Diagnostics</string>
     <string name="s_discard">Abandonner</string>
     <string name="s_discard_this_routine">Abandonner cette routine ?</string>
@@ -298,6 +299,7 @@
     <string name="s_edge">Réglette</string>
     <string name="s_edit_routine">Modifier la routine</string>
     <string name="s_email">Écrire à %s</string>
+    <string name="s_email_details">Détails de l’e-mail</string>
     <string name="s_end_session">Terminer la séance</string>
     <string name="s_enter_a_max_above_zero_to_save_it">Saisis un max supérieur à zéro pour l\'enregistrer.</string>
     <string name="s_entralpi">Entralpi</string>
@@ -341,6 +343,7 @@
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you_so_you">Get a Grip connecte et tare ton capteur à ta place, tu peux donc toucher ceci avant de te magnésier. Si le capteur dort encore, il attend.</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you">Get a Grip connecte et tare ton capteur à ta place.</string>
     <string name="s_get_a_grip_is_built_around_one_routine_you_actually_comm">Get a Grip est construit autour d\'une seule routine à laquelle tu t\'engages vraiment.</string>
+    <string name="s_get_a_grip_is_open_source_under_the_mozilla_public_licen">Get a Grip est un logiciel libre sous licence Mozilla Public License 2.0.</string>
     <string name="s_get_a_grip_runs_your_hangboard_sessions">Get a Grip mène tes séances de poutre</string>
     <string name="s_get_a_grip_works_with_force_gauges_from_it_is_not_made_b">Get a Grip fonctionne avec les capteurs de force de %s. L\'app n\'est ni fabriquée, ni affiliée, ni approuvée par aucun d\'eux.</string>
     <string name="s_get_a_grip_334823">Get a Grip — %s</string>
@@ -352,6 +355,7 @@
     <string name="s_grips_from_your_routines_tap_one_then_change_anything_yo">Les prises de tes routines. Touche-en une, puis change ce que tu veux.</string>
     <string name="s_griptonite">Griptonite</string>
     <string name="s_griptonite_motherboard">Griptonite Motherboard</string>
+    <string name="s_guides_and_tours">Guides et visites guidées</string>
     <string name="s_hands">MAINS</string>
     <string name="s_hardest_pull">TIRAGE LE PLUS FORT</string>
     <string name="s_hc">SA</string>
@@ -518,6 +522,7 @@
     <string name="s_only_your_hand_its_targets_come_from_this_number_your_ot">Uniquement ta main %s. Ses cibles viennent de ce chiffre ; ton autre main a besoin du sien.</string>
     <string name="s_open">Tendue</string>
     <string name="s_open_settings">Ouvrir Réglages</string>
+    <string name="s_open_source">Code source ouvert</string>
     <string name="s_open_source_licenses">Licences open source</string>
     <string name="s_opens_the_grip_picker">Ouvre le sélecteur de prise</string>
     <string name="s_opens_the_routine_builder">Ouvre le créateur de routine.</string>

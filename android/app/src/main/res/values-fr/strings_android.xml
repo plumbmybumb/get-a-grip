@@ -42,4 +42,13 @@
     <string name="a_allow_camera_access_in_settings_to_scan_a_routine_you_ca">Autorise l’accès à la caméra dans les réglages pour scanner une routine. Tu peux toujours ouvrir un lien de routine partagé.</string>
     <string name="a_couldn_t_open_the_camera_try_opening_the_shared_routine">Impossible d’ouvrir la caméra. Essaie plutôt d’ouvrir le lien de routine partagé.</string>
     <string name="a_point_your_camera_at_a_get_a_grip_routine_qr_code">Vise le QR code d’une routine Get a Grip avec ta caméra.</string>
+    <string name="a_opens_an_email_draft_with_your_app_version_android_versi">Ouvre un brouillon d’e-mail avec la version de l’application, la version d’Android, le modèle du téléphone et le capteur sélectionné.</string>
+    <string name="a_recent_connection_and_signal_details_will_be_added_to_yo">Les détails récents de connexion et de signal seront ajoutés à votre e-mail. Vous pourrez les consulter avant de l’envoyer.</string>
+    <string name="a_no_email_app_available">Aucune application de messagerie disponible</string>
+    <string name="a_copy_your_draft_and_send_it_to_this_address_using_your_p">Copiez votre brouillon et envoyez-le à cette adresse avec votre service de messagerie habituel.</string>
+    <string name="a_copy_email_draft">Copier le brouillon d’e-mail</string>
+    <string name="a_privacy_and_terms">Confidentialité et conditions</string>
+    <string name="a_terms_of_use">Conditions d’utilisation</string>
+    <string name="a_open_in_a_browser">Ouvrir dans un navigateur</string>
+    <string name="a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose">Get a Grip n’est pas un dispositif médical et ne diagnostique, ne traite, ne guérit ni ne prévient aucune affection. Consultez un professionnel de santé pour un avis médical.</string>
 </resources>

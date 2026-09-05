@@ -28,12 +28,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
-import kotlinx.coroutines.delay
-import run.nuri.getagrip.ui.theme.Motion
+import run.nuri.getagrip.ui.theme.LocalGripPalette
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -68,22 +68,15 @@ fun PalmHand(
     /// now".
     isActive: Boolean = true,
     newGripID: String? = null,
+    holdsGripCueForRest: Boolean = false,
     /// The spotlight tour's anchor. Passed IN rather than read from a composition local, so
     /// this drawing still knows nothing about a tour and stays previewable.
     tourAnchor: Modifier = Modifier,
 ) {
     val reduceMotion = rememberReduceMotion()
     val darkTheme = isSystemInDarkTheme()
-    val emphasis = remember { Animatable(1f) }
-    LaunchedEffect(newGripID, reduceMotion) {
-        if (newGripID == null || reduceMotion) {
-            emphasis.animateTo(1f, Motion.state(reduceMotion))
-        } else {
-            emphasis.animateTo(1.22f, Motion.state(false))
-            delay(800)
-            emphasis.animateTo(1f, Motion.state(false))
-        }
-    }
+    val changeColor = LocalGripPalette.current.armed
+    val emphasis = rememberGripChangeEmphasis(newGripID, holdsGripCueForRest, reduceMotion)
 
     /// The hand currently DRAWN, which lags `side` by one beat while the thumb retracts.
     var shown by remember { mutableStateOf(side) }
@@ -153,19 +146,22 @@ fun PalmHand(
 
         val originX = (size.width - PalmGeometry.handWidthDp().dp.toPx()) / 2f
 
-        scale(scale = if (reduceMotion) 1f else emphasis.value, pivot = Offset(size.width / 2f, fingerTop)) {
+        val ink = lerp(Color.Black, changeColor, emphasis.value)
+        // Growth uses the existing 22dp header clearance; no layout or metric moves.
+        scale(scale = if (reduceMotion) 1f else 1f + 0.25f * emphasis.value,
+            pivot = Offset(size.width / 2f, fingerTop)) {
         for (slot in 0 until 4) {
             val anatomical = PalmGeometry.anatomical(slot, shown)
             val length = PalmGeometry.fingerLengthDp(anatomical).dp.toPx()
             val x = originX + slot * pitch
             val radius = CornerRadius(barWidth / 2f)
             val fill = onness[slot].value
-            // ON is solid black; OFF is the island hand's own 0.12 ghost. In DARK mode that
+            // ON is solid ink (orange during a change); OFF retains its 0.12 ghost. In DARK mode that
             // ghost is invisible against the field, so it also takes a quiet hairline —
             // which fingers are OFF is half the grip's meaning and has to survive the scheme.
             val alpha = PalmGeometry.OFF_ALPHA + fill * (1f - PalmGeometry.OFF_ALPHA)
             drawRoundRect(
-                color = Color.Black.copy(alpha = alpha * activeAlpha),
+                color = ink.copy(alpha = alpha * activeAlpha),
                 topLeft = Offset(x, fingerTop),
                 size = Size(barWidth, length),
                 cornerRadius = radius,
@@ -188,6 +184,7 @@ fun PalmHand(
                 mirrored = mirrored,
                 extension = (1f - retract.value) * thumbOn,
                 alpha = activeAlpha,
+                ink = ink,
                 hairline = hairline,
                 strokeWidth = strokeWidth,
             )
@@ -209,6 +206,7 @@ private fun DrawScope.drawThumb(
     mirrored: Boolean,
     extension: Float,
     alpha: Float,
+    ink: Color,
     hairline: Color,
     strokeWidth: Float,
 ) {
@@ -225,7 +223,7 @@ private fun DrawScope.drawThumb(
     rotate(degrees = degrees, pivot = Offset(pivotX, pivotY)) {
         val left = if (mirrored) pivotX else pivotX - length
         drawRoundRect(
-            color = Color.Black.copy(alpha = alpha),
+            color = ink.copy(alpha = alpha),
             topLeft = Offset(left, pivotY - thickness / 2f),
             size = Size(length, thickness),
             cornerRadius = CornerRadius(thickness / 2f),

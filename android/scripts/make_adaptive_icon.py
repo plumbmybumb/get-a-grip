@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """The app icon — FOUR FINGERTIPS ON AN EDGE — as an Android adaptive icon.
 
-The twin of scripts/make_app_icon.swift: four graphite bars of hand-shaped heights
-gripping a Bleu de France rung on the flat slate field. It is the app's OWN mark (the
-FingerGlyph scaled up), so icon and UI cannot drift apart. Flat fills only; the
-launcher supplies depth. The monochrome layer is the same drawing in one colour so a
-themed icon stays greyscale, as the iOS tinted variant does.
+Matches Sources/Assets.xcassets/AppIcon.appiconset/icon-1024.png: four graphite
+fingers tucked behind a Bleu de France rung on a slate gradient. The original iOS
+1024-unit artwork is mapped uniformly into Android's visible 72-unit viewport;
+do not independently resize the fingers, their gaps, or the rung. The monochrome
+layer uses exactly the same silhouette for themed launchers.
 
 Geometry lives in a 108-unit viewport; the launcher masks the centre 72 and keeps the
-66-unit circle safe, so the hand sits inside that circle. The finger gap is a little
-wider than the in-app glyph's for the same reason the iOS icon tuned its gap against
-60 pt: at launcher size four bars with a tight gap read as one striped block.
+66-unit circle safe. The mark fits inside that circle, including the rounded rung.
 """
 import pathlib
 
@@ -18,14 +16,18 @@ RES = pathlib.Path(__file__).resolve().parent.parent / "app" / "src" / "main" / 
 GRAPHITE = "#FF2B3038"
 BLEU = "#FF318CE7"
 
-BAR_W = 8.0
-GAP = 5.0
-LENGTH_FACTORS = [0.86, 1.0, 0.94, 0.80]   # index → little, the hand's own proportions
-BASE_LENGTH = 26.0
-TOP_Y = 31.0
-RUNG_H = 6.0
-RUNG_GAP = 5.0
-RUNG_OVERHANG = 3.0
+# iOS source coordinates, with a top-left origin for Android. The fingers share
+# their bottom (y=646); the rung starts at 626 and covers the lowest 20 units.
+SOURCE_SIDE = 1024.0
+SCALE = 72.0 / SOURCE_SIDE
+INSET = 18.0
+BAR_W = 148.0
+GAP = 46.0
+HEIGHTS = [286.0, 352.0, 322.0, 244.0]
+FINGER_BOTTOM = 646.0
+RUNG_W = 858.0
+RUNG_H = 96.0
+RUNG_Y = 626.0
 
 def rounded_rect(x, y, w, h, r):
     r = min(r, w / 2, h / 2)
@@ -36,12 +38,17 @@ def rounded_rect(x, y, w, h, r):
 
 def paths():
     hand_w = 4 * BAR_W + 3 * GAP
-    x0 = 54 - hand_w / 2
+    x0 = (SOURCE_SIDE - hand_w) / 2
+    def source_rect(x, y, w, h, r):
+        return rounded_rect(INSET + x * SCALE, INSET + y * SCALE,
+                            w * SCALE, h * SCALE, r * SCALE)
     out = []
-    for i, f in enumerate(LENGTH_FACTORS):
-        out.append((rounded_rect(x0 + i * (BAR_W + GAP), TOP_Y, BAR_W, BASE_LENGTH * f, BAR_W / 2), "bar"))
-    rung_y = TOP_Y + BASE_LENGTH + RUNG_GAP
-    out.append((rounded_rect(x0 - RUNG_OVERHANG, rung_y, hand_w + 2 * RUNG_OVERHANG, RUNG_H, 2.5), "rung"))
+    for i, height in enumerate(HEIGHTS):
+        out.append((source_rect(x0 + i * (BAR_W + GAP), FINGER_BOTTOM - height,
+                                BAR_W, height, BAR_W / 2), "bar"))
+    # Draw last: the overlap makes this fingers gripping an edge, not floating bars.
+    out.append((source_rect((SOURCE_SIDE - RUNG_W) / 2, RUNG_Y,
+                            RUNG_W, RUNG_H, RUNG_H / 2), "rung"))
     return out
 
 def vector(fill_for):
@@ -60,9 +67,23 @@ def main():
         vector(lambda kind: BLEU if kind == "rung" else GRAPHITE))
     (RES / "drawable" / "ic_launcher_monochrome.xml").write_text(
         vector(lambda kind: "#FF000000"))
+    (RES / "drawable" / "ic_launcher_background.xml").write_text('''<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M0,0 H108 V108 H0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear" android:startX="54" android:startY="18"
+                android:endX="54" android:endY="90"
+                android:startColor="#FFE3E6EB" android:endColor="#FFC3C9D2" />
+        </aapt:attr>
+    </path>
+</vector>
+''')
     adaptive = ('<?xml version="1.0" encoding="utf-8"?>\n'
                 '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                '    <background android:drawable="@color/ic_launcher_background" />\n'
+                '    <background android:drawable="@drawable/ic_launcher_background" />\n'
                 '    <foreground android:drawable="@drawable/ic_launcher_foreground" />\n'
                 '    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />\n'
                 '</adaptive-icon>\n')

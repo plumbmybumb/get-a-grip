@@ -277,6 +277,7 @@
     <string name="s_demo_device">Demo device</string>
     <string name="s_device">Device</string>
     <string name="s_device_asleep">Device asleep</string>
+    <string name="s_device_compatibility">Device compatibility</string>
     <string name="s_diagnostics">Diagnostics</string>
     <string name="s_discard">Discard</string>
     <string name="s_discard_this_routine">Discard this routine?</string>
@@ -298,6 +299,7 @@
     <string name="s_edge">Edge</string>
     <string name="s_edit_routine">Edit routine</string>
     <string name="s_email">Email %s</string>
+    <string name="s_email_details">Email details</string>
     <string name="s_end_session">End session</string>
     <string name="s_enter_a_max_above_zero_to_save_it">Enter a max above zero to save it.</string>
     <string name="s_entralpi">Entralpi</string>
@@ -341,6 +343,7 @@
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you_so_you">Get a Grip connects and tares your gauge for you, so you can tap this before you chalk up. If the gauge is still asleep it waits.</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you">Get a Grip connects and tares your gauge for you.</string>
     <string name="s_get_a_grip_is_built_around_one_routine_you_actually_comm">Get a Grip is built around one routine you actually commit to.</string>
+    <string name="s_get_a_grip_is_open_source_under_the_mozilla_public_licen">Get a Grip is open source under the Mozilla Public License 2.0.</string>
     <string name="s_get_a_grip_runs_your_hangboard_sessions">Get a Grip runs your hangboard sessions</string>
     <string name="s_get_a_grip_works_with_force_gauges_from_it_is_not_made_b">Get a Grip works with force gauges from %s. It is not made by, affiliated with, or endorsed by any of them.</string>
     <string name="s_get_a_grip_334823">Get a Grip — %s</string>
@@ -352,6 +355,7 @@
     <string name="s_grips_from_your_routines_tap_one_then_change_anything_yo">Grips from your routines. Tap one, then change anything you like.</string>
     <string name="s_griptonite">Griptonite</string>
     <string name="s_griptonite_motherboard">Griptonite Motherboard</string>
+    <string name="s_guides_and_tours">Guides and tours</string>
     <string name="s_hands">HANDS</string>
     <string name="s_hardest_pull">HARDEST PULL</string>
     <string name="s_hc">HC</string>
@@ -518,6 +522,7 @@
     <string name="s_only_your_hand_its_targets_come_from_this_number_your_ot">Only your %s hand. Its targets come from this number; your other hand needs its own.</string>
     <string name="s_open">Open</string>
     <string name="s_open_settings">Open Settings</string>
+    <string name="s_open_source">Open source</string>
     <string name="s_open_source_licenses">Open-source licenses</string>
     <string name="s_opens_the_grip_picker">Opens the grip picker</string>
     <string name="s_opens_the_routine_builder">Opens the routine builder.</string>

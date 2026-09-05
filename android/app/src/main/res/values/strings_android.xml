@@ -43,4 +43,13 @@
     <string name="a_allow_camera_access_in_settings_to_scan_a_routine_you_ca">Allow camera access in Settings to scan a routine. You can still open a shared routine link.</string>
     <string name="a_couldn_t_open_the_camera_try_opening_the_shared_routine">Couldn\'t open the camera. Try opening the shared routine link instead.</string>
     <string name="a_point_your_camera_at_a_get_a_grip_routine_qr_code">Point your camera at a Get a Grip routine QR code.</string>
+    <string name="a_opens_an_email_draft_with_your_app_version_android_versi">Opens an email draft with your app version, Android version, phone model and selected gauge.</string>
+    <string name="a_recent_connection_and_signal_details_will_be_added_to_yo">Recent connection and signal details will be added to your email. You can review them before sending.</string>
+    <string name="a_no_email_app_available">No email app available</string>
+    <string name="a_copy_your_draft_and_send_it_to_this_address_using_your_p">Copy your draft and send it to this address using your preferred email service.</string>
+    <string name="a_copy_email_draft">Copy email draft</string>
+    <string name="a_privacy_and_terms">Privacy and terms</string>
+    <string name="a_terms_of_use">Terms of use</string>
+    <string name="a_open_in_a_browser">Open in a browser</string>
+    <string name="a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose">Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice.</string>
 </resources>

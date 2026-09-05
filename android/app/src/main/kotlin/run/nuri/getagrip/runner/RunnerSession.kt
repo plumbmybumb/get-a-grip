@@ -5,7 +5,7 @@ package run.nuri.getagrip.runner
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
@@ -125,15 +125,11 @@ class RunnerSession(
     var snapshot: RunnerSnapshot by mutableStateOf(RunnerSnapshot())
         private set
 
-    /// Rep progress in percent, 0…100 — the finest step the progress bar can show.
-    ///
-    /// **NOT on `RunnerSnapshot`, deliberately.** It used to live there and was the one
-    /// field that stepped at up to ~33 Hz (a 3 s hold's own 1 % buckets). The snapshot is
-    /// ONE state object, so any field changing reassigns the whole thing — this one alone
-    /// was rebuilding the entire runner tree to move a 4 dp bar. Published separately, so
-    /// only the progress bar pays for it.
-    var repProgressBucket: Int by mutableIntStateOf(0)
+    /// Measured fraction, separate from the coarse snapshot so only the small bar
+    /// updates with samples. The view settles toward this value and never extrapolates.
+    var repProgress: Float by mutableFloatStateOf(0f)
         private set
+    val repProgressBucket: Int get() = (repProgress * 100).roundToInt()
 
     /// Bumped on every real republish. A test seam for the change-guard itself, which is
     /// otherwise only observable by watching how often a view recomposes.
@@ -210,12 +206,9 @@ class RunnerSession(
         runner.beginRecording(clock.uptimeSeconds())
         now = clock.uptimeSeconds()
 
-        // DEFERRED off the presenting frame. Building the tone buffers and starting an
-        // `AudioTrack` is tens of milliseconds of synchronous work, and running it inside
-        // the composition put that delay between tapping Start and the runner appearing —
-        // the one tap in the app that must feel instant. The first cue is at most a frame
-        // late; nothing audible is due for five seconds.
-        scope.launch { cues.begin() }
+        // begin only starts the audio queue; native setup and synthesis happen on its
+        // worker. Register it before Start so a zero-lead-in routine keeps its first cue.
+        cues.begin()
 
         if (!timerOnly) {
             device.onSample = { sample ->
@@ -486,9 +479,8 @@ class RunnerSession(
         // `displaySlot`, not `currentSlot`: during a rest the screen describes the rep you
         // are about to do. See `SessionRunner.displaySlot`.
         val slot = runner.displaySlot
-        // Published SEPARATELY from `snapshot` — see `repProgressBucket`'s own note.
-        val newBucket = (runner.repProgress * 100).roundToInt()
-        if (newBucket != repProgressBucket) repProgressBucket = newBucket
+        // Published separately so only the progress bar reads this sample-rate state.
+        repProgress = runner.repProgress.toFloat().coerceIn(0f, 1f)
         val next = RunnerSnapshot(
             phase = runner.phase,
             isDropped = runner.isDropped,
@@ -509,9 +501,8 @@ class RunnerSession(
             gripChangesNext = runner.nextGripDiffers,
             newGripID = runner.newGripID, upcomingGrip = runner.upcomingGrip,
             isSetBreak = runner.isSetBreak,
-            // WHOLE seconds: the screen cannot show more precision than this, so publishing
-            // more only buys invalidations. The 1 % rep-progress bucket lives on
-            // `repProgressBucket` instead, published just above — never here.
+            // Whole seconds belong in the screen snapshot. The measured fraction stays
+            // separate so smoothing the small progress bar cannot redraw the whole runner.
             secondsShown = secondsShown,
             // The timer-only dial is a live phase clock, not a rep-progress view. Keep it
             // behind this gate: a measured `send` publishes after every gauge sample, and a

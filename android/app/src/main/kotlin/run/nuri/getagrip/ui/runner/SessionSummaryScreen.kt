@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -39,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -141,7 +143,7 @@ fun SessionSummaryScreen(
 
         Stats(
             completed = outcome.completedReps,
-            planned = reps.size,
+            planned = outcome.plannedReps,
             heldSeconds = heldSeconds,
             peakKg = outcome.peakKg,
             timerOnly = outcome.timerOnly,
@@ -223,21 +225,30 @@ private fun Stats(
             kgText(peakKg),
         )
     }
-    Row(
-        Modifier.fillMaxWidth().height(IntrinsicSize.Min).semantics(mergeDescendants = true) { contentDescription = spoken },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Stat(tr("Pulls"), "$completed", tr("of %d", planned), palette, Modifier.weight(1f).fillMaxHeight())
-        Stat(tr("Under tension"), PlanMath.clockText(heldSeconds), null, palette, Modifier.weight(1f).fillMaxHeight())
-        // No gauge, no kilogram — the same rule the runner's hero follows. An empty
-        // measurement reads as a fault rather than as a choice.
-        Stat(
-            tr("Peak"),
-            if (timerOnly) tr("—") else kgText(peakKg),
-            if (timerOnly) null else tr("kg"),
-            palette,
-            Modifier.weight(1f).fillMaxHeight(),
+    BoxWithConstraints(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = spoken }) {
+        // Preserve readable labels and numbers instead of squeezing larger text into thirds.
+        val stacked = maxWidth < 300.dp || LocalDensity.current.fontScale > 1.3f
+        val values = listOf(
+            Triple(tr("Pulls"), "$completed", tr("of %d", planned)),
+            Triple(tr("Under tension"), PlanMath.clockText(heldSeconds), null),
+            Triple(tr("Peak"), if (timerOnly) tr("—") else kgText(peakKg), if (timerOnly) null else tr("kg")),
         )
+        if (stacked) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                for ((title, value, suffix) in values) {
+                    Stat(title, value, suffix, palette, Modifier.fillMaxWidth(), horizontal = true)
+                }
+            }
+        } else {
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                for ((title, value, suffix) in values) {
+                    Stat(title, value, suffix, palette, Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+        }
     }
 }
 
@@ -248,26 +259,52 @@ private fun Stat(
     suffix: String?,
     palette: GripPalette,
     modifier: Modifier = Modifier,
+    horizontal: Boolean = false,
 ) {
     Surface(shape = RoundedCornerShape(Metrics.radiusInner), color = palette.card, modifier = modifier) {
-        Column(
-            Modifier.padding(vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            CapsLabel(title)
-            Text(
-                value,
-                style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
-                fontWeight = FontWeight.Medium,
-                color = palette.inkPrimary,
-                maxLines = 1,
-            )
-            if (suffix != null) {
-                Text(suffix, style = MaterialTheme.typography.labelMedium, color = palette.inkTertiary)
+        if (horizontal) {
+            Row(
+                Modifier.padding(18.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    StatValue(value, palette)
+                    Text(suffix.orEmpty(), style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary, minLines = 1)
+                }
+            }
+        } else {
+            Column(
+                Modifier.padding(horizontal = 12.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = palette.inkSecondary,
+                    textAlign = TextAlign.Center,
+                    minLines = 2,
+                )
+                Spacer(Modifier.height(8.dp))
+                StatValue(value, palette)
+                Spacer(Modifier.height(4.dp))
+                // Reserve the same unit line in all three cards so values share a baseline.
+                Text(suffix.orEmpty(), style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary, minLines = 1)
             }
         }
     }
+}
+
+@Composable
+private fun StatValue(value: String, palette: GripPalette) {
+    Text(
+        value,
+        style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+        fontWeight = FontWeight.SemiBold,
+        color = palette.inkPrimary,
+        textAlign = TextAlign.Center,
+    )
 }
 
 /// A pull inside a session that beat a grip's working max, offered as the new max per HAND
@@ -286,7 +323,7 @@ private fun NewMaxCard(
 ) {
     Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card) {
         Column(
-            Modifier.padding(16.dp),
+            Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CapsLabel(if (chosen.isEmpty()) tr("Harder than your max") else tr("New maxes"))
@@ -311,12 +348,13 @@ private fun MaxRow(
     palette: GripPalette,
     onSave: () -> Unit,
 ) {
-    Row(
+    FlowRow(
         Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.widthIn(min = 180.dp * LocalDensity.current.fontScale).weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 sideLine(candidate),
                 style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
@@ -361,7 +399,7 @@ private fun sideLine(candidate: MaxCandidate): String {
 @Composable
 private fun GradeCard(grade: RPE?, palette: GripPalette, onPick: (RPE) -> Unit) {
     Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CapsLabel(tr("How hard was that?"))
             // A wrapping flow rather than a row: "Comfortable" and "All I had" do not fit
             // five-across at any accessibility size.
@@ -420,7 +458,7 @@ private fun SetBreakdown(reps: List<RepSummary>, palette: GripPalette) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
                         .semantics(mergeDescendants = true) {
                             contentDescription = spoken
                         },
@@ -433,7 +471,6 @@ private fun SetBreakdown(reps: List<RepSummary>, palette: GripPalette) {
                             grip.line,
                             style = MaterialTheme.typography.bodyMedium,
                             color = palette.inkSecondary,
-                            maxLines = 1,
                             modifier = Modifier.weight(1f),
                         )
                     } else {

@@ -5,6 +5,7 @@ package run.nuri.getagrip.ui.theme
 
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -136,6 +137,17 @@ object Motion {
     /// A live sensor value settling: far shorter than any transition, because it is
     /// tracking a signal, and a readout that overshoots is lying about a measurement.
     fun <T> live(): FiniteAnimationSpec<T> = tween(durationMillis = 120, easing = LinearOutSlowInEasing)
+
+    /// A cumulative measured bar needs constant travel between radio batches. Easing
+    /// each packet to a stop makes even a frame-driven bar appear to move in steps.
+    fun <T> measuredProgress(): FiniteAnimationSpec<T> = tween(durationMillis = 200, easing = LinearEasing)
+
+    /// A grip change earns one clear beat of attention, with no bounce or metric movement.
+    const val GRIP_CHANGE_HOLD_MILLIS = 1_200L
+    const val GRIP_CHANGE_RISE_MILLIS = 180L
+    fun <T> gripChangePulse(): FiniteAnimationSpec<T> = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+    fun <T> gripChangeIn(): FiniteAnimationSpec<T> = tween(durationMillis = GRIP_CHANGE_RISE_MILLIS.toInt(), easing = LinearOutSlowInEasing)
+    fun <T> gripChangeOut(): FiniteAnimationSpec<T> = tween(durationMillis = 300, easing = FastOutSlowInEasing)
 
     /// Reduce Motion: a cross-fade-length ease with no travel and no overshoot.
     private fun <T> reduced(): FiniteAnimationSpec<T> = tween(durationMillis = 200, easing = FastOutSlowInEasing)

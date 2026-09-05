@@ -11,12 +11,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import run.nuri.getagrip.engine.RunnerCue
 import kotlin.math.PI
 import kotlin.math.exp
@@ -31,10 +26,8 @@ import kotlin.math.sin
 /// no failure propagates, and a phone with no audio route and no vibrator still runs the
 /// whole session in silence. A cue that cannot be played is not a reason for a set to stop.
 ///
-/// The tones are SYNTHESISED, not shipped: nine short buffers built once at `begin()` cost
-/// a couple of milliseconds and about 200 KB of float, which is cheaper than the smallest
-/// useful audio asset and removes a whole class of "the file didn't make it into the APK"
-/// failures. They share one A-major frame so the cues read as a family; the alarm
+/// The tones are synthesized on the audio worker, with no file loading or main-thread
+/// audio setup. They share one A-major frame so the cues read as a family; the alarm
 /// deliberately does not, which is what makes it read as wrong.
 ///
 /// ## NEVER DISTURB WHAT THE USER IS LISTENING TO
@@ -55,7 +48,7 @@ import kotlin.math.sin
 ///
 /// TRANSLATION NOTE (from Sources/Runner/CuePlayer.swift): `AVAudioEngine` + a scheduled
 /// `AVAudioPCMBuffer` per cue becomes ONE `AudioTrack` in `MODE_STREAM` that buffers are
-/// written into from a single background coroutine — which reproduces the property iOS got
+/// written into from a single background queue owner — which reproduces the property iOS got
 /// from `scheduleBuffer` without `.interrupts`: cues QUEUE rather than cutting each other
 /// off, because the runner returns them in batches (a final rep yields rep-end, set-end and
 /// session-end together) and interrupting would leave only the last one audible.
@@ -65,21 +58,20 @@ import kotlin.math.sin
 class CuePlayer(
     context: Context,
     /// Honoured live, and checked at play time rather than latched at `begin()`.
-    var soundEnabled: Boolean = true,
+    @Volatile var soundEnabled: Boolean = true,
     var hapticsEnabled: Boolean = true,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : CueSink {
 
     private val appContext = context.applicationContext
 
-    /// Writes block until the track has room, which is the point — one cue finishes before
-    /// the next begins — so they belong off the main thread.
-    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
-
-    private var track: AudioTrack? = null
-    private var tones: Map<ToneSynth.Tone, FloatArray> = emptyMap()
     private var isRunning = false
-    private var writer: Job? = null
+    private val audio = CueAudioQueue(
+        dispatcher = dispatcher,
+        enabled = { soundEnabled },
+        render = { ToneSynth.render(ToneSynth.notes(it)) },
+        open = ::openTrack,
+    )
 
     /// Null on a device with no vibrator — everything haptic short-circuits on it rather
     /// than logging or throwing. That is the expected state of an emulator, not an error.
@@ -93,17 +85,13 @@ class CuePlayer(
     override fun begin() {
         if (isRunning) return
         isRunning = true
-        tones = ToneSynth.Tone.entries.associateWith { ToneSynth.render(ToneSynth.notes(it)) }
-        openTrack()
+        audio.begin()
     }
 
     override fun end() {
         if (!isRunning) return
         isRunning = false
-        writer?.cancel()
-        writer = null
-        closeTrack()
-        scope.cancel()
+        audio.end()
     }
 
     // MARK: - The one entry point
@@ -176,28 +164,11 @@ class CuePlayer(
     // MARK: - Audio
 
     private fun sound(tone: ToneSynth.Tone) {
-        if (!soundEnabled || !isRunning) return
-        val buffer = tones[tone] ?: return
-        writer = scope.launch {
-            val active = track ?: openTrack() ?: return@launch
-            val written = runCatching {
-                active.write(buffer, 0, buffer.size, AudioTrack.WRITE_BLOCKING)
-            }.getOrDefault(AudioTrack.ERROR)
-            // A route change (headphones in, a call ending, a Bluetooth speaker arriving)
-            // can leave the track dead. Rebuilding once, lazily, on the write that failed is
-            // what keeps the rest of the session from being silent — which looks exactly
-            // like a broken app rather than a route change.
-            if (written < 0) {
-                closeTrack()
-                val rebuilt = openTrack() ?: return@launch
-                runCatching { rebuilt.write(buffer, 0, buffer.size, AudioTrack.WRITE_BLOCKING) }
-            }
-        }
+        if (soundEnabled && isRunning) audio.play(tone)
     }
 
-    private fun openTrack(): AudioTrack? {
-        val existing = track
-        if (existing != null) return existing
+    // Called exclusively by the audio queue's worker, as are write and close.
+    private fun openTrack(): CueAudioOutput? {
         val built = runCatching {
             val attributes = AudioAttributes.Builder()
                 // **MEDIA usage, and no focus request anywhere in this file.** See the type's
@@ -216,9 +187,8 @@ class CuePlayer(
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_FLOAT,
             ).coerceAtLeast(FALLBACK_BUFFER_BYTES)
-            // Room for the longest cue plus a beat, so a whole figure lands in one blocking
-            // write and cannot be pulled apart by scheduling jitter.
-            val bytes = maxOf(minBytes, longestToneBytes())
+            // A short buffer keeps queued feedback close to the action that caused it.
+            val bytes = maxOf(minBytes, ToneSynth.SAMPLE_RATE / 10 * Float.SIZE_BYTES)
             AudioTrack.Builder()
                 .setAudioAttributes(attributes)
                 .setAudioFormat(format)
@@ -230,23 +200,21 @@ class CuePlayer(
             runCatching { built.release() }
             return null
         }
-        runCatching { built.play() }
-        track = built
-        return built
-    }
+        if (runCatching { built.play() }.isFailure) {
+            runCatching { built.release() }
+            return null
+        }
+        return object : CueAudioOutput {
+            override fun write(buffer: FloatArray, offset: Int, count: Int): Int =
+                built.write(buffer, offset, count, AudioTrack.WRITE_NON_BLOCKING)
 
-    private fun longestToneBytes(): Int {
-        val longest = tones.values.maxOfOrNull { it.size } ?: 0
-        return (longest + ToneSynth.SAMPLE_RATE / 10) * Float.SIZE_BYTES
-    }
-
-    private fun closeTrack() {
-        val active = track ?: return
-        track = null
-        runCatching { active.pause() }
-        runCatching { active.flush() }
-        runCatching { active.stop() }
-        runCatching { active.release() }
+            override fun close() {
+                runCatching { built.pause() }
+                runCatching { built.flush() }
+                runCatching { built.stop() }
+                runCatching { built.release() }
+            }
+        }
     }
 
     // MARK: - Haptics

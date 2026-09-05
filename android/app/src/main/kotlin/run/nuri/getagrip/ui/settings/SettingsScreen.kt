@@ -224,6 +224,15 @@ private fun SettingsRoot(
                 modifier = maxesRowAnchor,
             )
 
+            SupportCard(
+                gauge = device.gaugeKind.displayName + if (device.isMock) " (${tr("Demo device")})" else "",
+                diagnostics = {
+                    if (device.diagnosticEntries.isEmpty()) null
+                    else device.diagnosticEntries.joinToString("\n") { it.text } +
+                        "\n\n" + device.pipelineDiagnostics.report()
+                },
+            )
+            LegalCard()
             AboutCard()
         }
     }

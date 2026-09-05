@@ -135,6 +135,16 @@ class RunnerSnapshotTests {
         )
     }
 
+    @Test fun measuredProgressRetainsSubPercentStepsAndDoesNotAdvanceWithoutSamples() {
+        val harness = pulling(seconds = 1.0, kg = 10.0)
+        val before = harness.session.repProgress
+        harness.session.send(RunnerEvent.Sample(ForceSample(10.0, 1_012_500u)))
+        val after = harness.session.repProgress
+        assertTrue(after > before && after - before < 0.01f)
+        repeat(20) { harness.clock.uptime += 0.1; harness.session.tickNow() }
+        assertEquals(after, harness.session.repProgress)
+    }
+
     /// A snapshot is a VALUE: two identical readings compare equal, which is the whole
     /// mechanism the change guard rests on. Kotlin gives that away with `data class`, and a
     /// refactor to a plain class would silently take it back.

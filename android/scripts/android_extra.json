@@ -176,6 +176,42 @@
     {
       "en": "Point your camera at a Get a Grip routine QR code.",
       "fr": "Vise le QR code d’une routine Get a Grip avec ta caméra."
+    },
+    {
+      "en": "Opens an email draft with your app version, Android version, phone model and selected gauge.",
+      "fr": "Ouvre un brouillon d’e-mail avec la version de l’application, la version d’Android, le modèle du téléphone et le capteur sélectionné."
+    },
+    {
+      "en": "Recent connection and signal details will be added to your email. You can review them before sending.",
+      "fr": "Les détails récents de connexion et de signal seront ajoutés à votre e-mail. Vous pourrez les consulter avant de l’envoyer."
+    },
+    {
+      "en": "No email app available",
+      "fr": "Aucune application de messagerie disponible"
+    },
+    {
+      "en": "Copy your draft and send it to this address using your preferred email service.",
+      "fr": "Copiez votre brouillon et envoyez-le à cette adresse avec votre service de messagerie habituel."
+    },
+    {
+      "en": "Copy email draft",
+      "fr": "Copier le brouillon d’e-mail"
+    },
+    {
+      "en": "Privacy and terms",
+      "fr": "Confidentialité et conditions"
+    },
+    {
+      "en": "Terms of use",
+      "fr": "Conditions d’utilisation"
+    },
+    {
+      "en": "Open in a browser",
+      "fr": "Ouvrir dans un navigateur"
+    },
+    {
+      "en": "Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice.",
+      "fr": "Get a Grip n’est pas un dispositif médical et ne diagnostique, ne traite, ne guérit ni ne prévient aucune affection. Consultez un professionnel de santé pour un avis médical."
     }
   ]
 }
