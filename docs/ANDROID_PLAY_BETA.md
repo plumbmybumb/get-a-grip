@@ -22,6 +22,18 @@ successfully. This is a draft release, not an approved or available beta.
   on `nuri.run`; the beta page clearly says installation is pending approval.
   The dedicated deletion URL is saved in the Data safety draft.
 - Android beta source and artwork are published in commit `8327298`.
+- Store listing finalized, with all eight visual assets labeled AI-assisted after
+  explicit owner approval. Six screenshots, icon and feature graphic are saved.
+- Worldwide closed-beta targeting saved after explicit owner approval; access
+  remains restricted to the tester Google Group.
+- Data safety declaration saved for review: optional email address, support
+  emails and diagnostics; no non-exempt third-party sharing or app accounts.
+  Email address is for support functionality; email/diagnostics also cover bug
+  diagnosis (Google's Analytics category). The all-data encryption question is
+  answered No: external mail clients control support transmission and the app
+  does not enforce encryption on that route. Google's broad preview reads
+  "Data isn't encrypted"; this is not a claim that local training is uploaded.
+  The app has no Internet permission or training backend.
 - Intended audience: 13–15, 16–17 and 18+, explicitly confirmed by the owner.
 - IARC questionnaire includes native routine QR exchange as user content sharing.
   No chat, moderation, public imagery, online content catalogue, purchases,
@@ -30,25 +42,14 @@ successfully. This is a draft release, not an approved or available beta.
 
 ## Pending before submission
 
-- Final store listing artwork declaration. Actual app captures are framed using
-  AI-assisted native HTML/SVG artwork and captions. Explicit owner approval of
-  the asset labels was requested; the listing is saved as a draft meanwhile.
-- Country selection: worldwide closed-beta availability requested for Reddit
-  testers; no countries saved pending explicit owner approval.
-- Data safety is saved as a draft. Optional email address, support emails and
-  diagnostics are described, with no non-exempt third-party sharing or accounts.
-  Support email/diagnostics are functionality and bug-diagnosis purposes;
-  addresses are for support functionality. Review the encryption answer before
-  submission: the app has no Internet permission or training backend; reports
-  are handed to an external email client. An unverified all-transit encryption
-  claim must not be made. Google's negative preview wording is also broader than
-  this architecture and needs careful interpretation of its external-service
-  guidance. Do not treat a saved draft as an approved declaration.
 - Foreground service video: actual connected-device session, start, background,
   ongoing notification, return and end. Demo mode intentionally pauses in the
   background and cannot demonstrate this permission. Hardware readiness was
-  requested from the owner; no physical session was started for the recording.
-- Final release review and submission. Native library symbols generate a
+  confirmed by the owner, but the phone re-locked before recording. It was
+  displaying the WH-C06 (IF_B7); select Progressor for this demonstration.
+  No physical session has been started for the recording.
+- Final release review and submission. Console now reports one blocking error
+  (foreground service declaration). Native library symbols generate a
   non-blocking warning; the bundle includes AndroidX native dependencies and
   the Java/Kotlin ReTrace mapping, but no native symbols were available.
 
