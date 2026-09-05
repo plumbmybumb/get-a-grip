@@ -42,7 +42,7 @@ Apple Developer capabilities. See [BUILDING.md](BUILDING.md).
 
 ### Android
 
-Requires JDK 17–26 (JDK 21 recommended), Android SDK platform 37, and Build Tools.
+Requires JDK 17–26 (JDK 21 recommended), Android SDK platform 37, and Build Tools 36.0.0.
 Minimum supported device: Android 12 / API 31. Android Studio can install the SDK.
 Set `ANDROID_HOME`, or copy `android/local.properties.example` to
 `android/local.properties` and set `sdk.dir`.
