@@ -70,7 +70,10 @@ Notification permission was inspected but not changed.
 
 ## Links
 
-- Group: https://groups.google.com/g/getagrip-android-beta
+- Group: https://groups.google.com/g/getagrip-android-beta/about
+  Use the About page for recruitment: the conversations page shows a misleading
+  access error because conversations are owner-only. Testers must sign in with
+  their Play Store Google account before the join option is available.
 - Play opt-in URL shown by Console (not active until publication):
   https://play.google.com/apps/testing/run.nuri.getagrip
 - Public source: https://github.com/plumbmybumb/get-a-grip
