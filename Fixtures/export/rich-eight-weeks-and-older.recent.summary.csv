@@ -1,0 +1,231 @@
+record,workout,date,started_utc,routine,kind,timing,minutes,effort_1_5,finger_strain_1_5,daily_target,completed,planned,set,pull,edge_mm,fingers,position,hand,planned_s,held_s,peak_kg,avg_kg,target_low_kg,target_high_kg,max_at_start_kg,outcome,source,notes,ended_utc,time_source,max_reference,started_elapsed_s,ended_elapsed_s,gap_before_s,planned_rest_s,planned_lead_in_s,recorded
+guide,,2026-08-28,,,,,,,,,,,,,,,,,,,,,,,,,,"Get a Grip CSV v2. workout is a permanent UUID; (workout,pull) identifies a recorded pull. record=workout contains totals; set or pull rows describe the same work: do not add them to workout totals. Summary groups recorded pulls by set, grip, hand and identical prescription. recorded counts outcomes, including skips; completed counts completed outcomes only. Summary planned_s and held_s are sums, peak_kg is the maximum, avg_kg is weighted by credited held_s; outcome lists counts. Workbook planned is the full planned pull count, including unattempted pulls. Dates are local training days; UTC timestamps are absolute. Blank is unavailable, never zero. ended_utc is the stored finish: runner_completion for newly timed sessions; legacy_save_or_end may include time on an old save screen. Manual logs have no known end instant. started_elapsed_s and ended_elapsed_s are host-monotonic observations from session start, including pauses and waiting; ended marks outcome recording, not necessarily physical release. Old timing is not_recorded; not_started means no engagement before an outcome. Summary offsets span the group only when all performed pulls have timing. gap_before_s includes pauses and waiting, not just rest. planned_rest_s and planned_lead_in_s are saved prescriptions (sums on set rows); rest includes set breaks. kg is force in kilograms; held_s is credited time above threshold. timing is inferred: gauge if any pull has positive force, timerOnly otherwise; logged means manual or no surviving detail. Skips and timer-only pulls have no force values. Target bounds are frozen prescriptions. max_at_start_kg uses only records at or before start; max_reference distinguishes hand_specific, both_hands, both_hands_fallback and no_recorded_max_at_start. Missing does not prove a grip was never benchmarked. Never add hand maxes. Effort and strain are 1-5, not Borg CR10. Fingers: I=index M=middle R=ring L=little T=thumb. fingerCurl starts in half crimp. Formula-like text is apostrophe-protected. No raw force trace or gauge model is stored. Scope: since 2026-07-04; detail: summary.",,,,,,,,,
+workout,00000000-0000-0000-0000-000000000173,2026-08-28,2026-08-28T09:00:00Z,Gym,climbLimit,logged,85,3,5,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000172,2026-08-27,2026-08-27T09:00:00Z,Daily no-hangs,hang,gauge,27,,,,4,5,,,,,,,,12.8,18.1,16.3,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000172,2026-08-27,,Daily no-hangs,,gauge,,,,,3,,1,,35,IMT,pinch,left,30,10.3,18.1,13.8,,,33.6,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000172,2026-08-27,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,right,20,2.5,10.6,9.5,,,31.4,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+workout,00000000-0000-0000-0000-000000000170,2026-08-26,2026-08-26T09:00:00Z,Daily no-hangs,hang,gauge,23,1,,,7,7,,,,,,,,24.2,20.3,18.3,,,,,,"Felt strong on the 45mm 4F SLOPER | second set
+kept the shoulders down.",,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000170,2026-08-26,,Daily no-hangs,,gauge,,,,,1,,1,,45,IMRL,sloper,left,10,3.5,8.1,7.3,9.5,13.0,37.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000170,2026-08-26,,Daily no-hangs,,gauge,,,,,3,,1,,45,IMRL,sloper,right,30,9.2,17.3,15.0,,,35.4,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000170,2026-08-26,,Daily no-hangs,,gauge,,,,,3,,1,,45,IMRL,sloper,left,30,11.5,20.3,14.0,,,37.6,completed:3,,,,not_recorded,hand_specific,,,,,,3
+workout,00000000-0000-0000-0000-000000000171,2026-08-26,2026-08-26T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,7,7,,,,,,,,24.2,20.3,18.3,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000171,2026-08-26,,Daily no-hangs,,gauge,,,,,1,,1,,45,IMRL,sloper,left,10,3.5,8.1,7.3,9.5,13.0,37.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000171,2026-08-26,,Daily no-hangs,,gauge,,,,,3,,1,,45,IMRL,sloper,right,30,9.2,17.3,15.0,,,35.4,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000171,2026-08-26,,Daily no-hangs,,gauge,,,,,3,,1,,45,IMRL,sloper,left,30,11.5,20.3,14.0,,,37.6,completed:3,,,,not_recorded,hand_specific,,,,,,3
+workout,00000000-0000-0000-0000-000000000169,2026-08-25,2026-08-25T09:00:00Z,Gym,climbVolume,logged,87,2,2,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000168,2026-08-24,2026-08-24T09:00:00Z,Weighted hangs,hangManual,logged,25,4,,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000167,2026-08-23,2026-08-23T09:00:00Z,Daily no-hangs,hang,gauge,26,,4,,2,4,,,,,,,,9.3,20.6,18.5,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000167,2026-08-23,,Daily no-hangs,,gauge,,,,,0,,1,,45,IMRL,sloper,left,10,4.3,13.3,12.0,9.5,13.0,37.6,aborted:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000167,2026-08-23,,Daily no-hangs,,gauge,,,,,0,,1,,45,IMRL,sloper,right,10,0.0,,,,,35.4,skipped:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000167,2026-08-23,,Daily no-hangs,,gauge,,,,,1,,1,,45,IMRL,sloper,left,10,4.4,19.7,17.7,,,37.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000167,2026-08-23,,Daily no-hangs,,gauge,,,,,1,,1,,45,IMRL,sloper,right,10,0.6,20.6,18.5,9.5,13.0,35.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000166,2026-08-22,2026-08-22T09:00:00Z,Gym,climbLimit,logged,84,2,3,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000164,2026-08-21,2026-08-21T09:00:00Z,Daily no-hangs,hang,gauge,19,,,,6,6,,,,,,,,27.7,21.5,19.4,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000164,2026-08-21,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,left,30,15.1,17.6,11.2,,,25.6,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000164,2026-08-21,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMR,halfCrimp,right,20,7.5,21.5,10.0,,,23.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000164,2026-08-21,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,right,10,5.1,13.0,11.7,9.5,13.0,23.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000165,2026-08-21,2026-08-21T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,6,6,,,,,,,,27.7,21.5,19.4,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000165,2026-08-21,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,left,30,15.1,17.6,11.2,,,25.6,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000165,2026-08-21,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMR,halfCrimp,right,20,7.5,21.5,10.0,,,23.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000165,2026-08-21,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,right,10,5.1,13.0,11.7,9.5,13.0,23.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000163,2026-08-20,2026-08-20T09:00:00Z,Daily no-hangs,hang,gauge,26,,5,,3,5,,,,,,,,15.6,20.5,18.4,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000163,2026-08-20,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,20,9.3,20.5,18.4,,,29.6,aborted:1|completed:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000163,2026-08-20,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,right,20,2.7,8.1,7.3,,,27.4,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000163,2026-08-20,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,10,3.6,15.6,14.0,9.5,13.0,29.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000162,2026-08-19,2026-08-19T09:00:00Z,Gym,climbVolume,logged,64,5,1,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000161,2026-08-17,2026-08-17T09:00:00Z,Daily no-hangs,hang,gauge,18,2,4,,6,7,,,,,,,,21.5,21.8,19.6,,,,,,"Felt strong on the 20mm 4F HC | second set
+kept the shoulders down.",,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000161,2026-08-17,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,10,2.8,14.8,13.3,,,21.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000161,2026-08-17,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMRL,halfCrimp,right,30,12.5,19.7,12.8,,,19.4,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000161,2026-08-17,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,left,30,6.2,21.8,17.4,9.5,13.0,21.6,completed:2|skipped:1,,,,not_recorded,hand_specific,,,,,,3
+workout,00000000-0000-0000-0000-000000000159,2026-08-16,2026-08-16T09:00:00Z,Daily no-hangs,hang,gauge,18,,4,,4,5,,,,,,,,13.5,18.5,16.7,,,,,,"Felt strong on the 20mm F2 OH | second set
+kept the shoulders down.",,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000159,2026-08-16,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,20,2.5,9.7,8.7,9.5,13.0,29.6,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000159,2026-08-16,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,right,20,5.0,12.0,8.9,,,27.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000159,2026-08-16,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,10,6.0,18.5,16.7,,,29.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000160,2026-08-16,2026-08-16T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,4,5,,,,,,,,13.5,18.5,16.7,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000160,2026-08-16,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,20,2.5,9.7,8.7,9.5,13.0,29.6,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000160,2026-08-16,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,right,20,5.0,12.0,8.9,,,27.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000160,2026-08-16,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,10,6.0,18.5,16.7,,,29.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000174,2026-08-16,2026-08-16T09:00:00Z,Daily no-hangs,hang,gauge,21,3,3,,11,12,,,,,,,,84.0,0.0,0.0,,,,,,,,legacy_save_or_end,,,,,,,
+workout,00000000-0000-0000-0000-000000000157,2026-08-15,2026-08-15T09:00:00Z,Daily no-hangs,hang,gauge,18,,3,,2,4,,,,,,,,5.6,17.5,15.8,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000157,2026-08-15,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,left,20,3.8,17.5,15.8,,,25.6,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000157,2026-08-15,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,right,10,1.0,11.5,10.3,9.5,13.0,23.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000157,2026-08-15,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMR,halfCrimp,right,10,0.8,9.7,8.7,,,23.4,aborted:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000158,2026-08-15,2026-08-15T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,2,4,,,,,,,,5.6,17.5,15.8,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000158,2026-08-15,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,left,20,3.8,17.5,15.8,,,25.6,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000158,2026-08-15,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,right,10,1.0,11.5,10.3,9.5,13.0,23.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000158,2026-08-15,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMR,halfCrimp,right,10,0.8,9.7,8.7,,,23.4,aborted:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000156,2026-08-14,2026-08-14T09:00:00Z,Gym,climbVolume,logged,102,5,3,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000154,2026-08-13,2026-08-13T09:00:00Z,Daily no-hangs,hang,gauge,26,3,4,,4,4,,,,,,,,10.0,18.4,16.6,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000154,2026-08-13,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,10,1.2,16.3,14.7,9.5,13.0,29.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000154,2026-08-13,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,right,20,3.6,18.4,14.6,,,27.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000154,2026-08-13,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,10,5.2,17.9,16.1,,,29.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000155,2026-08-13,2026-08-13T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,4,4,,,,,,,,10.0,18.4,16.6,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000155,2026-08-13,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,10,1.2,16.3,14.7,9.5,13.0,29.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000155,2026-08-13,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,right,20,3.6,18.4,14.6,,,27.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000155,2026-08-13,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,10,5.2,17.9,16.1,,,29.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000153,2026-08-12,2026-08-12T09:00:00Z,Daily no-hangs,hang,gauge,27,3,5,,5,7,,,,,,,,28.5,20.5,18.4,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000153,2026-08-12,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,left,30,15.6,16.8,13.3,,,29.6,aborted:1|completed:2,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000153,2026-08-12,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,right,20,7.1,14.0,11.4,,,27.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000153,2026-08-12,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,right,10,2.0,20.5,18.4,9.5,13.0,27.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000153,2026-08-12,,Daily no-hangs,,gauge,,,,,0,,1,,20,IM,openHand,left,10,3.8,10.2,9.2,9.5,13.0,29.6,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000152,2026-08-11,2026-08-11T09:00:00Z,Daily no-hangs,hang,gauge,21,1,1,,4,4,,,,,,,,12.8,18.4,16.6,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000152,2026-08-11,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,10,5.9,10.7,9.6,9.5,13.0,21.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000152,2026-08-11,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,right,20,4.5,18.4,12.9,9.5,13.0,19.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000152,2026-08-11,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,10,2.4,13.0,11.7,,,21.6,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000151,2026-08-10,2026-08-10T09:00:00Z,Gym,climbVolume,logged,112,3,2,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000150,2026-08-09,2026-08-09T09:00:00Z,Daily no-hangs,hang,gauge,22,,5,,6,6,,,,,,,,20.0,21.3,19.2,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000150,2026-08-09,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,left,30,9.2,21.3,18.2,,,25.6,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000150,2026-08-09,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,right,30,10.8,14.9,11.5,,,23.4,completed:3,,,,not_recorded,hand_specific,,,,,,3
+workout,00000000-0000-0000-0000-000000000149,2026-08-08,2026-08-08T09:00:00Z,Daily no-hangs,hang,gauge,23,2,,,3,6,,,,,,,,15.4,18.7,16.8,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000149,2026-08-08,,Daily no-hangs,,gauge,,,,,2,,1,,45,IMRL,sloper,left,20,7.2,11.3,10.0,9.5,13.0,37.6,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000149,2026-08-08,,Daily no-hangs,,gauge,,,,,1,,1,,45,IMRL,sloper,right,20,4.6,18.7,10.2,9.5,13.0,35.4,completed:1|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000149,2026-08-08,,Daily no-hangs,,gauge,,,,,0,,1,,45,IMRL,sloper,right,10,0.0,,,,,35.4,skipped:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000149,2026-08-08,,Daily no-hangs,,gauge,,,,,0,,1,,45,IMRL,sloper,left,10,3.6,18.5,16.7,,,37.6,aborted:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000148,2026-08-07,2026-08-07T09:00:00Z,Daily no-hangs,hang,gauge,26,,,,5,6,,,,,,,,20.3,21.1,19.0,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000148,2026-08-07,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMR,halfCrimp,left,30,4.6,19.9,17.1,,,24.0,aborted:1|completed:2,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000148,2026-08-07,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,right,30,15.7,21.1,16.1,,,23.4,completed:3,,,,not_recorded,hand_specific,,,,,,3
+workout,00000000-0000-0000-0000-000000000147,2026-08-06,2026-08-06T09:00:00Z,Weighted hangs,hangManual,logged,25,1,,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000145,2026-08-05,2026-08-05T09:00:00Z,Daily no-hangs,hang,gauge,21,2,4,,3,5,,,,,,,,12.7,18.8,16.9,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000145,2026-08-05,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,left,20,7.7,18.0,13.7,9.5,13.0,32.0,completed:1|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000145,2026-08-05,,Daily no-hangs,,gauge,,,,,2,,1,,35,IMT,pinch,right,20,4.4,18.8,14.0,,,31.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000145,2026-08-05,,Daily no-hangs,,gauge,,,,,0,,1,,35,IMT,pinch,left,10,0.6,8.6,7.7,,,32.0,aborted:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000146,2026-08-05,2026-08-05T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,3,5,,,,,,,,12.7,18.8,16.9,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000146,2026-08-05,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,left,20,7.7,18.0,13.7,9.5,13.0,32.0,completed:1|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000146,2026-08-05,,Daily no-hangs,,gauge,,,,,2,,1,,35,IMT,pinch,right,20,4.4,18.8,14.0,,,31.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000146,2026-08-05,,Daily no-hangs,,gauge,,,,,0,,1,,35,IMT,pinch,left,10,0.6,8.6,7.7,,,32.0,aborted:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000144,2026-08-04,2026-08-04T09:00:00Z,Daily no-hangs,hang,gauge,24,3,1,,4,6,,,,,,,,15.4,20.9,18.8,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000144,2026-08-04,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,left,30,10.0,20.9,18.2,,,24.0,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000144,2026-08-04,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,right,20,3.6,11.7,10.5,,,23.4,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000144,2026-08-04,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMR,halfCrimp,right,10,1.8,20.3,18.3,9.5,13.0,23.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000142,2026-08-03,2026-08-03T09:00:00Z,Daily no-hangs,hang,gauge,26,5,,,1,5,,,,,,,,10.2,19.2,17.3,,,,,,"Felt strong on the 20mm 4F HC | second set
+kept the shoulders down.",,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000142,2026-08-03,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,30,5.0,18.9,13.6,,,20.0,completed:1|earlyRelease:1|skipped:1,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000142,2026-08-03,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMRL,halfCrimp,right,10,2.8,12.2,11.0,,,19.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000142,2026-08-03,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMRL,halfCrimp,right,10,2.4,19.2,17.3,9.5,13.0,19.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000143,2026-08-03,2026-08-03T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,1,5,,,,,,,,10.2,19.2,17.3,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000143,2026-08-03,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,30,5.0,18.9,13.6,,,20.0,completed:1|earlyRelease:1|skipped:1,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000143,2026-08-03,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMRL,halfCrimp,right,10,2.8,12.2,11.0,,,19.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000143,2026-08-03,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMRL,halfCrimp,right,10,2.4,19.2,17.3,9.5,13.0,19.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000141,2026-08-02,2026-08-02T09:00:00Z,Daily no-hangs,hang,gauge,18,,,,4,5,,,,,,,,14.6,21.4,19.3,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000141,2026-08-02,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,left,20,7.4,21.4,18.1,9.5,13.0,20.0,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000141,2026-08-02,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMRL,halfCrimp,right,10,2.2,16.1,14.5,9.5,13.0,19.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000141,2026-08-02,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,10,4.4,17.6,15.8,,,20.0,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000141,2026-08-02,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,right,10,0.6,19.7,17.7,,,19.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000140,2026-08-01,2026-08-01T09:00:00Z,Weighted hangs,hangManual,logged,25,4,,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000139,2026-07-31,2026-07-31T09:00:00Z,Daily no-hangs,hang,gauge,20,4,1,,4,6,,,,,,,,18.0,21.7,19.5,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000139,2026-07-31,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,left,20,5.3,21.7,16.6,9.5,13.0,20.0,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000139,2026-07-31,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,right,30,6.3,20.6,17.5,9.5,13.0,19.4,aborted:1|completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000139,2026-07-31,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,10,6.4,11.1,10.0,,,20.0,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000137,2026-07-30,2026-07-30T09:00:00Z,Daily no-hangs,hang,gauge,19,5,,,4,5,,,,,,,,21.2,20.1,18.1,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000137,2026-07-30,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,left,20,7.9,12.9,11.1,,,24.0,aborted:1|completed:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000137,2026-07-30,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMR,halfCrimp,right,20,6.9,20.1,13.7,,,23.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000137,2026-07-30,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,left,10,6.4,16.5,14.8,9.5,13.0,24.0,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000138,2026-07-30,2026-07-30T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,4,5,,,,,,,,21.2,20.1,18.1,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000138,2026-07-30,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,left,20,7.9,12.9,11.1,,,24.0,aborted:1|completed:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000138,2026-07-30,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMR,halfCrimp,right,20,6.9,20.1,13.7,,,23.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000138,2026-07-30,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,left,10,6.4,16.5,14.8,9.5,13.0,24.0,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000136,2026-07-29,2026-07-29T09:00:00Z,Gym,climbLimit,logged,106,4,1,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000135,2026-07-28,2026-07-28T09:00:00Z,Daily no-hangs,hang,gauge,22,1,1,,5,6,,,,,,,,13.1,21.1,19.0,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000135,2026-07-28,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,left,30,6.1,21.1,10.1,,,20.0,completed:2|skipped:1,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000135,2026-07-28,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,right,10,0.8,10.0,9.0,9.5,13.0,19.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000135,2026-07-28,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,right,20,6.2,13.7,11.2,,,19.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+workout,00000000-0000-0000-0000-000000000133,2026-07-27,2026-07-27T09:00:00Z,Daily no-hangs,hang,gauge,23,2,3,,4,5,,,,,,,,16.3,21.6,19.4,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000133,2026-07-27,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,left,30,12.2,21.6,14.8,,,24.0,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000133,2026-07-27,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,right,20,4.1,10.1,9.1,,,23.4,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+workout,00000000-0000-0000-0000-000000000134,2026-07-27,2026-07-27T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,4,5,,,,,,,,16.3,21.6,19.4,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000134,2026-07-27,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,left,30,12.2,21.6,14.8,,,24.0,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000134,2026-07-27,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,right,20,4.1,10.1,9.1,,,23.4,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+workout,00000000-0000-0000-0000-000000000132,2026-07-26,2026-07-26T09:00:00Z,Daily no-hangs,hang,gauge,18,4,3,,4,4,,,,,,,,17.6,19.2,17.3,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000132,2026-07-26,,Daily no-hangs,,gauge,,,,,2,,1,,35,IMT,pinch,left,20,12.8,19.2,15.1,9.5,13.0,32.0,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000132,2026-07-26,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,right,10,0.8,13.1,11.8,,,31.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000132,2026-07-26,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,right,10,4.0,13.0,11.7,9.5,13.0,31.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000130,2026-07-25,2026-07-25T09:00:00Z,Daily no-hangs,hang,gauge,24,4,,,3,4,,,,,,,,13.0,16.8,15.1,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000130,2026-07-25,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,20,9.2,16.5,12.2,,,28.0,aborted:1|completed:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000130,2026-07-25,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,right,20,3.8,16.8,14.8,,,27.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+workout,00000000-0000-0000-0000-000000000131,2026-07-25,2026-07-25T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,3,4,,,,,,,,13.0,16.8,15.1,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000131,2026-07-25,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,20,9.2,16.5,12.2,,,28.0,aborted:1|completed:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000131,2026-07-25,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,right,20,3.8,16.8,14.8,,,27.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+workout,00000000-0000-0000-0000-000000000129,2026-07-24,2026-07-24T09:00:00Z,Daily no-hangs,hang,gauge,24,,1,,5,5,,,,,,,,14.4,19.7,17.7,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000129,2026-07-24,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,left,20,3.6,19.1,15.5,,,20.0,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000129,2026-07-24,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,right,20,8.8,19.7,17.7,9.5,13.0,19.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000129,2026-07-24,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,10,2.0,9.6,8.6,9.5,13.0,20.0,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000128,2026-07-23,2026-07-23T09:00:00Z,Daily no-hangs,hang,gauge,26,1,3,,5,7,,,,,,,,19.9,18.9,17.0,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000128,2026-07-23,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,left,40,8.2,13.1,10.7,,,24.0,completed:3|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,4
+set,00000000-0000-0000-0000-000000000128,2026-07-23,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,right,20,7.0,18.9,14.1,,,23.4,completed:1|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000128,2026-07-23,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,right,10,4.7,16.3,14.7,9.5,13.0,23.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000127,2026-07-22,2026-07-22T09:00:00Z,Daily no-hangs,hang,gauge,20,,4,,6,6,,,,,,,,14.8,19.1,17.2,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000127,2026-07-22,,Daily no-hangs,,gauge,,,,,1,,1,,45,IMRL,sloper,left,10,3.4,16.0,14.4,9.5,13.0,36.0,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000127,2026-07-22,,Daily no-hangs,,gauge,,,,,2,,1,,45,IMRL,sloper,right,20,2.0,19.1,15.7,9.5,13.0,35.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000127,2026-07-22,,Daily no-hangs,,gauge,,,,,2,,1,,45,IMRL,sloper,left,20,7.6,13.2,10.6,,,36.0,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000127,2026-07-22,,Daily no-hangs,,gauge,,,,,1,,1,,45,IMRL,sloper,right,10,1.8,18.2,16.4,,,35.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000126,2026-07-21,2026-07-21T09:00:00Z,Daily no-hangs,hang,gauge,22,1,,,3,5,,,,,,,,19.8,13.1,11.8,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000126,2026-07-21,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,left,20,8.0,11.9,9.1,,,28.0,aborted:1|completed:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000126,2026-07-21,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,right,20,11.8,13.1,11.2,,,27.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000126,2026-07-21,,Daily no-hangs,,gauge,,,,,0,,1,,20,IM,openHand,left,10,0.0,,,9.5,13.0,28.0,skipped:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000125,2026-07-20,2026-07-20T09:00:00Z,Gym,climbLimit,logged,87,1,2,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000124,2026-07-19,2026-07-19T09:00:00Z,Gym,climbLimit,logged,116,5,4,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000123,2026-07-18,2026-07-18T09:00:00Z,Weighted hangs,hangManual,logged,25,5,,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000122,2026-07-17,2026-07-17T09:00:00Z,Gym,climbVolume,logged,81,4,3,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000120,2026-07-16,2026-07-16T09:00:00Z,Daily no-hangs,hang,gauge,18,,5,,3,6,,,,,,,,18.4,18.6,16.7,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000120,2026-07-16,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,left,10,0.6,18.6,16.7,,,32.0,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000120,2026-07-16,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,right,20,5.7,18.0,15.6,,,31.4,completed:1|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000120,2026-07-16,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,left,20,9.2,17.7,14.7,9.5,13.0,32.0,completed:1|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000120,2026-07-16,,Daily no-hangs,,gauge,,,,,0,,1,,35,IMT,pinch,right,10,2.9,17.8,16.0,9.5,13.0,31.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000121,2026-07-16,2026-07-16T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,3,6,,,,,,,,18.4,18.6,16.7,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000121,2026-07-16,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,left,10,0.6,18.6,16.7,,,32.0,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000121,2026-07-16,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,right,20,5.7,18.0,15.6,,,31.4,completed:1|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000121,2026-07-16,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,left,20,9.2,17.7,14.7,9.5,13.0,32.0,completed:1|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000121,2026-07-16,,Daily no-hangs,,gauge,,,,,0,,1,,35,IMT,pinch,right,10,2.9,17.8,16.0,9.5,13.0,31.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000119,2026-07-15,2026-07-15T09:00:00Z,Gym,climbLimit,logged,75,4,4,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000118,2026-07-14,2026-07-14T09:00:00Z,Weighted hangs,hangManual,logged,25,4,,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000116,2026-07-13,2026-07-13T09:00:00Z,Daily no-hangs,hang,gauge,26,,2,,6,7,,,,,,,,21.0,21.9,19.7,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000116,2026-07-13,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMRL,halfCrimp,left,40,10.1,19.9,9.3,,,20.0,completed:3|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,4
+set,00000000-0000-0000-0000-000000000116,2026-07-13,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMRL,halfCrimp,right,30,10.9,21.9,17.0,,,19.4,completed:3,,,,not_recorded,hand_specific,,,,,,3
+workout,00000000-0000-0000-0000-000000000117,2026-07-13,2026-07-13T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,6,7,,,,,,,,21.0,21.9,19.7,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000117,2026-07-13,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMRL,halfCrimp,left,40,10.1,19.9,9.3,,,20.0,completed:3|earlyRelease:1,,,,not_recorded,hand_specific,,,,,,4
+set,00000000-0000-0000-0000-000000000117,2026-07-13,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMRL,halfCrimp,right,30,10.9,21.9,17.0,,,19.4,completed:3,,,,not_recorded,hand_specific,,,,,,3
+workout,00000000-0000-0000-0000-000000000115,2026-07-12,2026-07-12T09:00:00Z,Daily no-hangs,hang,gauge,20,,5,,3,6,,,,,,,,10.2,19.3,17.4,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000115,2026-07-12,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMR,halfCrimp,left,30,2.6,12.7,11.4,,,24.0,completed:1|skipped:2,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000115,2026-07-12,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMR,halfCrimp,right,20,7.6,19.3,12.1,,,23.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000115,2026-07-12,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMR,halfCrimp,right,10,0.0,,,9.5,13.0,23.4,skipped:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000114,2026-07-11,2026-07-11T09:00:00Z,Daily no-hangs,hang,gauge,26,1,,,3,5,,,,,,,,18.8,20.6,18.5,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000114,2026-07-11,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,20,11.1,17.2,11.3,9.5,13.0,20.0,aborted:1|completed:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000114,2026-07-11,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,right,20,6.0,11.3,10.0,,,19.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000114,2026-07-11,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMRL,halfCrimp,left,10,1.7,20.6,18.5,,,20.0,aborted:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000112,2026-07-10,2026-07-10T09:00:00Z,Daily no-hangs,hang,gauge,24,2,1,,5,6,,,,,,,,29.3,13.2,11.9,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000112,2026-07-10,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,left,30,16.2,12.5,9.7,,,24.0,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000112,2026-07-10,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMR,halfCrimp,right,20,6.8,11.6,9.7,,,23.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000112,2026-07-10,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMR,halfCrimp,right,10,6.3,13.2,11.9,9.5,13.0,23.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000113,2026-07-10,2026-07-10T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,5,6,,,,,,,,29.3,13.2,11.9,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000113,2026-07-10,,Daily no-hangs,,gauge,,,,,3,,1,,20,IMR,halfCrimp,left,30,16.2,12.5,9.7,,,24.0,completed:3,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000113,2026-07-10,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMR,halfCrimp,right,20,6.8,11.6,9.7,,,23.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000113,2026-07-10,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMR,halfCrimp,right,10,6.3,13.2,11.9,9.5,13.0,23.4,earlyRelease:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000110,2026-07-09,2026-07-09T09:00:00Z,Daily no-hangs,hang,gauge,23,3,5,,4,6,,,,,,,,8.4,20.7,18.6,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000110,2026-07-09,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMRL,halfCrimp,left,10,0.0,,,9.5,13.0,20.0,skipped:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000110,2026-07-09,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,right,20,4.2,20.7,18.5,,,19.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000110,2026-07-09,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,20,1.3,17.8,16.0,,,20.0,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000110,2026-07-09,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,right,10,2.9,15.9,14.3,9.5,13.0,19.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000111,2026-07-09,2026-07-09T09:00:00Z,Daily no-hangs,hang,gauge,17,,,,4,6,,,,,,,,8.4,20.7,18.6,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000111,2026-07-09,,Daily no-hangs,,gauge,,,,,0,,1,,20,IMRL,halfCrimp,left,10,0.0,,,9.5,13.0,20.0,skipped:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000111,2026-07-09,,Daily no-hangs,,gauge,,,,,2,,1,,20,IMRL,halfCrimp,right,20,4.2,20.7,18.5,,,19.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000111,2026-07-09,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,left,20,1.3,17.8,16.0,,,20.0,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000111,2026-07-09,,Daily no-hangs,,gauge,,,,,1,,1,,20,IMRL,halfCrimp,right,10,2.9,15.9,14.3,9.5,13.0,19.4,completed:1,,,,not_recorded,hand_specific,,,,,,1
+workout,00000000-0000-0000-0000-000000000109,2026-07-08,2026-07-08T09:00:00Z,Daily no-hangs,hang,gauge,27,1,4,,4,5,,,,,,,,15.6,19.6,17.6,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000109,2026-07-08,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,left,10,3.7,19.0,17.1,,,32.0,completed:1,,,,not_recorded,hand_specific,,,,,,1
+set,00000000-0000-0000-0000-000000000109,2026-07-08,,Daily no-hangs,,gauge,,,,,2,,1,,35,IMT,pinch,right,20,7.9,19.6,11.7,,,31.4,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000109,2026-07-08,,Daily no-hangs,,gauge,,,,,1,,1,,35,IMT,pinch,left,20,4.0,14.0,12.6,9.5,13.0,32.0,completed:1|skipped:1,,,,not_recorded,hand_specific,,,,,,2
+workout,00000000-0000-0000-0000-000000000108,2026-07-07,2026-07-07T09:00:00Z,Gym,climbLimit,logged,95,5,4,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000107,2026-07-06,2026-07-06T09:00:00Z,Gym,climbVolume,logged,66,1,3,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+workout,00000000-0000-0000-0000-000000000106,2026-07-05,2026-07-05T09:00:00Z,Daily no-hangs,hang,gauge,27,,3,,5,7,,,,,,,,20.0,20.2,18.2,,,,,,,,legacy_save_or_end,,,,,,,
+set,00000000-0000-0000-0000-000000000106,2026-07-05,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,left,20,3.2,20.2,16.3,9.5,13.0,28.0,completed:2,,,,not_recorded,hand_specific,,,,,,2
+set,00000000-0000-0000-0000-000000000106,2026-07-05,,Daily no-hangs,,gauge,,,,,1,,1,,20,IM,openHand,right,30,6.3,10.8,9.7,,,27.4,completed:1|skipped:2,,,,not_recorded,hand_specific,,,,,,3
+set,00000000-0000-0000-0000-000000000106,2026-07-05,,Daily no-hangs,,gauge,,,,,2,,1,,20,IM,openHand,left,20,10.5,10.3,8.8,,,28.0,completed:2,,,,not_recorded,hand_specific,,,,,,2
+workout,00000000-0000-0000-0000-000000000105,2026-07-04,2026-07-04T09:00:00Z,Weighted hangs,hangManual,logged,25,5,,,0,0,,,,,,,,,,,,,,,,,,manual,,,,,,,
+max,,2026-08-08,2026-08-08T08:00:00Z,,,,,,,,,,,,20,IMRL,halfCrimp,left,,,21.6,,,,,,measured,,,,,,,,,,
+max,,2026-08-08,2026-08-08T08:00:00Z,,,,,,,,,,,,20,IMR,halfCrimp,left,,,25.6,,,,,,measured,,,,,,,,,,
+max,,2026-08-08,2026-08-08T08:00:00Z,,,,,,,,,,,,20,IM,openHand,left,,,29.6,,,,,,measured,,,,,,,,,,
+max,,2026-08-08,2026-08-08T08:00:00Z,,,,,,,,,,,,35,IMT,pinch,left,,,33.6,,,,,,measured,,,,,,,,,,
+max,,2026-08-08,2026-08-08T08:00:00Z,,,,,,,,,,,,45,IMRL,sloper,left,,,37.6,,,,,,measured,,,,,,,,,,

@@ -1,0 +1,106 @@
+{
+  "gauge": "entralpi",
+  "cases": [
+    {
+      "name": "weight is big-endian hundredths of a kilogram",
+      "frames": [
+        "09C4"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 25.0,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "the same bytes reversed are a different load",
+      "frames": [
+        "C409"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 501.85,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "hundredth resolution survives, unlike the reference's toFixed(1)",
+      "frames": [
+        "09C5"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 25.01,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "everything past the first two bytes is ignored",
+      "frames": [
+        "09C4FFFFFFFFFFFF"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 25.0,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "a notification shorter than two bytes decodes to nothing",
+      "frames": [
+        "",
+        "09"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    },
+    {
+      "name": "zero is a reading",
+      "frames": [
+        "0000"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 0.0,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "the highest value the field can express still decodes",
+      "frames": [
+        "FFFF"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 655.35,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    }
+  ]
+}

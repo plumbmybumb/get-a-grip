@@ -1,0 +1,230 @@
+{
+  "generatedOn": 20693,
+  "maxes": [],
+  "sessions": [
+    {
+      "avgKg": 16.2,
+      "completedReps": 1,
+      "day": 20693,
+      "id": "00000000-0000-0000-0000-00000000C5A2",
+      "kind": "hang",
+      "minutes": 20,
+      "notes": "",
+      "peakKg": 18,
+      "plannedReps": 1,
+      "reps": [
+        {
+          "avgKg": 10,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 2,
+          "outcome": "completed",
+          "peakKg": 20,
+          "repIndex": 0,
+          "setIndex": 0,
+          "side": "left",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 3,
+          "endedElapsedSeconds": 13
+        },
+        {
+          "avgKg": 11,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 3,
+          "outcome": "completed",
+          "peakKg": 21,
+          "repIndex": 1,
+          "setIndex": 0,
+          "side": "right",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 33,
+          "endedElapsedSeconds": 43
+        },
+        {
+          "avgKg": 12,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 4,
+          "outcome": "completed",
+          "peakKg": 22,
+          "repIndex": 2,
+          "setIndex": 0,
+          "side": "left",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 63,
+          "endedElapsedSeconds": 73
+        },
+        {
+          "avgKg": 13,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 5,
+          "outcome": "completed",
+          "peakKg": 23,
+          "repIndex": 3,
+          "setIndex": 0,
+          "side": "right",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 93,
+          "endedElapsedSeconds": 103
+        },
+        {
+          "avgKg": 14,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 2,
+          "outcome": "completed",
+          "peakKg": 24,
+          "repIndex": 4,
+          "setIndex": 0,
+          "side": "left",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 123,
+          "endedElapsedSeconds": 133
+        },
+        {
+          "avgKg": 15,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 3,
+          "outcome": "earlyRelease",
+          "peakKg": 25,
+          "repIndex": 5,
+          "setIndex": 0,
+          "side": "right",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 153,
+          "endedElapsedSeconds": 163
+        },
+        {
+          "avgKg": 16,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 4,
+          "outcome": "completed",
+          "peakKg": 26,
+          "repIndex": 6,
+          "setIndex": 0,
+          "side": "left",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 183,
+          "endedElapsedSeconds": 193
+        },
+        {
+          "avgKg": 0,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 0,
+          "outcome": "skipped",
+          "peakKg": 0,
+          "repIndex": 7,
+          "setIndex": 0,
+          "side": "right",
+          "targetSeconds": 10,
+          "endedElapsedSeconds": 223
+        },
+        {
+          "avgKg": 18,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 2,
+          "outcome": "completed",
+          "peakKg": 28,
+          "repIndex": 8,
+          "setIndex": 0,
+          "side": "left",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 243,
+          "endedElapsedSeconds": 253
+        },
+        {
+          "avgKg": 19,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 3,
+          "outcome": "completed",
+          "peakKg": 29,
+          "repIndex": 9,
+          "setIndex": 0,
+          "side": "right",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 273,
+          "endedElapsedSeconds": 283
+        },
+        {
+          "avgKg": 20,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 4,
+          "outcome": "completed",
+          "peakKg": 30,
+          "repIndex": 10,
+          "setIndex": 0,
+          "side": "left",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 303,
+          "endedElapsedSeconds": 313
+        },
+        {
+          "avgKg": 21,
+          "grip": {
+            "edgeMM": 20,
+            "fingers": "IMRL",
+            "position": "halfCrimp"
+          },
+          "heldSeconds": 5,
+          "outcome": "completed",
+          "peakKg": 31,
+          "repIndex": 11,
+          "setIndex": 0,
+          "side": "right",
+          "targetSeconds": 10,
+          "startedElapsedSeconds": 333,
+          "endedElapsedSeconds": 343
+        }
+      ],
+      "routineName": "Daily no-hangs",
+      "startedAt": "2026-08-28T09:00:00Z",
+      "timing": "gauge",
+      "totalHeldSeconds": 10,
+      "sessionsPerDayTarget": 2,
+      "finishedAt": "2026-08-28T09:00:00Z"
+    }
+  ],
+  "sessionsPerDayTarget": 2,
+  "today": 20693
+}

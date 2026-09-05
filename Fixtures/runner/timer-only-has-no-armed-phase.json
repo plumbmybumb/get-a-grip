@@ -1,0 +1,8 @@
+{
+  "final": {"completedRepCount":0,"phase":"working:0","results":[]},
+  "maxes": [],
+  "name": "timer-only-has-no-armed-phase",
+  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":3,\"leadInSeconds\":0,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":1}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+  "steps": [{"cues":[{"side":"both","type":"armed"},{"type":"repStarted"}],"event":{"type":"start"},"t":0}],
+  "timerOnly": true
+}

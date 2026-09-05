@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  GENERATED — do not edit. Android-only English, from android_extra.json.
+  Regenerate with: python3 android/scripts/xcstrings_to_android.py
+-->
+<resources>
+    <string name="app_name" translatable="false">Get a Grip</string>
+    <string name="a_scan_a_shared_routine">Scan a shared routine</string>
+    <string name="a_couldn_t_scan">Couldn\'t scan</string>
+    <string name="a_new_routine_opens_the_routine_builder">New routine. Opens the routine builder.</string>
+    <string name="a_up_next">Up next</string>
+    <string name="a_app">App</string>
+    <string name="a_version">Version</string>
+    <string name="a_s_broadcasts_its_weight_instead_of_connecting_so_there_i">%s broadcasts its weight instead of connecting, so there is nothing to pair and nothing to zero on the device — Tare subtracts what is hanging on it. Android stops delivering broadcasts while Get a Grip is in the background, so a session on one pauses when you leave the app.</string>
+    <string name="a_android_will_ask_to_allow_notifications_when_you_save">Android will ask to allow notifications when you save.</string>
+    <string name="a_session_reminders">Session reminders</string>
+    <string name="a_leave_demo_mode">Leave demo mode</string>
+    <string name="a_sharing_a_file_isn_t_available_on_this_build_use_copy_an">Sharing a file isn\'t available on this build — use Copy, and paste the document where you need it.</string>
+    <string name="a_sharing_an_image_isn_t_available_on_this_build">Sharing an image isn\'t available on this build.</string>
+    <string name="a_couldn_t_write_to_photos">Couldn\'t write to Photos.</string>
+    <string name="a_saved_at_1_d_2_d_points_at_3_d_so_it_lands_in_photos_at">Saved at %1$d × %2$d points at %3$d×, so it lands in Photos at the size a story wants.</string>
+    <string name="a_this_code_couldn_t_be_drawn_the_link_below_still_works">This code couldn\'t be drawn. The link below still works.</string>
+    <string name="a_copy_link">Copy link</string>
+    <string name="a_link_copied">Link copied</string>
+    <string name="a_expanded">Expanded</string>
+    <string name="a_collapsed">Collapsed</string>
+    <string name="a_decrease">Decrease</string>
+    <string name="a_increase">Increase</string>
+    <string name="a_seconds">seconds</string>
+    <string name="a_millimetres">millimetres</string>
+    <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target">No max on file for this grip yet, so this shows no target during a session. Add one in Maxes.</string>
+    <string name="a_no_max_for_your_s_hand_so_those_pulls_show_no_target_add">No max for your %s hand, so those pulls show no target. Add one in Maxes.</string>
+    <string name="a_d_days_ago">%d days ago</string>
+    <string name="a_last_week">last week</string>
+    <string name="a_d_weeks_ago">%d weeks ago</string>
+    <string name="a_d_months_ago">%d months ago</string>
+    <string name="a_over_a_year_ago">over a year ago</string>
+    <string name="a_couldn_t_render_the_card_try_again">Couldn\'t render the card. Try again.</string>
+    <string name="a_your_routines_and_sessions_are_stored_on_this_device_the">Your routines and sessions are stored on this device. They don\'t sync between devices.</string>
+    <string name="a_this_routine_asks_for_d_a_day">This routine asks for %d a day.</string>
+    <string name="a_the_big_word_is_the_hand_that_goes_on_the_edge_your_fing">The big word is the hand that goes on the edge. Your fingers hang off the palm at the top of the screen, so the grip reads without a word.</string>
+    <string name="a_start_with_a_name_and_one_set_make_it_yours_then_come_ba">Start with a name and one set. Make it yours, then come back and pull.</string>
+    <string name="a_allow_camera_access_in_settings_to_scan_a_routine_you_ca">Allow camera access in Settings to scan a routine. You can still open a shared routine link.</string>
+    <string name="a_couldn_t_open_the_camera_try_opening_the_shared_routine">Couldn\'t open the camera. Try opening the shared routine link instead.</string>
+    <string name="a_point_your_camera_at_a_get_a_grip_routine_qr_code">Point your camera at a Get a Grip routine QR code.</string>
+</resources>

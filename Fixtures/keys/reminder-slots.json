@@ -1,0 +1,38 @@
+[
+  {
+    "minutesFromMidnight": 0,
+    "slot": "r0000",
+    "hour": 0,
+    "minute": 0
+  },
+  {
+    "minutesFromMidnight": 480,
+    "slot": "r0480",
+    "hour": 8,
+    "minute": 0
+  },
+  {
+    "minutesFromMidnight": 750,
+    "slot": "r0750",
+    "hour": 12,
+    "minute": 30
+  },
+  {
+    "minutesFromMidnight": 1140,
+    "slot": "r1140",
+    "hour": 19,
+    "minute": 0
+  },
+  {
+    "minutesFromMidnight": 1290,
+    "slot": "r1290",
+    "hour": 21,
+    "minute": 30
+  },
+  {
+    "minutesFromMidnight": 1439,
+    "slot": "r1439",
+    "hour": 23,
+    "minute": 59
+  }
+]

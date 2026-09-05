@@ -1,0 +1,111 @@
+{
+  "generatedOn" : 20693,
+  "maxes" : [
+
+  ],
+  "sessions" : [
+    {
+      "avgKg" : 10.8,
+      "completedReps" : 1,
+      "day" : 20592,
+      "fingerStrain" : 3,
+      "id" : "00000000-0000-0000-0000-000000000011",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 12,
+      "plannedReps" : 2,
+      "reps" : [
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 6,
+          "outcome" : "earlyRelease",
+          "peakKg" : 12,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "A",
+      "rpe" : 3,
+      "startedAt" : "2026-05-19T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 16
+    },
+    {
+      "avgKg" : 10.8,
+      "completedReps" : 1,
+      "day" : 20594,
+      "fingerStrain" : 4,
+      "id" : "00000000-0000-0000-0000-000000000012",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 12,
+      "plannedReps" : 4,
+      "reps" : [
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 20,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "B",
+      "rpe" : 4,
+      "startedAt" : "2026-05-21T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 20
+    },
+    {
+      "avgKg" : 0,
+      "completedReps" : 0,
+      "day" : 20594,
+      "id" : "00000000-0000-0000-0000-000000000013",
+      "kind" : "climbLimit",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 0,
+      "plannedReps" : 0,
+      "reps" : [
+
+      ],
+      "routineName" : "Limit climbing",
+      "startedAt" : "2026-05-21T09:00:00Z",
+      "timing" : "logged",
+      "totalHeldSeconds" : 0
+    }
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

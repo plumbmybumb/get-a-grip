@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android Auto Backup: the Android answer to CloudKit's private sync. Everything the
+     app owns (the Room database and the DataStore) restores onto a new phone from the
+     Google account, and moves device to device. Nothing is excluded until a cache exists. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="." />
+        <include domain="file" path="datastore/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="." />
+        <include domain="file" path="datastore/" />
+    </device-transfer>
+</data-extraction-rules>

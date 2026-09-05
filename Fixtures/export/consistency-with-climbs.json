@@ -1,0 +1,92 @@
+{
+  "generatedOn" : 20693,
+  "maxes" : [
+
+  ],
+  "sessions" : [
+    {
+      "avgKg" : 10.8,
+      "completedReps" : 1,
+      "day" : 20689,
+      "id" : "00000000-0000-0000-0000-000000000014",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 12,
+      "plannedReps" : 1,
+      "reps" : [
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "A",
+      "startedAt" : "2026-08-24T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 10
+    },
+    {
+      "avgKg" : 10.8,
+      "completedReps" : 1,
+      "day" : 20689,
+      "id" : "00000000-0000-0000-0000-000000000015",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 12,
+      "plannedReps" : 1,
+      "reps" : [
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "B",
+      "startedAt" : "2026-08-24T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 10
+    },
+    {
+      "avgKg" : 0,
+      "completedReps" : 0,
+      "day" : 20691,
+      "id" : "00000000-0000-0000-0000-000000000016",
+      "kind" : "climbVolume",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 0,
+      "plannedReps" : 0,
+      "reps" : [
+
+      ],
+      "routineName" : "Gym",
+      "startedAt" : "2026-08-26T09:00:00Z",
+      "timing" : "logged",
+      "totalHeldSeconds" : 0
+    }
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

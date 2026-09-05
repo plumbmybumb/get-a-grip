@@ -1,0 +1,58 @@
+{
+  "gauge": "pb700bt",
+  "cases": [
+    {
+      "name": "a 4000 RPM frame yields no force reading",
+      "frames": [
+        "0000271000000000"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    },
+    {
+      "name": "a reversed period is outside the plausible band and still yields nothing",
+      "frames": [
+        "1027000000000000"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    },
+    {
+      "name": "a zero period yields nothing",
+      "frames": [
+        "0000000000000000"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    },
+    {
+      "name": "both edges of the plausible band yield no force either",
+      "frames": [
+        "0000C34F00000000",
+        "0000C35000000000",
+        "00000A6B00000000",
+        "00000A6A00000000"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    },
+    {
+      "name": "a truncated notification yields nothing",
+      "frames": [
+        "00002710"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    }
+  ]
+}

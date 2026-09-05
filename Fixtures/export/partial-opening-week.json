@@ -1,0 +1,138 @@
+{
+  "generatedOn" : 20693,
+  "maxes" : [
+
+  ],
+  "sessions" : [
+    {
+      "avgKg" : 10.8,
+      "completedReps" : 1,
+      "day" : 20671,
+      "id" : "00000000-0000-0000-0000-000000000017",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 12,
+      "plannedReps" : 1,
+      "reps" : [
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "A",
+      "startedAt" : "2026-08-06T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 10
+    },
+    {
+      "avgKg" : 10.8,
+      "completedReps" : 1,
+      "day" : 20672,
+      "id" : "00000000-0000-0000-0000-000000000018",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 12,
+      "plannedReps" : 1,
+      "reps" : [
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "A",
+      "startedAt" : "2026-08-07T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 10
+    },
+    {
+      "avgKg" : 10.8,
+      "completedReps" : 1,
+      "day" : 20673,
+      "id" : "00000000-0000-0000-0000-000000000019",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 12,
+      "plannedReps" : 1,
+      "reps" : [
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "A",
+      "startedAt" : "2026-08-08T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 10
+    },
+    {
+      "avgKg" : 10.8,
+      "completedReps" : 1,
+      "day" : 20674,
+      "id" : "00000000-0000-0000-0000-000000000020",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 12,
+      "plannedReps" : 1,
+      "reps" : [
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "A",
+      "startedAt" : "2026-08-09T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 10
+    }
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

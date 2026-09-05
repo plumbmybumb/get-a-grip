@@ -1,0 +1,25 @@
+{
+  "description": "What Foundation's JSONDecoder accepts for each scalar type, measured on macOS 26 (2026-09-04). `result: null` means the typed decode THROWS (and a lenient keyed read therefore falls back). Swift: `try? JSONDecoder().decode(T.self, from: json)`; Kotlin: `JsonRead.<type>`.",
+  "cases": [
+    { "type": "Int",    "json": "25",      "result": 25 },
+    { "type": "Int",    "json": "25.0",    "result": 25 },
+    { "type": "Int",    "json": "1e2",     "result": 100 },
+    { "type": "Int",    "json": "-7",      "result": -7 },
+    { "type": "Int",    "json": "25.5",    "result": null },
+    { "type": "Int",    "json": "\"6\"",   "result": null },
+    { "type": "Int",    "json": "true",    "result": null },
+    { "type": "Int",    "json": "null",    "result": null },
+    { "type": "Double", "json": "25",      "result": 25.0 },
+    { "type": "Double", "json": "0.5",     "result": 0.5 },
+    { "type": "Double", "json": "1e-5",    "result": 0.00001 },
+    { "type": "Double", "json": "\"2.5\"", "result": null },
+    { "type": "Double", "json": "false",   "result": null },
+    { "type": "Bool",   "json": "true",    "result": true },
+    { "type": "Bool",   "json": "false",   "result": false },
+    { "type": "Bool",   "json": "1",       "result": null },
+    { "type": "Bool",   "json": "\"true\"","result": null },
+    { "type": "String", "json": "\"x\"",   "result": "x" },
+    { "type": "String", "json": "5",       "result": null },
+    { "type": "String", "json": "null",    "result": null }
+  ]
+}

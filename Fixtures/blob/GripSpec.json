@@ -1,0 +1,89 @@
+{
+  "type": "GripSpec",
+  "description": "A grip is a VALUE and its `key` is the registry — decode `input` leniently, re-encode, expect `canonical`; `key` pins GripSpec.key of the decoded value. `canonical: null` means the decode must fail (not an object).",
+  "cases": [
+    {
+      "name": "four fingers, half crimp",
+      "input": "{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"}",
+      "canonical": "{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"}",
+      "key": "20|IMRL|halfCrimp"
+    },
+    {
+      "name": "front two, full crimp",
+      "input": "{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"fullCrimp\"}",
+      "canonical": "{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"fullCrimp\"}",
+      "key": "20|IM|fullCrimp"
+    },
+    {
+      "name": "a position raw this build has never heard of survives untouched",
+      "input": "{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"sloper\"}",
+      "canonical": "{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"sloper\"}",
+      "key": "20|IM|sloper"
+    },
+    {
+      "name": "a thumbless pinch self-heals, and the key moves with it",
+      "input": "{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"pinch\"}",
+      "canonical": "{\"edgeMM\":20,\"fingers\":\"IMT\",\"position\":\"pinch\"}",
+      "key": "20|IMT|pinch"
+    },
+    {
+      "name": "an already-thumbed pinch is unchanged",
+      "input": "{\"edgeMM\":25,\"fingers\":\"IMT\",\"position\":\"pinch\"}",
+      "canonical": "{\"edgeMM\":25,\"fingers\":\"IMT\",\"position\":\"pinch\"}",
+      "key": "25|IMT|pinch"
+    },
+    {
+      "name": "edge clamps up to the 1 mm floor",
+      "input": "{\"edgeMM\":0,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"}",
+      "canonical": "{\"edgeMM\":1,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"}",
+      "key": "1|IMRL|halfCrimp"
+    },
+    {
+      "name": "edge clamps down to the 100 mm ceiling",
+      "input": "{\"edgeMM\":5000,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"}",
+      "canonical": "{\"edgeMM\":100,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"}",
+      "key": "100|IMRL|halfCrimp"
+    },
+    {
+      "name": "every key absent takes the defaults",
+      "input": "{}",
+      "canonical": "{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"}",
+      "key": "20|IMRL|halfCrimp"
+    },
+    {
+      "name": "a retyped finger token falls back to four",
+      "input": "{\"edgeMM\":18,\"fingers\":7,\"position\":\"drag\"}",
+      "canonical": "{\"edgeMM\":18,\"fingers\":\"IMRL\",\"position\":\"drag\"}",
+      "key": "18|IMRL|drag"
+    },
+    {
+      "name": "unknown finger letters are ignored",
+      "input": "{\"edgeMM\":20,\"fingers\":\"IXM\",\"position\":\"openHand\"}",
+      "canonical": "{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"openHand\"}",
+      "key": "20|IM|openHand"
+    },
+    {
+      "name": "an all-unknown token falls back to four",
+      "input": "{\"edgeMM\":20,\"fingers\":\"ZZZ\",\"position\":\"openHand\"}",
+      "canonical": "{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"openHand\"}",
+      "key": "20|IMRL|openHand"
+    },
+    {
+      "name": "a whole double reads as the Int it is",
+      "input": "{\"edgeMM\":20.0,\"fingers\":\"IM\",\"position\":\"drag\"}",
+      "canonical": "{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"drag\"}",
+      "key": "20|IM|drag"
+    },
+    {
+      "name": "JSON null reads as absent for every field",
+      "input": "{\"edgeMM\":null,\"fingers\":null,\"position\":null}",
+      "canonical": "{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"}",
+      "key": "20|IMRL|halfCrimp"
+    },
+    {
+      "name": "not an object at all",
+      "input": "\"nope\"",
+      "canonical": null
+    }
+  ]
+}

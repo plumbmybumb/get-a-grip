@@ -1,0 +1,825 @@
+{
+  "generatedOn" : 20693,
+  "maxes" : [
+    {
+      "day" : 20613,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 40,
+      "recordedAt" : "2026-06-09T08:00:00Z",
+      "side" : "both",
+      "source" : "measured"
+    },
+    {
+      "day" : 20653,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 36,
+      "recordedAt" : "2026-07-19T08:00:00Z",
+      "side" : "right",
+      "source" : "measured"
+    },
+    {
+      "day" : 20663,
+      "grip" : {
+        "edgeMM" : 14,
+        "fingers" : "IMR",
+        "position" : "openHand"
+      },
+      "kg" : 22,
+      "recordedAt" : "2026-07-29T08:00:00Z",
+      "side" : "left",
+      "source" : "measured"
+    },
+    {
+      "day" : 20688,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IM",
+        "position" : "fullCrimp"
+      },
+      "kg" : 24,
+      "recordedAt" : "2026-08-23T08:00:00Z",
+      "side" : "both",
+      "source" : "measured"
+    }
+  ],
+  "sessions" : [
+    {
+      "avgKg" : 18,
+      "completedReps" : 3,
+      "day" : 20693,
+      "fingerStrain" : 1,
+      "id" : "00000000-0000-0000-0000-000000000021",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 20,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 9,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 10,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 18,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 20,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 0",
+      "rpe" : 1,
+      "startedAt" : "2026-08-28T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 18.900000000000002,
+      "completedReps" : 3,
+      "day" : 20684,
+      "fingerStrain" : 2,
+      "id" : "00000000-0000-0000-0000-000000000022",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 21,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 11.700000000000001,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 13,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 9.9,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 11,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 18.900000000000002,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 21,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 1",
+      "rpe" : 2,
+      "startedAt" : "2026-08-19T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 19.8,
+      "completedReps" : 3,
+      "day" : 20675,
+      "fingerStrain" : 3,
+      "id" : "00000000-0000-0000-0000-000000000023",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 22,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 12.6,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 14,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 10.8,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 19.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 22,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 2",
+      "rpe" : 3,
+      "startedAt" : "2026-08-10T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 20.7,
+      "completedReps" : 3,
+      "day" : 20666,
+      "fingerStrain" : 4,
+      "id" : "00000000-0000-0000-0000-000000000024",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 23,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 13.5,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 15,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 11.700000000000001,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 13,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 20.7,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 23,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 0",
+      "rpe" : 4,
+      "startedAt" : "2026-08-01T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 21.6,
+      "completedReps" : 3,
+      "day" : 20657,
+      "fingerStrain" : 5,
+      "id" : "00000000-0000-0000-0000-000000000025",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 24,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 14.4,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 16,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 12.6,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 14,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 21.6,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 24,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 1",
+      "rpe" : 5,
+      "startedAt" : "2026-07-23T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 22.5,
+      "completedReps" : 3,
+      "day" : 20648,
+      "fingerStrain" : 1,
+      "id" : "00000000-0000-0000-0000-000000000026",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 25,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 15.3,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 17,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 13.5,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 15,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 22.5,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 25,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 2",
+      "rpe" : 1,
+      "startedAt" : "2026-07-14T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 23.400000000000002,
+      "completedReps" : 3,
+      "day" : 20639,
+      "fingerStrain" : 2,
+      "id" : "00000000-0000-0000-0000-000000000027",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 26,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 16.2,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 18,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 14.4,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 16,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 23.400000000000002,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 26,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 0",
+      "rpe" : 2,
+      "startedAt" : "2026-07-05T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 24.3,
+      "completedReps" : 3,
+      "day" : 20630,
+      "fingerStrain" : 3,
+      "id" : "00000000-0000-0000-0000-000000000028",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 27,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 17.1,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 19,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 15.3,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 17,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 24.3,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 27,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 1",
+      "rpe" : 3,
+      "startedAt" : "2026-06-26T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 25.2,
+      "completedReps" : 3,
+      "day" : 20621,
+      "fingerStrain" : 4,
+      "id" : "00000000-0000-0000-0000-000000000029",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 28,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 18,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 20,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 16.2,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 18,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 25.2,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 28,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 2",
+      "rpe" : 4,
+      "startedAt" : "2026-06-17T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 26.1,
+      "completedReps" : 3,
+      "day" : 20612,
+      "fingerStrain" : 5,
+      "id" : "00000000-0000-0000-0000-000000000030",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 29,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 18.900000000000002,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 21,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 17.1,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 19,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 26.1,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 29,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 0",
+      "rpe" : 5,
+      "startedAt" : "2026-06-08T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 27,
+      "completedReps" : 3,
+      "day" : 20603,
+      "fingerStrain" : 1,
+      "id" : "00000000-0000-0000-0000-000000000031",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 30,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 19.8,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 22,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 18,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 20,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 27,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 30,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 1",
+      "rpe" : 1,
+      "startedAt" : "2026-05-30T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    },
+    {
+      "avgKg" : 27.900000000000002,
+      "completedReps" : 3,
+      "day" : 20594,
+      "fingerStrain" : 2,
+      "id" : "00000000-0000-0000-0000-000000000032",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 31,
+      "plannedReps" : 3,
+      "reps" : [
+        {
+          "avgKg" : 20.7,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 23,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 18.900000000000002,
+          "grip" : {
+            "edgeMM" : 14,
+            "fingers" : "IMR",
+            "position" : "openHand"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 21,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 27.900000000000002,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IM",
+            "position" : "fullCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 31,
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Routine 2",
+      "rpe" : 2,
+      "startedAt" : "2026-05-21T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 30
+    }
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

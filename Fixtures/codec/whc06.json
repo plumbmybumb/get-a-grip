@@ -1,0 +1,221 @@
+{
+  "gauge": "whc06",
+  "cases": [
+    {
+      "name": "weight is big-endian hundredths at the prefixed offset",
+      "frames": [
+        "0001000000000000000000000A28000000"
+      ],
+      "expect": {
+        "kg": 26.0
+      }
+    },
+    {
+      "name": "the same two bytes reversed are a different plausible load",
+      "frames": [
+        "000100000000000000000000280A000000"
+      ],
+      "expect": {
+        "kg": 102.5
+      }
+    },
+    {
+      "name": "another maker's company ID is refused",
+      "frames": [
+        "4C00000000000000000000000A28000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 0-byte advertisement stops short of the weight field",
+      "frames": [
+        ""
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 1-byte advertisement stops short of the weight field",
+      "frames": [
+        "00"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 2-byte advertisement stops short of the weight field",
+      "frames": [
+        "0001"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 3-byte advertisement stops short of the weight field",
+      "frames": [
+        "000100"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 4-byte advertisement stops short of the weight field",
+      "frames": [
+        "00010000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 5-byte advertisement stops short of the weight field",
+      "frames": [
+        "0001000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 6-byte advertisement stops short of the weight field",
+      "frames": [
+        "000100000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 7-byte advertisement stops short of the weight field",
+      "frames": [
+        "00010000000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 8-byte advertisement stops short of the weight field",
+      "frames": [
+        "0001000000000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 9-byte advertisement stops short of the weight field",
+      "frames": [
+        "000100000000000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 10-byte advertisement stops short of the weight field",
+      "frames": [
+        "00010000000000000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 11-byte advertisement stops short of the weight field",
+      "frames": [
+        "0001000000000000000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 12-byte advertisement stops short of the weight field",
+      "frames": [
+        "000100000000000000000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a 13-byte advertisement stops short of the weight field",
+      "frames": [
+        "0001000000000000000000000A"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "a frame reaching exactly through the weight field is enough",
+      "frames": [
+        "0001000000000000000000000A28"
+      ],
+      "expect": {
+        "kg": 26.0
+      }
+    },
+    {
+      "name": "the whole documented shape reads the same weight",
+      "frames": [
+        "0001000000000000000000000A280000A3"
+      ],
+      "expect": {
+        "kg": 26.0
+      }
+    },
+    {
+      "name": "trailing padding is not a reason to refuse a frame",
+      "frames": [
+        "0001000000000000000000000A28000000000000000000"
+      ],
+      "expect": {
+        "kg": 26.0
+      }
+    },
+    {
+      "name": "the rated capacity itself is accepted",
+      "frames": [
+        "0001000000000000000000007530000000"
+      ],
+      "expect": {
+        "kg": 300.0
+      }
+    },
+    {
+      "name": "one hundredth past the rated capacity is refused",
+      "frames": [
+        "0001000000000000000000007531000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "the largest value the field can express is refused",
+      "frames": [
+        "000100000000000000000000FFFF000000"
+      ],
+      "expect": {
+        "kg": null
+      }
+    },
+    {
+      "name": "zero is a reading, not an absent frame",
+      "frames": [
+        "0001000000000000000000000000000000"
+      ],
+      "expect": {
+        "kg": 0.0
+      }
+    }
+  ]
+}

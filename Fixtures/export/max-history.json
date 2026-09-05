@@ -1,0 +1,46 @@
+{
+  "generatedOn" : 20693,
+  "maxes" : [
+    {
+      "day" : 20633,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 30,
+      "recordedAt" : "2026-06-29T08:00:00Z",
+      "side" : "both",
+      "source" : "measured"
+    },
+    {
+      "day" : 20663,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 34,
+      "recordedAt" : "2026-07-29T08:00:00Z",
+      "side" : "both",
+      "source" : "measured"
+    },
+    {
+      "day" : 20692,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 36,
+      "recordedAt" : "2026-08-27T08:00:00Z",
+      "side" : "both",
+      "source" : "measured"
+    }
+  ],
+  "sessions" : [
+
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

@@ -1,0 +1,194 @@
+[
+  {
+    "edgeMM": 20,
+    "fingers": "IMRL",
+    "position": "halfCrimp",
+    "key": "20|IMRL|halfCrimp",
+    "maxKey": {
+      "left": "20|IMRL|halfCrimp|left",
+      "right": "20|IMRL|halfCrimp|right",
+      "both": "20|IMRL|halfCrimp|both"
+    },
+    "name": "4 fingers",
+    "shortName": "4F",
+    "line": "20 mm · 4 fingers · half crimp",
+    "displayName": "20 mm · 4 fingers · Half crimp",
+    "shortForm": "20mm 4F HC"
+  },
+  {
+    "edgeMM": 20,
+    "fingers": "IMR",
+    "position": "halfCrimp",
+    "key": "20|IMR|halfCrimp",
+    "maxKey": {
+      "left": "20|IMR|halfCrimp|left",
+      "right": "20|IMR|halfCrimp|right",
+      "both": "20|IMR|halfCrimp|both"
+    },
+    "name": "Front 3",
+    "shortName": "F3",
+    "line": "20 mm · Front 3 · half crimp",
+    "displayName": "20 mm · Front 3 · Half crimp",
+    "shortForm": "20mm F3 HC"
+  },
+  {
+    "edgeMM": 20,
+    "fingers": "IM",
+    "position": "openHand",
+    "key": "20|IM|openHand",
+    "maxKey": {
+      "left": "20|IM|openHand|left",
+      "right": "20|IM|openHand|right",
+      "both": "20|IM|openHand|both"
+    },
+    "name": "Front 2",
+    "shortName": "F2",
+    "line": "20 mm · Front 2 · open",
+    "displayName": "20 mm · Front 2 · Open",
+    "shortForm": "20mm F2 OH"
+  },
+  {
+    "edgeMM": 20,
+    "fingers": "MR",
+    "position": "openHand",
+    "key": "20|MR|openHand",
+    "maxKey": {
+      "left": "20|MR|openHand|left",
+      "right": "20|MR|openHand|right",
+      "both": "20|MR|openHand|both"
+    },
+    "name": "Middle 2",
+    "shortName": "M2",
+    "line": "20 mm · Middle 2 · open",
+    "displayName": "20 mm · Middle 2 · Open",
+    "shortForm": "20mm M2 OH"
+  },
+  {
+    "edgeMM": 20,
+    "fingers": "IM",
+    "position": "fullCrimp",
+    "key": "20|IM|fullCrimp",
+    "maxKey": {
+      "left": "20|IM|fullCrimp|left",
+      "right": "20|IM|fullCrimp|right",
+      "both": "20|IM|fullCrimp|both"
+    },
+    "name": "Front 2",
+    "shortName": "F2",
+    "line": "20 mm · Front 2 · full crimp",
+    "displayName": "20 mm · Front 2 · Full crimp",
+    "shortForm": "20mm F2 FC"
+  },
+  {
+    "edgeMM": 20,
+    "fingers": "MR",
+    "position": "fullCrimp",
+    "key": "20|MR|fullCrimp",
+    "maxKey": {
+      "left": "20|MR|fullCrimp|left",
+      "right": "20|MR|fullCrimp|right",
+      "both": "20|MR|fullCrimp|both"
+    },
+    "name": "Middle 2",
+    "shortName": "M2",
+    "line": "20 mm · Middle 2 · full crimp",
+    "displayName": "20 mm · Middle 2 · Full crimp",
+    "shortForm": "20mm M2 FC"
+  },
+  {
+    "edgeMM": 18,
+    "fingers": "RL",
+    "position": "drag",
+    "key": "18|RL|drag",
+    "maxKey": {
+      "left": "18|RL|drag|left",
+      "right": "18|RL|drag|right",
+      "both": "18|RL|drag|both"
+    },
+    "name": "Back 2",
+    "shortName": "B2",
+    "line": "18 mm · Back 2 · drag",
+    "displayName": "18 mm · Back 2 · Drag",
+    "shortForm": "18mm B2 DR"
+  },
+  {
+    "edgeMM": 25,
+    "fingers": "IMT",
+    "position": "pinch",
+    "key": "25|IMT|pinch",
+    "maxKey": {
+      "left": "25|IMT|pinch|left",
+      "right": "25|IMT|pinch|right",
+      "both": "25|IMT|pinch|both"
+    },
+    "name": "Front 2 + thumb",
+    "shortName": "F2+T",
+    "line": "25 mm · Front 2 + thumb · pinch",
+    "displayName": "25 mm · Front 2 + thumb · Pinch",
+    "shortForm": "25mm F2+T PN"
+  },
+  {
+    "edgeMM": 20,
+    "fingers": "T",
+    "position": "openHand",
+    "key": "20|T|openHand",
+    "maxKey": {
+      "left": "20|T|openHand|left",
+      "right": "20|T|openHand|right",
+      "both": "20|T|openHand|both"
+    },
+    "name": "Thumb",
+    "shortName": "T",
+    "line": "20 mm · Thumb · open",
+    "displayName": "20 mm · Thumb · Open",
+    "shortForm": "20mm T OH"
+  },
+  {
+    "edgeMM": 20,
+    "fingers": "IR",
+    "position": "halfCrimp",
+    "key": "20|IR|halfCrimp",
+    "maxKey": {
+      "left": "20|IR|halfCrimp|left",
+      "right": "20|IR|halfCrimp|right",
+      "both": "20|IR|halfCrimp|both"
+    },
+    "name": "Index + ring",
+    "shortName": "IR",
+    "line": "20 mm · Index + ring · half crimp",
+    "displayName": "20 mm · Index + ring · Half crimp",
+    "shortForm": "20mm IR HC"
+  },
+  {
+    "edgeMM": 20,
+    "fingers": "M",
+    "position": "halfCrimp",
+    "key": "20|M|halfCrimp",
+    "maxKey": {
+      "left": "20|M|halfCrimp|left",
+      "right": "20|M|halfCrimp|right",
+      "both": "20|M|halfCrimp|both"
+    },
+    "name": "Middle",
+    "shortName": "M",
+    "line": "20 mm · Middle · half crimp",
+    "displayName": "20 mm · Middle · Half crimp",
+    "shortForm": "20mm M HC"
+  },
+  {
+    "edgeMM": 30,
+    "fingers": "MRL",
+    "position": "sloper",
+    "key": "30|MRL|sloper",
+    "maxKey": {
+      "left": "30|MRL|sloper|left",
+      "right": "30|MRL|sloper|right",
+      "both": "30|MRL|sloper|both"
+    },
+    "name": "Back 3",
+    "shortName": "B3",
+    "line": "30 mm · Back 3 · sloper",
+    "displayName": "30 mm · Back 3 · sloper",
+    "shortForm": "30mm B3 SLOPER"
+  }
+]

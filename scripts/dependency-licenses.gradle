@@ -1,0 +1,22 @@
+import org.gradle.maven.MavenModule
+import org.gradle.maven.MavenPomArtifact
+allprojects {
+    if (name == 'app') {
+        tasks.register('publicDependencyLicenses') {
+            doLast {
+                def cfg = configurations.getByName('releaseRuntimeClasspath')
+                def ids = cfg.incoming.resolutionResult.allComponents.collect { it.id }.findAll { it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+                def resolved = dependencies.createArtifactResolutionQuery().forComponents(ids).withArtifacts(MavenModule, MavenPomArtifact).execute()
+                def output = new File(buildDir, 'reports/runtime-poms'); output.mkdirs()
+                resolved.resolvedComponents.each { component ->
+                    component.getArtifacts(MavenPomArtifact).each { artifact ->
+                        if (artifact instanceof org.gradle.api.artifacts.result.ResolvedArtifactResult) {
+                            new File(output, component.id.displayName.replace(':', '_') + '.pom').text = artifact.file.text
+                        }
+                    }
+                }
+                println("Exported runtime POMs: " + output)
+            }
+        }
+    }
+}

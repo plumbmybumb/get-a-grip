@@ -1,0 +1,31 @@
+{
+  "type": "RoutineDraft",
+  "description": "What the debounced draft rescue stashes. `isOnDemand` is ADDITIVE and decodes false on every draft written before it existed — those drafts were all rituals.",
+  "cases": [
+    {
+      "name": "a draft stashed before `isOnDemand` existed",
+      "input": "{\"templateID\":\"8B2C4E8A-0000-4000-8000-00000000000A\",\"plan\":{\"name\":\"Daily no-hangs\",\"sets\":[],\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"restSeconds\":20,\"setBreakSeconds\":60,\"leadInSeconds\":5,\"thresholdKg\":2},\"sessionsPerDay\":2,\"reminders\":[480,1140],\"parkedReminders\":[],\"remindersEnabled\":true}",
+      "canonical": "{\"isOnDemand\":false,\"parkedReminders\":[],\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"reminders\":[480,1140],\"remindersEnabled\":true,\"sessionsPerDay\":2,\"templateID\":\"8B2C4E8A-0000-4000-8000-00000000000A\"}"
+    },
+    {
+      "name": "a whenever routine, with parked times kept",
+      "input": "{\"plan\":{\"name\":\"Max day\",\"sets\":[]},\"sessionsPerDay\":1,\"reminders\":[],\"parkedReminders\":[480,1140],\"remindersEnabled\":false,\"isOnDemand\":true}",
+      "canonical": "{\"isOnDemand\":true,\"parkedReminders\":[480,1140],\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Max day\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"reminders\":[],\"remindersEnabled\":false,\"sessionsPerDay\":1}"
+    },
+    {
+      "name": "sessions a day clamps to 1…4",
+      "input": "{\"plan\":{\"name\":\"x\",\"sets\":[]},\"sessionsPerDay\":99,\"reminders\":[480]}",
+      "canonical": "{\"isOnDemand\":false,\"parkedReminders\":[],\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"x\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"reminders\":[480],\"remindersEnabled\":true,\"sessionsPerDay\":4}"
+    },
+    {
+      "name": "every key absent takes the defaults",
+      "input": "{}",
+      "canonical": "{\"isOnDemand\":false,\"parkedReminders\":[],\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"reminders\":[480,1140],\"remindersEnabled\":true,\"sessionsPerDay\":2}"
+    },
+    {
+      "name": "not an object at all",
+      "input": "\"nope\"",
+      "canonical": null
+    }
+  ]
+}

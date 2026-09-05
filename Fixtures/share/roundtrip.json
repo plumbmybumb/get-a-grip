@@ -1,0 +1,58 @@
+[
+  {
+    "draft" : {
+      "isOnDemand" : false,
+      "plan" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"note\":\"\",\"repsPerSide\":6},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000002\",\"note\":\"\",\"repsPerSide\":6},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"openHand\"},\"id\":\"00000000-0000-0000-0000-000000000003\",\"note\":\"\",\"repsPerSide\":2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"MR\",\"position\":\"openHand\"},\"id\":\"00000000-0000-0000-0000-000000000004\",\"note\":\"\",\"repsPerSide\":2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"fullCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000005\",\"note\":\"\",\"repsPerSide\":1},{\"grip\":{\"edgeMM\":20,\"fingers\":\"MR\",\"position\":\"fullCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000006\",\"note\":\"\",\"repsPerSide\":1}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "sessionsPerDay" : 2
+    },
+    "name" : "starter"
+  },
+  {
+    "draft" : {
+      "isOnDemand" : true,
+      "plan" : "{\"handMode\":\"alternateEachSet\",\"holdSeconds\":3,\"leadInSeconds\":5,\"name\":\"Max day\",\"pausesOutsideTargetBand\":true,\"restSeconds\":5,\"setBreakSeconds\":120,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"note\":\"\",\"repsPerSide\":4,\"targetHiPercent\":0.6,\"targetLoPercent\":0.5},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000002\",\"note\":\"\",\"repsPerSide\":4,\"targetHiPercent\":0.75,\"targetLoPercent\":0.65},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000003\",\"note\":\"\",\"repsPerSide\":4,\"targetHiPercent\":0.9,\"targetLoPercent\":0.8},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000004\",\"note\":\"\",\"repsPerSide\":2}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "sessionsPerDay" : 1
+    },
+    "name" : "maxDay"
+  },
+  {
+    "draft" : {
+      "isOnDemand" : true,
+      "plan" : "{\"handMode\":\"bothHands\",\"holdSeconds\":7,\"leadInSeconds\":11,\"name\":\"Loaded\",\"pausesOutsideTargetBand\":false,\"restSeconds\":33,\"setBreakSeconds\":45,\"sets\":[{\"grip\":{\"edgeMM\":15,\"fingers\":\"IM\",\"position\":\"fullCrimp\"},\"holdSeconds\":5,\"id\":\"00000000-0000-0000-0000-000000000001\",\"note\":\"top set — chalk up\",\"repsPerSide\":3,\"restSeconds\":90,\"targetHiKg\":30.5,\"targetLoKg\":25},{\"grip\":{\"edgeMM\":45,\"fingers\":\"IMRLT\",\"position\":\"pinch\"},\"id\":\"00000000-0000-0000-0000-000000000002\",\"note\":\"\",\"repsPerSide\":4,\"targetHiPercent\":0.72,\"targetLoPercent\":0.55}],\"thresholdKg\":3.5,\"waitForReleaseBeforeRest\":false}",
+      "sessionsPerDay" : 3
+    },
+    "name" : "everyFieldOffDefault"
+  },
+  {
+    "draft" : {
+      "isOnDemand" : false,
+      "plan" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"note\":\"nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn\",\"repsPerSide\":6},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000002\",\"note\":\"\",\"repsPerSide\":6},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"openHand\"},\"id\":\"00000000-0000-0000-0000-000000000003\",\"note\":\"\",\"repsPerSide\":2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"MR\",\"position\":\"openHand\"},\"id\":\"00000000-0000-0000-0000-000000000004\",\"note\":\"\",\"repsPerSide\":2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"fullCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000005\",\"note\":\"\",\"repsPerSide\":1},{\"grip\":{\"edgeMM\":20,\"fingers\":\"MR\",\"position\":\"fullCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000006\",\"note\":\"\",\"repsPerSide\":1}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "sessionsPerDay" : 2
+    },
+    "name" : "longNameAndNote"
+  },
+  {
+    "draft" : {
+      "isOnDemand" : false,
+      "plan" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"From a newer build\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":18,\"fingers\":\"MRL\",\"position\":\"sloper\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"note\":\"\",\"repsPerSide\":5},{\"grip\":{\"edgeMM\":35,\"fingers\":\"IMRL\",\"position\":\"gaston\"},\"id\":\"00000000-0000-0000-0000-000000000002\",\"note\":\"\",\"repsPerSide\":3}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "sessionsPerDay" : 2
+    },
+    "name" : "unknownGripPositions"
+  },
+  {
+    "draft" : {
+      "isOnDemand" : false,
+      "plan" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"One set\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"note\":\"\",\"repsPerSide\":6}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "sessionsPerDay" : 1
+    },
+    "name" : "oneSet"
+  },
+  {
+    "draft" : {
+      "isOnDemand" : false,
+      "plan" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Finger curls\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"fingerCurl\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"note\":\"\",\"repsPerSide\":6,\"targetHiPercent\":0.3,\"targetLoPercent\":0.2}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "sessionsPerDay" : 1
+    },
+    "name" : "fingerCurl"
+  }
+]

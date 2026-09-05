@@ -1,0 +1,46 @@
+{
+  "type": "SessionPlan",
+  "description": "The routine. Absent booleans decode TRUE on purpose (`waitForReleaseBeforeRest`, `pausesOutsideTargetBand`), and `sets` is all-or-nothing: one element that is not an object costs the whole key, unlike a top-level array.",
+  "cases": [
+    {
+      "name": "a plan written before the release gate and the percentage band existed",
+      "input": "{\"name\":\"Daily no-hangs\",\"sets\":[],\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"restSeconds\":20,\"setBreakSeconds\":60,\"leadInSeconds\":5,\"thresholdKg\":2}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}"
+    },
+    {
+      "name": "a hand mode from a newer build falls back without throwing",
+      "input": "{\"handMode\":\"alternateEveryOtherTuesday\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}"
+    },
+    {
+      "name": "absurd percentages clamp to the legal band",
+      "input": "{\"name\":\"x\",\"sets\":[],\"targetLoPercent\":-2,\"targetHiPercent\":400}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"x\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"targetHiPercent\":1,\"targetLoPercent\":0.01,\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}"
+    },
+    {
+      "name": "every rhythm value clamps, and a zero threshold cannot exist",
+      "input": "{\"name\":\"Clamped\",\"sets\":[],\"holdSeconds\":1,\"restSeconds\":100000,\"setBreakSeconds\":-5,\"leadInSeconds\":900,\"thresholdKg\":0}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":3,\"leadInSeconds\":60,\"name\":\"Clamped\",\"pausesOutsideTargetBand\":true,\"restSeconds\":600,\"setBreakSeconds\":0,\"sets\":[],\"thresholdKg\":0.1,\"waitForReleaseBeforeRest\":true}"
+    },
+    {
+      "name": "one broken element costs the whole `sets` key, because it is NESTED",
+      "input": "{\"name\":\"Broken sets\",\"sets\":[{\"id\":\"8B2C4E8A-0000-4000-8000-000000000003\",\"repsPerSide\":6},\"nope\"]}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Broken sets\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}"
+    },
+    {
+      "name": "a full routine with one set",
+      "input": "{\"name\":\"Max day\",\"sets\":[{\"id\":\"8B2C4E8A-0000-4000-8000-000000000009\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":4,\"targetLoPercent\":0.8,\"targetHiPercent\":0.9}],\"handMode\":\"alternateEachSet\",\"holdSeconds\":3,\"restSeconds\":5,\"setBreakSeconds\":120,\"leadInSeconds\":5,\"thresholdKg\":2,\"waitForReleaseBeforeRest\":false,\"pausesOutsideTargetBand\":false}",
+      "canonical": "{\"handMode\":\"alternateEachSet\",\"holdSeconds\":3,\"leadInSeconds\":5,\"name\":\"Max day\",\"pausesOutsideTargetBand\":false,\"restSeconds\":5,\"setBreakSeconds\":120,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"8B2C4E8A-0000-4000-8000-000000000009\",\"note\":\"\",\"repsPerSide\":4,\"targetHiPercent\":0.9,\"targetLoPercent\":0.8}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":false}"
+    },
+    {
+      "name": "every key absent takes the defaults",
+      "input": "{}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}"
+    },
+    {
+      "name": "not an object at all",
+      "input": "42",
+      "canonical": null
+    }
+  ]
+}

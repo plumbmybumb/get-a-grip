@@ -1,0 +1,1176 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "—": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "—"
+          }
+        }
+      }
+    },
+    "%@ · %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@"
+          }
+        }
+      }
+    },
+    "%@ · %@ · %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ · %@"
+          }
+        }
+      }
+    },
+    "%@ · %@ · %@ in total": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ · %@ au total"
+          }
+        }
+      }
+    },
+    "%@ · %@ under tension": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ sous tension"
+          }
+        }
+      }
+    },
+    "%@ + thumb": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ + pouce"
+          }
+        }
+      }
+    },
+    "%@–%@ kg": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@–%@ kg"
+          }
+        }
+      }
+    },
+    "%lld %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %@"
+          }
+        }
+      }
+    },
+    "%lld min": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min"
+          }
+        }
+      }
+    },
+    "%lld min %lld s": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min %lld s"
+          }
+        }
+      }
+    },
+    "%lld mm · %@ · %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld mm · %@ · %@"
+          }
+        }
+      }
+    },
+    "%lld mm edge, %@, %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "réglette de %lld mm, %@, %@"
+          }
+        }
+      }
+    },
+    "%lld per side · %@ under tension per side": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld par côté · %@ sous tension par côté"
+          }
+        }
+      }
+    },
+    "%lld pulls per side · %@ under tension per side": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld tirages par côté · %@ sous tension par côté"
+          }
+        }
+      }
+    },
+    "%lld s": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld s"
+          }
+        }
+      }
+    },
+    "%lldmm %@ %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldmm %@ %@"
+          }
+        }
+      }
+    },
+    "%llds": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld s"
+          }
+        }
+      }
+    },
+    "≈%lld min": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "≈%lld min"
+          }
+        }
+      }
+    },
+    "4 fingers": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4 doigts"
+          }
+        }
+      }
+    },
+    "A max-testing day — new ceilings on the gauge.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une journée de test de max — de nouveaux plafonds au capteur."
+          }
+        }
+      }
+    },
+    "A session on the board.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une séance sur la poutre."
+          }
+        }
+      }
+    },
+    "Add a reminder time, or turn reminders off.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoute une heure de rappel, ou désactive les rappels."
+          }
+        }
+      }
+    },
+    "Add at least one set with a pull in it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoute au moins une série avec un tirage."
+          }
+        }
+      }
+    },
+    "All I had": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À fond"
+          }
+        }
+      }
+    },
+    "All six on the left, then all six on the right, inside one set.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les six à gauche, puis les six à droite, dans une même série."
+          }
+        }
+      }
+    },
+    "Alternate each pull": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alterner à chaque tirage"
+          }
+        }
+      }
+    },
+    "Back 2": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrière 2"
+          }
+        }
+      }
+    },
+    "Back 3": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrière 3"
+          }
+        }
+      }
+    },
+    "Benchmark": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test de référence"
+          }
+        }
+      }
+    },
+    "Both": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les deux"
+          }
+        }
+      }
+    },
+    "BOTH": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LES DEUX"
+          }
+        }
+      }
+    },
+    "Both hands": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les deux mains"
+          }
+        }
+      }
+    },
+    "Climbro": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Climbro"
+          }
+        }
+      }
+    },
+    "Comfortable": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confortable"
+          }
+        }
+      }
+    },
+    "Copy of %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copie de %@"
+          }
+        }
+      }
+    },
+    "CURL": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FLEX"
+          }
+        }
+      }
+    },
+    "Daily no-hangs": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No-hangs quotidiens"
+          }
+        }
+      }
+    },
+    "DR": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AP"
+          }
+        }
+      }
+    },
+    "Drag": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À plat"
+          }
+        }
+      }
+    },
+    "Easy": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facile"
+          }
+        }
+      }
+    },
+    "Entralpi": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entralpi"
+          }
+        }
+      }
+    },
+    "Entralpi force plate": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plaque de force Entralpi"
+          }
+        }
+      }
+    },
+    "FC": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AR"
+          }
+        }
+      }
+    },
+    "Finger curl": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flexion"
+          }
+        }
+      }
+    },
+    "Front 2": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avant 2"
+          }
+        }
+      }
+    },
+    "Front 3": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avant 3"
+          }
+        }
+      }
+    },
+    "Full crimp": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arquée"
+          }
+        }
+      }
+    },
+    "Get ready": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prépare-toi"
+          }
+        }
+      }
+    },
+    "Griptonite": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Griptonite"
+          }
+        }
+      }
+    },
+    "Griptonite Motherboard": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Griptonite Motherboard"
+          }
+        }
+      }
+    },
+    "Half crimp": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Semi-arquée"
+          }
+        }
+      }
+    },
+    "Hangboard": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poutre"
+          }
+        }
+      }
+    },
+    "Hangs": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suspensions"
+          }
+        }
+      }
+    },
+    "Hard": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dur"
+          }
+        }
+      }
+    },
+    "Hard bouldering or projecting — a maximal pull on your fingers.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloc dur ou travail de projet — une sollicitation maximale des doigts."
+          }
+        }
+      }
+    },
+    "HC": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SA"
+          }
+        }
+      }
+    },
+    "Holding": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En tenue"
+          }
+        }
+      }
+    },
+    "Index": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Index"
+          }
+        }
+      }
+    },
+    "Jlyscales": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jlyscales"
+          }
+        }
+      }
+    },
+    "Jlyscales CTS500": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jlyscales CTS500"
+          }
+        }
+      }
+    },
+    "L %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "G %@"
+          }
+        }
+      }
+    },
+    "L %@ · R %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "G %@ · D %@"
+          }
+        }
+      }
+    },
+    "Laps, circuits, an easy evening — real load, well short of maximal.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Longueurs, circuits, une soirée tranquille — une vraie charge, loin du maximal."
+          }
+        }
+      }
+    },
+    "Left": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gauche"
+          }
+        }
+      }
+    },
+    "LEFT": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GAUCHE"
+          }
+        }
+      }
+    },
+    "Left, right, left, right — swapping hands every pull.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gauche, droite, gauche, droite — on change de main à chaque tirage."
+          }
+        }
+      }
+    },
+    "Light": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Léger"
+          }
+        }
+      }
+    },
+    "Limit": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite"
+          }
+        }
+      }
+    },
+    "Limit climbing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escalade à la limite"
+          }
+        }
+      }
+    },
+    "Little": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auriculaire"
+          }
+        }
+      }
+    },
+    "Max day": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jour de max"
+          }
+        }
+      }
+    },
+    "Middle": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Majeur"
+          }
+        }
+      }
+    },
+    "Middle 2": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Milieu 2"
+          }
+        }
+      }
+    },
+    "My routine": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ma routine"
+          }
+        }
+      }
+    },
+    "No fingers": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun doigt"
+          }
+        }
+      }
+    },
+    "Nothing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien"
+          }
+        }
+      }
+    },
+    "NSD": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NSD"
+          }
+        }
+      }
+    },
+    "NSD PB-700BT": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NSD PB-700BT"
+          }
+        }
+      }
+    },
+    "OH": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TE"
+          }
+        }
+      }
+    },
+    "One hand at a time": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une main à la fois"
+          }
+        }
+      }
+    },
+    "One pull with both hands on the edge. Reps per side is just the number of pulls.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un tirage avec les deux mains sur la réglette. Les tirages par côté sont simplement le nombre de tirages."
+          }
+        }
+      }
+    },
+    "Open": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tendue"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En pause"
+          }
+        }
+      }
+    },
+    "Pinch": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pince"
+          }
+        }
+      }
+    },
+    "PitchSix": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PitchSix"
+          }
+        }
+      }
+    },
+    "PitchSix Force Board": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PitchSix Force Board"
+          }
+        }
+      }
+    },
+    "PN": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PI"
+          }
+        }
+      }
+    },
+    "pull": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tirage"
+          }
+        }
+      }
+    },
+    "Pull %lld of %lld": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tirage %lld sur %lld"
+          }
+        }
+      }
+    },
+    "Pull now": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tire maintenant"
+          }
+        }
+      }
+    },
+    "pulls": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tirages"
+          }
+        }
+      }
+    },
+    "R %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D %@"
+          }
+        }
+      }
+    },
+    "Rest": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repos"
+          }
+        }
+      }
+    },
+    "Right": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Droite"
+          }
+        }
+      }
+    },
+    "RIGHT": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DROITE"
+          }
+        }
+      }
+    },
+    "Ring": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulaire"
+          }
+        }
+      }
+    },
+    "set": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "série"
+          }
+        }
+      }
+    },
+    "Set %lld of %lld · %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Série %lld sur %lld · %@"
+          }
+        }
+      }
+    },
+    "sets": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "séries"
+          }
+        }
+      }
+    },
+    "Solid": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solide"
+          }
+        }
+      }
+    },
+    "Taxed": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Éprouvé"
+          }
+        }
+      }
+    },
+    "This code contains a routine with no pulls in it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce code contient une routine sans aucun tirage."
+          }
+        }
+      }
+    },
+    "This link isn't a routine from Get a Grip.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce lien n'est pas une routine Get a Grip."
+          }
+        }
+      }
+    },
+    "This routine code couldn't be read. It may be damaged or incomplete.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce code de routine n'a pas pu être lu. Il est peut-être abîmé ou incomplet."
+          }
+        }
+      }
+    },
+    "This routine is too large to import.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette routine est trop grande pour être importée."
+          }
+        }
+      }
+    },
+    "This routine was shared from a newer version of Get a Grip. Update the app to import it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette routine a été partagée depuis une version plus récente de Get a Grip. Mets l'app à jour pour l'importer."
+          }
+        }
+      }
+    },
+    "Thumb": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pouce"
+          }
+        }
+      }
+    },
+    "Tindeq": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tindeq"
+          }
+        }
+      }
+    },
+    "Tindeq Progressor": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tindeq Progressor"
+          }
+        }
+      }
+    },
+    "Volume": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume"
+          }
+        }
+      }
+    },
+    "Volume climbing": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escalade en volume"
+          }
+        }
+      }
+    },
+    "Weighted hangs": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suspensions lestées"
+          }
+        }
+      }
+    },
+    "Weighted or max hangs you did on your own — no gauge behind it.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suspensions lestées ou maximales faites de ton côté — sans capteur derrière."
+          }
+        }
+      }
+    },
+    "Weiheng": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weiheng"
+          }
+        }
+      }
+    },
+    "WH-C06 crane scale": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Peson WH-C06"
+          }
+        }
+      }
+    },
+    "Worked": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sollicité"
+          }
+        }
+      }
+    },
+    "Wrecked": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explosé"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

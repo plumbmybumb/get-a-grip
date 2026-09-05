@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What the app is willing to hand OUT through a content URI, and nothing else.
+
+  One directory: `<cache>/shared`, where History writes the Markdown analysis export and the
+  five-week calendar PNG just before handing either to the system share sheet. The cache is
+  the right home for both — they are copies of data the app already owns, the OS may reclaim
+  them at any time, and nothing reads them back.
+
+  It is deliberately NOT `<files-path>` or a root path: a FileProvider whose path covers the
+  app's own data directory turns every share into a potential leak of somebody's whole
+  training history, and there is no reason to grant more than the one folder the export
+  writes into.
+
+  **The manifest `<provider>` entry that points here is the integrator's to add** — see the
+  note in `ui/history/AnalysisExportSheet.kt`. The authority must be
+  `${applicationId}.files`, which is what `shareDocument` and `shareImage` build.
+-->
+<paths>
+    <cache-path name="shared" path="shared/" />
+</paths>

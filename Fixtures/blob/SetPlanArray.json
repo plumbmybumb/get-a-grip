@@ -1,0 +1,26 @@
+{
+  "type": "SetPlanArray",
+  "description": "A TOP-LEVEL array decodes element-wise — one mangled element is dropped rather than taking the routine with it. (A NESTED array, `SessionPlan.sets`, is all-or-nothing; see SessionPlan.json.) `canonical` is the surviving elements.",
+  "cases": [
+    {
+      "name": "one structurally broken element costs one row, not six",
+      "input": "[{\"id\":\"8B2C4E8A-0000-4000-8000-000000000003\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":6},\"nope\",{\"id\":\"8B2C4E8A-0000-4000-8000-000000000004\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"fullCrimp\"},\"repsPerSide\":1}]",
+      "canonical": "[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"8B2C4E8A-0000-4000-8000-000000000003\",\"note\":\"\",\"repsPerSide\":6},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"fullCrimp\"},\"id\":\"8B2C4E8A-0000-4000-8000-000000000004\",\"note\":\"\",\"repsPerSide\":1}]"
+    },
+    {
+      "name": "an empty array stays empty",
+      "input": "[]",
+      "canonical": "[]"
+    },
+    {
+      "name": "empty text is an empty column, not a failure",
+      "input": "",
+      "canonical": "[]"
+    },
+    {
+      "name": "a top-level object is not an array",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000003\"}",
+      "canonical": "[]"
+    }
+  ]
+}

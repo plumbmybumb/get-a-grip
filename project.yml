@@ -1,0 +1,187 @@
+# XcodeGen spec — the SOURCE OF TRUTH for the Xcode project.
+# Never hand-edit Doigt.xcodeproj. Edit THIS file, then run ./build.sh
+# (which runs `xcodegen generate` before every build).
+name: Doigt
+
+options:
+  bundleIdPrefix: run.nuri
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    # The compiler emits one .stringsdata per source file listing every localization
+    # key it saw — that is the ONLY authoritative inventory of what the app actually
+    # asks to translate, and it is what the .xcstrings catalogs are authored against.
+    SWIFT_EMIT_LOC_STRINGS: YES
+    # Xcode auto-creates the App ID + provisioning for run.nuri.doigt, including
+    # the App Group and iCloud container, on the first team-signed build.
+    DEVELOPMENT_TEAM: ""
+    GETAGRIP_APP_GROUP: group.run.nuri.doigt
+    GETAGRIP_CLOUD_CONTAINER: iCloud.run.nuri.doigt
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  Doigt:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Sources
+      # Compiled into the app today; kept as its own root so a widget target can
+      # include it verbatim later without moving a single file.
+      - path: Shared
+    info:
+      path: Sources/Info.plist
+      properties:
+        # The public name. "Doigt" survives only as the internal codename: bundle ids,
+        # container, App Group, store name, target names — none of which a user sees.
+        GetAGripAppGroup: "$(GETAGRIP_APP_GROUP)"
+        GetAGripCloudContainer: "$(GETAGRIP_CLOUD_CONTAINER)"
+        CFBundleDisplayName: "Get a Grip"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        # Fully offline (CloudKit is Apple infrastructure) → exempt encryption.
+        ITSAppUsesNonExemptEncryption: false
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        # Shown when the FIRST connect tap creates the CBCentralManager — never at
+        # launch, so the ask arrives with context (see LiveProgressorClient). Says
+        # "force gauge", not "Tindeq Progressor": multi-gauge made the branded string
+        # under-describing, the same rule the photo string below already follows.
+        NSBluetoothAlwaysUsageDescription: >-
+          Get a Grip connects to your force gauge over Bluetooth to measure the
+          force you pull during a training session.
+        # "calendar" was true while the calendar card was the only thing the app exported;
+        # a routine's QR code is the second, so the copy moved with the feature rather
+        # than quietly under-describing it.
+        NSPhotoLibraryAddUsageDescription: >-
+          Get a Grip saves your shareable images to your photo library.
+        NSCameraUsageDescription: >-
+          Get a Grip uses your camera to scan shared routine QR codes.
+        LSApplicationQueriesSchemes:
+          - instagram-stories
+        # A routine shared as a QR code IS the routine — the whole plan rides in the
+        # URL's fragment, so scanning one in the system Camera app opens Get a Grip with
+        # everything it needs and no server anywhere. The scheme is the only half of
+        # that which has to be declared; `RoutineShare` already decodes the https form
+        # as well, so a universal link can be added later without touching this. The
+        # URL *name* keeps the bundle-id prefix — it is an identifier, not copy.
+        CFBundleURLTypes:
+          - CFBundleURLName: run.nuri.doigt.share
+            CFBundleURLSchemes:
+              - getagrip
+        # A session must SURVIVE being backgrounded now that it has a Live Activity —
+        # swiping home to change the music used to pause the workout. `bluetooth-central`
+        # keeps the app alive while the Progressor is connected and delivering
+        # notifications, which is exactly the window a session needs and nothing wider.
+        UIBackgroundModes:
+          - remote-notification
+          - bluetooth-central
+        NSSupportsLiveActivities: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    entitlements:
+      path: Sources/Doigt.entitlements
+      properties:
+        com.apple.developer.icloud-services:
+          - CloudKit
+        com.apple.developer.icloud-container-identifiers:
+          - "$(GETAGRIP_CLOUD_CONTAINER)"
+        # Reserved now even though nothing reads it yet: App Group identity is as
+        # painful to retrofit as the bundle id, and a workout widget is likely.
+        com.apple.security.application-groups:
+          - "$(GETAGRIP_APP_GROUP)"
+        aps-environment: development
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt
+        TARGETED_DEVICE_FAMILY: "1" # iPhone only
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
+    dependencies:
+      # Embedded, so the Live Activity ships inside the app.
+      - target: DoigtWidget
+        embed: true
+
+  # The Live Activity renders in its own process, so it compiles `Shared/` verbatim —
+  # which is exactly why `Shared/` has always been its own source root. Nothing here may
+  # reach into `Sources/`: the extension cannot see the store, the gauge or the runner,
+  # and every value it draws arrives through `SessionActivity.ContentState`.
+  DoigtWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Widget
+      - path: Shared
+    info:
+      path: Widget/Info.plist
+      properties:
+        GetAGripAppGroup: "$(GETAGRIP_APP_GROUP)"
+        GetAGripCloudContainer: "$(GETAGRIP_CLOUD_CONTAINER)"
+        CFBundleDisplayName: "Get a Grip"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widget/DoigtWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - "$(GETAGRIP_APP_GROUP)"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt.widget
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+
+  DoigtTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Tests
+    dependencies:
+      # Host application: `@testable import Doigt` + running @MainActor code needs
+      # the app as the test host.
+      - target: Doigt
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt.tests
+        TARGETED_DEVICE_FAMILY: "1"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Doigt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Doigt"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  Doigt:
+    build:
+      targets:
+        Doigt: all
+        DoigtTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - DoigtTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

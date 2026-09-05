@@ -1,0 +1,23 @@
+{
+  "final": {
+    "completedRepCount": 3,
+    "phase": "armed:3",
+    "results": [
+      "{\"avgKg\":0,\"endedElapsedSeconds\":1,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"skipped\",\"peakKg\":0,\"repIndex\":0,\"setIndex\":0,\"side\":\"both\",\"targetSeconds\":5}",
+      "{\"avgKg\":0,\"endedElapsedSeconds\":1,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"skipped\",\"peakKg\":0,\"repIndex\":1,\"setIndex\":0,\"side\":\"both\",\"targetSeconds\":5}",
+      "{\"avgKg\":0,\"endedElapsedSeconds\":1,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"skipped\",\"peakKg\":0,\"repIndex\":2,\"setIndex\":0,\"side\":\"both\",\"targetSeconds\":5}"
+    ]
+  },
+  "maxes": [],
+  "name": "skip-set",
+  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":5,\"leadInSeconds\":0,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":3},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000001\",\"note\":\"\",\"repsPerSide\":3}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+  "steps": [
+    {"cues":[{"side":"both","type":"armed"}],"event":{"type":"start"},"t":0},
+    {
+      "cues": [{"completed":false,"type":"repEnded"},{"setIndex":0,"type":"setCompleted"},{"side":"both","type":"armed"}],
+      "event": {"type":"skipSet"},
+      "t": 1
+    }
+  ],
+  "timerOnly": false
+}

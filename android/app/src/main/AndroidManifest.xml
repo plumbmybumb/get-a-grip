@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permissions arrive with the features that need them (notifications with
+         reminders), so a first install asks for nothing.
+
+         The two Bluetooth permissions are DECLARED here and REQUESTED at runtime on the
+         first Connect tap, never at launch — the twin of the iOS rule that the central is
+         created lazily, because constructing it is what raises the system prompt there.
+
+         `neverForLocation` is what keeps minSdk 31 free of the location prompt: without
+         it, a BLE scan is treated as a way of deriving the user's position and Android
+         demands ACCESS_FINE_LOCATION. This app scans for one force gauge and reads
+         nothing but kilograms out of it. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Session reminders. DECLARED here and REQUESTED on the first Save of a routine
+         that actually wants them — by then the user has been through the builder and seen
+         both times on screen, so the dialog arrives with its reason on the previous
+         screen. Never at launch.
+
+         There is deliberately NO `SCHEDULE_EXACT_ALARM`: reminders use
+         `AlarmManager.setWindow` with a 15-minute window. A habit nudge does not need the
+         exact minute, and Play gates exact alarms to alarm-clock and calendar apps — the
+         same overreach the iOS side refuses when it declines `.timeSensitive`. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- **The session's foreground service.** Android has no `bluetooth-central`
+         background mode: the only way to go on receiving GATT notifications with the app
+         in the background is a foreground service, and `connectedDevice` is the type that
+         names this exact use. It runs for the life of a CONNECTED session and its
+         notification is the Live Update — see `SessionForegroundService`.
+
+         `FOREGROUND_SERVICE_CONNECTED_DEVICE` also requires one of the device-adjacent
+         runtime permissions to be held when the service starts; `BLUETOOTH_CONNECT`
+         (above) is granted by then, because there is a gauge connected. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
+    <!-- An alarm does not survive a reboot. Without this a phone restarted overnight loses
+         every reminder silently — the worst failure a habit nudge can have, because
+         nothing on screen says it stopped. The receiver replans through the same planner
+         a save does, so there is one plan and one place that writes it. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Requested only when scanning. Frames stay on-device and are never saved. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
+    <!-- Not required: the app runs a whole session on the clock alone when there is no
+         gauge (flat battery, gauge left at home), so a phone without BLE is still a phone
+         this app works on. -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false" />
+
+    <application
+        android:name=".GetAGripApplication"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.GetAGrip"
+        android:supportsRtl="true"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true">
+
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="fullSensor"
+            android:exported="false"
+            tools:replace="android:screenOrientation" />
+
+        <!-- Exports (the analysis .md, the share card PNG) leave through the cache directory
+             and this provider; the authority is the application id so two builds never
+             collide. Paths in res/xml/file_paths.xml. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- A routine shared as a QR code or a link: `getagrip://routine#<payload>`.
+                 The code IS the routine — the payload rides in the FRAGMENT, which is the
+                 one part of a URL that never reaches a server even after this grows into a
+                 verified https link, so a routine stays between two phones.
+
+                 `launchMode="singleTask"` above means a link tapped while the app is
+                 running arrives at `onNewIntent`, not `onCreate`; MainActivity handles both.
+
+                 **Only the custom scheme is declared, deliberately.** `RoutineShare` also
+                 ACCEPTS the https-shaped `…/routine…#…` form, so a code minted by a future
+                 build that hands out universal links still imports here — but claiming an
+                 https host needs Digital Asset Links on a verified domain, and an
+                 unverified http filter is the disambiguation dialog nobody wants plus a
+                 chance to hijack somebody else's web page. It goes in with the domain. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="getagrip" android:host="routine" />
+            </intent-filter>
+        </activity>
+
+        <!-- Keeps a connected session streaming while the screen is locked or the user is
+             in another app. `exported="false"` — nothing outside the app may start it, and
+             it is only ever started from a running session. -->
+        <service
+            android:name=".runner.SessionForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!-- Replans every reminder after a reboot (and after the app is updated in place,
+             which also drops pending alarms). `exported="true"` is required for a system
+             broadcast to reach it; the intent filter is what limits who can. -->
+        <receiver
+            android:name=".store.ReminderBootReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Fires one reminder and reschedules the same slot for tomorrow. It replaces
+             iOS's REPEATING calendar trigger: Android's own `setRepeating` is inexact and
+             cannot be cancelled per occurrence, and rescheduling on fire is what lets a
+             session finished at 18:00 suppress the 19:00 slot for TODAY and get it back
+             tomorrow. `exported="false"` — nothing outside the app may fire it. -->
+        <receiver
+            android:name=".store.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="run.nuri.getagrip.REMINDER" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

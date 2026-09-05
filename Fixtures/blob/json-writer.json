@@ -1,0 +1,42 @@
+{
+  "description": "Foundation JSONEncoder([.sortedKeys]) output, measured on macOS 26 (2026-09-04). Each case: parse `input` as JSON (Swift: decode as `swiftType`), re-encode, expect `output` byte for byte. `escapeSlashes: false` is the `.withoutEscapingSlashes` twin used by RoutineShare.",
+  "cases": [
+    {
+      "name": "doubles",
+      "swiftType": "[Double]",
+      "input": "[25.0,0.5,1e-5,0.0001,123456789012.5,1e15,1e16,1e20,-0.0,10.0125,2.5e-7,9007199254740992.0,-12.5]",
+      "output": "[25,0.5,1e-05,0.0001,123456789012.5,1000000000000000,1e+16,1e+20,-0,10.0125,2.5e-07,9007199254740992,-12.5]"
+    },
+    {
+      "name": "int64",
+      "swiftType": "[Int64]",
+      "input": "[9223372036854775807,-3,0]",
+      "output": "[9223372036854775807,-3,0]"
+    },
+    {
+      "name": "keys-byte-order",
+      "swiftType": "[String:Int]",
+      "input": "{\"b\":1,\"B\":2,\"a\":3,\"a/b\":4,\"aB\":5,\"ab\":6,\"targetHiKg\":7,\"targetHiPercent\":8,\"targetLoKg\":9,\"sets\":10,\"setBreakSeconds\":11}",
+      "output": "{\"B\":2,\"a\":3,\"a\\/b\":4,\"aB\":5,\"ab\":6,\"b\":1,\"setBreakSeconds\":11,\"sets\":10,\"targetHiKg\":7,\"targetHiPercent\":8,\"targetLoKg\":9}"
+    },
+    {
+      "name": "strings",
+      "swiftType": "[String:String]",
+      "input": "{\"slash\":\"a/b\",\"quote\":\"a\\\"b\",\"nl\":\"a\\nb\",\"tab\":\"a\\tb\",\"uni\":\"é☃\",\"ctrl\":\"a\\u0001b\",\"bs\":\"a\\\\b\",\"del\":\"a\\u007fb\"}",
+      "output": "{\"bs\":\"a\\\\b\",\"ctrl\":\"a\\u0001b\",\"del\":\"a\u007fb\",\"nl\":\"a\\nb\",\"quote\":\"a\\\"b\",\"slash\":\"a\\/b\",\"tab\":\"a\\tb\",\"uni\":\"é☃\"}"
+    },
+    {
+      "name": "no-escape-slashes",
+      "swiftType": "[String:String]",
+      "escapeSlashes": false,
+      "input": "{\"slash\":\"a/b\"}",
+      "output": "{\"slash\":\"a/b\"}"
+    },
+    {
+      "name": "nested",
+      "swiftType": "[String:[Double]]",
+      "input": "{\"z\":[1.0,2.5],\"a\":[]}",
+      "output": "{\"a\":[],\"z\":[1,2.5]}"
+    }
+  ]
+}

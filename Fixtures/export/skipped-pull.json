@@ -1,0 +1,68 @@
+{
+  "generatedOn" : 20693,
+  "maxes" : [
+    {
+      "day" : 20683,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 40,
+      "recordedAt" : "2026-08-18T08:00:00Z",
+      "side" : "both",
+      "source" : "measured"
+    }
+  ],
+  "sessions" : [
+    {
+      "avgKg" : 18,
+      "completedReps" : 1,
+      "day" : 20693,
+      "id" : "00000000-0000-0000-0000-000000000007",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 20,
+      "plannedReps" : 2,
+      "reps" : [
+        {
+          "avgKg" : 18,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 20,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 0,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 0,
+          "outcome" : "skipped",
+          "peakKg" : 0,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Daily no-hangs",
+      "startedAt" : "2026-08-28T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 10
+    }
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

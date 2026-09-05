@@ -1,0 +1,337 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "f63b78c84fd8bd46c331f4c3397793da",
+    "entities": [
+      {
+        "tableName": "SessionTemplate",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `handModeRaw` TEXT NOT NULL, `holdSeconds` INTEGER NOT NULL, `restSeconds` INTEGER NOT NULL, `setBreakSeconds` INTEGER NOT NULL, `leadInSeconds` INTEGER NOT NULL, `thresholdKg` REAL NOT NULL, `waitForReleaseBeforeRest` INTEGER NOT NULL, `pausesOutsideTargetBand` INTEGER NOT NULL, `targetLoPercent` REAL, `targetHiPercent` REAL, `setsData` TEXT NOT NULL, `sessionsPerDay` INTEGER NOT NULL, `remindersData` TEXT NOT NULL, `parkedRemindersData` TEXT NOT NULL, `remindersEnabled` INTEGER NOT NULL, `isOnDemand` INTEGER NOT NULL, `sortIndex` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "handModeRaw",
+            "columnName": "handModeRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "holdSeconds",
+            "columnName": "holdSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "restSeconds",
+            "columnName": "restSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "setBreakSeconds",
+            "columnName": "setBreakSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leadInSeconds",
+            "columnName": "leadInSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "thresholdKg",
+            "columnName": "thresholdKg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "waitForReleaseBeforeRest",
+            "columnName": "waitForReleaseBeforeRest",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pausesOutsideTargetBand",
+            "columnName": "pausesOutsideTargetBand",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetLoPercent",
+            "columnName": "targetLoPercent",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "targetHiPercent",
+            "columnName": "targetHiPercent",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "setsData",
+            "columnName": "setsData",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionsPerDay",
+            "columnName": "sessionsPerDay",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remindersData",
+            "columnName": "remindersData",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parkedRemindersData",
+            "columnName": "parkedRemindersData",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remindersEnabled",
+            "columnName": "remindersEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isOnDemand",
+            "columnName": "isOnDemand",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortIndex",
+            "columnName": "sortIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "WorkoutLog",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `startedAt` INTEGER NOT NULL, `finishedAt` INTEGER NOT NULL, `dayKey` INTEGER NOT NULL, `templateID` TEXT, `templateName` TEXT NOT NULL, `planData` TEXT NOT NULL, `resultsData` TEXT NOT NULL, `sessionsPerDayTarget` INTEGER NOT NULL, `totalHeldSeconds` REAL NOT NULL, `peakKg` REAL NOT NULL, `avgKg` REAL NOT NULL, `completedReps` INTEGER NOT NULL, `plannedReps` INTEGER NOT NULL, `rpe` INTEGER, `fingerStrainRaw` INTEGER, `durationMinutes` INTEGER, `notes` TEXT NOT NULL, `kindRaw` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finishedAt",
+            "columnName": "finishedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dayKey",
+            "columnName": "dayKey",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "templateID",
+            "columnName": "templateID",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "templateName",
+            "columnName": "templateName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "planData",
+            "columnName": "planData",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "resultsData",
+            "columnName": "resultsData",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionsPerDayTarget",
+            "columnName": "sessionsPerDayTarget",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalHeldSeconds",
+            "columnName": "totalHeldSeconds",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peakKg",
+            "columnName": "peakKg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avgKg",
+            "columnName": "avgKg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedReps",
+            "columnName": "completedReps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plannedReps",
+            "columnName": "plannedReps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rpe",
+            "columnName": "rpe",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "fingerStrainRaw",
+            "columnName": "fingerStrainRaw",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "durationMinutes",
+            "columnName": "durationMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kindRaw",
+            "columnName": "kindRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "MaxRecord",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `edgeMM` INTEGER NOT NULL, `fingersRaw` TEXT NOT NULL, `positionRaw` TEXT NOT NULL, `kg` REAL NOT NULL, `recordedAt` INTEGER NOT NULL, `sourceRaw` TEXT NOT NULL, `sideRaw` TEXT NOT NULL, `note` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "edgeMM",
+            "columnName": "edgeMM",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fingersRaw",
+            "columnName": "fingersRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "positionRaw",
+            "columnName": "positionRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kg",
+            "columnName": "kg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceRaw",
+            "columnName": "sourceRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sideRaw",
+            "columnName": "sideRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f63b78c84fd8bd46c331f4c3397793da')"
+    ]
+  }
+}

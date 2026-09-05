@@ -1,0 +1,41 @@
+{
+  "type": "SetPlan",
+  "description": "One row of the routine. Every case carries a valid `id`, because an absent or malformed one decodes to a FRESH UUID and could not be pinned.",
+  "cases": [
+    {
+      "name": "the blob an older build wrote — only the fields that existed then",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000001\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":6}",
+      "canonical": "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"8B2C4E8A-0000-4000-8000-000000000001\",\"note\":\"\",\"repsPerSide\":6}"
+    },
+    {
+      "name": "a retyped field costs that field, never the routine",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000002\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"openHand\"},\"repsPerSide\":\"six\",\"note\":\"middle two\"}",
+      "canonical": "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"openHand\"},\"id\":\"8B2C4E8A-0000-4000-8000-000000000002\",\"note\":\"middle two\",\"repsPerSide\":6}"
+    },
+    {
+      "name": "out-of-range numbers are clamped, never rejected",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000005\",\"grip\":{\"edgeMM\":0,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":1000000000,\"holdSeconds\":0,\"restSeconds\":100000}",
+      "canonical": "{\"grip\":{\"edgeMM\":1,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"holdSeconds\":3,\"id\":\"8B2C4E8A-0000-4000-8000-000000000005\",\"note\":\"\",\"repsPerSide\":20,\"restSeconds\":600}"
+    },
+    {
+      "name": "every field set, and a lowercase id is re-encoded uppercase",
+      "input": "{\"id\":\"8b2c4e8a-0000-4000-8000-000000000006\",\"grip\":{\"edgeMM\":22,\"fingers\":\"MR\",\"position\":\"drag\"},\"repsPerSide\":4,\"holdSeconds\":7,\"restSeconds\":25,\"targetLoKg\":8.5,\"targetHiKg\":11,\"targetLoPercent\":0.4,\"targetHiPercent\":0.5,\"note\":\"  trimmed only by normalize  \"}",
+      "canonical": "{\"grip\":{\"edgeMM\":22,\"fingers\":\"MR\",\"position\":\"drag\"},\"holdSeconds\":7,\"id\":\"8B2C4E8A-0000-4000-8000-000000000006\",\"note\":\"  trimmed only by normalize  \",\"repsPerSide\":4,\"restSeconds\":25,\"targetHiKg\":11,\"targetHiPercent\":0.5,\"targetLoKg\":8.5,\"targetLoPercent\":0.4}"
+    },
+    {
+      "name": "percentages clamp to 1 %…100 %",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000007\",\"repsPerSide\":2,\"targetLoPercent\":-2,\"targetHiPercent\":400}",
+      "canonical": "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"8B2C4E8A-0000-4000-8000-000000000007\",\"note\":\"\",\"repsPerSide\":2,\"targetHiPercent\":1,\"targetLoPercent\":0.01}"
+    },
+    {
+      "name": "a zero-rep set is representable — `executable` is what drops it",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000008\",\"repsPerSide\":0}",
+      "canonical": "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"8B2C4E8A-0000-4000-8000-000000000008\",\"note\":\"\",\"repsPerSide\":0}"
+    },
+    {
+      "name": "not an object at all",
+      "input": "[1,2,3]",
+      "canonical": null
+    }
+  ]
+}

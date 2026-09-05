@@ -1,0 +1,152 @@
+{
+  "gauge": "cts500",
+  "cases": [
+    {
+      "name": "a fragmented weight frame reassembles across notifications",
+      "frames": [
+        "050100",
+        "0004D2DC"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 12.34,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "weight is big-endian centi-kilograms",
+      "frames": [
+        "0501000027103D"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 100.0,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "a bad checksum is discarded and the next frame recovers",
+      "frames": [
+        "0501000004D223",
+        "0501000004D2DC"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 12.34,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "command echoes are not weight frames",
+      "frames": [
+        "05AA000000AF",
+        "05C1000002C8",
+        "05A6000000AB",
+        "05AB000000B0"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    },
+    {
+      "name": "a typed battery reply is parsed and never becomes a fraction",
+      "frames": [
+        "0580C4000163AD"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    },
+    {
+      "name": "the walk resynchronises past a false header inside one notification",
+      "frames": [
+        "059999999999990501000004D2DC"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 12.34,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "two weight frames in one notification both decode",
+      "frames": [
+        "0501000004D2DC0501000027103D"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 12.34,
+            "micros": null
+          },
+          {
+            "kg": 100.0,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "a weight no hand could produce is dropped",
+      "frames": [
+        "0501FFFFFFFF02"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    },
+    {
+      "name": "fragments below the frame length wait for more bytes",
+      "frames": [
+        "",
+        "0501000004",
+        "D2DC"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 12.34,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "bytes with no header in them are discarded",
+      "frames": [
+        "112233445566",
+        "0501000004D2DC"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 12.34,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    }
+  ]
+}

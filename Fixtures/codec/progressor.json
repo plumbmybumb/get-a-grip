@@ -1,0 +1,395 @@
+{
+  "gauge": "progressor",
+  "cases": [
+    {
+      "name": "a single weight sample decodes as a little-endian float",
+      "frames": [
+        "01080000A041D4300000"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "sample",
+            "kg": 20.0,
+            "micros": 12500,
+            "batchStart": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "a batched weight packet decodes every sample in order",
+      "frames": [
+        "01180000803F000000000000D040D43000000000A041A8610000"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "sample",
+            "kg": 1.0,
+            "micros": 0,
+            "batchStart": true
+          },
+          {
+            "type": "sample",
+            "kg": 6.5,
+            "micros": 12500,
+            "batchStart": false
+          },
+          {
+            "type": "sample",
+            "kg": 20.0,
+            "micros": 25000,
+            "batchStart": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "the weight window accepts its low boundary",
+      "frames": [
+        "0108000020C100000000"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "sample",
+            "kg": -10.0,
+            "micros": 0,
+            "batchStart": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "the weight window accepts its high boundary",
+      "frames": [
+        "010800002543D4300000"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "sample",
+            "kg": 165.0,
+            "micros": 12500,
+            "batchStart": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "the next float below the low boundary is rejected",
+      "frames": [
+        "0108010020C100000000"
+      ],
+      "expect": {
+        "events": []
+      }
+    },
+    {
+      "name": "the next float above the high boundary is rejected",
+      "frames": [
+        "010801002543D4300000"
+      ],
+      "expect": {
+        "events": []
+      }
+    },
+    {
+      "name": "non-finite and wire-impossible weights are dropped pair by pair",
+      "frames": [
+        "01300000C07F000000000000807FD4300000000080FFA8610000010020C17C92000000409C4550C300000000A04124F40000"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "sample",
+            "kg": 20.0,
+            "micros": 62500,
+            "batchStart": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "a tag-0 reply answering getBatteryVoltage is millivolts",
+      "answering": "getBatteryVoltage",
+      "frames": [
+        "000468100000"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "battery",
+            "millivolts": 4200
+          }
+        ]
+      }
+    },
+    {
+      "name": "a tag-0 reply answering getAppVersion is NUL-trimmed ASCII",
+      "answering": "getAppVersion",
+      "frames": [
+        "0006312E322E3300"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "appVersion",
+            "text": "1.2.3"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tag 0 with nothing pending stays raw",
+      "frames": [
+        "000468100000"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "commandResponse",
+            "payload": "68100000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the low-power warning decodes",
+      "frames": [
+        "0400"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "lowPowerWarning"
+          }
+        ]
+      }
+    },
+    {
+      "name": "an unknown tag is surfaced rather than dropped",
+      "frames": [
+        "6302ABCD"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 99,
+            "payload": "ABCD"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a declared length past the buffer stops the walk",
+      "frames": [
+        "01100000A041"
+      ],
+      "expect": {
+        "events": []
+      }
+    },
+    {
+      "name": "a weight block that is not a multiple of eight is rejected whole",
+      "frames": [
+        "010C0000A041D43000000000803F"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 1,
+            "payload": "0000A041D43000000000803F"
+          }
+        ]
+      }
+    },
+    {
+      "name": "an empty weight block is rejected",
+      "frames": [
+        "0100"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 1,
+            "payload": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "a malformed RFD peak of 0 bytes never masquerades as a command response",
+      "answering": "getBatteryVoltage",
+      "frames": [
+        "0200"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 2,
+            "payload": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "a malformed RFD peak of 7 bytes never masquerades as a command response",
+      "answering": "getBatteryVoltage",
+      "frames": [
+        "0207AAAAAAAAAAAAAA"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 2,
+            "payload": "AAAAAAAAAAAAAA"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a malformed RFD peak of 9 bytes never masquerades as a command response",
+      "answering": "getBatteryVoltage",
+      "frames": [
+        "0209AAAAAAAAAAAAAAAAAA"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 2,
+            "payload": "AAAAAAAAAAAAAAAAAA"
+          }
+        ]
+      }
+    },
+    {
+      "name": "an RFD series of 0 bytes is not a whole number of pairs",
+      "frames": [
+        "0300"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 3,
+            "payload": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "an RFD series of 7 bytes is not a whole number of pairs",
+      "frames": [
+        "0307AAAAAAAAAAAAAA"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 3,
+            "payload": "AAAAAAAAAAAAAA"
+          }
+        ]
+      }
+    },
+    {
+      "name": "an RFD series of 9 bytes is not a whole number of pairs",
+      "frames": [
+        "0309AAAAAAAAAAAAAAAAAA"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 3,
+            "payload": "AAAAAAAAAAAAAAAAAA"
+          }
+        ]
+      }
+    },
+    {
+      "name": "an RFD series whose only pair is a non-finite force is raw",
+      "frames": [
+        "03080000C07FD4300000"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "raw",
+            "tag": 3,
+            "payload": "0000C07FD4300000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "five one-second timestamp deltas suppress the whole notification",
+      "frames": [
+        "01280000A041000000000000A04140420F000000A04180841E000000A041C0C62D000000A04100093D00"
+      ],
+      "expect": {
+        "events": []
+      }
+    },
+    {
+      "name": "the notification span budget covers packed weight blocks",
+      "frames": [
+        "01080000A0410000000001080000A041400D0300"
+      ],
+      "expect": {
+        "events": []
+      }
+    },
+    {
+      "name": "a packed multi-TLV packet keeps complete blocks before a truncated tail",
+      "frames": [
+        "01080000A041E8030000040001080000A841BC340000010800"
+      ],
+      "expect": {
+        "events": [
+          {
+            "type": "sample",
+            "kg": 20.0,
+            "micros": 1000,
+            "batchStart": true
+          },
+          {
+            "type": "lowPowerWarning"
+          },
+          {
+            "type": "sample",
+            "kg": 21.0,
+            "micros": 13500,
+            "batchStart": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "an empty packet decodes to nothing",
+      "frames": [
+        ""
+      ],
+      "expect": {
+        "events": []
+      }
+    },
+    {
+      "name": "a header-only packet decodes to nothing",
+      "frames": [
+        "01"
+      ],
+      "expect": {
+        "events": []
+      }
+    }
+  ]
+}

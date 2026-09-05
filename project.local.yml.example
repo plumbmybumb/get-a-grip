@@ -1,0 +1,22 @@
+# Copy to project.local.yml (ignored), fill your own identifiers, then:
+# XCODEGEN_SPEC=project.local.yml ./build.sh
+# For hardware, open the generated Doigt.xcodeproj and select your device.
+include: project.yml
+settings:
+  base:
+    DEVELOPMENT_TEAM: YOURTEAMID
+    GETAGRIP_APP_GROUP: group.com.example.getagrip
+    GETAGRIP_CLOUD_CONTAINER: iCloud.com.example.getagrip
+targets:
+  Doigt:
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.getagrip
+  DoigtWidget:
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.getagrip.widget
+  DoigtTests:
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.getagrip.tests

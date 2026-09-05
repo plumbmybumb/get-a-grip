@@ -1,0 +1,181 @@
+{
+  "//": "Android-only English and French strings. Shared strings come from the iOS catalogs.",
+  "strings": [
+    {
+      "name": "app_name",
+      "en": "Get a Grip",
+      "translatable": false,
+      "inKeyMap": false,
+      "//": "The app name never translates. The manifest label."
+    },
+    {
+      "en": "Scan a shared routine",
+      "fr": "Scanner une routine partagée",
+      "//": "The same door on the EMPTY card, which has no menu to hang it off."
+    },
+    {
+      "en": "Couldn't scan",
+      "fr": "Scan impossible"
+    },
+    {
+      "en": "New routine. Opens the routine builder.",
+      "fr": "Nouvelle routine. Ouvre le constructeur de routine."
+    },
+    {
+      "en": "Up next",
+      "fr": "À suivre",
+      "//": "TalkBack's stateDescription on the up-next card. iOS says it inside a whole sentence ('%@. Up next.'); a state description is a fragment by design."
+    },
+    {
+      "en": "App",
+      "fr": "App",
+      "//": "Settings › About. The Android app carries its own name and version rows; iOS reads both off the bundle."
+    },
+    {
+      "en": "Version",
+      "fr": "Version"
+    },
+    {
+      "en": "%s broadcasts its weight instead of connecting, so there is nothing to pair and nothing to zero on the device — Tare subtracts what is hanging on it. Android stops delivering broadcasts while Get a Grip is in the background, so a session on one pauses when you leave the app.",
+      "fr": "%s diffuse son poids au lieu de se connecter : il n'y a donc rien à appairer ni rien à mettre à zéro sur l'appareil — Tarer soustrait ce qui y est suspendu. Android cesse de délivrer les diffusions quand Get a Grip est en arrière-plan, une séance sur ce capteur se met donc en pause dès que tu quittes l'app.",
+      "//": "The catalog's twin of this sentence names iOS. Same fact, different platform."
+    },
+    {
+      "en": "Android will ask to allow notifications when you save.",
+      "fr": "Android te demandera l'autorisation d'envoyer des notifications au moment d'enregistrer.",
+      "//": "POST_NOTIFICATIONS is asked on the first Save of a routine with reminders on — a runtime permission iOS asks for at a different moment and in different words."
+    },
+    {
+      "en": "Session reminders",
+      "fr": "Rappels de séance",
+      "//": "A notification CHANNEL name — an Android concept with no iOS counterpart. Shown in the system's own notification settings."
+    },
+    {
+      "en": "Leave demo mode",
+      "fr": "Quitter le mode démo"
+    },
+    {
+      "en": "Sharing a file isn't available on this build — use Copy, and paste the document where you need it.",
+      "fr": "Le partage de fichier n'est pas disponible sur cette version — utilise Copier, et colle le document où tu en as besoin."
+    },
+    {
+      "en": "Sharing an image isn't available on this build.",
+      "fr": "Le partage d'image n'est pas disponible sur cette version."
+    },
+    {
+      "en": "Couldn't write to Photos.",
+      "fr": "Impossible d'écrire dans Photos."
+    },
+    {
+      "en": "Saved at %1$d × %2$d points at %3$d×, so it lands in Photos at the size a story wants.",
+      "fr": "Enregistré à %1$d × %2$d points en %3$d×, pour arriver dans Photos à la taille qu'attend une story."
+    },
+    {
+      "en": "This code couldn't be drawn. The link below still works.",
+      "fr": "Ce code n'a pas pu être dessiné. Le lien ci-dessous fonctionne toujours.",
+      "//": "The catalog's twin stops at the first sentence: iOS shares a PNG of the card, Android shares the LINK, and only here is there a link below to fall back to."
+    },
+    {
+      "en": "Copy link",
+      "fr": "Copier le lien",
+      "//": "Android shares a link where iOS shares an image, so the sheet's two buttons have no iOS twin."
+    },
+    {
+      "en": "Link copied",
+      "fr": "Lien copié"
+    },
+    {
+      "en": "Expanded",
+      "fr": "Déplié",
+      "//": "A disclosure's TalkBack state. Deliberately NOT the catalog's \"Open\" — that key is the open-hand grip position and translates to \"Tendue\"."
+    },
+    {
+      "en": "Collapsed",
+      "fr": "Replié"
+    },
+    {
+      "en": "Decrease",
+      "fr": "Diminuer",
+      "//": "The bare stepper on a chip row, which has no title to name. The catalog's \"Decrease %s\" is the titled twin on ValueRow."
+    },
+    {
+      "en": "Increase",
+      "fr": "Augmenter"
+    },
+    {
+      "en": "seconds",
+      "fr": "secondes",
+      "//": "Spoken units for the dial. \"kilograms\" and \"percent of max\" are in the catalog; these two are not."
+    },
+    {
+      "en": "millimetres",
+      "fr": "millimètres"
+    },
+    {
+      "en": "No max on file for this grip yet, so this shows no target during a session. Add one in Maxes.",
+      "fr": "Aucun max enregistré pour cette prise, donc rien ne s'affiche comme cible pendant une séance. Ajoutes-en un dans Max.",
+      "//": "ANDROID PATH: the catalog says \"Settings › Maxes\", where iOS keeps its max list. Android's Maxes is a tab of its own."
+    },
+    {
+      "en": "No max for your %s hand, so those pulls show no target. Add one in Maxes.",
+      "fr": "Aucun max pour ta main %s, donc ces tirages n'affichent aucune cible. Ajoutes-en un dans Max."
+    },
+    {
+      "en": "%d days ago",
+      "fr": "il y a %d jours",
+      "//": "iOS gets these five from the system's relative-date formatter (`.relative(presentation: .named)`); Android's `relative()` is hand-written and coarse on purpose, so the words are too. Only ever reached with a count of 2 or more, which is why none of them needs a plural form."
+    },
+    {
+      "en": "last week",
+      "fr": "la semaine dernière"
+    },
+    {
+      "en": "%d weeks ago",
+      "fr": "il y a %d semaines"
+    },
+    {
+      "en": "%d months ago",
+      "fr": "il y a %d mois"
+    },
+    {
+      "en": "over a year ago",
+      "fr": "il y a plus d'un an"
+    },
+    {
+      "en": "Couldn't render the card. Try again.",
+      "fr": "Impossible de dessiner la carte. Réessaie."
+    },
+    {
+      "en": "Your routines and sessions are stored on this device. They don't sync between devices.",
+      "fr": "Tes routines et tes séances sont stockées sur cet appareil. Elles ne se synchronisent pas entre appareils.",
+      "//": "Android stores locally; the iOS twin of this line talks about CloudKit."
+    },
+    {
+      "en": "This routine asks for %d a day.",
+      "fr": "Cette routine en demande %d par jour.",
+      "//": "The Android summary screen says what the day still owes; the iOS summary does not carry this line."
+    },
+    {
+      "en": "The big word is the hand that goes on the edge. Your fingers hang off the palm at the top of the screen, so the grip reads without a word.",
+      "fr": "Le mot en gros, c'est la main qui va sur la réglette. Tes doigts pendent sous la paume en haut de l'écran, donc la préhension se lit sans un mot.",
+      "//": "The tour's runner-hand step. The iOS twin names the Dynamic Island, which is an iPhone fact this app cannot state — Android draws its own palm on every phone (PalmHand), so this sentence has no iOS twin."
+    },
+    {
+      "en": "Start with a name and one set. Make it yours, then come back and pull.",
+      "fr": "Commence par un nom et une série. Adapte la routine à tes envies, puis reviens tirer.",
+      "//": "Android-only empty-state revision. iOS is intentionally unchanged."
+    },
+    {
+      "en": "Allow camera access in Settings to scan a routine. You can still open a shared routine link.",
+      "fr": "Autorise l’accès à la caméra dans les réglages pour scanner une routine. Tu peux toujours ouvrir un lien de routine partagé."
+    },
+    {
+      "en": "Couldn't open the camera. Try opening the shared routine link instead.",
+      "fr": "Impossible d’ouvrir la caméra. Essaie plutôt d’ouvrir le lien de routine partagé."
+    },
+    {
+      "en": "Point your camera at a Get a Grip routine QR code.",
+      "fr": "Vise le QR code d’une routine Get a Grip avec ta caméra."
+    }
+  ]
+}

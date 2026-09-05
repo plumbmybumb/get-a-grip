@@ -1,0 +1,125 @@
+{
+  "gauge": "climbro",
+  "cases": [
+    {
+      "name": "the reference marker fixture",
+      "frames": [
+        "F070F50AF614"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 10.0,
+            "micros": null
+          },
+          {
+            "kg": 36.0,
+            "micros": null
+          },
+          {
+            "kg": 20.0,
+            "micros": null
+          }
+        ],
+        "battery": 0.0
+      }
+    },
+    {
+      "name": "the battery discharge span puts byte 171 at half",
+      "frames": [
+        "F0AB"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": 0.5
+      }
+    },
+    {
+      "name": "byte 230 is a full battery",
+      "frames": [
+        "F0AB",
+        "E6"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": 1.0
+      }
+    },
+    {
+      "name": "a battery byte of 0 clamps to empty where the reference goes negative",
+      "frames": [
+        "F000"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": 0.0
+      }
+    },
+    {
+      "name": "a battery byte of 255 clamps to full",
+      "frames": [
+        "F000",
+        "FF"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": 1.0
+      }
+    },
+    {
+      "name": "the channel survives the notification boundary",
+      "frames": [
+        "F5",
+        "0C0D"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 12.0,
+            "micros": null
+          },
+          {
+            "kg": 13.0,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "bytes arriving before any marker are dropped",
+      "frames": [
+        "0506F507"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 7.0,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "battery bytes are never force readings and the last one wins",
+      "frames": [
+        "F0C896"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": 0.3220338983050847
+      }
+    },
+    {
+      "name": "an empty notification decodes to nothing",
+      "frames": [
+        ""
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    }
+  ]
+}

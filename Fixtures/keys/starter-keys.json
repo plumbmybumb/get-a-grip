@@ -1,0 +1,17 @@
+{
+  "description": "The seed routines' grip keys, in order. The prefill is a product spec, so its keys are pinned like one: these are what every future log, trend and max joins on.",
+  "starter": [
+    "20|IMRL|halfCrimp",
+    "20|IMR|halfCrimp",
+    "20|IM|openHand",
+    "20|MR|openHand",
+    "20|IM|fullCrimp",
+    "20|MR|fullCrimp"
+  ],
+  "maxDay": [
+    "20|IMRL|halfCrimp",
+    "20|IMRL|halfCrimp",
+    "20|IMRL|halfCrimp",
+    "20|IMRL|halfCrimp"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "type": "RepSummary",
+  "description": "One pull, as it actually happened — write-once inside a WorkoutLog blob. `targetLoKg`/`targetHiKg` are ADDITIVE and decode as absent on every rep logged before they existed; negatives clamp to zero rather than subtracting from a total.",
+  "cases": [
+    {
+      "name": "a rep logged before the prescribed load was recorded",
+      "input": "{\"setIndex\":0,\"repIndex\":3,\"side\":\"right\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"targetSeconds\":10,\"heldSeconds\":10.25,\"peakKg\":12.5,\"avgKg\":11,\"outcome\":\"completed\"}",
+      "canonical": "{\"avgKg\":11,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":10.25,\"outcome\":\"completed\",\"peakKg\":12.5,\"repIndex\":3,\"setIndex\":0,\"side\":\"right\",\"targetSeconds\":10}"
+    },
+    {
+      "name": "a rep with the per-hand load it was asked for",
+      "input": "{\"setIndex\":2,\"repIndex\":1,\"side\":\"left\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"openHand\"},\"targetSeconds\":10,\"heldSeconds\":9.5,\"peakKg\":9,\"avgKg\":8.25,\"targetLoKg\":8,\"targetHiKg\":12,\"outcome\":\"earlyRelease\"}",
+      "canonical": "{\"avgKg\":8.25,\"grip\":{\"edgeMM\":20,\"fingers\":\"IM\",\"position\":\"openHand\"},\"heldSeconds\":9.5,\"outcome\":\"earlyRelease\",\"peakKg\":9,\"repIndex\":1,\"setIndex\":2,\"side\":\"left\",\"targetHiKg\":12,\"targetLoKg\":8,\"targetSeconds\":10}"
+    },
+    {
+      "name": "negatives are corruption, not a very short rep",
+      "input": "{\"setIndex\":-3,\"repIndex\":-1,\"targetSeconds\":-10,\"heldSeconds\":-4,\"peakKg\":-2,\"avgKg\":-1,\"outcome\":\"skipped\"}",
+      "canonical": "{\"avgKg\":0,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"skipped\",\"peakKg\":0,\"repIndex\":0,\"setIndex\":0,\"side\":\"left\",\"targetSeconds\":0}"
+    },
+    {
+      "name": "an outcome from a newer build falls back to completed",
+      "input": "{\"setIndex\":1,\"repIndex\":0,\"side\":\"both\",\"outcome\":\"exploded\"}",
+      "canonical": "{\"avgKg\":0,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"completed\",\"peakKg\":0,\"repIndex\":0,\"setIndex\":1,\"side\":\"both\",\"targetSeconds\":10}"
+    },
+    {
+      "name": "every key absent takes the defaults",
+      "input": "{}",
+      "canonical": "{\"avgKg\":0,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"completed\",\"peakKg\":0,\"repIndex\":0,\"setIndex\":0,\"side\":\"left\",\"targetSeconds\":10}"
+    },
+    {
+      "name": "not an object at all",
+      "input": "null",
+      "canonical": null
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "gauge": "forceboard",
+  "cases": [
+    {
+      "name": "the reference two-sample packet, converted to kilograms",
+      "frames": [
+        "00020003E80004B0"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 453.59237,
+            "micros": null
+          },
+          {
+            "kg": 544.310844,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "a packet claiming more samples than it carries stops cleanly",
+      "frames": [
+        "000300000A0000140000"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 4.535923700000001,
+            "micros": null
+          },
+          {
+            "kg": 9.071847400000001,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "short, header-only and zero-sample packets decode to nothing",
+      "frames": [
+        "",
+        "00",
+        "0001",
+        "00010000",
+        "0000000000"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    },
+    {
+      "name": "an absurd sample is dropped and its neighbours are not",
+      "frames": [
+        "000300002AFFFFFF00002A"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 19.05087954,
+            "micros": null
+          },
+          {
+            "kg": 19.05087954,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "1999 lb is inside the plausibility ceiling",
+      "frames": [
+        "00010007CF"
+      ],
+      "expect": {
+        "readings": [
+          {
+            "kg": 906.73114763,
+            "micros": null
+          }
+        ],
+        "battery": null
+      }
+    },
+    {
+      "name": "2000 lb is outside it",
+      "frames": [
+        "00010007D0"
+      ],
+      "expect": {
+        "readings": [],
+        "battery": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  GENERATED — do not edit. Android-only French, from android_extra.json.
+  Regenerate with: python3 android/scripts/xcstrings_to_android.py
+-->
+<resources>
+    <string name="a_scan_a_shared_routine">Scanner une routine partagée</string>
+    <string name="a_couldn_t_scan">Scan impossible</string>
+    <string name="a_new_routine_opens_the_routine_builder">Nouvelle routine. Ouvre le constructeur de routine.</string>
+    <string name="a_up_next">À suivre</string>
+    <string name="a_app">App</string>
+    <string name="a_version">Version</string>
+    <string name="a_s_broadcasts_its_weight_instead_of_connecting_so_there_i">%s diffuse son poids au lieu de se connecter : il n\'y a donc rien à appairer ni rien à mettre à zéro sur l\'appareil — Tarer soustrait ce qui y est suspendu. Android cesse de délivrer les diffusions quand Get a Grip est en arrière-plan, une séance sur ce capteur se met donc en pause dès que tu quittes l\'app.</string>
+    <string name="a_android_will_ask_to_allow_notifications_when_you_save">Android te demandera l\'autorisation d\'envoyer des notifications au moment d\'enregistrer.</string>
+    <string name="a_session_reminders">Rappels de séance</string>
+    <string name="a_leave_demo_mode">Quitter le mode démo</string>
+    <string name="a_sharing_a_file_isn_t_available_on_this_build_use_copy_an">Le partage de fichier n\'est pas disponible sur cette version — utilise Copier, et colle le document où tu en as besoin.</string>
+    <string name="a_sharing_an_image_isn_t_available_on_this_build">Le partage d\'image n\'est pas disponible sur cette version.</string>
+    <string name="a_couldn_t_write_to_photos">Impossible d\'écrire dans Photos.</string>
+    <string name="a_saved_at_1_d_2_d_points_at_3_d_so_it_lands_in_photos_at">Enregistré à %1$d × %2$d points en %3$d×, pour arriver dans Photos à la taille qu\'attend une story.</string>
+    <string name="a_this_code_couldn_t_be_drawn_the_link_below_still_works">Ce code n\'a pas pu être dessiné. Le lien ci-dessous fonctionne toujours.</string>
+    <string name="a_copy_link">Copier le lien</string>
+    <string name="a_link_copied">Lien copié</string>
+    <string name="a_expanded">Déplié</string>
+    <string name="a_collapsed">Replié</string>
+    <string name="a_decrease">Diminuer</string>
+    <string name="a_increase">Augmenter</string>
+    <string name="a_seconds">secondes</string>
+    <string name="a_millimetres">millimètres</string>
+    <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target">Aucun max enregistré pour cette prise, donc rien ne s\'affiche comme cible pendant une séance. Ajoutes-en un dans Max.</string>
+    <string name="a_no_max_for_your_s_hand_so_those_pulls_show_no_target_add">Aucun max pour ta main %s, donc ces tirages n\'affichent aucune cible. Ajoutes-en un dans Max.</string>
+    <string name="a_d_days_ago">il y a %d jours</string>
+    <string name="a_last_week">la semaine dernière</string>
+    <string name="a_d_weeks_ago">il y a %d semaines</string>
+    <string name="a_d_months_ago">il y a %d mois</string>
+    <string name="a_over_a_year_ago">il y a plus d\'un an</string>
+    <string name="a_couldn_t_render_the_card_try_again">Impossible de dessiner la carte. Réessaie.</string>
+    <string name="a_your_routines_and_sessions_are_stored_on_this_device_the">Tes routines et tes séances sont stockées sur cet appareil. Elles ne se synchronisent pas entre appareils.</string>
+    <string name="a_this_routine_asks_for_d_a_day">Cette routine en demande %d par jour.</string>
+    <string name="a_the_big_word_is_the_hand_that_goes_on_the_edge_your_fing">Le mot en gros, c\'est la main qui va sur la réglette. Tes doigts pendent sous la paume en haut de l\'écran, donc la préhension se lit sans un mot.</string>
+    <string name="a_start_with_a_name_and_one_set_make_it_yours_then_come_ba">Commence par un nom et une série. Adapte la routine à tes envies, puis reviens tirer.</string>
+    <string name="a_allow_camera_access_in_settings_to_scan_a_routine_you_ca">Autorise l’accès à la caméra dans les réglages pour scanner une routine. Tu peux toujours ouvrir un lien de routine partagé.</string>
+    <string name="a_couldn_t_open_the_camera_try_opening_the_shared_routine">Impossible d’ouvrir la caméra. Essaie plutôt d’ouvrir le lien de routine partagé.</string>
+    <string name="a_point_your_camera_at_a_get_a_grip_routine_qr_code">Vise le QR code d’une routine Get a Grip avec ta caméra.</string>
+</resources>

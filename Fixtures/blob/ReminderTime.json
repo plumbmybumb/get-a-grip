@@ -1,0 +1,46 @@
+{
+  "type": "ReminderTime",
+  "description": "A bare Int on the wire — identity IS the time. Decoding goes through the clamping initializer, so a bad number can never become a notification at hour 47.",
+  "cases": [
+    {
+      "name": "08:00",
+      "input": "480",
+      "canonical": "480"
+    },
+    {
+      "name": "19:00",
+      "input": "1140",
+      "canonical": "1140"
+    },
+    {
+      "name": "midnight",
+      "input": "0",
+      "canonical": "0"
+    },
+    {
+      "name": "the last legal minute",
+      "input": "1439",
+      "canonical": "1439"
+    },
+    {
+      "name": "below the floor clamps to midnight",
+      "input": "-5",
+      "canonical": "0"
+    },
+    {
+      "name": "above the ceiling clamps to 23:59",
+      "input": "5000",
+      "canonical": "1439"
+    },
+    {
+      "name": "a whole double reads as the Int it is",
+      "input": "480.0",
+      "canonical": "480"
+    },
+    {
+      "name": "a string is not a minute count",
+      "input": "\"480\"",
+      "canonical": null
+    }
+  ]
+}

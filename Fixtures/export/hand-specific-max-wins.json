@@ -1,0 +1,80 @@
+{
+  "generatedOn" : 20693,
+  "maxes" : [
+    {
+      "day" : 20673,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 40,
+      "recordedAt" : "2026-08-08T08:00:00Z",
+      "side" : "both",
+      "source" : "measured"
+    },
+    {
+      "day" : 20683,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 36,
+      "recordedAt" : "2026-08-18T08:00:00Z",
+      "side" : "right",
+      "source" : "measured"
+    }
+  ],
+  "sessions" : [
+    {
+      "avgKg" : 18,
+      "completedReps" : 2,
+      "day" : 20693,
+      "id" : "00000000-0000-0000-0000-000000000003",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 20,
+      "plannedReps" : 2,
+      "reps" : [
+        {
+          "avgKg" : 18,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 20,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 16.2,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 18,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Daily no-hangs",
+      "startedAt" : "2026-08-28T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 20
+    }
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

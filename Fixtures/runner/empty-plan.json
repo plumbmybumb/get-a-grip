@@ -1,0 +1,8 @@
+{
+  "final": {"completedRepCount":0,"phase":"finished","results":[]},
+  "maxes": [],
+  "name": "empty-plan",
+  "plan": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Empty\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+  "steps": [{"cues":[{"type":"sessionCompleted"}],"event":{"type":"start"},"t":0}],
+  "timerOnly": false
+}
