@@ -2,7 +2,10 @@
 
 Package: `run.nuri.getagrip`; version name `1.0`, version code `1`.
 The signed AAB has been uploaded to Google Play's closed Alpha track and parsed
-successfully. This is a draft release, not an approved or available beta.
+successfully. All 15 publishing changes were submitted on 5 September 2026.
+Console shows Changes in review, with automated quick checks running before
+review. The beta is not yet approved or available to install. Managed publishing
+is off, so the closed track is set to publish after approval.
 
 ## Completed
 
@@ -40,18 +43,30 @@ successfully. This is a draft release, not an approved or available beta.
   location sharing, or age-restricted goods. Generated ratings include Everyone
   (ESRB), PEGI 3 and USK 16 (communication-risk descriptor).
 
-## Pending before submission
+## Submission and review
 
-- Foreground service video: actual connected-device session, start, background,
-  ongoing notification, return and end. Demo mode intentionally pauses in the
-  background and cannot demonstrate this permission. Hardware readiness was
-  confirmed by the owner, but the phone re-locked before recording. It was
-  displaying the WH-C06 (IF_B7); select Progressor for this demonstration.
-  No physical session has been started for the recording.
-- Final release review and submission. Console now reports one blocking error
-  (foreground service declaration). Native library symbols generate a
-  non-blocking warning; the bundle includes AndroidX native dependencies and
-  the Java/Kotlin ReTrace mapping, but no native symbols were available.
+- Owner-supplied `IMG_3777.MOV` demonstrates the Tindeq hardware, connection and
+  live force readings during a session. The complete 74-second recording and
+  narration were converted to a 1080 × 1920 H.264/AAC MP4 (about 43 MB).
+  It is hosted at an unlisted, noindex URL in the private website repository.
+- The connected-device foreground-service declaration includes that video.
+  Google saved it successfully. The release then had zero blocking errors.
+- Native library debug symbols remain an optional warning; Java/Kotlin ReTrace
+  mapping is included. No native symbols were available from these dependencies.
+- All 15 changes were sent for review: closed Alpha rollout, worldwide targeting,
+  group-based testers, listing, audience and content/privacy declarations.
+- Wait for Google review. Approval is not automatic. If review asks for a video
+  specifically showing background operation or the notification, record an
+  additional clip; the supplied video demonstrates foreground Bluetooth use.
+
+## Device follow-up
+
+The automated recording attempt did not produce a usable file. The user supplied
+its replacement. Before the phone was unplugged, its temporary plugged-in
+keep-awake setting had been enabled. Original value was 0; restore it when the
+USB phone is connected again. Do not modify any current workout to do so.
+The app was switched from WH-C06 to Progressor during the recording attempt.
+Notification permission was inspected but not changed.
 
 ## Links
 
