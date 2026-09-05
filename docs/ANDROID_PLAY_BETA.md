@@ -18,6 +18,10 @@ successfully. This is a draft release, not an approved or available beta.
 - Privacy URL, unrestricted access, no ads, no advertising ID, no government or
   financial features, activity/fitness health declaration, Health & Fitness
   category, and public support contacts saved in Play Console.
+- Website beta instructions and data-deletion pages are deployed and verified
+  on `nuri.run`; the beta page clearly says installation is pending approval.
+  The dedicated deletion URL is saved in the Data safety draft.
+- Android beta source and artwork are published in commit `8327298`.
 - Intended audience: 13–15, 16–17 and 18+, explicitly confirmed by the owner.
 - IARC questionnaire includes native routine QR exchange as user content sharing.
   No chat, moderation, public imagery, online content catalogue, purchases,
@@ -55,6 +59,8 @@ successfully. This is a draft release, not an approved or available beta.
   https://play.google.com/apps/testing/run.nuri.getagrip
 - Public source: https://github.com/plumbmybumb/get-a-grip
 - Privacy: https://nuri.run/getagrip/privacy
+- Beta instructions (live, release still pending): https://nuri.run/getagrip/android-beta
+- Deletion requests: https://nuri.run/getagrip/delete-data
 
 This new personal developer account requires at least 12 opted-in closed testers
 for 14 days before applying for production access. Group membership alone does
