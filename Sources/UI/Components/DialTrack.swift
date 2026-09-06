@@ -97,17 +97,8 @@ struct DialTrack: View {
         .accessibilityElement(children: .ignore)
         .accessibilityValue(isUnset ? String(localized: "Not set") : String(localized: "\(format(value)) \(spokenUnit)"))
         .accessibilityAdjustableAction { direction in
-            guard !values.isEmpty else { return }
-            let next: Int
-            if isUnset {
-                // An accessibility adjustment is the first interaction just like a
-                // drag. Start at the nearest edge in the direction requested, without
-                // making the hidden binding's placeholder a visible answer.
-                next = direction == .increment ? values.startIndex : values.index(before: values.endIndex)
-            } else {
-                next = nearestIndex + (direction == .increment ? 1 : -1)
-            }
-            guard values.indices.contains(next) else { return }
+            guard let next = Self.adjustedIndex(value: value, values: values, isUnset: isUnset,
+                                                increasing: direction == .increment) else { return }
             value = values[next]
             landings += 1
         }
@@ -174,15 +165,16 @@ struct DialTrack: View {
         return values.count > 1 ? .offLadder : nil
     }
 
-    /// Nearest, for the accessibility stepper and for deciding which way an adjust moves.
-    /// Never for DRAWING — see `exactIndex`.
-    private var nearestIndex: Int {
-        guard !values.isEmpty else { return 0 }
-        var best = 0
-        for index in values.indices where abs(values[index] - value) < abs(values[best] - value) {
-            best = index
+    /// A typed value between detents steps to its immediate neighbour in the requested
+    /// direction. Rounding first skipped a stop (23 mm → 30 mm instead of 25 mm).
+    static func adjustedIndex(value: Double, values: [Double], isUnset: Bool,
+                              increasing: Bool) -> Int? {
+        guard !values.isEmpty else { return nil }
+        if isUnset {
+            return increasing ? values.startIndex : values.index(before: values.endIndex)
         }
-        return best
+        return increasing ? values.firstIndex(where: { $0 > value })
+                          : values.lastIndex(where: { $0 < value })
     }
 
     /// Where an off-ladder value falls, interpolated between its neighbours so the mark

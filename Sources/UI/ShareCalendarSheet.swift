@@ -128,11 +128,21 @@ struct ShareCalendarSheet: View {
 
     @AppStorage("shareCardStyle") private var cardStyle: ShareCardStyle = .white
     @State private var includeBestPull = true
-    @State private var renderedImage: RenderedShareCalendar?
+    @State private var preparedImage: PreparedImage?
     @State private var savingToPhotos = false
     @State private var savedToPhotos = false
     @State private var photosAccessDenied = false
     @State private var photoSaveSuccessTick = 0
+
+    private var renderOptions: RenderOptions {
+        RenderOptions(style: cardStyle, includesBestPull: includeBestPull)
+    }
+
+    /// Gate synchronously with the preview, including the frame before its task runs.
+    private var renderedImage: RenderedShareCalendar? {
+        guard let preparedImage, preparedImage.options == renderOptions else { return nil }
+        return preparedImage.image
+    }
 
     var body: some View {
         NavigationStack {
@@ -175,14 +185,8 @@ struct ShareCalendarSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .onAppear {
-            if renderedImage == nil { renderImage() }
-        }
-        .onChange(of: includeBestPull) { _, _ in
-            renderImage()
-        }
-        .onChange(of: cardStyle) { _, _ in
-            renderImage()
+        .task(id: renderOptions) {
+            await renderImage()
         }
         .sensoryFeedback(.success, trigger: photoSaveSuccessTick)
     }
@@ -405,22 +409,35 @@ struct ShareCalendarSheet: View {
     /// The renderer is explicitly non-opaque, so the clear canvas — including the
     /// frosted panel's 0.72 alpha — survives all the way to the share sheet.
     @MainActor
-    private func renderImage() {
+    private func renderImage() async {
+        let options = renderOptions
         savedToPhotos = false
         photosAccessDenied = false
+        // Never share the previous options while the new PNG is being compressed.
+        preparedImage = nil
         let renderer = ImageRenderer(content: exportCard)
         renderer.isOpaque = false
         renderer.scale = 3
         renderer.proposedSize = ProposedViewSize(
             width: ShareCalendarExportCard.width,
             height: ShareCalendarExportCard.height)
-        guard let image = renderer.uiImage, let png = image.pngData() else {
-            renderedImage = nil
-            return
-        }
-        renderedImage = RenderedShareCalendar(
-            image: image,
-            file: ShareCalendarPNG(data: png))
+        guard let cgImage = renderer.cgImage else { return }
+        let png = await ShareImageEncoder.shared.pngData(for: cgImage)
+        // A newer selection owns the preview. Finishing older work must not replace it.
+        guard !Task.isCancelled, options == renderOptions, let png else { return }
+        preparedImage = PreparedImage(options: options, image: RenderedShareCalendar(
+            image: UIImage(cgImage: cgImage, scale: 3, orientation: .up),
+            file: ShareCalendarPNG(data: png)))
+    }
+
+    private struct RenderOptions: Equatable {
+        let style: ShareCardStyle
+        let includesBestPull: Bool
+    }
+
+    private struct PreparedImage {
+        let options: RenderOptions
+        let image: RenderedShareCalendar
     }
 }
 

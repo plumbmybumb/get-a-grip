@@ -68,41 +68,30 @@ struct HistoryView: View {
         return decoded
     }
 
-    /// Memoises `gripOptions`/`trendSeries`, keyed by routine + grip + a SIGNATURE of
-    /// `logs` that changes whenever a session lands or leaves.
-    ///
-    /// `RepsCache` above removed the JSON decode from the tap-a-chip path; this removes
-    /// the re-scan around it. Without it, selecting a grip re-walked every chartable rep
-    /// in the routine's whole history and reallocated a fresh filtered array — collapsed
-    /// from "once per chip" to "once per card" already, but still O(all reps) on the main
-    /// thread for a tap that changes nothing about the underlying history. At two years
-    /// of twice-daily training that is the shape CLAUDE.md warns about: "a button that
-    /// gets slower every week of training". Cache entries under a stale signature simply
-    /// stop being looked up rather than being evicted — the same bargain `RepsCache`
-    /// already makes, and cheap for a session-scoped cache on a personal app.
+    /// One generation of chart results. Preparing it once per body avoids hashing the
+    /// entire history for every card and every grip lookup. Dropping the old generation
+    /// also keeps repeated delete/undo/save cycles from accumulating stale series.
     private final class TrendCache {
+        var logIDs: [UUID] = []
         var gripOptions: [String: [GripOption]] = [:]
         var series: [String: [TrendPoint]] = [:]
+
+        func prepare(logIDs: [UUID]) {
+            guard self.logIDs != logIDs else { return }
+            self.logIDs = logIDs
+            gripOptions.removeAll(keepingCapacity: true)
+            series.removeAll(keepingCapacity: true)
+        }
     }
     @State private var trendCache = TrendCache()
 
-    /// Hashes the IDENTITY SET, not count-plus-newest: delete one session and then log
-    /// one dated earlier than the newest — both ordinary operations, the log sheet
-    /// lets you pick the day — and count and newest id are BOTH unchanged, so the old
-    /// key served the pre-delete series for the rest of the launch. Hashing n UUIDs is
-    /// orders of magnitude cheaper than the rep scan this memoises.
-    private var logsSignature: String {
-        var hasher = Hasher()
-        for log in logs { hasher.combine(log.id) }
-        return String(hasher.finalize())
-    }
-
     var body: some View {
+        trendCache.prepare(logIDs: logs.map(\.id))
         // A real `List` rather than `ScreenScaffold`'s ScrollView, for exactly the
         // reason Maxes is one: swipe-to-delete, the row-slide physics and the full-swipe
         // commit all come from UIKit, and a hand-rolled drag gesture never matches them.
         // The two summary cards are just rows; nothing here needs `scrollTo`.
-        NavigationStack {
+        return NavigationStack {
             List {
                 if logs.isEmpty {
                     emptyCard.houseListRow(top: 12, bottom: 10)
@@ -246,16 +235,15 @@ struct HistoryView: View {
         .accessibilityLabel("Export for analysis")
     }
 
-    /// Freeze the selected model values using cached rep detail. The sheet formats
-    /// these values on a background task, only when its range changes.
+    /// Freeze cheap model fields at the tap; the sheet decodes blobs and formats
+    /// them on a worker, keeping long-history exports off the interaction path.
     private func makeExportRequest(workout: WorkoutLog? = nil) -> AnalysisExportRequest {
-        let input = AnalysisExportAssembler.input(
+        let snapshot = AnalysisExportAssembler.snapshot(
             logs: workout.map { [$0] } ?? logs,
             maxRecords: maxRecords,
-            reps: { reps(for: $0) },
             displayName: { displayName(of: $0) },
             today: clock.today)
-        return AnalysisExportRequest(input: input, isWorkout: workout != nil)
+        return AnalysisExportRequest(snapshot: snapshot, isWorkout: workout != nil)
     }
 
     private static let recentSessionLimit = 10
@@ -834,10 +822,10 @@ struct HistoryView: View {
     /// Every grip in ONE routine with at least one chartable rep, most-trained first —
     /// so the chip you want is usually already the selected one.
     ///
-    /// Memoised on `routineKey` + `logsSignature`: without it, every tap on any chip in
+    /// Memoised per routine in the current history generation: without it, every tap in
     /// the deck re-walked and re-decoded this routine's whole chartable history again.
     private func gripOptions(in logs: [WorkoutLog], routineKey: String) -> [GripOption] {
-        let cacheKey = "\(routineKey)|\(logsSignature)"
+        let cacheKey = routineKey
         if let cached = trendCache.gripOptions[cacheKey] { return cached }
         var counts: [String: (grip: GripSpec, count: Int)] = [:]
         for log in logs {
@@ -876,13 +864,13 @@ struct HistoryView: View {
     /// session for the same reason `WorkoutLog.avgKg` is: a rep that dropped off after
     /// a second must not weigh as much as a full hang.
     ///
-    /// Memoised on `routineKey` + `grip` + `logsSignature`, and the held/weighted sums
+    /// Memoised per routine and grip in the current generation; the held/weighted sums
     /// fold in ONE pass per log rather than a `.filter` followed by two `.reduce`s over
     /// the filtered result — the same "walked a dozen times to draw one chart" cost the
     /// cache above exists to spare, now closed at both ends.
     private func trendSeries(in logs: [WorkoutLog], grip: String?, routineKey: String) -> [TrendPoint] {
         guard let grip else { return [] }
-        let cacheKey = "\(routineKey)|\(grip)|\(logsSignature)"
+        let cacheKey = "\(routineKey)|\(grip)"
         if let cached = trendCache.series[cacheKey] { return cached }
         let result = logs.reversed().compactMap { log -> TrendPoint? in
             var held = 0.0

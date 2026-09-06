@@ -134,6 +134,39 @@ class BLELifecycleTests {
         )
     }
 
+    @Test
+    fun tareKeepsTraceAndClockAcrossDeviceCounterRestart() {
+        for (kind in listOf(GaugeKind.progressor, GaugeKind.whc06)) {
+            val client = RecordingProgressorClient(kind)
+            val device = DeviceStore(client = client, scope = inertScope(), clock = FakeClock())
+            client.setState(ProgressorConnectionState.Connected)
+            device.startStreaming(StreamStartCause.initial)
+            client.emit(ProgressorEvent.Sample(ForceSample(kg = 3.0, deviceMicros = 5_000_000u)))
+            client.emit(ProgressorEvent.Sample(ForceSample(kg = 4.0, deviceMicros = 5_012_500u)))
+            val before = device.trace.toList()
+            val commandCount = client.commands.size
+
+            device.tare()
+
+            assertEquals(before, device.trace, "tare must not erase measured history")
+            assertEquals(0.0, device.peakKg)
+            assertEquals(
+                if (kind == GaugeKind.progressor) listOf(ProgressorCommand.tare, ProgressorCommand.startWeightMeasurement)
+                else listOf(ProgressorCommand.tare),
+                client.commands.drop(commandCount),
+            )
+            client.emit(ProgressorEvent.Sample(ForceSample(kg = 0.0, deviceMicros = 0u)))
+            assertEquals(before, device.trace.take(before.size))
+            assertEquals(before.size + 1, device.trace.size)
+            assertTrue(device.trace.last().t > before.last().t)
+            assertTrue(device.trace.last().t - before.last().t < 0.35)
+            assertEquals(0.0, device.trace.last().kg)
+
+            device.resetPeak()
+            assertTrue(device.trace.isEmpty(), "a new measurement still clears its graph")
+        }
+    }
+
     /// The flag itself, not only the pure threshold function: a real sample delivered
     /// through the client has to flip `DeviceStore.isLoadedForTare` at that same threshold,
     /// and drop back once the load clears.

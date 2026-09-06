@@ -27,7 +27,6 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Scale
 import androidx.compose.material.icons.outlined.SettingsInputAntenna
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,7 +68,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import java.util.Locale
 import run.nuri.getagrip.engine.GaugeKind
-import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.store.LocalSettingsStore
@@ -78,7 +76,6 @@ import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.gauge.GaugeScreen
 import run.nuri.getagrip.ui.l10n.tr
-import run.nuri.getagrip.ui.maxes.MaxesListScreen
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.tour.LocalTourController
@@ -86,7 +83,6 @@ import run.nuri.getagrip.ui.tour.LocalTourController
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_GAUGE_PICKER = "gauge-picker"
 private const val ROUTE_LIVE_GAUGE = "live-gauge"
-private const val ROUTE_MAXES = "maxes"
 
 /// The Settings tab: what the gauge is doing, a door to choosing one, a door to the live
 /// gauge, and the statements the app owes whoever is using it.
@@ -101,13 +97,6 @@ private const val ROUTE_MAXES = "maxes"
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
-    /// The max composer's door. Hosted by `RootTabView`, not here: the composer hands off to
-    /// the full-screen measure host and its draft has to outlive that hand-off, which only a
-    /// `remember` above every presentation can do. Null means "no grip in mind".
-    onAddMax: (GripSpec?) -> Unit = {},
-    /// The spotlight tour's anchor for the Maxes row. Passed IN, so this screen never reads a
-    /// tour and stays previewable.
-    maxesRowAnchor: Modifier = Modifier,
 ) {
     val nav = rememberNavController()
     NavHost(nav, startDestination = ROUTE_SETTINGS, modifier = modifier.fillMaxSize()) {
@@ -115,14 +104,7 @@ fun SettingsScreen(
             SettingsRoot(
                 onOpenGaugePicker = { nav.navigate(ROUTE_GAUGE_PICKER) },
                 onOpenLiveGauge = { nav.navigate(ROUTE_LIVE_GAUGE) },
-                onOpenMaxes = { nav.navigate(ROUTE_MAXES) },
-                maxesRowAnchor = maxesRowAnchor,
             )
-        }
-        composable(ROUTE_MAXES) {
-            InnerScreen(title = tr("Maxes"), onBack = { nav.popBackStack() }) { padding ->
-                MaxesListScreen(onAddMax = onAddMax, modifier = Modifier.padding(padding))
-            }
         }
         composable(ROUTE_GAUGE_PICKER) {
             InnerScreen(title = tr("Gauge"), onBack = { nav.popBackStack() }) { padding ->
@@ -143,8 +125,6 @@ fun SettingsScreen(
 private fun SettingsRoot(
     onOpenGaugePicker: () -> Unit,
     onOpenLiveGauge: () -> Unit,
-    onOpenMaxes: () -> Unit,
-    maxesRowAnchor: Modifier = Modifier,
 ) {
     val palette = LocalGripPalette.current
     val device = LocalDeviceStore.current
@@ -214,14 +194,6 @@ private fun SettingsRoot(
                 title = tr("Live gauge"),
                 subtitle = tr("Pull and watch the force in real time"),
                 onClick = onOpenLiveGauge,
-            )
-            NavRow(
-                icon = Icons.Outlined.Scale,
-                iconTint = palette.graphite,
-                title = tr("Maxes"),
-                subtitle = tr("What you can pull on each grip"),
-                onClick = onOpenMaxes,
-                modifier = maxesRowAnchor,
             )
 
             SupportCard(

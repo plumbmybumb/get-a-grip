@@ -1,6 +1,6 @@
 # App use terms and acceptance
 
-`current/agreement-2026-09-06.json` is bundled byte-for-byte by both apps. It contains
+`current/agreement-2026-09-06-r2.json` is bundled byte-for-byte by both apps. It contains
 English and French Terms, Privacy and agreement-screen copy. Both loaders compute
 SHA-256 over those exact UTF-8 bytes. The website's matching version must be identical.
 

@@ -7,6 +7,8 @@ import android.content.pm.ActivityInfo
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -49,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,6 +71,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -119,6 +123,7 @@ import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.GripPalette
 import run.nuri.getagrip.ui.theme.LocalGripPalette
+import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.tour.LocalTourController
 import run.nuri.getagrip.ui.tour.TourAct
@@ -156,7 +161,7 @@ fun RunnerHost(
     /// Everything force-shaped leaves the screen rather than sitting there at 0.0 kg, which
     /// would read as a broken gauge instead of an absent one.
     timerOnly: Boolean = false,
-    onFinished: (run.nuri.getagrip.runner.SessionOutcome, SessionSummaryDecision) -> Unit,
+    onFinished: suspend (run.nuri.getagrip.runner.SessionOutcome, SessionSummaryDecision) -> Boolean,
     onExit: () -> Unit,
 ) {
     val device = LocalDeviceStore.current
@@ -264,8 +269,9 @@ fun RunnerHost(
                 sessionsPerDayTarget = sessionsPerDayTarget,
                 modifier = Modifier.safeDrawingPadding(),
                 onDone = { finishedOutcome, decision ->
-                    onFinished(finishedOutcome, decision)
-                    onExit()
+                    val success = onFinished(finishedOutcome, decision)
+                    if (success) onExit()
+                    success
                 },
             )
         } else {
@@ -837,7 +843,7 @@ private fun NoSignalNotice(device: DeviceStore) {
 ///
 /// The ring depletes per PHASE, not per rep: rep progress is hold-only and is zero through
 /// all of lead-in and rest, which made the old ring empty exactly when the timer-only user
-/// needed it most. The snapshot's fraction uses the same countdown clock as the numeral, so
+/// needed it most. The ring's fraction uses the same countdown clock as the numeral, so
 /// the two channels cannot drift.
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
@@ -846,7 +852,6 @@ private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
     tint: Color,
     palette: GripPalette,
 ) {
-    val fraction = (snapshot.phaseRemainingFraction ?: 0.0).toFloat()
     val working = isTimerWorking(snapshot)
     val strokeDp = if (working) 12.dp else 7.dp
     val spoken = tr(
@@ -871,37 +876,59 @@ private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
                 .aspectRatio(1f),
             contentAlignment = Alignment.Center,
         ) {
-            Canvas(Modifier.fillMaxSize()) {
-                val stroke = strokeDp.toPx()
-                val inset = stroke / 2f
-                val arcSize = Size(size.width - stroke, size.height - stroke)
-                drawArc(
-                    color = palette.inkTertiary.copy(alpha = 0.18f),
-                    startAngle = 0f,
-                    sweepAngle = 360f,
-                    useCenter = false,
-                    topLeft = Offset(inset, inset),
-                    size = arcSize,
-                    style = Stroke(width = stroke),
-                )
-                if (fraction > 0f) {
-                    drawArc(
-                        color = tint,
-                        startAngle = -90f,
-                        sweepAngle = 360f * fraction,
-                        useCenter = false,
-                        topLeft = Offset(inset, inset),
-                        size = arcSize,
-                        style = Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
-                    )
-                }
-            }
+            LiveTimerRing(session, snapshot.phase, strokeDp, tint, palette)
             Column(
                 Modifier.padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 CountdownNumeral(snapshot.secondsShown, palette.inkPrimary, palette)
                 CapsLabel(promptText(snapshot, timerOnly = true, isConnected = false), color = tint)
+            }
+        }
+    }
+}
+
+/** Only this leaf reads the 10 Hz ring fraction. Animation frames invalidate drawing,
+ * leaving the timer numeral, buttons and the screen on their coarse snapshot cadence.
+ */
+@Composable
+private fun LiveTimerRing(
+    session: RunnerSession,
+    phase: RunnerPhase,
+    strokeDp: Dp,
+    tint: Color,
+    palette: GripPalette,
+) {
+    val reduced = run.nuri.getagrip.ui.theme.rememberReduceMotion()
+    key(phase) {
+        val fraction by animateFloatAsState(
+            targetValue = (session.phaseRemainingFraction ?: 0.0).toFloat(),
+            animationSpec = if (reduced) snap() else Motion.live(),
+            label = "Timer phase remaining",
+        )
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = strokeDp.toPx()
+            val inset = stroke / 2f
+            val arcSize = Size(size.width - stroke, size.height - stroke)
+            drawArc(
+                color = palette.inkTertiary.copy(alpha = 0.18f),
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = arcSize,
+                style = Stroke(width = stroke),
+            )
+            if (fraction > 0f) {
+                drawArc(
+                    color = tint,
+                    startAngle = -90f,
+                    sweepAngle = 360f * fraction,
+                    useCenter = false,
+                    topLeft = Offset(inset, inset),
+                    size = arcSize,
+                    style = Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
+                )
             }
         }
     }

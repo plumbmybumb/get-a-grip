@@ -173,10 +173,11 @@ struct TargetBandRow: View {
                                 format: { "\(kgText($0)) kg" }, spokenUnit: String(localized: "kilograms"))
                 } else {
                     BandTrimmer(lo: trimLoBinding, hi: trimHiBinding,
-                                scale: 0.05...1.0, step: 0.05,
+                                scale: SetPlan.percentRange, step: 0.05,
                                 format: { "\(Int(($0 * 100).rounded())) %" },
                                 spokenUnit: String(localized: "percent of max"))
                 }
+                exactBounds
             }
 
             if let caption {
@@ -188,6 +189,34 @@ struct TargetBandRow: View {
                                      ? StatusTint.armed : Ink.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    /// Typing keeps exact values; only dragging snaps to the trimmer's detents.
+    private var exactBounds: some View {
+        let isPercent = unit == .percent
+        let bounds: ClosedRange<Double> = isPercent ? 1...100 : 0...kgScaleTop
+        return VStack(spacing: 0) {
+            ValueRow(title: String(localized: "Lower bound"), unit: isPercent ? "%" : String(localized: "kg"),
+                     value: exactBound(lower: true), range: bounds, decimals: isPercent ? 0 : 1,
+                     control: .none)
+            ValueRow(title: String(localized: "Upper bound"), unit: isPercent ? "%" : String(localized: "kg"),
+                     value: exactBound(lower: false), range: bounds, decimals: isPercent ? 0 : 1,
+                     control: .none)
+        }
+    }
+
+    private func exactBound(lower: Bool) -> Binding<Double> {
+        Binding {
+            let current = unit == .percent ? (band ?? 0.20...0.30) : (kgBand ?? Self.defaultKgBand)
+            return (lower ? current.lowerBound : current.upperBound) * (unit == .percent ? 100 : 1)
+        } set: { typed in
+            let percent = unit == .percent
+            let current = percent ? (band ?? 0.20...0.30) : (kgBand ?? Self.defaultKgBand)
+            let value = percent ? typed / 100 : typed
+            // Crossing the other end moves it too, so labels never silently swap roles.
+            let next = lower ? value...max(value, current.upperBound) : min(value, current.lowerBound)...value
+            if percent { apply(next) } else { applyKg(next) }
         }
     }
 

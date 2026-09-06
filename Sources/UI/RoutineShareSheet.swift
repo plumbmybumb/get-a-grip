@@ -75,8 +75,8 @@ struct RoutineShareSheet: View {
             .safeAreaInset(edge: .bottom) { shareAction }
         }
         .presentationDetents([.medium, .large])
-        .onAppear {
-            if rendered == nil, !renderFailed { renderImage() }
+        .task {
+            if rendered == nil, !renderFailed { await renderImage() }
         }
     }
 
@@ -177,7 +177,7 @@ struct RoutineShareSheet: View {
     /// input that could change under it. `isOpaque = false` keeps the card's rounded
     /// corners transparent instead of squaring the PNG off with white.
     @MainActor
-    private func renderImage() {
+    private func renderImage() async {
         // The QR must have drawn before the card is baked — a failed generation renders
         // the fallback SENTENCE, and exporting a white card whose only content is an
         // error message would hand a friend exactly that.
@@ -191,12 +191,18 @@ struct RoutineShareSheet: View {
         renderer.proposedSize = ProposedViewSize(
             width: RoutineShareExportCard.width,
             height: RoutineShareExportCard.height)
-        guard let image = renderer.uiImage, let png = image.pngData() else {
+        guard let cgImage = renderer.cgImage else {
+            renderFailed = true
+            return
+        }
+        let png = await ShareImageEncoder.shared.pngData(for: cgImage)
+        guard !Task.isCancelled else { return }
+        guard let png else {
             renderFailed = true
             return
         }
         rendered = RenderedRoutineShare(
-            image: image,
+            image: UIImage(cgImage: cgImage, scale: 3, orientation: .up),
             file: RoutineSharePNG(data: png))
     }
 }

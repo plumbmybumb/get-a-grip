@@ -392,9 +392,11 @@ object PlanMath {
         var count = 0
         for (set in live.sets) {
             if (seen.contains(set.grip.key)) continue
-            seen.add(set.grip.key)
             val sides = if (live.handMode.sideCount > 1) listOf(Side.left, Side.right) else listOf(Side.both)
-            if (sides.any { targetBand(set, live, it, maxes) == null }) count += 1
+            if (sides.any { targetBand(set, live, it, maxes) == null }) {
+                seen.add(set.grip.key)
+                count += 1
+            }
         }
         return count
     }
@@ -404,6 +406,13 @@ object PlanMath {
     /// is `NumberFormat` on the DEFAULT locale, not `Fmt.fixed` (which is the locale-free
     /// wire formatter and belongs to keys and exports). Tests that assert these strings
     /// must pin `Locale.US`.
+    fun missingBenchmarkGripCount(plan: SessionPlan, maxes: MaxTable): Int {
+        val live = plan.executable
+        return untargetedGripCount(live.copy(sets = live.sets.filter {
+            it.targetBand == null && targetPercent(it, live) != null
+        }), maxes)
+    }
+
     fun bandText(band: ClosedFloatingPointRange<Double>, withUnit: Boolean = true): String {
         val formatter = NumberFormat.getNumberInstance(Locale.getDefault()).apply {
             minimumFractionDigits = 1

@@ -20,7 +20,7 @@
     {
       "name": "every rhythm value clamps, and a zero threshold cannot exist",
       "input": "{\"name\":\"Clamped\",\"sets\":[],\"holdSeconds\":1,\"restSeconds\":100000,\"setBreakSeconds\":-5,\"leadInSeconds\":900,\"thresholdKg\":0}",
-      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":3,\"leadInSeconds\":60,\"name\":\"Clamped\",\"pausesOutsideTargetBand\":true,\"restSeconds\":600,\"setBreakSeconds\":0,\"sets\":[],\"thresholdKg\":0.1,\"waitForReleaseBeforeRest\":true}"
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":1,\"leadInSeconds\":60,\"name\":\"Clamped\",\"pausesOutsideTargetBand\":true,\"restSeconds\":600,\"setBreakSeconds\":0,\"sets\":[],\"thresholdKg\":0.1,\"waitForReleaseBeforeRest\":true}"
     },
     {
       "name": "one broken element costs the whole `sets` key, because it is NESTED",
@@ -41,6 +41,26 @@
       "name": "not an object at all",
       "input": "42",
       "canonical": null
+    },
+    {
+      "name": "1-second hold survives decoding",
+      "input": "{\"name\":\"Daily no-hangs\",\"sets\":[],\"handMode\":\"alternateEachRep\",\"holdSeconds\":1,\"restSeconds\":20,\"setBreakSeconds\":60,\"leadInSeconds\":5,\"thresholdKg\":2}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":1,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}"
+    },
+    {
+      "name": "2-second hold survives decoding",
+      "input": "{\"name\":\"Daily no-hangs\",\"sets\":[],\"handMode\":\"alternateEachRep\",\"holdSeconds\":2,\"restSeconds\":20,\"setBreakSeconds\":60,\"leadInSeconds\":5,\"thresholdKg\":2}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":2,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}"
+    },
+    {
+      "name": "typed upper limits survive decoding",
+      "input": "{\"name\":\"Daily no-hangs\",\"sets\":[],\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"restSeconds\":20,\"setBreakSeconds\":900,\"leadInSeconds\":5,\"thresholdKg\":30}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":900,\"sets\":[],\"thresholdKg\":30,\"waitForReleaseBeforeRest\":true}"
+    },
+    {
+      "name": "excessive set break and threshold still clamp",
+      "input": "{\"name\":\"Daily no-hangs\",\"sets\":[],\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"restSeconds\":20,\"setBreakSeconds\":901,\"leadInSeconds\":5,\"thresholdKg\":31}",
+      "canonical": "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":900,\"sets\":[],\"thresholdKg\":30,\"waitForReleaseBeforeRest\":true}"
     }
   ]
 }

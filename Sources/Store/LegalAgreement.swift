@@ -21,7 +21,7 @@ struct LegalBundle: Decodable {
     let ui: [String: [String: String]]
 
     static let loaded: (document: LegalBundle, fingerprint: String)? = {
-        guard let url = Bundle.main.url(forResource: "agreement-2026-09-06", withExtension: "json"),
+        guard let url = Bundle.main.url(forResource: "agreement-2026-09-06-r2", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let document = try? JSONDecoder().decode(LegalBundle.self, from: data) else { return nil }
         return (document, SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined())

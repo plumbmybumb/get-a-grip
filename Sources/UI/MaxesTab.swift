@@ -12,10 +12,8 @@ import SwiftUI
 /// `MaxRecord` is append-only precisely so this screen costs nothing — every max ever
 /// recorded is still there, and a card here is just one grip's rows drawn as a curve.
 ///
-/// Editing and deleting numbers deliberately stays in Settings › Maxes (Nuri,
-/// 2026-08-10: "I like the flow there"). This tab is see-and-test: the curves, the
-/// deltas, and a Measure button per grip that opens the SAME composer Settings uses —
-/// one door to writing a max, two places to reach it from.
+/// Manage opens the saved-record list within this tab; charts and testing stay one
+/// back gesture away. Both screens use the same append-only max records.
 ///
 /// The WORKING max is the NEWEST record, not the highest: a benchmark that tests lower
 /// honestly lowers your percentage targets too. Best-ever is shown beside it as the PR.
@@ -35,28 +33,41 @@ struct MaxesTab: View {
         let gripGroups = groups
         let untestedInvitations = invitations
         ScreenScaffold(title: String(localized: "Maxes"), subtitle: subtitle) {
-            if gripGroups.isEmpty && untestedInvitations.isEmpty {
-                // The tour anchors the empty card too — a first-run tour arrives here
-                // with no maxes, and a spotlight with nothing to light is a black scrim.
-                emptyCard.tourAnchor(.maxesCurves).staggerIn(0)
-            } else {
-                ForEach(Array(gripGroups.enumerated()), id: \.element.id) { index, group in
-                    if index == 0 {
-                        gripCard(group).tourAnchor(.maxesCurves).staggerIn(index)
-                    } else {
-                        gripCard(group).staggerIn(index)
+            VStack(alignment: .leading, spacing: Metrics.spacing) {
+                if gripGroups.isEmpty && untestedInvitations.isEmpty {
+                    // The tour anchors the empty card too — a first-run tour arrives here
+                    // with no maxes, and a spotlight with nothing to light is a black scrim.
+                    emptyCard.tourAnchor(.maxesCurves).staggerIn(0)
+                } else {
+                    ForEach(Array(gripGroups.enumerated()), id: \.element.id) { index, group in
+                        if index == 0 {
+                            gripCard(group).tourAnchor(.maxesCurves).staggerIn(index)
+                        } else {
+                            gripCard(group).staggerIn(index)
+                        }
                     }
-                }
-                ForEach(Array(untestedInvitations.enumerated()), id: \.element.key) { index, grip in
-                    // First-run tours land here with routines but no maxes — the
-                    // leading invitation is the spotlight's home then.
-                    if gripGroups.isEmpty, index == 0 {
-                        invitationCard(grip).tourAnchor(.maxesCurves).staggerIn(0)
-                    } else {
-                        invitationCard(grip).staggerIn(gripGroups.count)
+                    ForEach(Array(untestedInvitations.enumerated()), id: \.element.key) { index, grip in
+                        // First-run tours land here with routines but no maxes — the
+                        // leading invitation is the spotlight's home then.
+                        if gripGroups.isEmpty, index == 0 {
+                            invitationCard(grip).tourAnchor(.maxesCurves).staggerIn(0)
+                        } else {
+                            invitationCard(grip).staggerIn(gripGroups.count)
+                        }
                     }
+                    footnote
                 }
-                footnote
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        MaxesView()
+                    } label: {
+                        Text("Manage")
+                    }
+                    .accessibilityLabel("Manage maxes")
+                    .tourAnchor(.maxesManage)
+                }
             }
         }
         .sheet(item: $measuring) { target in

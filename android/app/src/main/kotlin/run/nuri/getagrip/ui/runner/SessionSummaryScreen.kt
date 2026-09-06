@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import run.nuri.getagrip.ui.theme.InstrumentSurface as Surface
@@ -37,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -63,6 +73,7 @@ import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.runner.MaxCandidate
 import run.nuri.getagrip.runner.SessionOutcome
 import run.nuri.getagrip.runner.SessionSummaryDecision
+import run.nuri.getagrip.ui.components.EffortPicker
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.FingerGlyph
 import run.nuri.getagrip.ui.components.HoldToDiscardButton
@@ -87,12 +98,14 @@ fun SessionSummaryScreen(
     outcome: SessionOutcome,
     sessionsPerDayTarget: Int,
     modifier: Modifier = Modifier,
-    onDone: (SessionOutcome, SessionSummaryDecision) -> Unit,
+    onDone: suspend (SessionOutcome, SessionSummaryDecision) -> Boolean,
 ) {
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
     var grade by remember { mutableStateOf<RPE?>(null) }
     var finished by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var saveFailed by remember { mutableStateOf(false) }
 
     /// FROZEN at first appearance — recording a candidate updates the max table, and a live
     /// computation would then drop the row it should be flipping to a checkmark.
@@ -107,99 +120,96 @@ fun SessionSummaryScreen(
         // caller's save round-trips.
         if (finished) return
         finished = true
-        onDone(
-            outcome,
-            SessionSummaryDecision(
-                save = save && outcome.didAnyWork,
-                rpe = if (save) grade else null,
-                newMaxes = if (save) candidates.filter { it.id in chosenMaxIDs } else emptyList(),
-            ),
-        )
+        scope.launch {
+            val success = onDone(
+                outcome,
+                SessionSummaryDecision(
+                    save = save && outcome.didAnyWork,
+                    rpe = if (save) grade else null,
+                    newMaxes = if (save) candidates.filter { it.id in chosenMaxIDs } else emptyList(),
+                ),
+            )
+            saveFailed = !success
+            if (!success) finished = false
+        }
     }
 
-    Column(
-        modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Metrics.hPadding, vertical = Metrics.spacing),
-        verticalArrangement = Arrangement.spacedBy(Metrics.spacing),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            CapsLabel(outcome.routineName)
-            Text(
-                if (outcome.didAnyWork) tr("Session done") else tr("Session ended"),
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = palette.inkPrimary,
-            )
-            if (sessionsPerDayTarget > 1) {
+    Column(modifier.fillMaxSize()) {
+        Column(
+            Modifier.weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Metrics.hPadding, vertical = Metrics.spacing),
+            verticalArrangement = Arrangement.spacedBy(Metrics.spacing),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                CapsLabel(outcome.routineName)
                 Text(
-                    tr("This routine asks for %d a day.", sessionsPerDayTarget),
+                    if (outcome.didAnyWork) tr("Session done") else tr("Session ended"),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = palette.inkPrimary,
+                )
+                if (sessionsPerDayTarget > 1) {
+                    Text(
+                        tr("This routine asks for %d a day.", sessionsPerDayTarget),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.inkTertiary,
+                    )
+                }
+            }
+
+            Stats(
+                completed = outcome.completedReps,
+                planned = outcome.plannedReps,
+                heldSeconds = heldSeconds,
+                peakKg = outcome.peakKg,
+                timerOnly = outcome.timerOnly,
+                palette = palette,
+            )
+
+            if (outcome.didAnyWork && candidates.isNotEmpty()) {
+                NewMaxCard(candidates, chosenMaxIDs, palette) { candidate ->
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    chosenMaxIDs = if (candidate.id in chosenMaxIDs) chosenMaxIDs - candidate.id else chosenMaxIDs + candidate.id
+                }
+            }
+
+            if (outcome.didAnyWork) {
+                GradeCard(grade, palette) { level ->
+                    grade = level
+                }
+            }
+
+            SetBreakdown(reps, palette)
+        }
+        // This sibling reserves its own space; expanded details scroll above the actions.
+        Column(
+            Modifier.fillMaxWidth()
+                .padding(horizontal = Metrics.hPadding, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (saveFailed) {
+                Text(tr("Couldn't save this workout. Please try again."),
+                     color = palette.armed, style = MaterialTheme.typography.bodySmall)
+            }
+            PrimaryButton(
+                title = if (outcome.didAnyWork) tr("Save and finish") else tr("Finish"),
+                modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
+            ) { finish(save = true) }
+
+            if (!outcome.didAnyWork) {
+                Text(
+                    tr("Nothing was held, so there's nothing to log."),
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.inkTertiary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
                 )
+            } else {
+                HoldToDiscardButton { finish(save = false) }
             }
         }
-
-        Stats(
-            completed = outcome.completedReps,
-            planned = outcome.plannedReps,
-            heldSeconds = heldSeconds,
-            peakKg = outcome.peakKg,
-            timerOnly = outcome.timerOnly,
-            palette = palette,
-        )
-
-        if (outcome.didAnyWork && candidates.isNotEmpty()) {
-            NewMaxCard(candidates, chosenMaxIDs, palette) { candidate ->
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                chosenMaxIDs = chosenMaxIDs + candidate.id
-            }
-        }
-
-        if (outcome.didAnyWork) {
-            GradeCard(grade, palette) { level ->
-                // Tapping the same grade clears it — the answer stays genuinely optional
-                // after you've given one.
-                grade = if (grade == level) null else level
-                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-            }
-        }
-
-        SetBreakdown(reps, palette)
-
-        PrimaryButton(
-            title = if (outcome.didAnyWork) tr("Save and finish") else tr("Finish"),
-            modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
-        ) { finish(save = true) }
-
-        if (!outcome.didAnyWork) {
-            Text(
-                tr("Nothing was held, so there's nothing to log."),
-                style = MaterialTheme.typography.bodySmall,
-                color = palette.inkTertiary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            // **THROW IT AWAY.** A session you were pulled out of halfway is not training, and
-            // logging it drags a bad number through every average and marks the day done when
-            // it was not (Nuri, 2026-08-09: "just in case you get interrupted").
-            //
-            // A HOLD, and the same 0.9 s hold as ending a session, because it is the same kind
-            // of decision: irreversible, taken with chalk on your hands, and never something a
-            // mis-tap should do. There is no confirmation dialog for the same reason there is
-            // none on End.
-            HoldToDiscardButton { finish(save = false) }
-            Text(
-                tr("Nothing is saved. The session is gone."),
-                style = MaterialTheme.typography.labelMedium,
-                color = palette.inkTertiary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        Spacer(Modifier.size(8.dp))
     }
 }
 
@@ -276,17 +286,19 @@ private fun Stat(
             }
         } else {
             Column(
-                Modifier.padding(horizontal = 12.dp, vertical = 18.dp),
+                Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
             ) {
+                // Bottom alignment keeps values level if one translated label wraps,
+                // without reserving an empty second label line at normal sizes.
                 Text(
                     title,
                     style = MaterialTheme.typography.labelMedium,
                     color = palette.inkSecondary,
                     textAlign = TextAlign.Center,
-                    minLines = 2,
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 StatValue(value, palette)
                 Spacer(Modifier.height(4.dp))
                 // Reserve the same unit line in all three cards so values share a baseline.
@@ -321,22 +333,35 @@ private fun NewMaxCard(
     palette: GripPalette,
     onSave: (MaxCandidate) -> Unit,
 ) {
-    Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card) {
-        Column(
-            Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            CapsLabel(if (chosen.isEmpty()) tr("Harder than your max") else tr("New maxes"))
-            // Unsaved first, then the ones already taken — a row that flips to a checkmark
-            // stays where it is rather than jumping to the bottom under the thumb.
-            for (candidate in candidates.sortedBy { it.id in chosen }) {
-                MaxRow(candidate, saved = candidate.id in chosen, palette = palette) { onSave(candidate) }
+    var expanded by remember { mutableStateOf(false) }
+    Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.armed.copy(alpha = 0.05f).compositeOver(palette.card)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 44.dp)
+                    .clickable(role = Role.Button) { expanded = !expanded }
+                    .semantics {
+                        contentDescription = L10n.tr("New peaks to review")
+                        stateDescription = L10n.tr(if (expanded) "Expanded" else "Collapsed")
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(tr("New peaks to review"), style = MaterialTheme.typography.titleSmall,
+                     color = palette.armed, modifier = Modifier.weight(1f))
+                Text(candidates.size.toString(), color = palette.armed)
+                Icon(if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                     contentDescription = null, tint = palette.armed)
             }
-            Text(
-                tr("Your percent targets follow whatever you save here."),
-                style = MaterialTheme.typography.labelMedium,
-                color = palette.inkTertiary,
-            )
+            if (expanded) {
+                Text(tr("Select maximum efforts to use for future targets. Saved with this workout."),
+                     style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
+                Column {
+                    candidates.forEachIndexed { index, candidate ->
+                        MaxRow(candidate, saved = candidate.id in chosen, palette = palette) { onSave(candidate) }
+                        if (index < candidates.lastIndex) HorizontalDivider(color = palette.inkTertiary.copy(alpha = 0.15f))
+                    }
+                }
+            }
         }
     }
 }
@@ -348,45 +373,38 @@ private fun MaxRow(
     palette: GripPalette,
     onSave: () -> Unit,
 ) {
-    FlowRow(
-        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        itemVerticalAlignment = Alignment.CenterVertically,
+    Row(
+        Modifier.fillMaxWidth()
+            .selectable(selected = saved, role = Role.Checkbox, onClick = onSave)
+            .semantics {
+                contentDescription = sideLine(candidate)
+                stateDescription = L10n.tr(if (saved) "Selected" else "Use as max")
+            }
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.widthIn(min = 180.dp * LocalDensity.current.fontScale).weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                sideLine(candidate),
-                style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
-                fontWeight = FontWeight.SemiBold,
-                color = palette.inkPrimary,
-            )
-            Text(
-                candidate.previous?.let { tr("beats your %s kg", kgText(it)) } ?: tr("first max on this grip"),
-                style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                color = palette.inkSecondary,
-            )
+        FingerGlyph(candidate.grip.fingers, position = candidate.grip.position,
+            dot = 8.dp, gap = 3.dp, tint = if (saved) palette.armed else palette.inkSecondary)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(kgText(candidate.kg), Modifier.alignByBaseline(),
+                    style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
+                Text(tr("kg"), Modifier.alignByBaseline(),
+                    style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
+            }
+            Text(candidate.grip.line, style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
+            if (candidate.side != Side.both) {
+                Text(candidate.side.displayName, style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
+            }
+            candidate.previous?.let {
+                Text(tr("Previous: %s kg", kgText(it)), style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary)
+            }
         }
-        if (saved) {
-            Icon(
-                Icons.Filled.CheckCircle,
-                contentDescription = tr("Saved"),
-                tint = palette.graphite,
-                modifier = Modifier.size(26.dp),
-            )
-        } else {
-            Text(
-                tr("Save as max"),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = palette.graphite,
-                modifier = Modifier
-                    .heightIn(min = 44.dp)
-                    .border(1.dp, palette.inkTertiary.copy(alpha = 0.35f), CircleShape)
-                    .clickable(onClickLabel = tr("Save as max"), role = Role.Button, onClick = onSave)
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-            )
-        }
+        Checkbox(checked = saved, onCheckedChange = null,
+            colors = CheckboxDefaults.colors(checkedColor = palette.armed,
+                uncheckedColor = palette.inkTertiary.copy(alpha = 0.65f)))
     }
 }
 
@@ -397,46 +415,11 @@ private fun sideLine(candidate: MaxCandidate): String {
 }
 
 @Composable
-private fun GradeCard(grade: RPE?, palette: GripPalette, onPick: (RPE) -> Unit) {
+private fun GradeCard(grade: RPE?, palette: GripPalette, onPick: (RPE?) -> Unit) {
     Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            CapsLabel(tr("How hard was that?"))
-            // A wrapping flow rather than a row: "Comfortable" and "All I had" do not fit
-            // five-across at any accessibility size.
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                for (level in RPE.entries) {
-                    val selected = grade == level
-                    Text(
-                        level.displayName,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (selected) palette.graphiteInverse else palette.inkPrimary,
-                        modifier = Modifier
-                            .heightIn(min = 44.dp)
-                            .background(
-                                if (selected) palette.graphite else palette.field,
-                                CircleShape,
-                            )
-                            // A one-of-five picker is a radio group, not five unlabelled words: without
-            // `selectable` the `selected` local paints the pill and TalkBack hears five
-            // identical stops with no idea which one is chosen.
-            .selectable(
-                selected = selected,
-                role = Role.RadioButton,
-                onClick = { onPick(level) },
-            )
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                    )
-                }
-            }
-            Text(
-                tr("Optional. It's what tells you later whether to add load."),
-                style = MaterialTheme.typography.bodySmall,
-                color = palette.inkTertiary,
-            )
+        EffortPicker(grade?.rawValue, RPE.entries.map { it.displayName },
+            tr("How hard did it feel?"), "effort.overall", Modifier.padding(20.dp)) {
+            onPick(it?.let(RPE::fromRaw))
         }
     }
 }
@@ -447,9 +430,27 @@ private fun SetBreakdown(reps: List<RepSummary>, palette: GripPalette) {
     val order = LinkedHashMap<Int, MutableList<RepSummary>>()
     for (rep in reps) order.getOrPut(rep.setIndex) { mutableListOf() }.add(rep)
 
+    var expanded by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        CapsLabel(tr("Sets"))
-        for ((_, inSet) in order) {
+        Surface(shape = RoundedCornerShape(Metrics.radiusInner), color = palette.card) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .clickable(role = Role.Button) { expanded = !expanded }
+                    .semantics {
+                        contentDescription = L10n.tr("Sets")
+                        stateDescription = L10n.tr(if (expanded) "Expanded" else "Collapsed")
+                    }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(tr("Sets"), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = palette.inkSecondary)
+                Text(order.size.toString(), color = palette.inkSecondary)
+                Icon(if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null, tint = palette.inkSecondary)
+            }
+        }
+        if (expanded) for ((_, inSet) in order) {
             val done = inSet.count { it.outcome == RepOutcome.completed }
             val grip = inSet.firstOrNull()?.grip
             // Read outside the semantics lambda, which is not composable.
@@ -529,7 +530,7 @@ private fun previewOutcome(didWork: Boolean = true): SessionOutcome {
 private fun SummaryLightPreview() {
     GetAGripTheme(darkTheme = false) {
         Surface(color = LocalGripPalette.current.field) {
-            SessionSummaryScreen(previewOutcome(), sessionsPerDayTarget = 2) { _, _ -> }
+            SessionSummaryScreen(previewOutcome(), sessionsPerDayTarget = 2) { _, _ -> true }
         }
     }
 }
@@ -539,7 +540,7 @@ private fun SummaryLightPreview() {
 private fun SummaryDarkPreview() {
     GetAGripTheme(darkTheme = true) {
         Surface(color = LocalGripPalette.current.field) {
-            SessionSummaryScreen(previewOutcome(), sessionsPerDayTarget = 2) { _, _ -> }
+            SessionSummaryScreen(previewOutcome(), sessionsPerDayTarget = 2) { _, _ -> true }
         }
     }
 }

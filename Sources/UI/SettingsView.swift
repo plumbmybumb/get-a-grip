@@ -59,7 +59,6 @@ struct SettingsView: View {
             // it, and everything below this row describes whatever it selects.
             gaugeKindRow.staggerIn(1)
             gaugeRow.staggerIn(2)
-            maxesRow.staggerIn(3)
             // ABOVE About, deliberately. About is the block of statements the app OWES
             // whoever is using it — storage, attribution, licence — and a door out to a
             // person is a thing you DO, so it belongs with the other actions rather than
@@ -173,44 +172,6 @@ struct SettingsView: View {
         .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityLabel("Live gauge. Pull and watch the force in real time.")
-    }
-
-    // MARK: - Maxes
-
-    /// Without a max on record, every "about 25 % of your max" caption in the set editor
-    /// has nothing to say — so this row is what turns target loads from a number you
-    /// guess into a percentage of something real.
-    private var maxesRow: some View {
-        NavigationLink {
-            MaxesView()
-        } label: {
-            MaterialCard {
-                HStack(spacing: 14) {
-                    Image(systemName: "scalemass")
-                        .font(.system(.title2))
-                        .foregroundStyle(Accent.graphite)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Maxes")
-                            .font(.system(.headline, weight: .semibold))
-                            .foregroundStyle(Ink.primary)
-                        Text("What you can pull on each grip")
-                            .font(.system(.subheadline))
-                            .foregroundStyle(Ink.secondary)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(.footnote, weight: .semibold))
-                        .foregroundStyle(Ink.tertiary)
-                        .accessibilityHidden(true)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
-        .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityLabel("Maxes. What you can pull on each grip.")
-        .tourAnchor(.settingsMaxes)
     }
 
     private var hasRoutine: Bool { !routines.isEmpty }

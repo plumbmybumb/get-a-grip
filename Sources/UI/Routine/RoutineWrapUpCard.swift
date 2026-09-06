@@ -104,7 +104,13 @@ struct RoutineWrapUpCard: View {
                     .monospacedDigit()
                     .foregroundStyle(Ink.tertiary)
             }
-            if untargeted > 0, plan.targetPercentBand != nil {
+            if plan.executable.sets.contains(where: { $0.targetBand == nil && PlanMath.targetPercent($0, in: plan) != nil }) {
+                Text("Percentage targets use your saved maxes. These may no longer reflect your current strength.")
+                    .font(.system(.footnote))
+                    .foregroundStyle(Ink.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if untargeted > 0 {
                 // Stated here rather than only on the LOAD card, because this is the last
                 // moment before Save and a missing max is silent at run time.
                 Label(String(localized: "\(untargeted) \(untargeted == 1 ? String(localized: "grip has") : String(localized: "grips have")) no max on file, so \(untargeted == 1 ? String(localized: "it shows") : String(localized: "they show")) no target."),
@@ -136,7 +142,7 @@ struct RoutineWrapUpCard: View {
     /// so a grip with a left max and no right one is reported rather than passing as
     /// fully loaded.
     private var untargeted: Int {
-        PlanMath.untargetedGripCount(plan, maxes: maxes)
+        PlanMath.missingBenchmarkGripCount(plan, maxes: maxes)
     }
 
     private func kgText(_ kg: Double) -> String {

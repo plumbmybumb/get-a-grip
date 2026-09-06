@@ -145,6 +145,23 @@ class RunnerSnapshotTests {
         assertEquals(after, harness.session.repProgress)
     }
 
+    @Test fun timerRingMovesWithoutRepublishingTheWholeScreen() {
+        val clock = FakeClock()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val session = RunnerSession(
+            plan = SessionPlan(sets = listOf(SetPlan()), holdSeconds = 10, leadInSeconds = 0),
+            routineName = "Timer cadence", device = DeviceStore(RecordingProgressorClient(), scope = scope),
+            scope = scope, clock = clock, timerOnly = true,
+        )
+        session.send(RunnerEvent.Start)
+        val initial = session.phaseRemainingFraction!!
+        val revision = session.snapshotRevision
+        repeat(20) { clock.uptime += 0.02; session.tickNow() }
+        assertTrue(session.phaseRemainingFraction!! < initial)
+        assertEquals(revision, session.snapshotRevision,
+            "Subsecond timer motion must stay outside the whole-screen snapshot")
+    }
+
     /// A snapshot is a VALUE: two identical readings compare equal, which is the whole
     /// mechanism the change guard rests on. Kotlin gives that away with `data class`, and a
     /// refactor to a plain class would silently take it back.

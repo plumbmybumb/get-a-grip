@@ -129,7 +129,17 @@ class MainActivity : ComponentActivity() {
                     // rather than three that cannot see each other.
                     LocalTourController provides app.tour,
                 ) {
-                    RootTabView()
+                    val preview = androidx.compose.runtime.remember {
+                        androidx.compose.runtime.mutableStateOf(BuildConfig.DEBUG && intent.getBooleanExtra("previewSummary", false))
+                    }
+                    if (preview.value) {
+                        run.nuri.getagrip.ui.runner.DebugSummaryPreview { preview.value = false }
+                        if (intent.getBooleanExtra("previewLog", false)) {
+                            run.nuri.getagrip.ui.history.SessionLogSheet { preview.value = false }
+                        }
+                    } else {
+                        RootTabView()
+                    }
                 }
             }
         }

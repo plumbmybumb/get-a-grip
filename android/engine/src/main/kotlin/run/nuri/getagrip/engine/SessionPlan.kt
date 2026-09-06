@@ -172,7 +172,8 @@ data class SetPlan(
         /// Decode clamps. `repsRange` starts at 0 because a zero-rep set is representable
         /// (and dropped by `SessionPlan.executable`); the UI floor is 1.
         val repsRange = 0..20
-        val holdRange = 3..120
+        // Match the hold dial: positive whole seconds, including short 1–2 s pulls.
+        val holdRange = 1..120
         val restRange = 0..600
 
         /// 1 %…100 %. The ceiling is 100 rather than something "sensible" like 60 because a
@@ -310,6 +311,11 @@ data class SessionPlan(
     }
 
     companion object {
+        // Shared with the editor so typed values survive persistence and sharing.
+        val setBreakRange = 0..900
+        // Preserve legacy sub-0.5 kg thresholds while accepting the editor's full upper limit.
+        val thresholdRange = 0.1..30.0
+
         /// TRANSLATION NOTE: a NESTED array is all-or-nothing on both platforms, unlike
         /// `BlobCodec.decodeArray`'s element-wise read of a TOP-LEVEL array. Swift's
         /// `c.value(.sets, or: [])` wraps one `[SetPlan]` decode in `try?`, so one element
@@ -337,11 +343,11 @@ data class SessionPlan(
             ),
             holdSeconds = SetPlan.holdRange.clamping(o.intOr("holdSeconds", 10)),
             restSeconds = SetPlan.restRange.clamping(o.intOr("restSeconds", 20)),
-            setBreakSeconds = SetPlan.restRange.clamping(o.intOr("setBreakSeconds", 60)),
+            setBreakSeconds = setBreakRange.clamping(o.intOr("setBreakSeconds", 60)),
             leadInSeconds = (0..60).clamping(o.intOr("leadInSeconds", 5)),
             // A zero threshold would read as "engaged" against sensor noise and start the
             // clock before the user touched the edge.
-            thresholdKg = (0.1..20.0).clamping(o.doubleOr("thresholdKg", 2.0)),
+            thresholdKg = thresholdRange.clamping(o.doubleOr("thresholdKg", 2.0)),
             // Absent key → true, so an existing routine GAINS the behaviour. See the
             // property for why that is the right default rather than the safe-looking one.
             waitForReleaseBeforeRest = o.boolOr("waitForReleaseBeforeRest", true),

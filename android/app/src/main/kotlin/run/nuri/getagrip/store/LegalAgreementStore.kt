@@ -35,10 +35,16 @@ class LegalBundle(val json: JSONObject, val fingerprint: String) {
         }
     }
     companion object {
+        // Packaged documents cannot change during this app process. Reuse their parsed
+        // content and fingerprint across session starts and Settings visits.
+        @Volatile private var cached: LegalBundle? = null
+
+        @Synchronized
         fun load(context: Context): LegalBundle {
-            val bytes = context.assets.open("agreement-2026-09-06.json").use { it.readBytes() }
+            cached?.let { return it }
+            val bytes = context.assets.open("agreement-2026-09-06-r2.json").use { it.readBytes() }
             val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-            return LegalBundle(JSONObject(bytes.toString(Charsets.UTF_8)), hash)
+            return LegalBundle(JSONObject(bytes.toString(Charsets.UTF_8)), hash).also { cached = it }
         }
     }
 }
@@ -48,7 +54,18 @@ class LegalAgreementStore(context: Context, file: File = File(context.filesDir, 
     private val storage = AtomicFile(file)
     var records by mutableStateOf(readRecords())
         private set
-    private fun readRecords(): JSONArray = runCatching { JSONArray(storage.readFully().toString(Charsets.UTF_8)) }.getOrElse { JSONArray() }
+    private fun readRecords(): JSONArray = runCatching {
+        val records = JSONArray(storage.readFully().toString(Charsets.UTF_8))
+        // Valid JSON alone is not a valid receipt. The Settings screen renders these
+        // fields directly; partial/restored records must fail closed, not crash there.
+        val fields = listOf("version", "fingerprint", "language", "acceptedUTC", "appVersion", "platform")
+        for (index in 0 until records.length()) {
+            val record = records.getJSONObject(index)
+            require(fields.all { record.opt(it) is String })
+            require(record.opt("screenVersion") is Int && record.getInt("screenVersion") > 0)
+        }
+        records
+    }.getOrElse { JSONArray() }
     fun hasAccepted(bundle: LegalBundle): Boolean = (0 until records.length()).any { index ->
         val record = records.optJSONObject(index)
         record?.optString("version") == bundle.version && record.optString("fingerprint") == bundle.fingerprint &&

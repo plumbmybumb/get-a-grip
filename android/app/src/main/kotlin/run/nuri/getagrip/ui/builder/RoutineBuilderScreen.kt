@@ -39,6 +39,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -164,16 +164,14 @@ fun RoutineBuilderHost(
 
     val reduceMotion = rememberReduceMotion()
     val scrollState = rememberScrollState()
-    /// Every block's offset inside the scrolled CONTENT, so the coach can scroll to one that
-    /// is still below the fold. Measured against `contentTop` rather than the viewport,
-    /// because a child's root position already carries the scroll offset and subtracting the
-    /// content node's own root position is what cancels it out again.
-    val anchors = remember { mutableMapOf<Any, Int>() }
-    var contentTop by remember { mutableStateOf(0f) }
+    // Layout coordinates update as the page moves. They are deliberately not Compose
+    // state: publishing the content's root position re-composed this entire eager form
+    // on every scroll frame, even though none of its inputs changed.
+    val anchors = remember { BuilderScrollAnchors() }
     val snackbarHostState = remember { SnackbarHostState() }
 
     fun scrollTo(key: Any) {
-        val y = anchors[key] ?: return
+        val y = anchors.offset(key) ?: return
         // Same rule as the routine deck's page turn: under Reduce Motion the coach lands on
         // its block rather than flying down the document to it.
         scope.launch {
@@ -359,7 +357,7 @@ fun RoutineBuilderHost(
               Column(
                 Modifier
                     .fillMaxWidth()
-                    .onGloballyPositioned { contentTop = it.positionInRoot().y }
+                    .onGloballyPositioned(anchors::contentPlaced)
                     .padding(horizontal = Metrics.hPadding)
                     .padding(top = 12.dp, bottom = 28.dp)
                     .widthIn(max = Metrics.maxContentWidth),
@@ -367,67 +365,67 @@ fun RoutineBuilderHost(
             ) {
                 // NAME — the document opens on it, in every mode, so creating and editing
                 // share the same first screenful.
-                Block(BuilderAnchor.Name, anchors, contentTop) {
+                Block(BuilderAnchor.Name, anchors) {
                     Coach(coachStep, 1, scope, settings, { coachStep = it }, ::scrollTo)
                     NameSection(draft.plan.name) {
                         draft = draft.copy(plan = draft.plan.copy(name = it))
                     }
                 }
 
-                Block(BuilderAnchor.Rhythm, anchors, contentTop, Modifier.tourAnchor(TourTarget.BuilderRhythm)) {
+                Block(BuilderAnchor.Rhythm, anchors, Modifier.tourAnchor(TourTarget.BuilderRhythm)) {
                     Coach(coachStep, 2, scope, settings, { coachStep = it }, ::scrollTo)
                     RhythmSection(draft) { draft = it }
                 }
 
-                Block(BuilderAnchor.Sets, anchors, contentTop, Modifier.tourAnchor(TourTarget.BuilderSets)) {
+                Block(BuilderAnchor.Sets, anchors, Modifier.tourAnchor(TourTarget.BuilderSets)) {
                     Coach(coachStep, 3, scope, settings, { coachStep = it }, ::scrollTo)
                     val percentBandsVary = BuilderDraft.percentBandsVary(draft)
                     // A plain row, never a pinned section header.
                     CapsLabel(tr("SETS"))
                     draft.plan.sets.forEachIndexed { index, set ->
-                        Box(
-                            Modifier.onGloballyPositioned {
-                                anchors[set.id] = (it.positionInRoot().y - contentTop).toInt()
-                            },
-                        ) {
-                            SetRowView(
-                                plan = StablePlan(draft.plan),
-                                setID = set.id,
-                                isExpanded = expanded == set.id,
-                                maxes = templates.maxTable,
-                                percentBandsVary = percentBandsVary,
-                                canMoveUp = index > 0,
-                                canMoveDown = index < draft.plan.sets.size - 1,
-                                onTap = { expanded = if (expanded == set.id) null else set.id },
-                                onEditGrip = { editingSet = set.id },
-                                onMoveUp = { draft = draft.movingSet(index, -1) },
-                                onMoveDown = { draft = draft.movingSet(index, 1) },
-                                onDuplicate = {
-                                    val copy = set.copy(id = UUID.randomUUID())
-                                    val sets = draft.plan.sets.toMutableList()
-                                    sets.add(index + 1, copy)
-                                    draft = draft.copy(plan = draft.plan.copy(sets = sets))
-                                    expanded = copy.id
-                                },
-                                onRemove = {
-                                    val sets = draft.plan.sets.toMutableList()
-                                    sets.removeAt(index)
-                                    draft = draft.copy(plan = draft.plan.copy(sets = sets))
-                                    if (expanded == set.id) expanded = null
-                                    removedSet = RemovedSet(index, set)
-                                },
-                                onSetChange = { updated ->
-                                    // Writes back BY ID, so an edit in flight while the list
-                                    // reorders lands on the set it came from.
-                                    draft = draft.copy(
-                                        plan = draft.plan.copy(
-                                            sets = draft.plan.sets.map {
-                                                if (it.id == updated.id) updated else it
-                                            },
-                                        ),
-                                    )
-                                },
-                            )
+                        key(set.id) {
+                            Box(
+                                Modifier.onGloballyPositioned { anchors.placed(set.id, it) },
+                            ) {
+                                SetRowView(
+                                    plan = StablePlan(draft.plan),
+                                    setID = set.id,
+                                    isExpanded = expanded == set.id,
+                                    maxes = templates.maxTable,
+                                    percentBandsVary = percentBandsVary,
+                                    canMoveUp = index > 0,
+                                    canMoveDown = index < draft.plan.sets.size - 1,
+                                    onTap = { expanded = if (expanded == set.id) null else set.id },
+                                    onEditGrip = { editingSet = set.id },
+                                    onMoveUp = { draft = draft.movingSet(index, -1) },
+                                    onMoveDown = { draft = draft.movingSet(index, 1) },
+                                    onDuplicate = {
+                                        val copy = set.copy(id = UUID.randomUUID())
+                                        val sets = draft.plan.sets.toMutableList()
+                                        sets.add(index + 1, copy)
+                                        draft = draft.copy(plan = draft.plan.copy(sets = sets))
+                                        expanded = copy.id
+                                    },
+                                    onRemove = {
+                                        val sets = draft.plan.sets.toMutableList()
+                                        sets.removeAt(index)
+                                        draft = draft.copy(plan = draft.plan.copy(sets = sets))
+                                        if (expanded == set.id) expanded = null
+                                        removedSet = RemovedSet(index, set)
+                                    },
+                                    onSetChange = { updated ->
+                                        // Writes back BY ID, so an edit in flight while the list
+                                        // reorders lands on the set it came from.
+                                        draft = draft.copy(
+                                            plan = draft.plan.copy(
+                                                sets = draft.plan.sets.map {
+                                                    if (it.id == updated.id) updated else it
+                                                },
+                                            ),
+                                        )
+                                    },
+                                )
+                            }
                         }
                     }
                     AddSetRow {
@@ -448,12 +446,12 @@ fun RoutineBuilderHost(
                     }
                 }
 
-                Block(BuilderAnchor.Totals, anchors, contentTop) {
+                Block(BuilderAnchor.Totals, anchors) {
                     Coach(coachStep, 4, scope, settings, { coachStep = it }, ::scrollTo)
-                    TotalsBar(draft)
+                    TotalsBar(draft, maxes = templates.maxTable)
                 }
 
-                Block(BuilderAnchor.EveryDay, anchors, contentTop) {
+                Block(BuilderAnchor.EveryDay, anchors) {
                     Coach(coachStep, 5, scope, settings, { coachStep = it }, ::scrollTo)
                     EveryDaySection(
                         draft,
@@ -463,7 +461,7 @@ fun RoutineBuilderHost(
 
                 FineTuningSection(draft) { draft = it }
 
-                Block(BuilderAnchor.Finish, anchors, contentTop) {
+                Block(BuilderAnchor.Finish, anchors) {
                     FinishBlock(
                         draft = draft,
                         mode = mode,
@@ -524,8 +522,7 @@ fun RoutineBuilderHost(
 @Composable
 private fun Block(
     anchor: BuilderAnchor,
-    anchors: MutableMap<Any, Int>,
-    contentTop: Float,
+    anchors: BuilderScrollAnchors,
     /// The spotlight tour's anchor, when this block is one of the three it teaches. Two
     /// registries, deliberately kept apart: this one is a scroll offset inside the document
     /// (what the COACH needs to bring a block into view), the tour's is a window rect (what a
@@ -536,10 +533,7 @@ private fun Block(
     Column(
         tourAnchor
             .fillMaxWidth()
-            // Root-relative, minus the content node's own root position: a child's position
-            // in the root already carries the scroll offset, and subtracting the content
-            // node's cancels it, leaving a stable offset inside the document.
-            .onGloballyPositioned { anchors[anchor] = (it.positionInRoot().y - contentTop).toInt() },
+            .onGloballyPositioned { anchors.placed(anchor, it) },
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         content()

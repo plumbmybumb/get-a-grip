@@ -15,6 +15,12 @@ import kotlin.test.assertNull
 /// pinned is that they MOVED: parsing used to live inside the row's commit, where nothing
 /// could reach it.
 class ValueFieldTests {
+    @Test fun nonFiniteOrOverflowingInputLeavesTheValueUnchanged() {
+        for (input in listOf("NaN", "Infinity", "-Infinity", "1e309", "1e308")) {
+            assertNull(ValueFieldParser.parse(input, decimals = 1), input)
+        }
+    }
+
 
     /// An UNTOUCHED field must report nothing at all. Tapping a number to change it and then
     /// changing your mind has to leave the value alone — a commit that read an empty string

@@ -78,7 +78,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import java.io.File
 import java.time.Instant
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.Fmt
@@ -87,6 +89,7 @@ import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.store.DayLedger
 import run.nuri.getagrip.store.LocalDayClock
+import run.nuri.getagrip.ui.components.SubmissionState
 import run.nuri.getagrip.ui.components.benchmarkBore
 import run.nuri.getagrip.ui.components.climbNotch
 import run.nuri.getagrip.ui.l10n.tr
@@ -167,6 +170,7 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
     var style by remember { mutableStateOf(loadCardStyle(context)) }
     var includeBestPull by remember { mutableStateOf(true) }
     var saved by remember { mutableStateOf(false) }
+    val exportSubmission = remember { SubmissionState() }
     var failure by remember { mutableStateOf<String?>(null) }
 
     val layer = rememberGraphicsLayer()
@@ -247,12 +251,15 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
             run.nuri.getagrip.ui.components.PrimaryButton(
                 title = if (saved) tr("Saved to Photos") else tr("Save to Photos"),
                 icon = if (saved) Icons.Filled.Check else Icons.Outlined.Download,
+                enabled = !exportSubmission.isRunning,
             ) {
-                scope.launch {
+                val exportedStyle = style
+                val exportedBestPull = includeBestPull
+                exportSubmission.launch(scope) {
                     val png = capture(layer)
                     failure = if (png == null) context.tr(COULD_NOT_RENDER) else {
                         if (saveToPhotos(context, png, request.title)) {
-                            saved = true
+                            saved = style == exportedStyle && includeBestPull == exportedBestPull
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             null
                         } else {
@@ -265,8 +272,9 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
                 title = tr("Share image"),
                 icon = Icons.Outlined.Share,
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !exportSubmission.isRunning,
             ) {
-                scope.launch {
+                exportSubmission.launch(scope) {
                     val png = capture(layer)
                     failure = when {
                         png == null -> context.tr(COULD_NOT_RENDER)
@@ -609,37 +617,46 @@ private const val EXPORT_DENSITY: Float = 3f
 // MARK: - Delivery
 
 private suspend fun capture(layer: androidx.compose.ui.graphics.layer.GraphicsLayer): ByteArray? =
-    runCatching {
-        val bitmap = layer.toImageBitmap().asAndroidBitmap()
-        java.io.ByteArrayOutputStream().use { out ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-            out.toByteArray()
-        }
-    }.getOrNull()
-
-/// `MediaStore`, which needs NO permission from API 29 up — and minSdk here is 31, so there
-/// is no legacy branch to write and no dialog to raise for saving a picture the user just
-/// asked to save.
-private fun saveToPhotos(context: Context, png: ByteArray, title: String): Boolean = runCatching {
-    val values = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, "get-a-grip-${System.currentTimeMillis()}.png")
-        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-        put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Get a Grip")
-        put(MediaStore.Images.Media.DESCRIPTION, title)
+    try {
+        // Graphics capture belongs to the UI context; encoding a 1080px image does not.
+        encodeCalendarPng(layer.toImageBitmap().asAndroidBitmap())
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
     }
-    val uri = context.contentResolver
-        .insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return false
-    context.contentResolver.openOutputStream(uri)?.use { it.write(png) } ?: return false
-    true
-}.getOrDefault(false)
 
-/// The same cache directory and the same provider authority the document export uses — one
-/// `<provider>` entry serves both.
-private fun shareImage(context: Context, png: ByteArray): Boolean = runCatching {
-    val dir = File(context.cacheDir, SHARE_DIR).apply { mkdirs() }
-    val file = File(dir, "get-a-grip-5-weeks.png")
-    file.writeBytes(png)
-    val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+internal suspend fun encodeCalendarPng(bitmap: Bitmap): ByteArray? = withContext(Dispatchers.Default) {
+    java.io.ByteArrayOutputStream().use { out ->
+        if (bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)) out.toByteArray() else null
+    }
+}
+
+/// MediaStore writes can take an arbitrary amount of time on external storage.
+private suspend fun saveToPhotos(context: Context, png: ByteArray, title: String): Boolean =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, "get-a-grip-${System.currentTimeMillis()}.png")
+                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Get a Grip")
+                put(MediaStore.Images.Media.DESCRIPTION, title)
+            }
+            val uri = context.contentResolver
+                .insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return@withContext false
+            context.contentResolver.openOutputStream(uri)?.use { it.write(png) } ?: return@withContext false
+            true
+        }.getOrDefault(false)
+    }
+
+/// Share-cache writes run off main; the chooser still opens on the caller's UI context.
+private suspend fun shareImage(context: Context, png: ByteArray): Boolean = try {
+    val uri = withContext(Dispatchers.IO) {
+        val dir = File(context.cacheDir, SHARE_DIR).apply { mkdirs() }
+        val file = File(dir, "get-a-grip-5-weeks.png")
+        file.writeBytes(png)
+        FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+    }
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "image/png"
         putExtra(Intent.EXTRA_STREAM, uri)
@@ -647,7 +664,11 @@ private fun shareImage(context: Context, png: ByteArray): Boolean = runCatching 
     }
     context.startActivity(Intent.createChooser(send, null))
     true
-}.getOrDefault(false)
+} catch (cancelled: CancellationException) {
+    throw cancelled
+} catch (_: Exception) {
+    false
+}
 
 private const val PREFS = "getagrip.share"
 private const val KEY_STYLE = "shareCardStyle"

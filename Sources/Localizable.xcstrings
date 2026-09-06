@@ -8569,6 +8569,478 @@
           }
         }
       }
+    },
+    "A max records your hardest measured pull on a grip." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un max correspond à votre traction mesurée la plus forte sur une prise."
+          }
+        }
+      }
+    },
+    "A number you entered. Check its value and units before using it for targets." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une valeur saisie par vous. Vérifiez sa valeur et son unité avant de l’utiliser pour vos cibles."
+          }
+        }
+      }
+    },
+    "Build force gradually and stop if it hurts. This measures a peak, not a safe training limit." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Augmentez la force progressivement et arrêtez en cas de douleur. Ce test mesure un pic, pas une limite d’entraînement sans risque."
+          }
+        }
+      }
+    },
+    "Keep the gauge unloaded while Get a Grip connects and tares it. If the gauge is asleep, the app waits." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laissez le capteur déchargé pendant la connexion et la tare. Si le capteur est en veille, l’application attend."
+          }
+        }
+      }
+    },
+    "Keep the gauge unloaded while it connects and tares." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laissez le capteur déchargé pendant la connexion et la tare."
+          }
+        }
+      }
+    },
+    "Let go when you are ready to finish." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relâchez lorsque vous souhaitez terminer."
+          }
+        }
+      }
+    },
+    "Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesurez un pic avec votre capteur ou saisissez une mesure précédente. Vous pouvez le mettre à jour à tout moment."
+          }
+        }
+      }
+    },
+    "No live reading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune mesure en direct"
+          }
+        }
+      }
+    },
+    "No pull was recorded. You can close this or try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune traction enregistrée. Vous pouvez fermer cet écran ou réessayer."
+          }
+        }
+      }
+    },
+    "Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les cibles en pourcentage utilisent le max enregistré pour cette prise et cette main. Un max est une référence, pas une limite de charge sans risque."
+          }
+        }
+      }
+    },
+    "Percentage targets use your saved maxes. These may no longer reflect your current strength." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les cibles en pourcentage utilisent vos max enregistrés, qui peuvent ne plus refléter votre force actuelle."
+          }
+        }
+      }
+    },
+    "Some kilogram targets were set by the sender. Review them for your own training." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certaines cibles en kilogrammes viennent de l’expéditeur. Vérifiez qu’elles conviennent à votre entraînement."
+          }
+        }
+      }
+    },
+    "Some percentage targets have no saved max, so they will show no target." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certaines cibles en pourcentage n’ont pas de max enregistré et ne seront donc pas affichées."
+          }
+        }
+      }
+    },
+    "New peaks to review" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New peaks to review"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveaux pics à examiner"
+          }
+        }
+      }
+    },
+    "These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces pics de séance ne sont pas forcément des efforts maximaux. Choisissez uniquement ceux à utiliser pour vos prochains objectifs en pourcentage."
+          }
+        }
+      }
+    },
+    "Selected peaks are saved as maxes when you save this workout." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected peaks are saved as maxes when you save this workout."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les pics sélectionnés sont enregistrés comme max lorsque vous enregistrez cette séance."
+          }
+        }
+      }
+    },
+    "no saved max for this grip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no saved max for this grip"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucun max enregistré pour cette prise"
+          }
+        }
+      }
+    },
+    "Use as max" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use as max"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser comme max"
+          }
+        }
+      }
+    },
+    "Selected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionné"
+          }
+        }
+      }
+    },
+    "Expanded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expanded"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Développé"
+          }
+        }
+      }
+    },
+    "Collapsed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapsed"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réduit"
+          }
+        }
+      }
+    },
+    "Couldn't save this workout. Please try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save this workout. Please try again."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’enregistrer cette séance. Veuillez réessayer."
+          }
+        }
+      }
+    },
+    "Select maximum efforts to use for future targets. Saved with this workout." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select maximum efforts to use for future targets. Saved with this workout."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionnez les efforts maximaux à utiliser pour vos futures cibles. Enregistrés avec cette séance."
+          }
+        }
+      }
+    },
+    "Previous: %@ kg" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous: %@ kg"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Précédent : %@ kg"
+          }
+        }
+      }
+    },
+    "Not rated" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not rated"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non évalué"
+          }
+        }
+      }
+    },
+    "Clear" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer"
+          }
+        }
+      }
+    },
+    "Clear rating" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear rating"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer l’évaluation"
+          }
+        }
+      }
+    },
+    "How hard did it feel?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How hard did it feel?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quel effort avez-vous ressenti ?"
+          }
+        }
+      }
+    },
+    "On your fingers" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On your fingers"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pour vos doigts"
+          }
+        }
+      }
+    },
+    "About session types" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About session types"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos des types de séance"
+          }
+        }
+      }
+    },
+    "Manage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gérer"
+          }
+        }
+      }
+    },
+    "Manage maxes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage maxes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gérer les max"
+          }
+        }
+      }
+    },
+    "Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez un max, consultez les anciens relevés ou supprimez une entrée incorrecte ici. Ces mêmes valeurs sont utilisées par vos graphiques et vos cibles en pourcentage."
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

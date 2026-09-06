@@ -4,6 +4,10 @@
 package run.nuri.getagrip.ui.maxes
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -217,138 +221,141 @@ fun MaxMeasureScreen(
             )
         },
     ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = Metrics.hPadding)
-                .padding(bottom = Metrics.spacing),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            CapsLabel(
-                if (phase == MaxMeasurePhase.done) tr("YOUR MAX ON THIS GRIP") else tr("HARDEST PULL"),
-                Modifier.fillMaxWidth(),
-            )
-
-            Hero(measurement, phase)
-
-            // The shape of the pull, with the result drawn across it as the dashed rule.
-            Surface(
-                shape = RoundedCornerShape(Metrics.radiusCard),
-                color = palette.card,
-                modifier = Modifier
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+            Column(
+                Modifier
                     .fillMaxWidth()
-                    .widthIn(max = Metrics.maxContentWidth)
-                    .height(TRACE_HEIGHT),
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = maxHeight)
+                    .padding(horizontal = Metrics.hPadding)
+                    .padding(bottom = Metrics.spacing),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                ForceTraceView(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
-                    thresholdKg = if (measurement.hasResult) measurement.peakKg else null,
-                    tint = if (phase == MaxMeasurePhase.measuring) palette.bleu else palette.inkTertiary,
+                CapsLabel(
+                    if (phase == MaxMeasurePhase.done) tr("YOUR MAX ON THIS GRIP") else tr("HARDEST PULL"),
+                    Modifier.fillMaxWidth(),
                 )
-            }
 
-            Text(
-                guidance(measurement, phase),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = palette.inkSecondary,
-                textAlign = TextAlign.Center,
-            )
+                Hero(measurement, phase)
 
-            Spacer(Modifier.weight(1f))
+                // The shape of the pull, with the result drawn across it as the dashed rule.
+                Surface(
+                    shape = RoundedCornerShape(Metrics.radiusCard),
+                    color = palette.card,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = Metrics.maxContentWidth)
+                        .height(TRACE_HEIGHT),
+                ) {
+                    ForceTraceView(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
+                        thresholdKg = if (measurement.hasResult) measurement.peakKg else null,
+                        tint = if (phase == MaxMeasurePhase.measuring) palette.bleu else palette.inkTertiary,
+                    )
+                }
 
-            if (!device.state.isConnected) {
-                // SHOWN rather than a disabled button: a control you cannot use teaches
-                // nothing, and the way out is what matters here.
                 Text(
-                    tr("Connect your gauge to measure. You can always type a max in instead."),
-                    style = MaterialTheme.typography.bodySmall,
+                    guidance(measurement, phase),
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = palette.inkTertiary,
+                    color = palette.inkSecondary,
                     textAlign = TextAlign.Center,
                 )
-                PrimaryButton(
-                    // A static "Connect" during the multi-second BLE connect showed a dimmed
-                    // button with no state change — worse here than on the gauge screen,
-                    // because the user has already committed to the gauge path.
-                    title = if (device.state.isBusy) device.state.label else tr("Connect"),
-                    icon = Icons.Outlined.SettingsInputAntenna,
-                    tint = palette.bleu,
-                    enabled = !device.state.isBusy,
-                    modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
-                ) { device.connect() }
-            } else {
-                when (phase) {
-                    MaxMeasurePhase.ready -> {
-                        // Zeroing belongs BEFORE the pull and nowhere else: taring
-                        // mid-attempt would zero out the load already on the edge and
-                        // silently rewrite the result. It is offered here because a hanging
-                        // sling or a mounted block reads as several kilograms the gauge would
-                        // otherwise count.
-                        SecondaryButton(
-                            title = if (device.isReadingLive) tr("Zero the gauge") else tr("Wake"),
-                            icon = Icons.Outlined.Refresh,
-                            modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
-                        ) {
-                            when (
-                                TarePolicy.tapDecision(
-                                    phase = RunnerPhase.Idle,
-                                    isReadingLive = device.isReadingLive,
-                                    isLoadedForTare = device.isLoadedForTare,
-                                )
+
+                Spacer(Modifier.weight(1f))
+
+                if (!device.state.isConnected) {
+                    // SHOWN rather than a disabled button: a control you cannot use teaches
+                    // nothing, and the way out is what matters here.
+                    Text(
+                        tr("Connect your gauge to measure. You can always type a max in instead."),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = palette.inkTertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                    PrimaryButton(
+                        // A static "Connect" during the multi-second BLE connect showed a dimmed
+                        // button with no state change — worse here than on the gauge screen,
+                        // because the user has already committed to the gauge path.
+                        title = if (device.state.isBusy) device.state.label else tr("Connect"),
+                        icon = Icons.Outlined.SettingsInputAntenna,
+                        tint = palette.bleu,
+                        enabled = !device.state.isBusy,
+                        modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
+                    ) { device.connect() }
+                } else {
+                    when (phase) {
+                        MaxMeasurePhase.ready -> {
+                            // Zeroing belongs BEFORE the pull and nowhere else: taring
+                            // mid-attempt would zero out the load already on the edge and
+                            // silently rewrite the result. It is offered here because a hanging
+                            // sling or a mounted block reads as several kilograms the gauge would
+                            // otherwise count.
+                            SecondaryButton(
+                                title = if (device.isReadingLive) tr("Zero the gauge") else tr("Wake"),
+                                icon = Icons.Outlined.Refresh,
+                                modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
                             ) {
-                                TareTapDecision.wakeStream ->
-                                    device.startStreaming(StreamStartCause.manualWake)
-                                TareTapDecision.blocked -> Unit
-                                TareTapDecision.confirm -> {
-                                    promptedKg = device.currentKg
-                                    promptedEpoch = device.connectionEpoch
-                                }
-                                TareTapDecision.tare -> {
-                                    if (
-                                        TarePolicy.isSafeToTareNow(
-                                            device.secondsSinceLastSample(),
-                                            device.tareReadingMaxAge,
-                                        )
-                                    ) {
-                                        device.tare()
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    } else {
+                                when (
+                                    TarePolicy.tapDecision(
+                                        phase = RunnerPhase.Idle,
+                                        isReadingLive = device.isReadingLive,
+                                        isLoadedForTare = device.isLoadedForTare,
+                                    )
+                                ) {
+                                    TareTapDecision.wakeStream ->
                                         device.startStreaming(StreamStartCause.manualWake)
+                                    TareTapDecision.blocked -> Unit
+                                    TareTapDecision.confirm -> {
+                                        promptedKg = device.currentKg
+                                        promptedEpoch = device.connectionEpoch
+                                    }
+                                    TareTapDecision.tare -> {
+                                        if (
+                                            TarePolicy.isSafeToTareNow(
+                                                device.secondsSinceLastSample(),
+                                                device.tareReadingMaxAge,
+                                            )
+                                        ) {
+                                            device.tare()
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        } else {
+                                            device.startStreaming(StreamStartCause.manualWake)
+                                        }
                                     }
                                 }
                             }
+                            PrimaryButton(
+                                title = tr("Start"),
+                                icon = Icons.Filled.PlayArrow,
+                                tint = palette.bleu,
+                                modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
+                            ) { start() }
                         }
-                        PrimaryButton(
-                            title = tr("Start"),
-                            icon = Icons.Filled.PlayArrow,
-                            tint = palette.bleu,
+                        MaxMeasurePhase.measuring -> PrimaryButton(
+                            title = tr("Done"),
+                            icon = Icons.Filled.Stop,
+                            tint = palette.alarm,
                             modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
-                        ) { start() }
-                    }
-                    MaxMeasurePhase.measuring -> PrimaryButton(
-                        title = tr("Done"),
-                        icon = Icons.Filled.Stop,
-                        tint = palette.alarm,
-                        modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
-                    ) {
-                        measurement.finish()
-                        stop(StreamStopCause.userStopped)
-                    }
-                    MaxMeasurePhase.done -> {
-                        SecondaryButton(
-                            title = tr("Try again"),
-                            icon = Icons.Outlined.Refresh,
-                            modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
-                        ) { start() }
-                        PrimaryButton(
-                            title = tr("Use this max"),
-                            icon = Icons.Filled.Check,
-                            enabled = measurement.hasResult,
-                            modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
-                        ) { onMeasured(measurement.peakKg) }
+                        ) {
+                            measurement.finish()
+                            stop(StreamStopCause.userStopped)
+                        }
+                        MaxMeasurePhase.done -> {
+                            SecondaryButton(
+                                title = tr("Try again"),
+                                icon = Icons.Outlined.Refresh,
+                                modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+                            ) { start() }
+                            PrimaryButton(
+                                title = tr("Use this max"),
+                                icon = Icons.Filled.Check,
+                                enabled = measurement.hasResult,
+                                modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
+                            ) { onMeasured(measurement.peakKg) }
+                        }
                     }
                 }
             }
@@ -373,7 +380,11 @@ fun MaxMeasureScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(onClick = confirm@ {
+                    if (phase != MaxMeasurePhase.ready) {
+                        promptedKg = null
+                        return@confirm
+                    }
                     when (
                         TarePolicy.confirmationDecision(
                             promptedKg = prompted,
@@ -420,12 +431,15 @@ private val HERO_UNIT_SIZE = 21.sp
 @Composable
 private fun Hero(measurement: MaxMeasurement, phase: MaxMeasurePhase) {
     val palette = LocalGripPalette.current
-    val spoken = when {
+    val device = LocalDeviceStore.current
+    val signal = if (phase == MaxMeasurePhase.measuring && (!device.isStreaming || !device.isSignalFresh))
+        ". " + tr("No live reading") else ""
+    val spoken = (when {
         measurement.hasResult ->
             L10n.tr("%s kilograms, your hardest pull", Fmt.fixed(measurement.peakKg, 1))
         phase == MaxMeasurePhase.measuring -> tr("No pull yet")
         else -> tr("No measurement yet")
-    }
+    }) + signal
     Column(
         Modifier
             .fillMaxWidth()
@@ -464,6 +478,7 @@ private fun Hero(measurement: MaxMeasurement, phase: MaxMeasurePhase) {
 @Composable
 private fun LiveReadout() {
     val device = LocalDeviceStore.current
+    val isLive = device.isStreaming && device.isSignalFresh
     val palette = LocalGripPalette.current
     Row(
         // A numeral changing 80×/sec is unusable under TalkBack; the hero carries the
@@ -473,7 +488,7 @@ private fun LiveReadout() {
         verticalAlignment = Alignment.Bottom,
     ) {
         Text(
-            if (device.isStreaming) tr("now") else tr("gauge"),
+            if (isLive) tr("now") else tr("No live reading"),
             style = MaterialTheme.typography.labelMedium,
             color = palette.inkTertiary,
         )
@@ -481,10 +496,10 @@ private fun LiveReadout() {
             // **Clocks roll, measurements SNAP.** No numeric transition and no animation on
             // this figure: on a readout that changes ten times a second the same animation
             // turns the number you are trying to read mid-pull into a permanent blur.
-            Fmt.fixed(if (device.currentKg.isFinite()) device.currentKg else 0.0, 1),
+            if (isLive) Fmt.fixed(device.currentKg, 1) else "—",
             style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"),
             fontWeight = FontWeight.SemiBold,
-            color = if (device.isStreaming) palette.bleu else palette.inkTertiary,
+            color = if (isLive) palette.bleu else palette.inkTertiary,
         )
         Text(tr("kg"), style = MaterialTheme.typography.labelMedium, color = palette.inkTertiary)
     }
@@ -494,12 +509,12 @@ private fun LiveReadout() {
 /// left to explain, and the line that explained it went with the rule.
 private fun guidance(measurement: MaxMeasurement, phase: MaxMeasurePhase): String = when (phase) {
     MaxMeasurePhase.ready ->
-        L10n.tr("Pull as hard as you can. Get a Grip keeps the hardest the gauge sees.")
+        L10n.tr("Build force gradually and stop if it hurts. This measures a peak, not a safe training limit.")
     MaxMeasurePhase.measuring ->
-        if (measurement.hasResult) L10n.tr("Keep pulling to beat it, or let go to finish.") else L10n.tr("Pull…")
+        if (measurement.hasResult) L10n.tr("Let go when you are ready to finish.") else L10n.tr("Pull…")
     MaxMeasurePhase.done ->
         if (measurement.hasResult) L10n.tr("Save this as your max on this grip, or try again.")
-        else L10n.tr("The gauge didn't see a pull. Have another go.")
+        else L10n.tr("No pull was recorded. You can close this or try again.")
 }
 
 // MARK: - State

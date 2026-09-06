@@ -23,9 +23,11 @@ struct SessionSummaryView: View {
     @State private var grade: RPE?
     @State private var saved = false
     @State private var gradeTick = 0
-    /// Candidates already written this summary — their rows flip to a checkmark so a
-    /// second tap cannot double-record.
-    @State private var recordedMaxIDs: Set<String> = []
+    /// Optional selections stay local until the workout is saved.
+    @State private var chosenMaxIDs: Set<String> = []
+    @State private var showsMaxes = false
+    @State private var showsSets = false
+    @State private var didLoadCandidates = false
 
     private var completed: [RepSummary] { reps.filter { $0.outcome == .completed } }
     private var heldSeconds: Int { Int(reps.reduce(0.0) { $0 + $1.heldSeconds }.rounded()) }
@@ -39,47 +41,53 @@ struct SessionSummaryView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Metrics.spacing) {
-                header
-                stats
-                if didAnyWork { newMaxCard }
-                if didAnyWork { gradeCard }
-                setBreakdown
-                PrimaryGlassButton(title: didAnyWork ? String(localized: "Save and finish") : String(localized: "Finish"),
-                                   tint: Accent.graphite) {
-                    finish()
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Metrics.spacing) {
+                    header
+                    stats
+                    if didAnyWork { newMaxCard }
+                    if didAnyWork { gradeCard }
+                    setBreakdown
                 }
-                if !didAnyWork {
-                    Text("Nothing was held, so there's nothing to log.")
-                        .font(.system(.footnote))
-                        .foregroundStyle(Ink.tertiary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                } else {
-                    // **THROW IT AWAY.** A session you were pulled out of halfway is not
-                    // training, and logging it drags a bad number through every average
-                    // and marks the day done when it was not (Nuri, 2026-08-09: "just in
-                    // case you get interrupted").
-                    //
-                    // A HOLD, and the same 0.9 s hold as ending a session, because it is
-                    // the same kind of decision: irreversible, taken with chalk on your
-                    // hands, and never something a mis-tap should do. There is no
-                    // confirmation dialog for the same reason there is none on End.
-                    HoldToDiscardButton { onDone() }
-                    Text("Nothing is saved. The session is gone.")
-                        .font(.system(.caption))
-                        .foregroundStyle(Ink.tertiary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
+                .padding(.horizontal, Metrics.hPadding)
+                .padding(.vertical, Metrics.spacing)
+                .frame(maxWidth: Metrics.maxContentWidth)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, Metrics.hPadding)
-            .padding(.vertical, Metrics.spacing)
-            .frame(maxWidth: Metrics.maxContentWidth)
-            .frame(maxWidth: .infinity)
+            .scrollBounceBehavior(.basedOnSize)
+            footer
         }
-        .scrollBounceBehavior(.basedOnSize)
         .sensoryFeedback(.selection, trigger: gradeTick)
-        .onAppear { maxCandidates = computeMaxCandidates() }
+        .onAppear {
+            guard !didLoadCandidates else { return }
+            didLoadCandidates = true
+            maxCandidates = computeMaxCandidates()
+        }
+    }
+
+    private var footer: some View {
+        VStack(spacing: 8) {
+            if let error = templates.saveError {
+                Text(error).font(.footnote).foregroundStyle(StatusTint.armed)
+            }
+            PrimaryGlassButton(title: didAnyWork ? String(localized: "Save and finish") : String(localized: "Finish"),
+                               tint: Accent.graphite) {
+                finish()
+            }
+            if !didAnyWork {
+                Text("Nothing was held, so there's nothing to log.")
+                    .font(.system(.footnote))
+                    .foregroundStyle(Ink.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                HoldToDiscardButton { onDone() }
+            }
+        }
+        .padding(.horizontal, Metrics.hPadding)
+        .padding(.vertical, 10)
+        .frame(maxWidth: Metrics.maxContentWidth)
+        .frame(maxWidth: .infinity)
     }
 
     private var header: some View {
@@ -97,6 +105,7 @@ struct SessionSummaryView: View {
             stat(String(localized: "Under tension"), PlanMath.clockText(heldSeconds), of: nil)
             stat(String(localized: "Peak"), peakKg.formatted(.number.precision(.fractionLength(1))), of: String(localized: "kg"))
         }
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("""
             \(completed.count) of \(reps.count) pulls completed, \
@@ -116,7 +125,8 @@ struct SessionSummaryView: View {
                 Text(suffix).font(.system(.caption)).foregroundStyle(Ink.tertiary)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 8)
         .padding(.vertical, 14)
         .background(.regularMaterial,
                     in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
@@ -138,15 +148,14 @@ struct SessionSummaryView: View {
         var id: String { grip.key + "·" + side.rawValue }
     }
 
-    /// FROZEN at first appearance — recording a candidate updates the max table, and a
-    /// live computation would then drop the row it should be flipping to a checkmark.
+    /// Freeze the candidates so selections and row positions survive view updates.
     @State private var maxCandidates: [MaxCandidate] = []
 
     /// COMPLETED reps only, and only real pulls: a timer-only session records 0 kg
     /// peaks, and offering "0.0 kg — new max!" would be the app talking nonsense.
     private func computeMaxCandidates() -> [MaxCandidate] {
         var best: [String: MaxCandidate] = [:]
-        for rep in completed where rep.peakKg > 1 {
+        for rep in completed where rep.peakKg.isFinite && rep.peakKg > 1 {
             let key = rep.grip.key + "·" + rep.side.rawValue
             if let held = best[key], held.kg >= rep.peakKg { continue }
             best[key] = MaxCandidate(grip: rep.grip, side: rep.side, kg: rep.peakKg,
@@ -160,75 +169,88 @@ struct SessionSummaryView: View {
 
     @ViewBuilder
     private var newMaxCard: some View {
-        let candidates = maxCandidates.filter { !recordedMaxIDs.contains($0.id) }
-        let recorded = maxCandidates.filter { recordedMaxIDs.contains($0.id) }
-        if !candidates.isEmpty || !recorded.isEmpty {
+        if !maxCandidates.isEmpty {
             MaterialCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    CapsLabel(recorded.isEmpty ? String(localized: "Harder than your max") : String(localized: "New maxes"))
-                    ForEach(candidates) { candidate in maxRow(candidate, saved: false) }
-                    ForEach(recorded) { candidate in maxRow(candidate, saved: true) }
-                    Text("Your percent targets follow whatever you save here.")
-                        .font(.system(.caption))
-                        .foregroundStyle(Ink.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Button {
+                        withAnimation(Motion.state(reduceMotion)) { showsMaxes.toggle() }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                            Text("New peaks to review")
+                                .font(.system(.subheadline, weight: .semibold))
+                            Spacer(minLength: 8)
+                            Text("\(maxCandidates.count)").monospacedDigit()
+                            Image(systemName: showsMaxes ? "chevron.up" : "chevron.down")
+                        }
+                        .foregroundStyle(StatusTint.armed)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(PressFeedbackButtonStyle())
+                    .accessibilityIdentifier("summary.peaks")
+                    .accessibilityValue(showsMaxes ? String(localized: "Expanded") : String(localized: "Collapsed"))
+                    if showsMaxes {
+                        Text("Select maximum efforts to use for future targets. Saved with this workout.")
+                            .font(.system(.caption)).foregroundStyle(Ink.secondary)
+                        VStack(spacing: 0) {
+                            ForEach(maxCandidates) { candidate in
+                                maxRow(candidate, saved: chosenMaxIDs.contains(candidate.id))
+                                if candidate.id != maxCandidates.last?.id {
+                                    Divider().overlay(Ink.tertiary.opacity(0.08))
+                                }
+                            }
+                        }
+                    }
                 }
             }
+            .overlay(RoundedRectangle(cornerRadius: Metrics.radiusCard).stroke(StatusTint.armed.opacity(0.25), lineWidth: 1))
         }
     }
 
     private func maxRow(_ candidate: MaxCandidate, saved: Bool) -> some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(sideLine(candidate))
-                    .font(.system(.subheadline, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(Ink.primary)
-                Text(candidate.previous.map {
-                    String(localized: "beats your \($0.formatted(.number.precision(.fractionLength(1)))) kg")
-                } ?? String(localized: "first max on this grip"))
-                    .font(.system(.footnote))
-                    .monospacedDigit()
-                    .foregroundStyle(Ink.secondary)
-            }
-            Spacer(minLength: 8)
-            if saved {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(.title3))
-                    .foregroundStyle(Accent.graphite)
-                    .accessibilityLabel("Saved")
-            } else {
-                Button {
-                    // OPTIMISTIC. `recordMax` saves and re-derives synchronously on the
-                    // main actor, so doing it first meant the checkmark — the tap's only
-                    // acknowledgement — could not draw until the write had finished.
-                    // Flipping the order costs nothing: a rolled-back save puts the row
-                    // straight back (audit, 2026-08-11).
-                    withAnimation(Motion.state(reduceMotion)) {
-                        _ = recordedMaxIDs.insert(candidate.id)
+        Button {
+            if saved { chosenMaxIDs.remove(candidate.id) }
+            else { chosenMaxIDs.insert(candidate.id) }
+            gradeTick += 1
+        } label: {
+            HStack(spacing: 12) {
+                FingerGlyph(fingers: candidate.grip.fingers, position: candidate.grip.position,
+                            dot: 8, gap: 3, tint: saved ? StatusTint.armed : Ink.secondary)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(candidate.kg.formatted(.number.precision(.fractionLength(1))))
+                            .font(.system(.title2, weight: .semibold))
+                            .foregroundStyle(Ink.primary)
+                        Text("kg").font(.system(.caption)).foregroundStyle(Ink.secondary)
                     }
-                    gradeTick += 1
-                    guard templates.recordMax(candidate.kg, for: candidate.grip,
-                                              source: .measured, side: candidate.side,
-                                              marksBenchmarkDay: false) else {
-                        withAnimation(Motion.state(reduceMotion)) {
-                            recordedMaxIDs.remove(candidate.id)
-                        }
-                        return
+                    .monospacedDigit()
+                    Text(candidate.grip.line)
+                        .font(.system(.caption)).foregroundStyle(Ink.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if candidate.side != .both {
+                        Text(candidate.side.name)
+                            .font(.system(.caption)).foregroundStyle(Ink.secondary)
                     }
-                } label: {
-                    Text("Save as max")
-                        .font(.system(.footnote, weight: .semibold))
-                        .foregroundStyle(Accent.graphite)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 44)
-                        .overlay(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
-                        .contentShape(.capsule)
+                    if let previous = candidate.previous {
+                        Text("Previous: \(previous.formatted(.number.precision(.fractionLength(1)))) kg")
+                            .font(.system(.caption2)).foregroundStyle(Ink.tertiary)
+                    }
                 }
-                .buttonStyle(PressFeedbackButtonStyle())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: saved ? "checkmark.circle.fill" : "circle")
+                    .font(.system(.title3))
+                    .foregroundStyle(saved ? StatusTint.armed : Ink.tertiary.opacity(0.65))
             }
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(.rect)
         }
-        .accessibilityElement(children: .combine)
+        .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityLabel(sideLine(candidate))
+        .accessibilityValue(saved ? String(localized: "Selected") : String(localized: "Use as max"))
+        .accessibilityAddTraits(saved ? .isSelected : [])
     }
 
     private func sideLine(_ candidate: MaxCandidate) -> String {
@@ -241,26 +263,10 @@ struct SessionSummaryView: View {
 
     private var gradeCard: some View {
         MaterialCard {
-            VStack(alignment: .leading, spacing: 10) {
-                CapsLabel(String(localized: "How hard was that?"))
-                // A wrapping grid rather than a row: "Comfortable" and "All I had" do
-                // not fit five-across at any accessibility size.
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8,
-                                             alignment: .leading)],
-                          alignment: .leading, spacing: 8) {
-                    ForEach(RPE.allCases, id: \.self) { level in
-                        Chip(title: level.name, isSelected: grade == level) {
-                            // Tapping the same grade clears it — the answer stays
-                            // genuinely optional after you've given one.
-                            grade = (grade == level) ? nil : level
-                            gradeTick += 1
-                        }
-                    }
-                }
-                Text("Optional. It's what tells you later whether to add load.")
-                    .font(.system(.footnote))
-                    .foregroundStyle(Ink.tertiary)
-            }
+            EffortPicker(selection: Binding(get: { grade?.rawValue },
+                                             set: { grade = $0.flatMap(RPE.init(rawValue:)) }),
+                         labels: RPE.allCases.map(\.name),
+                         title: String(localized: "How hard did it feel?"), identifier: "effort.overall")
         }
     }
 
@@ -268,30 +274,49 @@ struct SessionSummaryView: View {
     private var setBreakdown: some View {
         let grouped = groupedReps
         return VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "Sets"))
-            ForEach(grouped.order, id: \.self) { index in
-                let inSet = grouped.byIndex[index] ?? []
-                let done = inSet.filter { $0.outcome == .completed }.count
-                HStack(spacing: 10) {
-                    if let grip = inSet.first?.grip {
-                        FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 8, gap: 3)
-                        Text(grip.line)
-                            .font(.system(.subheadline))
-                            .foregroundStyle(Ink.secondary)
-                            .lineLimit(1)
-                    }
+            Button {
+                withAnimation(Motion.state(reduceMotion)) { showsSets.toggle() }
+            } label: {
+                HStack {
+                    Text("Sets").font(.system(.subheadline, weight: .semibold))
                     Spacer(minLength: 8)
-                    Text("\(done)/\(inSet.count)")
-                        .font(.system(.subheadline, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(done == inSet.count ? Ink.primary : StatusTint.armed)
+                    Text("\(grouped.order.count)").monospacedDigit()
+                    Image(systemName: showsSets ? "chevron.up" : "chevron.down")
                 }
-                .padding(.vertical, 10)
+                .foregroundStyle(Ink.secondary)
                 .padding(.horizontal, 14)
-                .background(.regularMaterial,
-                            in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(inSet.first?.grip.spoken ?? String(localized: "Set")): \(done) of \(inSet.count) completed")
+                .frame(minHeight: 48)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
+                .contentShape(.rect)
+            }
+            .buttonStyle(PressFeedbackButtonStyle())
+            .accessibilityIdentifier("summary.sets")
+            .accessibilityValue(showsSets ? String(localized: "Expanded") : String(localized: "Collapsed"))
+            if showsSets {
+                ForEach(grouped.order, id: \.self) { index in
+                    let inSet = grouped.byIndex[index] ?? []
+                    let done = inSet.filter { $0.outcome == .completed }.count
+                    HStack(spacing: 10) {
+                        if let grip = inSet.first?.grip {
+                            FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 8, gap: 3)
+                            Text(grip.line)
+                                .font(.system(.subheadline))
+                                .foregroundStyle(Ink.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        Text("\(done)/\(inSet.count)")
+                            .font(.system(.subheadline, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(done == inSet.count ? Ink.primary : StatusTint.armed)
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 14)
+                    .background(.regularMaterial,
+                                in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(inSet.first?.grip.spoken ?? String(localized: "Set")): \(done) of \(inSet.count) completed")
+                }
             }
         }
     }
@@ -310,9 +335,13 @@ struct SessionSummaryView: View {
         // Guard against a double tap writing two logs — the button is on screen while
         // the save round-trips.
         if didAnyWork, !saved {
+            let selected = maxCandidates.filter { chosenMaxIDs.contains($0.id) }.map {
+                MaxRecord(grip: $0.grip, kg: $0.kg, source: .measured, side: $0.side)
+            }
+            guard templates.recordSession(plan: plan, template: template, reps: reps,
+                                          startedAt: startedAt, finishedAt: finishedAt, rpe: grade,
+                                          newMaxes: selected) != nil else { return }
             saved = true
-            templates.recordSession(plan: plan, template: template, reps: reps,
-                                    startedAt: startedAt, finishedAt: finishedAt, rpe: grade)
         }
         onDone()
     }

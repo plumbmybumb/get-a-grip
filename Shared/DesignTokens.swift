@@ -139,6 +139,10 @@ enum Motion {
     /// on the gauge is lying about a measurement.
     static let live = Animation.smooth(duration: 0.12)
 
+    /// Cumulative measured work travels linearly between radio batches. Match Android:
+    /// settle within 200 ms, never predict beyond the last received measurement.
+    static let measuredProgress = Animation.linear(duration: 0.20)
+
     /// A changed grip gets one clear beat of attention, matching Android without bounce.
     static let gripChangeRiseMilliseconds = 180
     static let gripChangeHoldMilliseconds = 1_200

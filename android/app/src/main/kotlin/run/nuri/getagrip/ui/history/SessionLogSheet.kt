@@ -3,6 +3,14 @@
 
 package run.nuri.getagrip.ui.history
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,13 +30,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.FingerStrain
 import run.nuri.getagrip.engine.L10n
@@ -39,9 +48,10 @@ import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.Chip
 import run.nuri.getagrip.ui.components.ChipGrid
+import run.nuri.getagrip.ui.components.EffortPicker
 import run.nuri.getagrip.ui.components.DialTrack
 import run.nuri.getagrip.ui.components.PrimaryButton
-import run.nuri.getagrip.ui.components.SecondaryButton
+import run.nuri.getagrip.ui.components.SubmissionState
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
@@ -135,21 +145,24 @@ fun SessionLogSheet(onClose: () -> Unit) {
     val feed = LocalHistoryFeed.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var draft by remember { mutableStateOf(SessionLogDraft()) }
     var failed by remember { mutableStateOf(false) }
+    val submission = remember { SubmissionState() }
 
     fun save() {
-        val kind = draft.kind ?: return
+        if (submission.isRunning) return
+        val submitted = draft
+        val kind = submitted.kind ?: return
         failed = false
-        scope.launch {
+        submission.launch(scope) {
             val log = templates.recordLoggedSession(
                 kind = kind,
-                daysAgo = draft.daysAgo,
-                minutes = draft.minutes,
-                rpe = draft.rpe,
-                fingerStrain = draft.fingerStrain,
+                daysAgo = submitted.daysAgo,
+                minutes = submitted.minutes,
+                rpe = submitted.rpe,
+                fingerStrain = submitted.fingerStrain,
             )
             if (log == null) {
                 // The sheet STAYS OPEN on a rollback: dismissing on failure loses the two
@@ -172,106 +185,82 @@ fun SessionLogSheet(onClose: () -> Unit) {
         containerColor = palette.field,
         shape = RoundedCornerShape(topStart = Metrics.radiusSheet, topEnd = Metrics.radiusSheet),
     ) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = Metrics.hPadding)
-                .padding(bottom = Metrics.spacing),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            Text(
-                tr("Log a session"),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = palette.inkPrimary,
-            )
+        Column(Modifier.padding(horizontal = Metrics.hPadding)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("Log a session"), Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
+                TextButton(onClick = onClose) { Text(tr("Cancel"), color = palette.inkSecondary) }
+            }
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                KindBlock(draft.kind) { draft = draft.copy(kind = it) }
 
-            KindBlock(draft.kind) { draft = draft.copy(kind = it) }
+                /// Today or yesterday, and nothing further back. A full date picker would be the
+                /// heaviest control on this fast log to serve a case — logging Thursday's session
+                /// on Sunday — that barely happens and that History can already show is missing.
+                val dayChoices: @Composable () -> Unit = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Chip(tr("Today"), draft.daysAgo == 0, Modifier.weight(1f)) { draft = draft.copy(daysAgo = 0) }
+                        Chip(tr("Yesterday"), draft.daysAgo == 1, Modifier.weight(1f)) { draft = draft.copy(daysAgo = 1) }
+                    }
+                }
+                if (LocalDensity.current.fontScale > 1.3f) {
+                    Block(tr("WHEN"), dayChoices)
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CapsLabel(tr("WHEN"))
+                        dayChoices()
+                    }
+                }
 
-            /// Today or yesterday, and nothing further back. A full date picker would be the
-            /// heaviest control on this fast log to serve a case — logging Thursday's session
-            /// on Sunday — that barely happens and that History can already show is missing.
-            Block(tr("WHEN")) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Chip(tr("Today"), draft.daysAgo == 0, Modifier.weight(1f)) { draft = draft.copy(daysAgo = 0) }
-                    Chip(tr("Yesterday"), draft.daysAgo == 1, Modifier.weight(1f)) { draft = draft.copy(daysAgo = 1) }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        CapsLabel(tr("HOW LONG"))
+                        Spacer(Modifier.weight(1f))
+                        Text(SessionLogDraft.durationLabel(draft.minutes),
+                            style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
+                            fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
+                    }
+                    // Tap-to-type belongs on a row that needs it. Two hours versus two hours
+                    // fifteen is noise inside a five-point self-report, and a keyboard would cost
+                    // the fast path this sheet is built around.
+                    DialTrack(
+                        value = draft.minutes.toDouble(),
+                        values = SessionLogDraft.durationStops,
+                        format = { SessionLogDraft.durationLabel(it.toInt()) },
+                        spokenUnit = "",
+                        label = tr("How long the session was"),
+                    ) { draft = draft.copy(minutes = it.toInt()) }
+                }
+
+                EffortPicker(draft.rpe?.rawValue, RPE.entries.map { it.displayName },
+                    tr("How hard did it feel?"), "effort.overall") {
+                    draft = draft.copy(rpe = it?.let(RPE::fromRaw))
+                }
+                EffortPicker(draft.fingerStrain?.rawValue, FingerStrain.entries.map { it.displayName },
+                    tr("On your fingers"), "effort.fingers") {
+                    draft = draft.copy(fingerStrain = it?.let(FingerStrain::fromRaw))
+                }
+
+                Text(
+                    draft.consequence,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = palette.inkSecondary,
+                )
+
+                if (failed) {
+                    Text(
+                        tr("That couldn't be saved — nothing was logged. Try again."),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = palette.alarm,
+                    )
                 }
             }
-
-            Block(tr("HOW LONG")) {
-                Text(
-                    SessionLogDraft.durationLabel(draft.minutes),
-                    style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-                    fontWeight = FontWeight.SemiBold,
-                    color = palette.inkPrimary,
-                )
-                // Tap-to-type belongs on a row that needs it. Two hours versus two hours
-                // fifteen is noise inside a five-point self-report, and a keyboard would cost
-                // the fast path this sheet is built around.
-                DialTrack(
-                    value = draft.minutes.toDouble(),
-                    values = SessionLogDraft.durationStops,
-                    format = { SessionLogDraft.durationLabel(it.toInt()) },
-                    spokenUnit = "",
-                    label = tr("How long the session was"),
-                ) { draft = draft.copy(minutes = it.toInt()) }
-            }
-
-            // The two axes. No numeric transition on either: these read out WORDS, and a
-            // number roll is for digits — which this app does not do anywhere anyway.
-            Block(tr("HOW HARD OVERALL")) {
-                Text(
-                    draft.rpe?.displayName ?: tr("Not set"),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (draft.rpe == null) palette.inkTertiary else palette.inkPrimary,
-                )
-                DialTrack(
-                    value = (draft.rpe ?: RPE.easy).rawValue.toDouble(),
-                    values = RPE.entries.map { it.rawValue.toDouble() },
-                    format = { RPE.fromRaw(it.toInt())?.displayName ?: "" },
-                    spokenUnit = "",
-                    label = tr("How hard the session was overall"),
-                    // UNSET is a real state, not a value below the ladder: an untouched dial
-                    // that highlighted stop one would be an answer nobody gave.
-                    isUnset = draft.rpe == null,
-                ) { draft = draft.copy(rpe = RPE.fromRaw(it.toInt())) }
-            }
-
-            Block(tr("ON YOUR FINGERS")) {
-                Text(
-                    draft.fingerStrain?.displayName ?: tr("Not set"),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (draft.fingerStrain == null) palette.inkTertiary else palette.inkPrimary,
-                )
-                DialTrack(
-                    value = (draft.fingerStrain ?: FingerStrain.nothing).rawValue.toDouble(),
-                    values = FingerStrain.entries.map { it.rawValue.toDouble() },
-                    format = { FingerStrain.fromRaw(it.toInt())?.displayName ?: "" },
-                    spokenUnit = "",
-                    label = tr("How hard it was on your fingers"),
-                    isUnset = draft.fingerStrain == null,
-                ) { draft = draft.copy(fingerStrain = FingerStrain.fromRaw(it.toInt())) }
-            }
-
-            Text(
-                draft.consequence,
-                style = MaterialTheme.typography.bodySmall,
-                color = palette.inkSecondary,
-            )
-
-            if (failed) {
-                Text(
-                    tr("That couldn't be saved — nothing was logged. Try again."),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    color = palette.alarm,
-                )
-            }
-
-            PrimaryButton(tr("Save"), enabled = draft.canSave, onClick = ::save)
-            SecondaryButton(title = tr("Cancel"), modifier = Modifier.fillMaxWidth(), onClick = onClose)
+            PrimaryButton(tr("Save"), modifier = Modifier.padding(vertical = 10.dp),
+                enabled = draft.canSave && !submission.isRunning, onClick = ::save)
         }
     }
 }
@@ -279,7 +268,16 @@ fun SessionLogSheet(onClose: () -> Unit) {
 @Composable
 private fun KindBlock(selected: SessionKind?, onSelect: (SessionKind) -> Unit) {
     val palette = LocalGripPalette.current
-    Block(tr("WHAT KIND OF SESSION")) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            CapsLabel(tr("WHAT KIND OF SESSION"), Modifier.weight(1f))
+            val disclosureState = tr(if (expanded) "Expanded" else "Collapsed")
+            IconButton(onClick = { expanded = !expanded },
+                modifier = Modifier.semantics { stateDescription = disclosureState }) {
+                Icon(Icons.Outlined.Info, tr("About session types"), tint = palette.inkSecondary)
+            }
+        }
         // `ChipGrid`, not a plain Row: a third chip is what tips this row over at
         // accessibility sizes, and the grid wraps where a row would squeeze three labels past
         // legibility.
@@ -294,7 +292,7 @@ private fun KindBlock(selected: SessionKind?, onSelect: (SessionKind) -> Unit) {
         // The explainer for the SELECTED one, or all of them while undecided — "volume" and
         // "limit" are jargon somebody may only half-know, and a mis-picked chip quietly
         // mis-describes the week this screen exists to describe honestly.
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (expanded) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             (selected?.let { listOf(it) } ?: SessionLogDraft.kinds).forEach { option ->
                 Text(
                     if (selected == null) tr("%s — %s", option.shortName, option.explainer)

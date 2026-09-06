@@ -85,16 +85,13 @@ final class RunnerSession {
     /// change, so a second of holding invalidates the UI ~1–2 times instead of ~80.
     private(set) var snapshot = RunnerSnapshot()
 
-    /// Rep progress in percent, 0…100 — the finest step the progress bar can show.
-    ///
-    /// **NOT on `RunnerSnapshot`, deliberately.** It used to live there and was the one
-    /// field that stepped at up to ~33 Hz (a 3 s C4 hold's own 1% buckets). `snapshot`
-    /// is ONE stored property, so any field changing reassigns the whole struct — this
-    /// one alone was rebuilding the entire runner tree (counters, prompt, six glass
-    /// buttons, `HoldToEndButton`'s `GeometryReader`, the trace card, every
-    /// `.tourAnchor`) 10–33×/s to move a 4 pt bar. Change-guarded exactly like `snapshot`
-    /// itself, so only `LiveRepProgress` — the one view that reads it — pays for it.
-    private(set) var repProgressBucket = 0
+    /// The exact measured fraction, isolated from the coarse screen snapshot. Only the
+    /// small progress bar observes this value and interpolates between received samples;
+    /// countdowns, controls and grip instructions keep their change-guarded cadence.
+    private(set) var repProgress: Double = 0
+    var repProgressBucket: Int { Int((repProgress * 100).rounded()) }
+    /// Timer-only ring state. Keep this 10 Hz fraction off the screen snapshot too.
+    private(set) var phaseRemainingFraction: Double?
     private(set) var startedAt = Date.now
     private(set) var finishedAt: Date?
     /// Monotonic seconds the countdowns are measured against. NOT observable: the
@@ -217,7 +214,10 @@ final class RunnerSession {
         // running them inside `onAppear` put that delay between tapping Start and the
         // runner appearing — the one tap in the app that must feel instant. The first
         // cue is at most a runloop turn late; nothing audible is due for five seconds.
-        Task { @MainActor [weak self] in self?.cues.begin() }
+        Task { @MainActor [weak self] in
+            guard let self, !self.hasEnded else { return }
+            self.cues.begin()
+        }
         if !timerOnly {
             device.onSample = { [weak self] sample in
                 guard let self else { return }
@@ -231,8 +231,9 @@ final class RunnerSession {
         // ever comes from the device's own timestamps inside the runner.
         ticker = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(100))
-                guard let self else { return }
+                do { try await Task.sleep(for: .milliseconds(100)) }
+                catch { return }
+                guard !Task.isCancelled, let self, !self.hasEnded else { return }
                 self.now = ProcessInfo.processInfo.systemUptime
                 self.send(.tick)
             }
@@ -461,10 +462,12 @@ final class RunnerSession {
         // `displaySlot`, not `currentSlot`: during a rest the screen describes the rep
         // you are about to do. See `SessionRunner.displaySlot`.
         let slot = runner.displaySlot
-        // Published SEPARATELY from `snapshot` — see `repProgressBucket`'s own doc
-        // comment for why this one field cannot live in that struct.
-        let newBucket = Int((runner.repProgress * 100).rounded())
-        if newBucket != repProgressBucket { repProgressBucket = newBucket }
+        // Retain sub-percent measurements: rounding here makes a long hold visibly
+        // stop between 1% boundaries. This remains separate from the screen snapshot.
+        let progress = runner.repProgress
+        if progress != repProgress { repProgress = progress }
+        let remaining = timerOnly ? runner.phaseRemainingFraction(at: now) : nil
+        if remaining != phaseRemainingFraction { phaseRemainingFraction = remaining }
         let next = RunnerSnapshot(
             phase: runner.phase,
             isDropped: runner.isDropped,
@@ -486,15 +489,9 @@ final class RunnerSession {
             newGripID: runner.newGripID, upcomingGrip: runner.upcomingGrip,
             isSetBreak: runner.isSetBreak,
             // WHOLE seconds: the screen cannot show more precision than this, so
-            // publishing more only buys invalidations. The 1% rep-progress bucket lives
-            // on `repProgressBucket` instead, published just above — never here.
-            secondsShown: secondsShown,
-            // The timer-only dial is a live phase clock, not a rep-progress view. Keep it
-            // behind this gate: measured `send(_:)` publishes after every gauge sample,
-            // and a continuous fraction there would invalidate the whole screen ~80 Hz
-            // for a field the gauge layout never draws. This is why the @ObservationIgnored
-            // runner boundary exists; timer-only has only the 10 Hz ticker to feed it.
-            phaseRemainingFraction: timerOnly ? runner.phaseRemainingFraction(at: now) : nil
+            // publishing more only buys invalidations. The exact measured progress lives
+            // on `repProgress` instead, published just above — never here.
+            secondsShown: secondsShown
         )
         if next != snapshot { snapshot = next }
         pushActivity()
@@ -645,7 +642,4 @@ struct RunnerSnapshot: Equatable {
 
     /// Whole seconds on whichever clock is running.
     var secondsShown = 0
-    /// Fraction of the current timer-only phase remaining. Nil for measured sessions and
-    /// phases that have no countdown, so a gauge sample cannot create an 80 Hz UI field.
-    var phaseRemainingFraction: Double? = nil
 }

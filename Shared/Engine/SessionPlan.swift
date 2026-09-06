@@ -117,7 +117,8 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
     /// Decode clamps. `repsRange` starts at 0 because a zero-rep set is representable
     /// (and dropped by `SessionPlan.executable`); the UI floor is 1.
     static let repsRange = 0...20
-    static let holdRange = 3...120
+    // Match the hold dial: positive whole seconds, including short 1–2 s pulls.
+    static let holdRange = 1...120
     static let restRange = 0...600
     /// 1 %…100 %. The ceiling is 100 rather than something "sensible" like 60 because a
     /// max-effort routine is a legitimate thing to author, and the floor is above zero
@@ -237,6 +238,11 @@ struct SessionPlan: Hashable, Sendable, Codable {
         SetPlan.band(lo: targetLoPercent, hi: targetHiPercent)
     }
 
+    /// Shared with the editor so typed values survive persistence and sharing.
+    static let setBreakRange = 0...900
+    // Preserve legacy sub-0.5 kg thresholds while accepting the editor's full upper limit.
+    static let thresholdRange = 0.1...30.0
+
     /// Sets that will actually run. Everything in `PlanMath` operates on this, and the
     /// runner freezes THIS, so `RepSummary.setIndex` is unambiguous forever after.
     var executable: SessionPlan {
@@ -268,11 +274,11 @@ extension SessionPlan {
         self.handMode = HandMode(fallback: c.value(.handMode, or: HandMode.alternateEachRep.rawValue))
         self.holdSeconds = SetPlan.holdRange.clamping(c.value(.holdSeconds, or: 10))
         self.restSeconds = SetPlan.restRange.clamping(c.value(.restSeconds, or: 20))
-        self.setBreakSeconds = SetPlan.restRange.clamping(c.value(.setBreakSeconds, or: 60))
+        self.setBreakSeconds = Self.setBreakRange.clamping(c.value(.setBreakSeconds, or: 60))
         self.leadInSeconds = (0...60).clamping(c.value(.leadInSeconds, or: 5))
         // A zero threshold would read as "engaged" against sensor noise and start the
         // clock before the user touched the edge.
-        self.thresholdKg = (0.1...20.0).clamping(c.value(.thresholdKg, or: 2.0))
+        self.thresholdKg = Self.thresholdRange.clamping(c.value(.thresholdKg, or: 2.0))
         // Absent key → true, so an existing routine GAINS the behaviour. See the
         // property for why that is the right default rather than the safe-looking one.
         self.waitForReleaseBeforeRest = c.value(.waitForReleaseBeforeRest, or: true)

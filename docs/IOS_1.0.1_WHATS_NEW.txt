@@ -1,9 +1,12 @@
-Grip changes are harder to miss. The hand, banner and graph border turn orange when it's time to switch, and stay highlighted through your rest.
+Grip changes are harder to miss. The hand, banner and graph border turn orange when it's time to switch, and stay highlighted throughout your rest.
 
 • Finger curl is now an option in the grip builder, with its own history and maxes.
+• A cleaner workout summary keeps Save and Discard within reach. New peaks and set details stay tucked away until you want to review them.
+• Rate how a session felt with the new finger-shaped effort bars. Tap or slide to choose, with a little lift and haptic feedback as you go.
+• Log a climbing session with less scrolling, and manage saved maxes directly from the Maxes tab.
 • Scan a shared routine straight from the new routine card.
-• Swipe right on a workout in History to export it. CSV exports now offer a compact summary or every pull, with more context for your AI assistant or spreadsheet.
-• Smoother live feedback, more responsive controls and Bluetooth reliability improvements.
-• Tidier Settings, with extra details tucked into expandable sections.
+• Swipe right on a workout in History to export it. Choose a compact CSV summary or every pull, with more context for your AI assistant or spreadsheet.
 
-Get a Grip is now open source. You'll find the code and license information in Settings.
+We've also worked through the smaller things that get in your way: quicker controls, smoother live progress, more reliable Bluetooth, and a graph that stays connected when you tare. Hold times can now go down to 1 second, and typed targets keep the exact values you enter.
+
+Settings is tidier, too. Extra details are tucked into expandable sections, including a link to the app's open-source code.

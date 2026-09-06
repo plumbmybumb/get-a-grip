@@ -22,6 +22,8 @@ struct SessionLogSheet: View {
     /// No default. Volume and limit are genuinely different days and the app cannot
     /// guess which you had — pre-selecting one would get it wrong half the time and
     /// silently mis-describe the week, which is exactly what this feature exists to fix.
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var showKindHelp = false
     @State private var kind: SessionKind?
     @State private var daysAgo = 0
     @State private var durationMinutes = 120.0
@@ -35,7 +37,7 @@ struct SessionLogSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 12) {
                     styleBlock
                     dayBlock
                     durationBlock
@@ -46,12 +48,13 @@ struct SessionLogSheet: View {
                 }
                 .padding(.horizontal, Metrics.hPadding)
                 .padding(.top, 12)
-                .padding(.bottom, 28)
+                .padding(.bottom, 12)
                 .frame(maxWidth: Metrics.maxContentWidth)
                 .frame(maxWidth: .infinity)
             }
             .background { AppBackground() }
             .scrollBounceBehavior(.basedOnSize)
+            .accessibilityIdentifier("sessionLog.form")
             .scrollEdgeEffectStyle(.soft, for: .bottom)
             .navigationTitle("Log a session")
             .navigationBarTitleDisplayMode(.inline)
@@ -77,7 +80,17 @@ struct SessionLogSheet: View {
 
     private var styleBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "WHAT KIND OF SESSION"))
+            HStack {
+                CapsLabel(String(localized: "WHAT KIND OF SESSION"))
+                Spacer()
+                Button { showKindHelp.toggle() } label: {
+                    Image(systemName: "info.circle")
+                        .frame(width: 44, height: 44).contentShape(.rect)
+                }
+                .foregroundStyle(Ink.secondary)
+                .accessibilityLabel("About session types")
+                .accessibilityValue(showKindHelp ? "Expanded" : "Collapsed")
+            }
             // `ChipGrid`, not an `HStack`: a third chip is what tips this row over at
             // accessibility sizes, and the grid wraps where a row would squeeze three
             // labels past legibility.
@@ -89,15 +102,17 @@ struct SessionLogSheet: View {
                     .accessibilityLabel(option.name)
                 }
             }
-            // The explainer for the SELECTED one, or both while undecided — "volume" and
+            // The explainer for the SELECTED one, or all while undecided — "volume" and
             // "limit" are jargon somebody may only half-know, and a mis-picked chip
             // quietly mis-describes the week this screen exists to describe honestly.
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(kind.map { [$0] } ?? [.climbVolume, .climbLimit, .hangManual], id: \.self) { option in
-                    Text(kind == nil ? String(localized: "\(option.shortName) — \(option.explainer)") : option.explainer)
-                        .font(.system(.footnote))
-                        .foregroundStyle(Ink.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
+            if showKindHelp {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(kind.map { [$0] } ?? [.climbVolume, .climbLimit, .hangManual], id: \.self) { option in
+                        Text(kind == nil ? String(localized: "\(option.shortName) — \(option.explainer)") : option.explainer)
+                            .font(.system(.footnote))
+                            .foregroundStyle(Ink.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
         }
@@ -108,7 +123,10 @@ struct SessionLogSheet: View {
     /// heaviest control on this fast log to serve a case — logging Thursday's session on
     /// Sunday — that barely happens and that History can already show is missing.
     private var dayBlock: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 16))
+        return layout {
             CapsLabel(String(localized: "WHEN"))
             HStack(spacing: 8) {
                 Chip(title: String(localized: "Today"), isSelected: daysAgo == 0) { daysAgo = 0 }
@@ -120,12 +138,15 @@ struct SessionLogSheet: View {
 
     private var durationBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "HOW LONG"))
-            Text(Self.durationLabel(Int(durationMinutes)))
-                .font(.system(.title3, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(Ink.primary)
-                .contentTransition(.numericText())
+            HStack {
+                CapsLabel(String(localized: "HOW LONG"))
+                Spacer()
+                Text(Self.durationLabel(Int(durationMinutes)))
+                    .font(.system(.title3, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Ink.primary)
+                    .contentTransition(.numericText())
+            }
             // Tap-to-type belongs on the row above. Two hours versus two hours fifteen
             // is noise inside a five-point self-report, and a keyboard would cost the
             // fast path this sheet is built around.
@@ -143,50 +164,17 @@ struct SessionLogSheet: View {
     }
 
     private var overallStrainBlock: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "HOW HARD OVERALL"))
-            // No `.numericText()` here or on the finger row: these read out WORDS, and
-            // the numeric transition is for digits rolling. The house rule pairs it with
-            // `.monospacedDigit()` for exactly that reason.
-            Text(rpe?.name ?? String(localized: "Not set"))
-                .font(.system(.title3, weight: .semibold))
-                .foregroundStyle(rpe == nil ? Ink.tertiary : Ink.primary)
-            DialTrack(value: rpeDialValue,
-                      values: RPE.allCases.map { Double($0.rawValue) },
-                      format: { RPE(rawValue: Int($0))?.name ?? "" },
-                      spokenUnit: "",
-                      isUnset: rpe == nil)
-                .accessibilityLabel("How hard the session was overall")
-        }
+        EffortPicker(selection: Binding(get: { rpe?.rawValue },
+                                         set: { rpe = $0.flatMap(RPE.init(rawValue:)) }),
+                     labels: RPE.allCases.map(\.name),
+                     title: String(localized: "How hard did it feel?"), identifier: "effort.overall")
     }
 
     private var fingerStrainBlock: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "ON YOUR FINGERS"))
-            Text(fingerStrain?.name ?? String(localized: "Not set"))
-                .font(.system(.title3, weight: .semibold))
-                .foregroundStyle(fingerStrain == nil ? Ink.tertiary : Ink.primary)
-            DialTrack(value: fingerStrainDialValue,
-                      values: FingerStrain.allCases.map { Double($0.rawValue) },
-                      format: { FingerStrain(rawValue: Int($0))?.name ?? "" },
-                      spokenUnit: "",
-                      isUnset: fingerStrain == nil)
-                .accessibilityLabel("How hard it was on your fingers")
-        }
-    }
-
-    private var rpeDialValue: Binding<Double> {
-        Binding(
-            get: { Double(rpe?.rawValue ?? RPE.easy.rawValue) },
-            set: { rpe = RPE(rawValue: Int($0)) }
-        )
-    }
-
-    private var fingerStrainDialValue: Binding<Double> {
-        Binding(
-            get: { Double(fingerStrain?.rawValue ?? FingerStrain.nothing.rawValue) },
-            set: { fingerStrain = FingerStrain(rawValue: Int($0)) }
-        )
+        EffortPicker(selection: Binding(get: { fingerStrain?.rawValue },
+                                         set: { fingerStrain = $0.flatMap(FingerStrain.init(rawValue:)) }),
+                     labels: FingerStrain.allCases.map(\.name),
+                     title: String(localized: "On your fingers"), identifier: "effort.fingers")
     }
 
     private static func durationLabel(_ minutes: Int) -> String {

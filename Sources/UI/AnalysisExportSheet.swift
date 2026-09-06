@@ -10,8 +10,15 @@ import UIKit
 /// Freeze model values at the tap; format the selected range off the main actor.
 struct AnalysisExportRequest: Identifiable {
     let id = UUID()
-    let input: AnalysisExport.Input
+    let snapshot: AnalysisExportAssembler.Snapshot
+    let worker: AnalysisExportWorker
     var isWorkout = false
+
+    init(snapshot: AnalysisExportAssembler.Snapshot, isWorkout: Bool = false) {
+        self.snapshot = snapshot
+        self.worker = AnalysisExportWorker(snapshot: snapshot)
+        self.isWorkout = isWorkout
+    }
 }
 
 struct AnalysisExportSheet: View {
@@ -20,18 +27,28 @@ struct AnalysisExportSheet: View {
 
     @State private var scope = AnalysisExport.CSVScope.recent
     @State private var detail = AnalysisExport.CSVDetail.summary
-    @State private var document: AnalysisExport.CSVDocument?
+    @State private var preparedDocument: (key: String, value: AnalysisExport.CSVDocument)?
     @State private var copiedTick = 0
     /// Reverts after two seconds, like the diagnostics Copy button: the document is worth
     /// re-copying, and a label stuck on "Copied" forever acknowledges nothing.
     @State private var justCopied = false
     @State private var copyResetTask: Task<Void, Never>?
 
+    private var selectionKey: String {
+        request.id.uuidString + scope.rawValue + detail.rawValue
+    }
+
+    private var document: AnalysisExport.CSVDocument? {
+        // Hide the old actions in the same render as a selection change, before
+        // the replacement task has had an opportunity to start.
+        preparedDocument?.key == selectionKey ? preparedDocument?.value : nil
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    if request.isWorkout, let session = request.input.sessions.first {
+                    if request.isWorkout, let session = request.snapshot.sessions.first?.metadata {
                         Text(session.routineName)
                             .font(.headline)
                         Text(AnalysisExport.isoDay(session.day))
@@ -90,17 +107,15 @@ struct AnalysisExportSheet: View {
             .safeAreaInset(edge: .bottom) { actions }
         }
         .presentationDetents([.medium, .large])
-        .task(id: scope.rawValue + detail.rawValue) {
-            document = nil
+        .task(id: selectionKey) {
+            let requestedKey = selectionKey
+            preparedDocument = nil
             justCopied = false
-            let input = request.input
             let selectedDetail = detail
             let selected = request.isWorkout ? AnalysisExport.CSVScope.workout : scope
-            let result = await Task.detached(priority: .userInitiated) {
-                AnalysisExport.csv(input, scope: selected, detail: selectedDetail)
-            }.value
+            let result = try? await request.worker.document(scope: selected, detail: selectedDetail)
             guard !Task.isCancelled else { return }
-            document = result
+            if let result { preparedDocument = (requestedKey, result) }
         }
         .onDisappear { copyResetTask?.cancel() }
     }
@@ -194,4 +209,3 @@ private struct AnalysisExportFile: Transferable {
         ProxyRepresentation(exporting: \.text)
     }
 }
-

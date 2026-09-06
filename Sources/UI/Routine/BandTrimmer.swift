@@ -243,19 +243,20 @@ struct BandTrimmer: View {
             // compresses nothing and loses nothing.
             let bandWidth = startHi - startLo
             let newLo = (startLo + delta).clamped(to: scale.lowerBound...(scale.upperBound - bandWidth))
-            let lo = snap(newLo)
+            let lo = snap(newLo).clamped(to: scale.lowerBound...(scale.upperBound - bandWidth))
             apply(lo: lo, hi: lo + bandWidth)
         case nil:
             break
         }
     }
 
+    // Typed bands may be narrower than one drag step, including at either scale edge.
     private func setLo(_ value: Double) {
-        apply(lo: snap(value).clamped(to: scale.lowerBound...(hi - step)), hi: hi)
+        apply(lo: snap(value).clamped(to: scale.lowerBound...max(scale.lowerBound, hi - step)), hi: hi)
     }
 
     private func setHi(_ value: Double) {
-        apply(lo: lo, hi: snap(value).clamped(to: (lo + step)...scale.upperBound))
+        apply(lo: lo, hi: snap(value).clamped(to: min(lo + step, scale.upperBound)...scale.upperBound))
     }
 
     private func apply(lo newLo: Double, hi newHi: Double) {

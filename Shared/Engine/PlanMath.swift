@@ -395,13 +395,23 @@ enum PlanMath {
         var seen = Set<String>()
         var count = 0
         for set in live.sets where !seen.contains(set.grip.key) {
-            seen.insert(set.grip.key)
             let sides: [Side] = live.handMode.sideCount > 1 ? [.left, .right] : [.both]
             if sides.contains(where: { targetBand(set, in: live, side: $0, maxes: maxes) == nil }) {
+                seen.insert(set.grip.key)
                 count += 1
             }
         }
         return count
+    }
+
+    /// Missing benchmarks only; explicit kg targets and deliberately untargeted sets do not qualify.
+    static func missingBenchmarkGripCount(_ plan: SessionPlan, maxes: MaxTable) -> Int {
+        let live = plan.executable
+        var percentagePlan = live
+        percentagePlan.sets = live.sets.filter {
+            $0.targetBand == nil && targetPercent($0, in: live) != nil
+        }
+        return untargetedGripCount(percentagePlan, maxes: maxes)
     }
 
     static func bandText(_ band: ClosedRange<Double>, withUnit: Bool = true) -> String {

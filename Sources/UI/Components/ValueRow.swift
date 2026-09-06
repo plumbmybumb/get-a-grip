@@ -353,8 +353,9 @@ struct ValueField: View {
     static func parse(_ raw: String, decimals: Int) -> Double? {
         let cleaned = raw.trimmingCharacters(in: .whitespaces)
             .replacingOccurrences(of: ",", with: ".")
-        guard let typed = Double(cleaned) else { return nil }
-        return rounded(typed, decimals: decimals)
+        guard let typed = Double(cleaned), typed.isFinite else { return nil }
+        let result = rounded(typed, decimals: decimals)
+        return result.isFinite ? result : nil
     }
 
     /// Rounds to what the row can DISPLAY (whole numbers, or one decimal for kilograms),
@@ -389,27 +390,32 @@ private struct RepeatingStep: View {
     var step: @MainActor () -> Bool
 
     @State private var task: Task<Void, Never>?
-    @State private var pressed = false
-    @State private var repeated = false
+    @State private var pressState = RepeatingStepPressState()
+    @GestureState private var touchActive = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    /// Past this, the touch is a scroll and not a press.
-    private static let slop: CGFloat = 10
 
     var body: some View {
         Image(systemName: symbol)
             .font(.system(.subheadline, weight: .semibold))
             .foregroundStyle(enabled ? Accent.graphite : Ink.tertiary.opacity(0.5))
             // Match the shared button: immediate press, critically damped release.
-            .scaleEffect(pressed && !reduceMotion ? 0.94 : 1)
-            .animation(pressed ? nil : Motion.state(reduceMotion),
-                       value: pressed)
+            .scaleEffect(pressState.isPressed && !reduceMotion ? 0.94 : 1)
+            .animation(pressState.isPressed ? nil : Motion.state(reduceMotion),
+                       value: pressState.isPressed)
             // 44pt around a glyph that draws far smaller — the house rule for every
             // bare-glyph control.
             .frame(width: 44, height: 44)
             .contentShape(.circle)
             .simultaneousGesture(press)
             .onDisappear { cancel() }
+            // GestureState resets on interruption as well as normal release; onEnded
+            // alone misses a scroll recognizer or system gesture cancelling the touch.
+            .onChange(of: touchActive) { _, active in
+                if !active {
+                    cancel()
+                    pressState = RepeatingStepPressState()
+                }
+            }
             // A raw `DragGesture` gives VoiceOver nothing to activate — unlike a real
             // `Button`, this is a bare `Image`. The accelerating hold is still
             // sighted-only (there is no VoiceOver equivalent to "held down"), but a
@@ -424,22 +430,19 @@ private struct RepeatingStep: View {
 
     private var press: some Gesture {
         DragGesture(minimumDistance: 0)
+            .updating($touchActive) { _, active, _ in active = true }
             .onChanged { drag in
-                guard abs(drag.translation.width) < Self.slop,
-                      abs(drag.translation.height) < Self.slop else {
-                    cancel()
+                guard pressState.update(translation: drag.translation, enabled: enabled) else {
+                    if !pressState.isPressed { cancel() }
                     return
                 }
-                guard enabled, task == nil else { return }
-                pressed = true
-                repeated = false
                 task = Task { @MainActor in
                     // The dwell before it takes over. Any shorter and a deliberate single
                     // tap starts running away from you.
                     try? await Task.sleep(for: .milliseconds(450))
                     var delay = 90
                     while !Task.isCancelled {
-                        repeated = true
+                        pressState.didRepeat = true
                         guard step() else { break }
                         try? await Task.sleep(for: .milliseconds(delay))
                         delay = max(35, delay - 5)
@@ -447,18 +450,47 @@ private struct RepeatingStep: View {
                 }
             }
             .onEnded { drag in
-                let moved = abs(drag.translation.width) >= Self.slop
-                    || abs(drag.translation.height) >= Self.slop
+                let shouldStep = pressState.finish(translation: drag.translation, enabled: enabled)
                 cancel()
                 // A tap is a press that never reached the dwell — and never wandered.
-                if !repeated, !moved, enabled { _ = step() }
+                if shouldStep { _ = step() }
             }
     }
 
     private func cancel() {
         task?.cancel()
         task = nil
-        pressed = false
+        pressState.isPressed = false
+    }
+}
+
+/// Cancellation lasts for the entire touch. Moving off a stepper and back must not
+/// restart its repeat task or turn the end of a page scroll into a value edit.
+struct RepeatingStepPressState {
+    var isPressed = false
+    var didRepeat = false
+    private var cancelled = false
+    private static let slop: CGFloat = 10
+
+    mutating func update(translation: CGSize, enabled: Bool) -> Bool {
+        if Self.hasMoved(translation) || !enabled {
+            cancelled = true
+            isPressed = false
+            return false
+        }
+        guard !cancelled, !isPressed else { return false }
+        isPressed = true
+        return true
+    }
+
+    mutating func finish(translation: CGSize, enabled: Bool) -> Bool {
+        let commits = isPressed && !cancelled && !didRepeat && enabled && !Self.hasMoved(translation)
+        self = Self()
+        return commits
+    }
+
+    private static func hasMoved(_ translation: CGSize) -> Bool {
+        abs(translation.width) >= slop || abs(translation.height) >= slop
     }
 }
 

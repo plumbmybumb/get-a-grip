@@ -3,6 +3,8 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
+import UIKit
 import XCTest
 @testable import Doigt
 
@@ -1322,7 +1324,64 @@ final class TemplateStoreTests: XCTestCase {
         XCTAssertEqual(w.store.plan(for: saved).sets[0].targetLoKg, 20)
     }
 
+    func testSummaryWithManyUnbenchmarkedGripsDoesNotWriteMaxesOnAppearance() async throws {
+        let w = try makeWorld()
+        let template = try XCTUnwrap(w.store.create(.starter))
+        let reps = (0..<6).map { index in
+            var rep = RepSummary()
+            rep.setIndex = index
+            rep.grip = GripSpec(edgeMM: 10 + index)
+            rep.side = .left
+            rep.heldSeconds = 10
+            rep.peakKg = 12
+            rep.avgKg = 10
+            rep.outcome = .completed
+            return rep
+        }
+        let view = SessionSummaryView(template: template, plan: .init(), reps: reps,
+            startedAt: .now, finishedAt: .now, didAnyWork: true, onDone: {})
+            .environment(w.store)
+            .preferredColorScheme(.light)
+        let host = UIHostingController(rootView: view)
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 393, height: 852)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        try await Task.sleep(for: .milliseconds(300))
+        host.view.layoutIfNeeded()
+        XCTAssertEqual(try w.context.fetch(FetchDescriptor<MaxRecord>()).count, 0)
+        let picture = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        }
+        let attachment = XCTAttachment(image: picture)
+        attachment.name = "Collapsed optional peak review"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     // MARK: - Failure handling
+
+    func testWorkoutAndChosenMaxesCommitOrRollbackTogether() throws {
+        for allowsSave in [true, false] {
+            let w = try makeWorld(allowsSave: allowsSave)
+            let grip = GripSpec()
+            let rejected = w.store.recordSession(plan: .init(), template: nil, reps: [],
+                startedAt: .now, finishedAt: .now, rpe: nil,
+                newMaxes: [MaxRecord(grip: grip, kg: .infinity, source: .measured, side: .left)])
+            XCTAssertNil(rejected)
+            XCTAssertEqual(workoutLogs(w).count, 0)
+            let result = w.store.recordSession(plan: .init(), template: nil, reps: [],
+                startedAt: .now, finishedAt: .now, rpe: nil,
+                newMaxes: [MaxRecord(grip: grip, kg: 12, source: .measured, side: .left)])
+            XCTAssertEqual(result != nil, allowsSave)
+            XCTAssertEqual(workoutLogs(w).count, allowsSave ? 1 : 0)
+            XCTAssertEqual(try w.context.fetch(FetchDescriptor<MaxRecord>()).count, allowsSave ? 1 : 0)
+            XCTAssertEqual(w.store.maxTable.max(grip: grip.key, side: .left), allowsSave ? 12 : nil)
+            XCTAssertFalse(w.store.benchmarkedToday, "A session peak must not log a second benchmark workout")
+        }
+    }
 
     /// The sheet used to dismiss unconditionally, so a failed write closed the form
     /// over a routine that no longer existed. Memory must match disk, and the caller

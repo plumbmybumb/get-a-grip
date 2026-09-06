@@ -445,14 +445,14 @@ private fun Notes(sets: List<SetPlan>, plan: SessionPlan) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (hasPercent) {
             Text(
-                tr("Target loads are percentages of your own maxes."),
+                tr("Percentage targets use your saved maxes. These may no longer reflect your current strength."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )
         }
         if (hasKilograms) {
             Text(
-                tr("Some sets carry kilogram targets typed by whoever shared this."),
+                tr("Some kilogram targets were set by the sender. Review them for your own training."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )

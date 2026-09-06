@@ -13,6 +13,12 @@ import XCTest
 /// nothing could reach it.
 @MainActor
 final class ValueFieldTests: XCTestCase {
+    func testNonFiniteOrOverflowingInputLeavesTheValueUnchanged() {
+        for input in ["nan", "NaN", "inf", "-inf", "Infinity", "1e309", "1e308"] {
+            XCTAssertNil(ValueField.parse(input, decimals: 1), input)
+        }
+    }
+
 
     /// An UNTOUCHED field must report nothing at all. Tapping a number to change it and
     /// then changing your mind has to leave the value alone — a commit that read an empty

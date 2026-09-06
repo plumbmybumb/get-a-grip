@@ -85,15 +85,6 @@
       "fr": "Lien copié"
     },
     {
-      "en": "Expanded",
-      "fr": "Déplié",
-      "//": "A disclosure's TalkBack state. Deliberately NOT the catalog's \"Open\" — that key is the open-hand grip position and translates to \"Tendue\"."
-    },
-    {
-      "en": "Collapsed",
-      "fr": "Replié"
-    },
-    {
       "en": "Decrease",
       "fr": "Diminuer",
       "//": "The bare stepper on a chip row, which has no title to name. The catalog's \"Decrease %s\" is the titled twin on ValueRow."

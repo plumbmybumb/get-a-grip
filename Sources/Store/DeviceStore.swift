@@ -355,7 +355,7 @@ final class DeviceStore {
         // zero is app-side arithmetic. All it would buy is a visible gap in the readings at
         // the moment the user asked for a clean zero.
         if isStreaming, !gaugeCapabilities.isBroadcast { startStreaming(cause: .tareRecovery) }
-        resetPeak()
+        resetPeak(preservingTrace: true)
     }
 
     func startStreaming(cause: StreamStartCause) {
@@ -519,11 +519,16 @@ final class DeviceStore {
         currentKg = 0
     }
 
-    func resetPeak() {
+    /// Tare resets the live peak, but its existing trace remains historical data.
+    /// Keep the playback anchor too: it already handles a restarted device counter.
+    /// A new measurement/session still starts with an empty graph by default.
+    func resetPeak(preservingTrace: Bool = false) {
         peakKg = 0
-        traceStorage.removeAll(keepingCapacity: true)
+        if !preservingTrace {
+            traceStorage.removeAll(keepingCapacity: true)
+            lastTraceMicros = nil
+        }
         sampleStateChanged()
-        lastTraceMicros = nil
     }
 
     /// **Throw the graph away when the app comes back to the foreground.**

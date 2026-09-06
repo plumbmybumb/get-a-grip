@@ -56,6 +56,7 @@ import run.nuri.getagrip.ui.components.FingerPips
 import run.nuri.getagrip.ui.components.IntValueRow
 import run.nuri.getagrip.ui.components.PositionChipRow
 import run.nuri.getagrip.ui.components.PrimaryButton
+import run.nuri.getagrip.ui.components.SubmissionState
 import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.components.ValueRow
 import run.nuri.getagrip.ui.l10n.tr
@@ -143,25 +144,30 @@ fun MaxEntrySheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var failed by remember { mutableStateOf(false) }
+    val submission = remember { SubmissionState() }
     /// Set the moment Save lands with anything to report; the sheet then shows the receipt
     /// instead of dismissing. null = still editing.
     var impact by remember { mutableStateOf<TemplateStore.MaxImpact?>(null) }
 
     fun save() {
-        if (!draft.canSave) return
+        if (!draft.canSave || submission.isRunning) return
+        val grip = draft.grip
+        val kg = draft.kg
+        val side = draft.side
+        val source = draft.source
         failed = false
-        scope.launch {
+        submission.launch(scope) {
             // Asked BEFORE the record lands — afterwards the old max is just history and the
             // ratio it anchors is gone.
-            val oldKg = templates.currentMax(draft.grip, draft.side)
+            val oldKg = templates.currentMax(grip, side)
             if (!templates.recordMax(
-                    kg = draft.kg,
-                    grip = draft.grip,
+                    kg = kg,
+                    grip = grip,
                     // Spelled out rather than left to the default, and it is genuinely a
                     // choice: `source` is `measured` only while the value is still the one
                     // the gauge produced.
-                    source = draft.source,
-                    side = draft.side,
+                    source = source,
+                    side = side,
                 )
             ) {
                 // A rolled-back save leaves the sheet OPEN with the error inline — dismissing
@@ -171,7 +177,7 @@ fun MaxEntrySheet(
             }
             feed.refresh()
             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-            val computed = templates.maxImpact(grip = draft.grip, oldKg = oldKg, newKg = draft.kg)
+            val computed = templates.maxImpact(grip = grip, oldKg = oldKg, newKg = kg)
             if (computed.isEmpty) onClose() else impact = computed
         }
     }
@@ -206,7 +212,7 @@ fun MaxEntrySheet(
             val receipt = impact
             if (receipt == null) {
                 FormContent(draft, failed, onMeasure)
-                PrimaryButton(tr("Save"), enabled = draft.canSave, onClick = ::save)
+                PrimaryButton(tr("Save"), enabled = draft.canSave && !submission.isRunning, onClick = ::save)
                 SecondaryButton(title = tr("Cancel"), modifier = Modifier.fillMaxWidth(), onClick = onClose)
             } else {
                 ImpactContent(
@@ -312,7 +318,7 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
         if (draft.source == MaxSource.measured) {
             tr("Measured on the gauge — your hardest pull on this grip.")
         } else {
-            tr("A number you set yourself. Measure it on the gauge if you'd rather not guess.")
+            tr("A number you entered. Check its value and units before using it for targets.")
         },
         style = MaterialTheme.typography.bodySmall,
         color = palette.inkTertiary,

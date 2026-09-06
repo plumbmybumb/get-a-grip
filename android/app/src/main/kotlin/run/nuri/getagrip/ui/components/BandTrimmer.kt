@@ -105,12 +105,13 @@ fun BandTrimmer(
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
     }
 
+    // Typed bands may be narrower than one drag step, including at either scale edge.
     fun setLo(value: Double) {
-        apply(snap(value).coerceIn(scale.start, hi - step), hi)
+        apply(snap(value).coerceIn(scale.start, maxOf(scale.start, hi - step)), hi)
     }
 
     fun setHi(value: Double) {
-        apply(lo, snap(value).coerceIn(lo + step, scale.endInclusive))
+        apply(lo, snap(value).coerceIn(minOf(lo + step, scale.endInclusive), scale.endInclusive))
     }
 
     fun fraction(value: Double) = ((value - scale.start) / span).coerceIn(0.0, 1.0).toFloat()
@@ -183,7 +184,7 @@ fun BandTrimmer(
                                     val bandWidth = startHi - startLo
                                     val newLo = (startLo + moved)
                                         .coerceIn(scale.start, scale.endInclusive - bandWidth)
-                                    val snapped = snap(newLo)
+                                    val snapped = snap(newLo).coerceIn(scale.start, scale.endInclusive - bandWidth)
                                     apply(snapped, snapped + bandWidth)
                                 }
                                 null -> Unit

@@ -135,12 +135,12 @@ class RunnerSessionDisplayTests {
             waitForResting(harness.session)
 
             harness.session.send(RunnerEvent.Pause)
-            val frozen = assertNotNull(harness.session.snapshot.phaseRemainingFraction)
+            val frozen = assertNotNull(harness.session.phaseRemainingFraction)
             delay(900)
 
             assertEquals(
                 frozen,
-                assertNotNull(harness.session.snapshot.phaseRemainingFraction),
+                assertNotNull(harness.session.phaseRemainingFraction),
                 0.001,
             )
         } finally {

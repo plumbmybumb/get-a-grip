@@ -80,8 +80,8 @@ import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
-/// The screen that makes "about 25 % of your max on this grip" mean something — Settings ›
-/// Maxes, where numbers are added, read back and deleted.
+/// Saved-record management, reached through Maxes → Manage.
+/// Numbers are added, read back and deleted here.
 ///
 /// Two decisions worth stating, because both look like omissions:
 ///
@@ -462,19 +462,19 @@ private fun EmptyCard() {
                 tint = palette.inkTertiary.copy(alpha = 0.55f),
             )
             Text(
-                tr("A max is the hardest you can pull on one grip."),
+                tr("A max records your hardest measured pull on a grip."),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = palette.inkPrimary,
             )
             Text(
-                tr("It is the number your training loads come from. The light sets in your routine sit at roughly a fifth to a third of it, so without a max a set can only tell you kilograms — not what those kilograms mean for your fingers."),
+                tr("Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit."),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = palette.inkSecondary,
             )
             Text(
-                tr("Measure it on the gauge, or pull as hard as you can and set the number yourself. It doesn't have to be exact, and you can add a newer one whenever it changes."),
+                tr("Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )

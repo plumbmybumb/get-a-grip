@@ -189,25 +189,21 @@ fun RootTabView() {
                 // Discard means NOTHING is written; a session nobody pulled in is not
                 // worth logging either (both rules from the iOS runner).
                 if (decision.save && outcome.didAnyWork) {
-                    scope.launch {
-                        templates.recordSession(
-                            plan = outcome.plan,
-                            template = request.template,
-                            reps = outcome.results,
-                            startedAt = outcome.startedAt,
-                            finishedAt = outcome.finishedAt,
-                            rpe = decision.rpe,
-                        )
-                        for (max in decision.newMaxes) {
-                            templates.recordMax(
-                                kg = max.kg, grip = max.grip, source = MaxSource.measured,
-                                side = max.side, marksBenchmarkDay = false,
-                            )
-                        }
-                        feed.refresh()
-                    }
-                }
-                running = null
+                    val saved = templates.recordSession(
+                        plan = outcome.plan,
+                        template = request.template,
+                        reps = outcome.results,
+                        startedAt = outcome.startedAt,
+                        finishedAt = outcome.finishedAt,
+                        rpe = decision.rpe,
+                        newMaxes = decision.newMaxes.map {
+                            run.nuri.getagrip.data.MaxRecordEntity.from(
+                                grip = it.grip, kg = it.kg, source = MaxSource.measured, side = it.side)
+                        },
+                    )
+                    if (saved != null) feed.refresh()
+                    saved != null
+                } else true
             },
             onExit = { running = null },
         )
@@ -384,11 +380,9 @@ fun RootTabView() {
                     onAddMax = { seed -> maxEntry = composerDraft(seed, templates.recentGrips.firstOrNull()) },
                     onMeasure = { grip, side -> measuring = MeasureRequest(grip, side) },
                     cardsAnchor = Modifier.tourAnchor(TourTarget.MaxesCurves),
+                    manageAnchor = Modifier.tourAnchor(TourTarget.MaxesManage),
                 )
-                Tab.Settings -> SettingsScreen(
-                    onAddMax = { seed -> maxEntry = composerDraft(seed, templates.recentGrips.firstOrNull()) },
-                    maxesRowAnchor = Modifier.tourAnchor(TourTarget.SettingsMaxes),
-                )
+                Tab.Settings -> SettingsScreen()
             }
         }
         }

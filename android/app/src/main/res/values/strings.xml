@@ -162,7 +162,9 @@
     <string name="s_a_low_intensity_no_hang_plan_is_ready_to_go_6_sets_36_pu">A low-intensity no-hang plan is ready to go — 6 sets, 36 pulls, about 21 minutes, twice a day. Change anything you like.</string>
     <string name="s_a_max_is_either_measured_on_the_gauge_or_set_by_you_the">A max is either measured on the gauge or set by you — the measured ones say so. The percentages elsewhere in the app are worked out from these.</string>
     <string name="s_a_max_is_the_hardest_you_can_pull_on_one_grip">A max is the hardest you can pull on one grip.</string>
+    <string name="s_a_max_records_your_hardest_measured_pull_on_a_grip">A max records your hardest measured pull on a grip.</string>
     <string name="s_a_max_testing_day_new_ceilings_on_the_gauge">A max-testing day — new ceilings on the gauge.</string>
+    <string name="s_a_number_you_entered_check_its_value_and_units_before_us">A number you entered. Check its value and units before using it for targets.</string>
     <string name="s_a_number_you_set_yourself_measure_it_on_the_gauge_if_you">A number you set yourself. Measure it on the gauge if you\'d rather not guess.</string>
     <string name="s_a_pinch_always_includes_the_thumb_c3d051">A pinch always includes the thumb</string>
     <string name="s_a_pinch_always_includes_the_thumb_baeb2e">A pinch always includes the thumb.</string>
@@ -172,7 +174,9 @@
     <string name="s_a_text_file_of_the_recent_connection_and_signal_breadcru">A text file of the recent connection and signal breadcrumbs — what the gauge and the app did in the last few minutes.</string>
     <string name="s_a_whenever_routine_nothing_owed_today">A whenever routine — nothing owed today</string>
     <string name="s_about">About</string>
+    <string name="s_about_session_types">About session types</string>
     <string name="s_add_a_max">Add a max</string>
+    <string name="s_add_a_max_review_earlier_records_or_delete_an_incorrect">Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets.</string>
     <string name="s_add_a_reminder_time_or_turn_reminders_off">Add a reminder time, or turn reminders off.</string>
     <string name="s_add_a_set">Add a set</string>
     <string name="s_add_at_least_one_set_with_a_pull_in_it">Add at least one set with a pull in it.</string>
@@ -208,6 +212,7 @@
     <string name="s_both_open_an_email_your_app_version_ios_version_device_a">Both open an email. Your app version, iOS version, device and selected gauge are added at the end of the message, so a report arrives with the context to act on it.</string>
     <string name="s_both_sessions_done_today">Both sessions done today</string>
     <string name="s_break_between_sets">Break between sets</string>
+    <string name="s_build_force_gradually_and_stop_if_it_hurts_this_measures">Build force gradually and stop if it hurts. This measures a peak, not a safe training limit.</string>
     <string name="s_build_my_routine">Build my routine</string>
     <string name="s_build_one_now">Build one now</string>
     <string name="s_builder_hints_reset">Builder hints reset</string>
@@ -220,6 +225,8 @@
     <string name="s_check_on_the_gauge">Check on the gauge</string>
     <string name="s_choose_a_session_kind_first">Choose a session kind first</string>
     <string name="s_choose_a_session_kind_to_see_how_it_counts">Choose a session kind to see how it counts.</string>
+    <string name="s_clear">Clear</string>
+    <string name="s_clear_rating">Clear rating</string>
     <string name="s_climbing_gym">Climbing gym</string>
     <string name="s_climbro">Climbro</string>
     <string name="s_close">Close</string>
@@ -227,6 +234,7 @@
     <string name="s_closes_the_target_editor">Closes the target editor</string>
     <string name="s_closes_this_set">Closes this set</string>
     <string name="s_collapse">Collapse</string>
+    <string name="s_collapsed">Collapsed</string>
     <string name="s_column_names_and_the_data_guide_stay_in_english_your_not">Column names and the data guide stay in English. Your notes stay as written.</string>
     <string name="s_comfortable">Comfortable</string>
     <string name="s_connect">Connect</string>
@@ -252,6 +260,7 @@
     <string name="s_couldn_t_prepare_a_shareable_image_the_code_above_still">Couldn\'t prepare a shareable image. The code above still scans.</string>
     <string name="s_couldn_t_read_your_routines_just_now_the_new_one_wasn_t">Couldn\'t read your routines just now — the new one wasn\'t saved.</string>
     <string name="s_couldn_t_save">Couldn\'t save</string>
+    <string name="s_couldn_t_save_this_workout_please_try_again">Couldn\'t save this workout. Please try again.</string>
     <string name="s_couldn_t_share">Couldn\'t share</string>
     <string name="s_counting">Counting</string>
     <string name="s_current_kilograms_peak_kilograms">Current %1$s kilograms, peak %2$s kilograms%3$s</string>
@@ -309,6 +318,7 @@
     <string name="s_every_session_you_have_done_and_five_weeks_of_them_at_a">Every session you have done, and five weeks of them at a glance. A fuller square is a day you did more of.</string>
     <string name="s_everything_you_have_logged_as_one_markdown_document_writ">Everything you have logged, as one Markdown document written to be pasted into an AI assistant: your sessions pull by pull, your maxes, and a legend that explains the notation so nothing has to be guessed at.</string>
     <string name="s_expand">Expand</string>
+    <string name="s_expanded">Expanded</string>
     <string name="s_export_detail">Export detail</string>
     <string name="s_export_for_analysis">Export for analysis</string>
     <string name="s_export_workout">Export workout</string>
@@ -376,6 +386,7 @@
     <string name="s_hold_to_end">Hold to end</string>
     <string name="s_holding">Holding</string>
     <string name="s_holding_steady_around_kg">Holding steady around %s kg.</string>
+    <string name="s_how_hard_did_it_feel">How hard did it feel?</string>
     <string name="s_how_hard_it_was_on_your_fingers">How hard it was on your fingers</string>
     <string name="s_how_hard_the_session_was_overall">How hard the session was overall</string>
     <string name="s_how_hard_was_that">How hard was that?</string>
@@ -397,6 +408,8 @@
     <string name="s_keep_editing">Keep editing</string>
     <string name="s_keep_holding">Keep holding…</string>
     <string name="s_keep_pulling_to_beat_it_or_let_go_to_finish">Keep pulling to beat it, or let go to finish.</string>
+    <string name="s_keep_the_gauge_unloaded_while_get_a_grip_connects_and_ta">Keep the gauge unloaded while Get a Grip connects and tares it. If the gauge is asleep, the app waits.</string>
+    <string name="s_keep_the_gauge_unloaded_while_it_connects_and_tares">Keep the gauge unloaded while it connects and tares.</string>
     <string name="s_kilograms_1dc308">Kilograms</string>
     <string name="s_l_d160e0">L</string>
     <string name="s_l_4a7991">L %s</string>
@@ -414,6 +427,7 @@
     <string name="s_left_right_left_right">Left, right, left, right — %s</string>
     <string name="s_left_right_left_right_swapping_hands_every_pull">Left, right, left, right — swapping hands every pull.</string>
     <string name="s_let_go_f2de3c">Let go</string>
+    <string name="s_let_go_when_you_are_ready_to_finish">Let go when you are ready to finish.</string>
     <string name="s_light">Light</string>
     <string name="s_limit">Limit</string>
     <string name="s_limit_climbing">Limit climbing</string>
@@ -427,7 +441,10 @@
     <string name="s_log_a_session">Log a session</string>
     <string name="s_log_a_session_you_did_elsewhere_climbing_or_hangs_off_th">Log a session you did elsewhere — climbing, or hangs off the gauge</string>
     <string name="s_lower_bound">Lower bound</string>
+    <string name="s_mpl_2_0" translatable="false">MPL 2.0</string>
     <string name="s_make_this_the_one_today_opens_on">Make this the one Today opens on</string>
+    <string name="s_manage">Manage</string>
+    <string name="s_manage_maxes">Manage maxes</string>
     <string name="s_max_a95e85">Max</string>
     <string name="s_max_day">Max day</string>
     <string name="s_max_on_this_grip">Max on this grip</string>
@@ -440,6 +457,7 @@
     <string name="s_maxes_what_you_can_pull_on_each_grip">Maxes. What you can pull on each grip.</string>
     <string name="s_measure">Measure</string>
     <string name="s_measure_a_max">Measure a max</string>
+    <string name="s_measure_a_peak_on_your_gauge_or_record_a_previous_measur">Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need.</string>
     <string name="s_measure_again">Measure again</string>
     <string name="s_measure_it_on_the_gauge_or_pull_as_hard_as_you_can_and_s">Measure it on the gauge, or pull as hard as you can and set the number yourself. It doesn\'t have to be exact, and you can add a newer one whenever it changes.</string>
     <string name="s_measure_on_the_gauge">Measure on the gauge</string>
@@ -467,6 +485,7 @@
     <string name="s_new_grip_c9ab0a">New grip: %s</string>
     <string name="s_new_max">New max</string>
     <string name="s_new_maxes">New maxes</string>
+    <string name="s_new_peaks_to_review">New peaks to review</string>
     <string name="s_new_routine_32809d">New routine</string>
     <string name="s_new_routine_906eb9">New routine…</string>
     <string name="s_next_bc9819">Next</string>
@@ -479,11 +498,13 @@
     <string name="s_no_daily_target_and_no_reminders_it_waits_on_today_until">No daily target and no reminders — it waits on Today until you feel like it.</string>
     <string name="s_no_fingers">No fingers</string>
     <string name="s_no_gauge_found">No gauge found</string>
+    <string name="s_no_live_reading">No live reading</string>
     <string name="s_no_max_for_your_hand_so_those_pulls_show_no_target_add_o">No max for your %s hand, so those pulls show no target. Add one in Settings › Maxes.</string>
     <string name="s_no_max_on_file_for_this_grip_yet_so_this_shows_no_target">No max on file for this grip yet, so this shows no target during a session. Add one in Settings › Maxes.</string>
     <string name="s_no_maxes_yet_5a8a83">No maxes yet</string>
     <string name="s_no_measured_pulls_to_chart_yet">No measured pulls to chart yet.</string>
     <string name="s_no_measurement_yet">No measurement yet</string>
+    <string name="s_no_pull_was_recorded_you_can_close_this_or_try_again">No pull was recorded. You can close this or try again.</string>
     <string name="s_no_pull_yet">No pull yet</string>
     <string name="s_no_scale_found">No scale found</string>
     <string name="s_no_session_done_today">No session done today</string>
@@ -498,6 +519,7 @@
     <string name="s_not_connected">Not connected</string>
     <string name="s_not_done_yet_today">Not done yet today</string>
     <string name="s_not_now">Not now</string>
+    <string name="s_not_rated">Not rated</string>
     <string name="s_not_set">Not set</string>
     <string name="s_nothing">Nothing</string>
     <string name="s_nothing_here_yet">Nothing here yet</string>
@@ -510,7 +532,8 @@
     <string name="s_notifications_are_off_for_get_a_grip">Notifications are off for Get a Grip.</string>
     <string name="s_oh">OH</string>
     <string name="s_ok">OK</string>
-    <string name="s_on_your_fingers">ON YOUR FINGERS</string>
+    <string name="s_on_your_fingers_c2cf0b">ON YOUR FINGERS</string>
+    <string name="s_on_your_fingers_359b43">On your fingers</string>
     <string name="s_once_a_day_a9afbb">Once a day</string>
     <string name="s_once_a_day_782e23">Once a day · %s</string>
     <string name="s_one_card_one_ritual_the_dots_are_today_s_sessions_and_a">One card, one ritual. The dots are today\'s sessions, and a filled dot is one you have done.</string>
@@ -540,6 +563,8 @@
     <string name="s_paused_c7dfb6">Paused</string>
     <string name="s_peak">Peak</string>
     <string name="s_percent_targets_always_follow_your_newest_max_nothing_to">Percent targets always follow your newest max — nothing to do.</string>
+    <string name="s_percentage_targets_use_the_max_saved_for_that_grip_and_h">Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit.</string>
+    <string name="s_percentage_targets_use_your_saved_maxes_these_may_no_lon">Percentage targets use your saved maxes. These may no longer reflect your current strength.</string>
     <string name="s_photos_access_is_off_for_get_a_grip_settings_privacy_pho">Photos access is off for Get a Grip — Settings &gt; Privacy &gt; Photos.</string>
     <string name="s_pinch">Pinch</string>
     <string name="s_pitchsix">PitchSix</string>
@@ -548,6 +573,7 @@
     <string name="s_preparing_image">Preparing image…</string>
     <string name="s_press_and_hold_to_end_everything_you_ve_already_done_is">Press and hold to end. Everything you\'ve already done is kept.</string>
     <string name="s_press_and_hold_nothing_is_saved">Press and hold. Nothing is saved.</string>
+    <string name="s_previous_kg">Previous: %s kg</string>
     <string name="s_privacy_policy">Privacy policy</string>
     <string name="s_privacy_policy_opens_in_your_browser">Privacy policy. Opens in your browser.</string>
     <string name="s_protocol_support_for_every_gauge_other_than_the_tindeq_p">Protocol support for every gauge other than the Tindeq Progressor is ported from hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray Hartog).</string>
@@ -612,6 +638,9 @@
     <string name="s_scanner_unavailable">Scanner unavailable</string>
     <string name="s_searching_for_your_gauge">Searching for your gauge…</string>
     <string name="s_searching">Searching…</string>
+    <string name="s_select_maximum_efforts_to_use_for_future_targets_saved_w">Select maximum efforts to use for future targets. Saved with this workout.</string>
+    <string name="s_selected">Selected</string>
+    <string name="s_selected_peaks_are_saved_as_maxes_when_you_save_this_wor">Selected peaks are saved as maxes when you save this workout.</string>
     <string name="s_send_without">Send without</string>
     <string name="s_service_discovery_failed">Service discovery failed: %s</string>
     <string name="s_session_f7f199">Session</string>
@@ -656,6 +685,8 @@
     <string name="s_skip_set">Skip set</string>
     <string name="s_skip_the_guide">Skip the guide</string>
     <string name="s_solid">Solid</string>
+    <string name="s_some_kilogram_targets_were_set_by_the_sender_review_them">Some kilogram targets were set by the sender. Review them for your own training.</string>
+    <string name="s_some_percentage_targets_have_no_saved_max_so_they_will_s">Some percentage targets have no saved max, so they will show no target.</string>
     <string name="s_some_sets_carry_kilogram_targets_typed_by_whoever_shared">Some sets carry kilogram targets typed by whoever shared this.</string>
     <string name="s_source">Source</string>
     <string name="s_source_code">Source code</string>
@@ -725,6 +756,7 @@
     <string name="s_the_shaded_band_is_the_load_you_were_asked_for_keep_the">The shaded band is the load you were asked for. Keep the line inside it and the clock runs; below says RE-GRIP and above says EASE OFF.</string>
     <string name="s_there_is_nothing_to_export_yet_finish_a_session_or_recor">There is nothing to export yet. Finish a session or record a max, and it lands here.</string>
     <string name="s_there_s_kg_on_the_gauge_zero_it">There\'s %s kg on the gauge. Zero it?</string>
+    <string name="s_these_are_workout_peaks_not_necessarily_maximum_efforts">These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets.</string>
     <string name="s_these_were_typed_by_hand_so_they_never_move_on_their_own">These were typed by hand, so they never move on their own. Scale them with the new max, or leave them.</string>
     <string name="s_this_build_can_t_reach_its_shared_storage_so_routines_sa">This build can\'t reach its shared storage, so routines saved earlier may not appear here.</string>
     <string name="s_this_code_contains_a_routine_with_no_pulls_in_it">This code contains a routine with no pulls in it.</string>
@@ -762,6 +794,7 @@
     <string name="s_unit">Unit</string>
     <string name="s_up_kg_across_lld_sessions">Up %1$s kg across %2$d sessions.</string>
     <string name="s_upper_bound">Upper bound</string>
+    <string name="s_use_as_max">Use as max</string>
     <string name="s_use_this_max">Use this max</string>
     <string name="s_used_for_both_hands_pick_a_hand_if_yours_differ_most_peo">Used for both hands. Pick a hand if yours differ — most people\'s do.</string>
     <string name="s_volume">Volume</string>
@@ -848,6 +881,7 @@
     <string name="s_measured_38130e">measured</string>
     <string name="s_measured_238905">"measured "</string>
     <string name="s_mm">mm</string>
+    <string name="s_no_saved_max_for_this_grip">no saved max for this grip</string>
     <string name="s_not_included">not included</string>
     <string name="s_now">now</string>
     <string name="s_of_lld">of %d</string>

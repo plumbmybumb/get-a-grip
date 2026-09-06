@@ -261,10 +261,7 @@ object RunnerScenarios {
     private fun setID(index: Int): java.util.UUID =
         java.util.UUID.fromString("5E7C0000-0000-4000-8000-%012d".format(index))
 
-    /// **Every hold is at least 3 seconds**, and that is the decoder's floor rather than a
-    /// preference: `SetPlan.holdRange` starts at 3, so a plan authored with a 1 s hold
-    /// decodes back as 3 and the canonical round trip fails. A fixture has to survive its
-    /// own wire format.
+    /// Fixed scenarios retain their original timings; short holds are covered separately.
     private fun plan(
         reps: Int = 1,
         sets: Int = 1,

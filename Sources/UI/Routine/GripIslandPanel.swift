@@ -150,10 +150,12 @@ struct GripIslandPanel: View {
     }
 
     private func close() {
-        withAnimation(Motion.state(reduceMotion)) { shown = false }
-        // Let the panel travel before the cover goes, or it vanishes instead of retracting.
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(reduceMotion ? 200 : 280))
+        guard shown else { return }
+        // Follow the shared transition's completion instead of a separately timed
+        // sleep. Repeated taps must not queue extra closes into the next presentation.
+        withAnimation(Motion.state(reduceMotion), completionCriteria: .logicallyComplete) {
+            shown = false
+        } completion: {
             onClose()
         }
     }

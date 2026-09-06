@@ -433,7 +433,7 @@ class DeviceStore(
         if (isStreaming && !gaugeCapabilities.isBroadcast) {
             startStreaming(StreamStartCause.tareRecovery)
         }
-        resetPeak()
+        resetPeak(preservingTrace = true)
     }
 
     fun startStreaming(cause: StreamStartCause) {
@@ -468,11 +468,15 @@ class DeviceStore(
         record(DiagnosticBreadcrumb.ScenePhase(phase))
     }
 
-    fun resetPeak() {
+    /// Tare keeps the historical trace and its restart-aware playback anchor.
+    /// New measurements/sessions still start with an empty graph by default.
+    fun resetPeak(preservingTrace: Boolean = false) {
         peakKg = 0.0
-        traceStorage.clear()
+        if (!preservingTrace) {
+            traceStorage.clear()
+            lastTraceMicros = null
+        }
         sampleStateChanged()
-        lastTraceMicros = null
     }
 
     /// **Throw the graph away when the app comes back to the foreground.**

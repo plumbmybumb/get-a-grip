@@ -30,7 +30,6 @@ struct MaxMeasureView: View {
     @State private var measurement = MaxMeasurement()
     @State private var phase: MaxMeasurePhase = .ready
     @State private var timeout: Task<Void, Never>?
-    @State private var tareTick = 0
 
     /// Long enough for a full attempt including a slow set-up on the edge; short enough
     /// that a screen left open cannot flatten the gauge's battery. The same guard the
@@ -39,13 +38,19 @@ struct MaxMeasureView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                header
-                hero
-                trace
-                guidance
-                Spacer(minLength: 0)
-                controls
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        header
+                        hero
+                        trace
+                        guidance
+                        Spacer(minLength: 0)
+                        controls
+                    }
+                    .frame(minHeight: geometry.size.height)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
             .padding(.horizontal, Metrics.hPadding)
             .padding(.bottom, Metrics.spacing)
@@ -61,7 +66,6 @@ struct MaxMeasureView: View {
                 }
             }
         }
-        .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: tareTick)
         // The moment a result exists is worth feeling: you are looking at the edge, not
         // at the phone.
         .sensoryFeedback(.success, trigger: measurement.isComplete)
@@ -135,11 +139,7 @@ struct MaxMeasureView: View {
                     // would zero out the load already on the edge and silently rewrite the
                     // result. It is offered here because a hanging sling or a mounted
                     // block reads as several kilograms the gauge would otherwise count.
-                    SecondaryGlassButton(title: String(localized: "Zero the gauge"),
-                                         systemImage: "arrow.counterclockwise") {
-                        device.tare()
-                        tareTick += 1
-                    }
+                    MaxTareButton(phase: $phase)
                     PrimaryGlassButton(title: String(localized: "Start"), systemImage: "play.fill",
                                        tint: Accent.bleu) { start() }
                 }
@@ -212,11 +212,82 @@ struct MaxMeasureView: View {
     }
 }
 
+/// Keep sample-dependent tare liveness out of the full measurement screen.
+private struct MaxTareButton: View {
+    @Binding var phase: MaxMeasurePhase
+    @Environment(DeviceStore.self) private var device
+    @State private var showingConfirmation = false
+    @State private var promptedKg = 0.0
+    @State private var promptedEpoch: UInt64 = 0
+    @State private var tareTick = 0
+    @State private var reaskTask: Task<Void, Never>?
+
+    var body: some View {
+        SecondaryGlassButton(
+            title: device.isReadingLive ? String(localized: "Zero the gauge") : String(localized: "Wake"),
+            systemImage: device.isReadingLive ? "arrow.counterclockwise" : "arrow.clockwise"
+        ) { requestTare() }
+        .onDisappear { reaskTask?.cancel() }
+        .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: tareTick)
+        .alert("Zero the gauge?", isPresented: $showingConfirmation) {
+            Button("Zero it", role: .destructive) { confirmTare() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("There's \(promptedKg.formatted(.number.precision(.fractionLength(1)))) kg on the gauge. Zero it?")
+        }
+    }
+
+    private func requestTare() {
+        guard phase == .ready, device.state.isConnected else { return }
+        guard device.isReadingLive,
+              TarePolicy.isSafeToTareNow(sampleAge: device.secondsSinceLastSample(),
+                                        maxAgeSeconds: device.tareReadingMaxAge) else {
+            device.startStreaming(cause: .manualWake)
+            return
+        }
+        if TarePolicy.shouldConfirm(readingKg: device.currentKg) { promptTare() }
+        else { performTare() }
+    }
+
+    private func promptTare() {
+        promptedKg = device.currentKg
+        promptedEpoch = device.connectionEpoch
+        showingConfirmation = true
+    }
+
+    private func confirmTare() {
+        guard phase == .ready else { return }
+        switch TarePolicy.confirmationDecision(
+            promptedKg: promptedKg, currentKg: device.currentKg,
+            promptedEpoch: promptedEpoch, currentEpoch: device.connectionEpoch,
+            isConnected: device.state.isConnected,
+            sampleAge: device.secondsSinceLastSample(), phase: .idle,
+            maxAgeSeconds: device.tareReadingMaxAge
+        ) {
+        case .reject: return
+        case .reask:
+            reaskTask?.cancel()
+            reaskTask = Task { @MainActor in
+                await Task.yield()
+                guard !Task.isCancelled, phase == .ready, device.state.isConnected else { return }
+                promptTare()
+            }
+        case .tare: performTare()
+        }
+    }
+
+    private func performTare() {
+        device.tare()
+        tareTick += 1
+    }
+}
+
 // MARK: - Per-sample leaves
 
 /// The peak climbs with the live pull. Keeping every peak/result read here prevents the
 /// surrounding navigation, guidance, controls and connection UI from rebuilding with it.
 private struct MaxMeasurementHero: View {
+    @Environment(DeviceStore.self) private var device
     let measurement: MaxMeasurement
     let phase: MaxMeasurePhase
 
@@ -254,6 +325,12 @@ private struct MaxMeasurementHero: View {
     }
 
     private var spokenState: String {
+        let signal = phase == .measuring && (!device.isStreaming || !device.isSignalFresh)
+            ? ". " + String(localized: "No live reading") : ""
+        return measurementSpokenState + signal
+    }
+
+    private var measurementSpokenState: String {
         guard measurement.hasResult else {
             return phase == .measuring ? String(localized: "No pull yet") : String(localized: "No measurement yet")
         }
@@ -300,15 +377,15 @@ private struct MaxMeasurementGuidance: View {
     private var guidanceText: String {
         switch phase {
         case .ready:
-            return String(localized: "Pull as hard as you can. Get a Grip keeps the hardest the gauge sees.")
+            return String(localized: "Build force gradually and stop if it hurts. This measures a peak, not a safe training limit.")
         case .measuring:
             return measurement.hasResult
-                ? String(localized: "Keep pulling to beat it, or let go to finish.")
+                ? String(localized: "Let go when you are ready to finish.")
                 : String(localized: "Pull…")
         case .done:
             return measurement.hasResult
                 ? String(localized: "Save this as your max on this grip, or try again.")
-                : String(localized: "The gauge didn't see a pull. Have another go.")
+                : String(localized: "No pull was recorded. You can close this or try again.")
         }
     }
 }
@@ -337,22 +414,22 @@ private struct MaxMeasurementUseButton: View {
 /// change during a pull — are not dragged along with it.
 private struct LiveReadout: View {
     @Environment(DeviceStore.self) private var device
+    private var isLive: Bool { device.isStreaming && device.isSignalFresh }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
-            Text(device.isStreaming ? "now" : "gauge")
+            Text(isLive ? String(localized: "now") : String(localized: "No live reading"))
                 .font(.system(.caption, weight: .medium))
                 .foregroundStyle(Ink.tertiary)
-            Text(device.currentKg, format: .number.precision(.fractionLength(1)))
+            Text(isLive ? device.currentKg.formatted(.number.precision(.fractionLength(1))) : "—")
                 .font(.system(.subheadline, weight: .semibold))
                 .monospacedDigit()
                 .contentTransition(.identity)
-                .foregroundStyle(device.isStreaming ? StatusTint.engaged : Ink.tertiary)
+                .foregroundStyle(isLive ? StatusTint.engaged : Ink.tertiary)
             Text("kg")
                 .font(.system(.caption))
                 .foregroundStyle(Ink.tertiary)
         }
-        .animation(Motion.live, value: device.currentKg)
         // A numeral changing 80×/sec is unusable under VoiceOver; the hero carries the
         // accessible summary.
         .accessibilityHidden(true)

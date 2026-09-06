@@ -9,6 +9,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import run.nuri.getagrip.data.MaxRecordEntity
@@ -39,6 +43,7 @@ import java.util.UUID
 class HistoryFeed(
     private val source: HistorySource,
     private val scope: CoroutineScope,
+    private val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
 
     /// **Newest first**, matching iOS's `@Query(sort: startedAt, order: .reverse)` — the
@@ -75,17 +80,26 @@ class HistoryFeed(
     fun reps(log: WorkoutLogEntity): List<RepSummary> =
         repsByID.getOrPut(log.id) { log.reps }
 
-    /// Re-read both tables. Cheap enough to call after every write the two screens make —
-    /// a delete, an undo, a recorded max — and it is the only thing keeping them in step
-    /// with `TemplateStore`'s own derived state.
+    private var refreshJob: Job? = null
+    private var refreshGeneration = 0L
+
+    /// Superseded reads must not overwrite a newer delete/undo/save. Cancel their work
+    /// and check the generation too, for sources whose read ignores cancellation.
+    /// Sorting the unbounded history belongs off the UI thread.
     fun refresh() {
-        scope.launch {
+        val generation = ++refreshGeneration
+        refreshJob?.cancel()
+        refreshJob = scope.launch {
             val fetchedLogs = source.allLogs()
             val fetchedMaxes = source.allMaxes()
             // Either read failing means the world is unknown, not empty. Publish nothing.
-            if (fetchedLogs == null || fetchedMaxes == null) return@launch
-            logs = fetchedLogs.sortedByDescending { it.startedAt }
-            maxRecords = fetchedMaxes.sortedBy { it.recordedAt }
+            if (fetchedLogs == null || fetchedMaxes == null || generation != refreshGeneration) return@launch
+            val ordered = withContext(processingDispatcher) {
+                fetchedLogs.sortedByDescending { it.startedAt } to fetchedMaxes.sortedBy { it.recordedAt }
+            }
+            if (generation != refreshGeneration) return@launch
+            logs = ordered.first
+            maxRecords = ordered.second
             hasLoaded = true
         }
     }

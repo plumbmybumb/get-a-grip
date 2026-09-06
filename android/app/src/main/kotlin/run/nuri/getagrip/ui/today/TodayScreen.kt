@@ -43,7 +43,10 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.L10n
@@ -180,26 +183,26 @@ fun TodayScreen(
         onUnavailable = { message -> scannerError = message },
     )
 
-    /// Builds the code HERE, not in the sheet: the URL and the name beside it are read off
-    /// the same routine in the same pass, so the picture and the words on that sheet cannot
-    /// describe two different plans.
-    ///
-    /// Reminders, the template id and everything else store-derived stay behind — the payload
-    /// is the plan and its cadence, nothing personal.
+    // Freeze the identity alongside its routine, then encode without blocking the tap or
+    // sheet animation. Rapid Share requests cancel publication of an older routine.
+    var shareJob by remember { mutableStateOf<Job?>(null) }
     fun share(routine: SessionTemplateEntity) {
-        val url = RoutineShare.url(routine.draft)
-        if (url == null) {
-            shareFailed = true
-            return
-        }
         val summary = templates.summary(routine)
-        shareRequest = RoutineShareRequest(
-            name = summary.name,
-            metaLine = summary.metaLine,
-            signatureFingers = summary.signatureFingers,
-            peakIntensity = summary.peakIntensity,
-            url = url,
-        )
+        shareJob?.cancel()
+        shareJob = scope.launch {
+            val url = withContext(Dispatchers.Default) { RoutineShare.url(routine.draft) }
+            if (url == null) {
+                shareFailed = true
+                return@launch
+            }
+            shareRequest = RoutineShareRequest(
+                name = summary.name,
+                metaLine = summary.metaLine,
+                signatureFingers = summary.signatureFingers,
+                peakIntensity = summary.peakIntensity,
+                url = url,
+            )
+        }
     }
 
     /// Rung 1 of the selection rule: an explicit swipe made TODAY. Never persisted, and

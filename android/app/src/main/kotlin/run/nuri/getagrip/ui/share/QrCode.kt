@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +37,8 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.Metrics
@@ -103,17 +108,10 @@ fun QrCodeView(
     val density = LocalDensity.current
     val targetPixels = with(density) { size.roundToPx() }
 
-    // Memoised on the STRING, which is what `remember(payload)` is: the encode walks the
-    // payload, builds a matrix and allocates a bitmap, and a share sheet re-composes on
-    // every press animation frame underneath it.
-    //
-    // TRANSLATION NOTE: iOS needs a process-wide one-slot `QRMemo` because `ImageRenderer`
-    // bakes the export PNG SYNCHRONOUSLY from a second view tree and would otherwise
-    // generate the same code twice. Android shares a LINK rather than an image (see
-    // `RoutineShareSheet`), so there is exactly one drawing of any payload and composition's
-    // own memo is the whole mechanism. A failure is not cached either — `remember` is keyed
-    // on the payload, so the next distinct code tries again.
-    val image = remember(payload, targetPixels) { renderQr(payload, targetPixels) }
+    // Encoding and bitmap allocation must not hold up the sheet's first frame or its
+    // Cancel/Share actions. A replaced payload starts fresh and cancels old publication.
+    val rendered = rememberQrImage(payload, targetPixels)
+    val image = (rendered as? QrImage.Rendered)?.bitmap
 
     Box(
         modifier
@@ -130,7 +128,11 @@ fun QrCodeView(
             .padding(12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        if (image != null) {
+        if (rendered == QrImage.Loading) {
+            Box(Modifier.size(size), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(Modifier.size(24.dp), color = Color.Black.copy(alpha = 0.55f))
+            }
+        } else if (image != null) {
             Image(
                 bitmap = image,
                 contentDescription = null,
@@ -159,11 +161,33 @@ fun QrCodeView(
     }
 }
 
+internal sealed interface QrImage {
+    data object Loading : QrImage
+    data class Rendered(val bitmap: ImageBitmap?) : QrImage
+}
+
+@Composable
+internal fun rememberQrImage(
+    payload: String,
+    targetPixels: Int,
+    render: suspend (String, Int) -> ImageBitmap? = { text, pixels -> renderQr(text, pixels) },
+): QrImage {
+    // Remember by request rather than reusing produceState's previous value: a newly
+    // selected routine must never flash the previous routine's scannable code.
+    val result = remember(payload, targetPixels) { mutableStateOf<QrImage>(QrImage.Loading) }
+    LaunchedEffect(payload, targetPixels) {
+        result.value = withContext(Dispatchers.Default) {
+            QrImage.Rendered(render(payload, targetPixels))
+        }
+    }
+    return result.value
+}
+
 /// Level **M** — 15 % recovery. "L" would fit a longer payload into fewer modules, but a
 /// code that gets shared as a screenshot, printed, or read across a room at an angle needs
 /// the redundancy more than it needs the density. Same setting as the iOS generator, so the
 /// two apps produce codes of the same robustness.
-private fun renderQr(payload: String, targetPixels: Int): ImageBitmap? = runCatching {
+internal fun renderQr(payload: String, targetPixels: Int): ImageBitmap? = runCatching {
     if (payload.isEmpty()) return null
     val hints = mapOf(
         EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,

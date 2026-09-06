@@ -21,6 +21,39 @@ final class RoutineShareCodecTests: XCTestCase {
 
     // MARK: - Round trip
 
+    func testTypedBuilderLimitsAndExactBandsSurviveSavingAndSharing() throws {
+        var source = RoutineDraft.starter
+        source.plan.setBreakSeconds = 900
+        source.plan.thresholdKg = 30
+        source.plan.sets[0].targetLoPercent = 0.17
+        source.plan.sets[0].targetHiPercent = 0.19
+        let saved = try JSONDecoder().decode(RoutineDraft.self, from: JSONEncoder().encode(source))
+        let imported = try RoutineShare.draft(from: XCTUnwrap(RoutineShare.url(for: saved)))
+        for draft in [saved, imported] {
+            XCTAssertEqual(draft.plan.setBreakSeconds, 900)
+            XCTAssertEqual(draft.plan.thresholdKg, 30)
+            XCTAssertEqual(draft.plan.sets[0].targetLoPercent, 0.17)
+            XCTAssertEqual(draft.plan.sets[0].targetHiPercent, 0.19)
+        }
+    }
+
+    func testShortHoldsSurviveSavingAndSharing() throws {
+        for seconds in [1, 2] {
+            var source = RoutineDraft.starter
+            source.plan.holdSeconds = seconds
+            source.plan.sets[0].holdSeconds = seconds
+            let saved = try JSONDecoder().decode(RoutineDraft.self,
+                                                 from: JSONEncoder().encode(source))
+            XCTAssertEqual(saved.plan.holdSeconds, seconds)
+            XCTAssertEqual(saved.plan.sets[0].holdSeconds, seconds)
+            let imported = try RoutineShare.draft(from: XCTUnwrap(RoutineShare.url(for: saved)))
+            XCTAssertEqual(imported.plan.holdSeconds, seconds)
+            for set in imported.plan.sets {
+                XCTAssertEqual(PlanMath.hold(set, in: imported.plan), seconds)
+            }
+        }
+    }
+
     /// Both shipped prefills, because they exercise opposite corners: `.starter` is six
     /// sets with no targets at all, `.maxDay` is a WHENEVER routine carrying percentage
     /// bands on three of its four sets.

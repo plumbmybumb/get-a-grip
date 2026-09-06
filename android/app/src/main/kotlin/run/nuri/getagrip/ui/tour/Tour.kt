@@ -106,7 +106,7 @@ enum class TourTarget {
     RunnerTrace,
     HistoryMonth,
     MaxesCurves,
-    SettingsMaxes,
+    MaxesManage,
 }
 
 /// The three places the tour has something to say. Each is seen — or skipped — on its own,
@@ -193,7 +193,7 @@ object TourScript {
             TourStep(
                 target = TourTarget.StartButton,
                 title = L10n.tr("Start here"),
-                body = L10n.tr("Get a Grip connects and tares your gauge for you, so you can tap this before you chalk up. If the gauge is still asleep it waits."),
+                body = L10n.tr("Keep the gauge unloaded while Get a Grip connects and tares it. If the gauge is asleep, the app waits."),
             ),
             TourStep(
                 target = TourTarget.StartWithoutGauge,
@@ -218,10 +218,10 @@ object TourScript {
                 tab = 2,
             ),
             TourStep(
-                target = TourTarget.SettingsMaxes,
+                target = TourTarget.MaxesManage,
                 title = L10n.tr("Your numbers"),
-                body = L10n.tr("Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not."),
-                tab = 3,
+                body = L10n.tr("Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets."),
+                tab = 2,
             ),
             TourStep(
                 target = null,

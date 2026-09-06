@@ -131,6 +131,10 @@ class RunnerSession(
         private set
     val repProgressBucket: Int get() = (repProgress * 100).roundToInt()
 
+    /// Timer-only ring state. Keep this 10 Hz fraction off the screen snapshot too.
+    var phaseRemainingFraction: Double? by mutableStateOf(null)
+        private set
+
     /// Bumped on every real republish. A test seam for the change-guard itself, which is
     /// otherwise only observable by watching how often a view recomposes.
     var snapshotRevision: Int = 0
@@ -481,6 +485,7 @@ class RunnerSession(
         val slot = runner.displaySlot
         // Published separately so only the progress bar reads this sample-rate state.
         repProgress = runner.repProgress.toFloat().coerceIn(0f, 1f)
+        phaseRemainingFraction = if (timerOnly) runner.phaseRemainingFraction(now) else null
         val next = RunnerSnapshot(
             phase = runner.phase,
             isDropped = runner.isDropped,
@@ -504,11 +509,6 @@ class RunnerSession(
             // Whole seconds belong in the screen snapshot. The measured fraction stays
             // separate so smoothing the small progress bar cannot redraw the whole runner.
             secondsShown = secondsShown,
-            // The timer-only dial is a live phase clock, not a rep-progress view. Keep it
-            // behind this gate: a measured `send` publishes after every gauge sample, and a
-            // continuous fraction there would invalidate the whole screen ~80 Hz for a field
-            // the gauge layout never draws.
-            phaseRemainingFraction = if (timerOnly) runner.phaseRemainingFraction(now) else null,
         )
         if (next != snapshot) {
             snapshot = next
@@ -666,7 +666,7 @@ class RunnerSession(
     private fun maxCandidates(reps: List<RepSummary>): List<MaxCandidate> {
         val best = LinkedHashMap<String, MaxCandidate>()
         for (rep in reps) {
-            if (rep.outcome != RepOutcome.completed || rep.peakKg <= MAX_CANDIDATE_FLOOR_KG) continue
+            if (rep.outcome != RepOutcome.completed || !rep.peakKg.isFinite() || rep.peakKg <= MAX_CANDIDATE_FLOOR_KG) continue
             val key = rep.grip.key + "·" + rep.side.rawValue
             val held = best[key]
             if (held != null && held.kg >= rep.peakKg) continue
@@ -738,9 +738,6 @@ data class RunnerSnapshot(
 
     /// Whole seconds on whichever clock is running.
     val secondsShown: Int = 0,
-    /// Fraction of the current timer-only phase remaining. Null for measured sessions and
-    /// phases that have no countdown, so a gauge sample cannot create an 80 Hz UI field.
-    val phaseRemainingFraction: Double? = null,
 )
 
 /// A pull that beat the grip's working max — offered per HAND, because a left and a right

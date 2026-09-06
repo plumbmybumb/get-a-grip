@@ -441,7 +441,7 @@ object ValueFieldParser {
     fun parse(raw: String, decimals: Int): Double? {
         val cleaned = raw.trim().replace(',', '.')
         val typed = cleaned.toDoubleOrNull() ?: return null
-        if (!typed.isFinite()) return null
+        if (!typed.isFinite() || !(typed * 10.0.pow(decimals)).isFinite()) return null
         return rounded(typed, decimals)
     }
 
@@ -497,7 +497,7 @@ private fun ValueRowPreview() {
                 value = hold,
                 range = 1..60,
                 unit = tr("s"),
-                limit = 3..120,
+                limit = run.nuri.getagrip.engine.SetPlan.holdRange,
                 control = ValueControl.Dial(listOf(1.0, 3.0, 5.0, 7.0, 10.0, 12.0, 15.0, 20.0, 30.0, 45.0, 60.0)),
             ) { hold = it }
         }

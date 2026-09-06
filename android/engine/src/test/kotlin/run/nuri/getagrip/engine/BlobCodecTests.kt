@@ -175,7 +175,7 @@ class BlobCodecTests {
         val set = BlobCodec.decode(wire) { SetPlan.fromJson(it) }
         assertNotNull(set)
         assertEquals(20, set.repsPerSide, "SetPlan.repsRange upper bound")
-        assertEquals(3, set.holdSeconds, "SetPlan.holdRange lower bound")
+        assertEquals(1, set.holdSeconds, "SetPlan.holdRange lower bound")
         assertEquals(600, set.restSeconds, "SetPlan.restRange upper bound")
         assertEquals(1, set.grip.edgeMM, "GripSpec clamps the edge to 1..100")
     }

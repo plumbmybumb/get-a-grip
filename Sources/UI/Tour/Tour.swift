@@ -35,7 +35,7 @@ enum TourTarget: String, Hashable, CaseIterable {
     case runnerTrace
     case historyMonth
     case maxesCurves
-    case settingsMaxes
+    case maxesManage
 }
 
 /// The three places the tour has something to say. Each is seen — or skipped — on its own,
@@ -114,7 +114,7 @@ extension TourStep {
         TourStep(
             target: .startButton,
             title: String(localized: "Start here"),
-            body: String(localized: "Get a Grip connects and tares your gauge for you, so you can tap this before you chalk up. If the gauge is still asleep it waits.")),
+            body: String(localized: "Keep the gauge unloaded while Get a Grip connects and tares it. If the gauge is asleep, the app waits.")),
         TourStep(
             target: .startWithoutGauge,
             title: String(localized: "When you have no gauge"),
@@ -134,10 +134,10 @@ extension TourStep {
             body: String(localized: "Every grip's ceiling, drawn over time. Measure one from here — a measured max marks the day as a benchmark, and your percent targets follow the newest number on their own."),
             tab: 2),
         TourStep(
-            target: .settingsMaxes,
+            target: .maxesManage,
             title: String(localized: "Your numbers"),
-            body: String(localized: "Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not."),
-            tab: 3),
+            body: String(localized: "Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets."),
+            tab: 2),
         TourStep(
             target: nil,
             title: String(localized: "That is the tour"),

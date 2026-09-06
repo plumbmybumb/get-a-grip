@@ -108,6 +108,23 @@ final class SessionRunnerTests: XCTestCase {
 
     // MARK: - A clean rep
 
+    func testSavedShortHoldsFinishAtTheirMeasuredDuration() throws {
+        for seconds in [1, 2] {
+            let saved = try JSONDecoder().decode(SessionPlan.self,
+                from: JSONEncoder().encode(plan(hold: seconds)))
+            var runner = SessionRunner(plan: saved)
+            var feeder = Feeder()
+            _ = runner.handle(.start, at: 0)
+            _ = feeder.hold(&runner, kg: pulling, seconds: Double(seconds) - 0.1)
+            XCTAssertTrue(runner.results.isEmpty, "Must not complete before the requested duration")
+            _ = feeder.hold(&runner, kg: pulling, seconds: 0.4)
+            let rep = try XCTUnwrap(runner.results.first)
+            XCTAssertEqual(rep.outcome, .completed)
+            XCTAssertEqual(rep.heldSeconds, Double(seconds), accuracy: 0.025)
+            XCTAssertEqual(runner.phase, .finished)
+        }
+    }
+
     func testACleanRepCompletesExactlyAtItsTargetAndBanksTheTime() {
         var runner = SessionRunner(plan: plan(hold: 10))
         var feeder = Feeder()

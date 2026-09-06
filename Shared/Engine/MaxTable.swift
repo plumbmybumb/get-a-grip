@@ -34,7 +34,7 @@ struct MaxTable: Hashable, Sendable {
 
     /// Pre-keyed, for the store — which builds this straight out of its record fold.
     init(keyed: [String: Double]) {
-        byKey = keyed.filter { $0.value > 0 }
+        byKey = keyed.filter { $0.value.isFinite && $0.value > 0 }
     }
 
     /// The wire format for a (grip, hand) pair. `Side.rawValue`, never a localized name.

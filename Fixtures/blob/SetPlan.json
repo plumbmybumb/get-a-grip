@@ -15,7 +15,7 @@
     {
       "name": "out-of-range numbers are clamped, never rejected",
       "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000005\",\"grip\":{\"edgeMM\":0,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":1000000000,\"holdSeconds\":0,\"restSeconds\":100000}",
-      "canonical": "{\"grip\":{\"edgeMM\":1,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"holdSeconds\":3,\"id\":\"8B2C4E8A-0000-4000-8000-000000000005\",\"note\":\"\",\"repsPerSide\":20,\"restSeconds\":600}"
+      "canonical": "{\"grip\":{\"edgeMM\":1,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"holdSeconds\":1,\"id\":\"8B2C4E8A-0000-4000-8000-000000000005\",\"note\":\"\",\"repsPerSide\":20,\"restSeconds\":600}"
     },
     {
       "name": "every field set, and a lowercase id is re-encoded uppercase",
@@ -36,6 +36,16 @@
       "name": "not an object at all",
       "input": "[1,2,3]",
       "canonical": null
+    },
+    {
+      "name": "1-second hold survives decoding",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000001\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":6,\"holdSeconds\":1}",
+      "canonical": "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"holdSeconds\":1,\"id\":\"8B2C4E8A-0000-4000-8000-000000000001\",\"note\":\"\",\"repsPerSide\":6}"
+    },
+    {
+      "name": "2-second hold survives decoding",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000001\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":6,\"holdSeconds\":2}",
+      "canonical": "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"holdSeconds\":2,\"id\":\"8B2C4E8A-0000-4000-8000-000000000001\",\"note\":\"\",\"repsPerSide\":6}"
     }
   ]
 }

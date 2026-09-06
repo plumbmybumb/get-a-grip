@@ -1479,6 +1479,26 @@ class TemplateStoreTests {
 
     // MARK: - Failure handling
 
+    @Test fun workoutAndChosenMaxesCommitOrRollbackTogether() = runTest {
+        for (allowsSave in listOf(true, false)) {
+            val w = makeWorld(allowsSave = allowsSave)
+            val grip = GripSpec()
+            val rejected = w.store.recordSession(plan = SessionPlan(), template = null, reps = emptyList(),
+                startedAt = Instant.now(), finishedAt = Instant.now(), rpe = null,
+                newMaxes = listOf(MaxRecordEntity.from(grip = grip, kg = Double.POSITIVE_INFINITY, source = MaxSource.measured, side = Side.left)))
+            assertNull(rejected)
+            assertEquals(0, workoutLogs(w).size)
+            val result = w.store.recordSession(plan = SessionPlan(), template = null, reps = emptyList(),
+                startedAt = Instant.now(), finishedAt = Instant.now(), rpe = null,
+                newMaxes = listOf(MaxRecordEntity.from(grip = grip, kg = 12.0, source = MaxSource.measured, side = Side.left)))
+            assertEquals(allowsSave, result != null)
+            assertEquals(if (allowsSave) 1 else 0, workoutLogs(w).size)
+            assertEquals(if (allowsSave) 1 else 0, w.db.maxes().all().size)
+            assertEquals(if (allowsSave) 12.0 else null, w.store.maxTable.max(grip.key, Side.left))
+            assertFalse(w.store.benchmarkedToday)
+        }
+    }
+
     /// The sheet used to dismiss unconditionally, so a failed write closed the form over a
     /// routine that no longer existed. Memory must match disk, and the caller must be told.
     @Test

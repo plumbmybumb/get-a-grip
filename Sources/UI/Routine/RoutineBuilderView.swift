@@ -382,6 +382,18 @@ private struct BuilderDocument: View {
                     .contentTransition(.numericText())
                     .foregroundStyle(Ink.tertiary)
             }
+            if draft.plan.executable.sets.contains(where: { $0.targetBand == nil && PlanMath.targetPercent($0, in: draft.plan) != nil }) {
+                Text("Percentage targets use your saved maxes. These may no longer reflect your current strength.")
+                    .font(.system(.footnote))
+                    .foregroundStyle(Ink.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if PlanMath.missingBenchmarkGripCount(draft.plan, maxes: templates.maxTable) > 0 {
+                Label("Some percentage targets have no saved max, so they will show no target.", systemImage: "exclamationmark.circle")
+                    .font(.system(.footnote, weight: .medium))
+                    .foregroundStyle(StatusTint.armed)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if PlanMath.totalSeconds(draft.plan) > 3600 {
                 Label("That's over an hour. Fine if you mean it.", systemImage: "clock")
                     .font(.system(.footnote, weight: .medium))

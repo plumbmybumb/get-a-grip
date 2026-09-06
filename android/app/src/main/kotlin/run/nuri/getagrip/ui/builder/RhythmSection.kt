@@ -69,12 +69,9 @@ fun RhythmSection(
                 IntValueRow(
                     title = tr("Break between sets"),
                     value = plan.setBreakSeconds,
-                    // The frozen range. Its ceiling only truly holds in the stored column:
-                    // `SessionPlan`'s lenient decoder clamps this field to 0…600, which
-                    // bites on a restored draft stash and nowhere else.
                     range = 0..240,
                     unit = tr("s"),
-                    limit = 0..900,
+                    limit = run.nuri.getagrip.engine.SessionPlan.setBreakRange,
                     control = ValueControl.Dial(listOf(0.0, 30.0, 60.0, 90.0, 120.0, 180.0)),
                 ) { onChange(draft.copy(plan = plan.copy(setBreakSeconds = it))) }
 

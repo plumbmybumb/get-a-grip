@@ -90,7 +90,7 @@ struct FineTuningSection: View {
             ValueRow(title: String(localized: "A pull counts above"),
                      unit: String(localized: "kg"),
                      value: $draft.plan.thresholdKg,
-                     range: 0.5...10, limit: 0.5...30,
+                     range: 0.5...10, limit: 0.5...SessionPlan.thresholdRange.upperBound,
                      step: 0.5,
                      presets: [1, 2, 3, 5],
                      decimals: 1)

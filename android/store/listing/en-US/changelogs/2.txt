@@ -1,0 +1,7 @@
+• Quicker controls, smoother scrolling and live progress.
+• A cleaner workout summary, with optional maxes and set details tucked away.
+• New effort ratings for workouts and climbing sessions, with haptics as you choose.
+• Hold times down to 1 second, plus exact typed targets.
+• Taring keeps your graph connected.
+• Manage saved maxes from the Maxes tab.
+• Fixes for repeated saves and delayed gestures.

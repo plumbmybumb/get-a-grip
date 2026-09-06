@@ -591,7 +591,7 @@ struct RoutineCard: View {
         case .connected:
             return nil
         case .idle, .disconnected:
-            return Note(symbol: nil, text: String(localized: "Get a Grip connects and tares your gauge for you."), tint: Ink.tertiary)
+            return Note(symbol: nil, text: String(localized: "Keep the gauge unloaded while it connects and tares."), tint: Ink.tertiary)
         case .scanning, .connecting:
             return Note(symbol: nil, text: String(localized: "Searching for your gauge…"), tint: Ink.tertiary)
         case .bluetoothOff:

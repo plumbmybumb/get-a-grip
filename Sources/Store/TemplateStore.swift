@@ -950,7 +950,11 @@ final class TemplateStore {
                        reps: [RepSummary],
                        startedAt: Date,
                        finishedAt: Date,
-                       rpe: RPE?) -> WorkoutLog? {
+                       rpe: RPE?, newMaxes: [MaxRecord] = []) -> WorkoutLog? {
+        guard newMaxes.allSatisfy({ $0.kg.isFinite && $0.kg > 0 }) else {
+            saveError = String(localized: "Couldn't save this workout. Please try again.")
+            return nil
+        }
         let log = WorkoutLog(
             plan: plan,
             templateID: template?.id,
@@ -964,10 +968,8 @@ final class TemplateStore {
         )
         log.rpe = rpe?.rawValue
         context.insert(log)
-        // A session PR lands as a separate `recordMax` call from the summary screen; the
-        // log itself never carries one, which is what makes this the commonest write in
-        // the app and the one that most wants the max refold skipped.
-        persistAndSync(maxesChanged: false)
+        for max in newMaxes { context.insert(max) }
+        persistAndSync(maxesChanged: !newMaxes.isEmpty)
         guard saveError == nil else { return nil }
         return log
     }

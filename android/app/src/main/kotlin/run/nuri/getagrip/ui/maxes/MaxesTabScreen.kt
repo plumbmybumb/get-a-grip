@@ -24,6 +24,15 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import run.nuri.getagrip.ui.theme.InstrumentSurface as Surface
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
@@ -71,15 +80,52 @@ import run.nuri.getagrip.ui.theme.Metrics
 /// `MaxRecordEntity` is append-only precisely so this screen costs nothing — every max ever
 /// recorded is still there, and a card here is just one grip's rows drawn as a curve.
 ///
-/// Editing and deleting numbers deliberately stays in Settings › Maxes (Nuri, 2026-08-10:
-/// "I like the flow there"). This tab is SEE AND TEST: the curves, the deltas, and a Measure
-/// button per grip.
+/// Manage opens the saved-record list within this tab. Charts, testing and record
+/// management share the same data and the composer's existing save flow.
 ///
 /// **The WORKING max is the NEWEST record, not the highest**: a benchmark that tests lower
 /// honestly lowers your percentage targets too. Best-ever is shown beside it as the PR.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaxesTabScreen(
+    onAddMax: (GripSpec?) -> Unit,
+    onMeasure: (GripSpec, Side) -> Unit,
+    modifier: Modifier = Modifier,
+    cardsAnchor: Modifier = Modifier,
+    manageAnchor: Modifier = Modifier,
+    feed: HistoryFeed = LocalHistoryFeed.current,
+) {
+    val nav = rememberNavController()
+    val palette = LocalGripPalette.current
+    NavHost(nav, startDestination = "overview", modifier = modifier.fillMaxSize()) {
+        composable("overview") {
+            MaxesOverview(onAddMax, onMeasure, cardsAnchor = cardsAnchor,
+                manageAnchor = manageAnchor, onManage = { nav.navigate("manage") }, feed = feed)
+        }
+        composable("manage") {
+            Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                topBar = {
+                    TopAppBar(title = { Text(tr("Manage maxes")) },
+                        windowInsets = WindowInsets(0, 0, 0, 0),
+                        navigationIcon = {
+                            IconButton(onClick = { nav.popBackStack() }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Back"))
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                            titleContentColor = palette.inkPrimary))
+                }) { padding ->
+                MaxesListScreen(onAddMax, Modifier.padding(padding), feed = feed)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MaxesOverview(
     /// Opens the composer — the sheet where a max is typed, a hand is chosen and the
     /// measure door is offered. **Not built in this wave**: `MaxEntrySheet` is made of the
     /// same input controls as the routine builder, so it belongs to that one. Null means
@@ -93,6 +139,8 @@ fun MaxesTabScreen(
     /// The spotlight tour's anchor for the grip cards. Passed IN, so this screen never reads
     /// a tour and stays previewable.
     cardsAnchor: Modifier = Modifier,
+    manageAnchor: Modifier = Modifier,
+    onManage: () -> Unit,
     feed: HistoryFeed = LocalHistoryFeed.current,
 ) {
     val palette = LocalGripPalette.current
@@ -116,6 +164,11 @@ fun MaxesTabScreen(
         topBar = {
             LargeTopAppBar(
                 title = { Text(tr("Maxes")) },
+                actions = {
+                    TextButton(onClick = onManage, modifier = manageAnchor.semantics {
+                        contentDescription = L10n.tr("Manage maxes")
+                    }) { Text(tr("Manage"), color = palette.inkPrimary) }
+                },
                 scrollBehavior = scrollBehavior,
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -188,7 +241,7 @@ data class MaxGripGroup(val key: String, val grip: GripSpec, val records: List<M
 /// Most recently tested grip first — the one you are mid-progression on leads. Ties break on
 /// the key, so two grips tested in one sitting don't swap places between launches.
 ///
-/// Grouped on `gripKey` and NOT on `maxKey`, unlike the Settings list: a CARD is about one
+/// Grouped on `gripKey` and NOT on `maxKey`, unlike the management list: a CARD is about one
 /// grip and draws both hands as two lines on one chart, where a ROW is about one number and
 /// must keep the hands apart.
 internal fun groupsOf(records: List<MaxRecordEntity>): List<MaxGripGroup> {

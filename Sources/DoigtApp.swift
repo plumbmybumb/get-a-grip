@@ -13,6 +13,9 @@ struct DoigtApp: App {
     @State private var settings: SettingsStore
     @State private var templates: TemplateStore
     @State private var device = DeviceStore()
+    #if DEBUG
+    @State private var showSummaryPreview = ProcessInfo.processInfo.arguments.contains("-previewSummary")
+    #endif
 
     init() {
         let (container, mode) = Self.makeContainer()
@@ -36,7 +39,17 @@ struct DoigtApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            Group {
+                #if DEBUG
+                if showSummaryPreview {
+                    DebugSummaryPreview { showSummaryPreview = false }
+                } else {
+                    RootTabView()
+                }
+                #else
+                RootTabView()
+                #endif
+            }
                 .environment(clock)
                 .environment(settings)
                 .environment(templates)

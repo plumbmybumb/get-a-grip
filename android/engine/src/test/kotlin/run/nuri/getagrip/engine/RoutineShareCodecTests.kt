@@ -34,6 +34,43 @@ class RoutineShareCodecTests {
 
     // MARK: - Round trip
 
+    @Test fun typedBuilderLimitsAndExactBandsSurviveSavingAndSharing() {
+        val base = RoutineDraft.starter
+        val source = base.copy(plan = base.plan.copy(setBreakSeconds = 900, thresholdKg = 30.0,
+            sets = base.plan.sets.mapIndexed { index, set ->
+                if (index == 0) set.copy(targetLoPercent = 0.17, targetHiPercent = 0.19) else set
+            }))
+        val saved = assertNotNull(BlobCodec.decode(assertNotNull(BlobCodec.encode(source))) { RoutineDraft.fromJson(it) })
+        val imported = RoutineShare.draft(assertNotNull(RoutineShare.url(saved)))
+        for (draft in listOf(saved, imported)) {
+            assertEquals(900, draft.plan.setBreakSeconds)
+            assertEquals(30.0, draft.plan.thresholdKg)
+            assertEquals(0.17, draft.plan.sets[0].targetLoPercent)
+            assertEquals(0.19, draft.plan.sets[0].targetHiPercent)
+        }
+    }
+
+    @Test
+    fun shortHoldsSurviveSavingAndSharing() {
+        for (seconds in listOf(1, 2)) {
+            val base = RoutineDraft.starter
+            val source = base.copy(plan = base.plan.copy(
+                holdSeconds = seconds,
+                sets = base.plan.sets.mapIndexed { index, set ->
+                    if (index == 0) set.copy(holdSeconds = seconds) else set
+                },
+            ))
+            val saved = assertNotNull(BlobCodec.decode(assertNotNull(BlobCodec.encode(source))) { RoutineDraft.fromJson(it) })
+            assertEquals(seconds, saved.plan.holdSeconds)
+            assertEquals(seconds, saved.plan.sets[0].holdSeconds)
+            val imported = RoutineShare.draft(assertNotNull(RoutineShare.url(saved)))
+            assertEquals(seconds, imported.plan.holdSeconds)
+            for (set in imported.plan.sets) {
+                assertEquals(seconds, PlanMath.hold(set, imported.plan))
+            }
+        }
+    }
+
     /// Both shipped prefills, because they exercise opposite corners: `.starter` is six
     /// sets with no targets at all, `.maxDay` is a WHENEVER routine carrying percentage
     /// bands on three of its four sets.

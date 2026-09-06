@@ -166,7 +166,7 @@ final class BlobCodecTests: XCTestCase {
 
         let set = try XCTUnwrap(BlobCodec.decode(SetPlan.self, from: wire))
         XCTAssertEqual(set.repsPerSide, 20, "SetPlan.repsRange upper bound")
-        XCTAssertEqual(set.holdSeconds, 3, "SetPlan.holdRange lower bound")
+        XCTAssertEqual(set.holdSeconds, 1, "SetPlan.holdRange lower bound")
         XCTAssertEqual(set.restSeconds, 600, "SetPlan.restRange upper bound")
         XCTAssertEqual(set.grip.edgeMM, 1, "GripSpec clamps the edge to 1...100")
     }

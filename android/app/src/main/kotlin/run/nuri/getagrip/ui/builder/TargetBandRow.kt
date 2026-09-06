@@ -416,11 +416,31 @@ fun TargetBandRow(
                         BandTrimmer(
                             lo = percentBand?.start ?: 0.20,
                             hi = percentBand?.endInclusive ?: 0.30,
-                            scale = 0.05..1.0,
+                            scale = SetPlan.percentRange,
                             step = 0.05,
                             format = { percentUnit(it) },
                             spokenUnit = tr("percent of max"),
                         ) { newLo, newHi -> applyPercent(newLo, newHi) }
+                    }
+                    val isPercent = unit == Unit_.Percent
+                    val currentLo = if (isPercent) percentBand?.start ?: 0.20 else kgBand?.start ?: DEFAULT_KG_LO
+                    val currentHi = if (isPercent) percentBand?.endInclusive ?: 0.30 else kgBand?.endInclusive ?: DEFAULT_KG_HI
+                    val factor = if (isPercent) 100.0 else 1.0
+                    val bounds = if (isPercent) 1.0..100.0 else 0.0..kgScaleTop(kgBand?.endInclusive, set, maxes, sides)
+                    for (lower in listOf(true, false)) {
+                        run.nuri.getagrip.ui.components.ValueRow(
+                            title = if (lower) tr("Lower bound") else tr("Upper bound"),
+                            value = (if (lower) currentLo else currentHi) * factor,
+                            range = bounds,
+                            unit = if (isPercent) "%" else tr("kg"),
+                            decimals = if (isPercent) 0 else 1,
+                            control = run.nuri.getagrip.ui.components.ValueControl.None,
+                        ) { typed ->
+                            val value = typed / factor
+                            val lo = if (lower) value else minOf(value, currentLo)
+                            val hi = if (lower) maxOf(value, currentHi) else value
+                            if (isPercent) applyPercent(lo, hi) else applyKg(lo, hi)
+                        }
                     }
                 }
 

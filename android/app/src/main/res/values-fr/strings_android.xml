@@ -21,8 +21,6 @@
     <string name="a_this_code_couldn_t_be_drawn_the_link_below_still_works">Ce code n\'a pas pu être dessiné. Le lien ci-dessous fonctionne toujours.</string>
     <string name="a_copy_link">Copier le lien</string>
     <string name="a_link_copied">Lien copié</string>
-    <string name="a_expanded">Déplié</string>
-    <string name="a_collapsed">Replié</string>
     <string name="a_decrease">Diminuer</string>
     <string name="a_increase">Augmenter</string>
     <string name="a_seconds">secondes</string>

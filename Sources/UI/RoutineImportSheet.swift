@@ -316,10 +316,10 @@ struct RoutineImportSheet: View {
         if hasPercentTargets || hasKilogramTargets {
             VStack(alignment: .leading, spacing: 8) {
                 if hasPercentTargets {
-                    note(String(localized: "Target loads are percentages of your own maxes."))
+                    note(String(localized: "Percentage targets use your saved maxes. These may no longer reflect your current strength."))
                 }
                 if hasKilogramTargets {
-                    note(String(localized: "Some sets carry kilogram targets typed by whoever shared this."))
+                    note(String(localized: "Some kilogram targets were set by the sender. Review them for your own training."))
                 }
             }
         }

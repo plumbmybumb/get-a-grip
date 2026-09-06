@@ -44,7 +44,7 @@ class MaxTable {
 
     /// Pre-keyed, for the store — which builds this straight out of its record fold.
     constructor(keyed: Map<String, Double>) {
-        byKey = keyed.filterValues { it > 0 }.toMutableMap()
+        byKey = keyed.filterValues { it.isFinite() && it > 0 }.toMutableMap()
     }
 
     /// Zero and negative are dropped rather than stored: `PlanMath` would have to defend

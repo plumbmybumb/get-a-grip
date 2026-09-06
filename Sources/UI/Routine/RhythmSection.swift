@@ -25,11 +25,7 @@ struct RhythmSection: View {
                     IntValueRow(title: String(localized: "Break between sets"),
                                 unit: String(localized: "s"),
                                 value: $draft.plan.setBreakSeconds,
-                                // The frozen range. Its ceiling only truly holds in the
-                                // stored column: `SessionPlan`'s lenient decoder clamps
-                                // this field to `SetPlan.restRange` (0...600), which
-                                // bites on a restored draft stash and nowhere else.
-                                range: 0...240, limit: 0...900,
+                                range: 0...240, limit: SessionPlan.setBreakRange,
                                 control: .dial([0, 30, 60, 90, 120, 180]))
 
                     // Under the break rather than in Fine tuning: this decides when

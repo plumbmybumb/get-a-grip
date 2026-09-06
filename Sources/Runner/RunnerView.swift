@@ -769,25 +769,13 @@ struct RunnerView: View {
     ///
     /// The ring depletes per PHASE, not per rep: `repProgress` is hold-only and is zero
     /// through all of lead-in and rest, which made the old ring empty exactly when the
-    /// timer-only user needed it most. The snapshot's fraction uses the same countdown
+    /// timer-only user needed it most. The ring's fraction uses the same countdown
     /// clock as the numeral, so the two channels cannot drift.
     private func timerDial(_ session: RunnerSession) -> some View {
-        let fraction = session.snapshot.phaseRemainingFraction ?? 0
         let lineWidth: CGFloat = isTimerWorking(session) ? 12 : 7
 
         return ZStack {
-            Circle()
-                .stroke(Ink.tertiary.opacity(0.18), lineWidth: lineWidth)
-            if fraction > 0 {
-                Circle()
-                    .trim(from: 0, to: fraction)
-                    .stroke(tint(session),
-                            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    // The ring is the live phase clock, so it settles like a reading; a
-                    // phase change is a state transition and gets the ordinary state beat.
-                    .animation(Motion.live, value: fraction)
-            }
+            LiveTimerRing(session: session, lineWidth: lineWidth, tint: tint(session))
             VStack(spacing: 2) {
                 Text("\(session.snapshot.secondsShown)")
                     .font(.system(size: heroSize, weight: .thin))
@@ -879,6 +867,7 @@ struct RunnerView: View {
             // `LiveRepProgress`, not a `ProgressView` reading `session.snapshot` inline
             // — see its own doc comment for why the value has to be read one level down.
             LiveRepProgress(session: session)
+                .id(session.snapshot.phase.slotIndex)
         } else {
             // Reserve the row so the layout doesn't jump every time a rep starts.
             Color.clear.frame(height: 4)
@@ -1009,20 +998,41 @@ private struct LiveForceReadout: View {
     }
 }
 
-/// The rep's percent-complete bucket, isolated exactly like `LiveForceReadout` and
-/// `LiveTargetChip` beside it.
-///
-/// `RunnerSession.repProgressBucket` is published SEPARATELY from `session.snapshot`
-/// precisely so a view can depend on it alone: it steps at up to ~33 Hz (a 3 s C4 hold's
-/// own 1% buckets), and reading it through `session.snapshot.progressBucket` used to
-/// invalidate `RunnerView.body` at that rate — counters, prompt, six glass buttons, the
-/// trace card, every `.tourAnchor` — to move this one 4 pt bar.
-private struct LiveRepProgress: View {
+/// The timer ring updates at 10 Hz; the surrounding numeral, prompts and controls
+/// only observe the whole-second snapshot. Its animation never drives app state.
+private struct LiveTimerRing: View {
     var session: RunnerSession
+    var lineWidth: CGFloat
+    var tint: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ProgressView(value: Double(session.repProgressBucket) / 100)
+        let fraction = session.phaseRemainingFraction ?? 0
+        ZStack {
+            Circle().stroke(Ink.tertiary.opacity(0.18), lineWidth: lineWidth)
+            if fraction > 0 {
+                Circle()
+                    .trim(from: 0, to: fraction)
+                    .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(reduceMotion ? nil : Motion.live, value: fraction)
+            }
+        }
+    }
+}
+
+/// The exact measured fraction belongs to this leaf alone. Linear settling fills the
+/// frames between BLE packets without forecasting credited work or easing to a stop
+/// per packet. The caller keys this view to the working phase so a skipped/next pull
+/// starts cleanly instead of draining the previous pull's bar backwards.
+private struct LiveRepProgress: View {
+    var session: RunnerSession
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ProgressView(value: session.repProgress)
             .tint(StatusTint.engaged)
+            .animation(reduceMotion ? nil : Motion.measuredProgress, value: session.repProgress)
             .accessibilityHidden(true)
     }
 }

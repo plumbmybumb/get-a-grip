@@ -42,9 +42,33 @@ class LegalAgreementTests {
             assertEquals("1970-01-01T00:01:40Z", reload.records.getJSONObject(0).getString("acceptedUTC"))
             assertFalse(reload.hasAccepted(LegalBundle(bundle.json, "changed")))
             assertFalse(reload.hasAccepted(LegalBundle(JSONObject(bundle.json.toString()).put("version", "future"), bundle.fingerprint)))
-            assertFalse(reload.hasAccepted(LegalBundle(JSONObject(bundle.json.toString()).put("screenVersion", 2), bundle.fingerprint)))
+            assertFalse(reload.hasAccepted(LegalBundle(JSONObject(bundle.json.toString()).put("screenVersion", bundle.json.getInt("screenVersion") + 1), bundle.fingerprint)))
         } finally { folder.deleteRecursively() }
     }
+    @Test fun repeatedVisitsReuseTheImmutableBundledDocuments() {
+        assertSame(LegalBundle.load(context), LegalBundle.load(context))
+    }
+
+    @Test fun structurallyDamagedReceiptsFailClosedAndCanBeReplaced() = runTest {
+        val folder = kotlin.io.path.createTempDirectory().toFile()
+        try {
+            val file = File(folder, "receipt.json")
+            val bundle = LegalBundle.load(context)
+            for (damaged in listOf("[null]", "[{}]", "[42]", "[\"receipt\"]")) {
+                file.writeText(damaged)
+                val store = LegalAgreementStore(context, file)
+                assertEquals(0, store.records.length(), damaged)
+                assertFalse(store.hasAccepted(bundle), damaged)
+                store.accept(bundle, "en")
+                assertTrue(LegalAgreementStore(context, file).hasAccepted(bundle))
+            }
+            val record = JSONObject(file.readText().let { org.json.JSONArray(it).getJSONObject(0).toString() })
+            record.put("appVersion", JSONObject.NULL)
+            file.writeText(org.json.JSONArray().put(record).toString())
+            assertEquals(0, LegalAgreementStore(context, file).records.length())
+        } finally { folder.deleteRecursively() }
+    }
+
     @Test fun corruptionAndWriteFailureNeverGrantAcceptance() = runTest {
         val folder = kotlin.io.path.createTempDirectory().toFile()
         try {

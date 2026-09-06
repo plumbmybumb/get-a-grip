@@ -791,7 +791,7 @@ private fun connectionNote(
 ): Note? = when (state) {
     is ProgressorConnectionState.Connected -> null
     is ProgressorConnectionState.Idle, is ProgressorConnectionState.Disconnected ->
-        Note(null, L10n.tr("Get a Grip connects and tares your gauge for you."), quiet)
+        Note(null, L10n.tr("Keep the gauge unloaded while it connects and tares."), quiet)
     is ProgressorConnectionState.Scanning, is ProgressorConnectionState.Connecting ->
         Note(null, L10n.tr("Searching for your gauge…"), quiet)
     is ProgressorConnectionState.BluetoothOff ->

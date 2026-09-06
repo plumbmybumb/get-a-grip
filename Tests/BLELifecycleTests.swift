@@ -95,6 +95,35 @@ final class BLELifecycleTests: XCTestCase {
                       "a negative load past the threshold still confirms")
     }
 
+    func testTareKeepsTraceAndClockAcrossDeviceCounterRestart() {
+        for kind in [GaugeKind.progressor, .whc06] {
+            let client = RecordingProgressorClient(kind: kind)
+            let device = DeviceStore(client: client)
+            client.setState(.connected)
+            device.startStreaming(cause: .initial)
+            client.emit(.sample(ForceSample(kg: 3, deviceMicros: 5_000_000)))
+            client.emit(.sample(ForceSample(kg: 4, deviceMicros: 5_012_500)))
+            let before = device.trace
+            let commandCount = client.commands.count
+
+            device.tare()
+
+            XCTAssertEqual(device.trace, before, "tare must not erase measured history")
+            XCTAssertEqual(device.peakKg, 0)
+            XCTAssertEqual(Array(client.commands.dropFirst(commandCount)),
+                           kind == .progressor ? [.tare, .startWeightMeasurement] : [.tare])
+            client.emit(.sample(ForceSample(kg: 0, deviceMicros: 0)))
+            XCTAssertEqual(Array(device.trace.prefix(before.count)), before)
+            XCTAssertEqual(device.trace.count, before.count + 1)
+            XCTAssertGreaterThan(device.trace.last!.t, before.last!.t)
+            XCTAssertLessThan(device.trace.last!.t - before.last!.t, 0.35)
+            XCTAssertEqual(device.trace.last!.kg, 0)
+
+            device.resetPeak()
+            XCTAssertTrue(device.trace.isEmpty, "a new measurement still clears its graph")
+        }
+    }
+
     /// The flag itself, not only the pure threshold function: a real sample delivered
     /// through the client has to flip `DeviceStore.isLoadedForTare` at that same
     /// threshold, and drop back once the load clears.

@@ -22,8 +22,6 @@
     <string name="a_this_code_couldn_t_be_drawn_the_link_below_still_works">This code couldn\'t be drawn. The link below still works.</string>
     <string name="a_copy_link">Copy link</string>
     <string name="a_link_copied">Link copied</string>
-    <string name="a_expanded">Expanded</string>
-    <string name="a_collapsed">Collapsed</string>
     <string name="a_decrease">Decrease</string>
     <string name="a_increase">Increase</string>
     <string name="a_seconds">seconds</string>

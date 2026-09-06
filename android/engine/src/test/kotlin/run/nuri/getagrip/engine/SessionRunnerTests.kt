@@ -132,6 +132,25 @@ class SessionRunnerTests {
     // MARK: - A clean rep
 
     @Test
+    fun savedShortHoldsFinishAtTheirMeasuredDuration() {
+        for (seconds in listOf(1, 2)) {
+            val saved = assertNotNull(BlobCodec.decode(assertNotNull(BlobCodec.encode(plan(hold = seconds)))) {
+                SessionPlan.fromJson(it)
+            })
+            val runner = SessionRunner(plan = saved)
+            val feeder = Feeder()
+            runner.handle(RunnerEvent.Start, at = 0.0)
+            feeder.hold(runner, kg = pulling, seconds = seconds - 0.1)
+            assertTrue(runner.results.isEmpty(), "Must not complete before the requested duration")
+            feeder.hold(runner, kg = pulling, seconds = 0.4)
+            val rep = assertNotNull(runner.results.firstOrNull())
+            assertEquals(RepOutcome.completed, rep.outcome)
+            assertEquals(seconds.toDouble(), rep.heldSeconds, 0.025)
+            assertEquals(RunnerPhase.Finished, runner.phase)
+        }
+    }
+
+    @Test
     fun aCleanRepCompletesExactlyAtItsTargetAndBanksTheTime() {
         val runner = SessionRunner(plan = plan(hold = 10))
         val feeder = Feeder()

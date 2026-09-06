@@ -73,7 +73,7 @@ struct MaxesView: View {
         // disturbs the safe-area layout and the title creeps under the status bar.
         .background { AppBackground() }
         .scrollEdgeEffectStyle(.soft, for: .bottom)
-        .navigationTitle("Maxes")
+        .navigationTitle("Manage maxes")
         .navigationSubtitle("Your max on each grip")
         .sensoryFeedback(.selection, trigger: expanded)
         .sheet(isPresented: $composing) {
@@ -277,17 +277,17 @@ struct MaxesView: View {
                             tint: Ink.tertiary.opacity(0.55))
                     .accessibilityHidden(true)
 
-                Text("A max is the hardest you can pull on one grip.")
+                Text("A max records your hardest measured pull on a grip.")
                     .font(.system(.title3, weight: .semibold))
                     .foregroundStyle(Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("It is the number your training loads come from. The light sets in your routine sit at roughly a fifth to a third of it, so without a max a set can only tell you kilograms — not what those kilograms mean for your fingers.")
+                Text("Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Measure it on the gauge, or pull as hard as you can and set the number yourself. It doesn't have to be exact, and you can add a newer one whenever it changes.")
+                Text("Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need.")
                     .font(.system(.footnote))
                     .foregroundStyle(Ink.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -768,7 +768,7 @@ struct MaxEntrySheet: View {
     private var provenanceLine: some View {
         Text(source == .measured
              ? "Measured on the gauge — your hardest pull on this grip."
-             : "A number you set yourself. Measure it on the gauge if you'd rather not guess.")
+             : "A number you entered. Check its value and units before using it for targets.")
             .font(.system(.footnote))
             .foregroundStyle(Ink.tertiary)
             .fixedSize(horizontal: false, vertical: true)

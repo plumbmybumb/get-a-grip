@@ -176,7 +176,7 @@ fun FineTuningSection(
                             value = draft.plan.thresholdKg,
                             range = 0.5..10.0,
                             unit = tr("kg"),
-                            limit = 0.5..30.0,
+                            limit = 0.5..run.nuri.getagrip.engine.SessionPlan.thresholdRange.endInclusive,
                             step = 0.5,
                             presets = listOf(1.0, 2.0, 3.0, 5.0),
                             decimals = 1,

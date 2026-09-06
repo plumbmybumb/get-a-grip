@@ -32,6 +32,63 @@ final class RunnerSessionDisplayTests: XCTestCase {
                              timerOnly: true)
     }
 
+    func testMeasuredProgressRetainsSubPercentStepsWithoutInvalidatingTheScreen() {
+        var draft = RoutineDraft.blank(named: "Measured progress")
+        draft.plan.holdSeconds = 60
+        draft.plan.leadInSeconds = 0
+        draft.plan.handMode = .bothHands
+        draft.plan.sets = [SetPlan(grip: GripSpec(), repsPerSide: 2)]
+        let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
+                                    device: DeviceStore(client: RecordingProgressorClient()))
+        // Drive the real measured funnel, without a wall-clock ticker or audio engine.
+        session.send(.start)
+        var previous = session.snapshot
+        var screenChanges = 0
+        for index in 1...80 {
+            session.send(.sample(ForceSample(kg: 10, deviceMicros: UInt32(index * 12_500))))
+            if session.snapshot != previous { screenChanges += 1; previous = session.snapshot }
+        }
+        guard case .working = session.snapshot.phase else {
+            return XCTFail("The test must reach a measured hold")
+        }
+        let before = session.repProgress
+        let screen = session.snapshot
+        session.send(.sample(ForceSample(kg: 10, deviceMicros: 1_012_500)))
+        let after = session.repProgress
+        XCTAssertGreaterThan(after, before)
+        XCTAssertLessThan(after - before, 0.01, "The view retains movements below one percent")
+        XCTAssertEqual(session.snapshot, screen, "Moving the small bar must not change the screen snapshot")
+        XCTAssertLessThanOrEqual(screenChanges, 5, "80 samples should only republish coarse screen changes")
+        for _ in 0..<20 { session.send(.tick) }
+        XCTAssertEqual(session.repProgress, after, "Wall-clock ticks cannot invent measured work")
+        session.send(.skipRep)
+        XCTAssertEqual(session.repProgress, 0, "A skipped pull clears its progress immediately")
+    }
+
+    func testTimerRingMovesWithoutChangingTheWholeScreenSnapshot() async throws {
+        let session = session(hold: 10, rest: 20, leadIn: 0)
+        session.begin()
+        defer { session.end() }
+        let screen = session.snapshot
+        let initial = try XCTUnwrap(session.phaseRemainingFraction)
+        try await Task.sleep(for: .milliseconds(250))
+        XCTAssertLessThan(try XCTUnwrap(session.phaseRemainingFraction), initial)
+        XCTAssertEqual(session.snapshot, screen,
+                       "Subsecond timer motion must stay outside the whole-screen snapshot")
+    }
+
+    func testEndingSessionCancelsTheSleepingTickerWithoutOneLastUpdate() async throws {
+        let session = session(hold: 10, rest: 20, leadIn: 0)
+        session.begin()
+        // Let the ticker enter its first sleep, then cancel it from the real teardown.
+        try await Task.sleep(for: .milliseconds(20))
+        session.end()
+        let stoppedAt = session.now
+        try await Task.sleep(for: .milliseconds(20))
+        XCTAssertEqual(session.now, stoppedAt,
+                       "A cancelled sleep must return instead of updating a dismissed runner")
+    }
+
     func testSkippingConsecutiveSetsPublishesEachNewGripToTheView() {
         var draft = RoutineDraft.blank(named: "Skip grip changes")
         let grips = [GripSpec(), GripSpec(edgeMM: 10, fingers: .frontTwo),
@@ -137,10 +194,10 @@ final class RunnerSessionDisplayTests: XCTestCase {
         try await waitForResting(session)
 
         session.send(.pause)
-        let frozen = try XCTUnwrap(session.snapshot.phaseRemainingFraction)
+        let frozen = try XCTUnwrap(session.phaseRemainingFraction)
         try await Task.sleep(for: .milliseconds(900))
 
-        XCTAssertEqual(try XCTUnwrap(session.snapshot.phaseRemainingFraction), frozen,
+        XCTAssertEqual(try XCTUnwrap(session.phaseRemainingFraction), frozen,
                        accuracy: 0.001)
     }
 

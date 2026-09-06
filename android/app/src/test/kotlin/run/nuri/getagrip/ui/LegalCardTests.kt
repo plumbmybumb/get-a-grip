@@ -26,6 +26,22 @@ import kotlin.test.assertEquals
 class LegalCardTests {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun damagedAgreementRecordDoesNotCrashSettings() {
+        val context = org.robolectric.RuntimeEnvironment.getApplication()
+        val file = java.io.File(context.filesDir, "legal-acceptances.json")
+        file.writeText("[{}]")
+        try {
+            val configuration = Configuration().apply { setLocales(LocaleList(Locale.ENGLISH)) }
+            compose.setContent {
+                CompositionLocalProvider(LocalConfiguration provides configuration) {
+                    GetAGripTheme { LegalCard() }
+                }
+            }
+            compose.onNodeWithText("Your agreement record").performClick()
+            compose.onNodeWithText("You have not accepted the current Terms on this device.").assertIsDisplayed()
+        } finally { file.delete() }
+    }
+
     @Test fun policiesAreReadableOfflineInFrenchWithoutOpeningBrowser() {
         val opened = mutableListOf<String>()
         val handler = object : UriHandler { override fun openUri(uri: String) { opened += uri } }

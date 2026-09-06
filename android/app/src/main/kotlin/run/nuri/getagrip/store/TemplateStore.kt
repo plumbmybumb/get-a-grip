@@ -848,7 +848,12 @@ class TemplateStore(
         startedAt: Instant,
         finishedAt: Instant,
         rpe: RPE?,
+        newMaxes: List<MaxRecordEntity> = emptyList(),
     ): WorkoutLogEntity? {
+        if (newMaxes.any { !it.kg.isFinite() || it.kg <= 0 }) {
+            saveError = L10n.tr("Couldn't save this workout. Please try again.")
+            return null
+        }
         val log = WorkoutLogEntity.from(
             plan = plan,
             templateID = template?.id,
@@ -860,10 +865,10 @@ class TemplateStore(
             finishedAt = finishedAt,
             day = clock.today,
         ).copy(rpe = rpe?.rawValue)
-        // A session PR lands as a separate `recordMax` call from the summary screen; the
-        // log itself never carries one, which is what makes this the commonest write in
-        // the app and the one that most wants the max refold skipped.
-        persistAndSync(maxesChanged = false) { it.putLog(log) }
+        persistAndSync(maxesChanged = newMaxes.isNotEmpty()) { writer ->
+            writer.putLog(log)
+            newMaxes.forEach { writer.putMax(it) }
+        }
         return if (saveError == null) log else null
     }
 
