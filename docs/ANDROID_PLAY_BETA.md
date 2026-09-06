@@ -1,4 +1,23 @@
-# Android Play beta preparation — 5 September 2026
+# Android Play closed beta
+
+## Current status — 6 September 2026
+
+Version **1.0.1 (3)**, release **1.0.1 (3) — Effort ladder and reliability**, has
+been uploaded and submitted to the existing closed Alpha track at 100% rollout.
+Play Console shows **Changes in review**, with automated quick checks running.
+Managed publishing is off: approval will publish the update to eligible testers.
+Build 2 remains the live version while this update is reviewed.
+
+The source is commit `08ac463da23a9e344439d7b937c68f7638bee3d6`, tagged
+`android-v1.0.1-3`. The upload certificate matches the preceding official bundle.
+Permissions and supported devices are unchanged. The only Console warning is
+missing native debug symbols from dependencies; ReTrace mapping is attached.
+See [release verification](RELEASE_2026-09-06.md) for artifact hashes and checks.
+
+## Initial submission record — 5 September 2026
+
+The notes below describe the initial submission; their pending-approval wording
+is historical. That initial beta and build 2 were subsequently approved.
 
 Package: `run.nuri.getagrip`; version name `1.0`, version code `1`.
 The signed AAB has been uploaded to Google Play's closed Alpha track and parsed
