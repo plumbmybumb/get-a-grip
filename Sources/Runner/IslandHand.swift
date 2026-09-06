@@ -95,6 +95,9 @@ struct IslandHand: View {
     /// The hand being drawn, before the first `onChange` has ever run.
     private var drawn: Side { shown ?? side }
 
+    /// Orange briefly calls out a changed grip; black reconnects the fingers to the island.
+    private var gripInk: Color { emphasized ? StatusTint.armed : .black }
+
     /// **Facing a LEFT palm, the thumb is on the right — and so the index finger is the
     /// RIGHTMOST bar, not the leftmost.** Moving only the thumb was the bug: with the
     /// thumb switched but the fingers left alone, a front-2 grip rendered on the little
@@ -109,7 +112,7 @@ struct IslandHand: View {
             hand(width: geo.size.width)
                 .frame(height: 100, alignment: .top)
                 // Keep the roots below the physical island; only the drawing grows.
-                .scaleEffect(emphasized && !reduceMotion ? 1.22 : 1,
+                .scaleEffect(emphasized && !reduceMotion ? 1.25 : 1,
                              anchor: UnitPoint(x: 0.5, y: 0.5433))
         }
         .ignoresSafeArea()
@@ -162,12 +165,9 @@ struct IslandHand: View {
         let length = Self.baseLength * Self.lengthFactor[anatomical]
 
         return RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
-            // **PURE BLACK, not the app's graphite.** Everywhere else `Accent.graphite`
-            // is the ink; here the whole point is to be indistinguishable from the
-            // hardware, and the island renders true black. A near-black bar beside a
-            // black cutout reads as two materials, which is the tell that breaks it.
-            .fill(on ? Color.black.opacity(isActive || emphasized ? 1 : 0.4)
-                     : Color.black.opacity(0.12))
+            // Pure black matches the hardware at rest; orange names an actual grip change.
+            .fill(on ? gripInk.opacity(isActive || emphasized ? 1 : 0.4)
+                     : gripInk.opacity(0.12))
             .frame(width: Self.barWidth, height: length)
             .offset(x: originX + CGFloat(slot) * (Self.barWidth + Self.barGap),
                     y: Self.islandBottom + Self.gap)
@@ -198,7 +198,7 @@ struct IslandHand: View {
         let pivotY = Self.islandBottom + Self.gap + 4
 
         return Capsule()
-            .fill(Color.black.opacity(isActive || emphasized ? 1 : 0.4))
+            .fill(gripInk.opacity(isActive || emphasized ? 1 : 0.4))
             .frame(width: Self.thumbLength, height: Self.thumbThickness)
             // Drawn INTO the palm on a hand swap: scaling along its own length toward the
             // root makes it disappear at the knuckle rather than shrinking to a dot.

@@ -65,7 +65,8 @@ struct SettingsView: View {
             // person is a thing you DO, so it belongs with the other actions rather than
             // filed under the small print.
             SupportCard().staggerIn(4)
-            aboutCard.staggerIn(5)
+            openSourceCard.staggerIn(5)
+            aboutCard.staggerIn(6)
         }
     }
 
@@ -228,6 +229,36 @@ struct SettingsView: View {
         DiagnosticReport.text(from: device.diagnosticEntries) + "\n\n" + device.pipelineDiagnostics.report
     }
 
+    private var openSourceCard: some View {
+        MaterialCard {
+            SettingsDisclosure("Open source") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Get a Grip is open source under the Mozilla Public License 2.0.")
+                        .font(.footnote).foregroundStyle(Ink.secondary)
+                    sourceLink("Source code", symbol: "chevron.left.forwardslash.chevron.right",
+                               path: "")
+                    sourceLink("MPL 2.0", symbol: "doc.text", path: "/blob/main/LICENSE")
+                    sourceLink("Open-source licenses", symbol: "doc.on.doc",
+                               path: "/blob/main/THIRD_PARTY_NOTICES.txt")
+                }
+            }
+        }
+    }
+
+    private func sourceLink(_ title: LocalizedStringKey, symbol: String, path: String) -> some View {
+        Link(destination: URL(string: "https://github.com/plumbmybumb/get-a-grip" + path)!) {
+            HStack(spacing: 10) {
+                Label(title, systemImage: symbol)
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(Ink.tertiary)
+            }
+            .font(.subheadline.weight(.medium))
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .tint(Accent.graphite)
+    }
+
     // MARK: - About
 
     private var aboutCard: some View {
@@ -237,148 +268,150 @@ struct SettingsView: View {
 
                 storageLine
 
-                // Descriptive use only, and unconditional: the app is not made by,
-                // affiliated with, or endorsed by any of these makers, and this is the
-                // sentence that says so. **The list is built from the registry**, so
-                // adding a gauge cannot leave a maker unnamed in the one place they all
-                // have to appear — the failure mode of a typed-out list is a legal line
-                // that silently goes stale on the next device.
-                Text("Get a Grip works with force gauges from \(makersSentence). It is not made by, affiliated with, or endorsed by any of them.")
-                    .font(.system(.footnote))
-                    .foregroundStyle(Ink.secondary)
-
-                // The Tindeq protocol is published by Tindeq itself; everything else here
-                // is somebody's reverse-engineering work, given away under a licence that
-                // asks for exactly this notice.
-                Text("Protocol support for every gauge other than the Tindeq Progressor is ported from hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray Hartog).")
-                    .font(.system(.footnote))
-                    .foregroundStyle(Ink.secondary)
-
-                // Review guideline 5.1.1 wants the policy reachable INSIDE the app,
-                // not only in the App Store Connect field — and the storage line above
-                // is exactly the claim the linked page substantiates.
                 PrivacyPolicyLink()
-                Link("Source code", destination: URL(string: "https://github.com/plumbmybumb/get-a-grip")!)
-                    .font(.system(.footnote))
-                Link("Open-source licenses", destination: URL(string: "https://github.com/plumbmybumb/get-a-grip/blob/main/THIRD_PARTY_NOTICES.txt")!)
-                    .font(.system(.footnote))
+
+                SettingsDisclosure("Device compatibility") {
+                    VStack(alignment: .leading, spacing: 10) {
+
+                        // Descriptive use only, and unconditional: the app is not made by,
+                        // affiliated with, or endorsed by any of these makers, and this is the
+                        // sentence that says so. **The list is built from the registry**, so
+                        // adding a gauge cannot leave a maker unnamed in the one place they all
+                        // have to appear — the failure mode of a typed-out list is a legal line
+                        // that silently goes stale on the next device.
+                        Text("Get a Grip works with force gauges from \(makersSentence). It is not made by, affiliated with, or endorsed by any of them.")
+                            .font(.system(.footnote))
+                            .foregroundStyle(Ink.secondary)
+
+                        // The Tindeq protocol is published by Tindeq itself; everything else here
+                        // is somebody's reverse-engineering work, given away under a licence that
+                        // asks for exactly this notice.
+                        Text("Protocol support for every gauge other than the Tindeq Progressor is ported from hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray Hartog).")
+                            .font(.system(.footnote))
+                            .foregroundStyle(Ink.secondary)
+
+                    }
+                }
 
                 if !device.diagnosticEntries.isEmpty {
-                    Divider().padding(.vertical, 2)
-                    HStack(alignment: .firstTextBaseline) {
-                        CapsLabel(String(localized: "Diagnostics"))
-                        Spacer(minLength: 8)
-                        // WITHOUT THIS THE FEATURE DOES NOT WORK. The whole point of the
-                        // ring is to travel from Nuri's phone to whoever is diagnosing the
-                        // drop; a 240 pt scroll view you can only read means retyping
-                        // timestamps by hand, which nobody does. Read-only evidence that
-                        // cannot leave the device is not evidence.
-                        Button {
-                            UIPasteboard.general.string = diagnosticReport
-                            copiedTick += 1
-                            justCopied = true
-                            copyResetTask?.cancel()
-                            copyResetTask = Task {
-                                try? await Task.sleep(for: .seconds(2))
-                                guard !Task.isCancelled else { return }
-                                justCopied = false
-                            }
-                        } label: {
-                            Text(justCopied ? "Copied" : "Copy")
-                                .font(.system(.footnote, weight: .semibold))
-                                .foregroundStyle(Accent.graphite)
-                                .padding(.horizontal, 12)
-                                .frame(minHeight: 44)
-                                .accessibleGlass(nil, in: .capsule)
-                                .contentShape(.capsule)
-                        }
-                        .buttonStyle(PressFeedbackButtonStyle())
-                        .accessibilityLabel("Copy the diagnostics to the clipboard")
-                        // The identical tick-as-confirmation shape is wired to this
-                        // everywhere else it appears (UndoBar, MaxesView's save) — this
-                        // was the dropped wire-up, and the label alone (which used to
-                        // flip once and stay "Copied" forever) gave repeated copies no
-                        // acknowledgement at all.
-                        .sensoryFeedback(.success, trigger: copiedTick)
-                    }
-                    Text("Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit.")
-                        .font(.system(.caption))
-                        .foregroundStyle(Ink.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    ScrollView(.vertical) {
-                        LazyVStack(alignment: .leading, spacing: 8) {
-                            ForEach(Array(device.diagnosticEntries.reversed())) { entry in
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(entry.date.formatted(date: .abbreviated, time: .standard))
-                                        .font(.system(.caption2))
-                                        .monospacedDigit()
-                                        .foregroundStyle(Ink.tertiary)
-                                    Text(entry.text)
-                                        .font(.system(.footnote))
-                                        .foregroundStyle(Ink.secondary)
+                    SettingsDisclosure("Diagnostics") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(alignment: .firstTextBaseline) {
+                                // WITHOUT THIS THE FEATURE DOES NOT WORK. The whole point of the
+                                // ring is to travel from Nuri's phone to whoever is diagnosing the
+                                // drop; a 240 pt scroll view you can only read means retyping
+                                // timestamps by hand, which nobody does. Read-only evidence that
+                                // cannot leave the device is not evidence.
+                                Button {
+                                    UIPasteboard.general.string = diagnosticReport
+                                    copiedTick += 1
+                                    justCopied = true
+                                    copyResetTask?.cancel()
+                                    copyResetTask = Task {
+                                        try? await Task.sleep(for: .seconds(2))
+                                        guard !Task.isCancelled else { return }
+                                        justCopied = false
+                                    }
+                                } label: {
+                                    Text(justCopied ? "Copied" : "Copy")
+                                        .font(.system(.footnote, weight: .semibold))
+                                        .foregroundStyle(Accent.graphite)
+                                        .padding(.horizontal, 12)
+                                        .frame(minHeight: 44)
+                                        .accessibleGlass(nil, in: .capsule)
+                                        .contentShape(.capsule)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .buttonStyle(PressFeedbackButtonStyle())
+                                .accessibilityLabel("Copy the diagnostics to the clipboard")
+                                // The identical tick-as-confirmation shape is wired to this
+                                // everywhere else it appears (UndoBar, MaxesView's save) — this
+                                // was the dropped wire-up, and the label alone (which used to
+                                // flip once and stay "Copied" forever) gave repeated copies no
+                                // acknowledgement at all.
+                                .sensoryFeedback(.success, trigger: copiedTick)
                             }
+                            Text("Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit.")
+                                .font(.system(.caption))
+                                .foregroundStyle(Ink.tertiary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            ScrollView(.vertical) {
+                                LazyVStack(alignment: .leading, spacing: 8) {
+                                    ForEach(Array(device.diagnosticEntries.reversed())) { entry in
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(entry.date.formatted(date: .abbreviated, time: .standard))
+                                                .font(.system(.caption2))
+                                                .monospacedDigit()
+                                                .foregroundStyle(Ink.tertiary)
+                                            Text(entry.text)
+                                                .font(.system(.footnote))
+                                                .foregroundStyle(Ink.secondary)
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 240)
                         }
                     }
-                    .frame(maxHeight: 240)
                 }
 
-                Divider().padding(.vertical, 2)
+                SettingsDisclosure("Guides and tours") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        // TWO DIFFERENT THINGS, and the old labels ("Show the setup guide again"
+                        // / "Take the tour again") were close enough to read as one feature listed
+                        // twice. This one is the step-by-step hints printed INSIDE the routine
+                        // builder; the one below is the spotlight walkthrough of the whole app.
+                        Button {
+                            settings.builderGuideDone = false
+                            guideReset = true
+                            // Back to Today, or the reset happens two tabs away from anywhere you
+                            // could see it and reads as a dead button.
+                            tour.requestedTab = 0
+                        } label: {
+                            Label(guideReset ? "Hints reset — open a routine to see them"
+                                             : "Show the builder's hints again",
+                                  systemImage: guideReset ? "checkmark" : "arrow.counterclockwise")
+                                .font(.system(.footnote, weight: .semibold))
+                                .foregroundStyle(guideReset ? Ink.secondary : Accent.graphite)
+                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                // Holds a Label and draws full-width — without a content shape
+                                // only the glyph and glyph-width of text would be tappable.
+                                .contentShape(Rectangle())
+                        }
+                        // `scales: false`, matching every other bare row on a shared
+                        // `MaterialCard` (`FineTuningSection`, `SetRowView`, `MaxesView`): a
+                        // row with no background of its own scaling on press shrinks its
+                        // content while the card's backdrop stays put.
+                        .buttonStyle(PressFeedbackButtonStyle(scales: false))
+                        .disabled(guideReset)
+                        .accessibilityLabel(guideReset ? "Builder hints reset"
+                                                       : "Show the builder's hints again")
 
-                // TWO DIFFERENT THINGS, and the old labels ("Show the setup guide again"
-                // / "Take the tour again") were close enough to read as one feature listed
-                // twice. This one is the step-by-step hints printed INSIDE the routine
-                // builder; the one below is the spotlight walkthrough of the whole app.
-                Button {
-                    settings.builderGuideDone = false
-                    guideReset = true
-                    // Back to Today, or the reset happens two tabs away from anywhere you
-                    // could see it and reads as a dead button.
-                    tour.requestedTab = 0
-                } label: {
-                    Label(guideReset ? "Hints reset — open a routine to see them"
-                                     : "Show the builder's hints again",
-                          systemImage: guideReset ? "checkmark" : "arrow.counterclockwise")
-                        .font(.system(.footnote, weight: .semibold))
-                        .foregroundStyle(guideReset ? Ink.secondary : Accent.graphite)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        // Holds a Label and draws full-width — without a content shape
-                        // only the glyph and glyph-width of text would be tappable.
-                        .contentShape(Rectangle())
+                        // The spotlight tour, not the builder's inline guide above. Both exist and
+                        // teach different things, which is why they are two rows rather than one.
+                        Button {
+                            tour.replay(hasRoutine: hasRoutine)
+                            tourReset = true
+                        } label: {
+                            Label(tourReset ? "Tour restarted — it is running on Today"
+                                            : "Take the spotlight tour again",
+                                  systemImage: tourReset ? "checkmark" : "sparkles")
+                                .font(.system(.footnote, weight: .semibold))
+                                .foregroundStyle(tourReset ? Ink.secondary : Accent.graphite)
+                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        // Same reasoning as `guideReset` above.
+                        .buttonStyle(PressFeedbackButtonStyle(scales: false))
+                        .disabled(tourReset)
+                        .accessibilityLabel(tourReset ? "Tour restarted" : "Take the spotlight tour again")
+
+                        Text("The hints are written into the routine builder. The tour dims the screen and walks you through Today, the builder and a session.")
+                            .font(.system(.caption, weight: .medium))
+                            .foregroundStyle(Ink.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                // `scales: false`, matching every other bare row on a shared
-                // `MaterialCard` (`FineTuningSection`, `SetRowView`, `MaxesView`): a
-                // row with no background of its own scaling on press shrinks its
-                // content while the card's backdrop stays put.
-                .buttonStyle(PressFeedbackButtonStyle(scales: false))
-                .disabled(guideReset)
-                .accessibilityLabel(guideReset ? "Builder hints reset"
-                                               : "Show the builder's hints again")
-
-                // The spotlight tour, not the builder's inline guide above. Both exist and
-                // teach different things, which is why they are two rows rather than one.
-                Button {
-                    tour.replay(hasRoutine: hasRoutine)
-                    tourReset = true
-                } label: {
-                    Label(tourReset ? "Tour restarted — it is running on Today"
-                                    : "Take the spotlight tour again",
-                          systemImage: tourReset ? "checkmark" : "sparkles")
-                        .font(.system(.footnote, weight: .semibold))
-                        .foregroundStyle(tourReset ? Ink.secondary : Accent.graphite)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                // Same reasoning as `guideReset` above.
-                .buttonStyle(PressFeedbackButtonStyle(scales: false))
-                .disabled(tourReset)
-                .accessibilityLabel(tourReset ? "Tour restarted" : "Take the spotlight tour again")
-
-                Text("The hints are written into the routine builder. The tour dims the screen and walks you through Today, the builder and a session.")
-                    .font(.system(.caption, weight: .medium))
-                    .foregroundStyle(Ink.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .fixedSize(horizontal: false, vertical: true)
         }
@@ -403,6 +436,33 @@ struct SettingsView: View {
                 .font(.system(.footnote, weight: .medium))
                 .foregroundStyle(StatusTint.armed)
         }
+    }
+}
+
+/// Native disclosure semantics, a full-width tap target, and the shared motion curve.
+/// Longer explanations stay available without filling the initial Settings screen.
+private struct SettingsDisclosure<Content: View>: View {
+    let title: LocalizedStringKey
+    @ViewBuilder var content: () -> Content
+    @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(_ title: LocalizedStringKey, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.content = content
+    }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $expanded.animation(Motion.state(reduceMotion))) {
+            content().padding(.top, 6)
+        } label: {
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Accent.graphite)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .tint(Accent.graphite)
     }
 }
 
@@ -482,10 +542,12 @@ private struct SupportCard: View {
                     startBugReport()
                 }
 
-                Text("Both open an email. Your app version, iOS version, device and selected gauge are added at the end of the message, so a report arrives with the context to act on it.")
-                    .font(.system(.caption, weight: .medium))
-                    .foregroundStyle(Ink.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+                SettingsDisclosure("Email details") {
+                    Text("Both open an email. Your app version, iOS version, device and selected gauge are added at the end of the message, so a report arrives with the context to act on it.")
+                        .font(.system(.caption, weight: .medium))
+                        .foregroundStyle(Ink.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 if showsAddress {
                     addressRow

@@ -1,0 +1,9 @@
+Grip changes are harder to miss. The hand, banner and graph border turn orange when it's time to switch, and stay highlighted through your rest.
+
+• Finger curl is now an option in the grip builder, with its own history and maxes.
+• Scan a shared routine straight from the new routine card.
+• Swipe right on a workout in History to export it. CSV exports now offer a compact summary or every pull, with more context for your AI assistant or spreadsheet.
+• Smoother live feedback, more responsive controls and Bluetooth reliability improvements.
+• Tidier Settings, with extra details tucked into expandable sections.
+
+Get a Grip is now open source. You'll find the code and license information in Settings.

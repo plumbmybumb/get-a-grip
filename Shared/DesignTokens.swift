@@ -139,6 +139,14 @@ enum Motion {
     /// on the gauge is lying about a measurement.
     static let live = Animation.smooth(duration: 0.12)
 
+    /// A changed grip gets one clear beat of attention, matching Android without bounce.
+    static let gripChangeRiseMilliseconds = 180
+    static let gripChangeHoldMilliseconds = 1_200
+    static let gripChangePulseMilliseconds = 300
+    static let gripChangePulse = Animation.easeInOut(duration: 0.30)
+    static let gripChangeIn = Animation.easeOut(duration: Double(gripChangeRiseMilliseconds) / 1_000)
+    static let gripChangeOut = Animation.easeInOut(duration: 0.30)
+
     /// Reduce Motion: the same beat, as a cross-fade with no travel and no overshoot —
     /// gentler, not absent. Comprehension still needs *something* to change.
     static let reduced = Animation.easeInOut(duration: 0.2)

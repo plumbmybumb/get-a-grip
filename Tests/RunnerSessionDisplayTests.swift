@@ -32,6 +32,59 @@ final class RunnerSessionDisplayTests: XCTestCase {
                              timerOnly: true)
     }
 
+    func testSkippingConsecutiveSetsPublishesEachNewGripToTheView() {
+        var draft = RoutineDraft.blank(named: "Skip grip changes")
+        let grips = [GripSpec(), GripSpec(edgeMM: 10, fingers: .frontTwo),
+                     GripSpec(edgeMM: 15, position: .fingerCurl)]
+        draft.plan.sets = grips.map { SetPlan(grip: $0, repsPerSide: 2) }
+        draft.plan.leadInSeconds = 0
+        draft.plan.setBreakSeconds = 0
+        let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
+                                    device: DeviceStore(client: RecordingProgressorClient()),
+                                    timerOnly: true)
+        session.begin()
+        defer { session.end() }
+        session.startIfReady(cause: .initial)
+        XCTAssertNil(session.snapshot.newGripID)
+        session.send(.skipSet)
+        let firstChange = session.snapshot.newGripID
+        XCTAssertNotNil(firstChange)
+        XCTAssertEqual(session.snapshot.grip, grips[1])
+        session.send(.skipSet)
+        XCTAssertNotNil(session.snapshot.newGripID)
+        XCTAssertNotEqual(session.snapshot.newGripID, firstChange)
+        XCTAssertEqual(session.snapshot.grip, grips[2])
+    }
+
+    func testGripCueRestLifetimeSurvivesPauseAndEndsOnTheSameGrip() async throws {
+        var draft = RoutineDraft.blank(named: "Rest cue")
+        draft.plan.handMode = .bothHands
+        draft.plan.sets = [SetPlan(grip: GripSpec(), repsPerSide: 1),
+                           SetPlan(grip: GripSpec(edgeMM: 10), repsPerSide: 1)]
+        draft.plan.holdSeconds = 60
+        draft.plan.leadInSeconds = 0
+        draft.plan.setBreakSeconds = 1
+        let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
+                                    device: DeviceStore(client: RecordingProgressorClient()),
+                                    timerOnly: true)
+        session.begin()
+        defer { session.end() }
+        session.startIfReady(cause: .initial)
+        session.send(.skipRep)
+        XCTAssertTrue(session.snapshot.gripChangesNext)
+        let id = try XCTUnwrap(session.snapshot.newGripID)
+        session.send(.pause)
+        XCTAssertTrue(session.snapshot.gripChangesNext)
+        XCTAssertEqual(session.snapshot.newGripID, id)
+        session.send(.resume)
+        let deadline = ContinuousClock.now + .seconds(3)
+        while session.snapshot.gripChangesNext && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertFalse(session.snapshot.gripChangesNext)
+        XCTAssertEqual(session.snapshot.newGripID, id, "Rest ends without reintroducing the same grip")
+    }
+
     /// Bounded poll rather than a fixed sleep — the session is driven by its own 100 ms
     /// wall-clock ticker, so how long a phase takes to arrive is not something a test can
     /// assume.

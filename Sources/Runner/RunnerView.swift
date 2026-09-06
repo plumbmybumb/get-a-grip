@@ -31,8 +31,8 @@ struct RunnerView: View {
     /// in both places rather than probed twice.
     @State private var hasIsland = false
     @State private var gripEmphasis = false
-    @ScaledMetric(relativeTo: .footnote) private var noticeHeight: CGFloat = 38
-    @ScaledMetric(relativeTo: .subheadline) private var gripLineHeight: CGFloat = 28
+    @State private var gripBorderOpacity = 0.0
+    @State private var emphasizedGripID: String?
 
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 76
     @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 22
@@ -66,13 +66,52 @@ struct RunnerView: View {
                     enabled: hasIsland, emphasized: gripEmphasis)
         .animation(Motion.state(reduceMotion),
                    value: session?.isFinished ?? false)
-        .task(id: session?.snapshot.newGripID) {
-            withAnimation(Motion.state(reduceMotion)) { gripEmphasis = false }
-            guard session?.snapshot.newGripID != nil, !reduceMotion else { return }
-            withAnimation(Motion.state(false)) { gripEmphasis = true }
-            try? await Task.sleep(for: .milliseconds(1100))
+        .task(id: GripCueKey(id: session?.snapshot.newGripID,
+                            resting: session?.snapshot.gripChangesNext == true)) {
+            let id = session?.snapshot.newGripID
+            let changed = emphasizedGripID != id
+            emphasizedGripID = id
+            let holdsForRest = session?.snapshot.gripChangesNext == true
+            guard id != nil else {
+                withAnimation(nil) { gripEmphasis = false; gripBorderOpacity = 0 }
+                return
+            }
+            if !changed {
+                // The same grip leaving rest fades out; it must not start a second cue.
+                withAnimation(reduceMotion ? nil : Motion.gripChangeOut) {
+                    gripEmphasis = holdsForRest
+                    gripBorderOpacity = holdsForRest ? 1 : 0
+                }
+                return
+            }
+            withAnimation(nil) { gripEmphasis = false; gripBorderOpacity = 0 }
+            // Only a new grip starts this cue; ordinary hand swaps do not restart it.
+            withAnimation(reduceMotion ? nil : Motion.gripChangeIn) {
+                gripEmphasis = true
+                gripBorderOpacity = 1
+            }
+            if reduceMotion {
+                try? await Task.sleep(for: .milliseconds(Motion.gripChangeHoldMilliseconds))
+            } else {
+                try? await Task.sleep(for: .milliseconds(Motion.gripChangeRiseMilliseconds))
+                // Two gentle breaths within the hand's existing hold, not a flashing loop.
+                for _ in 0..<2 {
+                    guard !Task.isCancelled else { return }
+                    withAnimation(Motion.gripChangePulse) { gripBorderOpacity = 0.4 }
+                    try? await Task.sleep(for: .milliseconds(Motion.gripChangePulseMilliseconds))
+                    guard !Task.isCancelled else { return }
+                    withAnimation(Motion.gripChangePulse) { gripBorderOpacity = 1 }
+                    try? await Task.sleep(for: .milliseconds(Motion.gripChangePulseMilliseconds))
+                }
+            }
             guard !Task.isCancelled else { return }
-            withAnimation(Motion.state(false)) { gripEmphasis = false }
+            // The phase owns a resting cue's lifetime, not a guessed wall-clock delay.
+            // nextGripDiffers remains true while a rest is paused.
+            guard !holdsForRest else { return }
+            withAnimation(reduceMotion ? nil : Motion.gripChangeOut) {
+                gripEmphasis = false
+                gripBorderOpacity = 0
+            }
         }
         .onChange(of: session?.snapshot.newGripID) { _, id in
             if id != nil, UIAccessibility.isVoiceOverRunning, let grip = session?.snapshot.grip {
@@ -85,9 +124,6 @@ struct RunnerView: View {
                 UIAccessibility.post(notification: .announcement,
                                      argument: String(localized: "Next grip: \(grip.spoken)"))
             }
-        }
-        .onChange(of: reduceMotion) { _, reduced in
-            if reduced { gripEmphasis = false }
         }
         .onAppear {
             hasIsland = IslandHand.isSupported
@@ -180,7 +216,6 @@ struct RunnerView: View {
         VStack(spacing: 12) {
             if timerOnly {
                 timerOnlyIdentity(session)
-                gripChangeNotice(session)
                 timerDial(session)
                 timerPositionLine(session)
             } else {
@@ -197,7 +232,6 @@ struct RunnerView: View {
                     counters(session)
                     gripLine(session)
                 }
-                gripChangeNotice(session)
                 prompt(session)
                 hero(session)
                 progress(session)
@@ -220,6 +254,40 @@ struct RunnerView: View {
                 .frame(maxHeight: .infinity)
                 .background(.regularMaterial,
                             in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
+                        .strokeBorder(StatusTint.armed, lineWidth: 3)
+                        .opacity(session.snapshot.hasSignal ? gripBorderOpacity : 0)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+                .overlay(alignment: .topLeading) {
+                    // An overlay never participates in the graph's layout. Keep the
+                    // newest readings at the right edge clear, and let signal warnings
+                    // take priority over the brief grip cue.
+                    if gripEmphasis, session.snapshot.hasSignal,
+                       let grip = session.snapshot.grip {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("New grip")
+                                .font(.headline)
+                                .foregroundStyle(Color(hex: "1B1F25"))
+                            Text(grip.shortName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color(hex: "1B1F25"))
+                                .lineLimit(2)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(StatusTint.armed,
+                                    in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
+                        .padding(12)
+                        .padding(.trailing, 64)
+                        .transition(.opacity)
+                        .allowsHitTesting(false)
+                        // The existing grip-change announcement already speaks this.
+                        .accessibilityHidden(true)
+                    }
+                }
                 .tourAnchor(.runnerTrace)
             }
             controls(session)
@@ -227,43 +295,10 @@ struct RunnerView: View {
         .padding(.horizontal, Metrics.hPadding)
         // The fingers reach ~92 pt down the screen and content starts at 59, so the hand
         // needs the gap bought for it — otherwise the grip name lands under the knuckles.
-        .padding(.top, hasIsland ? 60 : 8)
+        .padding(.top, hasIsland ? 46 : 8)
         .padding(.bottom, Metrics.spacing)
         .frame(maxWidth: Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
-    }
-
-    /// Always reserves its space: no phase or notice can push the live metrics.
-    private func gripChangeNotice(_ session: RunnerSession) -> some View {
-        Group {
-            if session.snapshot.newGripID != nil, let grip = session.snapshot.grip {
-                VStack(spacing: 0) {
-                    HStack(spacing: 8) {
-                        badgeCapsule(String(localized: "New grip"), changing: true)
-                        Text(session.snapshot.upcomingGrip == nil ? grip.line : grip.shortName)
-                            .font(.footnote.weight(.semibold)).foregroundStyle(Ink.primary)
-                    }
-                    if let next = session.snapshot.upcomingGrip {
-                        Text(String(localized: "Next grip: \(next.shortName)"))
-                            .font(.caption).foregroundStyle(Ink.secondary).lineLimit(1)
-                    }
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(String(localized: "New grip: \(grip.spoken)"))
-            } else if let next = session.snapshot.upcomingGrip {
-                Text(String(localized: "Next grip: \(next.line)"))
-                    .font(.footnote.weight(.medium)).foregroundStyle(Ink.primary)
-            } else {
-                Color.clear.accessibilityHidden(true)
-            }
-        }
-        .lineLimit(2)
-        .frame(maxWidth: .infinity)
-        .frame(height: noticeHeight)
-        .background(session.snapshot.newGripID != nil || session.snapshot.upcomingGrip != nil
-                    ? StatusTint.armed.opacity(0.12) : Color.clear,
-                    in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
-        .allowsHitTesting(false)
     }
 
     /// Pushed OUT to the screen edges and up a size (Nuri, 2026-08-09). They are the two
@@ -321,7 +356,6 @@ struct RunnerView: View {
     private func gripLineText(_ session: RunnerSession, timerOnly: Bool = false) -> some View {
         if session.snapshot.grip != nil {
             nameRow(session, timerOnly: timerOnly).frame(maxWidth: .infinity)
-                .frame(minHeight: gripLineHeight)
         }
     }
 
@@ -330,8 +364,9 @@ struct RunnerView: View {
         if let grip = session.snapshot.grip {
             VStack(spacing: 6) {
                 FingerGlyph(fingers: grip.fingers, position: grip.position,
-                            dot: 18, gap: 7)
-                    .scaleEffect(gripEmphasis && !reduceMotion ? 1.22 : 1)
+                            dot: 18, gap: 7,
+                            tint: gripEmphasis ? StatusTint.armed : Accent.graphite)
+                    .scaleEffect(gripEmphasis && !reduceMotion ? 1.25 : 1)
                     .frame(height: 44)
                 nameRow(session, timerOnly: timerOnly)
             }
@@ -361,11 +396,13 @@ struct RunnerView: View {
                     HStack(spacing: 8) {
                         ZStack {
                             badgeCapsule(String(localized: "New grip"), changing: true).hidden()
-                            if isResting(session), session.snapshot.newGripID == nil {
+                            if session.snapshot.newGripID != nil {
+                                badgeCapsule(String(localized: "New grip"), changing: true)
+                            } else if isResting(session) {
                                 restBadge(session)
                             }
                         }
-                        Text(grip.line)
+                        Text(gripDisplayName(session, grip: grip))
                             .font(.system(.subheadline, weight: .medium))
                             .foregroundStyle(Ink.secondary)
                             .lineLimit(1)
@@ -386,13 +423,13 @@ struct RunnerView: View {
                 .accessibilityLabel(spokenGrip(session, grip: grip) + String(localized: ", timing only"))
             } else {
                 HStack(spacing: 8) {
-                    if isResting(session), session.snapshot.newGripID == nil {
+                    if isResting(session) {
                         restBadge(session)
                     }
                     // The full name now fits: the glyph no longer shares this row, so
                     // the old truncation to "…half cri…" that forced the short form only
                     // has to be avoided when a target chip is also present.
-                    Text(isCrowded(session) ? grip.shortName : grip.line)
+                    Text(gripDisplayName(session, grip: grip))
                         .font(.system(.subheadline, weight: .medium))
                         .foregroundStyle(Ink.secondary)
                         .lineLimit(1)
@@ -454,9 +491,17 @@ struct RunnerView: View {
             .background(Capsule().fill(Ink.tertiary.opacity(0.12)))
     }
 
+    /// Advance notice shares the existing identity line; it never borrows graph height.
+    private func gripDisplayName(_ session: RunnerSession, grip: GripSpec) -> String {
+        if let next = session.snapshot.upcomingGrip {
+            return "\(grip.shortName) → \(next.shortName)"
+        }
+        return isCrowded(session) ? grip.shortName : grip.line
+    }
+
     /// Whether the grip row is carrying anything besides the grip itself.
     private func isCrowded(_ session: RunnerSession) -> Bool {
-        session.snapshot.targetBand != nil || isResting(session)
+        session.snapshot.targetBand != nil || isResting(session) || session.snapshot.newGripID != nil
     }
 
     private func isResting(_ session: RunnerSession) -> Bool {
@@ -926,6 +971,11 @@ struct RunnerView: View {
             \(session.snapshot.side?.name ?? "") hand, \(grip.spoken)
             """)
     }
+}
+
+private struct GripCueKey: Equatable {
+    var id: String?
+    var resting: Bool
 }
 
 // MARK: - The things that change 80× a second
