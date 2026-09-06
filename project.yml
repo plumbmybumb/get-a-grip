@@ -35,6 +35,7 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - path: Sources
+      - path: Legal/current
       # Compiled into the app today; kept as its own root so a widget target can
       # include it verbatim later without moving a single file.
       - path: Shared
@@ -167,7 +168,30 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Doigt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Doigt"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
+  DoigtUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Doigt
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt.uitests
+        TARGETED_DEVICE_FAMILY: "1"
+
 schemes:
+  LegalUI:
+    build:
+      targets:
+        Doigt: all
+        DoigtUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - DoigtUITests
   Doigt:
     build:
       targets:

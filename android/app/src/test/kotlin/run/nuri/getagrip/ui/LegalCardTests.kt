@@ -26,7 +26,7 @@ import kotlin.test.assertEquals
 class LegalCardTests {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun policiesOpenOnlyOnTapAndUseFrenchForAFrenchDevice() {
+    @Test fun policiesAreReadableOfflineInFrenchWithoutOpeningBrowser() {
         val opened = mutableListOf<String>()
         val handler = object : UriHandler { override fun openUri(uri: String) { opened += uri } }
         val configuration = Configuration().apply { setLocales(LocaleList(Locale.CANADA_FRENCH)) }
@@ -36,13 +36,15 @@ class LegalCardTests {
             }
         }
         assertEquals(emptyList(), opened)
-        // This test overrides configuration only; resource strings retain the test context's English.
-        compose.onNodeWithText("Privacy policy").performClick()
-        compose.onNodeWithText("Terms of use").performClick()
-        assertEquals(listOf("https://nuri.run/getagrip/privacy/fr", "https://nuri.run/getagrip/terms/fr"), opened)
+        compose.onNodeWithText("Confidentialité").performClick()
+        compose.onNodeWithText("Responsable et contact").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Terminé").performClick()
+        compose.onNodeWithText("Conditions d’utilisation").performClick()
+        compose.onNodeWithText("L’application et son éditeur").performScrollTo().assertIsDisplayed()
+        assertEquals(emptyList(), opened)
     }
 
-    @Test fun missingBrowserShowsReadablePolicyAddressInsteadOfCrashing() {
+    @Test fun missingBrowserDoesNotPreventReadingTerms() {
         val handler = object : UriHandler {
             override fun openUri(uri: String) { throw IllegalArgumentException("No browser") }
         }
@@ -53,8 +55,8 @@ class LegalCardTests {
             }
         }
         compose.onNodeWithText("Privacy policy").performClick()
-        compose.onNodeWithText("https://nuri.run/getagrip/privacy").assertIsDisplayed()
+        compose.onNodeWithText("Who is responsible").assertIsDisplayed()
         compose.onNodeWithText("Done").performClick()
-        compose.onNodeWithText("https://nuri.run/getagrip/privacy").assertDoesNotExist()
+        compose.onNodeWithText("Who is responsible").assertDoesNotExist()
     }
 }

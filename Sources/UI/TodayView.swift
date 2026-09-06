@@ -153,8 +153,11 @@ struct TodayView: View {
             }
             .navigationTransition(.zoom(sourceID: mode.zoomID, in: zoom))
         }
-        .fullScreenCover(item: $running, onDismiss: { drainImportInbox() }) {
-            RunnerView(template: $0, timerOnly: runningTimerOnly)
+        .fullScreenCover(item: $running, onDismiss: { drainImportInbox() }) { routine in
+            TrainingAgreementGate(onCancel: { running = nil }) {
+                RunnerView(template: routine, timerOnly: runningTimerOnly)
+                    .onAppear { templates.noteSessionStarted(routine) }
+            }
         }
         // `initial: true` so this is both the start trigger and the resume trigger. The
         // routine list arrives through a `@Query`, so "is there a routine" is not knowable
@@ -569,9 +572,8 @@ struct TodayView: View {
     }
 
     private func start(_ routine: SessionTemplate, timerOnly: Bool = false) {
-        // Written on START, not on finish: the useful question at 19:00 is "which one am
-        // I in the middle of", not "which one did I complete".
-        templates.noteSessionStarted(routine)
+        // Prepare the destination. The agreement gate records the start only when
+        // it actually admits the runner; declining does not mark a routine started.
         startTick += 1
         // Set BEFORE `running`, because assigning `running` is what presents the cover and
         // builds the RunnerView — a flag written afterwards would arrive a frame late,

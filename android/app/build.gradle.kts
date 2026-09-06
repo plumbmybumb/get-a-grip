@@ -22,6 +22,7 @@ require(uploadValues.values.all { it == null } || uploadValues.values.all { !it.
 }
 
 android {
+    sourceSets["main"].assets.srcDir("../../Legal/current")
     signingConfigs {
         if (uploadValues["keystore"] != null) {
             create("upload") {

@@ -1,0 +1,295 @@
+{
+  "version": "2026-09-05",
+  "documents": {
+    "en": {
+      "privacy": {
+        "title": "Privacy policy",
+        "summary": "Your training stays under your control. Get a Grip has no accounts, ads or analytics SDKs. This policy explains local storage, platform backups, sharing and the information you choose to send for support.",
+        "sections": [
+          {
+            "title": "Who is responsible",
+            "paragraphs": [
+              "This policy covers the official Get a Grip apps for Android and iOS, including beta versions, and their support and legal pages. Get a Grip is provided by Nuri Bruner, an independent developer based in France. For privacy questions or requests, contact support@nuri.run. Nuri Bruner is responsible for personal information received through support and operating these pages. Independently distributed forks may have different practices."
+            ]
+          },
+          {
+            "title": "Training data on your device",
+            "paragraphs": [
+              "The app stores your routines, grip specifications, workout dates and results, pull measurements and timing, recorded maximums, and preferences such as units, reminders and gauge selection. Fitness records can be sensitive. They are used to run your sessions and show your history and progress.",
+              "There is no developer-operated account or training database. The Android app does not request Internet access and contains no advertising, analytics or automatic crash-reporting SDK. Neither app connects your records to Health Connect or Apple Health, or accesses your contacts, microphone or location."
+            ]
+          },
+          {
+            "title": "Android backup and device transfer",
+            "paragraphs": [
+              "Android stores the database and preferences locally. When system backup or device transfer is enabled, Android may copy the database and settings to your backup provider or another device. This is a system backup, not live synchronization, and does not synchronize Android history with iOS.",
+              "Backup availability, encryption, retention and restoration depend on your device, provider and settings. A backup can restore records after reinstallation. Manage backups in your device or provider settings; the developer cannot read or delete them. Temporary export files are excluded from the app’s declared backup rules."
+            ]
+          },
+          {
+            "title": "iOS and iCloud",
+            "paragraphs": [
+              "On iOS, training records can synchronize through your private Apple CloudKit database when iCloud is available. The developer cannot read that private database. Local-only use is possible. Apple device backups may also contain app data according to your settings. Apple controls its backup and cloud services under its own terms and privacy policy."
+            ]
+          },
+          {
+            "title": "Permissions and connected gauges",
+            "paragraphs": [
+              "Bluetooth permission lets the app discover gauges, handle their device names and connection identifiers, and read force, battery and connection information. Some supported scales broadcast readings without pairing. A connected session may continue in the background; Android displays an ongoing session notification while its connected-device service runs. Ending the session stops that service.",
+              "Camera access is used only when you scan a routine. QR codes are decoded on your phone; the app does not save or upload camera frames. On iOS, saving a shared image can request add-only Photos access. Android uses the system share interface without broad access to your photo library.",
+              "Optional reminders are scheduled on your device. Reminder and ongoing-session notifications may show training information on your lock screen, depending on your settings. They are not marketing notifications. You can manage permissions and notifications in system settings."
+            ]
+          },
+          {
+            "title": "Sharing, exports and AI",
+            "paragraphs": [
+              "A shared routine link or QR code contains the routine itself. Anyone with that link or code can read it. Share images contain the selected information shown in the image. Training exports contain more detail, including dates, routine and grip names, measurements, timings, maximums and stable record identifiers. These identifiers connect records; they are not advertising identifiers.",
+              "Sharing, saving or copying happens only at your request, through your chosen app, file destination or clipboard. Temporary exported files can remain in the app cache until you clear it or the system removes them. Copies saved or sent elsewhere remain with that destination.",
+              "The app does not automatically upload training to an AI service. If you give an export to an AI or another recipient, its handling is governed by that recipient’s policies. Review what you share, especially routine names and training history."
+            ]
+          },
+          {
+            "title": "Diagnostics and support email",
+            "paragraphs": [
+              "The app keeps a limited, temporary diagnostic history of connection events and performance counters in memory. Old entries are overwritten; this history does not survive the app process ending. It is not automatically sent to the developer.",
+              "Support opens an editable email draft with app version, operating-system version, phone model, selected gauge and language information. Bug reports can include recent diagnostics if you choose. You can inspect, edit or cancel the draft. When you send an email, we receive your email address, message, attachments and normal delivery metadata; email providers process it to deliver and store the correspondence.",
+              "We use correspondence to answer you, investigate the issue, maintain security and improve the app. We do not use it for marketing. Please avoid sending medical records or unnecessary personal information. If handling sensitive health information is necessary, we will seek an appropriate explicit consent before doing so.",
+              "Support correspondence is kept only while needed to resolve the request and relevant follow-up, then deleted or de-identified. Limited information may be retained longer where a legal obligation or legal claim requires it. You may request earlier deletion at support@nuri.run."
+            ]
+          },
+          {
+            "title": "Website and other providers",
+            "paragraphs": [
+              "The optional Android beta uses a self-join Google Group to grant Google Play testing access. Google processes membership under its policies. The group owner, Nuri Bruner, can see the profile information and email address used to join; other members cannot see the member list or email addresses. Membership is used to administer beta access, not for marketing, and requires no training records. You can leave through Google Groups or ask support@nuri.run to remove your membership. Google may retain its own service records under its policy.",
+              "These pages are hosted by Vercel. Visiting them sends ordinary request information, such as your IP address, browser, requested URL and time, to the host for delivery and security. These support and legal pages add no advertising or analytics scripts and do not receive your training database.",
+              "Apple, Google, your device or backup provider, email services and recipients you choose operate their own services under their own policies. The operating system or app store may provide diagnostic reports according to your platform settings, separately from the app’s optional support email. Providers may process information outside your country; their policies explain locations and transfer protections.",
+              "Personal information is not sold or rented. Service providers may process information to deliver the services described here. Information may also be disclosed when necessary to comply with law or establish, exercise or defend legal claims."
+            ]
+          },
+          {
+            "title": "Keeping and deleting your data",
+            "paragraphs": [
+              "Training records remain until you delete them. You can remove records in the app. On Android, system Settings → Apps → Get a Grip → Storage → Clear storage removes the local database and preferences; uninstalling also removes local app data. Manage cloud backups separately so an old backup does not restore deleted records. Delete exported files and recipient copies separately.",
+              "On iOS, delete records while the app is connected to iCloud if you want the deletions to synchronize. Uninstalling alone does not delete your private CloudKit records. Manage iCloud storage and device backups through Apple settings.",
+              "The developer cannot remotely delete data held only on your phone or in a private platform backup. There is no Get a Grip account to close. For personal information sent to support, request deletion by email."
+            ]
+          },
+          {
+            "title": "Legal bases, rights and security",
+            "paragraphs": [
+              "For information we receive, responding to support requests and maintaining a secure website rely on our legitimate interests in providing a working app and helping its users. Legally required retention relies on the relevant legal obligation. Where consent is required, including for necessary processing of sensitive health information, we ask for it and you may withdraw it for future processing.",
+              "Depending on applicable law, you may request access, correction, deletion, restriction or portability of personal information we hold, or object to its processing. Contact support@nuri.run; we may need proportionate information to verify your request. Under the GDPR, we normally respond within one month, subject to lawful extensions. You may complain to your local data protection authority, including the CNIL in France.",
+              "The app uses the operating system’s storage isolation and permission controls; these web pages use HTTPS. Use a screen lock and keep your device updated. No storage, Bluetooth link or email service can be guaranteed completely secure."
+            ]
+          },
+          {
+            "title": "Children and policy changes",
+            "paragraphs": [
+              "Get a Grip is a general fitness tool and is not directed at children under 13. Contact us if a child has sent personal information to support so we can address it. This does not make unsupervised training appropriate for a child.",
+              "We update the date on this page when the policy changes. Material changes will be communicated appropriately, and consent requested where required."
+            ]
+          }
+        ]
+      },
+      "terms": {
+        "title": "Terms of use",
+        "summary": "Get a Grip helps you plan, time and record finger training. These terms explain its limits, your data choices and the rights that remain yours, including its open-source licence.",
+        "sections": [
+          {
+            "title": "The app and its provider",
+            "paragraphs": [
+              "These terms apply to the official Android and iOS versions of Get a Grip, including betas, provided by Nuri Bruner, an independent developer based in France. Contact: support@nuri.run. They describe use of the official app alongside applicable store terms and software licences. Independently distributed forks are not operated or supported by Nuri Bruner."
+            ]
+          },
+          {
+            "title": "A training tool, not medical advice",
+            "paragraphs": [
+              "Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice, including questions about pain, injury or whether training is appropriate for you. The app and support correspondence do not provide medical clearance or a rehabilitation plan.",
+              "Routines, targets, timers and recorded results do not establish that a particular load or protocol is safe for you. You choose your training and equipment."
+            ]
+          },
+          {
+            "title": "Training and equipment",
+            "paragraphs": [
+              "Finger loading can cause injury. Follow your equipment manufacturer’s instructions, inspect your setup and anchors, and stop if you experience pain or concerning symptoms. Children should have appropriate adult supervision and qualified advice. Do not use an app reading, gauge or training setup as fall protection or safety equipment.",
+              "Check calibration, units and zero/tare before relying on measurements. Sensor accuracy, mounting, firmware, Bluetooth interruptions and phone performance can affect readings and timing. Experimental gauge support is identified in the app and may not have been verified on hardware. The app is independent of gauge manufacturers. Demo readings are simulated; timer-only sessions do not measure force."
+            ]
+          },
+          {
+            "title": "Your records and sharing",
+            "paragraphs": [
+              "You retain rights in your own content. The privacy policy explains local storage, private platform backups and optional support messages. Keep copies of important records. Backups and synchronization can be delayed or incomplete; an analysis export is not a promise that full history can be restored into the app. The developer has no central copy of your training database to recover for you.",
+              "Only share content you are entitled to share. A routine link or QR code can be read by anyone who receives it. Exports can contain detailed fitness history. Your chosen recipients, including AI services, apply their own terms and policies."
+            ]
+          },
+          {
+            "title": "Open source and store terms",
+            "paragraphs": [
+              "The app’s published source code is available under the Mozilla Public License 2.0, with third-party components under their respective licences. Those licences govern the rights to use, inspect, modify and redistribute covered code. These terms do not reduce those rights. See the source repository and in-app open-source notices for licences and attribution. Branding and trademarks are separate from the code licence.",
+              "Apple App Store or Google Play terms also apply to downloads and any transactions handled by those stores. Nothing here removes rights you have under those terms or applicable consumer law."
+            ]
+          },
+          {
+            "title": "Availability, betas and changes",
+            "paragraphs": [
+              "We work to keep the app useful and reliable, but cannot promise uninterrupted operation, perfectly accurate measurements, compatibility with every gauge or a particular update schedule. Beta versions may contain defects, and features may change. These limits are subject to any mandatory duties, including applicable conformity and security-update obligations.",
+              "Updated terms will be dated here and material changes communicated appropriately. Changes do not retroactively remove accrued rights. You can stop using and uninstall the official app at any time; rights granted under the source-code licences continue according to those licences."
+            ]
+          },
+          {
+            "title": "Responsibility and your legal rights",
+            "paragraphs": [
+              "To the extent allowed by law, the app is provided without a guarantee that it will meet every individual training need or that every result is error-free. Nothing in these terms excludes mandatory warranties or remedies, or limits liability that cannot legally be limited, including applicable liability for fraud or personal injury. These terms are not a waiver of such rights.",
+              "French law applies, while preserving mandatory protections that apply to consumers in their country of residence. You retain any right to bring a claim in a competent local court. Contact support@nuri.run if there is a problem so we can try to resolve it."
+            ]
+          }
+        ]
+      }
+    },
+    "fr": {
+      "privacy": {
+        "title": "Politique de confidentialité",
+        "summary": "Vous gardez le contrôle de votre entraînement. Get a Grip ne comporte ni compte, ni publicité, ni SDK d’analyse. Cette politique explique le stockage local, les sauvegardes, le partage et les informations que vous choisissez d’envoyer à l’assistance.",
+        "sections": [
+          {
+            "title": "Responsable et contact",
+            "paragraphs": [
+              "Cette politique couvre les applications officielles Get a Grip pour Android et iOS, y compris les versions bêta, ainsi que leurs pages d’assistance et juridiques. Get a Grip est proposé par Nuri Bruner, développeur indépendant établi en France. Pour toute question ou demande : support@nuri.run. Nuri Bruner est responsable des données personnelles reçues par l’assistance et pour le fonctionnement de ces pages. Les versions dérivées distribuées indépendamment peuvent avoir d’autres pratiques."
+            ]
+          },
+          {
+            "title": "Vos données d’entraînement",
+            "paragraphs": [
+              "L’application enregistre vos routines, prises, dates et résultats d’entraînement, mesures et durées des tractions, maximums et préférences : unités, rappels et capteur sélectionné notamment. Ces données de condition physique peuvent être sensibles. Elles servent au déroulement des séances et à l’affichage de votre historique et de vos progrès.",
+              "Le développeur n’exploite aucun compte utilisateur ni base centrale d’entraînement. L’application Android ne demande pas d’accès Internet et ne contient aucun SDK publicitaire, d’analyse ou d’envoi automatique de rapports de plantage. Aucune des deux applications ne relie vos données à Health Connect ou Apple Health, ni n’accède à vos contacts, votre microphone ou votre localisation."
+            ]
+          },
+          {
+            "title": "Sauvegarde et transfert Android",
+            "paragraphs": [
+              "Android conserve la base de données et les préférences localement. Si la sauvegarde système ou le transfert d’appareil est activé, Android peut les copier chez votre fournisseur de sauvegarde ou sur un autre appareil. Il s’agit d’une sauvegarde système, pas d’une synchronisation en direct, ni d’une synchronisation de l’historique entre Android et iOS.",
+              "La disponibilité, le chiffrement, la conservation et la restauration dépendent de votre appareil, du fournisseur et de vos réglages. Une sauvegarde peut restaurer des données après réinstallation. Gérez-la dans les réglages de l’appareil ou du fournisseur : le développeur ne peut ni la lire ni la supprimer. Les exports temporaires sont exclus des règles de sauvegarde déclarées par l’application."
+            ]
+          },
+          {
+            "title": "iOS et iCloud",
+            "paragraphs": [
+              "Sur iOS, les données d’entraînement peuvent se synchroniser dans votre base privée Apple CloudKit lorsque iCloud est disponible. Le développeur ne peut pas lire cette base privée. Une utilisation uniquement locale est possible. Les sauvegardes de l’appareil peuvent également contenir des données selon vos réglages. Les services de sauvegarde et de cloud d’Apple relèvent de ses propres conditions et de sa politique de confidentialité."
+            ]
+          },
+          {
+            "title": "Autorisations et capteurs",
+            "paragraphs": [
+              "Le Bluetooth permet de découvrir les capteurs, de traiter leurs noms et identifiants de connexion, et de lire la force, la batterie et l’état de connexion. Certaines balances diffusent leurs mesures sans appairage. Une séance connectée peut continuer en arrière-plan ; Android affiche une notification persistante pendant le service de connexion. Terminer la séance arrête ce service.",
+              "La caméra sert uniquement au scan d’une routine. Le QR code est décodé sur le téléphone ; l’application n’enregistre ni ne transmet les images de la caméra. Sur iOS, l’enregistrement d’une image partagée peut demander un accès à Photos limité à l’ajout. Android utilise le partage système sans accès général à votre photothèque.",
+              "Les rappels facultatifs sont programmés sur l’appareil. Les notifications de rappel ou de séance peuvent afficher des informations d’entraînement sur l’écran verrouillé selon vos réglages. Elles ne sont pas publicitaires. Vous pouvez gérer les autorisations et notifications dans les réglages système."
+            ]
+          },
+          {
+            "title": "Partage, exports et IA",
+            "paragraphs": [
+              "Un lien ou QR code partagé contient la routine elle-même. Toute personne qui le reçoit peut la lire. Une image partagée contient les informations sélectionnées qui y sont visibles. Les exports d’entraînement sont plus détaillés : dates, noms de routines et de prises, mesures, durées, maximums et identifiants stables des enregistrements. Ces identifiants relient les données entre elles ; ce ne sont pas des identifiants publicitaires.",
+              "Le partage, l’enregistrement ou la copie se fait uniquement à votre demande, vers l’application, le fichier ou le presse-papiers choisi. Les exports temporaires peuvent rester dans le cache jusqu’à son effacement par vous ou par le système. Les copies enregistrées ou envoyées ailleurs restent auprès de leur destination.",
+              "L’application ne transmet pas automatiquement votre entraînement à une IA. Si vous remettez un export à une IA ou à un autre destinataire, ses propres politiques s’appliquent. Vérifiez les données partagées, notamment les noms des routines et votre historique."
+            ]
+          },
+          {
+            "title": "Diagnostics et assistance",
+            "paragraphs": [
+              "L’application conserve en mémoire un historique temporaire et limité d’événements de connexion et de compteurs de performance. Les anciennes entrées sont écrasées ; cet historique ne survit pas à l’arrêt du processus. Il n’est pas envoyé automatiquement au développeur.",
+              "L’assistance ouvre un brouillon modifiable contenant la version de l’application et du système, le modèle du téléphone, le capteur sélectionné et la langue. Vous pouvez choisir d’inclure les diagnostics récents dans un signalement. Vous pouvez vérifier, modifier ou annuler le brouillon. Si vous l’envoyez, nous recevons votre adresse e-mail, message, pièces jointes et métadonnées habituelles de livraison. Les fournisseurs de messagerie les traitent pour acheminer et conserver les échanges.",
+              "Nous utilisons ces échanges pour vous répondre, examiner le problème, assurer la sécurité et améliorer l’application, sans usage publicitaire. Évitez d’envoyer des dossiers médicaux ou des données personnelles inutiles. Si le traitement de données de santé sensibles est nécessaire, nous demanderons au préalable un consentement explicite approprié.",
+              "Les échanges sont conservés uniquement le temps nécessaire à la résolution de la demande et à son suivi pertinent, puis supprimés ou dépersonnalisés. Des informations limitées peuvent être gardées davantage si une obligation légale ou un litige le nécessite. Vous pouvez demander une suppression anticipée à support@nuri.run."
+            ]
+          },
+          {
+            "title": "Site et prestataires",
+            "paragraphs": [
+              "La bêta Android facultative utilise un groupe Google à inscription libre pour autoriser l’accès au test Google Play. Google traite l’adhésion selon ses politiques. Le propriétaire du groupe, Nuri Bruner, peut voir les informations de profil et l’adresse e-mail utilisées pour rejoindre le groupe ; les autres membres ne voient ni la liste ni les adresses. L’adhésion sert à gérer l’accès à la bêta, sans usage publicitaire ni nécessité de fournir des données d’entraînement. Vous pouvez quitter le groupe dans Google Groups ou demander votre retrait à support@nuri.run. Google peut conserver ses propres données de service selon sa politique.",
+              "Ces pages sont hébergées par Vercel. Leur consultation transmet à l’hébergeur les informations habituelles de requête, telles que l’adresse IP, le navigateur, l’URL et l’heure, pour leur livraison et leur sécurité. Ces pages d’assistance et juridiques n’ajoutent aucun script publicitaire ou d’analyse et ne reçoivent pas votre base d’entraînement.",
+              "Apple, Google, le fabricant de votre appareil, votre fournisseur de sauvegarde, les messageries et vos destinataires exploitent leurs services selon leurs propres politiques. Le système ou la boutique d’applications peut fournir des rapports de diagnostic selon vos réglages, séparément de l’e-mail facultatif d’assistance. Des prestataires peuvent traiter des données hors de votre pays ; leurs politiques précisent les lieux et protections des transferts.",
+              "Les données personnelles ne sont ni vendues ni louées. Des prestataires peuvent les traiter pour les services décrits ici. Elles peuvent aussi être communiquées lorsque cela est nécessaire au respect de la loi ou à la constatation, l’exercice ou la défense de droits en justice."
+            ]
+          },
+          {
+            "title": "Conservation et suppression",
+            "paragraphs": [
+              "Vos données d’entraînement restent enregistrées jusqu’à leur suppression. Vous pouvez supprimer des éléments dans l’application. Sur Android, Réglages → Applications → Get a Grip → Stockage → Effacer les données supprime la base locale et les préférences ; la désinstallation supprime aussi les données locales. Gérez séparément les sauvegardes pour éviter qu’une ancienne copie restaure des éléments supprimés. Supprimez séparément les exports et les copies des destinataires.",
+              "Sur iOS, supprimez les éléments lorsque l’application est connectée à iCloud pour synchroniser leur suppression. La désinstallation seule ne supprime pas les données privées CloudKit. Gérez le stockage iCloud et les sauvegardes dans les réglages Apple.",
+              "Le développeur ne peut pas supprimer à distance des données présentes uniquement sur votre téléphone ou dans une sauvegarde privée. Il n’y a pas de compte Get a Grip à fermer. Pour les informations envoyées à l’assistance, demandez leur suppression par e-mail."
+            ]
+          },
+          {
+            "title": "Bases légales, droits et sécurité",
+            "paragraphs": [
+              "Pour les informations reçues, la réponse à l’assistance et la sécurité du site reposent sur notre intérêt légitime à fournir une application fonctionnelle et à aider ses utilisateurs. La conservation imposée par la loi repose sur l’obligation correspondante. Lorsqu’un consentement est requis, notamment pour traiter nécessairement des données de santé sensibles, nous le demandons ; vous pouvez le retirer pour l’avenir.",
+              "Selon la loi applicable, vous pouvez demander l’accès, la rectification, l’effacement, la limitation ou la portabilité des données que nous détenons, ou vous opposer à leur traitement. Écrivez à support@nuri.run ; des informations proportionnées peuvent être nécessaires pour vérifier la demande. Le RGPD prévoit normalement une réponse sous un mois, sauf prolongation légale. Vous pouvez saisir votre autorité de protection des données, notamment la CNIL en France.",
+              "L’application utilise l’isolation du stockage et les autorisations du système ; ces pages utilisent HTTPS. Verrouillez votre écran et mettez votre appareil à jour. Aucun stockage, lien Bluetooth ou service de messagerie ne peut être garanti totalement sûr."
+            ]
+          },
+          {
+            "title": "Enfants et modifications",
+            "paragraphs": [
+              "Get a Grip est un outil général d’entraînement qui ne s’adresse pas aux enfants de moins de 13 ans. Contactez-nous si un enfant a envoyé des données personnelles à l’assistance afin que nous puissions intervenir. Cela ne rend pas approprié l’entraînement d’un enfant sans supervision.",
+              "La date de cette page est actualisée lors des modifications. Les changements importants seront communiqués de manière adaptée, et un consentement demandé si nécessaire."
+            ]
+          }
+        ]
+      },
+      "terms": {
+        "title": "Conditions d’utilisation",
+        "summary": "Get a Grip vous aide à préparer, chronométrer et enregistrer votre entraînement des doigts. Ces conditions expliquent ses limites, vos choix concernant les données et vos droits, dont ceux de sa licence open source.",
+        "sections": [
+          {
+            "title": "L’application et son éditeur",
+            "paragraphs": [
+              "Ces conditions concernent les versions officielles Android et iOS de Get a Grip, y compris les bêtas, proposées par Nuri Bruner, développeur indépendant établi en France. Contact : support@nuri.run. Elles décrivent l’utilisation de l’application officielle, avec les conditions des boutiques et licences logicielles applicables. Les versions dérivées distribuées indépendamment ne sont ni exploitées ni prises en charge par Nuri Bruner."
+            ]
+          },
+          {
+            "title": "Un outil d’entraînement, pas un avis médical",
+            "paragraphs": [
+              "Get a Grip n’est pas un dispositif médical et ne diagnostique, ne traite, ne guérit ni ne prévient aucune affection. Consultez un professionnel de santé pour un avis médical, notamment en cas de douleur, de blessure ou de doute sur l’entraînement. L’application et l’assistance ne fournissent ni autorisation médicale ni programme de rééducation.",
+              "Les routines, cibles, chronomètres et résultats ne prouvent pas qu’une charge ou un protocole vous convient sans risque. Vous choisissez votre entraînement et votre matériel."
+            ]
+          },
+          {
+            "title": "Entraînement et matériel",
+            "paragraphs": [
+              "La mise en charge des doigts peut provoquer des blessures. Suivez les instructions du fabricant, vérifiez le montage et les ancrages, et arrêtez en cas de douleur ou de symptômes préoccupants. Un enfant doit bénéficier d’une supervision adulte adaptée et de conseils qualifiés. N’utilisez ni une mesure de l’application, ni un capteur, ni un montage d’entraînement comme protection antichute ou équipement de sécurité.",
+              "Vérifiez l’étalonnage, les unités et le zéro/la tare. La précision du capteur, le montage, le micrologiciel, les interruptions Bluetooth et les performances du téléphone peuvent affecter les mesures et durées. Les compatibilités expérimentales sont signalées et peuvent ne pas avoir été vérifiées sur matériel réel. L’application est indépendante des fabricants. Les mesures de démonstration sont simulées ; le mode chronomètre seul ne mesure pas la force."
+            ]
+          },
+          {
+            "title": "Vos données et leur partage",
+            "paragraphs": [
+              "Vous conservez vos droits sur vos contenus. La politique de confidentialité décrit le stockage local, les sauvegardes privées et les messages facultatifs à l’assistance. Conservez des copies des données importantes. Sauvegardes et synchronisation peuvent être retardées ou incomplètes ; un export d’analyse ne garantit pas la restauration de tout l’historique dans l’application. Le développeur n’en possède pas de copie centrale à restaurer pour vous.",
+              "Ne partagez que les contenus que vous avez le droit de partager. Toute personne recevant un lien ou QR code peut lire la routine. Les exports peuvent contenir un historique détaillé. Vos destinataires, dont les services d’IA, appliquent leurs propres conditions et politiques."
+            ]
+          },
+          {
+            "title": "Open source et boutiques",
+            "paragraphs": [
+              "Le code source publié est disponible sous Mozilla Public License 2.0, les composants tiers sous leurs licences respectives. Ces licences régissent l’utilisation, la consultation, la modification et la redistribution du code couvert. Ces conditions ne réduisent pas ces droits. Consultez le dépôt et les mentions open source dans l’application pour les licences et attributions. Les marques et l’identité visuelle sont distinctes de la licence du code.",
+              "Les conditions Apple App Store ou Google Play s’appliquent aussi aux téléchargements et aux éventuelles transactions gérées par ces boutiques. Rien ici ne supprime vos droits au titre de ces conditions ou du droit de la consommation."
+            ]
+          },
+          {
+            "title": "Disponibilité, bêtas et évolutions",
+            "paragraphs": [
+              "Nous travaillons à la fiabilité de l’application, sans pouvoir promettre un fonctionnement ininterrompu, des mesures parfaites, une compatibilité universelle ou un calendrier précis de mises à jour. Les bêtas peuvent présenter des défauts et les fonctionnalités évoluer. Ces limites restent soumises aux obligations impératives, notamment de conformité et de mises à jour de sécurité applicables.",
+              "Les conditions mises à jour seront datées ici et les modifications importantes communiquées de façon adaptée. Elles ne suppriment pas rétroactivement les droits acquis. Vous pouvez arrêter et désinstaller l’application à tout moment ; les droits des licences de code source continuent selon leurs dispositions."
+            ]
+          },
+          {
+            "title": "Responsabilité et droits légaux",
+            "paragraphs": [
+              "Dans les limites autorisées par la loi, l’application ne garantit pas de répondre à chaque besoin individuel d’entraînement ni l’absence d’erreur dans chaque résultat. Aucune disposition n’exclut les garanties ou recours impératifs, ni ne limite une responsabilité qui ne peut légalement l’être, notamment en cas de fraude ou de dommage corporel selon le droit applicable. Ces conditions ne constituent pas une renonciation à ces droits.",
+              "Le droit français s’applique, sans priver les consommateurs des protections impératives de leur pays de résidence. Vous conservez le droit de saisir une juridiction locale compétente lorsque la loi le prévoit. En cas de problème, contactez support@nuri.run pour rechercher une solution."
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

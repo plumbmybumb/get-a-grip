@@ -490,9 +490,11 @@ struct MaxEntrySheet: View {
             // Full screen, not a nested sheet: you are hanging off a fingerboard while
             // it is up, and it has to be readable across the room. See `MaxMeasureView`.
             .fullScreenCover(isPresented: $measuring) {
-                MaxMeasureView(grip: grip) { measured in
-                    kg = measured
-                    measuredKg = measured
+                TrainingAgreementGate(onCancel: { measuring = false }) {
+                    MaxMeasureView(grip: grip) { measured in
+                        kg = measured
+                        measuredKg = measured
+                    }
                 }
             }
         }

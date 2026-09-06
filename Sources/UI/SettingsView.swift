@@ -268,7 +268,7 @@ struct SettingsView: View {
 
                 storageLine
 
-                PrivacyPolicyLink()
+                LegalSettingsLinks()
 
                 SettingsDisclosure("Device compatibility") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -463,26 +463,6 @@ private struct SettingsDisclosure<Content: View>: View {
                 .contentShape(Rectangle())
         }
         .tint(Accent.graphite)
-    }
-}
-
-/// Its own leaf, following the pattern `SupportCard` set for presentation-scoped
-/// environment values on this screen.
-private struct PrivacyPolicyLink: View {
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        Button {
-            openURL(URL(string: "https://nuri.run/getagrip/privacy")!)
-        } label: {
-            Label("Privacy policy", systemImage: "hand.raised")
-                .font(.system(.footnote, weight: .semibold))
-                .foregroundStyle(Accent.graphite)
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PressFeedbackButtonStyle(scales: false))
-        .accessibilityLabel("Privacy policy. Opens in your browser.")
     }
 }
 

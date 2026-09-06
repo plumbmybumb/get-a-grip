@@ -176,6 +176,8 @@ fun RootTabView() {
         // **Every presented container needs its own host.** The runner replaces the root
         // outright, so the intro act's overlay is gone by the time this draws; the session act
         // is hosted here, over the screen it describes.
+        TrainingAgreementGate(onCancel = { running = null }) {
+        LaunchedEffect(request) { templates.noteSessionStarted(request.template) }
         TourHost(TourAct.Session) {
         RunnerHost(
             plan = request.template.plan,
@@ -210,6 +212,7 @@ fun RootTabView() {
             onExit = { running = null },
         )
         }
+        }
         return
     }
 
@@ -237,6 +240,7 @@ fun RootTabView() {
     var measuring by remember { mutableStateOf<MeasureRequest?>(null) }
     val measure = measuring
     if (measure != null) {
+        TrainingAgreementGate(onCancel = { measuring = null }) {
         MaxMeasureScreen(
             grip = measure.grip,
             onMeasured = { kg ->
@@ -258,6 +262,7 @@ fun RootTabView() {
             },
             onCancel = { measuring = null },
         )
+        }
         return
     }
 
@@ -351,7 +356,6 @@ fun RootTabView() {
                     onStart = { template, timerOnly ->
                         // Written on START, not on finish: the useful question at 19:00 is
                         // "which one am I in the middle of", not "which one did I complete".
-                        templates.noteSessionStarted(template)
                         running = RunRequest(template, timerOnly)
                     },
                     onBuild = {
