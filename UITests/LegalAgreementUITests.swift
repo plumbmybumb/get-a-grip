@@ -41,7 +41,7 @@ final class LegalAgreementUITests: XCTestCase {
             let control = app.scrollViews["sessionLog.form"].descendants(matching: .any)[identifier].firstMatch
             XCTAssertTrue(control.isHittable)
             control.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.5)).tap()
-            XCTAssertTrue(app.buttons[identifier + ".clear"].isHittable)
+            XCTAssertNotEqual(control.value as? String, "Not rated")
         }
         XCTAssertTrue(save.isEnabled)
         XCTAssertTrue(save.isHittable)
@@ -68,53 +68,64 @@ final class LegalAgreementUITests: XCTestCase {
         effort.coordinate(withNormalizedOffset: CGVector(dx: 0.04, dy: 0.5))
             .press(forDuration: 0.05, thenDragTo: effort.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.5)))
         XCTAssertEqual(effort.value as? String, "All I had")
-        app.buttons["effort.overall.clear"].tap()
+        // A pan that returns within its selected slot must not toggle the answer off.
+        effort.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: effort.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.5)))
+        XCTAssertEqual(effort.value as? String, "All I had")
+        effort.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.5)).tap()
         XCTAssertEqual(effort.value as? String, "Not rated")
         XCTAssertTrue(app.buttons["Save and finish"].isHittable)
         XCTAssertTrue(app.buttons["Discard this session"].isHittable)
+        effort.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.5)).tap()
+        XCTAssertEqual(effort.value as? String, "Hard")
         let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "Summary with capsule effort picker"
+        screenshot.name = "Summary with effort ladder"
         screenshot.lifetime = .keepAlways
         add(screenshot)
         app.terminate()
     }
 
-    func testDeclineLeavesHistoryAccessibleAndExplicitAcceptanceStartsSession() {
+    func testEffortLadderWithLargeTextKeepsVerticalScrollingIndependent() {
         let app = XCUIApplication()
-        app.launchArguments = ["-seedRoutine", "-mockDevice"]
+        app.launchArguments = ["-mockDevice", "-previewSummary", "-previewLog",
+                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
         app.launch()
-        // A fresh install can offer the routine tour before the agreement flow.
-        let tourSkip = app.buttons["Skip"]
-        if tourSkip.waitForExistence(timeout: 3) { tourSkip.tap() }
-        let start = app.buttons["Connect and start"]
-        XCTAssertTrue(start.waitForExistence(timeout: 10))
-        start.tap()
-        let agree = app.switches["legal.agree"]
-        XCTAssertTrue(agree.waitForExistence(timeout: 5))
-        let next = app.buttons["legal.continue"]
-        XCTAssertFalse(next.isEnabled)
+        let form = app.scrollViews["sessionLog.form"]
+        let effort = form.descendants(matching: .any)["effort.overall"].firstMatch
+        XCTAssertTrue(effort.waitForExistence(timeout: 10))
+        for _ in 0..<6 where !effort.isHittable {
+            form.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.75))
+                .press(forDuration: 0.05, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.55)))
+        }
+        XCTAssertTrue(effort.isHittable)
+        effort.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)).tap()
+        XCTAssertEqual(effort.value as? String, "Comfortable")
+        let origin = effort.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        origin.press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 0, dy: -90)))
+        XCTAssertEqual(effort.value as? String, "Comfortable")
+        XCTAssertTrue(app.buttons["Save"].isHittable)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "iOS agreement English"
+        screenshot.name = "Large text effort ladder"
         screenshot.lifetime = .keepAlways
         add(screenshot)
-        app.buttons["Not now"].tap()
-        app.tabBars.buttons["History"].tap()
-        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 3))
-        app.tabBars.buttons["Today"].tap()
-        start.tap()
-        XCTAssertTrue(agree.waitForExistence(timeout: 3))
-        if !agree.isHittable { app.swipeUp() }
-        agree.tap()
-        if !next.isHittable { app.swipeUp() }
-        XCTAssertTrue(next.isEnabled)
-        next.tap()
-        XCTAssertTrue(agree.waitForNonExistence(timeout: 5))
         app.terminate()
-        app.launch()
-        XCTAssertTrue(start.waitForExistence(timeout: 10))
-        start.tap()
-        XCTAssertFalse(agree.waitForExistence(timeout: 2))
-        app.terminate()
+    }
+
+    func testRoutineStartsDirectlyWithoutAgreementOnFirstLaunchAndRelaunch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-seedRoutine", "-mockDevice"]
+        for _ in 0..<2 {
+            app.launch()
+            let tourSkip = app.buttons["Skip"]
+            if tourSkip.waitForExistence(timeout: 3) { tourSkip.tap() }
+            let start = app.buttons["Connect and start"]
+            XCTAssertTrue(start.waitForExistence(timeout: 10))
+            start.tap()
+            XCTAssertTrue(app.buttons["End session"].waitForExistence(timeout: 10))
+            XCTAssertFalse(app.switches["legal.agree"].exists)
+            XCTAssertFalse(app.buttons["legal.continue"].exists)
+            app.terminate()
+        }
     }
 
     func testCustomTargetAcceptsExactPercentages() {
@@ -176,14 +187,8 @@ final class LegalAgreementUITests: XCTestCase {
         XCTAssertTrue(measure.waitForExistence(timeout: 5))
         for _ in 0..<4 where !measure.isHittable { app.swipeUp() }
         measure.tap()
-        let agree = app.switches["legal.agree"]
-        if agree.waitForExistence(timeout: 2) {
-            for _ in 0..<4 where !agree.isHittable { app.swipeUp() }
-            agree.tap()
-            let next = app.buttons["legal.continue"]
-            for _ in 0..<4 where !next.isHittable { app.swipeUp() }
-            next.tap()
-        }
+        XCTAssertFalse(app.switches["legal.agree"].exists)
+        XCTAssertFalse(app.buttons["legal.continue"].exists)
         XCTAssertTrue(app.navigationBars["Measure a max"].waitForExistence(timeout: 5))
         let connect = app.buttons["Connect"]
         if connect.waitForExistence(timeout: 2) {

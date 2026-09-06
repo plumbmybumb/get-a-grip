@@ -68,8 +68,6 @@ targets:
           Get a Grip saves your shareable images to your photo library.
         NSCameraUsageDescription: >-
           Get a Grip uses your camera to scan shared routine QR codes.
-        LSApplicationQueriesSchemes:
-          - instagram-stories
         # A routine shared as a QR code IS the routine — the whole plan rides in the
         # URL's fragment, so scanning one in the system Camera app opens Get a Grip with
         # everything it needs and no server anywhere. The scheme is the only half of
@@ -84,6 +82,8 @@ targets:
         # swiping home to change the music used to pause the workout. `bluetooth-central`
         # keeps the app alive while the Progressor is connected and delivering
         # notifications, which is exactly the window a session needs and nothing wider.
+        # `remote-notification` is for SwiftData's CloudKit mirroring change pushes.
+        # CloudKit manages those subscriptions; the app has no push handling of its own.
         UIBackgroundModes:
           - remote-notification
           - bluetooth-central
@@ -101,13 +101,15 @@ targets:
         # painful to retrofit as the bundle id, and a workout widget is likely.
         com.apple.security.application-groups:
           - "$(GETAGRIP_APP_GROUP)"
+        # Xcode resolves the signed environment from the provisioning profile.
+        # Check the final distribution export for production; see BUILDING.md.
         aps-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt
         TARGETED_DEVICE_FAMILY: "1" # iPhone only
         MARKETING_VERSION: "1.0.1"
-        CURRENT_PROJECT_VERSION: "3"
+        CURRENT_PROJECT_VERSION: "4"
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
     dependencies:
@@ -146,7 +148,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt.widget
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "1.0.1"
-        CURRENT_PROJECT_VERSION: "3"
+        CURRENT_PROJECT_VERSION: "4"
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
 

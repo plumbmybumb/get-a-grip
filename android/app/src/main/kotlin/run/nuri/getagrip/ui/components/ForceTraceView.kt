@@ -98,6 +98,7 @@ fun ForceTraceView(
     /// The phase tint, so the graph and the rest of the screen escalate together.
     tint: Color = LocalGripPalette.current.bleu,
     clock: HostClock = SystemHostClock,
+    frozenSamples: List<DeviceStore.TracePoint>? = null,
 ) {
     val store = LocalDeviceStore.current
     val palette = LocalGripPalette.current
@@ -110,7 +111,8 @@ fun ForceTraceView(
     val paths = remember { TracePaths() }
     var tick by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(reduceMotion, store, clock) {
+    LaunchedEffect(reduceMotion, store, clock, frozenSamples) {
+        if (frozenSamples != null) return@LaunchedEffect
         while (isActive) {
             // Read from a coroutine, not from composition or draw: snapshot reads out here
             // register no observer, so polling the newest sample costs nothing.
@@ -142,15 +144,15 @@ fun ForceTraceView(
         @Suppress("UNUSED_VARIABLE")
         val frame = tick
         store.pipelineDiagnostics.drawing(clock.uptimeSeconds())
-        val samples = store.trace
+        val samples = frozenSamples ?: store.trace
         val caps = store.gaugeCapabilities
-        val now = clock.wallSeconds()
+        val now = frozenSamples?.lastOrNull()?.t ?: clock.wallSeconds()
         val ceiling = axis.ceiling(
             samples = samples,
             thresholdKg = thresholdKg,
             bandHiKg = targetBand?.endInclusive,
             now = now,
-            reduceMotion = reduceMotion,
+            reduceMotion = reduceMotion || frozenSamples != null,
         )
         drawTrace(
             paths = paths,
@@ -252,7 +254,7 @@ private fun DrawScope.drawTrace(
     for (index in anchor until samples.size) {
         val point = Offset(
             TraceGeometry.x(samples[index].t, newest.t, drift, size.width),
-            y(TraceGeometry.smoothed(samples, index)),
+            y(TraceGeometry.smoothed(samples, index, runStart)),
         )
         if (firstDrawn == null) {
             line.moveTo(point.x, point.y)
@@ -274,7 +276,7 @@ private fun DrawScope.drawTrace(
         val last = samples.size - 1
         head = Offset(
             TraceGeometry.x(samples[last].t, newest.t, drift, size.width),
-            y(TraceGeometry.smoothed(samples, last)),
+            y(TraceGeometry.smoothed(samples, last, runStart)),
         )
     }
 

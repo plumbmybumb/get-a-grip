@@ -49,7 +49,7 @@ data class RoutineSummary(
 
     /// A climb logged today, if any. Carried on the SUMMARY rather than looked up by the
     /// card, so the card stays a pure value view — and so this cannot disagree with
-    /// `TemplateStore.isDoneForToday`, which is what the chooser rail's dot reads.
+    /// `TemplateStore.isDoneForToday`, shared by the routine's completion surfaces.
     val climbedToday: SessionKind? = null,
 
     /// Whether today is a benchmark day — measured maxes landed. Settles the card the
@@ -69,7 +69,7 @@ data class RoutineSummary(
 ) {
 
     /// **A climb — or a benchmark — meets the target.** Without this the card
-    /// contradicted the rest of the app on a day spent at the gym: the rail's dot said
+    /// contradicted the rest of the app on a day spent at the gym: the daily completion indicator said
     /// done, the sentence said "Limit session at the gym today", and the card still
     /// offered a primary "Start first session" with no checkmark. One fact, three
     /// surfaces, one answer. A whenever routine has no target to meet — doing it once
@@ -78,7 +78,7 @@ data class RoutineSummary(
         get() {
             if (isOnDemand) return climbedToday != null || benchmarkedToday || completedToday > 0
             return climbedToday != null || benchmarkedToday ||
-                (sessionsPerDay > 0 && completedToday >= sessionsPerDay)
+                completedToday >= maxOf(1, sessionsPerDay)
         }
 
     /// The edge column as the routine actually runs it: one number when every set

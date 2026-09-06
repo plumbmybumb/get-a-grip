@@ -1,6 +1,66 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Leave demo mode": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitter le mode démo"
+          }
+        }
+      }
+    },
+    "Gauge did not acknowledge the command. Reconnect and try again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La jauge n’a pas confirmé la commande. Reconnectez-la et réessayez."
+          }
+        }
+      }
+    },
+    "%lld/%lld pulls · %@": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld/%2$lld tractions · %3$@"
+          }
+        }
+      }
+    },
+    "Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos routines et séances sont enregistrées sur cet appareil. La synchronisation iCloud privée est activée lorsque vous êtes connecté et qu’iCloud est disponible ; l’app ne peut pas confirmer que toutes les modifications ont été synchronisées."
+          }
+        }
+      }
+    },
+    "Couldn't delete this max. Please try again.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de supprimer ce maximum. Réessayez."
+          }
+        }
+      }
+    },
+    "Choose a different time for each daily reminder.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez une heure différente pour chaque rappel quotidien."
+          }
+        }
+      }
+    },
     "" : {
       "localizations" : {
         "fr" : {
@@ -1638,12 +1698,12 @@
         }
       }
     },
-    "All six on the left, then all six on the right, inside one set." : {
+    "All the pulls on one hand, then all of them on the other, inside one set." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les six à gauche, puis les six à droite, dans une même série."
+            "value" : "Toutes les tractions d’une main, puis de l’autre, dans une même série."
           }
         }
       }
@@ -6740,16 +6800,6 @@
         }
       }
     },
-    "Share to Instagram story" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Partager en story Instagram"
-          }
-        }
-      }
-    },
     "Shared routine" : {
       "localizations" : {
         "fr" : {
@@ -7930,12 +7980,12 @@
         }
       }
     },
-    "Transparent PNG — flattened if added from the gallery inside Instagram; use Save to Photos for everything else." : {
+    "Share or save this PNG. Other apps may flatten its transparent background." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "PNG transparent — aplati s'il est ajouté depuis la galerie dans Instagram ; utilise Enregistrer dans Photos pour tout le reste."
+            "value" : "Partage ou enregistre ce PNG. D’autres apps peuvent aplatir son fond transparent."
           }
         }
       }

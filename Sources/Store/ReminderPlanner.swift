@@ -11,12 +11,10 @@ import UserNotifications
 /// re-adding an identifier replaces the request in place, so editing 08:00 → 09:00
 /// moves one reminder rather than accumulating two.
 ///
-/// M2 schedules REPEATING daily triggers, which means a reminder fires even on a day
-/// already trained. That is deferred deliberately: suppression needs same-day
-/// re-planning against real `WorkoutLog` writes, which do not exist until M3, and
-/// nothing in M2 can log a session — so the gap is unobservable. When it lands it is a
-/// body-only edit here (dated non-repeating requests, re-planned daily); the
-/// identifier scheme does not change.
+/// Satisfied slots are suppressed for TODAY only. iOS has no start date for a daily
+/// repeating calendar trigger, so we fill its available 64-request budget with dated
+/// one-shot requests, earliest first. Normal app activity replenishes this finite
+/// horizon; opening the app is required before the queued horizon runs out.
 @MainActor
 enum ReminderPlanner {
     /// One routine's reminder settings, flattened to Sendable value data so the whole
@@ -43,6 +41,7 @@ enum ReminderPlanner {
         let title: String
         let body: String
         let components: DateComponents
+        var suppressToday: Bool = false
     }
 
     /// The namespace we own. Everything with this prefix is ours to delete on a
@@ -73,18 +72,55 @@ enum ReminderPlanner {
             // last slot instead would silence the reminder you still need.
             let sorted = Set(routine.reminders).sorted()
             let suppressed = max(0, sorted.count - max(0, routine.outstandingToday))
-            for slot in sorted.dropFirst(suppressed) {
+            for (index, slot) in sorted.enumerated() {
                 let id = identifier(routine: routine.id, slot: slot)
                 guard claimed.insert(id).inserted else { continue }
                 planned.append(PlannedReminder(
                     identifier: id,
                     title: routine.name,
                     body: String(localized: "Time for a session."),
-                    components: slot.dateComponents
+                    components: slot.dateComponents,
+                    suppressToday: index < suppressed
                 ))
             }
         }
         return planned
+    }
+
+    /// Resolve the slot plan to future calendar dates. Every enabled slot returns
+    /// tomorrow even when today's target is met; deleting its repeating request used
+    /// to silence every future day until the app happened to replan again.
+    nonisolated static func scheduledRequests(for routines: [RoutinePlanInput],
+                                              now: Date = .now,
+                                              calendar: Calendar = .current,
+                                              limit: Int = 64) -> [PlannedReminder] {
+        let slots = requests(for: routines)
+        guard !slots.isEmpty, limit > 0 else { return [] }
+        let budget = min(64, limit)
+        let today = calendar.startOfDay(for: now)
+        var result: [PlannedReminder] = []
+        for offset in 0...budget {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
+            var candidates: [(Date, PlannedReminder)] = []
+            for slot in slots where offset > 0 || !slot.suppressToday {
+                guard let hour = slot.components.hour, let minute = slot.components.minute,
+                      let fire = calendar.date(bySettingHour: hour, minute: minute, second: 0,
+                                               of: day), fire > now,
+                      calendar.isDate(fire, inSameDayAs: day) else { continue }
+                let components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second],
+                                                         from: fire)
+                let dated = PlannedReminder(
+                    identifier: "\(slot.identifier).d\(DayStamp(date: day, calendar: calendar).raw)",
+                    title: slot.title, body: slot.body, components: components)
+                candidates.append((fire, dated))
+            }
+            candidates.sort {
+                $0.0 == $1.0 ? $0.1.identifier < $1.1.identifier : $0.0 < $1.0
+            }
+            result.append(contentsOf: candidates.prefix(budget - result.count).map { $0.1 })
+            if result.count == budget { break }
+        }
+        return result
     }
 
     /// Replans are fully serialized: each new one cancels its predecessor AND awaits it
@@ -116,16 +152,13 @@ enum ReminderPlanner {
         #endif
         let center = UNUserNotificationCenter.current()
 
-        // Note what is already scheduled but DON'T wipe it yet. Wiping first leaves a
-        // window — however short — with zero reminders, and process death or a thrown
-        // add inside that window makes it permanent. Adds replace in place, so the new
-        // plan goes in first and only then is the remainder dropped.
+        // Enumerate first so unrelated notifications retain their budget. Equivalent
+        // dated requests are replaced in place; only obsolete owned IDs are retired.
         let pending = await center.pendingNotificationRequests()
         guard !Task.isCancelled else { return }
         let ours = Set(pending.map(\.identifier).filter { $0.hasPrefix(identifierPrefix) })
 
-        let planned = requests(for: routines)
-        guard !planned.isEmpty else {
+        guard !requests(for: routines).isEmpty else {
             // Every routine's reminders are off (or there are no routines): the correct
             // plan is genuinely empty, and this is the one path that may clear without
             // checking authorization.
@@ -136,7 +169,19 @@ enum ReminderPlanner {
         let status = await center.notificationSettings().authorizationStatus
         guard status == .authorized || status == .provisional, !Task.isCancelled else { return }
 
-        var scheduled: Set<String> = []
+        // Other features retain their requests and their share of the system budget.
+        let available = max(0, 64 - (pending.count - ours.count))
+        let planned = scheduledRequests(for: routines, limit: available)
+        guard !planned.isEmpty else {
+            // Even with no free budget, an obsolete repeater must not keep nagging
+            // today after completion. Requests owned by other features stay untouched.
+            center.removePendingNotificationRequests(withIdentifiers: Array(ours))
+            return
+        }
+        let wanted = Set(planned.map(\.identifier))
+        // Retire only obsolete requests before adding: otherwise the migration from
+        // repeaters, or a refreshed full horizon, can temporarily exceed iOS's budget.
+        center.removePendingNotificationRequests(withIdentifiers: Array(ours.subtracting(wanted)))
         for item in planned {
             guard !Task.isCancelled else { return }
             let content = UNMutableNotificationContent()
@@ -148,14 +193,13 @@ enum ReminderPlanner {
             // kind of app people turn notifications off for entirely.
             content.interruptionLevel = .active
 
-            let trigger = UNCalendarNotificationTrigger(dateMatching: item.components, repeats: true)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: item.components, repeats: false)
             do {
                 try await center.add(UNNotificationRequest(identifier: item.identifier,
                                                           content: content, trigger: trigger))
-                scheduled.insert(item.identifier)
             } catch {
-                // Leave it unclaimed so the next replan retries it — and so the wipe
-                // below does not remove a request we failed to replace.
+                // Existing requests with this dated identifier remain installed if a
+                // replacement fails; the next normal replan retries the missing add.
                 continue
             }
         }
@@ -166,10 +210,6 @@ enum ReminderPlanner {
         }
         #endif
 
-        // Now — and only now — drop what the new plan no longer covers.
-        guard !Task.isCancelled else { return }
-        center.removePendingNotificationRequests(
-            withIdentifiers: Array(ours.subtracting(scheduled)))
     }
 
     /// Contextual, one-shot permission ask: the first Save of a routine WITH reminders

@@ -94,7 +94,7 @@ enum class HandMode(val rawValue: String) {
     val explainer: String
         get() = when (this) {
             alternateEachRep -> L10n.tr("Left, right, left, right — swapping hands every pull.")
-            alternateEachSet -> L10n.tr("All six on the left, then all six on the right, inside one set.")
+            alternateEachSet -> L10n.tr("All the pulls on one hand, then all of them on the other, inside one set.")
             bothHands -> L10n.tr("One pull with both hands on the edge. Reps per side is just the number of pulls.")
         }
 
@@ -463,6 +463,9 @@ data class RoutineDraft(
             if (remindersEnabled && reminders.isEmpty()) {
                 return L10n.tr("Add a reminder time, or turn reminders off.")
             }
+            if (remindersEnabled && reminders.toSet().size != reminders.size) {
+                return L10n.tr("Choose a different time for each daily reminder.")
+            }
             return null
         }
 
@@ -520,12 +523,16 @@ data class RoutineDraft(
                     targetHiPercent = null,
                 )
             }
-            val out = copy(
+            var out = copy(
                 plan = outPlan,
                 sessionsPerDay = sessionsRange.clamping(sessionsPerDay),
                 reminders = tidy(reminders),
                 parkedReminders = tidy(parkedReminders),
             )
+            if (out.remindersEnabled && !out.isOnDemand && out.reminders.isNotEmpty() &&
+                out.reminders.size < out.sessionsPerDay) {
+                out = out.setSessionsPerDay(out.sessionsPerDay)
+            }
             // A whenever routine cannot remind — the times are KEPT so flipping back to a
             // ritual restores the user's own schedule, but the switch is forced off.
             return if (out.isOnDemand) out.copy(remindersEnabled = false) else out
@@ -540,16 +547,17 @@ data class RoutineDraft(
     /// two files still read the same.
     fun setSessionsPerDay(n: Int): RoutineDraft {
         val target = sessionsRange.clamping(n)
-        var nextReminders = reminders
+        var nextReminders = tidy(reminders)
         var nextParked = parkedReminders
-        if (target < reminders.count()) {
-            nextParked = tidy(parkedReminders + reminders.drop(target))
-            nextReminders = reminders.take(target)
-        } else if (target > reminders.count()) {
-            val filled = reminders.toMutableList()
+        if (target < nextReminders.count()) {
+            nextParked = tidy(parkedReminders + nextReminders.drop(target))
+            nextReminders = nextReminders.take(target)
+        } else if (target > nextReminders.count()) {
+            val filled = nextReminders.toMutableList()
             val parked = parkedReminders.toMutableList()
             while (filled.count() < target && parked.isNotEmpty()) {
-                filled.add(parked.removeAt(0))
+                val candidate = parked.removeAt(0)
+                if (!filled.contains(candidate)) filled.add(candidate)
             }
             // Then the default ladder, skipping anything already on the list.
             for (candidate in ReminderTime.defaults) {

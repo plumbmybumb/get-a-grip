@@ -108,8 +108,8 @@ extension Collection where Element == WorkoutLog {
         contains { $0.dayKey == day.raw && $0.kind.settlesDay }
     }
 
-    /// The benchmark logged on `day`, if any — at most one exists by construction
-    /// (`TemplateStore.recordMax` upserts).
+    /// Whether a benchmark was logged on `day`. Local writes avoid a second marker;
+    /// concurrent CloudKit devices can still merge multiple markers for the same day.
     func benchmark(on day: DayStamp) -> Bool {
         contains { $0.dayKey == day.raw && $0.kind == .benchmark }
     }
@@ -158,6 +158,12 @@ extension WorkoutLog {
     var plan: SessionPlan? { BlobCodec.decode(SessionPlan.self, from: planData) }
 
     var day: DayStamp { DayStamp(raw: dayKey) }
+
+    /// Hand logs record when the entry was created, not when the training began.
+    /// Display their chosen day, including older rows entered the following morning.
+    func historyDate(calendar: Calendar = .current) -> Date {
+        kind.isLoggedByHand ? day.date(calendar: calendar) : startedAt
+    }
 
     /// nil for an ungraded session, or for a scale value from a future build.
     var grade: RPE? { rpe.flatMap(RPE.init(rawValue:)) }

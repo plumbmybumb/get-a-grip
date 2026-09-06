@@ -110,7 +110,7 @@ class MockProgressorClient(
             ProgressorCommand.tare ->
                 // Tare zeroes whatever is on the gauge right now — the same trap as the
                 // real device: tare under load and every reading after it is wrong.
-                tareOffsetKg += rawForceNow()
+                tareOffsetKg = rawForceNow()
 
             ProgressorCommand.startWeightMeasurement -> {
                 // Starts need a cause so the diagnostic ring cannot claim a reason the
@@ -137,6 +137,7 @@ class MockProgressorClient(
     override fun startStreaming(cause: StreamStartCause) {
         if (!state.isConnected) return
         onDiagnostic?.invoke(ProgressorClientDiagnostic.StreamStartWritten(cause))
+        deviceMicros = 0u
         startPump()
     }
 
@@ -157,6 +158,10 @@ class MockProgressorClient(
     private fun stopPump() {
         pump?.cancel()
         pump = null
+        // A new demo stream replays from zero. Release the synthetic load before the
+        // next pre-start tare so it cannot capture the last session's loaded plateau.
+        elapsedSamples = 0uL
+        tareOffsetKg = 0.0
     }
 
     /// One notification's worth of samples, exactly as the device batches them — which is

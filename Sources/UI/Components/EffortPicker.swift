@@ -2,28 +2,38 @@
 // Original contributions Copyright 2026 Nuri Bruner.
 import SwiftUI
 
-/// The existing optional five-level rating, drawn with FingerGlyph's capsule ends.
-/// The colors describe reported effort, never a measured percentage or a safety verdict.
+/// Fable's effort ladder: a fixed rising silhouette, filled through the chosen rung.
+/// This is the existing optional self-report, not a measured percentage of maximum.
 struct EffortPicker: View {
     @Binding var selection: Int?
     let labels: [String]
     let title: String
     let identifier: String
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .body) private var barWidth: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var tallest: CGFloat = 44
     @State private var landings = 0
+    @State private var stripWidth: CGFloat = 0
 
-    static let barWidth: CGFloat = 44
-    private static let trackHeight: CGFloat = 72
-
-    static func level(at x: CGFloat, width: CGFloat) -> Int {
-        guard x.isFinite, width.isFinite, width > 0 else { return 1 }
-        let bar = min(Self.barWidth, width / 5)
-        let fraction = min(1, max(0, (x - bar / 2) / max(1, width - bar)))
-        return Int((fraction * 4).rounded()) + 1
+    /// Each entire slot is live, including the space around its thin drawn rung.
+    /// Clamp before integer conversion so malformed coordinates cannot trap.
+    static func level(at x: CGFloat, width: CGFloat, count: Int = 5) -> Int {
+        guard x.isFinite, width.isFinite, width > 0, count > 0 else { return 1 }
+        let fraction = min(1, max(0, x / width))
+        return min(count - 1, Int(floor(fraction * CGFloat(count)))) + 1
     }
 
-    private func tint(_ level: Int?) -> Color {
-        switch level {
+    static func height(at index: Int, count: Int = 5, tallest: CGFloat) -> CGFloat {
+        guard count > 1 else { return tallest }
+        return tallest * (0.4 + 0.6 * CGFloat(min(count - 1, max(0, index))) / CGFloat(count - 1))
+    }
+
+    private var selectedLevel: Int? {
+        selection.flatMap { (1...max(1, labels.count)).contains($0) && !labels.isEmpty ? $0 : nil }
+    }
+
+    private var tint: Color {
+        switch selectedLevel {
         case 1, 2: Accent.moss
         case 3, 4: StatusTint.armed
         case 5: Accent.alarm
@@ -32,84 +42,93 @@ struct EffortPicker: View {
     }
 
     private var selectedName: String {
-        guard let selection, (1...labels.count).contains(selection) else { return String(localized: "Not rated") }
-        return labels[selection - 1]
+        selectedLevel.map { labels[$0 - 1] } ?? String(localized: "Not rated")
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             CapsLabel(title)
+            Text(selectedName)
+                .font(.system(.title3, weight: .semibold))
+                .foregroundStyle(selectedLevel == nil ? Ink.tertiary : Ink.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityHidden(true)
+
             GeometryReader { geo in
-                let width = geo.size.width
-                let bar = min(Self.barWidth, width / 5)
-                ZStack(alignment: .topLeading) {
-                    ForEach(0..<5) { index in
-                        // Leave room inside the track for the selected bar's lift.
-                        // The surrounding form and the five hit regions never move.
-                        let active = selection == index + 1 && !reduceMotion
-                        let scale: CGFloat = active ? 1.10 : 1
-                        let drawnWidth = min(bar * scale, width / 5)
-                        let restingHeight = bar * 1.15 + (Self.trackHeight / 1.10 - bar * 1.15) * CGFloat(index) / 4
-                        let height = restingHeight * scale
-                        let center = min(width - drawnWidth / 2,
-                            max(drawnWidth / 2, bar / 2 + CGFloat(index) * (width - bar) / 4))
-                        RoundedRectangle(cornerRadius: drawnWidth / 2, style: .continuous)
-                            .fill(selection == index + 1 ? tint(selection) : Ink.tertiary.opacity(0.18))
-                            .frame(width: drawnWidth, height: height)
-                            .position(x: center, y: Self.trackHeight - height / 2)
-                        if selection == index + 1 {
-                            Circle().fill(Ink.primary).frame(width: 6, height: 6)
-                                .position(x: center, y: Self.trackHeight - 10)
-                        }
+                HStack(alignment: .bottom, spacing: 0) {
+                    ForEach(labels.indices, id: \.self) { index in
+                        let filled = selectedLevel.map { index < $0 } ?? false
+                        Capsule()
+                            .fill(filled ? tint : .clear)
+                            .overlay {
+                                Capsule().strokeBorder(filled ? tint : Ink.tertiary, lineWidth: 1)
+                            }
+                            .frame(width: min(barWidth, geo.size.width / CGFloat(max(1, labels.count))),
+                                   height: Self.height(at: index, count: labels.count, tallest: tallest))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     }
                 }
-                .animation(Motion.state(reduceMotion), value: selection)
-                .frame(width: width, height: Self.trackHeight)
+                .animation(Motion.state(reduceMotion), value: selectedLevel)
+                .frame(width: geo.size.width, height: geo.size.height)
                 .contentShape(.rect)
-                .onTapGesture { point in choose(Self.level(at: point.x, width: width)) }
+                .onTapGesture { point in
+                    guard !labels.isEmpty else { return }
+                    let level = Self.level(at: point.x, width: geo.size.width, count: labels.count)
+                    choose(level == selectedLevel ? nil : level)
+                }
+                // Horizontal-only recognition leaves vertical scrolling to the form.
+                // A drag never clears just because it crossed its current selection.
                 .gesture(HorizontalPan(
-                    began: { x in choose(Self.level(at: x, width: width)) },
-                    changed: { x, _ in choose(Self.level(at: x, width: width)) }, ended: {}))
+                    began: { x in land(at: x, width: geo.size.width) },
+                    changed: { x, _ in land(at: x, width: geo.size.width) }, ended: {}))
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { stripWidth = $0 }
             }
-            .frame(height: Self.trackHeight)
+            .frame(height: max(44, tallest))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(title)
             .accessibilityValue(selectedName)
             .accessibilityIdentifier(identifier)
             .accessibilityAdjustableAction { direction in
+                guard !labels.isEmpty else { return }
                 switch direction {
-                case .increment: choose(min(5, (selection ?? 0) + 1))
-                case .decrement: choose(max(1, (selection ?? 2) - 1))
+                case .increment: choose(min(labels.count, (selectedLevel ?? 0) + 1))
+                case .decrement: choose(max(1, (selectedLevel ?? (labels.count + 1)) - 1))
                 @unknown default: break
                 }
             }
-            HStack {
-                Text(labels.first ?? "")
-                Spacer()
-                Text(labels.last ?? "")
-            }
-            .font(.caption2).foregroundStyle(Ink.secondary)
-            .accessibilityHidden(true)
-            HStack(spacing: 8) {
-                Circle().fill(tint(selection)).frame(width: 8, height: 8).accessibilityHidden(true)
-                Text(selectedName).font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(selection == nil ? Ink.secondary : Ink.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
-                if selection != nil {
-                    Button { choose(nil) } label: {
-                        Text("Clear")
-                            .font(.caption).foregroundStyle(Ink.secondary)
-                            .frame(minWidth: 44, minHeight: 44).contentShape(.rect)
-                    }
-                        .buttonStyle(PressFeedbackButtonStyle())
-                        .accessibilityLabel(String(localized: "Clear rating"))
-                        .accessibilityIdentifier(identifier + ".clear")
+            .accessibilityActions {
+                if selectedLevel != nil {
+                    Button(String(localized: "Clear rating")) { choose(nil) }
                 }
             }
-            .frame(minHeight: 44)
+
+            if labels.count > 1 { endLabels }
         }
-        .sensoryFeedback(.impact(weight: .light, intensity: 0.7), trigger: landings)
+        .sensoryFeedback(.selection, trigger: landings)
+    }
+
+    /// Center each endpoint under its rung when it fits. Separate half-width regions
+    /// allow long translations and accessibility text to wrap without overlapping.
+    private var endLabels: some View {
+        let slot = stripWidth / CGFloat(labels.count)
+        return HStack(alignment: .top, spacing: 8) {
+            Text(labels[0])
+                .alignmentGuide(.leading) { d in min(0, d.width / 2 - slot / 2) }
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+            Text(labels[labels.count - 1])
+                .alignmentGuide(.trailing) { d in max(d.width, d.width / 2 + slot / 2) }
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .trailing)
+                .multilineTextAlignment(.trailing)
+        }
+        .font(.caption2)
+        .foregroundStyle(Ink.tertiary)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityHidden(true)
+    }
+
+    private func land(at x: CGFloat, width: CGFloat) {
+        guard !labels.isEmpty else { return }
+        choose(Self.level(at: x, width: width, count: labels.count))
     }
 
     private func choose(_ level: Int?) {

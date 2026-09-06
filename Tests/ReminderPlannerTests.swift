@@ -39,12 +39,13 @@ final class ReminderPlannerTests: XCTestCase {
         // slot instead would silence the reminder you still need.
         let halfDone = ReminderPlanner.requests(
             for: [input(routineA, "Daily", [morning, evening], outstanding: 1)])
-        XCTAssertEqual(halfDone.count, 1)
-        XCTAssertEqual(halfDone.first?.components.hour, 19)
+        XCTAssertEqual(halfDone.count, 2, "future occurrences must survive today's completion")
+        XCTAssertEqual(halfDone.map(\.suppressToday), [true, false])
 
         let finished = ReminderPlanner.requests(
             for: [input(routineA, "Daily", [morning, evening], outstanding: 0)])
-        XCTAssertTrue(finished.isEmpty, "the day is met — say nothing")
+        XCTAssertEqual(finished.count, 2)
+        XCTAssertTrue(finished.allSatisfy(\.suppressToday), "say nothing today, resume tomorrow")
     }
 
     /// Overshooting the target must not wrap around and re-arm the morning.
@@ -52,7 +53,36 @@ final class ReminderPlannerTests: XCTestCase {
         let times = [ReminderTime(hour: 8, minute: 0), ReminderTime(hour: 19, minute: 0)]
         let requests = ReminderPlanner.requests(
             for: [input(routineA, "Daily", times, outstanding: -3)])
-        XCTAssertTrue(requests.isEmpty)
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertTrue(requests.allSatisfy(\.suppressToday))
+    }
+
+    func testCompletedDayKeepsTomorrowAndFillsOnlyAvailableBudget() throws {
+        let calendar = DayStamp.utcCalendar
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 6, hour: 7)))
+        let routines = [input(routineA, "Daily", [ReminderTime(hour: 8, minute: 0),
+                                                 ReminderTime(hour: 19, minute: 0)], outstanding: 0)]
+        let planned = ReminderPlanner.scheduledRequests(for: routines, now: now, calendar: calendar, limit: 3)
+        let dates = try planned.map { try XCTUnwrap(calendar.date(from: $0.components)) }
+        XCTAssertEqual(dates.map { DayStamp(date: $0, calendar: calendar) }, [
+            DayStamp(year: 2026, month: 9, day: 7), DayStamp(year: 2026, month: 9, day: 7),
+            DayStamp(year: 2026, month: 9, day: 8)])
+        XCTAssertEqual(planned.map { $0.components.hour }, [8, 19, 8])
+        XCTAssertEqual(Set(planned.map(\.identifier)).count, 3)
+        XCTAssertTrue(ReminderPlanner.scheduledRequests(for: routines, now: now,
+                                                       calendar: calendar, limit: 0).isEmpty)
+    }
+
+    func testDatedHorizonIsChronologicalAcrossRoutinesAndSkipsPastSlots() throws {
+        let calendar = DayStamp.utcCalendar
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 6, hour: 10)))
+        let routines = [input(routineA, "Evening", [ReminderTime(hour: 19, minute: 0)]),
+                        input(routineB, "Morning", [ReminderTime(hour: 8, minute: 0)])]
+        let planned = ReminderPlanner.scheduledRequests(for: routines, now: now, calendar: calendar, limit: 4)
+        XCTAssertEqual(planned.map(\.title), ["Evening", "Morning", "Evening", "Morning"])
+        let replanned = ReminderPlanner.scheduledRequests(for: routines, now: now,
+                                                         calendar: calendar, limit: 4)
+        XCTAssertEqual(planned, replanned, "replanning must replace the same dated IDs")
     }
 
     // MARK: - Identity

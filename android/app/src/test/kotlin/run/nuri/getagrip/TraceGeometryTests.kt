@@ -41,6 +41,13 @@ class TraceGeometryTests {
         assertEquals(7.0, TraceGeometry.smoothed(samples, 2), 1e-9)
     }
 
+    @Test
+    fun smoothingCannotPullAnOldRunIntoTheFirstNewPoint() {
+        val samples = points(0.0 to 90.0, 0.1 to 90.0, 30.0 to 2.0, 30.1 to 2.0)
+        val start = TraceGeometry.runStart(samples, gapSeconds = 0.35)
+        assertEquals(2.0, TraceGeometry.smoothed(samples, start, start), 1e-9)
+    }
+
     // MARK: - Gap detection
 
     /// The Progressor's floor. Three periods of 80 Hz is 37.5 ms, far under 0.35 s, so a

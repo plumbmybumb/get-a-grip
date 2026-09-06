@@ -84,7 +84,7 @@ struct SettingsView: View {
                 }
                 if let battery = device.batteryFraction {
                     LabeledContent("Battery") {
-                        Text(battery, format: .percent.precision(.fractionLength(0)))
+                        Text("\(BatteryDisplay.percentage(battery)) %")
                             .monospacedDigit()
                             .contentTransition(.numericText())
                     }
@@ -284,6 +284,7 @@ struct SettingsView: View {
                                 }
                                 .buttonStyle(PressFeedbackButtonStyle())
                                 .accessibilityLabel("Copy the diagnostics to the clipboard")
+                                .accessibilityValue(justCopied ? String(localized: "Copied") : "")
                                 // The identical tick-as-confirmation shape is wired to this
                                 // everywhere else it appears (UndoBar, MaxesView's save) — this
                                 // was the dropped wire-up, and the label alone (which used to

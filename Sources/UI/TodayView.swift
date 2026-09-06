@@ -154,10 +154,8 @@ struct TodayView: View {
             .navigationTransition(.zoom(sourceID: mode.zoomID, in: zoom))
         }
         .fullScreenCover(item: $running, onDismiss: { drainImportInbox() }) { routine in
-            TrainingAgreementGate(onCancel: { running = nil }) {
-                RunnerView(template: routine, timerOnly: runningTimerOnly)
-                    .onAppear { templates.noteSessionStarted(routine) }
-            }
+            RunnerView(template: routine, timerOnly: runningTimerOnly)
+                .onAppear { templates.noteSessionStarted(routine) }
         }
         // `initial: true` so this is both the start trigger and the resume trigger. The
         // routine list arrives through a `@Query`, so "is there a routine" is not knowable
@@ -465,7 +463,6 @@ struct TodayView: View {
                     templates.undoDelete()
                     undoTick += 1
                 }
-                .padding(.horizontal, Metrics.hPadding)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

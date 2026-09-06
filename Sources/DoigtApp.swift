@@ -18,6 +18,7 @@ struct DoigtApp: App {
     #endif
 
     init() {
+        SessionActivityController.clearOrphanedActivities()
         let (container, mode) = Self.makeContainer()
         let clock = DayClock()
         let settings = SettingsStore()

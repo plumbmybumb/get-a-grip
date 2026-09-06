@@ -9,6 +9,9 @@ final class BluetoothPipelineTests: XCTestCase {
     func testPacketPublishesOnceWithoutLosingIntermediateForceOrDeviceTimestamps() {
         let client = RecordingProgressorClient()
         let store = DeviceStore(client: client)
+        client.connect()
+        store.startStreaming(cause: .manualMeasurement)
+        defer { store.stopStreaming(cause: .userStopped) }
         let revision = store.sampleRevision
         var received: [ForceSample] = []
         store.onSample = { sample in
@@ -35,6 +38,9 @@ final class BluetoothPipelineTests: XCTestCase {
     func testStandaloneSamplesAndTraceResetStillPublishImmediately() {
         let client = RecordingProgressorClient()
         let store = DeviceStore(client: client)
+        client.connect()
+        store.startStreaming(cause: .manualMeasurement)
+        defer { store.stopStreaming(cause: .userStopped) }
         let revision = store.sampleRevision
         client.onEvent?(.sample(ForceSample(kg: 4, deviceMicros: 1)))
         XCTAssertGreaterThan(store.sampleRevision, revision)

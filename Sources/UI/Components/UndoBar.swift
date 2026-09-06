@@ -22,15 +22,9 @@ struct UndoBar: View {
     var message: String
     var action: () -> Void
 
-    /// Declared with a trigger value rather than by calling a feedback generator, the
-    /// house rule everywhere else in the app.
-    @State private var tick = 0
-
     var body: some View {
-        Button {
-            tick += 1
-            action()
-        } label: {
+        // The caller owns restoration feedback.
+        Button(action: action) {
             HStack(spacing: 10) {
                 Image(systemName: "arrow.uturn.backward")
                     .font(.system(.footnote, weight: .semibold))
@@ -60,7 +54,6 @@ struct UndoBar: View {
         }
         .buttonStyle(PressFeedbackButtonStyle())
         .padding(.horizontal, Metrics.hPadding)
-        .sensoryFeedback(.success, trigger: tick)
         // One element, one sentence: the message and the word "Undo" are halves of the
         // same statement and would otherwise be two stops that each say too little.
         .accessibilityElement(children: .combine)

@@ -65,8 +65,8 @@ object TarePolicy {
 
     /// How old the newest sample may be and still be treated as the live load.
     ///
-    /// Much tighter than `DeviceStore.isSignalFresh`, deliberately. That flag exists to
-    /// drive an overlay and only flips once a 500 ms watchdog observes a sample already
+    /// Much tighter than `DeviceStore.isSignalFresh`, deliberately. That diagnostic flag
+    /// only flips once a 500 ms watchdog observes a sample already
     /// over a second old — so it can still say "fresh" ~1.5 s after the stream stopped,
     /// which is long enough for a climber to load the edge against a reading frozen at
     /// 0 kg. A tare is irreversible for the rest of the session; it gets its own bound.
@@ -113,7 +113,7 @@ object TarePolicy {
         return sampleAge <= maxAgeSeconds
     }
 
-    /// `isSignalFresh` is checked here too, not only at the tap. The alert can be open
+    /// The exact sample age is checked here too, not only at the tap. The alert can be open
     /// across the moment the samples stop, and a reading that went stale mid-alert
     /// collapses to a false 0 kg, which would otherwise sail through the tolerance check
     /// and authorize a tare against a load nobody can see.

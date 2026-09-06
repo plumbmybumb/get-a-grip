@@ -69,13 +69,14 @@ struct SessionActivity: ActivityAttributes {
     /// looking at a lock screen. The runner's own phase has more cases; none of the others
     /// change what you should do with your hands.
     enum Phase: String, Codable, Hashable {
-        case leadIn, armed, pulling, resting, paused
+        case leadIn, armed, pulling, releasing, resting, paused
 
         var word: String {
             switch self {
             case .leadIn:  String(localized: "Get ready")
             case .armed:   String(localized: "Pull now")
             case .pulling: String(localized: "Holding")
+            case .releasing: String(localized: "Let go")
             case .resting: String(localized: "Rest")
             case .paused:  String(localized: "Paused")
             }
@@ -83,6 +84,9 @@ struct SessionActivity: ActivityAttributes {
 
         /// Whether the hand should read as "do this NOW" or "this is what's coming".
         var isActive: Bool { self == .pulling || self == .armed }
+
+        /// Let-go waits for the load to drop; its following rest has not begun yet.
+        var runsCountdown: Bool { self == .leadIn || self == .pulling || self == .resting }
     }
 }
 
@@ -106,7 +110,7 @@ extension SessionActivity.Phase {
         case .leadIn:  StatusTint.calm      // steel: nothing on you yet
         case .armed:   StatusTint.armed     // amber: waiting on YOU to take the load
         case .pulling: StatusTint.engaged   // bleu: force is on and the clock is running
-        case .resting: StatusTint.calm
+        case .releasing, .resting: StatusTint.calm
         case .paused:  StatusTint.armed     // also "waiting on you" — the app agrees
         }
     }
@@ -120,7 +124,7 @@ extension SessionActivity.Phase {
     /// hue; saturated enough that blue / amber / steel are unmistakable at a glance.
     var cardTint: Color {
         switch self {
-        case .leadIn, .resting: Color(hex: "161A20")   // near-black slate
+        case .leadIn, .releasing, .resting: Color(hex: "161A20")   // near-black slate
         case .armed:            Color(hex: "3A2408")   // deep amber
         case .pulling:          Color(hex: "0E2740")   // deep bleu
         case .paused:           Color(hex: "24282F")

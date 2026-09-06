@@ -147,7 +147,8 @@ fun HistoryScreen(
     // re-scanning the whole log list. See `DayLedger`: every cell used to answer its own
     // questions by filtering every log, which is on the order of two hundred whole-array
     // passes per 35-day card.
-    val ledger = remember(logs, today) { DayLedger(logs, today) }
+    val trackingSince = templates.trackingSince
+    val ledger = remember(logs, today, trackingSince) { DayLedger(logs, today, trackingSince) }
     val windowCount = HistoryWindows.pageCount(ledger.trackingSince, today)
 
     fun displayName(log: WorkoutLogEntity): String {

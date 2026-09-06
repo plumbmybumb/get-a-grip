@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.IntOffset
@@ -326,7 +327,12 @@ class TourController(private val settings: TourSeenStore) {
     var awaitingRoutine: Boolean by mutableStateOf(false)
         private set
 
-    val current: TourStep? get() = steps.getOrNull(index)
+    val current: TourStep?
+        get() = steps.getOrNull(index)?.let { step ->
+            // Intro steps without an explicit tab live on Today, including when going
+            // back from History. Builder/session steps stay in their presented screen.
+            if (act == TourAct.Intro && step.tab == null) step.copy(tab = 0) else step
+        }
     val isRunning: Boolean get() = current != null
     val progress: String get() = L10n.tr("%d of %d", index + 1, steps.size)
 
@@ -727,18 +733,17 @@ private fun TourOverlay(
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.66f),
             )
-            Text(
-                step.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-            )
-            Text(
-                step.body,
-                style = MaterialTheme.typography.bodyMedium,
-                // Fixed light ink on an opaque plate: content beneath cannot bleed through.
-                color = Color.White.copy(alpha = 0.86f),
-            )
+            Column(
+                Modifier.semantics(mergeDescendants = true) {
+                    liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+                },
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(step.title, style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold, color = Color.White)
+                Text(step.body, style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.86f))
+            }
             FlowRow(
                 Modifier.fillMaxWidth().padding(top = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

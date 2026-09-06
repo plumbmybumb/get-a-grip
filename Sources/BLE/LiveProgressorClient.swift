@@ -35,18 +35,6 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
     private static let controlUUID = CBUUID(string: ProgressorGATT.controlPointCharacteristicUUID)
     private static let attemptLimit = 5
 
-    private struct WriteEntry {
-        let id: UInt64
-        let command: ProgressorCommand
-        let startCause: StreamStartCause?
-        var retryCount = 0
-    }
-
-    private struct PendingReply {
-        let id: UInt64
-        let command: ProgressorCommand
-    }
-
     private var central: CBCentralManager?
     private var peripheral: CBPeripheral?
     private var controlPoint: CBCharacteristic?
@@ -75,21 +63,11 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
     private var replyDeadlineTask: Task<Void, Never>?
     private var sleepFallbackTask: Task<Void, Never>?
 
-    /// Queries are serialized because tag-0 replies carry no command echo. Once one
-    /// reply times out, the channel is unusable for this physical connection: a late
-    /// reply could otherwise be paired with every later query one slot off.
-    private var pendingReplies: [PendingReply] = []
-    private var queryChannelPoisoned = false
-
-    private var writeQueue: [WriteEntry] = []
-    private var inFlightWrite: WriteEntry?
-    private var nextWriteID: UInt64 = 0
-
-    private var tareIntegrityLatch = TareIntegrityLatch()
-    private var deferredStart: WriteEntry?
+    private lazy var commandQueue = ProgressorControlPointQueue(transport: self)
+    private var writeDeadlineTask: Task<Void, Never>?
 
     private var sleepRequested = false
-    private var issuedSleepID: UInt64?
+    private var issuedSleepID: UInt64? { commandQueue.issuedSleepID }
 
     deinit {
         scanDeadlineTask?.cancel()
@@ -97,6 +75,7 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         backoffTask?.cancel()
         replyDeadlineTask?.cancel()
         sleepFallbackTask?.cancel()
+        writeDeadlineTask?.cancel()
     }
 
     // MARK: - ProgressorClient
@@ -137,7 +116,6 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         scanGeneration = nil
         clearLinkState(clearDeferredStart: true)
         sleepRequested = false
-        issuedSleepID = nil
 
         if let peripheral {
             retire(peripheral)
@@ -181,93 +159,10 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
     }
 
     private func enqueue(_ command: ProgressorCommand, startCause: StreamStartCause? = nil) {
-        nextWriteID &+= 1
-        let entry = WriteEntry(id: nextWriteID, command: command, startCause: startCause)
-
-        if command == .tare {
-            // Flip the latch before touching the queue. Any start already waiting to
-            // drain is pulled into the one deferred slot before this tare is appended.
-            tareIntegrityLatch.tareEnqueued(id: entry.id)
-            for queued in writeQueue where queued.command == .startWeightMeasurement {
-                deferredStart = queued
-                if let cause = queued.startCause {
-                    onDiagnostic?(.streamStartDeferred(cause))
-                }
-            }
-            writeQueue.removeAll { $0.command == .startWeightMeasurement }
-        } else if command == .startWeightMeasurement,
-                  tareIntegrityLatch.startDecision == .deferred {
-            deferredStart = entry   // latest wins
-            if let startCause {
-                onDiagnostic?(.streamStartDeferred(startCause))
-            }
-            return
-        }
-
-        if command.expectsResponse, queryChannelPoisoned { return }
-        writeQueue.append(entry)
-        drainWriteQueue()
+        commandQueue.enqueue(command, startCause: startCause)
     }
 
-    private func drainWriteQueue() {
-        guard state.isConnected,
-              let peripheral,
-              let controlPoint,
-              isCurrent(peripheral) else { return }
-
-        let type: CBCharacteristicWriteType =
-            controlPoint.properties.contains(.write) ? .withResponse : .withoutResponse
-
-        while !writeQueue.isEmpty {
-            if queryChannelPoisoned {
-                writeQueue.removeAll { $0.command.expectsResponse }
-                guard !writeQueue.isEmpty else { return }
-            }
-
-            // A waiting query must not hold safety/control commands behind it. Keep
-            // non-query order intact while bypassing only the serialized query entries.
-            let candidateIndex: Int
-            if pendingReplies.isEmpty {
-                candidateIndex = 0
-            } else {
-                guard let firstControl = writeQueue.firstIndex(where: {
-                    !$0.command.expectsResponse
-                }) else { return }
-                candidateIndex = firstControl
-            }
-            let candidate = writeQueue[candidateIndex]
-
-            if candidate.command == .tare, type != .withResponse {
-                failPermanently(reason: String(localized: "Gauge control point cannot acknowledge tare writes"))
-                return
-            }
-
-            if type == .withResponse {
-                guard inFlightWrite == nil else { return }
-            } else {
-                guard peripheral.canSendWriteWithoutResponse else { return }
-            }
-
-            let entry = writeQueue.remove(at: candidateIndex)
-            if entry.command.expectsResponse {
-                pendingReplies.append(PendingReply(id: entry.id, command: entry.command))
-                startReplyDeadline(for: entry.id)
-            }
-            if type == .withResponse { inFlightWrite = entry }
-            if entry.command == .enterSleep { issuedSleepID = entry.id }
-
-            peripheral.writeValue(entry.command.encoded, for: controlPoint, type: type)
-            if entry.command == .startWeightMeasurement, let cause = entry.startCause {
-                onDiagnostic?(.streamStartWritten(cause))
-            }
-
-            if type == .withResponse { return }
-            if entry.command == .enterSleep {
-                startSleepFallback(for: entry.id)
-                return
-            }
-        }
-    }
+    private func drainWriteQueue() { commandQueue.drain() }
 
     // MARK: - Connection flow
 
@@ -416,7 +311,7 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         scheduleRetry()
     }
 
-    private func failPermanently(reason: String) {
+    func failPermanently(reason: String) {
         wantsConnection = false
         refreshBudgetWhenPoweredOn = false
         pendingConnectionStart = false
@@ -491,19 +386,10 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
     private func clearLinkState(clearDeferredStart: Bool) {
         controlPoint = nil
         dataCharacteristic = nil
-        pendingReplies.removeAll()
-        writeQueue.removeAll()
-        inFlightWrite = nil
-        replyDeadlineTask?.cancel()
-        replyDeadlineTask = nil
+        commandQueue.clearLinkState(clearDeferredStart: clearDeferredStart)
         sleepFallbackTask?.cancel()
         sleepFallbackTask = nil
-        issuedSleepID = nil
         sleepRequested = false
-        if clearDeferredStart { deferredStart = nil }
-        // This latch is link-local: preserving it after the queue and its ACK died made
-        // every later start impossible, because only the retired link could release it.
-        tareIntegrityLatch.clearForNewLink()
     }
 
     private func cancelAllTasks() {
@@ -517,6 +403,7 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         replyDeadlineTask = nil
         sleepFallbackTask?.cancel()
         sleepFallbackTask = nil
+        cancelWriteDeadline()
     }
 
     private func startReplyDeadline(for id: UInt64) {
@@ -528,15 +415,9 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
             } catch {
                 return
             }
-            guard !Task.isCancelled,
-                  let self,
-                  self.generation == replyGeneration,
-                  self.pendingReplies.first?.id == id else { return }
-            self.pendingReplies.removeFirst()
-            self.queryChannelPoisoned = true
-            self.writeQueue.removeAll { $0.command.expectsResponse }
+            guard !Task.isCancelled, let self, self.generation == replyGeneration else { return }
             self.replyDeadlineTask = nil
-            self.drainWriteQueue()
+            self.commandQueue.replyDeadlineFired(id: id)
         }
     }
 
@@ -557,12 +438,11 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         }
     }
 
-    private func completeSleep() {
+    func completeSleep() {
         guard let sleepingPeripheral = peripheral else { return }
         sleepFallbackTask?.cancel()
         sleepFallbackTask = nil
         sleepRequested = false
-        issuedSleepID = nil
         generation &+= 1
         activeGeneration = nil
         peripheral = nil
@@ -677,44 +557,8 @@ extension LiveProgressorClient: @preconcurrency CBPeripheralDelegate {
     /// reinserted at the front once, preserving command order across the retry.
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic,
                     error: Error?) {
-        guard isCurrent(peripheral),
-              characteristic.uuid == Self.controlUUID,
-              let entry = inFlightWrite else { return }
-        inFlightWrite = nil
-
-        if let error {
-            if let replyIndex = pendingReplies.firstIndex(where: { $0.id == entry.id }) {
-                pendingReplies.remove(at: replyIndex)
-                replyDeadlineTask?.cancel()
-                replyDeadlineTask = nil
-            }
-            if issuedSleepID == entry.id { issuedSleepID = nil }
-
-            if entry.retryCount == 0 {
-                var retry = entry
-                retry.retryCount = 1
-                writeQueue.insert(retry, at: 0)
-                drainWriteQueue()
-            } else {
-                failPermanently(
-                    reason: String(localized: "Write failed twice for \(entry.command.writeFailureName): \(error.localizedDescription)")
-                )
-            }
-            return
-        }
-
-        if entry.command == .tare, tareIntegrityLatch.tareAcknowledged(id: entry.id) {
-            if let deferredStart {
-                self.deferredStart = nil
-                writeQueue.insert(deferredStart, at: 0)
-            }
-        }
-
-        if entry.command == .enterSleep {
-            completeSleep()
-            return
-        }
-        drainWriteQueue()
+        guard isCurrent(peripheral), characteristic.uuid == Self.controlUUID else { return }
+        commandQueue.writeCompleted(error: error?.localizedDescription)
     }
 
     /// The buffer drained — queued `.withoutResponse` writes may go.
@@ -756,9 +600,8 @@ extension LiveProgressorClient: @preconcurrency CBPeripheralDelegate {
             failAttempt(reason: String(localized: "Missing control point"), cancelling: peripheral)
             return
         }
-        guard control.properties.contains(.write)
-                || control.properties.contains(.writeWithoutResponse) else {
-            failAttempt(reason: String(localized: "Control point is not writable"), cancelling: peripheral)
+        guard control.properties.contains(.write) else {
+            failAttempt(reason: String(localized: "Gauge control point cannot acknowledge tare writes"), cancelling: peripheral)
             return
         }
 
@@ -787,7 +630,7 @@ extension LiveProgressorClient: @preconcurrency CBPeripheralDelegate {
         connectDeadlineTask?.cancel()
         connectDeadlineTask = nil
         attemptsRemaining = Self.attemptLimit
-        queryChannelPoisoned = false
+        commandQueue.linkEstablished()
         state = .connected
         send(.getAppVersion)
         send(.getBatteryVoltage)
@@ -804,34 +647,10 @@ extension LiveProgressorClient: @preconcurrency CBPeripheralDelegate {
 
         onPacketBoundary?(.began(receivedAt: ProcessInfo.processInfo.systemUptime))
         defer { onPacketBoundary?(.ended) }
-        let events = ProgressorCodec.decode(data, answering: pendingReplies.first?.command)
+        let events = ProgressorCodec.decode(data, answering: commandQueue.pendingReplyCommand)
         // A tag-0 reply consumes the one pending query; weight notifications do not.
-        if events.contains(where: \.isCommandReply), !pendingReplies.isEmpty {
-            pendingReplies.removeFirst()
-            replyDeadlineTask?.cancel()
-            replyDeadlineTask = nil
-            drainWriteQueue()
-        }
+        if events.contains(where: \.isCommandReply) { commandQueue.commandReplyReceived() }
         for event in events { onEvent?(event) }
-    }
-}
-
-private extension ProgressorCommand {
-    var writeFailureName: String {
-        switch self {
-        case .tare: String(localized: "tare")
-        case .startWeightMeasurement: String(localized: "start measurement")
-        case .stopWeightMeasurement: String(localized: "stop measurement")
-        case .startPeakRFDMeasurement: String(localized: "peak RFD measurement")
-        case .startPeakRFDSeries: String(localized: "RFD series measurement")
-        case .addCalibrationPoint: String(localized: "calibration point")
-        case .saveCalibration: String(localized: "calibration save")
-        case .getAppVersion: String(localized: "version query")
-        case .getErrorInformation: String(localized: "error query")
-        case .clearErrorInformation: String(localized: "error clear")
-        case .enterSleep: String(localized: "sleep")
-        case .getBatteryVoltage: String(localized: "battery query")
-        }
     }
 }
 
@@ -842,4 +661,34 @@ private extension ProgressorEvent {
         default: false
         }
     }
+}
+
+
+extension LiveProgressorClient: ProgressorControlPointTransport {
+    var canWrite: Bool {
+        guard state.isConnected, let peripheral, controlPoint != nil else { return false }
+        return isCurrent(peripheral)
+    }
+    var writesWithResponse: Bool { controlPoint?.properties.contains(.write) == true }
+    var readyWithoutResponse: Bool { peripheral?.canSendWriteWithoutResponse == true }
+    func write(_ command: ProgressorCommand, withResponse: Bool) {
+        guard canWrite, let peripheral, let controlPoint, let payload = command.encoded else { return }
+        peripheral.writeValue(payload, for: controlPoint,
+                              type: withResponse ? .withResponse : .withoutResponse)
+    }
+    func armReplyDeadline(id: UInt64) { startReplyDeadline(for: id) }
+    func cancelReplyDeadline() { replyDeadlineTask?.cancel(); replyDeadlineTask = nil }
+    func armSleepFallback(id: UInt64) { startSleepFallback(for: id) }
+    func diagnostic(_ event: ProgressorClientDiagnostic) { onDiagnostic?(event) }
+    func armWriteDeadline(id: UInt64) {
+        let writeGeneration = generation
+        cancelWriteDeadline()
+        writeDeadlineTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(3)) } catch { return }
+            guard !Task.isCancelled, let self, self.generation == writeGeneration else { return }
+            self.writeDeadlineTask = nil
+            self.commandQueue.writeDeadlineFired(id: id)
+        }
+    }
+    func cancelWriteDeadline() { writeDeadlineTask?.cancel(); writeDeadlineTask = nil }
 }

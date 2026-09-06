@@ -136,8 +136,9 @@ private struct BuilderDocument: View {
         self.mode = mode
         self.onClose = onClose
         self.onFinish = onFinish
-        _draft = State(initialValue: seed)
-        _initialDraft = State(initialValue: seed)
+        let editable = BuilderDraftPreparation.editable(seed)
+        _draft = State(initialValue: editable)
+        _initialDraft = State(initialValue: editable)
     }
 
     /// Where the guide sits when it is off. One past the closing card, so `max`-style
@@ -597,7 +598,7 @@ private struct BuilderDocument: View {
         // Cancel both clear it. `initialDraft` deliberately stays at the seed, so the
         // restored document counts as DIRTY and Cancel still asks before discarding it.
         if mode.isCreating, let rescued = templates.restoreDraft(), rescued != draft {
-            draft = rescued
+            draft = BuilderDraftPreparation.editable(rescued)
             // A rescued draft means this build was already under way in a previous
             // session, so the walkthrough has been walked. Retiring it here also keeps
             // the restore's own value changes from deciding which card to show.

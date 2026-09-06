@@ -26,6 +26,7 @@ import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.HandMode
 import run.nuri.getagrip.engine.LadderRung
 import run.nuri.getagrip.engine.MaxSource
+import run.nuri.getagrip.engine.MaxTable
 import run.nuri.getagrip.engine.RPE
 import run.nuri.getagrip.engine.ReminderTime
 import run.nuri.getagrip.engine.RepSummary
@@ -45,6 +46,7 @@ import run.nuri.getagrip.store.StoreGateway
 import run.nuri.getagrip.store.StoreWriter
 import run.nuri.getagrip.store.TemplateStore
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -1062,7 +1064,9 @@ class TemplateStoreTests {
     @Test
     fun aClimbCanBeLoggedForYesterday() = runTest {
         val w = makeWorld()
-        assertNotNull(w.store.recordLoggedSession(SessionKind.climbVolume, daysAgo = 1))
+        val log = assertNotNull(w.store.recordLoggedSession(SessionKind.climbVolume, daysAgo = 1))
+        assertEquals((w.clock.today - 1).localDate(), log.historyDate(),
+            "history must display the selected day, not the entry timestamp")
 
         assertNull(w.store.climbToday, "yesterday's session does not complete today")
         val yesterday = assertNotNull(w.store.consistency.dropLast(1).lastOrNull())
@@ -1416,6 +1420,76 @@ class TemplateStoreTests {
     }
 
     @Test
+    fun maxImpactSeparatesHandsAndNeverScalesTypedBandsFromOneHandFallback() = runTest {
+        val w = makeWorld()
+        val grip = GripSpec()
+        val blank = RoutineDraft.blank("Alternating")
+        val single = blank.copy(plan = blank.plan.copy(handMode = HandMode.alternateEachRep,
+            sets = listOf(SetPlan(grip = grip, targetLoPercent = 0.25, targetHiPercent = 0.30),
+                SetPlan(grip = grip, targetLoKg = 10.0, targetHiKg = 12.0))))
+        val both = single.copy(plan = single.plan.copy(name = "Both hands", handMode = HandMode.bothHands))
+        val singleRoutine = assertNotNull(w.store.create(single))
+        val bothRoutine = assertNotNull(w.store.create(both))
+        val previous = MaxTable()
+        previous.record(60.0, grip.key, Side.both)
+
+        val firstLeft = w.store.maxImpact(grip, previous, 30.0, Side.left)
+        assertNull(firstLeft.ratio, "both-hands fallback is not a previous left max")
+        assertTrue(firstLeft.kgOffers.isEmpty())
+        assertEquals(1, firstLeft.percentMoves.size)
+        val leftMove = firstLeft.percentMoves.first()
+        assertEquals(singleRoutine.name, leftMove.routineName)
+        assertEquals(Side.left, leftMove.side)
+        assertEquals(15.0..18.0, leftMove.oldBand, "the previous target really used the fallback")
+        assertEquals(7.5..9.0, leftMove.newBand)
+
+        previous.record(30.0, grip.key, Side.left)
+        val nextLeft = w.store.maxImpact(grip, previous, 33.0, Side.left)
+        assertEquals(1.1, assertNotNull(nextLeft.ratio), 0.0001)
+        assertTrue(nextLeft.kgOffers.isEmpty(), "a shared left/right kg band has no one-hand ratio")
+        val nextBoth = w.store.maxImpact(grip, previous, 66.0)
+        assertEquals(listOf(bothRoutine.id), nextBoth.kgOffers.map { it.routineID })
+        assertEquals(setOf(Side.right, Side.both), nextBoth.percentMoves.map { it.side }.toSet(),
+            "the explicit left max does not follow an update to both hands")
+    }
+
+    @Test
+    fun bothMaxOffersScaleForAlternatingRoutinesWhenBothHandsUseItsFallback() = runTest {
+        val w = makeWorld()
+        val grip = GripSpec()
+        val routineIDs = mutableSetOf<UUID>()
+        for (mode in listOf(HandMode.alternateEachRep, HandMode.alternateEachSet)) {
+            val blank = RoutineDraft.blank(mode.rawValue)
+            val draft = blank.copy(plan = blank.plan.copy(handMode = mode,
+                sets = listOf(SetPlan(grip = grip, targetLoKg = 20.0, targetHiKg = 24.0))))
+            routineIDs.add(assertNotNull(w.store.create(draft)).id)
+        }
+        val previous = MaxTable()
+        previous.record(60.0, grip.key, Side.both)
+        val impact = w.store.maxImpact(grip, previous, 66.0, Side.both)
+        assertEquals(1.1, assertNotNull(impact.ratio), 0.0001)
+        assertEquals(routineIDs, impact.kgOffers.map { it.routineID }.toSet())
+        for (offer in impact.kgOffers) {
+            assertEquals(1, offer.moves.size)
+            assertEquals(20.0..24.0, offer.moves.first().oldBand)
+            assertEquals(22.0..26.5, offer.moves.first().newBand)
+        }
+    }
+
+    @Test
+    fun historyDateUsesManualDayAcrossTimeZonesButPreservesTimedStart() {
+        val day = DayStamp.of(2026, 9, 5)
+        val entered = Instant.parse("2026-09-06T10:00:00Z")
+        val manual = WorkoutLogEntity.logged(SessionKind.hangManual, day, entered, 1)
+        val timed = manual.copy(kindRaw = SessionKind.hang.rawValue)
+        for (zoneName in listOf("UTC", "America/Los_Angeles", "Pacific/Auckland")) {
+            val zone = ZoneId.of(zoneName)
+            assertEquals(day.localDate(), manual.historyDate(zone))
+            assertEquals(entered.atZone(zone).toLocalDate(), timed.historyDate(zone))
+        }
+    }
+
+    @Test
     fun scalingKgTargetsMovesEveryMatchingSetAndLeavesTheRestAlone() = runTest {
         val w = makeWorld()
         val crimp = GripSpec(20, FingerSet.four, GripPosition.halfCrimp)
@@ -1659,8 +1733,12 @@ class TemplateStoreTests {
         val clean = draft.normalized
         assertEquals("Daily no-hangs", clean.plan.name)
         assertEquals(
-            listOf(ReminderTime(hour = 8, minute = 0), ReminderTime(hour = 19, minute = 0)),
+            listOf(
+                ReminderTime(hour = 8, minute = 0), ReminderTime(hour = 12, minute = 30),
+                ReminderTime(hour = 19, minute = 0), ReminderTime(hour = 21, minute = 30),
+            ),
             clean.reminders,
+            "deduplicated reminders refill the normalized four-session goal",
         )
         assertEquals(1, clean.plan.sets.size, "a zero-rep set is not a routine row")
         // …and normalization is what stops it from being STORED inverted.

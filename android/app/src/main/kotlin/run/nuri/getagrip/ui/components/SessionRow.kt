@@ -31,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -192,6 +191,7 @@ private fun subtitle(log: WorkoutLogEntity): String {
     }
     if (log.kind == SessionKind.benchmark) return L10n.tr("Tested your maxes")
     val held = PlanMath.clockText(Math.round(log.totalHeldSeconds).toInt())
+    if (log.peakKg <= 0) return L10n.tr("%d/%d pulls · %s", log.completedReps, log.plannedReps, held)
     return L10n.tr(
         "%d/%d pulls · %s · %s kg",
         log.completedReps,
@@ -221,13 +221,13 @@ private val SHORT_DATE: DateTimeFormatter =
     DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())
 
 private fun shortDate(log: WorkoutLogEntity): String =
-    SHORT_DATE.format(log.startedAt.atZone(ZoneId.systemDefault()))
+    SHORT_DATE.format(log.historyDate())
 
 private val LONG_DATE: DateTimeFormatter =
     DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault())
 
 private fun longDate(log: WorkoutLogEntity): String =
-    LONG_DATE.format(log.startedAt.atZone(ZoneId.systemDefault()))
+    LONG_DATE.format(log.historyDate())
 
 /// The whole row as one sentence. Not private, so a swipe action or a summary can name a
 /// session with the same words the row itself uses — and named `spokenSession` rather than
@@ -255,7 +255,7 @@ fun spokenSession(log: WorkoutLogEntity, name: String): String {
     parts.add(when_)
     parts.add(L10n.tr("%d of %d pulls completed", log.completedReps, log.plannedReps))
     parts.add(trQuantity("%d seconds under tension", Math.round(log.totalHeldSeconds).toInt()))
-    parts.add(L10n.tr("peak %s kilograms", Fmt.fixed(log.peakKg, 1)))
+    if (log.peakKg > 0) parts.add(L10n.tr("peak %s kilograms", Fmt.fixed(log.peakKg, 1)))
     log.grade?.let { parts.add(L10n.tr("felt %s", it.displayName)) }
     return parts.joinToString(", ")
 }

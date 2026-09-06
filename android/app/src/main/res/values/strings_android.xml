@@ -14,7 +14,6 @@
     <string name="a_s_broadcasts_its_weight_instead_of_connecting_so_there_i">%s broadcasts its weight instead of connecting, so there is nothing to pair and nothing to zero on the device — Tare subtracts what is hanging on it. Android stops delivering broadcasts while Get a Grip is in the background, so a session on one pauses when you leave the app.</string>
     <string name="a_android_will_ask_to_allow_notifications_when_you_save">Android will ask to allow notifications when you save.</string>
     <string name="a_session_reminders">Session reminders</string>
-    <string name="a_leave_demo_mode">Leave demo mode</string>
     <string name="a_sharing_a_file_isn_t_available_on_this_build_use_copy_an">Sharing a file isn\'t available on this build — use Copy, and paste the document where you need it.</string>
     <string name="a_sharing_an_image_isn_t_available_on_this_build">Sharing an image isn\'t available on this build.</string>
     <string name="a_couldn_t_write_to_photos">Couldn\'t write to Photos.</string>

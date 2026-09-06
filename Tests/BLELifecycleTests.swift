@@ -131,6 +131,8 @@ final class BLELifecycleTests: XCTestCase {
         let client = RecordingProgressorClient()
         let device = DeviceStore(client: client)
         client.setState(.connected)
+        device.startStreaming(cause: .manualMeasurement)
+        defer { device.stopStreaming(cause: .userStopped) }
 
         XCTAssertFalse(device.isLoadedForTare, "nothing on the gauge yet")
 
@@ -356,6 +358,73 @@ final class BLELifecycleTests: XCTestCase {
                 XCTAssertTrue(session.snapshot.isRejectingStaleBatches,
                               "a synthetic-clock re-kick must not touch the timeline at all")
             }
+        }
+    }
+
+    func testTareRecoversOnceWhenBufferedSamplesAnchorTheNewDeviceEpoch() {
+        for kind in [GaugeKind.progressor, .whc06] {
+            let client = RecordingProgressorClient(kind: kind)
+            let device = DeviceStore(client: client)
+            let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
+                                        device: device)
+            client.setState(.connected)
+            session.begin()
+            defer { session.end() }
+
+            // Expire the first-start permission. Only the manual tare below may authorize
+            // recovery; this catches accidentally relying on a recent session start.
+            session.checkStaleBatches(at: ProcessInfo.processInfo.systemUptime + 6)
+            client.emit(.sample(ForceSample(kg: 0, deviceMicros: 49_900_000, isBatchStart: true)))
+            session.tare()
+            let armedAt = ProcessInfo.processInfo.systemUptime
+            // A queued pre-tare notification wins the first anchor after the break.
+            client.emit(.sample(ForceSample(kg: 0, deviceMicros: 50_000_000, isBatchStart: true)))
+            client.emit(.sample(ForceSample(kg: 0, deviceMicros: 500_000, isBatchStart: true)))
+            XCTAssertTrue(session.snapshot.isRejectingStaleBatches)
+            session.checkStaleBatches(at: armedAt + 0.5)
+            XCTAssertTrue(session.snapshot.isRejectingStaleBatches, "One check must not heal")
+            session.checkStaleBatches(at: armedAt + 1)
+            client.emit(.sample(ForceSample(kg: 0, deviceMicros: 600_000, isBatchStart: true)))
+            XCTAssertEqual(session.snapshot.isRejectingStaleBatches, !kind.capabilities.hasDeviceClock)
+            XCTAssertEqual(session.repProgress, 0, "Recovery never invents held time")
+
+            // No new start/tare: a second backwards epoch must remain fail-closed even
+            // after the rate limit has passed. The healing break cannot re-arm itself.
+            client.emit(.sample(ForceSample(kg: 0, deviceMicros: 100_000, isBatchStart: true)))
+            session.checkStaleBatches(at: armedAt + 3.5)
+            session.checkStaleBatches(at: armedAt + 4)
+            XCTAssertTrue(session.snapshot.isRejectingStaleBatches)
+        }
+    }
+
+    func testRefusedTareDoesNotWriteBreakTheTimelineOrAuthorizeAHeal() {
+        for isWorking in [false, true] {
+            var draft = RoutineDraft.blank(named: "Refused tare")
+            draft.plan.sets = [SetPlan()]
+            draft.plan.leadInSeconds = 0
+            draft.plan.holdSeconds = 60
+            let client = RecordingProgressorClient()
+            let device = DeviceStore(client: client)
+            client.setState(.connected)
+            let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0), device: device)
+            session.begin()
+            defer { session.end() }
+            session.checkStaleBatches(at: ProcessInfo.processInfo.systemUptime + 6)
+            for index in 0..<80 {
+                let sample = ForceSample(kg: isWorking ? 10 : 0,
+                                         deviceMicros: 50_000_000 + UInt32(index * 12_500))
+                if isWorking { client.emit(.sample(sample)) }
+                else { session.send(.sample(sample)) } // no live reading in DeviceStore
+            }
+            let commands = client.commands.count
+            session.tare()
+            XCTAssertEqual(client.commands.count, commands)
+            session.send(.sample(ForceSample(kg: 0, deviceMicros: 100_000, isBatchStart: true)))
+            let checkTime = ProcessInfo.processInfo.systemUptime
+            session.checkStaleBatches(at: checkTime + 0.5)
+            session.checkStaleBatches(at: checkTime + 1)
+            XCTAssertTrue(session.snapshot.isRejectingStaleBatches,
+                          "Refusing a stale/working tare must not authorize a clock reset")
         }
     }
 

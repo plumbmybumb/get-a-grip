@@ -37,8 +37,9 @@ class LegalCardTests {
                     GetAGripTheme { LegalCard() }
                 }
             }
-            compose.onNodeWithText("Your agreement record").performClick()
-            compose.onNodeWithText("You have not accepted the current Terms on this device.").assertIsDisplayed()
+            compose.onNodeWithText("Your agreement record").assertDoesNotExist()
+            compose.onNodeWithText("Terms of use").performClick()
+            compose.onNodeWithText("The app and its provider").assertIsDisplayed()
         } finally { file.delete() }
     }
 

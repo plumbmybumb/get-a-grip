@@ -74,7 +74,7 @@ fun DeviceChip(modifier: Modifier = Modifier) {
         else -> device.state.label
     }
     val fraction = device.batteryFraction
-    val batterySuffix = fraction?.let { L10n.tr(". Battery %d percent", (it * 100).toInt()) } ?: ""
+    val batterySuffix = fraction?.let { L10n.tr(". Battery %d percent", BatteryDisplay.percentage(it)) } ?: ""
     val action = if (connected) tr("Refresh battery") else tr("Connect")
 
     Box(

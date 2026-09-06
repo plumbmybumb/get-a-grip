@@ -28,6 +28,7 @@ import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.FingerStrain
 import run.nuri.getagrip.engine.GripPosition
 import run.nuri.getagrip.engine.GripSpec
+import run.nuri.getagrip.engine.HandMode
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.LadderRung
 import run.nuri.getagrip.engine.MaxSource
@@ -942,8 +943,11 @@ class TemplateStore(
         // typing is not training. `marksBenchmarkDay = false` is the session-PR path: a
         // max hit INSIDE a routine already logged its session, and settling the day on
         // top would silently cancel the evening ritual.
-        val alreadyBenchmarked = benchmarkedToday ||
-            (gateway.logsFrom(clock.today.raw)?.benchmark(clock.today) ?: false)
+        // A failed read is not evidence that today has no benchmark. Keep the max,
+        // but don't invent a second day marker when the history cannot be checked.
+        val todaysLogs = if (marksBenchmarkDay && source == MaxSource.measured && !benchmarkedToday)
+            gateway.logsFrom(clock.today.raw) else null
+        val alreadyBenchmarked = benchmarkedToday || todaysLogs == null || todaysLogs.benchmark(clock.today)
         val benchmarkLog =
             if (marksBenchmarkDay && source == MaxSource.measured && !alreadyBenchmarked) {
                 WorkoutLogEntity.logged(
@@ -985,7 +989,9 @@ class TemplateStore(
         /// percent targets follow the newest max by design — this is the visibility, not
         /// a consent form.
         data class PercentMove(
+            val routineID: UUID,
             val routineName: String,
+            val side: Side,
             val loPercent: Double,
             val hiPercent: Double,
             /// null when the grip had no max before — the band never resolved until now.
@@ -1010,21 +1016,37 @@ class TemplateStore(
         val isEmpty: Boolean get() = percentMoves.isEmpty() && kgOffers.isEmpty()
     }
 
-    suspend fun maxImpact(grip: GripSpec, oldKg: Double?, newKg: Double): MaxImpact {
+    suspend fun maxImpact(grip: GripSpec, previousMaxes: MaxTable, newKg: Double,
+                          side: Side = Side.both): MaxImpact {
         val routines = gateway.allRoutines()
             ?: return MaxImpact(emptyList(), emptyList(), null)
-        val ratio = oldKg?.let { if (it > 0) newKg / it else null }
+        // A fallback both-hands benchmark is not an earlier measurement of one hand.
+        val ratio = previousMaxes.exact(grip.key, side)?.let { if (it > 0) newKg / it else null }
         val percentMoves = mutableListOf<MaxImpact.PercentMove>()
         val kgOffers = mutableListOf<MaxImpact.KgOffer>()
 
         for (routine in routines.sortedWith(routineOrder)) {
             val plan = routine.plan.executable
+            val affectedSides = when {
+                plan.handMode == HandMode.bothHands -> if (side == Side.both) listOf(Side.both) else emptyList()
+                side == Side.both -> listOf(Side.left, Side.right).filter {
+                    previousMaxes.exact(grip.key, it) == null
+                }
+                else -> listOf(side)
+            }
+            if (affectedSides.isEmpty()) continue
+            // A shared ratio is valid only while both alternating hands resolve
+            // through this same fallback benchmark, with no exact hand overriding it.
+            val canScaleSharedBand = side == Side.both && (plan.handMode == HandMode.bothHands ||
+                listOf(Side.left, Side.right).all { previousMaxes.exact(grip.key, it) == null })
             val seenPercents = HashSet<String>()
             val moves = mutableListOf<MaxImpact.KgOffer.Move>()
             for (set in plan.sets) {
                 if (set.grip.key != grip.key) continue
                 val explicit = set.targetBand
                 if (explicit != null) {
+                    // A typed band is shared across both sides of an alternating routine.
+                    if (!canScaleSharedBand) continue
                     val r = ratio ?: continue
                     val move = MaxImpact.KgOffer.Move(explicit, scaled(explicit, r))
                     // Two byte-identical sets would offer the same line twice.
@@ -1033,15 +1055,22 @@ class TemplateStore(
                     val percent = PlanMath.targetPercent(set, plan) ?: continue
                     if (!seenPercents.add("${percent.start}–${percent.endInclusive}")) continue
                     val newBand = PlanMath.targetBand(set, plan, newKg) ?: continue
-                    percentMoves.add(
-                        MaxImpact.PercentMove(
-                            routineName = routine.name,
-                            loPercent = percent.start,
-                            hiPercent = percent.endInclusive,
-                            oldBand = oldKg?.let { PlanMath.targetBand(set, plan, it) },
-                            newBand = newBand,
+                    for (affectedSide in affectedSides) {
+                        val oldBand = previousMaxes.max(grip.key, affectedSide)
+                            ?.let { PlanMath.targetBand(set, plan, it) }
+                        if (oldBand == newBand) continue
+                        percentMoves.add(
+                            MaxImpact.PercentMove(
+                                routineID = routine.id,
+                                routineName = routine.name,
+                                side = affectedSide,
+                                loPercent = percent.start,
+                                hiPercent = percent.endInclusive,
+                                oldBand = oldBand,
+                                newBand = newBand,
+                            )
                         )
-                    )
+                    }
                 }
             }
             if (moves.isNotEmpty()) {

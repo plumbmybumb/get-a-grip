@@ -25,6 +25,30 @@ import run.nuri.getagrip.ui.tour.cardOffsetPx
 /// `TemplateStore`. A fresh `InMemoryTourSeenStore` is exactly a fresh install.
 class TourControllerTests {
 
+    @Test
+    fun backFromHistoryRestoresTheTodaySpotlight() {
+        val tour = controller()
+        tour.begin(TourAct.Intro, hasRoutine = true)
+        repeat(TourScript.today.indexOfFirst { it.target == TourTarget.HistoryMonth }) { tour.advance() }
+        assertEquals(1, tour.current?.tab)
+        tour.back()
+        assertEquals(TourTarget.Consistency, tour.current?.target)
+        assertEquals(0, tour.current?.tab)
+        tour.advance()
+        assertEquals(1, tour.current?.tab)
+    }
+
+    @Test
+    fun presentedToursDoNotRequestATab() {
+        for (act in listOf(TourAct.Builder, TourAct.Session)) {
+            val tour = controller()
+            tour.begin(act)
+            assertNull(tour.current?.tab)
+            tour.advance()
+            assertNull(tour.current?.tab)
+        }
+    }
+
     private fun controller() = TourController(InMemoryTourSeenStore())
 
     // MARK: - Which act runs, and when

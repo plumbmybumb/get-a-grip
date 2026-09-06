@@ -169,8 +169,8 @@ struct GripPosition: RawRepresentable, Hashable, Sendable, Codable {
     static let openHand  = GripPosition("openHand")
     static let fullCrimp = GripPosition("fullCrimp")
     static let drag      = GripPosition("drag")
-    /// Thumb-opposition block work. Usually paired with `.thumb` in the finger set,
-    /// but deliberately not enforced — the model records what you say you did.
+    /// Thumb-opposition block work. GripSpec enforces thumb inclusion in its
+    /// initializer, decoding and mutation paths.
     static let pinch     = GripPosition("pinch")
     /// An isometric curl starting in half crimp. Its own raw value keeps curl
     /// history and max targets separate without changing any existing grip keys.

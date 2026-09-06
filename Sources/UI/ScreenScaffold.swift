@@ -156,7 +156,6 @@ extension View {
     func staggerIn(_ index: Int) -> some View { modifier(StaggerIn(index: index)) }
 }
 
-/// A label styled in the app's "instrument" voice: small caps, tracked, tertiary ink.
 /// A CLIMB day, marked by a diagonal notch punched clean through the fill.
 ///
 /// Shape, not colour. The house rule on both calendars is that every state survives
@@ -231,6 +230,7 @@ extension View {
     }
 }
 
+/// A label styled in the app's "instrument" voice: small caps, tracked, tertiary ink.
 struct CapsLabel: View {
     var text: String
     var size: CGFloat = 12

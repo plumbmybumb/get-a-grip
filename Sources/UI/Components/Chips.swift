@@ -3,11 +3,8 @@
 
 import SwiftUI
 
-// The app's ONE selection control. Every choice in the builder — hold, rest, break,
-// pulls, edge, position, hands, sessions a day, threshold, lead-in — is a row of these,
-// so a change costs exactly one tap and the whole document reads in one language.
-// No wheels, no drag-scrubs, no bare steppers as the primary control: a wheel hides
-// every value but one, and a scrub cannot be hit accurately with chalk on your fingers.
+// Chips express categorical choices: position, hands and sessions per day.
+// Quantities use ValueRow, where a slider and direct entry share the same value.
 
 /// One capsule option.
 ///
@@ -103,53 +100,21 @@ struct ChipGrid<Content: View>: View {
     }
 }
 
-/// How a row swaps between its chips and its stepper. Reduce Motion gets the same
-/// change with none of the travel.
-private func chipSwap(_ reduceMotion: Bool) -> Animation {
-    Motion.state(reduceMotion)
-}
-
 // MARK: - Whole-number rows
 
-/// Seconds, millimetres, pulls, sessions — anything counted in whole units.
-///
-/// The row ends in `Other…`, which swaps the chips in place for a `Stepper` bounded by
-/// `otherRange`: one tap for the ~95 % of choices that are on the menu, a real escape
-/// hatch for the rest, and no second screen for either.
+/// A small categorical integer choice, currently sessions per day. An off-menu stored
+/// value receives its own chip so merely opening the editor never rewrites it.
 struct IntChipRow: View {
     let values: [Int]
     var unit: String = ""
     @Binding var selection: Int
-    var otherRange: ClosedRange<Int>? = nil
 
-    @State private var showsCustom = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    /// A value that is not on the menu shows the stepper WITHOUT being asked. A chip row
-    /// rendering with nothing selected reads as a bug, and silently snapping the value to
-    /// the nearest chip would edit a routine the user never touched.
-    private var isCustom: Bool {
-        otherRange != nil && (showsCustom || !values.contains(selection))
-    }
-
-    /// The chips as drawn. A row with no `Other…` escape gives an off-menu value its own
-    /// chip rather than dropping it — same rule, and the same reason, as `PositionChipRow`.
     private var drawnValues: [Int] {
-        guard otherRange == nil, !values.contains(selection) else { return values }
-        return (values + [selection]).sorted()
+        values.contains(selection) ? values : (values + [selection]).sorted()
     }
 
-    /// Density is driven by the row's OWN longest label, not by a fixed column count.
-    /// "1 2 3 4 5 6" and "6 mm 8 mm 10 mm" want different grids, and a single frozen
-    /// number gives one of them truncated chips: at six columns the edge row rendered
-    /// "10…, 12…, 15…, 18…", which is worse than useless — those are four different
-    /// edges a climber has to tell apart.
     private var densityForLongestLabel: Int {
-        // The VALUES decide the density, not "Other…" — it is one chip at the end of the
-        // row and can wrap, whereas letting its six characters set the width would drop
-        // a row of bare numbers from six columns to four for nothing.
-        let longest = drawnValues.map { label($0).count }.max() ?? 1
-        return switch longest {
+        switch drawnValues.map({ label($0).count }).max() ?? 1 {
         case ...2: 6
         case 3...4: 5
         default: 4
@@ -157,98 +122,26 @@ struct IntChipRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if isCustom, let otherRange {
-                custom(in: otherRange)
-            } else {
-                ChipGrid(base: densityForLongestLabel) {
-                    ForEach(drawnValues, id: \.self) { value in
-                        Chip(title: label(value), isSelected: value == selection) {
-                            selection = value
-                        }
-                    }
-                    if otherRange != nil {
-                        Chip(title: String(localized: "Other…"), isSelected: false) {
-                            withAnimation(chipSwap(reduceMotion)) { showsCustom = true }
-                        }
-                    }
-                }
+        ChipGrid(base: densityForLongestLabel) {
+            ForEach(drawnValues, id: \.self) { value in
+                Chip(title: label(value), isSelected: value == selection) { selection = value }
             }
         }
         .sensoryFeedback(.selection, trigger: selection)
     }
 
-    @ViewBuilder
-    private func custom(in range: ClosedRange<Int>) -> some View {
-        // A Stepper states its value, moves by exactly one unit and reads to VoiceOver as
-        // "adjustable" for free — none of which is true of a wheel or a scrub. Its own
-        // label is the value, so the control needs no separate caption.
-        Stepper(value: $selection, in: range, step: step(for: range)) {
-            Text(label(selection))
-                .font(.system(.body, weight: .semibold))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .foregroundStyle(Ink.primary)
-        }
-        .frame(minHeight: 44)
-
-        Button {
-            withAnimation(chipSwap(reduceMotion)) {
-                showsCustom = false
-                // Snap on the way back, so the chips can never reappear with no answer
-                // showing. The move is visible — the nearest chip lights up.
-                selection = nearest(to: selection)
-            }
-        } label: {
-            Text("Back to the usual values")
-                .font(.system(.footnote, weight: .medium))
-                .foregroundStyle(Accent.graphite)
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .contentShape(.rect)
-        }
-        .buttonStyle(PressFeedbackButtonStyle())
-    }
-
     private func label(_ value: Int) -> String {
         unit.isEmpty ? "\(value)" : "\(value) \(unit)"
     }
-
-    /// Rest and set-break run to 600 and 900 seconds; one-unit steps there are a
-    /// thousand taps. Ranges that tight-fit a real edit keep their unit step.
-    private func step(for range: ClosedRange<Int>) -> Int {
-        range.upperBound - range.lowerBound > 120 ? 5 : 1
-    }
-
-    private func nearest(to value: Int) -> Int {
-        values.min { abs($0 - value) < abs($1 - value) } ?? value
-    }
 }
 
-// MARK: - Kilogram rows
-
+// MARK: - Grip position
 
 struct PositionChipRow: View {
     @Binding var selection: GripPosition
-    /// `false` lays the chips out as ONE horizontally scrolling row instead of a
-    /// wrapping grid — six grips wrap to two rows, and on the setup deck's grip
-    /// card that second row is 45 pt the card does not have. The document wraps, because
-    /// there the height is free and seeing every option at once is worth more.
-    var wraps: Bool = true
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Group {
-                if wraps {
-                    ChipGrid(base: 3) { chips }
-                } else {
-                    ScrollView(.horizontal) {
-                        HStack(spacing: 8) { chips }
-                            .padding(.vertical, 2)
-                    }
-                    .scrollIndicators(.hidden)
-                    .scrollBounceBehavior(.basedOnSize)
-                }
-            }
+            ChipGrid(base: 3) { chips }
             if selection == .fingerCurl {
                 Text("Start in half crimp and build force by trying to curl your fingers into the edge.")
                     .font(.system(.caption))
@@ -265,9 +158,6 @@ struct PositionChipRow: View {
             Chip(title: position.name, isSelected: position == selection) {
                 selection = position
             }
-            // Chips fill their container by default, which is right in a grid and wrong
-            // in a horizontal scroller.
-            .modifier(HugIfNeeded(hugs: !wraps))
         }
     }
 
@@ -276,16 +166,6 @@ struct PositionChipRow: View {
     /// than an enum. Dropping it here would let this build silently rewrite the set.
     private var options: [GripPosition] {
         GripPosition.known.contains(selection) ? GripPosition.known : GripPosition.known + [selection]
-    }
-}
-
-/// `.fixedSize()` applied conditionally, which a plain `if` inside a `ForEach` body
-/// cannot express without changing the view's identity on every toggle.
-private struct HugIfNeeded: ViewModifier {
-    var hugs: Bool
-
-    func body(content: Content) -> some View {
-        if hugs { content.fixedSize() } else { content }
     }
 }
 

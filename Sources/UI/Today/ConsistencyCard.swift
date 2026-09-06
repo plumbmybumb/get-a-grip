@@ -43,7 +43,7 @@ struct ConsistencyCard: View {
                     .accessibilityHidden(true)
                 }
 
-                if nothingLoggedYet {
+                if ConsistencyEmptyState.showsFirstUseHint(days) {
                     Text("Your sessions will show up here.")
                         .font(.system(.footnote))
                         .foregroundStyle(Ink.tertiary)
@@ -75,9 +75,6 @@ struct ConsistencyCard: View {
         .accessibilityLabel(String(localized: "Log a session you did elsewhere — climbing, or hangs off the gauge"))
     }
 
-    private var nothingLoggedYet: Bool {
-        days.allSatisfy { $0.completed == 0 && $0.climb == nil && !$0.benchmarked }
-    }
 }
 
 // MARK: - The strip
@@ -235,5 +232,13 @@ private struct ConsistencyStrip: View {
             sentences.append(String(localized: "Today so far: \(today.completed) of \(target) \(target == 1 ? String(localized: "session") : String(localized: "sessions"))"))
         }
         return sentences.joined(separator: ". ") + "."
+    }
+}
+
+
+enum ConsistencyEmptyState {
+    static func showsFirstUseHint(_ days: [DayRecord]) -> Bool {
+        days.contains { !$0.tracked }
+            && days.allSatisfy { $0.completed == 0 && $0.climb == nil && !$0.benchmarked }
     }
 }

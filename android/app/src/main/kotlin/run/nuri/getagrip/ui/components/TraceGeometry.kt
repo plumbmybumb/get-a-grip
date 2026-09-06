@@ -67,8 +67,8 @@ object TraceGeometry {
     /// Three-point moving average of the DRAWING only — never of the values the engine
     /// times reps with. The ends are left alone: there is no neighbour to average with,
     /// and inventing one would move the newest point, which is the one being read.
-    fun smoothed(samples: List<DeviceStore.TracePoint>, index: Int): Double {
-        if (index <= 0 || index >= samples.size - 1) return samples[index].kg
+    fun smoothed(samples: List<DeviceStore.TracePoint>, index: Int, runStart: Int = 0): Double {
+        if (index <= runStart || index >= samples.size - 1) return samples[index].kg
         return (samples[index - 1].kg + samples[index].kg + samples[index + 1].kg) / 3.0
     }
 

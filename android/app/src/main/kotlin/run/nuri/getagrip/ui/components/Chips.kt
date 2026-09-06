@@ -5,7 +5,6 @@ package run.nuri.getagrip.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -16,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -191,142 +188,46 @@ private fun minimumChipWidth(base: Int): Dp {
 
 // MARK: - Whole-number rows
 
-/// Seconds, millimetres, pulls, sessions — anything counted in whole units, where the
-/// choice really is a short menu.
-///
-/// The row can end in `Other…`, which swaps the chips in place for a repeating stepper:
-/// one tap for the ~95 % of choices that are on the menu, a real escape hatch for the
-/// rest, and no second screen for either.
+/// A small categorical integer choice, currently sessions per day. Preserve an off-menu
+/// stored value as its own chip rather than changing a draft merely by opening it.
 @Composable
 fun IntChipRow(
     values: List<Int>,
     selection: Int,
     modifier: Modifier = Modifier,
     unit: String = "",
-    otherRange: IntRange? = null,
     onSelect: (Int) -> Unit,
 ) {
-    val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
-    var showsCustom by remember { mutableStateOf(false) }
-
     fun label(value: Int) = if (unit.isEmpty()) "$value" else L10n.tr("%d %s", value, unit)
-
-    /// A value that is not on the menu shows the stepper WITHOUT being asked. A chip row
-    /// rendering with nothing selected reads as a bug, and silently snapping the value to
-    /// the nearest chip would edit a routine the user never touched.
-    val isCustom = otherRange != null && (showsCustom || !values.contains(selection))
-
-    /// A row with no `Other…` escape gives an off-menu value its own chip rather than
-    /// dropping it — same rule, and the same reason, as `PositionChipRow`.
-    val drawn = if (otherRange == null && !values.contains(selection)) {
-        (values + selection).sorted()
-    } else {
-        values
-    }
-
-    // Density is driven by the row's OWN longest label. "Other…" is deliberately excluded:
-    // it is one chip at the end of the row and may wrap, whereas letting its six characters
-    // set the width would drop a row of bare numbers from six columns to four for nothing.
+    val drawn = if (values.contains(selection)) values else (values + selection).sorted()
     val longest = drawn.maxOfOrNull { label(it).length } ?: 1
     val density = when {
         longest <= 2 -> 6
         longest <= 4 -> 5
         else -> 4
     }
-
-    fun choose(value: Int) {
-        if (value == selection) return
-        // The tick names its CAUSE — a chip tap that actually moved the value.
-        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-        onSelect(value)
-    }
-
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (isCustom) {
-            // Non-null by construction: `isCustom` is false without a range to be custom in,
-            // which the compiler proves for itself through that `val`.
-            val custom = otherRange
-            // A stepper states its value, moves by exactly one unit and reads as
-            // "adjustable" to TalkBack for free — none of which is true of a wheel.
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = chipMinHeight),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RepeatingStep(
-                    glyph = StepGlyph.Minus,
-                    enabled = selection - stepFor(custom) >= custom.first,
-                    contentDescription = L10n.tr("Decrease"),
-                ) {
-                    val next = selection - stepFor(custom)
-                    if (next < custom.first) false else { onSelect(next); true }
-                }
-                Text(
-                    label(selection),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = palette.inkPrimary,
-                )
-                RepeatingStep(
-                    glyph = StepGlyph.Plus,
-                    enabled = selection + stepFor(custom) <= custom.last,
-                    contentDescription = L10n.tr("Increase"),
-                ) {
-                    val next = selection + stepFor(custom)
-                    if (next > custom.last) false else { onSelect(next); true }
+    ChipGrid(
+        base = density,
+        modifier = modifier,
+        content = drawn.map { value ->
+            { cellModifier: Modifier ->
+                Chip(label(value), value == selection, cellModifier) {
+                    if (value != selection) {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        onSelect(value)
+                    }
                 }
             }
-            Text(
-                tr("Back to the usual values"),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = palette.graphite,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = chipMinHeight)
-                    .clickable(role = Role.Button) {
-                        showsCustom = false
-                        // Snap on the way back, so the chips can never reappear with no
-                        // answer showing. The move is visible — the nearest chip lights up.
-                        val nearest = values.minByOrNull { kotlin.math.abs(it - selection) }
-                        if (nearest != null) onSelect(nearest)
-                    }
-                    .padding(vertical = 12.dp),
-            )
-        } else {
-            ChipGrid(
-                base = density,
-                content = buildList {
-                    drawn.forEach { value ->
-                        add { cellModifier ->
-                            Chip(label(value), value == selection, cellModifier) { choose(value) }
-                        }
-                    }
-                    if (otherRange != null) {
-                        add { cellModifier ->
-                            Chip(tr("Other…"), false, cellModifier) { showsCustom = true }
-                        }
-                    }
-                },
-            )
-        }
-    }
+        },
+    )
 }
-
-/// Rest and set-break run to hundreds of seconds; one-unit steps there are a thousand
-/// taps. Ranges that tight-fit a real edit keep their unit step.
-private fun stepFor(range: IntRange): Int = if (range.last - range.first > 120) 5 else 1
 
 /// How the hand is SET on the edge — a genuinely categorical choice, so it stays chips.
 @Composable
 fun PositionChipRow(
     selection: GripPosition,
     modifier: Modifier = Modifier,
-    /// `false` lays the chips out as ONE horizontally scrolling row instead of a wrapping
-    /// grid — six grips wrap to two rows, and on a panel fighting for height that
-    /// second row is 45 dp it does not have.
-    wraps: Boolean = true,
     onSelect: (GripPosition) -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -347,30 +248,14 @@ fun PositionChipRow(
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (wraps) {
-            ChipGrid(
-                base = 3,
-                modifier = Modifier,
-                content = options.map { position ->
-                    { cellModifier: Modifier ->
-                        Chip(position.name, position == selection, cellModifier) { choose(position) }
-                    }
-                },
-            )
-        } else {
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                options.forEach { position ->
-                    // Chips fill their container in a grid, which is right there and wrong in
-                    // a horizontal scroller — here they hug their label.
-                    Chip(position.name, position == selection, Modifier.widthIn(min = 88.dp)) {
-                        choose(position)
-                    }
+        ChipGrid(
+            base = 3,
+            content = options.map { position ->
+                { cellModifier: Modifier ->
+                    Chip(position.name, position == selection, cellModifier) { choose(position) }
                 }
-            }
-        }
+            },
+        )
         if (selection == GripPosition.fingerCurl) {
             Text(
                 tr("Start in half crimp and build force by trying to curl your fingers into the edge."),

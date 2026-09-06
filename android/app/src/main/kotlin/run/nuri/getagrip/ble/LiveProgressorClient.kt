@@ -133,6 +133,7 @@ class LiveProgressorClient(
     private var scanDeadlineJob: Job? = null
     private var backoffJob: Job? = null
     private var replyDeadlineJob: Job? = null
+    private var writeDeadlineJob: Job? = null
     private var sleepFallbackJob: Job? = null
 
     private var isScanning = false
@@ -680,7 +681,7 @@ class LiveProgressorClient(
         override val isReadyForWriteWithoutResponse: Boolean get() = true
 
         override fun write(command: ProgressorCommand, withResponse: Boolean) {
-            manager?.writeControlPoint(command.encoded, withResponse)
+            command.encoded?.let { manager?.writeControlPoint(it, withResponse) }
         }
 
         override fun failPermanently(reason: String) {
@@ -705,6 +706,22 @@ class LiveProgressorClient(
         override fun cancelReplyDeadline() {
             replyDeadlineJob?.cancel()
             replyDeadlineJob = null
+        }
+
+        override fun armWriteDeadline(id: ULong) {
+            val writeGeneration = generation
+            cancelWriteDeadline()
+            writeDeadlineJob = scope.launch(Dispatchers.Main.immediate) {
+                delay(3_000)
+                if (generation != writeGeneration) return@launch
+                writeDeadlineJob = null
+                queue.writeDeadlineFired(id)
+            }
+        }
+
+        override fun cancelWriteDeadline() {
+            writeDeadlineJob?.cancel()
+            writeDeadlineJob = null
         }
 
         override fun armSleepFallback(id: ULong) {
@@ -739,8 +756,7 @@ class LiveProgressorClient(
             val data = service.getCharacteristic(dataUUID) ?: return false
             val control = service.getCharacteristic(controlUUID) ?: return false
             val writable = control.properties and (
-                BluetoothGattCharacteristic.PROPERTY_WRITE or
-                    BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE
+                BluetoothGattCharacteristic.PROPERTY_WRITE
                 ) != 0
             val notifies =
                 data.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0

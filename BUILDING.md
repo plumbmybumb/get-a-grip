@@ -19,6 +19,11 @@ installed iOS 26+ iPhone simulator. Tests launch a simulator; close it when fini
 Do not pass `-mockDevice` for real gauge verification. The in-app demo remains
 available to people without hardware.
 
+The app icon's procedural source is `scripts/make_app_icon.swift`. Run it with an
+output PNG path and `any`, `dark` or `tinted`. The tinted palette is grayscale for
+the system's tint treatment; the script rejects unknown styles instead of silently
+writing the light variant.
+
 ## Android configuration
 
 `android/gradle/libs.versions.toml` pins library versions. The wrapper pins Gradle
@@ -61,3 +66,15 @@ Android manifest, and test camera permission/scan flow and Bluetooth on hardware
 Keep MPL and dependency notices bundled with binaries. Update dependency notices
 when changing libraries. Tag the exact source commit used for each shipped version,
 with separate platform tags if their store versions differ.
+
+For iOS, inspect the entitlements in the **final distribution-signed export**, not
+only the source file or a development-signed archive. Run
+`codesign -d --entitlements :- /path/to/export/Payload/Doigt.app` and confirm
+`aps-environment` is `production`, the CloudKit container environment is `Production`,
+and the bundle, App Group and CloudKit identifiers match the intended application.
+Do this for Organizer exports and automated `xcodebuild -exportArchive` releases.
+Do not distribute an export with development push entitlements.
+[Apple derives the APNs environment from the provisioning profile](https://developer.apple.com/documentation/bundleresources/entitlements/aps-environment).
+The source's development default supports local signing; it is not evidence of the
+environment in the exported app. SwiftData's CloudKit mirroring requires the
+[Remote notifications background capability](https://developer.apple.com/documentation/SwiftData/Syncing-model-data-across-a-persons-devices).

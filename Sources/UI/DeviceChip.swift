@@ -54,7 +54,7 @@ struct DeviceChip: View {
     /// the comment where the glyph is built.
     private var batterySuffix: String {
         guard let fraction = device.batteryFraction else { return "" }
-        return String(localized: ". Battery \(Int(fraction * 100)) percent")
+        return String(localized: ". Battery \(BatteryDisplay.percentage(fraction)) percent")
     }
 
     private var title: String {

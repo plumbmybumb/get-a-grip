@@ -15,6 +15,8 @@ import run.nuri.getagrip.engine.RepSummary
 import run.nuri.getagrip.engine.SessionKind
 import run.nuri.getagrip.engine.SessionPlan
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -76,6 +78,11 @@ data class WorkoutLogEntity(
     val plan: SessionPlan? get() = BlobCodec.decode(planData) { SessionPlan.fromJson(it) }
 
     val day: DayStamp get() = DayStamp(dayKey)
+
+    /// The timestamp of a hand log is when it was entered; its chosen training day
+    /// must still display correctly when it was logged the following morning.
+    fun historyDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate =
+        if (kind.isLoggedByHand) day.localDate() else startedAt.atZone(zone).toLocalDate()
 
     /// null for an ungraded session, or for a scale value from a future build.
     val grade: RPE? get() = rpe?.let { RPE.fromRaw(it) }

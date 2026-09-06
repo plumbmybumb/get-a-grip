@@ -203,33 +203,13 @@ struct RoutineShareSheet: View {
         }
         rendered = RenderedRoutineShare(
             image: UIImage(cgImage: cgImage, scale: 3, orientation: .up),
-            file: RoutineSharePNG(data: png))
+            file: SharePNG(data: png, filename: "get-a-grip-routine.png"))
     }
 }
 
 private struct RenderedRoutineShare {
     let image: UIImage
-    let file: RoutineSharePNG
-}
-
-/// A file-backed transfer keeps the `.png` extension as well as the content type — and
-/// carries the renderer's ORIGINAL bytes, so nothing re-encodes the image on the way to
-/// whichever app the share sheet hands it to.
-private struct RoutineSharePNG: Transferable {
-    let data: Data
-
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .png) { item in
-            let directory = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            try FileManager.default.createDirectory(
-                at: directory,
-                withIntermediateDirectories: true)
-            let url = directory.appendingPathComponent("get-a-grip-routine.png")
-            try item.data.write(to: url, options: .atomic)
-            return SentTransferredFile(url)
-        }
-    }
+    let file: SharePNG
 }
 
 /// The shared asset. Every colour here is FIXED rather than adaptive: `ImageRenderer`

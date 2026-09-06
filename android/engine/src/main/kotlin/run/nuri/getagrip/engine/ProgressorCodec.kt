@@ -64,7 +64,7 @@ enum class ProgressorCommand(val rawValue: Int) {
     /// Zero-payload commands go out as a BARE OPCODE, not as a 2-byte `[opcode, 0]`
     /// TLV — that is what every field-proven open-source client sends and what the
     /// firmware answers. Only `addCalibrationPoint` carries a payload.
-    val encoded: ByteArray get() = byteArrayOf(rawValue.toByte())
+    val encoded: ByteArray? get() = if (this == addCalibrationPoint) null else byteArrayOf(rawValue.toByte())
 
     companion object {
         /// Calibration is the one command with a payload: `[opcode, length, float32]`.
@@ -193,7 +193,7 @@ object ProgressorCodec {
         }
     }
 
-    /// Battery in millivolts, roughly 3.0 V empty → 4.2 V full on the Progressor's
+    /// Battery in millivolts, roughly 3.3 V empty → 4.2 V full on the Progressor's
     /// LiPo. Only used for the rough level shown on the device chip.
     const val batteryEmptyMV: Double = 3300.0
     const val batteryFullMV: Double = 4200.0

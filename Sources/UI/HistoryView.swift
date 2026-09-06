@@ -107,7 +107,7 @@ struct HistoryView: View {
                     // Folded ONCE here and handed down, rather than each of the ~200
                     // questions a card asks re-scanning the whole log array. See
                     // `DayLedger`.
-                    let ledger = DayLedger(logs: logs, today: clock.today)
+                    let ledger = DayLedger(logs: logs, today: clock.today, trackingSince: templates.trackingSince)
                     Group {
                         if monthPageCount(ledger) > 1 {
                             monthDeck(ledger)
@@ -286,7 +286,7 @@ struct HistoryView: View {
             Label("Delete", systemImage: "trash")
         }
         .tint(Accent.alarm)
-        .accessibilityLabel(String(localized: "Delete this session, \(displayName(of: log)) on \(log.startedAt.formatted(.dateTime.weekday(.wide).day().month(.wide)))"))
+        .accessibilityLabel(String(localized: "Delete this session, \(displayName(of: log)) on \(log.historyDate().formatted(.dateTime.weekday(.wide).day().month(.wide)))"))
     }
 
     /// Delete carries no confirmation dialog — the same bargain as a deleted routine. A
@@ -381,7 +381,7 @@ struct HistoryView: View {
         /// about a habit it never observed.
         let trackingSince: DayStamp
 
-        init(logs: [WorkoutLog], today: DayStamp) {
+        init(logs: [WorkoutLog], today: DayStamp, trackingSince: DayStamp? = nil) {
             var earliest: Int?
             for log in logs {
                 earliest = Swift.min(earliest ?? log.dayKey, log.dayKey)
@@ -396,7 +396,7 @@ struct HistoryView: View {
                 if log.kind == .benchmark { day.benchmarked = true }
                 days[log.dayKey] = day
             }
-            trackingSince = earliest.map { DayStamp(raw: $0) } ?? today
+            self.trackingSince = trackingSince ?? earliest.map { DayStamp(raw: $0) } ?? today
         }
 
         func fraction(on day: DayStamp) -> Double {
@@ -1054,7 +1054,9 @@ private struct SessionRow: View {
             return log.kind.isClimb ? String(localized: "At the climbing gym") : String(localized: "Away from the gauge")
         }
         guard log.kind != .benchmark else { return String(localized: "Tested your maxes") }
-        return String(localized: "\(log.completedReps)/\(log.plannedReps) pulls · \(PlanMath.clockText(Int(log.totalHeldSeconds.rounded()))) · \(log.peakKg.formatted(.number.precision(.fractionLength(1)))) kg")
+        let effort = String(localized: "\(log.completedReps)/\(log.plannedReps) pulls · \(PlanMath.clockText(Int(log.totalHeldSeconds.rounded())))")
+        guard log.peakKg > 0 else { return effort }
+        return effort + " · " + String(localized: "\(log.peakKg.formatted(.number.precision(.fractionLength(1)))) kg")
     }
 
     private var handLoggedDetails: [String] {
@@ -1087,7 +1089,7 @@ private struct SessionRow: View {
     /// slot, carrying the two things you scan a log for.
     private var trailing: some View {
         VStack(alignment: .trailing, spacing: 3) {
-            Text(log.startedAt.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+            Text(log.historyDate().formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
                 .font(.system(.footnote))
                 .monospacedDigit()
                 .foregroundStyle(Ink.tertiary)
@@ -1104,7 +1106,7 @@ private struct SessionRow: View {
     }
 
     private var spoken: String {
-        let when = log.startedAt.formatted(.dateTime.weekday(.wide).day().month(.wide))
+        let when = log.historyDate().formatted(.dateTime.weekday(.wide).day().month(.wide))
         var parts: [String]
         if log.kind.isLoggedByHand {
             parts = [log.kind.name, when]
@@ -1126,8 +1128,10 @@ private struct SessionRow: View {
                 when,
                 String(localized: "\(log.completedReps) of \(log.plannedReps) pulls completed"),
                 String(localized: "\(Int(log.totalHeldSeconds.rounded())) seconds under tension"),
-                String(localized: "peak \(log.peakKg.formatted(.number.precision(.fractionLength(1)))) kilograms"),
             ]
+            if log.peakKg > 0 {
+                parts.append(String(localized: "peak \(log.peakKg.formatted(.number.precision(.fractionLength(1)))) kilograms"))
+            }
         }
         if !log.kind.isLoggedByHand, let grade = log.grade {
             parts.append(String(localized: "felt \(grade.name)"))

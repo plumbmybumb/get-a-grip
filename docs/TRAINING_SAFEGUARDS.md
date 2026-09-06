@@ -2,12 +2,10 @@
 
 ## This revision
 
-- Both apps require an unchecked acknowledgement of training risks and agreement to
-  the Terms before starting a routine or gauge-based max measurement. Version
-  `2026-09-06-r2`, screen version 2, requires renewed acceptance. The underlying
-  Terms and Privacy text is unchanged; the previous bundle is archived verbatim.
-- Refusing still leaves history, manual records, exports, deletion and Settings
-  accessible. Acceptance is recorded locally and is not an injury release.
+- Training and max measurement now open directly, without a legal acknowledgement
+  gate. Terms and Privacy remain readable offline in Settings. Historical explicit
+  acknowledgement records are retained; using the app creates no new acceptance.
+  The immutable `2026-09-06-r2` document bundle remains unchanged.
 - iOS max measurement now uses the same loaded-tare confirmation policy as the
   runner: an unknown/stale reading wakes the stream; loaded taring requires a
   confirmation rechecked against load, sample age and connection epoch.
@@ -29,10 +27,10 @@ loads, missing hand-specific benchmarks, skipped sets and invalid stored maxima.
 Existing suites cover tare revalidation, stale samples, device-clock timing,
 protocol decoding and agreement persistence/failure handling.
 
-The iPhone agreement UI test checks refusal, continued History access, an initially
-disabled Continue button, affirmative acceptance, and persistence after relaunch.
-Android's agreement UI cases remain in the app test suite. Demo simulators are used
-for flow inspection; they do not validate physical Bluetooth readings or calibration.
+The iPhone UI test checks direct training entry on launch and relaunch, plus max
+measurement without an agreement screen. Android checks offline legal documents and
+historical receipt handling. Demo simulators do not validate physical Bluetooth
+readings or calibration.
 
 The source claims audit covered the app's training/import copy, public README,
 Android listing source and the website landing, support and beta pages. No
@@ -57,8 +55,8 @@ Fixed:
 
 - Android could parse a syntactically valid but structurally damaged acceptance file
   and crash while showing its receipt in Settings. Record fields are now validated
-  before they enter UI state; malformed receipts fail closed and can be replaced by
-  a fresh affirmative acceptance.
+  before they enter UI state; malformed receipts are not displayed. Current builds
+  retain genuine records but do not request fresh acceptance.
 - Android reparsed and hashed the same packaged legal documents on each new gate or
   Settings composition. The immutable bundle is now cached for the app process.
 - The iOS live max readout scheduled a spring animation for each changing force

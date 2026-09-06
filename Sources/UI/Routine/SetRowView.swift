@@ -53,7 +53,6 @@ struct SetRowView: View {
     /// so the two ladders cannot drift apart again. Each dial prepends only its floor.
     private static let secondsLadder: [Double] = [3, 5, 7, 10, 12, 15, 20, 30, 45, 60]
 
-    /// The same ladders the RHYTHM block offers, so an override is chosen from the same
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button(action: onTap) { collapsedFace }
@@ -405,10 +404,6 @@ struct SetRowView: View {
         let duration = PlanMath.durationText(PlanMath.setSeconds(set, in: plan))
         return String(localized: "\(set.grip.spoken). \(repsText), \(tensionText)\(spokenOverride). \(duration).")
     }
-
-    /// ONE max to reason a hand-agnostic typed band against — the both-hands number
-    /// where there is one, otherwise either hand's, purely so the seed and the ladder
-    /// have something real to work from. Never used to decide a per-hand LOAD; those
 
     // MARK: - Position in the routine
 

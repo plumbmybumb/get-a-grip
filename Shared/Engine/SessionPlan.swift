@@ -77,7 +77,7 @@ enum HandMode: String, Codable, Hashable, Sendable, CaseIterable {
     var explainer: String {
         switch self {
         case .alternateEachRep: String(localized: "Left, right, left, right — swapping hands every pull.")
-        case .alternateEachSet: String(localized: "All six on the left, then all six on the right, inside one set.")
+        case .alternateEachSet: String(localized: "All the pulls on one hand, then all of them on the other, inside one set.")
         case .bothHands:        String(localized: "One pull with both hands on the edge. Reps per side is just the number of pulls.")
         }
     }
@@ -391,6 +391,9 @@ struct RoutineDraft: Hashable, Sendable, Codable {
     var validationIssue: String? {
         if plan.executable.sets.isEmpty { return String(localized: "Add at least one set with a pull in it.") }
         if remindersEnabled && reminders.isEmpty { return String(localized: "Add a reminder time, or turn reminders off.") }
+        if remindersEnabled && Set(reminders).count != reminders.count {
+            return String(localized: "Choose a different time for each daily reminder.")
+        }
         return nil
     }
 
@@ -444,6 +447,10 @@ struct RoutineDraft: Hashable, Sendable, Codable {
         out.sessionsPerDay = Self.sessionsRange.clamping(out.sessionsPerDay)
         out.reminders = Self.tidy(out.reminders)
         out.parkedReminders = Self.tidy(out.parkedReminders)
+        if out.remindersEnabled, !out.isOnDemand, !out.reminders.isEmpty,
+           out.reminders.count < out.sessionsPerDay {
+            out.setSessionsPerDay(out.sessionsPerDay)
+        }
         // A whenever routine cannot remind — the times are KEPT so flipping back to a
         // ritual restores the user's own schedule, but the switch is forced off.
         if out.isOnDemand { out.remindersEnabled = false }
@@ -507,6 +514,7 @@ struct RoutineDraft: Hashable, Sendable, Codable {
     /// day, change their mind, and change it back.
     mutating func setSessionsPerDay(_ n: Int) {
         let target = Self.sessionsRange.clamping(n)
+        reminders = Self.tidy(reminders)
         if target < reminders.count {
             parkedReminders = Self.tidy(parkedReminders + reminders.suffix(reminders.count - target))
             reminders = Array(reminders.prefix(target))
@@ -514,7 +522,8 @@ struct RoutineDraft: Hashable, Sendable, Codable {
             var filled = reminders
             var parked = parkedReminders
             while filled.count < target, !parked.isEmpty {
-                filled.append(parked.removeFirst())
+                let candidate = parked.removeFirst()
+                if !filled.contains(candidate) { filled.append(candidate) }
             }
             // Then the default ladder, skipping anything already on the list.
             for candidate in ReminderTime.defaults where filled.count < target {

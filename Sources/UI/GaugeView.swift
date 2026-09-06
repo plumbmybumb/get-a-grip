@@ -21,6 +21,9 @@ struct GaugeView: View {
     /// Bumped on each tare so `.sensoryFeedback` has a value to react to — the house
     /// pattern, rather than calling a feedback generator by hand.
     @State private var tareTick = 0
+    @State private var promptedKg = 0.0
+    @State private var promptedEpoch: UInt64 = 0
+    @State private var showingTareConfirmation = false
 
     var body: some View {
         VStack(spacing: 18) {
@@ -43,6 +46,12 @@ struct GaugeView: View {
         .navigationTitle("Gauge")
         .navigationBarTitleDisplayMode(.inline)
         .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: tareTick)
+        .alert("Zero the gauge?", isPresented: $showingTareConfirmation) {
+            Button("Zero it", role: .destructive) { confirmTare() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("There's \(promptedKg, specifier: "%.1f") kg on the gauge. Zero it?")
+        }
         .onDisappear {
             // Never leave the device streaming behind us: it drains its own battery
             // and keeps the radio busy.
@@ -57,19 +66,8 @@ struct GaugeView: View {
         if device.state.isConnected {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
-                    SecondaryGlassButton(title: String(localized: "Tare"), systemImage: "arrow.counterclockwise") {
-                        // **The haptic names its cause, so it only fires when the tare had
-                        // something to do.** On every gauge but the Progressor the zero is
-                        // app-side arithmetic captured from the newest reading, and
-                        // `SoftwareTare.capture()` deliberately no-ops when no reading has
-                        // arrived — so a Tare tapped while the stream is quiet changes
-                        // nothing, and a success buzz on top of that is the app claiming
-                        // otherwise. Read before the call: liveness is about the reading the
-                        // tare had to zero against.
-                        let hadReading = device.isReadingLive
-                        device.tare()
-                        if hadReading { tareTick += 1 }
-                    }
+                    SecondaryGlassButton(title: device.isReadingLive ? String(localized: "Tare") : String(localized: "Wake"),
+                                         systemImage: "arrow.counterclockwise") { requestTare() }
                     Spacer(minLength: 0)
                     SecondaryGlassButton(title: String(localized: "Disconnect")) { device.disconnect() }
                 }
@@ -91,7 +89,14 @@ struct GaugeView: View {
                 }
                 .disabled(device.state.isBusy)
 
-                if !device.isMock {
+                if device.isMock {
+                    Button("Leave demo mode") { device.useMockDevice(false) }
+                        .buttonStyle(PressFeedbackButtonStyle())
+                        .font(.system(.subheadline, weight: .semibold))
+                        .foregroundStyle(Ink.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(.rect)
+                } else {
                     // Always compiled in, never DEBUG-only: without hardware — in the
                     // Simulator, or in App Review — this is the only way to see the
                     // app actually work.
@@ -109,6 +114,41 @@ struct GaugeView: View {
                         .foregroundStyle(Ink.tertiary)
                         .multilineTextAlignment(.center)
                 }
+            }
+        }
+    }
+
+    private func requestTare() {
+        guard device.state.isConnected else { return }
+        guard TarePolicy.isSafeToTareNow(sampleAge: device.secondsSinceLastSample(),
+                                        maxAgeSeconds: device.tareReadingMaxAge) else {
+            device.startStreaming(cause: .manualWake)
+            return
+        }
+        if TarePolicy.shouldConfirm(readingKg: device.currentKg) { promptTare() }
+        else { device.tare(); tareTick += 1 }
+    }
+
+    private func promptTare() {
+        promptedKg = device.currentKg
+        promptedEpoch = device.connectionEpoch
+        showingTareConfirmation = true
+    }
+
+    private func confirmTare() {
+        switch TarePolicy.confirmationDecision(
+            promptedKg: promptedKg, currentKg: device.currentKg,
+            promptedEpoch: promptedEpoch, currentEpoch: device.connectionEpoch,
+            isConnected: device.state.isConnected, sampleAge: device.secondsSinceLastSample(),
+            phase: .idle, maxAgeSeconds: device.tareReadingMaxAge
+        ) {
+        case .reject: return
+        case .tare: device.tare(); tareTick += 1
+        case .reask:
+            Task { @MainActor in
+                await Task.yield()
+                guard device.state.isConnected else { return }
+                promptTare()
             }
         }
     }
@@ -200,7 +240,7 @@ private struct GaugeReadouts: View {
         return HStack(spacing: 10) {
             readout(String(localized: "Peak"), value: device.peakKg.formatted(.number.precision(.fractionLength(1))), unit: String(localized: "kg"))
             readout(String(localized: "Battery"),
-                    value: device.batteryFraction.map { "\(Int($0 * 100))" } ?? "—",
+                    value: device.batteryFraction.map { "\(BatteryDisplay.percentage($0))" } ?? "—",
                     unit: device.batteryFraction == nil ? "" : String(localized: "%"))
             // Was the firmware version — diagnostics trivia on a screen you open to
             // MEASURE things (and it still lives in Settings). The one-second mean is

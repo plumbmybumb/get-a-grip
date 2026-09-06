@@ -37,10 +37,6 @@
 	<string>$(GETAGRIP_CLOUD_CONTAINER)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>instagram-stories</string>
-	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Get a Grip connects to your force gauge over Bluetooth to measure the force you pull during a training session.</string>
 	<key>NSCameraUsageDescription</key>

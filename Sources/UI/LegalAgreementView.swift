@@ -2,72 +2,6 @@
 // Original contributions Copyright 2026 Nuri Bruner.
 import SwiftUI
 
-/// Construct the runner only after acceptance. Closing this view preserves the caller's records.
-struct TrainingAgreementGate<Content: View>: View {
-    let onCancel: () -> Void
-    @ViewBuilder var content: () -> Content
-    @Environment(\.locale) private var locale
-    @State private var store = LegalAgreementStore()
-    @State private var checked = false
-    @State private var saveFailed = false
-
-    var body: some View {
-        if let loaded = LegalBundle.loaded {
-            if store.hasAccepted(loaded.document, fingerprint: loaded.fingerprint) {
-                content()
-            } else {
-                agreement(loaded.document, fingerprint: loaded.fingerprint)
-            }
-        } else {
-            ContentUnavailableView {
-                Text(locale.language.languageCode?.identifier == "fr" ? "Documents indisponibles" : "Documents unavailable")
-            } actions: {
-                Button(locale.language.languageCode?.identifier == "fr" ? "Retour" : "Go back", action: onCancel)
-            }
-        }
-    }
-
-    private func agreement(_ bundle: LegalBundle, fingerprint: String) -> some View {
-        let language = LegalBundle.language(locale)
-        let text = { bundle.text($0, language) }
-        return NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text(text("intro")).font(.title3.weight(.medium))
-                    Text(text("risk")).foregroundStyle(Ink.secondary)
-                    Text(text("choice")).font(.footnote).foregroundStyle(Ink.secondary)
-                    VStack(spacing: 0) {
-                        LegalDocumentLink(bundle: bundle, language: language, kind: "terms")
-                        LegalDocumentLink(bundle: bundle, language: language, kind: "privacy")
-                    }
-                    Text("\(text("version")): \(bundle.version)").font(.caption).foregroundStyle(Ink.secondary)
-                    Toggle(isOn: $checked) { Text(text("checkbox")) }
-                        .toggleStyle(.switch)
-                        .accessibilityIdentifier("legal.agree")
-                    if saveFailed { Text(text("error")).foregroundStyle(Accent.alarm).accessibilityIdentifier("legal.error") }
-                    Button {
-                        do { try store.accept(bundle, fingerprint: fingerprint, language: language) }
-                        catch { saveFailed = true }
-                    } label: {
-                        Text(text("accept")).bold().frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.borderedProminent).tint(Accent.graphite).disabled(!checked)
-                    .accessibilityIdentifier("legal.continue")
-                    Text(text("access")).font(.footnote).foregroundStyle(Ink.secondary)
-                }
-                .padding(Metrics.hPadding)
-                .frame(maxWidth: Metrics.maxContentWidth)
-                .frame(maxWidth: .infinity)
-            }
-            .background { AppBackground() }
-            .navigationTitle(text("heading")).navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(text("cancel"), action: onCancel) } }
-        }
-        .onChange(of: language) { _, _ in checked = false; saveFailed = false }
-        .interactiveDismissDisabled()
-    }
-}
-
 private struct LegalDocumentLink: View {
     let bundle: LegalBundle
     let language: String
@@ -121,16 +55,21 @@ private struct LegalDocumentView: View {
 
 struct LegalSettingsLinks: View {
     @Environment(\.locale) private var locale
+    @State private var store = LegalAgreementStore()
     var body: some View {
         if let loaded = LegalBundle.loaded {
             let bundle = loaded.document
             let language = LegalBundle.language(locale)
             LegalDocumentLink(bundle: bundle, language: language, kind: "terms")
             LegalDocumentLink(bundle: bundle, language: language, kind: "privacy")
-            NavigationLink(bundle.text("receipt", language)) {
-                LegalReceiptView(bundle: bundle, language: language)
+            // Earlier builds requested an acknowledgement. Keep genuine historical
+            // records accessible, without asking for or fabricating new acceptance.
+            if !store.records.isEmpty {
+                NavigationLink(bundle.text("receipt", language)) {
+                    LegalReceiptView(bundle: bundle, language: language)
+                }
+                .frame(minHeight: 44).tint(Accent.graphite)
             }
-            .frame(minHeight: 44).tint(Accent.graphite)
         }
     }
 }

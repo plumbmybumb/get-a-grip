@@ -190,14 +190,17 @@ struct FingerPips: View {
     }
 
     private func toggle(_ finger: FingerSet) {
-        if fingers.contains(finger) {
-            // A refused tap gets no tick either: the last engaged pip cannot be turned
-            // off, and confirming a no-op is how feedback stops meaning anything.
-            guard fingers.count > 1 else { return }
-            fingers.subtract(finger)
-        } else {
-            fingers.formUnion(finger)
-        }
+        let next = FingerSelection.toggling(finger, in: fingers)
+        guard next != fingers else { return }
+        fingers = next
         tapTick += 1
+    }
+}
+
+/// Both hand pickers keep a real finger on the edge; the thumb cannot replace it.
+enum FingerSelection {
+    static func toggling(_ finger: FingerSet, in fingers: FingerSet) -> FingerSet {
+        let next = fingers.contains(finger) ? fingers.subtracting(finger) : fingers.union(finger)
+        return next.intersection(.four).isEmpty ? fingers : next
     }
 }

@@ -120,9 +120,6 @@ fileprivate struct StyleSpec {
 
 /// Preview and export for one five-week History card.
 struct ShareCalendarSheet: View {
-    // Meta requires a registered Facebook App ID since 2023-01-30; paste it here.
-    private static let instagramAppID: String? = nil
-
     let request: ShareCalendarRequest
     var onClose: () -> Void
 
@@ -162,7 +159,7 @@ struct ShareCalendarSheet: View {
 
                     actionStack
 
-                    Text("Transparent PNG — flattened if added from the gallery inside Instagram; use Save to Photos for everything else.")
+                    Text("Share or save this PNG. Other apps may flatten its transparent background.")
                         .font(.system(.footnote))
                         .foregroundStyle(Ink.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -229,22 +226,13 @@ struct ShareCalendarSheet: View {
     }
 
     private var actionStack: some View {
-        let instagramURL = instagramShareURL
-        return VStack(spacing: 10) {
-            if let instagramURL {
-                Button {
-                    shareToInstagram(at: instagramURL)
-                } label: {
-                    primaryActionLabel(
-                        String(localized: "Share to Instagram story"),
-                        systemImage: "camera")
-                }
-                .buttonStyle(.glassProminent)
-                .tint(Accent.graphite)
-                .disabled(renderedImage == nil)
+        VStack(spacing: 10) {
+            Button(action: saveToPhotos) {
+                primaryActionLabel(photoSaveTitle, systemImage: photoSaveSystemImage)
             }
-
-            saveToPhotosButton(instagramAvailable: instagramURL != nil)
+            .buttonStyle(.glassProminent)
+            .tint(Accent.graphite)
+            .disabled(renderedImage == nil || savingToPhotos)
 
             if photosAccessDenied {
                 Text("Photos access is off for Get a Grip — Settings > Privacy > Photos.")
@@ -255,25 +243,6 @@ struct ShareCalendarSheet: View {
             }
 
             genericShareAction
-        }
-    }
-
-    @ViewBuilder
-    private func saveToPhotosButton(instagramAvailable: Bool) -> some View {
-        if instagramAvailable {
-            Button(action: saveToPhotos) {
-                secondaryActionLabel(photoSaveTitle, systemImage: photoSaveSystemImage)
-            }
-            .buttonStyle(.glass)
-            .tint(Accent.graphite)
-            .disabled(renderedImage == nil || savingToPhotos)
-        } else {
-            Button(action: saveToPhotos) {
-                primaryActionLabel(photoSaveTitle, systemImage: photoSaveSystemImage)
-            }
-            .buttonStyle(.glassProminent)
-            .tint(Accent.graphite)
-            .disabled(renderedImage == nil || savingToPhotos)
         }
     }
 
@@ -334,33 +303,6 @@ struct ShareCalendarSheet: View {
 
     private var photoSaveSystemImage: String? {
         savedToPhotos ? "checkmark" : "square.and.arrow.down"
-    }
-
-    /// The direct delivery path exists only after a Meta app id has been supplied and
-    /// Instagram has registered its Stories URL scheme on this device.
-    private var instagramShareURL: URL? {
-        guard let appID = Self.instagramAppID else { return nil }
-        var components = URLComponents()
-        components.scheme = "instagram-stories"
-        components.host = "share"
-        components.queryItems = [URLQueryItem(name: "source_application", value: appID)]
-        guard let url = components.url,
-              UIApplication.shared.canOpenURL(url) else { return nil }
-        return url
-    }
-
-    /// Instagram reads this exact PNG from its documented shared-sticker pasteboard
-    /// key. A short, device-local lifetime avoids leaving the calendar on the global
-    /// pasteboard after the handoff has finished.
-    private func shareToInstagram(at url: URL) {
-        guard let pngData = renderedImage?.file.data else { return }
-        UIPasteboard.general.setItems(
-            [["com.instagram.sharedSticker.stickerImage": pngData]],
-            options: [
-                .expirationDate: Date().addingTimeInterval(5 * 60),
-                .localOnly: true,
-            ])
-        UIApplication.shared.open(url)
     }
 
     /// Photos receives the renderer's original PNG bytes as an asset resource. Passing
@@ -427,7 +369,7 @@ struct ShareCalendarSheet: View {
         guard !Task.isCancelled, options == renderOptions, let png else { return }
         preparedImage = PreparedImage(options: options, image: RenderedShareCalendar(
             image: UIImage(cgImage: cgImage, scale: 3, orientation: .up),
-            file: ShareCalendarPNG(data: png)))
+            file: SharePNG(data: png, filename: "get-a-grip-5-weeks.png")))
     }
 
     private struct RenderOptions: Equatable {
@@ -443,25 +385,7 @@ struct ShareCalendarSheet: View {
 
 private struct RenderedShareCalendar {
     let image: UIImage
-    let file: ShareCalendarPNG
-}
-
-/// A file-backed transfer keeps the `.png` extension as well as the PNG content type.
-private struct ShareCalendarPNG: Transferable {
-    let data: Data
-
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .png) { item in
-            let directory = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            try FileManager.default.createDirectory(
-                at: directory,
-                withIntermediateDirectories: true)
-            let url = directory.appendingPathComponent("get-a-grip-5-weeks.png")
-            try item.data.write(to: url, options: .atomic)
-            return SentTransferredFile(url)
-        }
-    }
+    let file: SharePNG
 }
 
 /// The alpha-preserving asset itself. Preview and ImageRenderer use this same view, so
@@ -534,7 +458,7 @@ private struct ShareCalendarExportCard: View {
 
             HStack {
                 Spacer()
-                Text("DOIGT")
+                Text("GET A GRIP")
                     .font(.labelCaps())
                     .tracking(0.8)
                     .opacity(0.7)
@@ -542,7 +466,7 @@ private struct ShareCalendarExportCard: View {
         }
         .foregroundStyle(spec.ink)
         // Width pinned to the grid, then centred by the outer frame; vertical padding
-        // still proposes the full height so the bottom spacer keeps DOIGT at the foot.
+        // still proposes the full height so the bottom spacer keeps the app name at the foot.
         .frame(width: Self.gridWidth)
         .padding(.vertical, 20)
         .frame(width: Self.width, height: Self.height, alignment: .top)

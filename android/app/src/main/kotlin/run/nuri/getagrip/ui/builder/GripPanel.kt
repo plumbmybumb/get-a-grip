@@ -251,12 +251,9 @@ private fun GripPanelHand(
     /// stops meaning anything.
     fun toggle(finger: FingerSet) {
         val fingers = grip.fingers
-        if (fingers.contains(finger)) {
-            if (fingers.count <= 1) return
-            onFingersChange(fingers.subtracting(finger))
-        } else {
-            onFingersChange(fingers.union(finger))
-        }
+        val next = run.nuri.getagrip.ui.components.FingerSelection.toggling(finger, fingers)
+        if (next == fingers) return
+        onFingersChange(next)
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
     }
 

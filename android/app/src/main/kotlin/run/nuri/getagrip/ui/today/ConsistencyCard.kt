@@ -109,7 +109,7 @@ fun ConsistencyCard(
                 }
             }
 
-            if (days.all { it.completed == 0 && it.climb == null && !it.benchmarked }) {
+            if (ConsistencyEmptyState.showsFirstUseHint(days)) {
                 Text(
                     tr("Your sessions will show up here."),
                     style = MaterialTheme.typography.bodySmall,
@@ -364,4 +364,10 @@ private fun ConsistencyCardPreview() {
     GetAGripTheme {
         Box(Modifier.padding(20.dp)) { ConsistencyCard(days) {} }
     }
+}
+
+
+internal object ConsistencyEmptyState {
+    fun showsFirstUseHint(days: List<DayRecord>): Boolean =
+        days.any { !it.tracked } && days.all { it.completed == 0 && it.climb == null && !it.benchmarked }
 }

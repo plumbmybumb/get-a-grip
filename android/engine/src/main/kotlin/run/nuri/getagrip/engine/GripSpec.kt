@@ -230,9 +230,8 @@ value class GripPosition(val rawValue: String) {
         val fullCrimp = GripPosition("fullCrimp")
         val drag = GripPosition("drag")
 
-        /// Thumb-opposition block work. Usually paired with `.thumb` in the finger set,
-        /// but deliberately not enforced here — the model records what you say you did.
-        /// (`GripSpec` is where the pinch invariant lives.)
+        /// Thumb-opposition block work. A pinch always includes the thumb; GripSpec
+        /// enforces that invariant during construction, copying and decoding.
         val pinch = GripPosition("pinch")
         /// Half-crimp isometric curl: a distinct identity for history and max targets.
         val fingerCurl = GripPosition("fingerCurl")

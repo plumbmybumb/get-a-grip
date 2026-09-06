@@ -111,6 +111,7 @@ fun MaxesListScreen(
     /// The `maxKey` whose earlier records are showing — at most one open at a time, the same
     /// accordion rule the builder's set rows follow.
     var expanded by remember { mutableStateOf<String?>(null) }
+    var deleteFailed by remember { mutableStateOf(false) }
 
     LaunchedEffect(feed) { feed.refresh() }
 
@@ -139,6 +140,12 @@ fun MaxesListScreen(
             AddRow { onAddMax(null) }
         }
 
+        if (deleteFailed) {
+            item("delete-error") {
+                Text(tr("Couldn't delete this max. Please try again."),
+                    style = MaterialTheme.typography.bodySmall, color = palette.alarm)
+            }
+        }
         if (histories.isNotEmpty()) {
             item("label") {
                 CapsLabel(tr("YOUR MAXES"), Modifier.padding(top = 10.dp, bottom = 2.dp))
@@ -149,7 +156,8 @@ fun MaxesListScreen(
                     label = entry.deleteLabel,
                     onDelete = {
                         scope.launch {
-                            if (templates.deleteMax(entry.record)) feed.refresh()
+                            deleteFailed = !templates.deleteMax(entry.record)
+                            if (!deleteFailed) feed.refresh()
                         }
                     },
                 ) {

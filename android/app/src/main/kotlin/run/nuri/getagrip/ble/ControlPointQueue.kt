@@ -56,6 +56,8 @@ interface ControlPointTransport {
     /// Arm/disarm the 2 s reply deadline for the one outstanding query.
     fun armReplyDeadline(id: ULong)
     fun cancelReplyDeadline()
+    fun armWriteDeadline(id: ULong)
+    fun cancelWriteDeadline()
 
     /// Arm the 1 s fallback that completes a sleep the device never acknowledges.
     fun armSleepFallback(id: ULong)
@@ -118,8 +120,15 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
     /// Each entry keeps its identity across its single retry so a failed query can remove
     /// exactly its own pending-reply slot without shifting the FIFO.
     fun enqueue(command: ProgressorCommand, startCause: StreamStartCause? = null) {
+        if (!transport.canWrite || command == ProgressorCommand.addCalibrationPoint) return
         nextWriteID += 1uL
         val entry = WriteEntry(id = nextWriteID, command = command, startCause = startCause)
+        if (command == ProgressorCommand.stopWeightMeasurement || command == ProgressorCommand.enterSleep) {
+            deferredStart = null
+            writeQueue.removeAll { it.command == ProgressorCommand.startWeightMeasurement }
+        } else if (command == ProgressorCommand.startWeightMeasurement) {
+            writeQueue.removeAll { it.command == ProgressorCommand.stopWeightMeasurement }
+        }
 
         if (command == ProgressorCommand.tare) {
             // Flip the latch before touching the queue. Any start already waiting to
@@ -192,7 +201,10 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
                 pendingReplies.addLast(PendingReply(entry.id, entry.command))
                 transport.armReplyDeadline(entry.id)
             }
-            if (type == ControlWriteType.withResponse) inFlightWrite = entry
+            if (type == ControlWriteType.withResponse) {
+                inFlightWrite = entry
+                transport.armWriteDeadline(entry.id)
+            }
             if (entry.command == ProgressorCommand.enterSleep) issuedSleepID = entry.id
 
             transport.write(entry.command, type == ControlWriteType.withResponse)
@@ -221,6 +233,7 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
     fun writeCompleted(error: String?) {
         val entry = inFlightWrite ?: return
         inFlightWrite = null
+        transport.cancelWriteDeadline()
 
         if (error != null) {
             val replyIndex = pendingReplies.indexOfFirst { it.id == entry.id }
@@ -230,6 +243,12 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
             }
             if (issuedSleepID == entry.id) issuedSleepID = null
 
+            // A failed old stream intent must not delay or revive its replacement.
+            val superseded = (entry.command == ProgressorCommand.startWeightMeasurement &&
+                writeQueue.any { it.command == ProgressorCommand.stopWeightMeasurement || it.command == ProgressorCommand.enterSleep }) ||
+                (entry.command == ProgressorCommand.stopWeightMeasurement &&
+                    (deferredStart != null || writeQueue.any { it.command == ProgressorCommand.startWeightMeasurement }))
+            if (superseded) { drain(); return }
             if (entry.retryCount == 0) {
                 entry.retryCount = 1
                 writeQueue.addFirst(entry)
@@ -286,6 +305,14 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
         drain()
     }
 
+    fun writeDeadlineFired(id: ULong) {
+        if (inFlightWrite?.id != id) return
+        // Completion is unknown: a retry could let a late ACK authorize the wrong
+        // command. Clear this physical link instead of continuing an ambiguous queue.
+        clearLinkState(clearDeferredStart = true)
+        transport.failPermanently(L10n.tr("Gauge did not acknowledge the command. Reconnect and try again."))
+    }
+
     // MARK: - Link lifecycle
 
     /// A fresh link may query again. Called when notifications are confirmed on, which is
@@ -299,6 +326,7 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
         writeQueue.clear()
         inFlightWrite = null
         transport.cancelReplyDeadline()
+        transport.cancelWriteDeadline()
         issuedSleepID = null
         if (clearDeferredStart) deferredStart = null
         // This latch is link-local: preserving it after the queue and its ACK died made

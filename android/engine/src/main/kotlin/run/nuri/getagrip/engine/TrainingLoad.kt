@@ -13,6 +13,8 @@ data class LoggedLoad(
     val finger: FingerStrain?,
 )
 
+/// Staged, tested calculations for a future trend surface. Current screens store and
+/// display the two effort inputs but do not present these derived load estimates.
 object TrainingLoad {
 
     /// Borg CR-10, which is the scale session-RPE is defined on.

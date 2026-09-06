@@ -7,6 +7,9 @@ import kotlinx.coroutines.test.runTest
 import run.nuri.getagrip.engine.ReminderTime
 import run.nuri.getagrip.store.RecordingAlarmScheduler
 import run.nuri.getagrip.store.ReminderPlanner
+import run.nuri.getagrip.store.ReminderAlarms
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,13 +56,14 @@ class ReminderPlannerTests {
         val halfDone = ReminderPlanner.requests(
             listOf(input(routineA, "Daily", listOf(morning, evening), outstanding = 1))
         )
-        assertEquals(1, halfDone.size)
-        assertEquals(19, halfDone.first().hour)
+        assertEquals(2, halfDone.size, "future occurrences must survive today's completion")
+        assertEquals(listOf(true, false), halfDone.map { it.suppressToday })
 
         val finished = ReminderPlanner.requests(
             listOf(input(routineA, "Daily", listOf(morning, evening), outstanding = 0))
         )
-        assertTrue(finished.isEmpty(), "the day is met — say nothing")
+        assertEquals(2, finished.size)
+        assertTrue(finished.all { it.suppressToday }, "say nothing today, resume tomorrow")
     }
 
     /// Overshooting the target must not wrap around and re-arm the morning.
@@ -69,7 +73,27 @@ class ReminderPlannerTests {
         val requests = ReminderPlanner.requests(
             listOf(input(routineA, "Daily", times, outstanding = -3))
         )
-        assertTrue(requests.isEmpty())
+        assertEquals(2, requests.size)
+        assertTrue(requests.all { it.suppressToday })
+    }
+
+    @Test
+    fun completedDayKeepsTomorrowWithoutReopeningApp() = runTest {
+        val zone = ZoneId.of("Europe/Paris")
+        val now = LocalDateTime.of(2026, 10, 24, 7, 0)
+        val routines = listOf(input(routineA, "Daily", listOf(ReminderTime(hour = 8, minute = 0),
+            ReminderTime(hour = 19, minute = 0)), outstanding = 0))
+        val scheduler = RecordingAlarmScheduler()
+        ReminderPlanner.replan(routines, scheduler)
+        assertEquals(2, scheduler.applied.size)
+        for (item in scheduler.applied) {
+            val first = ReminderAlarms.nextOccurrence(item.hour, item.minute, zone, now, item.suppressToday)
+            val expected = now.toLocalDate().plusDays(1).atTime(item.hour, item.minute).atZone(zone)
+            assertEquals(expected.toInstant().toEpochMilli(), first)
+            // The receiver schedules tomorrow by calendar day, even across DST.
+            assertEquals(expected.plusDays(1).toInstant().toEpochMilli(),
+                ReminderAlarms.tomorrow(item.hour, item.minute, zone, expected.toLocalDate()))
+        }
     }
 
     // MARK: - Identity

@@ -16,20 +16,19 @@ import kotlinx.serialization.json.JsonPrimitive
 // it cannot be shadowed — the display string is `displayName` on each enum below, and
 // `rawValue` still carries the wire string. Nothing else about them moves.
 
-/// How a rep ended. A closed domain — every one of these is a thing the runner can
-/// decide, and there is no "unknown" because nothing else writes a rep.
+/// How a rep ended, including historical outcomes retained for readable old exports.
+/// Unrecognized stored outcomes decode conservatively as aborted.
 enum class RepOutcome(val rawValue: String) {
     completed("completed"),
 
-    /// Force dropped below threshold for longer than the dropout window. The rep ends
-    /// promptly rather than freezing on screen waiting for a hand that has let go.
+    /// Historical outcome only; current builds never end a rep on a dropout timeout.
     earlyRelease("earlyRelease"),
 
     /// The user skipped it, deliberately.
     skipped("skipped"),
 
-    /// The session or the rep was cut short — BLE dropout past the auto-abort, or the
-    /// app leaving the foreground.
+    /// Explicit session abort, or an unreadable stored outcome. A dropout or
+    /// background transition alone never auto-aborts a pull.
     aborted("aborted");
 
     companion object {
@@ -123,7 +122,7 @@ data class RepSummary(
             // right door for that: null means "no target was recorded", which is true.
             targetLoKg = o.optionalDouble("targetLoKg"),
             targetHiKg = o.optionalDouble("targetHiKg"),
-            outcome = o.valueOr("outcome", RepOutcome.completed) { RepOutcome.fromJson(it) },
+            outcome = o.valueOr("outcome", RepOutcome.aborted) { RepOutcome.fromJson(it) },
             startedElapsedSeconds = o.optionalDouble("startedElapsedSeconds"),
             endedElapsedSeconds = o.optionalDouble("endedElapsedSeconds"),
         )

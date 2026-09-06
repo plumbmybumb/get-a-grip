@@ -35,6 +35,7 @@ struct MaxesView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var composing = false
+    @State private var deleteFailed = false
     /// The grip key whose earlier records are showing — at most one open at a time, the
     /// same accordion rule the builder's set rows follow.
     @State private var expanded: String?
@@ -52,6 +53,12 @@ struct MaxesView: View {
             }
 
             addRow.houseListRow(top: foldedHistories.isEmpty ? 2 : 12, bottom: 6)
+            if deleteFailed {
+                Text("Couldn't delete this max. Please try again.")
+                    .font(.system(.footnote))
+                    .foregroundStyle(Accent.alarm)
+                    .houseListRow(top: 2, bottom: 6)
+            }
 
             if !foldedHistories.isEmpty {
                 // A plain row, never a `Section` header: plain-style headers PIN, and the
@@ -228,7 +235,7 @@ struct MaxesView: View {
         // was pulled. Two deliberate actions instead of one undoable one is the honest
         // trade until the store can restore a record with its own date.
         Button(role: .destructive) {
-            _ = templates.deleteMax(record)
+            deleteFailed = !templates.deleteMax(record)
         } label: {
             Label("Delete", systemImage: "trash")
         }
@@ -490,11 +497,9 @@ struct MaxEntrySheet: View {
             // Full screen, not a nested sheet: you are hanging off a fingerboard while
             // it is up, and it has to be readable across the room. See `MaxMeasureView`.
             .fullScreenCover(isPresented: $measuring) {
-                TrainingAgreementGate(onCancel: { measuring = false }) {
-                    MaxMeasureView(grip: grip) { measured in
-                        kg = measured
-                        measuredKg = measured
-                    }
+                MaxMeasureView(grip: grip) { measured in
+                    kg = measured
+                    measuredKg = measured
                 }
             }
         }
@@ -594,7 +599,7 @@ struct MaxEntrySheet: View {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(impact.percentMoves) { move in
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(move.routineName)
+                                Text(move.side == .both ? move.routineName : "\(move.routineName) · \(move.side.name)")
                                     .font(.system(.subheadline, weight: .semibold))
                                     .foregroundStyle(Ink.primary)
                                 Text(percentLine(move))
@@ -781,7 +786,7 @@ struct MaxEntrySheet: View {
         failed = false
         // Asked BEFORE the record lands — afterwards the old max is just history and
         // the ratio it anchors is gone.
-        let oldKg = templates.currentMax(for: grip, side: side)
+        let previousMaxes = templates.maxTable
         // Spelled out rather than left to the default — and now it is genuinely a
         // choice: `source` is `.measured` only while the value is still the one the
         // gauge produced.
@@ -790,7 +795,7 @@ struct MaxEntrySheet: View {
             return
         }
         savedTick += 1
-        let computed = templates.maxImpact(grip: grip, oldKg: oldKg, newKg: kg)
+        let computed = templates.maxImpact(grip: grip, previousMaxes: previousMaxes, newKg: kg, side: side)
         if computed.isEmpty {
             onClose()
         } else {

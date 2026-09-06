@@ -98,15 +98,9 @@ fun FingerPips(
     /// ticking again. A double tick for a single action is the feedback rule's own failure
     /// mode — a tick has to name its cause, and nothing here caused two.
     fun toggle(finger: FingerSet) {
-        if (fingers.contains(finger)) {
-            // A set with no fingers on the edge is not a grip, so tapping the last engaged
-            // bar is a no-op — and gets NO TICK either, because confirming a refusal is how
-            // feedback stops meaning anything.
-            if (fingers.count <= 1) return
-            onChange(fingers.subtracting(finger))
-        } else {
-            onChange(fingers.union(finger))
-        }
+        val next = FingerSelection.toggling(finger, fingers)
+        if (next == fingers) return
+        onChange(next)
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
     }
 
@@ -245,6 +239,14 @@ fun FingerPips(
 /// the shape hanging over the runner and not a finger either. A drawing is its proportions
 /// as much as its corners.
 private const val BAR_LENGTH_RATIO = 38f / 22f
+
+/// Both hand pickers keep a real finger on the edge; the thumb cannot replace it.
+internal object FingerSelection {
+    fun toggling(finger: FingerSet, fingers: FingerSet): FingerSet {
+        val next = if (fingers.contains(finger)) fingers.subtracting(finger) else fingers.union(finger)
+        return if (next.subtracting(FingerSet.thumb).isEmpty) fingers else next
+    }
+}
 
 /// A hand's proportions, not a bar chart's. Applied to the DRAWN bar only.
 private val LENGTH_FACTOR = listOf(0.86f, 1.0f, 0.94f, 0.80f)

@@ -113,6 +113,9 @@ class FakeControlPointTransport(
     }
 
     override fun armReplyDeadline(id: ULong) = Unit
+    var writeDeadlineID: ULong? = null
+    override fun armWriteDeadline(id: ULong) { writeDeadlineID = id }
+    override fun cancelWriteDeadline() { writeDeadlineID = null }
     override fun cancelReplyDeadline() = Unit
     override fun armSleepFallback(id: ULong) = Unit
 

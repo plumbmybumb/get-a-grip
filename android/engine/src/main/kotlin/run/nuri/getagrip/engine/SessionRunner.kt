@@ -228,15 +228,18 @@ class SessionRunner(
         // edge still stops the rep, because that is a question about whether you are
         // pulling, not about which range you are pulling in.
         val band = slot.targetBand
-        if (!plan.pausesOutsideTargetBand || band == null) {
+        if (!plan.pausesOutsideTargetBand || band == null || band.endInclusive <= 0) {
             return RepGate(
                 engageLo = engageKg, engageHi = Double.POSITIVE_INFINITY,
                 releaseLo = releaseKg, releaseHi = Double.POSITIVE_INFINITY,
             )
         }
+        // A target line cannot require exact floating-point equality. Ordinary
+        // bands retain their authored bounds; lines tolerate half a 0.5 kg step.
+        val tolerance = if (band.start == band.endInclusive) 0.25 else 0.0
         return RepGate(
-            engageLo = band.start,
-            engageHi = band.endInclusive,
+            engageLo = max(Double.MIN_VALUE, band.start - tolerance),
+            engageHi = band.endInclusive + tolerance,
             releaseLo = max(0.0, band.start - releaseBand(band.start)),
             releaseHi = band.endInclusive + releaseBand(band.endInclusive),
         )
@@ -820,6 +823,11 @@ class SessionRunner(
         val current = phase
         if (current is RunnerPhase.Releasing) {
             return listOf(RunnerCue.ConnectionLost) + beginRest(current.slot, t)
+        }
+        if (current is RunnerPhase.Paused && current.before is RunnerPhase.Releasing) {
+            val index = current.before.slot
+            beginRest(index, pausedAt)
+            phase = RunnerPhase.Paused(RunnerPhase.Resting(index))
         }
         return listOf(RunnerCue.ConnectionLost)
     }

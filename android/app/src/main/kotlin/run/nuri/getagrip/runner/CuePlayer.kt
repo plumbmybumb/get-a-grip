@@ -57,9 +57,6 @@ import kotlin.math.sin
 /// short tick, a dull one a longer buzz, which is the closest the hardware gets.
 class CuePlayer(
     context: Context,
-    /// Honoured live, and checked at play time rather than latched at `begin()`.
-    @Volatile var soundEnabled: Boolean = true,
-    var hapticsEnabled: Boolean = true,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : CueSink {
 
@@ -68,7 +65,7 @@ class CuePlayer(
     private var isRunning = false
     private val audio = CueAudioQueue(
         dispatcher = dispatcher,
-        enabled = { soundEnabled },
+        enabled = { true },
         render = { ToneSynth.render(ToneSynth.notes(it)) },
         open = ::openTrack,
     )
@@ -164,7 +161,7 @@ class CuePlayer(
     // MARK: - Audio
 
     private fun sound(tone: ToneSynth.Tone) {
-        if (soundEnabled && isRunning) audio.play(tone)
+        if (isRunning) audio.play(tone)
     }
 
     // Called exclusively by the audio queue's worker, as are write and close.
@@ -220,7 +217,7 @@ class CuePlayer(
     // MARK: - Haptics
 
     private fun haptic(kind: CueHaptic) {
-        if (!hapticsEnabled || !isRunning) return
+        if (!isRunning) return
         val device = vibrator ?: return
         runCatching { device.vibrate(kind.effect()) }
     }

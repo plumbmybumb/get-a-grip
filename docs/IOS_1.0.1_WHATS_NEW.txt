@@ -2,7 +2,7 @@ Grip changes are harder to miss. The hand, banner and graph border turn orange w
 
 • Finger curl is now an option in the grip builder, with its own history and maxes.
 • A cleaner workout summary keeps Save and Discard within reach. New peaks and set details stay tucked away until you want to review them.
-• Rate how a session felt with the new finger-shaped effort bars. Tap or slide to choose, with a little lift and haptic feedback as you go.
+• Rate how a session felt with a simpler effort ladder. Tap or slide to fill the bars, with a gentle haptic as you choose. Tap the same level again to clear it.
 • Log a climbing session with less scrolling, and manage saved maxes directly from the Maxes tab.
 • Scan a shared routine straight from the new routine card.
 • Swipe right on a workout in History to export it. Choose a compact CSV summary or every pull, with more context for your AI assistant or spreadsheet.
@@ -10,3 +10,5 @@ Grip changes are harder to miss. The hand, banner and graph border turn orange w
 We've also worked through the smaller things that get in your way: quicker controls, smoother live progress, more reliable Bluetooth, and a graph that stays connected when you tare. Hold times can now go down to 1 second, and typed targets keep the exact values you enter.
 
 Settings is tidier, too. Extra details are tucked into expandable sections, including a link to the app's open-source code.
+
+This update also fixes missed reminders after a completed day, tidies up Live Activities when a workout ends, and improves recovery from Bluetooth interruptions.

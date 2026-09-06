@@ -18,7 +18,7 @@ import run.nuri.getagrip.engine.SessionKind
 /// per cell. Folding it in here made the screen O(logs) instead of O(days × logs) — but
 /// it also meant rewriting the rule, and a grid that silently changed what a filled
 /// square means would be a worse bug than the slowness it fixed.
-class DayLedger(logs: List<WorkoutLogEntity>, today: DayStamp) {
+class DayLedger(logs: List<WorkoutLogEntity>, today: DayStamp, trackingSince: DayStamp? = null) {
 
     /// What happened on one day, in the four terms the grid asks about.
     private data class Day(
@@ -53,7 +53,7 @@ class DayLedger(logs: List<WorkoutLogEntity>, today: DayStamp) {
             if (log.kind.isClimb) day.climbed = true
             if (log.kind == SessionKind.benchmark) day.benchmarked = true
         }
-        trackingSince = earliest?.let { DayStamp(it) } ?: today
+        this.trackingSince = trackingSince ?: earliest?.let { DayStamp(it) } ?: today
     }
 
     fun fraction(on: DayStamp): Double {

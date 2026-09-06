@@ -192,7 +192,7 @@ class DeviceStore(
     /// Tare button actually changes mode when it flips.**
     ///
     /// Separate from `isSignalFresh` because they answer different questions on different
-    /// clocks: that one drives an overlay and tolerates a full second of silence, this one
+    /// clocks: that one records diagnostics and tolerates a full second of silence, this one
     /// tolerates `tareReadingMaxAge`, because a tare cannot be taken back for the rest of
     /// the session. Republished by the same 500 ms watchdog, so it lags the true boundary
     /// by up to one tick — deliberately in the SAFE direction only.
@@ -413,12 +413,13 @@ class DeviceStore(
         // through `stopStreaming`, so without this the ring would show a link going away
         // with the stream apparently still running.
         if (isStreaming) record(DiagnosticBreadcrumb.StreamStopped(StreamStopCause.disconnecting))
-        cancelBackgroundGrace()
+        cancelBackgroundGrace(leavingBackground = false)
         client.disconnect()
         publishStreaming(false)
     }
 
     fun tare() {
+        if (!state.isConnected) return
         client.tare()
         // Re-issue the start command whenever a stream should be running. On the first
         // hardware session, taring mid-stream killed the graph for good — whether the
@@ -439,15 +440,15 @@ class DeviceStore(
     fun startStreaming(cause: StreamStartCause) {
         if (!state.isConnected) return
         record(DiagnosticBreadcrumb.StreamStartRequested(cause))
-        client.startStreaming(cause)
         publishStreaming(true)
+        client.startStreaming(cause)
     }
 
     fun stopStreaming(cause: StreamStopCause) {
         record(DiagnosticBreadcrumb.StreamStopped(cause))
-        client.stopStreaming()
         publishStreaming(false)
         publishCurrentKg(0.0)
+        client.stopStreaming()
     }
 
     fun readBattery() {
@@ -458,7 +459,7 @@ class DeviceStore(
     /// second daily session; sleeping it requires a physical button press to wake.
     fun sleepDevice() {
         if (isStreaming) record(DiagnosticBreadcrumb.StreamStopped(StreamStopCause.sleeping))
-        cancelBackgroundGrace()
+        cancelBackgroundGrace(leavingBackground = false)
         client.sleepDevice()
         publishStreaming(false)
         publishCurrentKg(0.0)
@@ -518,6 +519,7 @@ class DeviceStore(
     /// `connectedDevice` foreground service instead — see `SessionForegroundService` — and
     /// that session is streaming, so it takes the `none` branch below.)
     fun beginBackgroundGrace() {
+        isInBackground = true
         when (
             BackgroundGracePolicy.onLeavingForeground(
                 isConnected = state.isConnected,
@@ -554,7 +556,8 @@ class DeviceStore(
     /// Came back inside the window: the link was never touched, so there is nothing to
     /// restore — only the pending disconnect to call off, and the broadcast scan to stand
     /// back up.
-    fun cancelBackgroundGrace() {
+    fun cancelBackgroundGrace(leavingBackground: Boolean = true) {
+        if (leavingBackground) isInBackground = false
         if (resumeScanOnForeground) {
             resumeScanOnForeground = false
             connect()
@@ -579,6 +582,7 @@ class DeviceStore(
         if (state.isConnected && !isStreaming) disconnect()
     }
 
+    private var isInBackground = false
     private var backgroundGraceJob: Job? = null
 
     /// Set when the background rule tears down a broadcast scan; consumed by the next
@@ -676,6 +680,7 @@ class DeviceStore(
     }
 
     private fun ingest(sample: ForceSample) {
+        if (!isStreaming) return
         pipelineDiagnostics.sample()
         publishCurrentKg(sample.kg)
         if (isStreaming) {
@@ -788,6 +793,7 @@ class DeviceStore(
     private fun publishStreaming(streaming: Boolean) {
         if (isStreaming == streaming) return
         isStreaming = streaming
+        if (!streaming && isInBackground) beginBackgroundGrace()
         if (streaming) startFreshnessWatchdog() else stopFreshnessWatchdog()
     }
 

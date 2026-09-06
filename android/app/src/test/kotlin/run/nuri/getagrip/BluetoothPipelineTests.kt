@@ -4,6 +4,7 @@
 package run.nuri.getagrip
 
 import kotlin.test.*
+import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.PacketBoundary
 import run.nuri.getagrip.ble.StreamingConnectionPriority
 import run.nuri.getagrip.ble.withPacket
@@ -16,6 +17,8 @@ class BluetoothPipelineTests {
     @Test fun packetPublishesOnceWhileAllRawSamplesRemainImmediate() {
         val client = RecordingProgressorClient()
         val store = DeviceStore(client = client, scope = inertScope(), clock = FakeClock())
+        client.connect()
+        store.startStreaming(StreamStartCause.manualMeasurement)
         val revision = store.sampleRevision
         val received = mutableListOf<ForceSample>()
         store.onSample = { sample ->

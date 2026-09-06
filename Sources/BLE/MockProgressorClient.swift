@@ -97,7 +97,7 @@ final class MockProgressorClient: ProgressorClient {
         case .tare:
             // Tare zeroes whatever is on the gauge right now — the same trap as the
             // real device: tare under load and every reading after it is wrong.
-            tareOffsetKg += rawForceNow()
+            tareOffsetKg = rawForceNow()
         case .startWeightMeasurement:
             // Starts need a cause so the diagnostic ring cannot claim a reason that the
             // caller never supplied; `startStreaming(cause:)` is the only start path.
@@ -119,6 +119,7 @@ final class MockProgressorClient: ProgressorClient {
     func startStreaming(cause: StreamStartCause) {
         guard state.isConnected else { return }
         onDiagnostic?(.streamStartWritten(cause))
+        deviceMicros = 0
         startPump()
     }
 
@@ -146,6 +147,10 @@ final class MockProgressorClient: ProgressorClient {
     private func stopPump() {
         pump?.cancel()
         pump = nil
+        // Each demo stream replays the profile from zero. Release its synthetic load
+        // here too, so the next session's pre-start tare cannot capture the last pull.
+        elapsedSamples = 0
+        tareOffsetKg = 0
     }
 
     /// One notification's worth of samples, exactly as the device batches them —
@@ -154,10 +159,10 @@ final class MockProgressorClient: ProgressorClient {
     private func emitBatch() {
         onPacketBoundary?(.began(receivedAt: ProcessInfo.processInfo.systemUptime))
         defer { onPacketBoundary?(.ended) }
-        for _ in 0..<Self.batchSize {
+        for index in 0..<Self.batchSize {
             let seconds = Double(elapsedSamples) / Self.sampleHz
             let kg = MockForceProfile.force(at: seconds, profile: profile) - tareOffsetKg
-            onEvent?(.sample(ForceSample(kg: kg, deviceMicros: deviceMicros)))
+            onEvent?(.sample(ForceSample(kg: kg, deviceMicros: deviceMicros, isBatchStart: index == 0)))
             elapsedSamples += 1
             // Wrapping on purpose: over a long session the real device's UInt32 µs
             // clock rolls over at ~71.6 minutes, and the app must survive it.

@@ -159,7 +159,7 @@ fun MaxEntrySheet(
         submission.launch(scope) {
             // Asked BEFORE the record lands — afterwards the old max is just history and the
             // ratio it anchors is gone.
-            val oldKg = templates.currentMax(grip, side)
+            val previousMaxes = templates.maxTable.copy()
             if (!templates.recordMax(
                     kg = kg,
                     grip = grip,
@@ -177,7 +177,7 @@ fun MaxEntrySheet(
             }
             feed.refresh()
             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-            val computed = templates.maxImpact(grip = grip, oldKg = oldKg, newKg = kg)
+            val computed = templates.maxImpact(grip = grip, previousMaxes = previousMaxes, newKg = kg, side = side)
             if (computed.isEmpty) onClose() else impact = computed
         }
     }
@@ -482,7 +482,8 @@ private fun ColumnScope.ImpactContent(
             impact.percentMoves.forEach { move ->
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        move.routineName,
+                        if (move.side == Side.both) move.routineName
+                        else "${move.routineName} · ${move.side.displayName}",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = palette.inkPrimary,

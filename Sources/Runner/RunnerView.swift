@@ -151,8 +151,8 @@ struct RunnerView: View {
                 // (Nuri, 2026-08-10: "when you first come back you get a little dot, then
                 // after a while the stream continues"). The gauge stops sending while the
                 // app is suspended, and the only thing that revived it was the stream
-                // watchdog — which sleeps 1.5 s between checks and then wants 1.6 s of
-                // silence, so up to about three seconds of nothing. The dot was the one or
+                // RunnerSession watchdog, which checks every 500 ms and requires
+                // 0.8 s of Progressor silence (longer for sparse gauges). The dot was the one or
                 // two samples that made it through; everything after was the wait.
                 //
                 // Re-sending start to a stream that is already alive is harmless, which is

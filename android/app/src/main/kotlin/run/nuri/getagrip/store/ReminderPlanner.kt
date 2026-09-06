@@ -81,6 +81,7 @@ object ReminderPlanner {
         val body: String,
         val hour: Int,
         val minute: Int,
+        val suppressToday: Boolean = false,
     ) {
         /// `AlarmManager` addresses an alarm by its `PendingIntent`, and a `PendingIntent`
         /// is identified by its request code — so the content-keyed identifier has to
@@ -121,7 +122,7 @@ object ReminderPlanner {
             // last slot instead would silence the reminder you still need.
             val sorted = routine.reminders.toSet().sorted()
             val suppressed = maxOf(0, sorted.size - maxOf(0, routine.outstandingToday))
-            for (slot in sorted.drop(suppressed)) {
+            for ((index, slot) in sorted.withIndex()) {
                 val id = identifier(routine.id, slot)
                 if (!claimed.add(id)) continue
                 planned.add(
@@ -131,6 +132,7 @@ object ReminderPlanner {
                         body = L10n.tr("Time for a session."),
                         hour = slot.hour,
                         minute = slot.minute,
+                        suppressToday = index < suppressed,
                     )
                 )
             }
@@ -220,7 +222,8 @@ class AndroidAlarmScheduler(
             PackageManager.PERMISSION_GRANTED
 
     private fun schedule(item: ReminderPlanner.PlannedReminder) {
-        val at = ReminderAlarms.nextOccurrence(item.hour, item.minute, zone)
+        val at = ReminderAlarms.nextOccurrence(item.hour, item.minute, zone,
+            suppressToday = item.suppressToday)
         alarms.setWindow(
             AlarmManager.RTC_WAKEUP,
             at,
@@ -254,10 +257,11 @@ object ReminderAlarms {
     /// right to pierce a Focus mode.
     const val windowMillis: Long = 15 * 60 * 1000L
 
-    fun nextOccurrence(hour: Int, minute: Int, zone: ZoneId, from: LocalDateTime? = null): Long {
+    fun nextOccurrence(hour: Int, minute: Int, zone: ZoneId, from: LocalDateTime? = null,
+                       suppressToday: Boolean = false): Long {
         val now = from ?: LocalDateTime.now(zone)
         var next = LocalDateTime.of(now.toLocalDate(), java.time.LocalTime.of(hour, minute))
-        if (!next.isAfter(now)) next = next.plusDays(1)
+        if (suppressToday || !next.isAfter(now)) next = next.plusDays(1)
         return next.atZone(zone).toInstant().toEpochMilli()
     }
 

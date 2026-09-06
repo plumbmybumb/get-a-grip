@@ -214,7 +214,14 @@ final class TourController {
     /// Not persisted: a tour interrupted by quitting the app is a tour you skipped.
     private(set) var awaitingRoutine = false
 
-    var current: TourStep? { index < steps.count ? steps[index] : nil }
+    var current: TourStep? {
+        guard index < steps.count else { return nil }
+        var step = steps[index]
+        // Intro steps without an explicit tab live on Today. Back from History must
+        // restore it before the spotlight asks for Today's anchors again.
+        if act == .intro, step.tab == nil { step.tab = 0 }
+        return step
+    }
     var isRunning: Bool { current != nil }
     var progress: String { String(localized: "\(index + 1) of \(steps.count)") }
 
@@ -340,14 +347,6 @@ extension View {
     /// Register this view as something the tour can point at. Free when no tour is running.
     func tourAnchor(_ target: TourTarget) -> some View {
         anchorPreference(key: TourAnchorKey.self, value: .bounds) { [target: [$0]] }
-            // Doubles as a SCROLL id, so a host inside a ScrollView can bring the control
-            // into view before the spotlight tries to light it — half the builder's
-            // controls are below the fold, and a hole punched over empty space below the
-            // screen is a step that explains nothing (Nuri, 2026-08-09).
-            //
-            // Constant per control, so identity never changes and no `ValueRow` loses the
-            // number you were typing into it.
-            .id(target)
     }
 
     /// Draw the tour over this container. Attach it at the ROOT of a screen, above the
@@ -430,6 +429,7 @@ private struct TourOverlay: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var cardHeight: CGFloat = 0
+    @AccessibilityFocusState private var focusCallout: Bool
 
     /// Breathing room around the lit control, so the hole reads as "this thing" rather
     /// than as a crop of it.
@@ -468,7 +468,13 @@ private struct TourOverlay: View {
         // escape hatch.
         .onTapGesture { if tapAnywhereAdvances { onNext() } }
         .transition(.opacity)
-        .animation(reduceMotion ? Motion.reduced : Motion.state(false), value: step)
+        .animation(Motion.state(reduceMotion), value: step)
+        .task(id: step) {
+            focusCallout = false
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            focusCallout = true
+        }
         .accessibilityElement(children: .contain)
         // Scoped to non-interactive steps only: `.isModal` hides every element outside
         // this subtree from VoiceOver, including the real control an interactive step
@@ -504,13 +510,17 @@ private struct TourOverlay: View {
                 .font(Font.labelCaps())
                 .tracking(0.8)
                 .foregroundStyle(.white.opacity(0.55))
-            Text(step.title)
-                .font(.system(.title3, weight: .semibold))
-                .foregroundStyle(.white)
-            Text(step.body)
-                .font(.system(.subheadline))
-                .foregroundStyle(.white.opacity(0.82))
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 10) {
+                Text(step.title)
+                    .font(.system(.title3, weight: .semibold))
+                    .foregroundStyle(.white)
+                Text(step.body)
+                    .font(.system(.subheadline))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityFocused($focusCallout)
 
             HStack(spacing: 10) {
                 if canGoBack {

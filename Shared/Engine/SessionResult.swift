@@ -7,17 +7,16 @@ import Foundation
 // now because `WorkoutLog`'s blob columns are typed on them, and a log written in M3
 // must be readable by every build after it.
 
-/// How a rep ended. A closed domain — every one of these is a thing the runner can
-/// decide, and there is no "unknown" because nothing else writes a rep.
+/// How a rep ended, including historical outcomes retained for readable old exports.
+/// Unrecognized stored outcomes decode conservatively as aborted.
 enum RepOutcome: String, Codable, Hashable, Sendable {
     case completed
-    /// Force dropped below threshold for longer than the dropout window. The rep ends
-    /// promptly rather than freezing on screen waiting for a hand that has let go.
+    /// Historical outcome only; current builds never end a rep on a dropout timeout.
     case earlyRelease
     /// The user skipped it, deliberately.
     case skipped
-    /// The session or the rep was cut short — BLE dropout past the auto-abort, or the
-    /// app leaving the foreground.
+    /// The session was explicitly aborted, or a stored outcome is unreadable.
+    /// A dropout or background transition alone never auto-aborts a pull.
     case aborted
 }
 
@@ -87,7 +86,7 @@ extension RepSummary {
         // right door for that: nil means "no target was recorded", which is true.
         self.targetLoKg = c.optional(.targetLoKg)
         self.targetHiKg = c.optional(.targetHiKg)
-        self.outcome = c.value(.outcome, or: .completed)
+        self.outcome = c.value(.outcome, or: .aborted)
         self.startedElapsedSeconds = c.optional(.startedElapsedSeconds)
         self.endedElapsedSeconds = c.optional(.endedElapsedSeconds)
     }

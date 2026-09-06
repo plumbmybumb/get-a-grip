@@ -270,7 +270,8 @@ private fun TitleRow(
                     .size(44.dp)
                     .clip(CircleShape)
                     .clickable(interactionSource = interaction, indication = null, role = Role.Button) { onMenuOpen() }
-                    .pressFeedback(interaction),
+                    .pressFeedback(interaction)
+                    .tourAnchor(TourTarget.StartWithoutGauge),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -808,7 +809,7 @@ private fun batteryNote(battery: Double?, armed: Color): Note? {
     if (battery == null || battery >= 0.15) return null
     return Note(
         Icons.Outlined.BatteryAlert,
-        L10n.tr("Gauge battery at %d%% — charge it soon.", Math.round(battery * 100)),
+        L10n.tr("Gauge battery at %d%% — charge it soon.", run.nuri.getagrip.ui.components.BatteryDisplay.percentage(battery)),
         armed,
     )
 }

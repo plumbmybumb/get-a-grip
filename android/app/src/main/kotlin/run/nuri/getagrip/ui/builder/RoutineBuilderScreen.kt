@@ -60,9 +60,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -103,7 +101,7 @@ import run.nuri.getagrip.ui.tour.tourAnchor
 ///
 /// This is the entry point the rest of the app calls. It reads the stores itself, so the
 /// caller supplies only the mode and a way to close.
-@OptIn(ExperimentalMaterial3Api::class, kotlinx.coroutines.FlowPreview::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutineBuilderHost(
     mode: BuilderMode,
@@ -144,9 +142,10 @@ fun RoutineBuilderHost(
         }
     }
 
-    var draft by remember(seed) { mutableStateOf(seed) }
+    val editableSeed = remember(seed) { BuilderDraft.editable(seed) }
+    var draft by remember(seed) { mutableStateOf(editableSeed) }
     /// The seed, kept only to answer "is this dirty".
-    val initialDraft = remember(seed) { seed }
+    val initialDraft = editableSeed
 
     /// At most ONE open set row. The accordion is not only a readability device: it is what
     /// guarantees exactly one dense control cluster can exist on screen at a time.
@@ -189,7 +188,7 @@ fun RoutineBuilderHost(
         if (BuilderDraft.stashes(mode)) {
             val rescued = templates.restoreDraft()
             if (rescued != null && rescued != draft) {
-                draft = rescued
+                draft = BuilderDraft.editable(rescued)
                 // A rescued draft means this build was already under way in a previous
                 // session, so the walkthrough has been walked. Retiring it here also keeps
                 // the restore's own value changes from deciding which card to show.
@@ -198,14 +197,12 @@ fun RoutineBuilderHost(
         }
     }
 
-    // A single collector debounces persistence; edits themselves are applied immediately.
-    // Keeping this separate avoids launching a new persistence coroutine in composition.
+    // One pending write reads the current draft; a held slider cannot defer rescue
+    // indefinitely or cancel and reallocate a timer on each detent.
     if (BuilderDraft.stashes(mode)) {
         LaunchedEffect(Unit) {
-            snapshotFlow { draft }
-                .drop(1)
-                .debounce(BuilderDraft.stashDebounceMillis)
-                .collect { templates.stashDraft(it) }
+            val stash = DraftStashCoalescer(this) { templates.stashDraft(draft) }
+            snapshotFlow { draft }.drop(1).collect { stash.changed() }
         }
     }
 

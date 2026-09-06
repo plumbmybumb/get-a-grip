@@ -161,13 +161,17 @@ struct SessionRunner: Sendable {
         // it just stops refereeing. Note what this does NOT loosen: letting go of the
         // edge still stops the rep, because that is a question about whether you are
         // pulling, not about which range you are pulling in.
-        guard plan.pausesOutsideTargetBand, let band = slot.targetBand else {
+        guard plan.pausesOutsideTargetBand, let band = slot.targetBand, band.upperBound > 0 else {
             return RepGate(engageLo: engageKg, engageHi: .infinity,
                            releaseLo: releaseKg, releaseHi: .infinity)
         }
+        // A target line (including rounded percentage endpoints) cannot require
+        // exact floating-point equality. Half the 0.5 kg display step is a small
+        // engagement tolerance; ordinary bands keep their authored bounds.
+        let tolerance = band.lowerBound == band.upperBound ? 0.25 : 0
         return RepGate(
-            engageLo: band.lowerBound,
-            engageHi: band.upperBound,
+            engageLo: max(Double.leastNonzeroMagnitude, band.lowerBound - tolerance),
+            engageHi: band.upperBound + tolerance,
             releaseLo: max(0, band.lowerBound - Self.releaseBand(for: band.lowerBound)),
             releaseHi: band.upperBound + Self.releaseBand(for: band.upperBound))
     }
@@ -760,6 +764,10 @@ struct SessionRunner: Sendable {
         // no way out but Skip — so the rest starts now and the countdown is honest.
         if case .releasing(let index) = phase {
             return [.connectionLost] + beginRest(after: index, at: t)
+        }
+        if case .paused(before: .releasing(let index)) = phase {
+            _ = beginRest(after: index, at: pausedAt)
+            phase = .paused(before: .resting(slot: index))
         }
         return [.connectionLost]
     }

@@ -412,8 +412,6 @@ struct TargetBandRow: View {
         set.targetHiPercent = nil
     }
 
-    private func percentInt(_ fraction: Double) -> Int { Int((fraction * 100).rounded()) }
-
     private func apply(_ range: ClosedRange<Double>) {
         set.targetLoPercent = range.lowerBound
         set.targetHiPercent = range.upperBound

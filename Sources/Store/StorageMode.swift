@@ -9,10 +9,11 @@ import Foundation
 /// history is in iCloud when it is device-only would discover the truth at the moment
 /// they lose the device. Asserting the happy case is not a safe default.
 enum StorageMode {
-    /// App Group container, CloudKit private sync.
+    /// App Group container configured for CloudKit private sync. This describes the
+    /// store configuration, not account availability or a completed upload.
     case cloud
     /// App Group container, no sync — the iCloud entitlement is missing (ad-hoc
-    /// simulator signing strips it) or iCloud is unavailable on the device.
+    /// simulator signing strips it) or the CloudKit container could not be opened.
     case localOnly
     /// Neither entitlement available: a DIFFERENT store file at the default location.
     /// Anything previously saved to the group container is not in this one, so an
@@ -22,7 +23,7 @@ enum StorageMode {
     var aboutLine: String {
         switch self {
         case .cloud:
-            String(localized: "Your routines and sessions stay on this device and in your private iCloud. Nobody else can read them — not even us.")
+            String(localized: "Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing.")
         case .localOnly:
             String(localized: "iCloud isn't available, so your routines and sessions are stored only on this device. They won't sync or restore.")
         case .isolated:

@@ -1081,7 +1081,11 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
         // Re-check on the tap against the live stores. A pull that starts after an unloaded
         // press must not slip through an enabled frame and zero load.
         if (!device.state.isConnected) return@WideButton
-        when (decision) {
+        when (TarePolicy.tapDecision(
+            phase = session.snapshot.phase,
+            isReadingLive = device.isReadingLive,
+            isLoadedForTare = device.isLoadedForTare,
+        )) {
             TareTapDecision.blocked -> Unit
             // Not a tare, and `wakeStream()` cannot become one: with no live samples the load
             // is unknown, and the frozen reading says 0 kg however loaded the gauge is.
@@ -1118,7 +1122,7 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
                             currentEpoch = device.connectionEpoch,
                             isConnected = device.state.isConnected,
                             sampleAge = device.secondsSinceLastSample(),
-                            phase = snapshot.phase,
+                            phase = session.snapshot.phase,
                             maxAgeSeconds = device.tareReadingMaxAge,
                         )
                     ) {

@@ -116,6 +116,7 @@ fun MaxMeasureScreen(
     val haptics = LocalHapticFeedback.current
 
     val measurement = remember { MaxMeasurement() }
+    var frozenTrace by remember { mutableStateOf<List<DeviceStore.TracePoint>?>(null) }
     var phase by remember { mutableStateOf(MaxMeasurePhase.ready) }
     /// Bumped on every Start, so the timeout effect restarts with the attempt rather than
     /// continuing to count from the first one.
@@ -131,6 +132,7 @@ fun MaxMeasureScreen(
         if (phase != MaxMeasurePhase.measuring) return
         device.onTracePoint = null
         if (device.isStreaming) device.stopStreaming(cause)
+        frozenTrace = device.trace.toList()
         phase = MaxMeasurePhase.done
     }
 
@@ -146,6 +148,7 @@ fun MaxMeasureScreen(
         // backwards across a tare or a device counter reset.
         device.onTracePoint = { point -> measurement.receive(point) }
         device.startStreaming(StreamStartCause.manualMeasurement)
+        frozenTrace = null
         phase = MaxMeasurePhase.measuring
         attemptTick += 1
     }
@@ -249,6 +252,7 @@ fun MaxMeasureScreen(
                         .height(TRACE_HEIGHT),
                 ) {
                     ForceTraceView(
+                        frozenSamples = frozenTrace,
                         modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
                         thresholdKg = if (measurement.hasResult) measurement.peakKg else null,
                         tint = if (phase == MaxMeasurePhase.measuring) palette.bleu else palette.inkTertiary,
@@ -265,7 +269,8 @@ fun MaxMeasureScreen(
 
                 Spacer(Modifier.weight(1f))
 
-                if (!device.state.isConnected) {
+                // A completed attempt is local data: disconnecting cannot hide its save action.
+                if (!device.state.isConnected && phase != MaxMeasurePhase.done) {
                     // SHOWN rather than a disabled button: a control you cannot use teaches
                     // nothing, and the way out is what matters here.
                     Text(
@@ -347,6 +352,7 @@ fun MaxMeasureScreen(
                             SecondaryButton(
                                 title = tr("Try again"),
                                 icon = Icons.Outlined.Refresh,
+                                enabled = device.state.isConnected,
                                 modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
                             ) { start() }
                             PrimaryButton(

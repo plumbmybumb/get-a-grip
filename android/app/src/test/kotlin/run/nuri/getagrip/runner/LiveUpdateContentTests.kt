@@ -66,6 +66,7 @@ class LiveUpdateContentTests {
             Triple(SessionActivityPhase.leadIn, "Get ready", LiveUpdateContent.TINT_CALM),
             Triple(SessionActivityPhase.armed, "Pull now", LiveUpdateContent.TINT_ARMED),
             Triple(SessionActivityPhase.pulling, "Holding", LiveUpdateContent.TINT_PULLING),
+            Triple(SessionActivityPhase.releasing, "Let go", LiveUpdateContent.TINT_CALM),
             Triple(SessionActivityPhase.resting, "Rest", LiveUpdateContent.TINT_CALM),
             Triple(SessionActivityPhase.paused, "Paused", LiveUpdateContent.TINT_PAUSED),
         )
@@ -116,6 +117,23 @@ class LiveUpdateContentTests {
         assertNull(card.chronometerEndsAtMillis)
         assertEquals("Paused", card.title)
         assertFalse(card.isActive)
+    }
+
+    @Test
+    fun releasingCannotShowTheUpcomingRestOrAnArmedHoldCountdown() {
+        val card = content(state(SessionActivityPhase.releasing, endsAt = 1_020_000L, pending = 7))
+        assertEquals("Let go", card.title)
+        assertNull(card.chronometerEndsAtMillis)
+        assertFalse(card.isActive)
+        val resting = content(state(SessionActivityPhase.resting, endsAt = 1_023_000L))
+        assertEquals(1_023_000L, resting.chronometerEndsAtMillis)
+    }
+
+    @Test
+    fun armedIgnoresAnObsoleteDeadlineAndShowsOnlyTheHoldLength() {
+        val card = content(state(SessionActivityPhase.armed, endsAt = 1_020_000L, pending = 7))
+        assertEquals("Pull now · 7s", card.title)
+        assertNull(card.chronometerEndsAtMillis)
     }
 
     /// **ARMED waits on YOU, with no timeout, by design** — so there is no deadline to count

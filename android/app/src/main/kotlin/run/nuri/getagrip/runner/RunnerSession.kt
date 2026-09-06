@@ -32,6 +32,7 @@ import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.engine.StaleBatchHealDecision
 import run.nuri.getagrip.engine.StaleBatchHealer
 import run.nuri.getagrip.store.DeviceStore
+import run.nuri.getagrip.store.TarePolicy
 import java.time.Instant
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -304,7 +305,7 @@ class RunnerSession(
     /// iOS gets the same shape for free: `bluetooth-central` is a capability of the app, not
     /// of the current connection.
     private fun updateForegroundService() {
-        if (serviceRunning || timerOnly) return
+        if (serviceRunning || timerOnly || hasEnded || runner.isFinished) return
         // A gauge-free session has nothing to keep alive: no samples are coming, so
         // `RunnerLifecycle` pauses it outright on the way out. Same for a broadcast scale,
         // whose scan the OS silences whatever we ask for.
@@ -319,7 +320,7 @@ class RunnerSession(
     /// The session's real first phase is connect-and-tare, which is why Start on Today is
     /// deliberately enabled while the gauge is still asleep.
     fun startIfReady(cause: StreamStartCause) {
-        if (timerOnly || !device.state.isConnected) return
+        if (timerOnly || hasEnded || runner.isFinished || !device.state.isConnected) return
         // UNCONDITIONAL, deliberately. This used to be `if (!device.isStreaming)`, and that
         // guard could only ever SKIP the one command the session depends on — if
         // `isStreaming` was true while the gauge was not actually streaming (a stale flag
@@ -337,9 +338,10 @@ class RunnerSession(
         hasStarted = true
         // Tare FIRST, then start — the order the vendor's own app uses. The reversed order
         // tared a freshly started stream, and on real firmware that killed it.
+        armStaleBatchHeal()
+        send(RunnerEvent.TareCommitted)
         device.tare()
         device.startStreaming(StreamStartCause.initial)
-        send(RunnerEvent.TareCommitted)
         send(RunnerEvent.Start)
         armStreamWatchdog()
     }
@@ -384,7 +386,7 @@ class RunnerSession(
     /// to run rather than a guarantee of the API. With the load unknown (that is what stale
     /// means) a tare is the one thing that must not happen here.
     fun wakeStream() {
-        if (timerOnly || !device.state.isConnected) return
+        if (timerOnly || hasEnded || runner.isFinished || !device.state.isConnected) return
         restartStreamArmingStaleBatchHeal(StreamStartCause.manualWake)
     }
 
@@ -403,10 +405,15 @@ class RunnerSession(
             device.startStreaming(cause)
             return
         }
-        staleBatchHealArmedAt = clock.uptimeSeconds()
-        consecutiveRejectingChecks = 0
+        armStaleBatchHeal()
         send(RunnerEvent.StreamRestarted)
         device.startStreaming(cause)
+    }
+
+    private fun armStaleBatchHeal() {
+        if (!hasDeviceClock) return
+        staleBatchHealArmedAt = clock.uptimeSeconds()
+        consecutiveRejectingChecks = 0
     }
 
     private fun applyStaleBatchHealDecision(checkTime: Double) {
@@ -448,8 +455,14 @@ class RunnerSession(
     }
 
     fun tare() {
-        device.tare()
+        if (timerOnly || hasEnded || runner.isFinished || !device.state.isConnected) return
+        if (!TarePolicy.phaseAllowsTare(runner.phase) ||
+            !TarePolicy.isSafeToTareNow(device.secondsSinceLastSample(), device.tareReadingMaxAge)) return
+        // DeviceStore re-kicks a running stream after tare. Buffered pre-tare samples
+        // can anchor the new epoch first; allow only the same bounded single-use heal.
+        if (device.isStreaming) armStaleBatchHeal()
         send(RunnerEvent.TareCommitted)
+        device.tare()
     }
 
     // MARK: - The one funnel
@@ -463,6 +476,11 @@ class RunnerSession(
         val emitted = runner.handle(event, at = now, recordedAt = clock.uptimeSeconds())
         if (runner.isFinished && finishedAt == null) {
             finishedAt = startedAt.plusNanos(((runner.finishedElapsedSeconds ?: 0.0) * 1e9).toLong())
+            activity.end()
+            if (serviceRunning) {
+                serviceRunning = false
+                service.end()
+            }
         }
         publish()
         runner.newGripID?.let { if (announcedGrips.add(it)) cues.gripChanged() }
@@ -522,6 +540,7 @@ class RunnerSession(
     /// notification counts down on its own from `endsAt`, so forwarding a ticking number
     /// would spend the platform's update budget on frames it would have drawn anyway.
     private fun pushActivity() {
+        if (snapshot.isFinished) return
         val grip = snapshot.grip ?: return
         if (!activity.isRunning) return
         val signature = ActivitySignature(
@@ -576,7 +595,7 @@ class RunnerSession(
             // An ABSOLUTE deadline, recomputed from the same countdown the screen shows.
             // Converting to a wall-clock instant here is what lets the notification tick
             // without us.
-            endsAtEpochMillis = if (!isArmed && snapshot.secondsShown > 0) {
+            endsAtEpochMillis = if (phase.runsCountdown && snapshot.secondsShown > 0) {
                 System.currentTimeMillis() + snapshot.secondsShown * 1_000L
             } else {
                 null
@@ -598,9 +617,8 @@ class RunnerSession(
                 is RunnerPhase.Idle, is RunnerPhase.LeadIn -> SessionActivityPhase.leadIn
                 is RunnerPhase.Armed -> SessionActivityPhase.armed
                 is RunnerPhase.Working -> SessionActivityPhase.pulling
-                // "Let go" shares rest's colour: the hold is banked either way, and a fifth
-                // word on a glanceable card buys less than it costs.
-                is RunnerPhase.Releasing, is RunnerPhase.Resting -> SessionActivityPhase.resting
+                is RunnerPhase.Releasing -> SessionActivityPhase.releasing
+                is RunnerPhase.Resting -> SessionActivityPhase.resting
                 is RunnerPhase.Finished -> SessionActivityPhase.resting
                 is RunnerPhase.Paused -> SessionActivityPhase.paused
             }

@@ -28,6 +28,7 @@ struct MaxMeasureView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var measurement = MaxMeasurement()
+    @State private var frozenTrace: [DeviceStore.TracePoint]?
     @State private var phase: MaxMeasurePhase = .ready
     @State private var timeout: Task<Void, Never>?
 
@@ -101,7 +102,7 @@ struct MaxMeasureView: View {
     /// The shape of the pull, with the result drawn across it as the dashed rule — so
     /// the number and the effort that produced it are one picture.
     private var trace: some View {
-        MaxMeasurementTrace(measurement: measurement, isMeasuring: phase == .measuring)
+        MaxMeasurementTrace(measurement: measurement, isMeasuring: phase == .measuring, frozenTrace: frozenTrace)
     }
 
     /// No peak-versus-held footnote any more: with the result BEING the peak there is no
@@ -114,7 +115,8 @@ struct MaxMeasureView: View {
 
     @ViewBuilder
     private var controls: some View {
-        if !device.state.isConnected {
+        // A completed attempt is local data: disconnecting cannot take away its save action.
+        if !device.state.isConnected, phase != .done {
             // SHOWN rather than a disabled button: a control you cannot use teaches
             // nothing, and the way out is what matters here.
             VStack(spacing: 12) {
@@ -150,6 +152,7 @@ struct MaxMeasureView: View {
                 VStack(spacing: 12) {
                     SecondaryGlassButton(title: String(localized: "Try again"),
                                          systemImage: "arrow.counterclockwise") { start() }
+                        .disabled(!device.state.isConnected)
                     MaxMeasurementUseButton(measurement: measurement,
                                             onUse: onUse,
                                             onDismiss: { dismiss() })
@@ -172,6 +175,7 @@ struct MaxMeasureView: View {
         device.resetPeak()
         device.onTracePoint = { point in measurement.receive(point) }
         device.startStreaming(cause: .manualMeasurement)
+        frozenTrace = nil
         phase = .measuring
 
         timeout?.cancel()
@@ -198,6 +202,7 @@ struct MaxMeasureView: View {
         timeout = nil
         device.onTracePoint = nil
         if device.isStreaming { device.stopStreaming(cause: cause) }
+        frozenTrace = device.trace
         phase = .done
     }
 
@@ -342,16 +347,18 @@ private struct MaxMeasurementHero: View {
 private struct MaxMeasurementTrace: View {
     let measurement: MaxMeasurement
     let isMeasuring: Bool
+    let frozenTrace: [DeviceStore.TracePoint]?
 
     @Environment(DeviceStore.self) private var device
 
     var body: some View {
-        ForceTraceView(samples: device.trace,
+        ForceTraceView(samples: frozenTrace ?? device.trace,
                        thresholdKg: measurement.hasResult ? measurement.peakKg : nil,
                        tint: isMeasuring ? StatusTint.engaged : Ink.tertiary,
                        nominalSampleRate: device.gaugeCapabilities.nominalSampleRate,
                        bridgesSparseDelivery: device.gaugeCapabilities.isBroadcast,
-                       diagnostics: device.pipelineDiagnostics)
+                       diagnostics: device.pipelineDiagnostics,
+                       frozenAt: frozenTrace?.last?.t)
             .frame(height: 168)
             .padding(.horizontal, 4)
             .background(.regularMaterial,

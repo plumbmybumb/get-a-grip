@@ -241,10 +241,9 @@ struct BandTrimmer: View {
         case .whole:
             // The band keeps its width against BOTH walls: sliding into an end
             // compresses nothing and loses nothing.
-            let bandWidth = startHi - startLo
-            let newLo = (startLo + delta).clamped(to: scale.lowerBound...(scale.upperBound - bandWidth))
-            let lo = snap(newLo).clamped(to: scale.lowerBound...(scale.upperBound - bandWidth))
-            apply(lo: lo, hi: lo + bandWidth)
+            let moved = BandTrimmerMath.translated(lower: startLo, upper: startHi,
+                delta: delta, scale: scale, step: step)
+            apply(lo: moved.lowerBound, hi: moved.upperBound)
         case nil:
             break
         }
@@ -291,13 +290,6 @@ private extension Comparable {
     }
 }
 
-private extension Color {
-    /// Placeholder hook for the band-label ink; the graphite band is dark in both
-    /// schemes, so the label stays white. Kept as a property so a future lighter band
-    /// tint has one switch to flip.
-    var isLightColor: Bool { false }
-}
-
 #Preview {
     @Previewable @State var lo = 0.80
     @Previewable @State var hi = 0.90
@@ -307,4 +299,18 @@ private extension Color {
     }
     .padding(24)
     .background { AppBackground() }
+}
+
+
+// Incoming bands can come from legacy drafts. Fit an oversized band only on interaction.
+enum BandTrimmerMath {
+    static func translated(lower: Double, upper: Double, delta: Double,
+                           scale: ClosedRange<Double>, step: Double) -> ClosedRange<Double> {
+        let width = min(max(upper - lower, 0), scale.upperBound - scale.lowerBound)
+        let lastLower = max(scale.lowerBound, scale.upperBound - width)
+        let proposed = min(max(lower + delta, scale.lowerBound), lastLower)
+        let snapped = (proposed / step).rounded() * step
+        let result = min(max(snapped, scale.lowerBound), lastLower)
+        return result...(result + width)
+    }
 }

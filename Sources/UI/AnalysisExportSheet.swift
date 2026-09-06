@@ -188,20 +188,15 @@ struct AnalysisExportSheet: View {
 }
 
 /// A known system text type plus a string fallback avoids sharing a sandbox URL.
-private struct AnalysisExportFile: Transferable {
+struct AnalysisExportFile: Transferable, Sendable {
     let text: String
     let filename: String
 
     static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .commaSeparatedText) { item in
-            let directory = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true)
-            let url = directory.appendingPathComponent(item.filename)
-            try Data(item.text.utf8).write(to: url, options: .atomic)
-            return SentTransferredFile(url)
+        DataRepresentation(exportedContentType: .commaSeparatedText) { item in
+            Data(item.text.utf8)
         }
+        .suggestedFileName { $0.filename }
         // The belt to the file's braces: receivers that read TEXT (message fields,
         // assistant apps) take the whole document as a string and can never end up
         // holding a path into a sandbox they cannot read. File-capable destinations

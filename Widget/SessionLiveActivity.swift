@@ -156,12 +156,12 @@ struct SessionLiveActivity: Widget {
         // the deadline has already passed, and a trapped widget process renders as a
         // blank placeholder with no clue why. A deadline in the past means the app has
         // not pushed in a while — show the dash and let the card say the rest.
-        if let endsAt = context.state.endsAt, endsAt > .now, context.state.phase != .paused {
+        if let endsAt = context.state.endsAt, endsAt > .now, context.state.phase.runsCountdown {
             Text(timerInterval: Date.now...endsAt, countsDown: true)
                 .font(font)
                 .monospacedDigit()
                 .multilineTextAlignment(.trailing)
-        } else if let pending = context.state.pendingSeconds {
+        } else if context.state.phase == .armed, let pending = context.state.pendingSeconds {
             // ARMED: the length of the hold ahead, not a clock. Dimmed, so a number
             // sitting still cannot be read as a countdown that has stopped.
             Text("\(pending)s")

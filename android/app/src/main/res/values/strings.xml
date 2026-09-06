@@ -128,6 +128,7 @@
         <item quantity="other">%d sessions done today</item>
     </plurals>
     <string name="s_lld_lld_cb0fe2">%1$d/%2$d</string>
+    <string name="s_lld_lld_pulls">%1$d/%2$d pulls · %3$s</string>
     <string name="s_lld_lld_pulls_kg">%1$d/%2$d pulls · %3$s · %4$s kg</string>
     <string name="s_lldh">%dh</string>
     <string name="s_lldh_lld">%1$dh%2$d</string>
@@ -185,6 +186,7 @@
     <string name="s_all_i_had">All I had</string>
     <string name="s_all_history">All history</string>
     <string name="s_all_six_on_the_left_then_all_six_on_the_right_inside_one">All six on the left, then all six on the right, inside one set.</string>
+    <string name="s_all_the_pulls_on_one_hand_then_all_of_them_on_the_other">All the pulls on one hand, then all of them on the other, inside one set.</string>
     <string name="s_allow_camera_access_in_settings_to_scan_a_shared_routine">Allow camera access in Settings to scan a shared routine.</string>
     <string name="s_already_the_first_set">Already the first set</string>
     <string name="s_already_the_last_set">Already the last set</string>
@@ -223,6 +225,7 @@
     <string name="s_cancel">Cancel</string>
     <string name="s_characteristic_discovery_failed">Characteristic discovery failed: %s</string>
     <string name="s_check_on_the_gauge">Check on the gauge</string>
+    <string name="s_choose_a_different_time_for_each_daily_reminder">Choose a different time for each daily reminder.</string>
     <string name="s_choose_a_session_kind_first">Choose a session kind first</string>
     <string name="s_choose_a_session_kind_to_see_how_it_counts">Choose a session kind to see how it counts.</string>
     <string name="s_clear">Clear</string>
@@ -256,6 +259,7 @@
     <string name="s_copy_the_whole_document_to_the_clipboard">Copy the whole document to the clipboard</string>
     <string name="s_couldn_t_build_a_share_code_for_this_routine">Couldn\'t build a share code for this routine.</string>
     <string name="s_couldn_t_connect">Couldn\'t connect</string>
+    <string name="s_couldn_t_delete_this_max_please_try_again">Couldn\'t delete this max. Please try again.</string>
     <string name="s_couldn_t_import">Couldn\'t import</string>
     <string name="s_couldn_t_prepare_a_shareable_image_the_code_above_still">Couldn\'t prepare a shareable image. The code above still scans.</string>
     <string name="s_couldn_t_read_your_routines_just_now_the_new_one_wasn_t">Couldn\'t read your routines just now — the new one wasn\'t saved.</string>
@@ -347,6 +351,7 @@
     <string name="s_gauge_61b5af">Gauge</string>
     <string name="s_gauge_battery_at_lld_charge_it_soon">Gauge battery at %d%% — charge it soon.</string>
     <string name="s_gauge_control_point_cannot_acknowledge_tare_writes">Gauge control point cannot acknowledge tare writes</string>
+    <string name="s_gauge_did_not_acknowledge_the_command_reconnect_and_try">Gauge did not acknowledge the command. Reconnect and try again.</string>
     <string name="s_gauge_not_connected">Gauge not connected</string>
     <string name="s_gauge_currently">Gauge. Currently %s.</string>
     <string name="s_gauge_c36f16">Gauge: %1$s%2$s. %3$s</string>
@@ -421,6 +426,7 @@
     <string name="s_last_5_weeks">Last 5 weeks</string>
     <string name="s_last_8_weeks">Last 8 weeks</string>
     <string name="s_lead_in_before_each_set">Lead-in before each set</string>
+    <string name="s_leave_demo_mode">Leave demo mode</string>
     <string name="s_leave_them_as_they_are">Leave them as they are</string>
     <string name="s_left_8ae1c3">Left</string>
     <string name="s_left_hand">Left hand</string>
@@ -665,12 +671,12 @@
     <string name="s_share_csv">Share CSV</string>
     <string name="s_share_calendar">Share calendar</string>
     <string name="s_share_image">Share image</string>
+    <string name="s_share_or_save_this_png_other_apps_may_flatten_its_transp">Share or save this PNG. Other apps may flatten its transparent background.</string>
     <string name="s_share_routine_959968">Share routine</string>
     <string name="s_share_routine_5ec936">Share routine…</string>
     <string name="s_share_the_code">Share the code</string>
     <string name="s_share_the_document">Share the document</string>
     <string name="s_share_this_five_week_calendar">Share this five-week calendar</string>
-    <string name="s_share_to_instagram_story">Share to Instagram story</string>
     <string name="s_shared_routine">Shared routine</string>
     <plurals name="s_show_lld_earlier_sessions">
         <item quantity="one">Show %d earlier sessions</item>
@@ -783,7 +789,6 @@
     <string name="s_tour_restarted">Tour restarted</string>
     <string name="s_tour_restarted_it_is_running_on_today">Tour restarted — it is running on Today</string>
     <string name="s_trained_on_lld_of_lld_tracked_days_lld_of_them_fully">Trained on %1$d of %2$d tracked days, %3$d of them fully.</string>
-    <string name="s_transparent_png_flattened_if_added_from_the_gallery_insi">Transparent PNG — flattened if added from the gallery inside Instagram; use Save to Photos for everything else.</string>
     <string name="s_try_again">Try again</string>
     <string name="s_try_demo_mode">Try demo mode</string>
     <string name="s_twice_a_day">Twice a day</string>
@@ -835,6 +840,7 @@
     <string name="s_your_numbers">Your numbers</string>
     <string name="s_your_percent_targets_follow_whatever_you_save_here">Your percent targets follow whatever you save here.</string>
     <string name="s_your_routine_5e7844">Your routine</string>
+    <string name="s_your_routines_and_sessions_are_stored_on_this_device_pri">Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing.</string>
     <string name="s_your_routines_and_sessions_stay_on_this_device_and_in_yo">Your routines and sessions stay on this device and in your private iCloud. Nobody else can read them — not even us.</string>
     <string name="s_your_sessions_will_show_up_here">Your sessions will show up here.</string>
     <string name="s_your_sets_in_order">Your sets, in order</string>

@@ -21,18 +21,6 @@ import Foundation
 @MainActor
 final class CuePlayer {
 
-    /// Honoured live — turning sound off mid-session also drops the audio session, so
-    /// the user's music un-ducks instead of staying quiet for a silent workout.
-    var soundEnabled: Bool = true {
-        didSet {
-            guard isRunning, soundEnabled != oldValue else { return }
-            if soundEnabled { startAudio() } else { stopAudio() }
-        }
-    }
-
-    /// Checked at play time rather than latched at `begin()`, for the same reason.
-    var hapticsEnabled: Bool = true
-
     // MARK: Audio
 
     /// Mono Float32. The mixer converts to whatever the route actually wants, so the
@@ -146,12 +134,9 @@ final class CuePlayer {
 
     @discardableResult
     private func startAudio() -> Bool {
-        guard soundEnabled else { return false }
         do {
             // `.playback`, NOT `.ambient`: `.ambient` obeys the mute switch, and a
             // phone face-down and muted on a mat is exactly where this app is used.
-            // Ducking rather than interrupting leaves the user's music playing under
-            // the cues instead of killing it for the length of a session.
             // `.mixWithOthers` and NOT `.duckOthers`. Ducking would dip whatever the
             // user is listening to on every cue — roughly one cue every five seconds
             // across a 21-minute session, which is a video that pulses for the entire
@@ -204,7 +189,7 @@ final class CuePlayer {
     }
 
     private func sound(_ tone: CueTone) {
-        guard soundEnabled, audioReady, engine.isRunning, let buffer = tones[tone] else { return }
+        guard audioReady, engine.isRunning, let buffer = tones[tone] else { return }
         // Queued, NOT `.interrupts`: the runner returns cues in batches (a final rep
         // yields rep-end, set-end and session-end together) and interrupting would
         // leave only the last one audible.
@@ -268,7 +253,7 @@ final class CuePlayer {
     /// Without the rebuild the rest of the session is silent, which looks exactly like
     /// a broken app rather than a route change.
     private func handleConfigurationChange() {
-        guard isRunning, soundEnabled else { return }
+        guard isRunning else { return }
         buildGraph()
         startAudio()
     }
@@ -317,7 +302,7 @@ final class CuePlayer {
     }
 
     private func haptic(_ kind: CueHaptic) {
-        guard hapticsEnabled, hapticsSupported, let hapticEngine else { return }
+        guard hapticsSupported, let hapticEngine else { return }
         if !hapticEngineRunning { startHapticEngine() }
         guard hapticEngineRunning else { return }
         do {

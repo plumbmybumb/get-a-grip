@@ -239,10 +239,10 @@ struct MaxesTab: View {
             kgText(newest.kg, style: .title2)
         } else {
             VStack(alignment: .trailing, spacing: 2) {
-                ForEach(sides.filter { $0 != .both }, id: \.self) { side in
+                ForEach(sides, id: \.self) { side in
                     if let newest = newest(in: group, side: side) {
                         HStack(spacing: 4) {
-                            Text(side == .left ? "L" : "R")
+                            Text(side == .both ? String(localized: "Both") : (side == .left ? "L" : "R"))
                                 .font(.system(.caption, weight: .semibold))
                                 .foregroundStyle(Ink.tertiary)
                             kgText(newest.kg, style: .subheadline)
@@ -268,8 +268,13 @@ struct MaxesTab: View {
     /// "Best 31.5 kg · up 2.4 kg since 12 Jul" — the PR beside how the newest test
     /// moved against the one before it, on the same hand.
     private func progressLine(_ group: GripGroup) -> String {
-        let best = group.records.map(\.kg).max() ?? 0
-        var parts = [String(localized: "Best \(best.formatted(.number.precision(.fractionLength(1)))) kg")]
+        let sides = presentSides(in: group)
+        let bests = sides.map { side in
+            let best = group.records.filter { $0.side == side }.map(\.kg).max() ?? 0
+            let weight = best.formatted(.number.precision(.fractionLength(1)))
+            return sides.count == 1 ? weight : "\(side.name) \(weight)"
+        }.joined(separator: " · ")
+        var parts = [String(localized: "Best \(bests) kg")]
         if let newest = group.records.last {
             let series = group.records.filter { $0.side == newest.side }
             if series.count >= 2 {

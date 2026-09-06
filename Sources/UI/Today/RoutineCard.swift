@@ -170,6 +170,8 @@ struct RoutineCard: View {
             // Pulls the glyph back onto the card's inner edge while the target stays 44.
             .padding(.trailing, -10)
             .accessibilityLabel(String(localized: "Routine options"))
+            // The timer-only option lives here while a connected gauge hides its shortcut.
+            .tourAnchor(.startWithoutGauge)
         }
     }
 
@@ -505,6 +507,7 @@ struct RoutineCard: View {
                 SolidSecondaryButton(title: String(localized: "Start another"), systemImage: "play.fill", action: onStart)
                     .frame(maxWidth: .infinity)
                     .accessibilityHint(hint)
+                    .tourAnchor(.startButton)
             } else {
                 // Graphite, not bleu — bleu is the live-force signal and is spent the
                 // moment the runner opens. And ALWAYS enabled: the runner's first phase
@@ -526,16 +529,18 @@ struct RoutineCard: View {
             // offering to throw the measurement away, which nobody wants at 8 a.m.; it
             // stays reachable there through the ⋯ menu.
             if !deviceState.isConnected {
-                Button("Start without a gauge", action: onStartTimerOnly)
+                Button(action: onStartTimerOnly) {
+                    Text("Start without a gauge")
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(Accent.graphite)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(.rect)
+                }
                     .buttonStyle(PressFeedbackButtonStyle())
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Accent.graphite)
                     // 44 tall for the target, but pulled up tight against the note above
                     // it: the row's own height is the floor, and the 10 pt stack gap on
                     // top of it was pure spend on a page that has to fit.
-                    .frame(maxWidth: .infinity, minHeight: 44)
                     .padding(.top, -6)
-                    .contentShape(.rect)
                     .accessibilityHint(String(localized: "Runs the timers and hand prompts only. Nothing is measured."))
                     .tourAnchor(.startWithoutGauge)
             }
@@ -609,7 +614,7 @@ struct RoutineCard: View {
     /// before you start, not a reason not to.
     private var batteryNote: Note? {
         guard let battery, battery < 0.15 else { return nil }
-        let percent = Int((battery * 100).rounded())
+        let percent = BatteryDisplay.percentage(battery)
         return Note(symbol: "bolt.badge.exclamationmark",
                     text: String(localized: "Gauge battery at \(percent)% — charge it soon."), tint: StatusTint.armed)
     }

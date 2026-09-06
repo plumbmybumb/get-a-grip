@@ -28,6 +28,7 @@ final class DeviceStore {
                 startFreshnessWatchdog()
             } else {
                 stopFreshnessWatchdog()
+                if isInBackground { beginBackgroundGrace() }
             }
         }
     }
@@ -212,7 +213,7 @@ final class DeviceStore {
     /// the Tare button actually changes mode when it flips.**
     ///
     /// This exists separately from `isSignalFresh` because they answer different
-    /// questions on different clocks. `isSignalFresh` drives an overlay and tolerates a
+    /// questions on different clocks. `isSignalFresh` records diagnostic transitions and tolerates a
     /// full second of silence; this tolerates `tareReadingMaxAge`, because a tare cannot
     /// be taken back for the rest of the session.
     ///
@@ -262,7 +263,11 @@ final class DeviceStore {
         wire()
     }
 
-    deinit { freshnessTask?.cancel() }
+    isolated deinit {
+        freshnessTask?.cancel()
+        backgroundGraceTask?.cancel()
+        endBackgroundAssertion()
+    }
 
     /// `-mockDevice` is passed by `./build.sh run`, since a simulator build can never
     /// reach real hardware.
@@ -337,12 +342,13 @@ final class DeviceStore {
         // through `stopStreaming`, so without this the ring would show a link going away
         // with the stream apparently still running.
         if isStreaming { record(.streamStopped(.disconnecting)) }
-        cancelBackgroundGrace()
+        cancelBackgroundGrace(leavingBackground: false)
         client.disconnect()
         isStreaming = false
     }
 
     func tare() {
+        guard state.isConnected else { return }
         client.tare()
         // Re-issue the start command whenever a stream should be running. On the first
         // hardware session, taring mid-stream killed the graph for good — whether the
@@ -361,8 +367,8 @@ final class DeviceStore {
     func startStreaming(cause: StreamStartCause) {
         guard state.isConnected else { return }
         record(.streamStartRequested(cause))
-        client.startStreaming(cause: cause)
         isStreaming = true
+        client.startStreaming(cause: cause)
     }
 
     func recordScenePhase(_ phase: String) {
@@ -385,6 +391,7 @@ final class DeviceStore {
     /// short enough that a phone genuinely put down still frees the gauge.
     private static let backgroundGraceSeconds: UInt64 = 45
 
+    @ObservationIgnored private var isInBackground = false
     @ObservationIgnored private var backgroundGraceTask: Task<Void, Never>?
     @ObservationIgnored private var backgroundAssertion: UIBackgroundTaskIdentifier = .invalid
     /// Set when the background rule tears down a broadcast scan; consumed by the next
@@ -403,6 +410,7 @@ final class DeviceStore {
     /// window is `min(45 s, whatever iOS grants)`, and the failure mode is a shorter
     /// grace — never a gauge left burning.
     func beginBackgroundGrace() {
+        isInBackground = true
         // **A gauge that cannot stream in the background gets no grace at all.** For a
         // broadcast scale the "link" is an unfiltered allow-duplicates scan — the most
         // power-hungry BLE mode there is — and iOS coalesces duplicates the moment we
@@ -464,7 +472,8 @@ final class DeviceStore {
 
     /// Came back inside the window: the link was never touched, so there is nothing to
     /// restore — only the pending disconnect to call off.
-    func cancelBackgroundGrace() {
+    func cancelBackgroundGrace(leavingBackground: Bool = true) {
+        if leavingBackground { isInBackground = false }
         // The broadcast counterpart of cancelling the grace: the background rule tore
         // the scan down outright (see `beginBackgroundGrace`), so the foreground return
         // stands it back up. Before the grace guard — no grace was ever armed there.
@@ -502,9 +511,9 @@ final class DeviceStore {
 
     func stopStreaming(cause: StreamStopCause) {
         record(.streamStopped(cause))
-        client.stopStreaming()
         isStreaming = false
         currentKg = 0
+        client.stopStreaming()
     }
 
     func readBattery() { client.readBattery() }
@@ -513,7 +522,7 @@ final class DeviceStore {
     /// the second daily session; sleeping it requires a physical button press to wake.
     func sleepDevice() {
         if isStreaming { record(.streamStopped(.sleeping)) }
-        cancelBackgroundGrace()
+        cancelBackgroundGrace(leavingBackground: false)
         client.sleepDevice()
         isStreaming = false
         currentKg = 0
@@ -682,6 +691,9 @@ final class DeviceStore {
     private func handle(_ event: ProgressorEvent) {
         switch event {
         case .sample(let sample):
+            // A queued notification can outlive Stop. It is historical wire traffic,
+            // not a new live reading, peak, or runner sample after measurement ended.
+            guard isStreaming else { return }
             pipelineDiagnostics.sample()
             currentKg = sample.kg
             if isStreaming {

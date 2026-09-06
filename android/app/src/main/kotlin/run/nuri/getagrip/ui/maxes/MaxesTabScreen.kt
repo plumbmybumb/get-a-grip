@@ -266,8 +266,12 @@ private fun newest(group: MaxGripGroup, side: Side): MaxRecordEntity? =
 /// the one before it, ON THE SAME HAND. Comparing across hands would report a difference
 /// between your arms as progress.
 internal fun progressLine(group: MaxGripGroup): String {
-    val best = group.records.maxOfOrNull { it.kg } ?: 0.0
-    val parts = mutableListOf(L10n.tr("Best %s kg", Fmt.fixed(best, 1)))
+    val sides = presentSides(group)
+    val bests = sides.joinToString(" · ") { side ->
+        val weight = Fmt.fixed(group.records.filter { it.side == side }.maxOfOrNull { it.kg } ?: 0.0, 1)
+        if (sides.size == 1) weight else "${side.displayName} $weight"
+    }
+    val parts = mutableListOf(L10n.tr("Best %s kg", bests))
     val newest = group.records.lastOrNull()
     if (newest != null) {
         val series = group.records.filter { it.side == newest.side }
@@ -432,14 +436,14 @@ private fun CurrentReadout(group: MaxGripGroup, sides: List<Side>) {
         return
     }
     Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        sides.filter { it != Side.both }.forEach { side ->
+        sides.forEach { side ->
             newest(group, side)?.let { record ->
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.Bottom,
                 ) {
                     Text(
-                        if (side == Side.left) tr("L") else tr("R"),
+                        if (side == Side.both) tr("Both") else if (side == Side.left) tr("L") else tr("R"),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = palette.inkTertiary,

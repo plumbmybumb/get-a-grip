@@ -175,6 +175,7 @@ class BLELifecycleTests {
         val client = RecordingProgressorClient()
         val device = DeviceStore(client = client, scope = inertScope(), clock = FakeClock())
         client.setState(ProgressorConnectionState.Connected)
+        device.startStreaming(StreamStartCause.manualMeasurement)
 
         assertFalse(device.isLoadedForTare, "nothing on the gauge yet")
 

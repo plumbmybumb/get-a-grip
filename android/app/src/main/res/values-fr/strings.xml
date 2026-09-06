@@ -128,6 +128,7 @@
         <item quantity="other">%d séances faites aujourd\'hui</item>
     </plurals>
     <string name="s_lld_lld_cb0fe2">%1$d/%2$d</string>
+    <string name="s_lld_lld_pulls">%1$d/%2$d tractions · %3$s</string>
     <string name="s_lld_lld_pulls_kg">%1$d/%2$d tirages · %3$s · %4$s kg</string>
     <string name="s_lldh">%d h</string>
     <string name="s_lldh_lld">%1$d h %2$d</string>
@@ -185,6 +186,7 @@
     <string name="s_all_i_had">À fond</string>
     <string name="s_all_history">Tout l’historique</string>
     <string name="s_all_six_on_the_left_then_all_six_on_the_right_inside_one">Les six à gauche, puis les six à droite, dans une même série.</string>
+    <string name="s_all_the_pulls_on_one_hand_then_all_of_them_on_the_other">Toutes les tractions d’une main, puis de l’autre, dans une même série.</string>
     <string name="s_allow_camera_access_in_settings_to_scan_a_shared_routine">Autorise l’accès à l’appareil photo dans Réglages pour scanner une routine partagée.</string>
     <string name="s_already_the_first_set">Déjà la première série</string>
     <string name="s_already_the_last_set">Déjà la dernière série</string>
@@ -223,6 +225,7 @@
     <string name="s_cancel">Annuler</string>
     <string name="s_characteristic_discovery_failed">Échec de la découverte des caractéristiques : %s</string>
     <string name="s_check_on_the_gauge">Vérifie sur le capteur</string>
+    <string name="s_choose_a_different_time_for_each_daily_reminder">Choisissez une heure différente pour chaque rappel quotidien.</string>
     <string name="s_choose_a_session_kind_first">Choisis d\'abord un type de séance</string>
     <string name="s_choose_a_session_kind_to_see_how_it_counts">Choisis un type de séance pour voir comment elle compte.</string>
     <string name="s_clear">Effacer</string>
@@ -256,6 +259,7 @@
     <string name="s_copy_the_whole_document_to_the_clipboard">Copier tout le document dans le presse-papiers</string>
     <string name="s_couldn_t_build_a_share_code_for_this_routine">Impossible de créer un code de partage pour cette routine.</string>
     <string name="s_couldn_t_connect">Connexion impossible</string>
+    <string name="s_couldn_t_delete_this_max_please_try_again">Impossible de supprimer ce maximum. Réessayez.</string>
     <string name="s_couldn_t_import">Import impossible</string>
     <string name="s_couldn_t_prepare_a_shareable_image_the_code_above_still">Impossible de préparer une image à partager. Le code ci-dessus se scanne toujours.</string>
     <string name="s_couldn_t_read_your_routines_just_now_the_new_one_wasn_t">Impossible de lire tes routines à l\'instant — la nouvelle n\'a pas été enregistrée.</string>
@@ -347,6 +351,7 @@
     <string name="s_gauge_61b5af">Capteur</string>
     <string name="s_gauge_battery_at_lld_charge_it_soon">Batterie du capteur à %d%% — recharge-le bientôt.</string>
     <string name="s_gauge_control_point_cannot_acknowledge_tare_writes">Le point de contrôle du capteur ne peut pas accuser réception des tares</string>
+    <string name="s_gauge_did_not_acknowledge_the_command_reconnect_and_try">La jauge n’a pas confirmé la commande. Reconnectez-la et réessayez.</string>
     <string name="s_gauge_not_connected">Capteur non connecté</string>
     <string name="s_gauge_currently">Capteur. Actuellement %s.</string>
     <string name="s_gauge_c36f16">Capteur : %1$s%2$s. %3$s</string>
@@ -421,6 +426,7 @@
     <string name="s_last_5_weeks">5 dernières semaines</string>
     <string name="s_last_8_weeks">8 dernières semaines</string>
     <string name="s_lead_in_before_each_set">Décompte avant chaque série</string>
+    <string name="s_leave_demo_mode">Quitter le mode démo</string>
     <string name="s_leave_them_as_they_are">Les laisser telles quelles</string>
     <string name="s_left_8ae1c3">Gauche</string>
     <string name="s_left_hand">Main gauche</string>
@@ -664,12 +670,12 @@
     <string name="s_share_csv">Partager le CSV</string>
     <string name="s_share_calendar">Partager le calendrier</string>
     <string name="s_share_image">Partager l\'image</string>
+    <string name="s_share_or_save_this_png_other_apps_may_flatten_its_transp">Partage ou enregistre ce PNG. D’autres apps peuvent aplatir son fond transparent.</string>
     <string name="s_share_routine_959968">Partager la routine</string>
     <string name="s_share_routine_5ec936">Partager la routine…</string>
     <string name="s_share_the_code">Partager le code</string>
     <string name="s_share_the_document">Partager le document</string>
     <string name="s_share_this_five_week_calendar">Partager ce calendrier de cinq semaines</string>
-    <string name="s_share_to_instagram_story">Partager en story Instagram</string>
     <string name="s_shared_routine">Routine partagée</string>
     <plurals name="s_show_lld_earlier_sessions">
         <item quantity="one">Afficher %d séance plus ancienne</item>
@@ -782,7 +788,6 @@
     <string name="s_tour_restarted">Visite relancée</string>
     <string name="s_tour_restarted_it_is_running_on_today">Visite relancée — elle tourne sur Aujourd\'hui</string>
     <string name="s_trained_on_lld_of_lld_tracked_days_lld_of_them_fully">Entraînement sur %1$d des %2$d jours suivis, dont %3$d complets.</string>
-    <string name="s_transparent_png_flattened_if_added_from_the_gallery_insi">PNG transparent — aplati s\'il est ajouté depuis la galerie dans Instagram ; utilise Enregistrer dans Photos pour tout le reste.</string>
     <string name="s_try_again">Réessayer</string>
     <string name="s_try_demo_mode">Essayer le mode démo</string>
     <string name="s_twice_a_day">Deux fois par jour</string>
@@ -834,6 +839,7 @@
     <string name="s_your_numbers">Tes chiffres</string>
     <string name="s_your_percent_targets_follow_whatever_you_save_here">Tes cibles en pourcentage suivent ce que tu enregistres ici.</string>
     <string name="s_your_routine_5e7844">Ta routine</string>
+    <string name="s_your_routines_and_sessions_are_stored_on_this_device_pri">Vos routines et séances sont enregistrées sur cet appareil. La synchronisation iCloud privée est activée lorsque vous êtes connecté et qu’iCloud est disponible ; l’app ne peut pas confirmer que toutes les modifications ont été synchronisées.</string>
     <string name="s_your_routines_and_sessions_stay_on_this_device_and_in_yo">Tes routines et tes séances restent sur cet appareil et dans ton iCloud privé. Personne d\'autre ne peut les lire — nous non plus.</string>
     <string name="s_your_sessions_will_show_up_here">Tes séances apparaîtront ici.</string>
     <string name="s_your_sets_in_order">Tes séries, dans l\'ordre</string>

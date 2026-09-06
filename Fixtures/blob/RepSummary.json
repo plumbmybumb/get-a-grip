@@ -18,14 +18,14 @@
       "canonical": "{\"avgKg\":0,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"skipped\",\"peakKg\":0,\"repIndex\":0,\"setIndex\":0,\"side\":\"left\",\"targetSeconds\":0}"
     },
     {
-      "name": "an outcome from a newer build falls back to completed",
+      "name": "an outcome from a newer build falls back conservatively to aborted",
       "input": "{\"setIndex\":1,\"repIndex\":0,\"side\":\"both\",\"outcome\":\"exploded\"}",
-      "canonical": "{\"avgKg\":0,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"completed\",\"peakKg\":0,\"repIndex\":0,\"setIndex\":1,\"side\":\"both\",\"targetSeconds\":10}"
+      "canonical": "{\"avgKg\":0,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"aborted\",\"peakKg\":0,\"repIndex\":0,\"setIndex\":1,\"side\":\"both\",\"targetSeconds\":10}"
     },
     {
-      "name": "every key absent takes the defaults",
+      "name": "absent fields take defaults but an unrecorded outcome is aborted",
       "input": "{}",
-      "canonical": "{\"avgKg\":0,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"completed\",\"peakKg\":0,\"repIndex\":0,\"setIndex\":0,\"side\":\"left\",\"targetSeconds\":10}"
+      "canonical": "{\"avgKg\":0,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":0,\"outcome\":\"aborted\",\"peakKg\":0,\"repIndex\":0,\"setIndex\":0,\"side\":\"left\",\"targetSeconds\":10}"
     },
     {
       "name": "not an object at all",

@@ -48,6 +48,8 @@ struct ForceTraceView: View {
     /// at gaps — see `streamGapSeconds`. A value, for the same previewability reason.
     var bridgesSparseDelivery: Bool = false
     var diagnostics: PipelineDiagnostics? = nil
+    /// A completed effort keeps its measured picture instead of scrolling off screen.
+    var frozenAt: TimeInterval? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -124,7 +126,7 @@ struct ForceTraceView: View {
                          (targetBand?.upperBound ?? 0) * 1.25)
         let dt = min(max(now - axis.lastFrame, 0), 0.1)
         axis.lastFrame = now
-        if axis.displayed == 0 || reduceMotion {
+        if axis.displayed == 0 || reduceMotion || frozenAt != nil {
             axis.displayed = target
         } else {
             axis.displayed += (target - axis.displayed) * min(1, dt * 10)
@@ -142,13 +144,13 @@ struct ForceTraceView: View {
         // Key the deadline state to the sample that armed it. A fresh sample therefore
         // resumes immediately, before the replacement task gets its first turn to run.
         let deadlineReached = newestTime == nil || expiredNewestTime == newestTime
-        let paused = reduceMotion || alreadyExpired || deadlineReached
+        let paused = frozenAt != nil || reduceMotion || alreadyExpired || deadlineReached
         // Paused under Reduce Motion: the Canvas then redraws only when data changes,
         // which is the old stepping behaviour — correct here, because someone who asked
         // for less motion should not be given a continuously sliding graph.
         TimelineView(.animation(paused: paused)) { timeline in
             let _ = diagnostics?.drawing(now: ProcessInfo.processInfo.systemUptime)
-            let now = timeline.date.timeIntervalSinceReferenceDate
+            let now = frozenAt ?? timeline.date.timeIntervalSinceReferenceDate
             // Computed HERE, not in the Canvas closure: the axis memory is
             // MainActor-bound view state, and the draw closure only needs the number.
             let ceiling = axisCeiling(now: now)
@@ -170,7 +172,7 @@ struct ForceTraceView: View {
         // has to stop matching `expiredNewestTime`, which the render-time comparison
         // above already does for free. The watcher's only job is the opposite
         // direction — noticing when nothing is left to draw.
-        .task { await watchForExpiry() }
+        .task(id: frozenAt != nil) { if frozenAt == nil { await watchForExpiry() } }
         .onAppear { diagnostics?.graphOpened() }
         .onDisappear { diagnostics?.graphClosed() }
     }
@@ -259,10 +261,7 @@ struct ForceTraceView: View {
         /// 480-element arrays this replaces were ~1.4 MB/s of pure allocation churn for
         /// arithmetic that measures 0.03 % of a frame — the cost was never the maths,
         /// it was the garbage.
-        func smoothed(_ i: Int) -> Double {
-            guard i > 0, i < samples.count - 1 else { return samples[i].kg }
-            return (samples[i - 1].kg + samples[i].kg + samples[i + 1].kg) / 3
-        }
+
 
         func x(_ index: Int) -> CGFloat {
             let age = (newest.t - samples[index].t) + drift
@@ -283,6 +282,11 @@ struct ForceTraceView: View {
                 break
             }
             scan -= 1
+        }
+
+        func smoothed(_ i: Int) -> Double {
+            guard i > runStart, i < samples.count - 1 else { return samples[i].kg }
+            return (samples[i - 1].kg + samples[i].kg + samples[i + 1].kg) / 3
         }
 
         // **THE ANCHOR: the newest point still older than the window.** Drawing only
@@ -313,7 +317,7 @@ struct ForceTraceView: View {
         // reconnect, the first pull of a session — without any of them being special.
         // Same reasoning as this view's refusal to keep clock anchors.
         var context = context
-        context.opacity = min(1, (now - samples[runStart].t) / 0.5)
+        context.opacity = frozenAt == nil ? min(1, (now - samples[runStart].t) / 0.5) : 1
 
         var line = Path()
         var firstDrawn: CGPoint?

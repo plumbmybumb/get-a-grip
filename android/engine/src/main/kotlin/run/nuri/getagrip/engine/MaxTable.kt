@@ -61,9 +61,9 @@ class MaxTable {
         return byKey[key(grip, Side.both)]
     }
 
-    /// What is on file for exactly this hand, with NO fallback — for the builder, which
-    /// has to be able to say "this grip has a left max but no right one" rather than
-    /// quietly showing the same number twice.
+    /// What is on file for exactly this hand, with NO fallback. The builder and
+    /// max-change receipts must distinguish an actual hand record from a shared
+    /// fallback before explaining targets or offering a proportional rescale.
     fun exact(grip: String, side: Side): Double? = byKey[key(grip, side)]
 
     /// True when a grip resolves to DIFFERENT loads for the two hands — the one question

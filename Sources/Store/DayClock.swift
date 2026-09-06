@@ -19,6 +19,8 @@ import UIKit
 @Observable @MainActor
 final class DayClock {
     private(set) var today: DayStamp
+    /// The store reacts after the clock has changed, independent of notification order.
+    @ObservationIgnored var onDayChanged: (@MainActor () -> Void)?
 
     /// Tokens live in a box that unregisters itself: Swift 6 forbids a nonisolated
     /// `deinit` from touching a non-Sendable stored property of a `@MainActor` class,
@@ -53,13 +55,15 @@ final class DayClock {
     /// deliver the time-change notification until the app is active again.
     func refresh() {
         let now = DayStamp.today()
-        if now != today { today = now }
+        advance(to: now)
     }
 
     /// Tests only in practice — nothing in the app calls it. Kept out of `refresh`'s
     /// path deliberately, so no shipping code can pin the day to a value the system
     /// clock disagrees with.
     func advance(to day: DayStamp) {
-        if day != today { today = day }
+        guard day != today else { return }
+        today = day
+        onDayChanged?()
     }
 }

@@ -293,11 +293,11 @@ class ProgressorCodecTests {
 
     @Test
     fun zeroPayloadCommandsEncodeAsABareOpcode() {
-        assertBytesEqual(bytes(100), ProgressorCommand.tare.encoded)
-        assertBytesEqual(bytes(101), ProgressorCommand.startWeightMeasurement.encoded)
-        assertBytesEqual(bytes(102), ProgressorCommand.stopWeightMeasurement.encoded)
-        assertBytesEqual(bytes(110), ProgressorCommand.enterSleep.encoded)
-        assertBytesEqual(bytes(111), ProgressorCommand.getBatteryVoltage.encoded)
+        assertBytesEqual(bytes(100), ProgressorCommand.tare.encoded!!)
+        assertBytesEqual(bytes(101), ProgressorCommand.startWeightMeasurement.encoded!!)
+        assertBytesEqual(bytes(102), ProgressorCommand.stopWeightMeasurement.encoded!!)
+        assertBytesEqual(bytes(110), ProgressorCommand.enterSleep.encoded!!)
+        assertBytesEqual(bytes(111), ProgressorCommand.getBatteryVoltage.encoded!!)
     }
 
     @Test

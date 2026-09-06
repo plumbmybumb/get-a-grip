@@ -146,8 +146,7 @@ enum class ShareCardStyle(val rawValue: String, val title: String, val spoken: S
 /// TRANSLATION NOTE: iOS renders with `ImageRenderer(scale: 3)` and saves through
 /// `PHPhotoLibrary`. Here the card is drawn once, into a `GraphicsLayer`, at a FORCED
 /// density of 3 — see `EXPORT_DENSITY` — and saved through `MediaStore`, which needs no
-/// permission at all from API 29 up. The Instagram hand-off is deliberately NOT carried
-/// over — see `INSTAGRAM_APP_ID`.
+/// permission at all from API 29 up. Sharing uses the system chooser.
 ///
 /// **UNVERIFIED ON HARDWARE: the transparency.** iOS renders with `isOpaque = false` and
 /// ships a PNG whose background — and whose punched notches and bores — are genuinely
@@ -305,12 +304,6 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
 /// The KEY, not the sentence — a `const val` is folded at compile time and could not
 /// carry a translation. It is resolved at every use site through `L10n.tr`.
 private const val COULD_NOT_RENDER = "Couldn't render the card. Try again."
-
-/// **Meta requires a registered Facebook App ID since 2023-01-30**, so the direct
-/// `instagram-stories://share` hand-off cannot be built without one. Left as a named
-/// constant rather than deleted: the whole path is three lines once an id exists, and a
-/// deleted feature is one nobody remembers was ever decided against.
-private val INSTAGRAM_APP_ID: String? = null
 
 // MARK: - The card
 

@@ -112,15 +112,23 @@ echo "✅ BUILD SUCCEEDED"
 # has no Bluetooth stack at all, so a real client would sit at "scanning" forever.
 if [ "${1:-}" = "run" ]; then
   shift
-  open -a Simulator
+  open -a Simulator || { echo "❌ Could not open Simulator" >&2; exit 1; }
   xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
   APP_PATH="$DERIVED/Build/Products/Debug-iphonesimulator/$SCHEME.app"
+  BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP_PATH/Info.plist") \
+    || { echo "❌ Could not read the built app's bundle identifier" >&2; exit 1; }
+  if [ -z "$BUNDLE_ID" ]; then
+    echo "❌ The built app has no bundle identifier" >&2
+    exit 1
+  fi
+  xcrun simctl bootstatus "$SIM_UDID" -b >/dev/null \
+    || { echo "❌ Simulator $SIM_UDID did not finish booting" >&2; exit 1; }
   # Terminate any running instance first so launch starts the freshly-installed
   # binary (otherwise simctl just foregrounds the old, still-running process).
   xcrun simctl terminate "$SIM_UDID" "$BUNDLE_ID" 2>/dev/null || true
-  BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP_PATH/Info.plist")
-  xcrun simctl bootstatus "$SIM_UDID" -b >/dev/null
-  xcrun simctl install "$SIM_UDID" "$APP_PATH"
-  xcrun simctl launch "$SIM_UDID" "$BUNDLE_ID" -mockDevice "$@" >/dev/null
+  xcrun simctl install "$SIM_UDID" "$APP_PATH" \
+    || { echo "❌ Simulator install failed" >&2; exit 1; }
+  xcrun simctl launch "$SIM_UDID" "$BUNDLE_ID" -mockDevice "$@" >/dev/null \
+    || { echo "❌ Simulator launch failed" >&2; exit 1; }
   echo "🚀 launched $BUNDLE_ID (mock device) on simulator $SIM_UDID"
 fi

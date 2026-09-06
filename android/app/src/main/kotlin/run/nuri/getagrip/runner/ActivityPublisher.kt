@@ -52,8 +52,12 @@ enum class SessionActivityPhase {
     leadIn,
     armed,
     pulling,
+    releasing,
     resting,
-    paused,
+    paused;
+
+    val runsCountdown: Boolean
+        get() = this == leadIn || this == pulling || this == resting
 }
 
 /// Exactly what the card draws, and nothing that moves continuously.

@@ -16,14 +16,15 @@ import Foundation
 /// plain class — `Identifiable`, NOT `Sendable` — so holding one on an actor and then
 /// awaiting a method on it is a send across isolation domains, which Swift 6 rejects
 /// outright. Fetching it from `Activity.activities` inside a `nonisolated` async function
-/// keeps the handle's whole life in one context. There is only ever one of ours running,
-/// so the lookup is a one-element array.
+/// keeps the handle's whole life in one context. Each controller owns only its activity
+/// ID, so delayed cleanup from a prior session cannot end a newer card.
 ///
 /// Everything here is best-effort by design: a Live Activity that cannot start
 /// (permission off, budget spent) must never disturb a workout.
 @MainActor
 final class SessionActivityController {
     private(set) var isRunning = false
+    private var activityID: String?
     /// The last state pushed. An update that would change nothing is dropped rather than
     /// spent — the runner republishes its snapshot on every tick, and forwarding those
     /// verbatim would burn the budget on identical frames.
@@ -32,28 +33,39 @@ final class SessionActivityController {
     func start(routineName: String, plannedReps: Int, setCount: Int,
                state: SessionActivity.ContentState) {
         guard !isRunning, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        Self.clearOrphanedActivities()
         let attributes = SessionActivity(routineName: routineName,
                                          plannedReps: plannedReps,
                                          setCount: setCount)
-        // The returned handle is discarded on purpose — see the type's note.
-        guard (try? Activity.request(attributes: attributes,
-                                     content: .init(state: state, staleDate: nil))) != nil
+        // Keep only the Sendable ID, never a handle across actor boundaries.
+        guard let activity = try? Activity.request(attributes: attributes,
+                                                   content: .init(state: state, staleDate: nil))
         else { return }
+        activityID = activity.id
         isRunning = true
         lastPushed = state
     }
 
     func update(_ state: SessionActivity.ContentState) async {
-        guard isRunning, state != lastPushed else { return }
+        guard isRunning, let activityID, state != lastPushed else { return }
         lastPushed = state
-        await Self.pushToLiveActivities(state)
+        await Self.pushToLiveActivity(state, id: activityID)
     }
 
     func end() async {
-        guard isRunning else { return }
+        guard let activityID else { return }
         isRunning = false
+        self.activityID = nil
         lastPushed = nil
-        await Self.endLiveActivities()
+        await Self.endLiveActivities(ids: [activityID])
+    }
+
+    /// Called at process launch too: sessions do not resume after a killed process.
+    /// Snapshot IDs before the task starts, so cleanup cannot end a new session's card.
+    static func clearOrphanedActivities() {
+        let ids = Set(Activity<SessionActivity>.activities.map(\.id))
+        guard !ids.isEmpty else { return }
+        Task { await endLiveActivities(ids: ids) }
     }
 
     // MARK: - Off the actor
@@ -61,18 +73,18 @@ final class SessionActivityController {
     // `nonisolated` so the non-Sendable `Activity` is fetched, used and dropped inside a
     // single isolation domain. Nothing crosses; only the value type comes in.
 
-    nonisolated private static func pushToLiveActivities(
-        _ state: SessionActivity.ContentState
+    nonisolated private static func pushToLiveActivity(
+        _ state: SessionActivity.ContentState, id: String
     ) async {
-        for activity in Activity<SessionActivity>.activities {
+        for activity in Activity<SessionActivity>.activities where activity.id == id {
             await activity.update(.init(state: state, staleDate: nil))
         }
     }
 
     /// `.immediate` because the session is over the moment it is over: a lingering card
     /// on the lock screen that still says "Pull" is worse than none at all.
-    nonisolated private static func endLiveActivities() async {
-        for activity in Activity<SessionActivity>.activities {
+    nonisolated private static func endLiveActivities(ids: Set<String>) async {
+        for activity in Activity<SessionActivity>.activities where ids.contains(activity.id) {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
     }

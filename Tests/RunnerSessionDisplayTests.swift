@@ -205,11 +205,11 @@ final class RunnerSessionDisplayTests: XCTestCase {
         let session = session(hold: 10, rest: 20, leadIn: 0)
         session.begin()
         defer { session.end() }
-        _ = session.send(.abort)
+        session.send(.abort)
         let finished = try XCTUnwrap(session.finishedAt)
         XCTAssertGreaterThanOrEqual(finished, session.startedAt)
         try await Task.sleep(for: .milliseconds(100))
-        _ = session.send(.tick)
+        session.send(.tick)
         XCTAssertEqual(session.finishedAt, finished)
         XCTAssertLessThan(finished, Date.now)
     }

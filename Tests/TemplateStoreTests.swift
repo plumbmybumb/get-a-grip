@@ -31,7 +31,11 @@ final class TemplateStoreTests: XCTestCase {
     /// On-disk stores created for the read-only seam, removed in `tearDown`.
     private var scratchStores: [URL] = []
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
+        try await MainActor.run { try removeScratchStores() }
+    }
+
+    private func removeScratchStores() throws {
         for url in scratchStores {
             for suffix in ["", "-shm", "-wal"] {
                 try? FileManager.default.removeItem(
@@ -937,7 +941,9 @@ final class TemplateStoreTests: XCTestCase {
     /// for the phone the next morning.
     func testAClimbCanBeLoggedForYesterday() throws {
         let w = try makeWorld()
-        XCTAssertNotNil(w.store.recordLoggedSession(.climbVolume, daysAgo: 1))
+        let log = try XCTUnwrap(w.store.recordLoggedSession(.climbVolume, daysAgo: 1))
+        XCTAssertEqual(DayStamp(date: log.historyDate()), w.clock.today - 1,
+                       "history must display the selected day, not the entry timestamp")
 
         XCTAssertNil(w.store.climbToday, "yesterday's session does not complete today")
         let yesterday = try XCTUnwrap(w.store.consistency.dropLast().last)
@@ -1269,6 +1275,78 @@ final class TemplateStoreTests: XCTestCase {
         return draft
     }
 
+    func testMaxImpactSeparatesHandsAndNeverScalesTypedBandsFromOneHandFallback() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var single = RoutineDraft.blank(named: "Alternating")
+        single.plan.handMode = .alternateEachRep
+        single.plan.sets = [SetPlan(grip: grip, targetLoPercent: 0.25, targetHiPercent: 0.30),
+                            SetPlan(grip: grip, targetLoKg: 10, targetHiKg: 12)]
+        var both = single
+        both.plan.name = "Both hands"
+        both.plan.handMode = .bothHands
+        let singleRoutine = try XCTUnwrap(w.store.create(single))
+        let bothRoutine = try XCTUnwrap(w.store.create(both))
+        var previous = MaxTable()
+        previous.record(60, grip: grip.key, side: .both)
+
+        let firstLeft = w.store.maxImpact(grip: grip, previousMaxes: previous, newKg: 30, side: .left)
+        XCTAssertNil(firstLeft.ratio, "a both-hands fallback cannot stand in for a previous left max")
+        XCTAssertTrue(firstLeft.kgOffers.isEmpty)
+        let leftMove = try XCTUnwrap(firstLeft.percentMoves.first)
+        XCTAssertEqual(firstLeft.percentMoves.count, 1)
+        XCTAssertEqual(leftMove.routineName, singleRoutine.name)
+        XCTAssertEqual(leftMove.side, .left)
+        XCTAssertEqual(leftMove.oldBand, 15...18, "the previous target really used the fallback")
+        XCTAssertEqual(leftMove.newBand, 7.5...9)
+
+        previous.record(30, grip: grip.key, side: .left)
+        let nextLeft = w.store.maxImpact(grip: grip, previousMaxes: previous, newKg: 33, side: .left)
+        XCTAssertEqual(try XCTUnwrap(nextLeft.ratio), 1.1, accuracy: 0.0001)
+        XCTAssertTrue(nextLeft.kgOffers.isEmpty, "a shared left/right kg band has no one-hand ratio")
+        let nextBoth = w.store.maxImpact(grip: grip, previousMaxes: previous, newKg: 66)
+        XCTAssertEqual(nextBoth.kgOffers.map(\.routineID), [bothRoutine.id])
+        XCTAssertEqual(Set(nextBoth.percentMoves.map(\.side)), [.right, .both],
+                       "the explicit left max does not follow an update to both hands")
+    }
+
+    func testBothMaxOffersScaleForAlternatingRoutinesWhenBothHandsUseItsFallback() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var routineIDs: Set<UUID> = []
+        for mode in [HandMode.alternateEachRep, .alternateEachSet] {
+            var draft = RoutineDraft.blank(named: mode.rawValue)
+            draft.plan.handMode = mode
+            draft.plan.sets = [SetPlan(grip: grip, targetLoKg: 20, targetHiKg: 24)]
+            routineIDs.insert(try XCTUnwrap(w.store.create(draft)).id)
+        }
+        var previous = MaxTable()
+        previous.record(60, grip: grip.key, side: .both)
+        let impact = w.store.maxImpact(grip: grip, previousMaxes: previous, newKg: 66, side: .both)
+        XCTAssertEqual(try XCTUnwrap(impact.ratio), 1.1, accuracy: 0.0001)
+        XCTAssertEqual(Set(impact.kgOffers.map(\.routineID)), routineIDs)
+        for offer in impact.kgOffers {
+            XCTAssertEqual(offer.moves.count, 1)
+            XCTAssertEqual(offer.moves.first?.oldBand, 20...24)
+            XCTAssertEqual(offer.moves.first?.newBand, 22...26.5)
+        }
+    }
+
+    func testHistoryDateUsesManualDayAcrossTimeZonesButPreservesTimedStart() throws {
+        let day = DayStamp(year: 2026, month: 9, day: 5)
+        let entered = Date(timeIntervalSince1970: 1_788_739_200)
+        let manual = WorkoutLog(logged: .hangManual, day: day, at: entered, sessionsPerDayTarget: 1)
+        let timed = WorkoutLog(plan: SessionPlan(sets: []), templateID: nil, templateName: "Timed",
+                               sessionsPerDayTarget: 1, reps: [], startedAt: entered,
+                               finishedAt: entered, day: day)
+        for zone in ["UTC", "America/Los_Angeles", "Pacific/Auckland"] {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = try XCTUnwrap(TimeZone(identifier: zone))
+            XCTAssertEqual(DayStamp(date: manual.historyDate(calendar: calendar), calendar: calendar), day)
+            XCTAssertEqual(timed.historyDate(calendar: calendar), entered)
+        }
+    }
+
     func testScalingKgTargetsMovesEveryMatchingSetAndLeavesTheRestAlone() throws {
         let w = try makeWorld()
         let crimp = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
@@ -1525,7 +1603,10 @@ final class TemplateStoreTests: XCTestCase {
         let clean = draft.normalized
         XCTAssertEqual(clean.plan.name, "Daily no-hangs")
         XCTAssertEqual(clean.reminders, [ReminderTime(hour: 8, minute: 0),
-                                         ReminderTime(hour: 19, minute: 0)])
+                                         ReminderTime(hour: 12, minute: 30),
+                                         ReminderTime(hour: 19, minute: 0),
+                                         ReminderTime(hour: 21, minute: 30)],
+                       "deduplicated reminders refill the normalized four-session goal")
         XCTAssertEqual(clean.plan.sets.count, 1, "a zero-rep set is not a routine row")
         // …and normalization is what stops it from being STORED inverted.
         XCTAssertEqual(clean.plan.sets[0].targetLoKg, 8)

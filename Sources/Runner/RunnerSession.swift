@@ -4,6 +4,17 @@
 import Foundation
 import Observation
 
+@MainActor
+protocol RunnerActivityPublishing: AnyObject {
+    var isRunning: Bool { get }
+    func start(routineName: String, plannedReps: Int, setCount: Int,
+               state: SessionActivity.ContentState)
+    func update(_ state: SessionActivity.ContentState) async
+    func end() async
+}
+
+extension SessionActivityController: RunnerActivityPublishing {}
+
 enum StaleBatchHealDecision: Equatable {
     case hold
     case fire
@@ -111,7 +122,7 @@ final class RunnerSession {
     @ObservationIgnored private(set) var samplesSeen = 0
 
     @ObservationIgnored private let device: DeviceStore
-    @ObservationIgnored private let liveActivity = SessionActivityController()
+    @ObservationIgnored private let liveActivity: any RunnerActivityPublishing
     @ObservationIgnored private let cues = CuePlayer()
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var hasStarted = false
@@ -140,10 +151,12 @@ final class RunnerSession {
     /// because the screen shares one view, and because a session started without a gauge
     /// must not start quietly using one that happens to be connected.
     init(template: SessionTemplate, device: DeviceStore, maxes: MaxTable = MaxTable(),
-         timerOnly: Bool = false) {
+         timerOnly: Bool = false,
+         liveActivity: any RunnerActivityPublishing = SessionActivityController()) {
         self.template = template
         self.plan = template.plan
         self.device = device
+        self.liveActivity = liveActivity
         self.timerOnly = timerOnly
         // Read ONCE, like the timing policy below: what this session is driving must not
         // change under it because a different gauge was selected in Settings mid-workout.
@@ -290,7 +303,7 @@ final class RunnerSession {
     /// The session's real first phase is connect-and-tare, which is why Start on Today
     /// is deliberately enabled while the gauge is still asleep.
     func startIfReady(cause: StreamStartCause) {
-        guard !timerOnly, device.state.isConnected else { return }
+        guard !timerOnly, !hasEnded, !runner.isFinished, device.state.isConnected else { return }
         // UNCONDITIONAL, deliberately. This used to be `if !device.isStreaming`, and
         // that guard could only ever SKIP the one command the session depends on — if
         // `isStreaming` was true while the gauge was not actually streaming (a stale
@@ -309,9 +322,10 @@ final class RunnerSession {
         hasStarted = true
         // Tare FIRST, then start — the order the vendor's own app uses. The reversed
         // order tared a freshly started stream, and on real firmware that killed it.
+        armStaleBatchHeal()
+        send(.tareCommitted)
         device.tare()
         device.startStreaming(cause: .initial)
-        send(.tareCommitted)
         send(.start)
         armStreamWatchdog()
     }
@@ -348,15 +362,7 @@ final class RunnerSession {
                     continue
                 }
 
-                // Raw BLE data is arriving but the engine may be rejecting it because a
-                // queued pre-background burst re-anchored the high-water mark. Two 500 ms
-                // observations make that state durable rather than a packet-order blip.
-                if self.snapshot.isRejectingStaleBatches {
-                    self.consecutiveRejectingChecks += 1
-                } else {
-                    self.consecutiveRejectingChecks = 0
-                }
-                self.applyStaleBatchHealDecision(at: ProcessInfo.processInfo.systemUptime)
+                self.checkStaleBatches(at: ProcessInfo.processInfo.systemUptime)
             }
         }
     }
@@ -371,7 +377,7 @@ final class RunnerSession {
     /// happened to run rather than a guarantee of the API. With the load unknown (that is
     /// what stale means) a tare is the one thing that must not happen here.
     func wakeStream() {
-        guard !timerOnly, device.state.isConnected else { return }
+        guard !timerOnly, !hasEnded, !runner.isFinished, device.state.isConnected else { return }
         restartStreamArmingStaleBatchHeal(cause: .manualWake)
     }
 
@@ -388,10 +394,25 @@ final class RunnerSession {
             device.startStreaming(cause: cause)
             return
         }
-        staleBatchHealArmedAt = ProcessInfo.processInfo.systemUptime
-        consecutiveRejectingChecks = 0
+        armStaleBatchHeal()
         send(.streamRestarted)
         device.startStreaming(cause: cause)
+    }
+
+    private func armStaleBatchHeal() {
+        guard hasDeviceClock else { return }
+        staleBatchHealArmedAt = ProcessInfo.processInfo.systemUptime
+        consecutiveRejectingChecks = 0
+    }
+
+    /// The watchdog's rejection check, separate from the sleeping task so regression
+    /// tests can drive the real bounded recovery without waiting for the five-second arm.
+    func checkStaleBatches(at checkTime: TimeInterval) {
+        // Two 500 ms observations distinguish persistent epoch rejection from a single
+        // out-of-order packet. Raw data must still be arriving: silence re-kicks above.
+        consecutiveRejectingChecks = snapshot.isRejectingStaleBatches
+            ? consecutiveRejectingChecks + 1 : 0
+        applyStaleBatchHealDecision(at: checkTime)
     }
 
     private func applyStaleBatchHealDecision(at checkTime: TimeInterval) {
@@ -427,8 +448,16 @@ final class RunnerSession {
     }
 
     func tare() {
-        device.tare()
+        guard !timerOnly, !hasEnded, !runner.isFinished, device.state.isConnected,
+              TarePolicy.phaseAllowsTare(runner.phase),
+              TarePolicy.isSafeToTareNow(sampleAge: device.secondsSinceLastSample(),
+                                         maxAgeSeconds: device.tareReadingMaxAge) else { return }
+        // DeviceStore re-kicks a running stream after tare. A queued pre-tare packet can
+        // win the race to anchor that new epoch, exactly like a foreground restart.
+        // Authorize only the same bounded, single-use recovery, before either write.
+        if device.isStreaming { armStaleBatchHeal() }
         send(.tareCommitted)
+        device.tare()
     }
 
     // MARK: - The one funnel
@@ -441,6 +470,9 @@ final class RunnerSession {
         let emitted = runner.handle(event, at: now, recordedAt: ProcessInfo.processInfo.systemUptime)
         if runner.isFinished, finishedAt == nil {
             finishedAt = startedAt.addingTimeInterval(runner.finishedElapsedSeconds ?? 0)
+            // The summary may stay open for minutes. Its unfinished save is not a live
+            // workout, and must not leave a lock-screen countdown running behind it.
+            Task { await liveActivity.end() }
         }
         publish()
         if let id = runner.newGripID, announcedGrips.insert(id).inserted {
@@ -502,7 +534,7 @@ final class RunnerSession {
     /// activity: the widget counts down on its own from `endsAt`, so forwarding a ticking
     /// number would spend ActivityKit's budget on frames it would have drawn anyway.
     private func pushActivity() {
-        guard liveActivity.isRunning, let grip = snapshot.grip else { return }
+        guard !snapshot.isFinished, liveActivity.isRunning, let grip = snapshot.grip else { return }
         let signature = ActivitySignature(grip: grip,
                                           side: snapshot.side ?? .both,
                                           phase: activityPhase,
@@ -554,7 +586,7 @@ final class RunnerSession {
             targetHiKg: snapshot.targetBand?.upperBound,
             // An ABSOLUTE deadline, recomputed from the same countdown the screen shows.
             // Converting to a Date here is what lets the widget tick without us.
-            endsAt: !isArmed && snapshot.secondsShown > 0
+            endsAt: phase.runsCountdown && snapshot.secondsShown > 0
                 ? Date.now.addingTimeInterval(Double(snapshot.secondsShown))
                 : nil,
             pendingSeconds: isArmed ? snapshot.secondsShown : nil)
@@ -571,9 +603,8 @@ final class RunnerSession {
         case .idle, .leadIn:              return .leadIn
         case .armed:                      return .armed
         case .working:                    return .pulling
-        // "Let go" shares rest's colour: the hold is banked either way, and a fifth word
-        // on a glanceable card buys less than it costs.
-        case .releasing, .resting:        return .resting
+        case .releasing:                  return .releasing
+        case .resting:                    return .resting
         case .finished:                   return .resting
         case .paused:                     return .paused
         }

@@ -3,6 +3,10 @@
 
 package run.nuri.getagrip.ui.builder
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.RoutineDraft
 
@@ -14,6 +18,19 @@ import run.nuri.getagrip.engine.RoutineDraft
 /// ghost; a coach step that can move backwards runs away from someone still reading; a
 /// disabled Save with its explanation a screenful away is a dead control.
 object BuilderDraft {
+
+    /// Materialize legacy inherited loads only in the local editor draft. No persistence
+    /// occurs until Save, and explicit set targets keep their existing precedence.
+    fun editable(draft: RoutineDraft): RoutineDraft {
+        val band = draft.plan.targetPercentBand ?: return draft
+        return draft.copy(plan = draft.plan.copy(
+            sets = draft.plan.sets.map { set ->
+                if (set.hasTarget || set.hasPercentTarget) set else set.copy(
+                    targetLoPercent = band.start, targetHiPercent = band.endInclusive)
+            },
+            targetLoPercent = null, targetHiPercent = null,
+        ))
+    }
 
     /// **The rescue copy COALESCES; it does not cancel-and-restart.** Re-creating the
     /// debounce on every change allocated one task per slider frame, each with a 500 ms
@@ -97,4 +114,21 @@ object BuilderDraft {
     /// whereas six sets that all say 18–22 % is the card talking to itself.
     fun percentBandsVary(draft: RoutineDraft): Boolean =
         draft.plan.executable.sets.map { it.targetPercentBand }.toSet().size > 1
+}
+
+
+/** One pending rescue write reads the latest draft even during a continuous drag. */
+internal class DraftStashCoalescer(
+    private val scope: CoroutineScope,
+    private val stashLatest: () -> Unit,
+) {
+    private var pending: Job? = null
+
+    fun changed() {
+        if (pending?.isActive == true) return
+        pending = scope.launch {
+            delay(BuilderDraft.stashDebounceMillis)
+            stashLatest()
+        }
+    }
 }

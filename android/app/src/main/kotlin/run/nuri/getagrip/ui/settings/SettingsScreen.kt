@@ -61,6 +61,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
@@ -167,7 +168,7 @@ private fun SettingsRoot(
                 device.deviceName?.let { LabelledValue(tr("Name"), it) }
                 device.firmwareVersion?.let { LabelledValue(tr("Firmware"), it) }
                 device.batteryFraction?.let {
-                    LabelledValue(tr("Battery"), "${(it * 100).toInt()}%")
+                    LabelledValue(tr("Battery"), "${run.nuri.getagrip.ui.components.BatteryDisplay.percentage(it)}%")
                 }
                 // A synthetic number that looks like a measurement is worse than no number,
                 // so demo mode is never allowed to be ambiguous here. Otherwise this states
@@ -376,6 +377,14 @@ private fun AboutCard() {
     // Nothing here is undoable and nothing needs to be pressed twice.
     var guideReset by remember { mutableStateOf(false) }
     var tourReset by remember { mutableStateOf(false) }
+    var diagnosticsCopied by remember { mutableStateOf(false) }
+    var copyGeneration by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(copyGeneration) {
+        if (copyGeneration > 0) {
+            kotlinx.coroutines.delay(2_000)
+            diagnosticsCopied = false
+        }
+    }
     val inspecting = LocalInspectionMode.current
     // Read from the INSTALLED package rather than a build constant: what this says is then
     // what the phone actually has, which is the only version worth reporting in a bug.
@@ -408,8 +417,11 @@ private fun AboutCard() {
             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                 as android.content.ClipboardManager
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Gauge diagnostics", report))
+            diagnosticsCopied = true
+            copyGeneration += 1
         }) {
-            Text(tr("Copy the diagnostics to the clipboard"))
+            Text(tr(if (diagnosticsCopied) "Copied" else "Copy the diagnostics to the clipboard"),
+                Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
         }
 
         Spacer(Modifier.size(4.dp))

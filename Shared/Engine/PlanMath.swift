@@ -20,8 +20,8 @@ struct RepSlot: Hashable, Sendable, Identifiable {
     /// The set's lead-in, on rep 0 only; 0 otherwise.
     var leadInBefore: Int
     /// The load to aim for, in kilograms, ALREADY RESOLVED — percentages are baked down
-    /// by `PlanMath.resolvingTargets` before a session starts, so nothing downstream of
-    /// here needs a max lookup. nil when the routine sets no target for this set, or
+    /// per hand by `PlanMath.sequence` against the max table frozen at session start,
+    /// so nothing downstream of here needs a live max lookup. nil when the routine sets no target for this set, or
     /// when its grip has no max on file.
     var targetBand: ClosedRange<Double>? = nil
     /// The intra-set rest, the SET BREAK on a set's last rep, or 0 at the very end of
@@ -99,11 +99,9 @@ enum PlanMath {
     /// Bake every percentage target down to the kilograms it means TODAY, keyed by each
     /// set's own grip.
     ///
-    /// Called once when a session starts, and the result is what the runner executes and
-    /// what the `WorkoutLog` freezes — so history records the load you were actually
-    /// aiming at that morning, and recording a new max next month cannot retroactively
-    /// rewrite what you were told to pull. That is the same freeze-at-save rule the
-    /// routine's NAME already follows.
+    /// A set-level projection for callers that need one band per set. This is not the
+    /// session-start path: the runner freezes a MaxTable and sequence resolves each
+    /// hand separately; its RepSummary freezes the resulting target.
     ///
     /// **Hand-agnostic on purpose:** it fills the SET's band, which is what surfaces
     /// that speak about a set rather than a rep need. The per-rep, per-hand load is
@@ -113,6 +111,8 @@ enum PlanMath {
     /// Sets whose grip has no max on file keep an empty band and simply show no target;
     /// the percentages stay in the returned plan untouched, so nothing is lost — this
     /// only ADDS the resolved kilograms.
+    /// Retained set-level utility; current training freezes a MaxTable and resolves
+    /// each rep through sequence instead. No current screen depends on this helper.
     static func resolvingTargets(_ plan: SessionPlan, maxes: MaxTable) -> SessionPlan {
         var out = plan
         out.sets = plan.sets.map { set in

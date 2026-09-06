@@ -180,6 +180,12 @@ final class TemplateStore {
         return .seconds(10)
     }
 
+    private final class ObserverTokens: @unchecked Sendable {
+        var tokens: [any NSObjectProtocol] = []
+        deinit { for token in tokens { NotificationCenter.default.removeObserver(token) } }
+    }
+    @ObservationIgnored private let observerTokens = ObserverTokens()
+
     private var debouncedSync: Task<Void, Never>?
     private var undoExpiry: Task<Void, Never>?
     private var sessionUndoExpiry: Task<Void, Never>?
@@ -192,6 +198,7 @@ final class TemplateStore {
         self.storageMode = storageMode
         self.syncedDay = clock.today
         observeExternalChanges()
+        clock.onDayChanged = { [weak self] in self?.refreshIfDayChanged() }
         syncDerived()
     }
 
@@ -202,14 +209,10 @@ final class TemplateStore {
     /// it lands.
     private func observeExternalChanges() {
         let center = NotificationCenter.default
-        center.addObserver(forName: .NSPersistentStoreRemoteChange, object: nil, queue: nil) { [weak self] _ in
+        observerTokens.tokens = [center.addObserver(forName: .NSPersistentStoreRemoteChange,
+                                                     object: nil, queue: nil) { [weak self] _ in
             Task { @MainActor [weak self] in self?.scheduleDebouncedSync() }
-        }
-        for name in [UIApplication.significantTimeChangeNotification, .NSSystemTimeZoneDidChange] {
-            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor [weak self] in self?.refreshIfDayChanged() }
-            }
-        }
+        }]
     }
 
     private func scheduleDebouncedSync() {
@@ -762,7 +765,7 @@ final class TemplateStore {
     }
 
     /// Duplicating twice must not produce two routines called "Copy of Daily no-hangs":
-    /// the chooser rail shows names only, so identical ones make the second routine
+    /// the routine carousel needs distinct titles, so identical ones make the second routine
     /// unpickable by sight. Suffixes count up from 2 — "Copy of X", "Copy of X 2".
     private func uniqueName(_ wanted: String) -> String {
         let taken = Set((fetchRoutines() ?? []).map(\.name))
@@ -1091,7 +1094,7 @@ final class TemplateStore {
         // path: a max hit INSIDE a routine already logged its session, and settling
         // the day on top would silently cancel the evening ritual.
         if marksBenchmarkDay, source == .measured, benchmarkedToday == false,
-           !(fetchLogs(from: clock.today)?.benchmark(on: clock.today) ?? false) {
+           let todaysLogs = fetchLogs(from: clock.today), !todaysLogs.benchmark(on: clock.today) {
             let target = fetchRoutines()?.first?.sessionsPerDay ?? 1
             context.insert(WorkoutLog(logged: .benchmark, day: clock.today, at: .now,
                                       sessionsPerDayTarget: target))
@@ -1118,13 +1121,15 @@ final class TemplateStore {
         /// percent targets follow the newest max by design — this is the visibility,
         /// not a consent form.
         struct PercentMove: Hashable, Sendable, Identifiable {
+            let routineID: UUID
             let routineName: String
+            let side: Side
             let loPercent: Double
             let hiPercent: Double
             /// nil when the grip had no max before — the band never resolved until now.
             let oldBand: ClosedRange<Double>?
             let newBand: ClosedRange<Double>
-            var id: String { routineName + "·\(loPercent)–\(hiPercent)" }
+            var id: String { routineID.uuidString + "·\(side.rawValue)·\(loPercent)–\(hiPercent)" }
         }
 
         /// Explicit-kilogram sets on this grip, offered a proportional rescale. An
@@ -1149,21 +1154,41 @@ final class TemplateStore {
         var isEmpty: Bool { percentMoves.isEmpty && kgOffers.isEmpty }
     }
 
-    func maxImpact(grip: GripSpec, oldKg: Double?, newKg: Double) -> MaxImpact {
+    func maxImpact(grip: GripSpec, previousMaxes: MaxTable, newKg: Double,
+                   side: Side = .both) -> MaxImpact {
         guard let routines = fetchRoutines() else {
             return MaxImpact(percentMoves: [], kgOffers: [], ratio: nil)
         }
-        let ratio = oldKg.flatMap { $0 > 0 ? newKg / $0 : nil }
+        // A fallback both-hands benchmark is not an earlier measurement of one hand.
+        let ratio = previousMaxes.exact(grip: grip.key, side: side)
+            .flatMap { $0 > 0 ? newKg / $0 : nil }
         var percentMoves: [MaxImpact.PercentMove] = []
         var kgOffers: [MaxImpact.KgOffer] = []
 
         for routine in routines {
             let plan = routine.plan.executable
+            let affectedSides: [Side]
+            if plan.handMode == .bothHands {
+                affectedSides = side == .both ? [.both] : []
+            } else if side == .both {
+                affectedSides = [.left, .right].filter {
+                    previousMaxes.exact(grip: grip.key, side: $0) == nil
+                }
+            } else {
+                affectedSides = [side]
+            }
+            guard !affectedSides.isEmpty else { continue }
+            // An alternating routine can share a ratio only while BOTH hands use
+            // this same fallback benchmark; an exact record on either side breaks it.
+            let canScaleSharedBand = side == .both && (plan.handMode == .bothHands ||
+                [Side.left, .right].allSatisfy { previousMaxes.exact(grip: grip.key, side: $0) == nil })
             var seenPercents: Set<String> = []
             var moves: [MaxImpact.KgOffer.Move] = []
             for set in plan.sets where set.grip.key == grip.key {
                 if let explicit = set.targetBand {
-                    guard let ratio else { continue }
+                    // A typed band is shared by both sides of an alternating routine.
+                    // One hand's change cannot supply a ratio for the other hand.
+                    guard canScaleSharedBand, let ratio else { continue }
                     let move = MaxImpact.KgOffer.Move(
                         oldBand: explicit,
                         newBand: Self.scaled(explicit, by: ratio))
@@ -1174,12 +1199,17 @@ final class TemplateStore {
                     guard seenPercents.insert(key).inserted else { continue }
                     guard let newBand = PlanMath.targetBand(set, in: plan, maxKg: newKg)
                     else { continue }
-                    percentMoves.append(MaxImpact.PercentMove(
-                        routineName: routine.name,
-                        loPercent: percent.lowerBound,
-                        hiPercent: percent.upperBound,
-                        oldBand: oldKg.flatMap { PlanMath.targetBand(set, in: plan, maxKg: $0) },
-                        newBand: newBand))
+                    for affectedSide in affectedSides {
+                        let oldBand = previousMaxes.max(grip: grip.key, side: affectedSide)
+                            .flatMap { PlanMath.targetBand(set, in: plan, maxKg: $0) }
+                        guard oldBand != newBand else { continue }
+                        percentMoves.append(MaxImpact.PercentMove(
+                            routineID: routine.id, routineName: routine.name, side: affectedSide,
+                            loPercent: percent.lowerBound,
+                            hiPercent: percent.upperBound,
+                            oldBand: oldBand,
+                            newBand: newBand))
+                    }
                 }
             }
             if !moves.isEmpty {

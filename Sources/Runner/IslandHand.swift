@@ -134,11 +134,11 @@ struct IslandHand: View {
             shown = new
             return
         }
-        withAnimation(.easeIn(duration: 0.16)) {
+        withAnimation(Motion.state(reduceMotion)) {
             retract = 1
         } completion: {
             shown = new
-            withAnimation(.easeOut(duration: 0.24)) { retract = 0 }
+            withAnimation(Motion.state(reduceMotion)) { retract = 0 }
         }
     }
 

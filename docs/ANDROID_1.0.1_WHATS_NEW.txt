@@ -1,0 +1,14 @@
+<en-US>
+• A slimmer effort ladder. Tap or slide to rate your session; tap the same level again to clear it.
+• More reliable Bluetooth recovery, taring and session controls.
+• Reminders return the next day after you finish your training.
+• Better handling of saving, deleted routines and hand-specific maxes.
+• Clearer session notifications and small fixes throughout the app.
+</en-US>
+<fr-FR>
+• Une échelle d’effort plus fine. Touchez ou glissez pour noter votre séance ; retouchez le même niveau pour effacer.
+• Connexion Bluetooth, tare et commandes de séance plus fiables.
+• Les rappels reviennent le lendemain après votre entraînement.
+• Meilleure gestion des enregistrements, des routines supprimées et des max par main.
+• Notifications de séance plus claires et corrections dans toute l’application.
+</fr-FR>

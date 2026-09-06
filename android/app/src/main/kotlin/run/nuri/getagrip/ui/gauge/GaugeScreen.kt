@@ -423,7 +423,7 @@ private fun GaugeReadouts() {
         Readout(tr("Peak"), kgText(device.peakKg), tr("kg"), Modifier.weight(1f))
         Readout(
             tr("Battery"),
-            battery?.let { "${(it * 100).toInt()}" } ?: tr("—"),
+            battery?.let { "${run.nuri.getagrip.ui.components.BatteryDisplay.percentage(it)}" } ?: tr("—"),
             if (battery == null) "" else tr("%"),
             Modifier.weight(1f),
         )

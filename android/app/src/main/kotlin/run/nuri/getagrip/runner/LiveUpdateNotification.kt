@@ -69,12 +69,13 @@ data class LiveUpdateContent(
             SessionActivityPhase.leadIn -> L10n.tr("Get ready")
             SessionActivityPhase.armed -> L10n.tr("Pull now")
             SessionActivityPhase.pulling -> L10n.tr("Holding")
+            SessionActivityPhase.releasing -> L10n.tr("Let go")
             SessionActivityPhase.resting -> L10n.tr("Rest")
             SessionActivityPhase.paused -> L10n.tr("Paused")
         }
 
         fun cardTint(phase: SessionActivityPhase): Int = when (phase) {
-            SessionActivityPhase.leadIn, SessionActivityPhase.resting -> TINT_CALM
+            SessionActivityPhase.leadIn, SessionActivityPhase.releasing, SessionActivityPhase.resting -> TINT_CALM
             SessionActivityPhase.armed -> TINT_ARMED
             SessionActivityPhase.pulling -> TINT_PULLING
             SessionActivityPhase.paused -> TINT_PAUSED
@@ -95,8 +96,8 @@ data class LiveUpdateContent(
             // guards the same comparison because `Date.now...endsAt` traps outright. Paused
             // is excluded for the plain reason that a paused session has no clock running.
             val endsAt = state.endsAtEpochMillis
-                ?.takeIf { it > nowMillis && state.phase != SessionActivityPhase.paused }
-            val pending = state.pendingSeconds
+                ?.takeIf { it > nowMillis && state.phase.runsCountdown }
+            val pending = state.pendingSeconds.takeIf { state.phase == SessionActivityPhase.armed }
             return LiveUpdateContent(
                 title = if (endsAt == null && pending != null) {
                     L10n.tr("%s · %ds", word, pending)

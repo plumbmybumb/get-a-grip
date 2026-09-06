@@ -181,11 +181,8 @@ fun BandTrimmer(
                                 Grab.Whole -> {
                                     // The band keeps its width against BOTH walls: sliding
                                     // into an end compresses nothing and loses nothing.
-                                    val bandWidth = startHi - startLo
-                                    val newLo = (startLo + moved)
-                                        .coerceIn(scale.start, scale.endInclusive - bandWidth)
-                                    val snapped = snap(newLo).coerceIn(scale.start, scale.endInclusive - bandWidth)
-                                    apply(snapped, snapped + bandWidth)
+                                    val translated = BandTrimmerMath.translated(startLo, startHi, moved, scale, step)
+                                    apply(translated.start, translated.endInclusive)
                                 }
                                 null -> Unit
                             }
@@ -357,5 +354,19 @@ private fun BandTrimmerPreview() {
                 spokenUnit = tr("percent of max"),
             ) { newLo, newHi -> lo = newLo; hi = newHi }
         }
+    }
+}
+
+
+internal object BandTrimmerMath {
+    /** Preserve normal width; fit a legacy oversized band only on interaction. */
+    fun translated(lower: Double, upper: Double, delta: Double,
+                   scale: ClosedFloatingPointRange<Double>, step: Double): ClosedFloatingPointRange<Double> {
+        val width = (upper - lower).coerceIn(0.0, scale.endInclusive - scale.start)
+        val lastLower = maxOf(scale.start, scale.endInclusive - width)
+        val proposed = (lower + delta).coerceIn(scale.start, lastLower)
+        val snapped = (proposed / step).roundToInt() * step
+        val result = snapped.coerceIn(scale.start, lastLower)
+        return result..(result + width)
     }
 }

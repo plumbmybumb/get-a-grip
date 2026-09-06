@@ -3,28 +3,11 @@
 
 import SwiftUI
 
-/// **The grip picker, with the Dynamic Island as the palm of your hand.**
-///
-/// Nuri's idea (2026-08-11), and the runner's own trick made interactive: `IslandHand`
-/// already hangs black capsules under the island during a session so the cutout reads as a
-/// palm. **No app may draw INSIDE the island** — it is hardware, it renders only Live
-/// Activities, and those are declarative and non-interactive — so this draws a WHITE palm
-/// around it. The island's black sits in the middle of that white lozenge like the hollow
-/// of a hand, and four tappable fingers hang off it.
-///
-/// **The fingers are the control.** Black with a hairline outline while they are off the
-/// edge, solid white when they are on it, exactly the reading the runner gives you at arm's
-/// length. Nothing else in the app says "which fingers" as fast as this does.
-///
-/// **It hangs BELOW the safe area for the card, and above it for the hand.** An earlier
-/// build ran a black panel to y = 0 so its black met the island's black. It worked — but a
-/// panel under the status bar needs light status-bar text, which means
-/// `preferredColorScheme(.dark)`, and **that propagates to the WINDOW**: the builder sheet
-/// behind it turned dark and STAYED dark after dismissal. The palm is narrow and centred,
-/// so it clears the clock on the left and the battery on the right and needs no such trick.
-///
-/// **A `fullScreenCover`, not a sheet.** The builder is itself a sheet whose top edge sits
-/// ~50 pt below the island, so nothing in that view tree can reach up there.
+/// The grip picker overlays the full-screen builder with a black panel flush to y = 0.
+/// Square top corners meet the Dynamic Island; rounded bottom corners finish the card.
+/// The status bar is hidden while this overlay is visible, without changing the window's
+/// color scheme. Filled white fingers are selected; outlined fingers remain off the edge.
+/// A white palm was tried and retired because it separated the hand from the black cutout.
 struct GripIslandPanel: View {
     @Binding var grip: GripSpec
     var onClose: () -> Void
@@ -305,12 +288,9 @@ private struct IslandHandPicker: View {
     /// a no-op — and gets no tick either, because confirming a refusal is how feedback
     /// stops meaning anything.
     private func toggle(_ finger: FingerSet) {
-        if fingers.contains(finger) {
-            guard fingers.count > 1 else { return }
-            fingers.subtract(finger)
-        } else {
-            fingers.formUnion(finger)
-        }
+        let next = FingerSelection.toggling(finger, in: fingers)
+        guard next != fingers else { return }
+        fingers = next
         tapTick += 1
     }
 }
