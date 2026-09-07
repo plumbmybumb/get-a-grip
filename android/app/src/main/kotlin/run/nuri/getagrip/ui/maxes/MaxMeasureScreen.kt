@@ -70,6 +70,7 @@ import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.MaxAttempt
 import run.nuri.getagrip.engine.RunnerPhase
+import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.runner.KeepScreenOn
 import run.nuri.getagrip.store.DeviceStore
 import run.nuri.getagrip.store.LocalDeviceStore
@@ -107,9 +108,13 @@ fun MaxMeasureScreen(
     /// Handed the measured result when it is accepted. **The caller owns saving** — this
     /// screen never writes to the store, so "measure" and "record" stay separable and the
     /// number lands in the same field a typed one would.
-    onMeasured: (Double) -> Unit,
+    onMeasured: (Double, Side) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    initialSide: Side = Side.both,
+    isSaving: Boolean = false,
+    saveFailed: Boolean = false,
+    onMeasurementStarted: () -> Unit = {},
 ) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
@@ -118,6 +123,7 @@ fun MaxMeasureScreen(
     val measurement = remember { MaxMeasurement() }
     var frozenTrace by remember { mutableStateOf<List<DeviceStore.TracePoint>?>(null) }
     var phase by remember { mutableStateOf(MaxMeasurePhase.ready) }
+    var selectedSide by remember(initialSide) { mutableStateOf(initialSide) }
     /// Bumped on every Start, so the timeout effect restarts with the attempt rather than
     /// continuing to count from the first one.
     var attemptTick by remember { mutableIntStateOf(0) }
@@ -138,6 +144,7 @@ fun MaxMeasureScreen(
 
     fun start() {
         if (!device.state.isConnected) return
+        onMeasurementStarted()
         measurement.reset()
         // The trace is the attempt's own picture; leftovers from a previous go would be
         // drawn as part of this one, and the axis is latched off what it has seen.
@@ -211,7 +218,7 @@ fun MaxMeasureScreen(
                 },
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 navigationIcon = {
-                    IconButton(onClick = onCancel) {
+                    IconButton(onClick = onCancel, enabled = !isSaving) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Cancel"))
                     }
                 },
@@ -235,6 +242,18 @@ fun MaxMeasureScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                Column(
+                    Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CapsLabel(tr("THIS MAX IS FOR"))
+                    MaxHandPicker(
+                        selectedSide = selectedSide,
+                        onSelected = { selectedSide = it },
+                        enabled = phase != MaxMeasurePhase.measuring && !isSaving,
+                    )
+                }
+
                 CapsLabel(
                     if (phase == MaxMeasurePhase.done) tr("YOUR MAX ON THIS GRIP") else tr("HARDEST PULL"),
                     Modifier.fillMaxWidth(),
@@ -349,18 +368,26 @@ fun MaxMeasureScreen(
                             stop(StreamStopCause.userStopped)
                         }
                         MaxMeasurePhase.done -> {
+                            if (saveFailed) {
+                                Text(
+                                    tr("That couldn't be saved — nothing was recorded. Try again."),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = palette.alarm,
+                                )
+                            }
                             SecondaryButton(
                                 title = tr("Try again"),
                                 icon = Icons.Outlined.Refresh,
-                                enabled = device.state.isConnected,
+                                enabled = device.state.isConnected && !isSaving,
                                 modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
                             ) { start() }
                             PrimaryButton(
                                 title = tr("Use this max"),
                                 icon = Icons.Filled.Check,
-                                enabled = measurement.hasResult,
+                                enabled = measurement.hasResult && !isSaving,
                                 modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
-                            ) { onMeasured(measurement.peakKg) }
+                            ) { onMeasured(measurement.peakKg, selectedSide) }
                         }
                     }
                 }
@@ -615,7 +642,7 @@ private fun MaxMeasurePreview() {
     }
     GetAGripTheme {
         CompositionLocalProvider(LocalDeviceStore provides device) {
-            MaxMeasureScreen(grip = GripSpec(), onMeasured = {}, onCancel = {})
+            MaxMeasureScreen(grip = GripSpec(), onMeasured = { _, _ -> }, onCancel = {})
         }
     }
 }

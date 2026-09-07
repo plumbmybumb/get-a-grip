@@ -1,0 +1,10 @@
+<en-US>
+You can now choose Left, Right, or Both hands directly when measuring a max, including when you tap Measure again. Check or correct the hand before saving.
+
+If a max can't be saved, your result stays on screen so you can try again.
+</en-US>
+<fr-FR>
+Vous pouvez maintenant choisir Main gauche, Main droite ou Les deux mains directement pendant un test de max, même en retestant une prise. Vérifiez ou corrigez la main avant d'enregistrer.
+
+Si l'enregistrement échoue, le résultat reste à l'écran pour vous permettre de réessayer.
+</fr-FR>

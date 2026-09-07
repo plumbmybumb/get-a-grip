@@ -69,6 +69,7 @@ fun Chip(
     title: String,
     isSelected: Boolean,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     val palette = LocalGripPalette.current
@@ -82,6 +83,7 @@ fun Chip(
                 selected = isSelected
             }
             .clickable(
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,

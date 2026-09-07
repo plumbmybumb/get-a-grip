@@ -70,6 +70,7 @@ import run.nuri.getagrip.ui.maxes.MaxEntryDraft
 import run.nuri.getagrip.ui.maxes.MaxEntrySheet
 import run.nuri.getagrip.ui.maxes.MaxMeasureScreen
 import run.nuri.getagrip.ui.maxes.MaxesTabScreen
+import run.nuri.getagrip.ui.components.SubmissionState
 import run.nuri.getagrip.ui.runner.RunnerHost
 import run.nuri.getagrip.ui.settings.SettingsScreen
 import run.nuri.getagrip.ui.theme.LocalGripPalette
@@ -232,28 +233,39 @@ fun RootTabView() {
     // Measuring a max is full screen too: the phone is on a bench and you are on a
     // fingerboard with both hands. The screen never writes; the number lands here.
     var measuring by remember { mutableStateOf<MeasureRequest?>(null) }
+    val maxSubmission = remember { SubmissionState() }
+    var maxSaveFailed by remember(measuring) { mutableStateOf(false) }
     val measure = measuring
     if (measure != null) {
         MaxMeasureScreen(
             grip = measure.grip,
-            onMeasured = { kg ->
+            initialSide = measure.side,
+            isSaving = maxSubmission.isRunning,
+            saveFailed = maxSaveFailed,
+            onMeasurementStarted = { maxSaveFailed = false },
+            onMeasured = { kg, side ->
                 val composer = maxEntry
                 if (measure.intoComposer && composer != null) {
                     // Straight back into the field a typed number would land in — the sheet
                     // is what decides provenance, by comparing this to whatever the value is
                     // when Save is tapped. Nothing is written here.
-                    composer.receiveMeasured(kg)
+                    composer.receiveMeasured(kg, side)
+                    measuring = null
                 } else {
                     // The Maxes tab's "Measure again", which skips the composer entirely: one
                     // grip, one hand, straight to the record.
-                    scope.launch {
-                        templates.recordMax(kg = kg, grip = measure.grip, source = MaxSource.measured, side = measure.side)
+                    maxSubmission.launch(scope) {
+                        maxSaveFailed = false
+                        if (!templates.recordMax(kg = kg, grip = measure.grip, source = MaxSource.measured, side = side)) {
+                            maxSaveFailed = true
+                            return@launch
+                        }
                         feed.refresh()
+                        measuring = null
                     }
                 }
-                measuring = null
             },
-            onCancel = { measuring = null },
+            onCancel = { if (!maxSubmission.isRunning) measuring = null },
         )
         return
     }

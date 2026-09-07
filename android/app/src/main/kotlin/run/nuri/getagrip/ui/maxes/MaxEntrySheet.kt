@@ -51,7 +51,6 @@ import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.Chip
-import run.nuri.getagrip.ui.components.ChipGrid
 import run.nuri.getagrip.ui.components.FingerPips
 import run.nuri.getagrip.ui.components.IntValueRow
 import run.nuri.getagrip.ui.components.PositionChipRow
@@ -98,9 +97,10 @@ class MaxEntryDraft(seed: GripSpec = GripSpec()) {
     val canSave: Boolean get() = kg > 0
 
     /// The number the gauge produced, landing in the same field a typed one would.
-    fun receiveMeasured(value: Double) {
+    fun receiveMeasured(value: Double, measuredSide: Side = side) {
         kg = clamped(value)
         measuredKg = kg
+        side = measuredSide
     }
 
     /// **`sliderRange` is what the SLIDER spans, `limit` is what a TYPED value is clamped
@@ -384,32 +384,7 @@ private fun GripRail(draft: MaxEntryDraft) {
 private fun HandBlock(draft: MaxEntryDraft) {
     val palette = LocalGripPalette.current
     Block(tr("THIS MAX IS FOR")) {
-        // Both first, then the hands in the order the runner alternates them.
-        ChipGrid(
-            base = 3,
-            content = listOf(Side.both, Side.left, Side.right).map { side ->
-                { cellModifier: Modifier ->
-                    Chip(
-                        // NOT `Side.displayName` — that vocabulary is the runner's ("Left",
-                        // "Both"), read at arm's length mid-set. Here the chips answer "which
-                        // hand is this max for".
-                        when (side) {
-                            Side.both -> tr("Both hands")
-                            Side.left -> tr("Left hand")
-                            Side.right -> tr("Right hand")
-                        },
-                        draft.side == side,
-                        cellModifier.semantics {
-                            contentDescription = if (side == Side.both) {
-                                L10n.tr("For both hands")
-                            } else {
-                                L10n.tr("For the %s hand only", side.displayName.lowercase())
-                            }
-                        },
-                    ) { draft.side = side }
-                }
-            },
-        )
+        MaxHandPicker(selectedSide = draft.side, onSelected = { draft.side = it })
         Text(
             if (draft.side == Side.both) {
                 tr("Used for both hands. Pick a hand if yours differ — most people's do.")

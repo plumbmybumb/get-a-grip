@@ -123,6 +123,28 @@ class MaxEntryDraftTests {
         assertEquals(Side.both, MaxEntryDraft(grip).side)
     }
 
+    @Test
+    fun aMeasuredResultReturnsItsSelectedHandToTheComposer() {
+        val draft = MaxEntryDraft(grip)
+        draft.side = Side.right
+        draft.receiveMeasured(31.5, Side.left)
+
+        assertEquals(Side.left, draft.side)
+        assertEquals(31.5, draft.kg)
+        assertEquals(MaxSource.measured, draft.source)
+        assertEquals(grip, draft.grip)
+    }
+
+    @Test
+    fun aBothHandsCorrectionReplacesTheComposersPreviousHand() {
+        val draft = MaxEntryDraft(grip)
+        draft.side = Side.left
+        draft.receiveMeasured(42.0, Side.both)
+
+        assertEquals(Side.both, draft.side)
+        assertEquals(42.0, draft.kg)
+    }
+
     /// The seed is a starting point, not a lock: every field stays editable, so a grip you
     /// have never used costs three taps rather than a setup step.
     @Test
