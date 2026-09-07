@@ -1,6 +1,20 @@
 # Android Play closed beta
 
-## Current status — 6 September 2026
+## Current status — 7 September 2026
+
+Version **1.0.1 (4)**, release **1.0.1 (4) — Choose your hand for max tests**,
+has been submitted to the existing closed Alpha track at 100% rollout. Play
+Console shows **Changes in review**, with automated quick checks running.
+Managed publishing is off; eligible testers receive the update after approval.
+Build 3 was verified available to testers before this submission and remains live.
+
+The update adds hand selection directly to max measurement and preserves results
+after failed saves. All 899 Android tests pass. No change to permissions or
+supported devices. See [release verification](RELEASE_2026-09-07.md).
+
+## Previous submission — 6 September 2026
+
+The status below is historical. Build 3 was subsequently approved and published.
 
 Version **1.0.1 (3)**, release **1.0.1 (3) — Effort ladder and reliability**, has
 been uploaded and submitted to the existing closed Alpha track at 100% rollout.
