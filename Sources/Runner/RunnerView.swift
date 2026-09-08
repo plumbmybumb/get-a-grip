@@ -263,23 +263,18 @@ struct RunnerView: View {
                 timerDial(session)
                 timerPositionLine(session)
             } else {
-                // WITH AN ISLAND the grip hangs off it, so the in-content glyph would be the
-                // same picture twice — and the counters move DOWN to sit above the graph,
-                // which hands the whole top band to the hand (Nuri, 2026-08-09). They read
-                // just as well there: they are the two numbers you check between pulls, not
-                // while pulling. Without one (a notch, an SE, the simulator's older devices)
-                // the original layout stands — the glyph is the instruction, and it cannot
-                // simply go missing because the hardware has no cutout to hang it from.
+                // The island owns the hand on supported phones; compact devices keep
+                // the glyph in the document. Counts and the rest word always sit
+                // below the numbers, in the same position relative to the graph.
                 if hasIsland {
                     gripLineText(session)
                 } else {
-                    counters(session)
                     gripLine(session)
                 }
                 prompt(session)
                 hero(session)
                 progress(session)
-                if hasIsland { counters(session) }
+                counters(session)
                 ZStack {
                     LiveTrace(thresholdKg: session.plan.thresholdKg,
                               // Only while the rep is actually live. A lane drawn during
@@ -727,6 +722,7 @@ struct RunnerView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(countdownCaption(session) ?? "")
         .accessibilityHidden(countdownCaption(session) == nil)
+        .accessibilityIdentifier("runner.hero")
     }
 
     private func countdownCaption(_ session: RunnerSession) -> String? {

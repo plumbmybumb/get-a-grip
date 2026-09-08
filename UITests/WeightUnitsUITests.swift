@@ -45,6 +45,9 @@ final class WeightUnitsUITests: XCTestCase {
         let counters = app.descendants(matching: .any).matching(identifier: "runner.counters").firstMatch
         XCTAssertTrue(counters.waitForExistence(timeout: 5))
         XCTAssertTrue(counters.label.contains("REST"), counters.debugDescription)
+        let hero = app.descendants(matching: .any).matching(identifier: "runner.hero").firstMatch
+        XCTAssertTrue(hero.exists)
+        XCTAssertGreaterThan(counters.frame.minY, hero.frame.maxY, "The rest label belongs below the numbers on every iPhone")
         screenshot(app, name: "iPhone rest label and gray border")
         app.terminate()
         app.launchArguments = ["-previewRunnerWorking", "-previewWeightLb", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
