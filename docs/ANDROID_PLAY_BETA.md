@@ -1,6 +1,23 @@
 # Android Play closed beta
 
-## Current status — 7 September 2026
+## Current status — 8 September 2026
+
+Version **1.0.1 (6)**, release **1.0.1 (6) — WH-C06 responsiveness and recovery**,
+has been submitted to the existing closed Alpha track at 100% rollout. Play
+Console shows **Changes in review**, with automated quick checks running.
+Managed publishing is off; eligible testers receive the update after approval.
+Build 4 was verified live before this submission and remains available to testers.
+Build 5 was replaced in the draft before submission.
+
+This update repairs WH-C06 scan recovery, renews long-running scans before the
+observed Android slowdown, and adds search cancellation and clearer optional
+diagnostics. All 939 Android tests pass, and real WH-C06 hardware testing verified
+two consecutive four-minute renewals with sustained response. No change to
+permissions or supported devices. See [release verification](RELEASE_2026-09-08.md).
+
+## Previous submission — 7 September 2026
+
+The status below is historical. Build 4 was subsequently approved and published.
 
 Version **1.0.1 (4)**, release **1.0.1 (4) — Choose your hand for max tests**,
 has been submitted to the existing closed Alpha track at 100% rollout. Play
