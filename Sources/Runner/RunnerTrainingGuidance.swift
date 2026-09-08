@@ -4,10 +4,12 @@
 import Foundation
 
 enum RunnerScreenCue: Equatable {
-    case pulling, releasing, warning
+    case pulling, releasing, warning, resting
 
     /// Active pulling stays calmer than an instruction that needs attention.
-    var lineWidth: CGFloat { self == .pulling ? 4 : 6 }
+    var lineWidth: CGFloat {
+        switch self { case .resting: 3; case .pulling: 4; case .releasing, .warning: 6 }
+    }
 }
 
 extension RunnerSnapshot {
@@ -16,6 +18,7 @@ extension RunnerSnapshot {
     /// Timer-only work has its own clock and ignores unrelated gauge readiness.
     func screenBorderCue(timerOnly: Bool, measuredSignalIsLive: Bool) -> RunnerScreenCue? {
         if showsReleaseBorder { return .releasing }
+        if case .resting = phase { return .resting }
         guard case .working = phase else { return nil }
         if isDropped || isOverTarget { return .warning }
         if !timerOnly && (!hasSignal || !measuredSignalIsLive || linkIsDown || isRejectingStaleBatches) {

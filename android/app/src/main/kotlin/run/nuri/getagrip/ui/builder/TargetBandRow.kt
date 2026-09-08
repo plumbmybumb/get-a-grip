@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.builder
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -192,13 +194,13 @@ fun TargetBandRow(
         (percentBand != null && PRESETS.none { matches(it.lo, it.hi) })
 
     val valueText = when {
-        kgBand != null -> PlanMath.bandText(kgBand)
+        kgBand != null -> WeightUnits.band(kgBand)
         percentBand == null -> tr("None")
         // **When the hands differ there is no single number to lead with**, so it shows the
         // percentage — the thing you actually set, and the one figure that IS true of both
         // hands — and the caption underneath carries the two loads.
         differsByHand -> percentText(percentBand)
-        else -> resolved(sides[0])?.let { PlanMath.bandText(it) } ?: percentText(percentBand)
+        else -> resolved(sides[0])?.let { WeightUnits.band(it) } ?: percentText(percentBand)
     }
 
     val caption: String? = when {
@@ -230,10 +232,10 @@ fun TargetBandRow(
                 else -> {
                     val loads = sides.mapNotNull { side ->
                         resolved(side)?.let {
-                            L10n.tr("%s %s", side.prompt.take(1), PlanMath.bandText(it, withUnit = false))
+                            L10n.tr("%s %s", side.prompt.take(1), WeightUnits.band(it, withUnit = false))
                         }
                     }
-                    tr(
+                    WeightUnits.tr(
                         "%s of each hand's max · %s kg",
                         percentText(percentBand),
                         loads.joinToString(" · "),
@@ -405,13 +407,13 @@ fun TargetBandRow(
                         val lo = kgBand?.start ?: DEFAULT_KG_LO
                         val hi = kgBand?.endInclusive ?: DEFAULT_KG_HI
                         BandTrimmer(
-                            lo = lo,
-                            hi = hi,
-                            scale = 0.0..kgScaleTop(kgBand?.endInclusive, set, maxes, sides),
+                            lo = WeightUnits.fromKg(lo),
+                            hi = WeightUnits.fromKg(hi),
+                            scale = WeightUnits.sliderRange(0.0..kgScaleTop(kgBand?.endInclusive, set, maxes, sides)),
                             step = 0.5,
-                            format = { kgUnit(it) },
-                            spokenUnit = tr("kilograms"),
-                        ) { newLo, newHi -> applyKg(newLo, newHi) }
+                            format = { "${WeightUnits.formatDisplayed(it)} ${WeightUnits.symbol}" },
+                            spokenUnit = WeightUnits.spoken,
+                        ) { newLo, newHi -> applyKg(WeightUnits.toKg(newLo), WeightUnits.toKg(newHi)) }
                     } else {
                         BandTrimmer(
                             lo = percentBand?.start ?: 0.20,
@@ -425,18 +427,18 @@ fun TargetBandRow(
                     val isPercent = unit == Unit_.Percent
                     val currentLo = if (isPercent) percentBand?.start ?: 0.20 else kgBand?.start ?: DEFAULT_KG_LO
                     val currentHi = if (isPercent) percentBand?.endInclusive ?: 0.30 else kgBand?.endInclusive ?: DEFAULT_KG_HI
-                    val factor = if (isPercent) 100.0 else 1.0
-                    val bounds = if (isPercent) 1.0..100.0 else 0.0..kgScaleTop(kgBand?.endInclusive, set, maxes, sides)
+                    val factor = if (isPercent) 100.0 else WeightUnits.fromKg(1.0)
+                    val bounds = if (isPercent) 1.0..100.0 else WeightUnits.fromKg(0.0..kgScaleTop(kgBand?.endInclusive, set, maxes, sides))
                     for (lower in listOf(true, false)) {
                         run.nuri.getagrip.ui.components.ValueRow(
                             title = if (lower) tr("Lower bound") else tr("Upper bound"),
                             value = (if (lower) currentLo else currentHi) * factor,
                             range = bounds,
-                            unit = if (isPercent) "%" else tr("kg"),
+                            unit = if (isPercent) "%" else WeightUnits.symbol,
                             decimals = if (isPercent) 0 else 1,
                             control = run.nuri.getagrip.ui.components.ValueControl.None,
                         ) { typed ->
-                            val value = typed / factor
+                            val value = if (isPercent) typed / 100.0 else WeightUnits.toKg(typed)
                             val lo = if (lower) value else minOf(value, currentLo)
                             val hi = if (lower) maxOf(value, currentHi) else value
                             if (isPercent) applyPercent(lo, hi) else applyKg(lo, hi)
@@ -467,7 +469,7 @@ private enum class Unit_(private val key: String) {
     Percent("% of max"),
     Kilograms("Kilograms");
 
-    val label: String get() = L10n.tr(key)
+    val label: String get() = if (this == Kilograms) L10n.tr(if (WeightUnits.current == run.nuri.getagrip.ui.units.WeightUnit.kg) "Kilograms" else "Pounds") else L10n.tr(key)
 }
 
 private data class Preset(val label: String, val lo: Double, val hi: Double)
@@ -506,7 +508,7 @@ private fun percentText(band: ClosedFloatingPointRange<Double>): String =
 
 /// The trimmer's own formatters. Named rather than inline because a lambda passed to a
 /// composable is not itself composable, and `L10n.tr` is the door that works from either.
-private fun kgUnit(value: Double): String = L10n.tr("%s kg", kgText(value))
+private fun kgUnit(value: Double): String = WeightUnits.tr("%s kg", kgText(value))
 
 private fun percentUnit(fraction: Double): String =
     L10n.tr("%d %%", (fraction * 100).roundToInt())
@@ -514,11 +516,7 @@ private fun percentUnit(fraction: Double): String =
 /// One kilogram figure, to one decimal. LOCALE-SENSITIVE, like `PlanMath.bandText` and
 /// every other number a person reads — the locale-free `Fmt.fixed` belongs to keys and
 /// exports.
-internal fun kgText(kg: Double): String =
-    java.text.NumberFormat.getNumberInstance(java.util.Locale.getDefault()).apply {
-        minimumFractionDigits = 1
-        maximumFractionDigits = 1
-    }.format(kg)
+internal fun kgText(kg: Double): String = WeightUnits.number(kg)
 
 @Preview(name = "TargetBandRow", showBackground = true, widthDp = 360)
 @Composable

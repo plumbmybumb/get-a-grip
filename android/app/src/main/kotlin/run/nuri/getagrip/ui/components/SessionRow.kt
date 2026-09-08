@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.components
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -192,12 +194,12 @@ private fun subtitle(log: WorkoutLogEntity): String {
     if (log.kind == SessionKind.benchmark) return L10n.tr("Tested your maxes")
     val held = PlanMath.clockText(Math.round(log.totalHeldSeconds).toInt())
     if (log.peakKg <= 0) return L10n.tr("%d/%d pulls · %s", log.completedReps, log.plannedReps, held)
-    return L10n.tr(
+    return WeightUnits.tr(
         "%d/%d pulls · %s · %s kg",
         log.completedReps,
         log.plannedReps,
         held,
-        Fmt.fixed(log.peakKg, 1),
+        WeightUnits.number(log.peakKg, 1),
     )
 }
 
@@ -255,7 +257,7 @@ fun spokenSession(log: WorkoutLogEntity, name: String): String {
     parts.add(when_)
     parts.add(L10n.tr("%d of %d pulls completed", log.completedReps, log.plannedReps))
     parts.add(trQuantity("%d seconds under tension", Math.round(log.totalHeldSeconds).toInt()))
-    if (log.peakKg > 0) parts.add(L10n.tr("peak %s kilograms", Fmt.fixed(log.peakKg, 1)))
+    if (log.peakKg > 0) parts.add(WeightUnits.tr("peak %s kilograms", WeightUnits.number(log.peakKg, 1)))
     log.grade?.let { parts.add(L10n.tr("felt %s", it.displayName)) }
     return parts.joinToString(", ")
 }

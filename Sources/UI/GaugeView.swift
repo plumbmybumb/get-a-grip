@@ -10,6 +10,7 @@ import SwiftUI
 /// deliberately shows the raw truth (current, peak, firmware, battery) rather than
 /// a prettified summary.
 struct GaugeView: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
     @Environment(\.dismiss) private var dismiss
 
@@ -50,7 +51,7 @@ struct GaugeView: View {
             Button("Zero it", role: .destructive) { confirmTare() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("There's \(promptedKg, specifier: "%.1f") kg on the gauge. Zero it?")
+            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Zero it?"))
         }
         .onDisappear {
             // Never leave the device streaming behind us: it drains its own battery
@@ -154,6 +155,7 @@ struct GaugeView: View {
 
 /// The big number. Its own view so a sample redraws THIS and nothing around it.
 private struct GaugeHero: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
     var heroSize: CGFloat
     var unitSize: CGFloat
@@ -161,13 +163,13 @@ private struct GaugeHero: View {
     var body: some View {
         VStack(spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(device.currentKg, format: .number.precision(.fractionLength(1)))
+                Text(weightUnit.number(device.currentKg))
                     .font(.system(size: heroSize, weight: .thin))
                     .displayTracking(heroSize)
                     .monospacedDigit()
                     // A measurement snaps; see RunnerView.readout.
                     .contentTransition(.identity)
-                Text("kg")
+                Text(weightUnit.symbol)
                     .font(.system(size: unitSize, weight: .regular))
                     .foregroundStyle(Ink.tertiary)
             }
@@ -210,6 +212,7 @@ private struct GaugeTrace: View {
 /// Peak, battery and the one-second mean. The mean walks the whole trace, so it very
 /// much wants to be alone in here.
 private struct GaugeReadouts: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
 
     /// Rolling one-second average of the live stream — the number you actually read
@@ -230,7 +233,7 @@ private struct GaugeReadouts: View {
     var body: some View {
         let average = averageKg
         return HStack(spacing: 10) {
-            readout(String(localized: "Peak"), value: device.peakKg.formatted(.number.precision(.fractionLength(1))), unit: String(localized: "kg"))
+            readout(String(localized: "Peak"), value: weightUnit.number(device.peakKg), unit: weightUnit.symbol)
             readout(String(localized: "Battery"),
                     value: device.batteryFraction.map { "\(BatteryDisplay.percentage($0))" } ?? "—",
                     unit: device.batteryFraction == nil ? "" : String(localized: "%"))
@@ -239,14 +242,14 @@ private struct GaugeReadouts: View {
             // the reading the flickering hero number can't give you: hang steady,
             // read the average.
             readout(String(localized: "Average"),
-                    value: average.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—",
-                    unit: average == nil ? "" : String(localized: "kg"))
+                    value: average.map { weightUnit.number($0) } ?? "—",
+                    unit: average == nil ? "" : weightUnit.symbol)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("""
-            Current \(device.currentKg.formatted(.number.precision(.fractionLength(1)))) kilograms, \
-            peak \(device.peakKg.formatted(.number.precision(.fractionLength(1)))) kilograms\
-            \(average.map { String(localized: ", one-second average \($0.formatted(.number.precision(.fractionLength(1)))) kilograms") } ?? "")
+            Current \(weightUnit.number(device.currentKg)) \(weightUnit.spokenName), \
+            peak \(weightUnit.number(device.peakKg)) \(weightUnit.spokenName)\
+            \(average.map { String(localized: ", one-second average \(weightUnit.number($0)) \(weightUnit.spokenName)") } ?? "")
             """)
     }
 

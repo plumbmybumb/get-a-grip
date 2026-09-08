@@ -60,6 +60,8 @@ struct SessionActivity: ActivityAttributes {
         /// for a stalled one.
         var pendingSeconds: Int?
 
+        var displayWeightUnit: WeightUnit? = nil
+
         var targetBand: ClosedRange<Double>? {
             SetPlan.band(lo: targetLoKg, hi: targetHiKg)
         }

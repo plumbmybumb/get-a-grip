@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.gauge
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -292,7 +294,7 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
             title = { Text(tr("Zero the gauge?")) },
             text = {
                 Text(
-                    tr(
+                    WeightUnits.tr(
                         "There is %s kg on the gauge. Taring now makes that the new zero for the rest of this session.",
                         kgText(prompted),
                     ),
@@ -343,7 +345,7 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
 /// a garbage float must not take the hero numeral down with it on the first hardware
 /// session.
 private fun kgText(value: Double): String =
-    Fmt.fixed(if (value.isFinite()) value else 0.0, 1)
+    WeightUnits.number(if (value.isFinite()) value else 0.0, 1)
 
 // MARK: - Live leaves
 
@@ -379,7 +381,7 @@ private fun GaugeHero() {
                 color = if (device.isStreaming) palette.bleu else palette.inkPrimary,
             )
             Text(
-                tr("kg"),
+                WeightUnits.symbol,
                 style = TextStyle(fontSize = UNIT_SIZE),
                 color = palette.inkTertiary,
                 modifier = Modifier.padding(bottom = 12.dp),
@@ -419,11 +421,11 @@ private fun GaugeReadouts() {
         // The average is a SUFFIX key of its own, exactly as iOS writes it: the sentence
         // it hangs off is one unit, and the clause that may or may not be there is another.
         append(
-            L10n.tr(
+            WeightUnits.tr(
                 "Current %s kilograms, peak %s kilograms%s",
                 kgText(device.currentKg),
                 kgText(device.peakKg),
-                average?.let { L10n.tr(", one-second average %s kilograms", kgText(it)) } ?: "",
+                average?.let { WeightUnits.tr(", one-second average %s kilograms", kgText(it)) } ?: "",
             )
         )
     }
@@ -435,7 +437,7 @@ private fun GaugeReadouts() {
             .semantics(mergeDescendants = true) { contentDescription = summary },
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Readout(tr("Peak"), kgText(device.peakKg), tr("kg"), Modifier.weight(1f))
+        Readout(tr("Peak"), kgText(device.peakKg), WeightUnits.symbol, Modifier.weight(1f))
         Readout(
             tr("Battery"),
             battery?.let { "${run.nuri.getagrip.ui.components.BatteryDisplay.percentage(it)}" } ?: tr("—"),
@@ -445,7 +447,7 @@ private fun GaugeReadouts() {
         Readout(
             tr("Average"),
             average?.let { kgText(it) } ?: tr("—"),
-            if (average == null) "" else tr("kg"),
+            if (average == null) "" else WeightUnits.symbol,
             Modifier.weight(1f),
         )
     }

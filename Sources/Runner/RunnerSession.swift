@@ -174,6 +174,10 @@ final class RunnerSession {
                 ? nil : Self.syntheticClockGapCapSeconds)
     }
 
+    var weightUnit: WeightUnit = .kg {
+        didSet { if oldValue != weightUnit { pushActivity() } }
+    }
+
     let timerOnly: Bool
 
     /// Whether the gauge stamps its own samples. The Progressor does; every ported device
@@ -539,7 +543,8 @@ final class RunnerSession {
                                           side: snapshot.side ?? .both,
                                           phase: activityPhase,
                                           setNumber: snapshot.setNumber ?? 1,
-                                          repPosition: repPosition)
+                                          repPosition: repPosition,
+                                          weightUnit: weightUnit)
         // **Compared WITHOUT `endsAt`, and that is the whole point.** `endsAt` is
         // `now + secondsRemaining`, so it drifts by fractions of a second on every one of
         // the ten publishes a second — comparing it would push ten times a second and
@@ -562,6 +567,7 @@ final class RunnerSession {
         var phase: SessionActivity.Phase
         var setNumber: Int
         var repPosition: Int
+        var weightUnit: WeightUnit
     }
 
     /// Which pull you are ON. Floored at 1: a card reading "Pull 0 of 12" says the
@@ -576,6 +582,8 @@ final class RunnerSession {
         // ARMED runs no clock — it waits on you, with no timeout, by design. So the
         // deadline goes out nil and the hold LENGTH goes out instead; see `pendingSeconds`.
         let isArmed = phase == .armed
+        let remainingInterval = runner.countdownRemainingInterval(
+            at: ProcessInfo.processInfo.systemUptime) ?? Double(snapshot.secondsShown)
         return SessionActivity.ContentState(
             grip: grip,
             side: snapshot.side ?? .both,
@@ -586,10 +594,11 @@ final class RunnerSession {
             targetHiKg: snapshot.targetBand?.upperBound,
             // An ABSOLUTE deadline, recomputed from the same countdown the screen shows.
             // Converting to a Date here is what lets the widget tick without us.
-            endsAt: phase.runsCountdown && snapshot.secondsShown > 0
-                ? Date.now.addingTimeInterval(Double(snapshot.secondsShown))
+            endsAt: phase.runsCountdown && remainingInterval > 0
+                ? Date.now.addingTimeInterval(remainingInterval)
                 : nil,
-            pendingSeconds: isArmed ? snapshot.secondsShown : nil)
+            pendingSeconds: isArmed ? snapshot.secondsShown : nil,
+            displayWeightUnit: weightUnit)
     }
 
     /// The runner's phases collapsed to the ones that change what you do with your hands —

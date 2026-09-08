@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -274,14 +276,14 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
     // a row titled "Max on this grip" is the same word twice in eighteen points of height.
     ValueRow(
         title = tr("Max on this grip"),
-        value = draft.kg,
-        range = MaxEntryDraft.sliderRange,
-        unit = tr("kg"),
-        limit = MaxEntryDraft.limit,
+        value = WeightUnits.fromKg(draft.kg),
+        range = WeightUnits.sliderRange(MaxEntryDraft.sliderRange),
+        unit = WeightUnits.symbol,
+        limit = WeightUnits.fromKg(MaxEntryDraft.limit),
         step = 0.5,
         decimals = 1,
         caption = bandCaption(draft.kg),
-    ) { draft.kg = MaxEntryDraft.clamped(it) }
+    ) { draft.kg = MaxEntryDraft.clamped(WeightUnits.toKg(it)) }
 
     // Append, never edit — so the sheet says so before you tap Save rather than leaving you
     // to discover a second row afterwards. Keyed by grip AND hand: the record this save
@@ -290,10 +292,10 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
     templates.currentMaxes[MaxTable.key(draft.grip.key, draft.side)]?.let { existing ->
         val hand = if (draft.side == Side.both) "" else tr(" for that hand")
         Text(
-            tr(
+            WeightUnits.tr(
                 "Your current max on this grip%s is %s kg, recorded %s. Saving adds a new one and keeps the old as history.",
                 hand,
-                Fmt.fixed(existing.kg, 1),
+                WeightUnits.number(existing.kg, 1),
                 relative(existing.recordedAt),
             ),
             style = MaterialTheme.typography.bodySmall,
@@ -334,10 +336,10 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
 private fun bandCaption(kg: Double): String? {
     if (kg <= 0) return L10n.tr("Enter a max above zero to save it.")
     val band = PlanMath.suggestedBand(kg) ?: return null
-    return L10n.tr(
+    return WeightUnits.tr(
         "20–30 %% of that is %s–%s kg",
-        Fmt.fixed(band.start, 1),
-        Fmt.fixed(band.endInclusive, 1),
+        WeightUnits.number(band.start, 1),
+        WeightUnits.number(band.endInclusive, 1),
     )
 }
 
@@ -439,13 +441,13 @@ private fun ColumnScope.ImpactContent(
     Block(tr("Saved")) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                Fmt.fixed(draft.kg, 1),
+                WeightUnits.number(draft.kg, 1),
                 style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
                 fontWeight = FontWeight.SemiBold,
                 color = palette.inkPrimary,
             )
             Text(
-                tr("kg · %s", draft.grip.displayName),
+                WeightUnits.tr("kg · %s", draft.grip.displayName),
                 style = MaterialTheme.typography.bodyMedium,
                 color = palette.inkSecondary,
             )
@@ -480,7 +482,7 @@ private fun ColumnScope.ImpactContent(
 
     val ratio = impact.ratio
     if (impact.kgOffers.isNotEmpty() && ratio != null) {
-        Block(tr("TYPED KILOGRAMS")) {
+        Block(tr("Weight targets").uppercase()) {
             impact.kgOffers.forEach { offer ->
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
@@ -491,7 +493,7 @@ private fun ColumnScope.ImpactContent(
                     )
                     offer.moves.forEach { move ->
                         Text(
-                            tr("%s kg  →  %s kg", bandText(move.oldBand), bandText(move.newBand)),
+                            WeightUnits.tr("%s kg  →  %s kg", bandText(move.oldBand), bandText(move.newBand)),
                             style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                             color = palette.inkSecondary,
                         )
@@ -510,14 +512,14 @@ private fun ColumnScope.ImpactContent(
 
 private fun percentLine(move: TemplateStore.MaxImpact.PercentMove): String {
     val pct = L10n.tr("%d–%d %%", Math.round(move.loPercent * 100), Math.round(move.hiPercent * 100))
-    var line = L10n.tr("%s · now %s kg", pct, bandText(move.newBand))
+    var line = WeightUnits.tr("%s · now %s kg", pct, bandText(move.newBand))
     val old = move.oldBand
     if (old != null && old != move.newBand) line += L10n.tr(" · was %s", bandText(old))
     return line
 }
 
 private fun bandText(band: ClosedFloatingPointRange<Double>): String =
-    L10n.tr("%s–%s", Fmt.fixed(band.start, 1), Fmt.fixed(band.endInclusive, 1))
+    L10n.tr("%s–%s", WeightUnits.number(band.start, 1), WeightUnits.number(band.endInclusive, 1))
 
 @Composable
 private fun Block(label: String, content: @Composable () -> Unit) {

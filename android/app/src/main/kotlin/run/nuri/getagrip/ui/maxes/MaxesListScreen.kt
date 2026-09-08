@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -366,10 +368,10 @@ private fun EarlierRow(record: MaxRecordEntity, grip: GripSpec) {
     // The grip is here for the SPOKEN row only: an indented "12.0 kg · 3 May" read on its
     // own says nothing about which grip it belongs to. Read outside the semantics lambda,
     // which is not composable.
-    val spoken = tr(
+    val spoken = WeightUnits.tr(
         "Earlier max for %s. %s kilograms, recorded %s.",
         grip.spoken,
-        Fmt.fixed(record.kg, 1),
+        WeightUnits.number(record.kg, 1),
         relative(record.recordedAt),
     )
     Surface(
@@ -511,11 +513,11 @@ internal fun spokenGrip(history: GripHistory): String {
     // before the date the way English does not either, but the word itself is what varies.
     val provenance =
         if (history.current.source == MaxSource.measured) L10n.tr("measured ") else L10n.tr("recorded ")
-    var sentence = L10n.tr(
+    var sentence = WeightUnits.tr(
         "%s%s. Max %s kilograms, %s%s.",
         history.grip.spoken,
         hand,
-        Fmt.fixed(history.current.kg, 1),
+        WeightUnits.number(history.current.kg, 1),
         provenance,
         relative(history.current.recordedAt),
     )

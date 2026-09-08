@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
@@ -27,6 +28,8 @@ import run.nuri.getagrip.ui.runner.*
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.math.abs
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w393dp-h820dp-mdpi")
@@ -45,15 +48,23 @@ class RunnerScreenBorderTests {
         assertEquals(RunnerBorderCue.Warning, runnerBorderCue(working, false, false))
     }
 
-    @Test fun restCountdownPauseAndFinishedNeverInheritAWorkWarningOrPullCue() {
+    @Test fun countdownPauseAndFinishedNeverInheritAWorkWarningOrPullCue() {
         for (phase in listOf(RunnerPhase.Idle, RunnerPhase.LeadIn(0), RunnerPhase.Armed(0),
-            RunnerPhase.Resting(0), RunnerPhase.Paused(RunnerPhase.Working(0)),
+            RunnerPhase.Paused(RunnerPhase.Resting(0)), RunnerPhase.Paused(RunnerPhase.Working(0)),
             RunnerPhase.Paused(RunnerPhase.Releasing(0)), RunnerPhase.Finished)) {
             val snapshot = working.copy(phase = phase, isDropped = true, isOverTarget = true,
                 linkIsDown = true, isRejectingStaleBatches = true)
             assertEquals(RunnerBorderCue.None, runnerBorderCue(snapshot, false, false))
             assertEquals(RunnerBorderCue.None, runnerBorderCue(snapshot, true, true))
         }
+    }
+
+    @Test fun activeRestHasAQuietNeutralCueWithoutInheritingStaleWorkFlags() {
+        val rest = working.copy(phase = RunnerPhase.Resting(0), isDropped = true,
+            isOverTarget = true, linkIsDown = true, isRejectingStaleBatches = true)
+        assertEquals(RunnerBorderCue.Rest, runnerBorderCue(rest, false, false))
+        assertEquals(RunnerBorderCue.Rest, runnerBorderCue(rest, true, false))
+        assertEquals(3, RunnerBorderCue.Rest.thicknessDp)
     }
 
     @Test fun releaseGateStaysOrangeUntilItsPhaseActuallyChanges() {
@@ -78,12 +89,13 @@ class RunnerScreenBorderTests {
         var snapshot by mutableStateOf(working)
         var signalLive by mutableStateOf(true)
         var clicked = 0
-        var blue = 0; var red = 0; var orange = 0; var field = 0
+        var blue = 0; var red = 0; var orange = 0; var gray = 0; var field = 0
         compose.mainClock.autoAdvance = false
         compose.setContent { GetAGripTheme {
             val palette = LocalGripPalette.current
             blue = palette.bleu.toArgb(); red = palette.alarm.toArgb()
             orange = palette.armed.toArgb(); field = palette.field.toArgb()
+            gray = palette.inkTertiary.copy(alpha = 0.65f).compositeOver(palette.field).toArgb()
             Box(Modifier.size(320.dp, 640.dp).testTag("screen").background(palette.field)) {
                 Column {
                     Text("12.3 kg", Modifier.testTag("metrics"))
@@ -112,6 +124,17 @@ class RunnerScreenBorderTests {
         compose.runOnIdle { snapshot = working.copy(phase = RunnerPhase.Releasing(0)); Snapshot.sendApplyNotifications() }
         compose.mainClock.advanceTimeByFrame()
         assertEquals(listOf(orange, orange), pixels())
+        compose.runOnIdle { snapshot = working.copy(phase = RunnerPhase.Resting(0)); Snapshot.sendApplyNotifications() }
+        compose.mainClock.advanceTimeByFrame()
+        val restingPixels = pixels()
+        // Skia quantizes the 65% alpha to eight bits before blending. Compose's floating
+        // point composite can differ by one channel value; the geometry remains exact.
+        for (shift in listOf(24, 16, 8, 0)) {
+            assertTrue(abs(((gray ushr shift) and 255) - ((restingPixels[0] ushr shift) and 255)) <= 1)
+        }
+        assertEquals(field, restingPixels[1], "Rest is quieter and three dp thick")
+        compose.mainClock.advanceTimeBy(30_000)
+        assertEquals(restingPixels, pixels(), "Rest has no pulse")
         compose.runOnIdle { snapshot = working.copy(phase = RunnerPhase.Paused(RunnerPhase.Releasing(0))); Snapshot.sendApplyNotifications() }
         compose.mainClock.advanceTimeByFrame()
         assertEquals(listOf(field, field), pixels())

@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.runner
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -227,7 +229,7 @@ private fun Stats(
     val spoken = if (timerOnly) {
         tr("%d of %d pulls completed", completed, planned)
     } else {
-        tr(
+        WeightUnits.tr(
             "%d of %d pulls completed, %d seconds under tension, peak %s kilograms",
             completed,
             planned,
@@ -241,7 +243,7 @@ private fun Stats(
         val values = listOf(
             Triple(tr("Pulls"), "$completed", tr("of %d", planned)),
             Triple(tr("Under tension"), PlanMath.clockText(heldSeconds), null),
-            Triple(tr("Peak"), if (timerOnly) tr("—") else kgText(peakKg), if (timerOnly) null else tr("kg")),
+            Triple(tr("Peak"), if (timerOnly) tr("—") else kgText(peakKg), if (timerOnly) null else WeightUnits.symbol),
         )
         if (stacked) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -394,7 +396,7 @@ private fun MaxRow(
                     Text(kgText(candidate.kg), Modifier.alignByBaseline(),
                         style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
                         fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
-                    Text(tr("kg"), Modifier.alignByBaseline(),
+                    Text(WeightUnits.symbol, Modifier.alignByBaseline(),
                         style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
                 }
                 Text(handLabel(candidate.side), Modifier.align(Alignment.CenterVertically),
@@ -403,7 +405,7 @@ private fun MaxRow(
             }
             Text(candidate.grip.line, style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
             candidate.previous?.let {
-                Text(tr("Previous: %s kg", kgText(it)), style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary)
+                Text(WeightUnits.tr("Previous: %s kg", kgText(it)), style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary)
             }
         }
         Checkbox(checked = saved, onCheckedChange = null,
@@ -414,7 +416,7 @@ private fun MaxRow(
 
 private fun sideLine(candidate: MaxCandidate): String {
     val kg = kgText(candidate.kg)
-    return L10n.tr("%s · %s · %s kg", handLabel(candidate.side), candidate.grip.shortName, kg)
+    return WeightUnits.tr("%s · %s · %s kg", handLabel(candidate.side), candidate.grip.shortName, kg)
 }
 
 private fun handLabel(side: Side): String = L10n.tr(when (side) {

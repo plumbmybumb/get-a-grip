@@ -4,6 +4,9 @@
 package run.nuri.getagrip.ui.settings
 
 import run.nuri.getagrip.store.diagnosticTimeline
+import run.nuri.getagrip.ui.units.WeightUnits
+import run.nuri.getagrip.ui.units.WeightUnit
+import run.nuri.getagrip.ui.components.Chip
 
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import android.icu.text.ListFormatter
@@ -183,6 +186,8 @@ private fun SettingsRoot(
                     if (device.isMock) tr("Demo device") else device.gaugeKind.displayName,
                 )
             }
+
+            WeightUnitSetting(LocalSettingsStore.current)
 
             // WHICH gauge before the live gauge itself: choosing the device precedes using
             // it, and everything below this row describes whatever it selects.
@@ -660,4 +665,22 @@ private fun InnerScreen(
         },
         content = content,
     )
+}
+
+
+@Composable
+internal fun WeightUnitSetting(settings: run.nuri.getagrip.store.SettingsStore) {
+    val palette = LocalGripPalette.current
+    Card {
+        Text(tr("Weight units"), style = MaterialTheme.typography.titleMedium, color = palette.inkPrimary)
+        Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WeightUnit.entries.forEach { option ->
+                Chip(
+                    title = if (option == WeightUnit.kg) tr("Kilograms") + " · kg" else tr("Pounds") + " · lb",
+                    isSelected = settings.weightUnit == option,
+                    modifier = Modifier.weight(1f),
+                ) { settings.setWeightUnit(option) }
+            }
+        }
+    }
 }

@@ -13,6 +13,7 @@ struct RunnerScreenBorder: View {
         case .pulling: StatusTint.engaged
         case .releasing: StatusTint.armed
         case .warning: StatusTint.alarm
+        case .resting: Ink.tertiary.opacity(0.65)
         }
     }
 

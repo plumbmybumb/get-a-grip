@@ -19,18 +19,18 @@ final class SettingsStore {
     /// `.standard` only if the entitlement is broken. Note that
     /// `UserDefaults(suiteName:)` does NOT return nil in that case — it silently falls
     /// back to an unshared container — so this optional only guards a malformed name.
-    private static let store = AppGroup.defaults ?? .standard
+    private let store: UserDefaults
 
     /// The builder's five inline coach cards. Retired on the first save and replayable
     /// from Settings › "Show the setup guide again", so it is a preference, not a flag.
     var builderGuideDone: Bool {
-        didSet { Self.store.set(builderGuideDone, forKey: "builderGuideDone") }
+        didSet { store.set(builderGuideDone, forKey: "builderGuideDone") }
     }
 
     /// One-shot: the contextual permission ask happens on the first Save with reminders
     /// on, once. Never at launch, and never gating anything.
     var didAskNotificationPermission: Bool {
-        didSet { Self.store.set(didAskNotificationPermission, forKey: "didAskNotificationPermission") }
+        didSet { store.set(didAskNotificationPermission, forKey: "didAskNotificationPermission") }
     }
 
     /// Rung 2 of Today's selection rule: the routine started today on THIS device.
@@ -38,9 +38,9 @@ final class SettingsStore {
     var lastStartedRoutineID: UUID? {
         didSet {
             if let id = lastStartedRoutineID {
-                Self.store.set(id.uuidString, forKey: "lastStartedRoutineID")
+                store.set(id.uuidString, forKey: "lastStartedRoutineID")
             } else {
-                Self.store.removeObject(forKey: "lastStartedRoutineID")
+                store.removeObject(forKey: "lastStartedRoutineID")
             }
         }
     }
@@ -50,7 +50,7 @@ final class SettingsStore {
     /// rather than a `DayStamp` because that is what `UserDefaults` can hold; 0 is
     /// 1970-01-01, which is never today, so a fresh install has no suggestion.
     var lastStartedDayRaw: Int {
-        didSet { Self.store.set(lastStartedDayRaw, forKey: "lastStartedDayRaw") }
+        didSet { store.set(lastStartedDayRaw, forKey: "lastStartedDayRaw") }
     }
 
     /// A debounced rescue copy of an in-progress routine draft — create/first-run only,
@@ -59,15 +59,24 @@ final class SettingsStore {
     var draftStash: Data? {
         didSet {
             if let data = draftStash {
-                Self.store.set(data, forKey: "draftStash")
+                store.set(data, forKey: "draftStash")
             } else {
-                Self.store.removeObject(forKey: "draftStash")
+                store.removeObject(forKey: "draftStash")
             }
         }
     }
 
-    init() {
-        let s = Self.store
+    var weightUnit: WeightUnit {
+        didSet { store.set(weightUnit.rawValue, forKey: "weightUnit") }
+    }
+
+    init(defaults: UserDefaults? = nil) {
+        let s = defaults ?? AppGroup.defaults ?? .standard
+        self.store = s
+        weightUnit = WeightUnit(rawValue: s.string(forKey: "weightUnit") ?? "") ?? .kg
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-previewWeightLb") { weightUnit = .lb }
+        #endif
         // `bool(forKey:)` is false for an absent key, which is the correct reading for
         // both one-shots: a fresh install has not seen the guide and has not asked.
         builderGuideDone = s.bool(forKey: "builderGuideDone")

@@ -61,6 +61,9 @@ Do not add actual training exports, personal diagnostics, or device identifiers.
 
 ## Before a public release
 
+Pending fixes and features for the next iOS and Android versions are tracked in
+[Next release fixes and features](docs/NEXT_RELEASE.md).
+
 Run both test suites, compare the cross-platform fixtures, inspect the merged
 Android manifest, and test camera permission/scan flow and Bluetooth on hardware.
 Keep MPL and dependency notices bundled with binaries. Update dependency notices

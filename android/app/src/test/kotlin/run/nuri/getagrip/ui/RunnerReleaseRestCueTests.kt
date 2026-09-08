@@ -182,6 +182,30 @@ class RunnerReleaseRestCueTests {
         }
     }
 
+    @Test fun restLabelSitsBetweenTheCountersAndNeverCrowdsTheNumerals() {
+        Harness().use { h ->
+            h.holdUntilRelease()
+            showRunner(h)
+            val before = compose.onNodeWithTag("runner-plot").fetchSemanticsNode().boundsInRoot
+            compose.onNodeWithTag("runner-rest-label", useUnmergedTree = true).assertDoesNotExist()
+            compose.runOnIdle { h.sample(0.0) }
+            val label = compose.onNodeWithTag("runner-rest-label", useUnmergedTree = true)
+            label.assertTextEquals("REST").assertIsDisplayed()
+            val rest = label.fetchSemanticsNode().boundsInRoot
+            val set = compose.onNodeWithTag("runner-set-count", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            val pull = compose.onNodeWithTag("runner-pull-count", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            val counters = compose.onNodeWithTag("runner-counters").fetchSemanticsNode().boundsInRoot
+            assertTrue(rest.left > set.right && rest.right < pull.left)
+            assertEquals(counters.center.x, rest.center.x, 1f)
+            assertTrue(rest.top >= counters.top && rest.bottom <= counters.bottom)
+            val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            label.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            assertTrue(layouts.single().layoutInput.style.fontSize.value >= 16f,
+                "Rest must be legible at a distance, not the former 9–11sp annotation")
+            assertEquals(before, compose.onNodeWithTag("runner-plot").fetchSemanticsNode().boundsInRoot)
+        }
+    }
+
     @Test
     @Config(qualifiers = "w360dp-h740dp-mdpi")
     fun smallScreenLargerTextKeepsNextHandAndControlsVisible() {
@@ -303,7 +327,7 @@ class RunnerReleaseRestCueTests {
         }
     }
 
-    @Test fun timerOnlyPullIsBlueAndRestHasNoBorder() {
+    @Test fun timerOnlyPullIsBlueAndRestUsesTheQuietGrayBorder() {
         Harness(timerOnly = true).use { h ->
             assertTrue(h.session.snapshot.phase is RunnerPhase.Working)
             showRunner(h, timerOnly = true)
@@ -313,6 +337,7 @@ class RunnerReleaseRestCueTests {
             compose.onNodeWithTag("runner-pull-border").assertDoesNotExist()
             compose.onNodeWithTag("runner-warning-border").assertDoesNotExist()
             compose.onNodeWithTag("runner-release-border").assertDoesNotExist()
+            compose.onNodeWithTag("runner-rest-border").assertIsDisplayed()
         }
     }
 

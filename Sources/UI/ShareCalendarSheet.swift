@@ -37,14 +37,16 @@ struct ShareCalendarBestPull {
 
     var sortKey: String { "\(grip.key)|\(side.rawValue)" }
 
-    var line: String {
-        let amount = kg.formatted(.number.precision(.fractionLength(1)))
+    var line: String { line(unit: .kg) }
+
+    func line(unit: WeightUnit) -> String {
+        let amount = unit.number(kg)
         let hand = switch side {
         case .left:  String(localized: " · L")
         case .right: String(localized: " · R")
         case .both:  ""
         }
-        return String(localized: "BEST PULL \(amount) KG · \(grip.line)\(hand)")
+        return String(localized: "BEST PULL \(amount) \(unit.symbol.uppercased()) · \(grip.line)\(hand)")
     }
 }
 
@@ -120,6 +122,7 @@ fileprivate struct StyleSpec {
 
 /// Preview and export for one five-week History card.
 struct ShareCalendarSheet: View {
+    @Environment(\.weightUnit) private var weightUnit
     let request: ShareCalendarRequest
     var onClose: () -> Void
 
@@ -132,7 +135,7 @@ struct ShareCalendarSheet: View {
     @State private var photoSaveSuccessTick = 0
 
     private var renderOptions: RenderOptions {
-        RenderOptions(style: cardStyle, includesBestPull: includeBestPull)
+        RenderOptions(style: cardStyle, weightUnit: weightUnit, includesBestPull: includeBestPull)
     }
 
     /// Gate synchronously with the preview, including the frame before its task runs.
@@ -344,7 +347,7 @@ struct ShareCalendarSheet: View {
             title: request.title,
             today: request.today,
             bestPull: includeBestPull ? request.bestPull : nil,
-            style: cardStyle)
+            style: cardStyle, weightUnit: weightUnit)
     }
 
     /// Rendering happens only when the sheet appears or the one export option changes.
@@ -374,6 +377,7 @@ struct ShareCalendarSheet: View {
 
     private struct RenderOptions: Equatable {
         let style: ShareCardStyle
+        let weightUnit: WeightUnit
         let includesBestPull: Bool
     }
 
@@ -400,6 +404,7 @@ private struct ShareCalendarExportCard: View {
     let today: DayStamp
     let bestPull: ShareCalendarBestPull?
     let style: ShareCardStyle
+    var weightUnit: WeightUnit = .kg
 
     private let columns = Array(
         repeating: GridItem(.fixed(36), spacing: 7),
@@ -444,7 +449,7 @@ private struct ShareCalendarExportCard: View {
             if let bestPull {
                 Spacer().frame(height: 8)
                 HStack(spacing: 7) {
-                    Text(bestPull.line)
+                    Text(bestPull.line(unit: weightUnit))
                         .font(.system(.caption2, weight: .semibold))
                         .monospacedDigit()
                         .lineLimit(1)
@@ -504,7 +509,7 @@ private struct ShareCalendarExportCard: View {
 
     private var spokenSummary: String {
         if let bestPull {
-            return String(localized: "\(title). \(summary). \(bestPull.line).")
+            return String(localized: "\(title). \(summary). \(bestPull.line(unit: weightUnit)).")
         }
         return String(localized: "\(title). \(summary).")
     }

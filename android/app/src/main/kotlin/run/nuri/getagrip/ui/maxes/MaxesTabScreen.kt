@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -269,10 +271,10 @@ private fun newest(group: MaxGripGroup, side: Side): MaxRecordEntity? =
 internal fun progressLine(group: MaxGripGroup): String {
     val sides = presentSides(group)
     val bests = sides.joinToString(" · ") { side ->
-        val weight = Fmt.fixed(group.records.filter { it.side == side }.maxOfOrNull { it.kg } ?: 0.0, 1)
+        val weight = WeightUnits.number(group.records.filter { it.side == side }.maxOfOrNull { it.kg } ?: 0.0, 1)
         if (sides.size == 1) weight else "${side.displayName} $weight"
     }
-    val parts = mutableListOf(L10n.tr("Best %s kg", bests))
+    val parts = mutableListOf(WeightUnits.tr("Best %s kg", bests))
     val newest = group.records.lastOrNull()
     if (newest != null) {
         val series = group.records.filter { it.side == newest.side }
@@ -282,7 +284,7 @@ internal fun progressLine(group: MaxGripGroup): String {
             val when_ = SHORT_DATE.format(previous.recordedAt.atZone(ZoneId.systemDefault()))
             parts += if (Math.abs(delta) >= 0.05) {
                 val verb = if (delta > 0) L10n.tr("up") else L10n.tr("down")
-                L10n.tr("%s %s kg since %s", verb, Fmt.fixed(Math.abs(delta), 1), when_)
+                WeightUnits.tr("%s %s kg since %s", verb, WeightUnits.number(Math.abs(delta), 1), when_)
             } else {
                 L10n.tr("held since %s", when_)
             }
@@ -318,7 +320,7 @@ private fun GripCard(
 ) {
     val palette = LocalGripPalette.current
     val sides = remember(group) { presentSides(group) }
-    val line = remember(group) { progressLine(group) }
+    val line = remember(group, WeightUnits.current) { progressLine(group) }
 
     // Read outside the semantics lambda, which is not composable.
     val spoken = tr("%s: %s", group.grip.spoken, line)
@@ -461,7 +463,7 @@ internal fun KgText(kg: Double, prominent: Boolean) {
     val palette = LocalGripPalette.current
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.Bottom) {
         Text(
-            Fmt.fixed(kg, 1),
+            WeightUnits.number(kg, 1),
             // A MEASUREMENT snaps rather than rolling; no `animateContentSize`, no numeric
             // transition. There is nothing counting here.
             style = (if (prominent) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.bodyLarge)
@@ -470,7 +472,7 @@ internal fun KgText(kg: Double, prominent: Boolean) {
             color = if (prominent) palette.inkPrimary else palette.inkSecondary,
             maxLines = 1,
         )
-        Text(tr("kg"), style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary)
+        Text(WeightUnits.symbol, style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary)
     }
 }
 

@@ -58,6 +58,7 @@ struct DoigtApp: App {
             }
                 .environment(clock)
                 .environment(settings)
+                .environment(\.weightUnit, settings.weightUnit)
                 .environment(templates)
                 .environment(device)
                 .onChange(of: scenePhase) { _, phase in

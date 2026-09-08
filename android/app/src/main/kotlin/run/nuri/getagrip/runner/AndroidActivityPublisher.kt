@@ -4,6 +4,15 @@
 package run.nuri.getagrip.runner
 
 import android.content.Context
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.drop
+import run.nuri.getagrip.ui.units.WeightUnit
+import run.nuri.getagrip.ui.units.WeightUnits
 import androidx.core.app.NotificationManagerCompat
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.Side
@@ -46,6 +55,9 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
     /// deadline only when the phase or the rep actually moved is also the CORRECT moment —
     /// that is exactly when a new countdown should start.
     private var lastPosted: Signature? = null
+    private var latestState: SessionActivityState? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var unitObservation: Job? = null
 
     override fun start(
         routineName: String,
@@ -58,6 +70,11 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
         this.setCount = setCount
         isRunning = true
         post(state)
+        unitObservation = scope.launch {
+            snapshotFlow { WeightUnits.current }.drop(1).collect {
+                if (isRunning) latestState?.let(::post)
+            }
+        }
     }
 
     override fun update(state: SessionActivityState) {
@@ -68,12 +85,16 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
     override fun end() {
         if (!isRunning) return
         isRunning = false
+        unitObservation?.cancel()
+        unitObservation = null
+        latestState = null
         lastPosted = null
         SessionForegroundService.pending = null
         notifications.cancel(LiveUpdateNotification.NOTIFICATION_ID)
     }
 
     private fun post(state: SessionActivityState) {
+        latestState = state
         val signature = Signature(state)
         if (signature == lastPosted) return
         lastPosted = signature
@@ -97,6 +118,7 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
     /// is excluded on purpose (see `lastPosted`); the live load never reaches this surface
     /// at all, because the platform coalesces and the gauge produces ~80 samples a second.
     private data class Signature(
+        val unit: WeightUnit,
         val grip: GripSpec,
         val side: Side,
         val phase: SessionActivityPhase,
@@ -110,6 +132,7 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
         val hasDeadline: Boolean,
     ) {
         constructor(state: SessionActivityState) : this(
+            unit = WeightUnits.current,
             grip = state.grip,
             side = state.side,
             phase = state.phase,

@@ -533,7 +533,7 @@ struct SessionRunner: Sendable {
             return holdTick(slot: index, at: t)
         }
         guard phase.isCountingDown else { return [] }
-        let remaining = max(0, Int(ceil(countdownEndsAt - t)))
+        let remaining = countdownSeconds(at: t)
         guard remaining < lastAnnouncedSecond else { return [] }
         lastAnnouncedSecond = remaining
         guard remaining > 0 else { return countdownFinished(at: t) }
@@ -930,7 +930,30 @@ struct SessionRunner: Sendable {
             clock = t
         }
         guard phaseToRead.isCountingDown else { return nil }
-        return max(0, Int(ceil(countdownEndsAt - clock)))
+        return countdownSeconds(at: clock)
+    }
+
+    /// Unrounded wall-clock time for a system countdown, rather than the numeral's
+    /// ceiling. Using the displayed integer would extend a Live Activity deadline.
+    func countdownRemainingInterval(at t: TimeInterval) -> TimeInterval? {
+        guard unpaused.isCountingDown else { return nil }
+        let clock = phase.isPaused ? pausedAt : t
+        return max(0, min(countdownDuration, countdownEndsAt - clock))
+    }
+
+    private func countdownSeconds(at clock: TimeInterval) -> Int {
+        let remaining = countdownEndsAt - clock
+        guard remaining > 0 else { return 0 }
+        // Adding a duration to uptime, then subtracting uptime, can leave 30 seconds
+        // as 30.00000000000003. Snap only errors at the clock's floating-point
+        // resolution; real fractional seconds must still round up. Never snap a
+        // positive interval to zero: finishing remains gated by the actual deadline.
+        let nearest = remaining.rounded()
+        let tolerance = 2 * max(countdownEndsAt.ulp, clock.ulp)
+        if nearest >= 1, abs(remaining - nearest) <= tolerance {
+            return Int(nearest)
+        }
+        return Int(ceil(remaining))
     }
 
     /// The fraction of the CURRENT phase remaining, 1…0 as its clock runs down.

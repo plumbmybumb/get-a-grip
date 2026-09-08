@@ -10,6 +10,7 @@ import SwiftUI
 /// progression suggestion can use. It is one tap and always skippable — a summary that
 /// blocks on a question gets dismissed reflexively, and then the answer is noise.
 struct SessionSummaryView: View {
+    @Environment(\.weightUnit) private var weightUnit
     let template: SessionTemplate
     let plan: SessionPlan
     let reps: [RepSummary]
@@ -103,14 +104,14 @@ struct SessionSummaryView: View {
         HStack(spacing: 10) {
             stat(String(localized: "Pulls"), "\(completed.count)", of: String(localized: "of \(reps.count)"))
             stat(String(localized: "Under tension"), PlanMath.clockText(heldSeconds), of: nil)
-            stat(String(localized: "Peak"), peakKg.formatted(.number.precision(.fractionLength(1))), of: String(localized: "kg"))
+            stat(String(localized: "Peak"), weightUnit.number(peakKg), of: weightUnit.symbol)
         }
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("""
             \(completed.count) of \(reps.count) pulls completed, \
             \(heldSeconds) seconds under tension, \
-            peak \(peakKg.formatted(.number.precision(.fractionLength(1)))) kilograms
+            peak \(weightUnit.number(peakKg)) \(weightUnit.spokenName)
             """)
     }
 
@@ -210,7 +211,7 @@ struct SessionSummaryView: View {
                         .font(.system(.caption)).foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     if let previous = candidate.previous {
-                        Text("Previous: \(previous.formatted(.number.precision(.fractionLength(1)))) kg")
+                        Text(String(localized: "Previous: \(weightUnit.number(previous)) \(weightUnit.symbol)"))
                             .font(.system(.caption2)).foregroundStyle(Ink.tertiary)
                     }
                 }
@@ -232,10 +233,10 @@ struct SessionSummaryView: View {
 
     private func peakWeight(_ candidate: SessionMaxCandidate) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(candidate.kg.formatted(.number.precision(.fractionLength(1))))
+            Text(weightUnit.number(candidate.kg))
                 .font(.system(.title2, weight: .semibold))
                 .foregroundStyle(Ink.primary)
-            Text("kg").font(.system(.caption)).foregroundStyle(Ink.secondary)
+            Text(weightUnit.symbol).font(.system(.caption)).foregroundStyle(Ink.secondary)
         }
         .fixedSize(horizontal: true, vertical: false)
     }
@@ -256,8 +257,8 @@ struct SessionSummaryView: View {
     }
 
     private func sideLine(_ candidate: SessionMaxCandidate) -> String {
-        let kg = candidate.kg.formatted(.number.precision(.fractionLength(1)))
-        return String(localized: "\(handLabel(candidate.side)) · \(candidate.grip.shortName) · \(kg) kg")
+        let kg = weightUnit.number(candidate.kg)
+        return String(localized: "\(handLabel(candidate.side)) · \(candidate.grip.shortName) · \(kg) \(weightUnit.symbol)")
     }
 
     private var gradeCard: some View {

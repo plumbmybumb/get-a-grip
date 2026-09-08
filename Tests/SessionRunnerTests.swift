@@ -108,6 +108,54 @@ final class SessionRunnerTests: XCTestCase {
 
     // MARK: - A clean rep
 
+    func testCountdownNumeralIgnoresUptimeRoundingWithoutEndingEarly() throws {
+        for duration in [1, 20, 30] {
+            let start = 256.004 - Double(duration)
+            let deadline = start + Double(duration)
+            var runner = SessionRunner(plan: plan(leadIn: duration))
+            _ = runner.handle(.start, at: start)
+            XCTAssertEqual(runner.secondsRemaining(at: start), duration)
+            XCTAssertEqual(try XCTUnwrap(runner.countdownRemainingInterval(at: start)),
+                           Double(duration), accuracy: 0.000_000_001)
+            if duration > 1 {
+                XCTAssertEqual(runner.secondsRemaining(at: start + 1), duration - 1)
+                XCTAssertEqual(runner.handle(.tick, at: start + 1),
+                               [.leadInTick(secondsRemaining: duration - 1)])
+                // A real fraction is not mistaken for floating-point noise.
+                XCTAssertEqual(runner.secondsRemaining(at: start + 0.999), duration)
+            }
+            XCTAssertEqual(runner.secondsRemaining(at: deadline.nextDown), 1)
+            _ = runner.handle(.tick, at: deadline.nextDown)
+            XCTAssertEqual(runner.phase, .leadIn(slot: 0))
+            _ = runner.handle(.tick, at: deadline)
+            XCTAssertEqual(runner.phase, .armed(slot: 0))
+            XCTAssertNil(runner.countdownRemainingInterval(at: deadline))
+        }
+    }
+
+    func testRestAndSetBreakCountdownsStayExactAcrossPause() throws {
+        for setBreak in [false, true] {
+            let start = 226.004
+            let duration = setBreak ? 30 : 20
+            var runner = SessionRunner(plan: plan(reps: setBreak ? 1 : 2,
+                                                  sets: setBreak ? 2 : 1,
+                                                  rest: duration, setBreak: duration))
+            _ = runner.handle(.start, at: start)
+            _ = runner.handle(.skipRep, at: start)
+            XCTAssertEqual(runner.phase, .resting(slot: 0))
+            XCTAssertEqual(runner.secondsRemaining(at: start), duration)
+            _ = runner.handle(.pause, at: start + 1)
+            XCTAssertEqual(runner.secondsRemaining(at: start + 100), duration - 1)
+            XCTAssertEqual(try XCTUnwrap(runner.countdownRemainingInterval(at: start + 100)),
+                           Double(duration - 1), accuracy: 0.000_000_001)
+            _ = runner.handle(.resume, at: start + 101)
+            XCTAssertEqual(runner.secondsRemaining(at: start + 101), duration - 1)
+            XCTAssertEqual(runner.secondsRemaining(at: start + 102), duration - 2)
+            XCTAssertEqual(runner.handle(.tick, at: start + 102),
+                           [.restTick(secondsRemaining: duration - 2)])
+        }
+    }
+
     func testSavedShortHoldsFinishAtTheirMeasuredDuration() throws {
         for seconds in [1, 2] {
             let saved = try JSONDecoder().decode(SessionPlan.self,

@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.runner
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
@@ -126,7 +128,7 @@ data class LiveUpdateContent(
             val lo = state.targetLoKg
             val hi = state.targetHiKg
             if (lo == null || hi == null) return grip
-            return L10n.tr("%s · %s–%s kg", grip, Fmt.fixed(lo, 1), Fmt.fixed(hi, 1))
+            return WeightUnits.tr("%s · %s–%s kg", grip, WeightUnits.number(lo, 1), WeightUnits.number(hi, 1))
         }
 
         private fun positionLine(

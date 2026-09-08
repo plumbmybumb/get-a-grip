@@ -132,6 +132,53 @@ class SessionRunnerTests {
     // MARK: - A clean rep
 
     @Test
+    fun countdownNumeralIgnoresUptimeRoundingWithoutEndingEarly() {
+        for (duration in listOf(1, 20, 30)) {
+            val start = 256.004 - duration
+            val deadline = start + duration
+            val runner = SessionRunner(plan(leadIn = duration))
+            runner.handle(RunnerEvent.Start, at = start)
+            assertEquals(duration, runner.secondsRemaining(start))
+            assertEquals(duration.toDouble(), assertNotNull(runner.countdownRemainingInterval(start)), 1e-9)
+            if (duration > 1) {
+                assertEquals(duration - 1, runner.secondsRemaining(start + 1))
+                assertEquals(listOf(RunnerCue.LeadInTick(duration - 1)),
+                    runner.handle(RunnerEvent.Tick, at = start + 1))
+                assertEquals(duration, runner.secondsRemaining(start + 0.999))
+            }
+            assertEquals(1, runner.secondsRemaining(Math.nextDown(deadline)))
+            runner.handle(RunnerEvent.Tick, at = Math.nextDown(deadline))
+            assertEquals(RunnerPhase.LeadIn(0), runner.phase)
+            runner.handle(RunnerEvent.Tick, at = deadline)
+            assertEquals(RunnerPhase.Armed(0), runner.phase)
+            assertNull(runner.countdownRemainingInterval(deadline))
+        }
+    }
+
+    @Test
+    fun restAndSetBreakCountdownsStayExactAcrossPause() {
+        for (setBreak in listOf(false, true)) {
+            val start = 226.004
+            val duration = if (setBreak) 30 else 20
+            val runner = SessionRunner(plan(reps = if (setBreak) 1 else 2,
+                sets = if (setBreak) 2 else 1, rest = duration, setBreak = duration))
+            runner.handle(RunnerEvent.Start, at = start)
+            runner.handle(RunnerEvent.SkipRep, at = start)
+            assertEquals(RunnerPhase.Resting(0), runner.phase)
+            assertEquals(duration, runner.secondsRemaining(start))
+            runner.handle(RunnerEvent.Pause, at = start + 1)
+            assertEquals(duration - 1, runner.secondsRemaining(start + 100))
+            assertEquals((duration - 1).toDouble(),
+                assertNotNull(runner.countdownRemainingInterval(start + 100)), 1e-9)
+            runner.handle(RunnerEvent.Resume, at = start + 101)
+            assertEquals(duration - 1, runner.secondsRemaining(start + 101))
+            assertEquals(duration - 2, runner.secondsRemaining(start + 102))
+            assertEquals(listOf(RunnerCue.RestTick(duration - 2)),
+                runner.handle(RunnerEvent.Tick, at = start + 102))
+        }
+    }
+
+    @Test
     fun savedShortHoldsFinishAtTheirMeasuredDuration() {
         for (seconds in listOf(1, 2)) {
             val saved = assertNotNull(BlobCodec.decode(assertNotNull(BlobCodec.encode(plan(hold = seconds)))) {

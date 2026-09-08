@@ -24,6 +24,7 @@ import SwiftUI
 /// with a past behind it opens: without somewhere to show the earlier records, they
 /// would exist, count for nothing, and be impossible to delete.
 struct MaxesView: View {
+    @Environment(\.weightUnit) private var weightUnit
     /// Newest first — which is also what makes the fold below correct. Grips come out in
     /// order of their most recent record, and the first record in each bucket is that
     /// grip's current max. "Current" is the NEWEST, never the biggest: a max that has
@@ -208,18 +209,18 @@ struct MaxesView: View {
         // with its content pushed over.
         .padding(.leading, 22)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Earlier max for \(grip.spoken). \(kgText(record.kg)) kilograms, recorded \(when(record))."))
+        .accessibilityLabel(String(localized: "Earlier max for \(grip.spoken). \(weightText(record.kg)) \(weightUnit.spokenName), recorded \(when(record))."))
     }
 
     private func weight(_ kg: Double, prominent: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 2) {
-            Text(kg, format: .number.precision(.fractionLength(1)))
+            Text(weightUnit.number(kg))
                 .font(.system(prominent ? .title3 : .subheadline,
                               weight: prominent ? .semibold : .medium))
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .foregroundStyle(prominent ? Ink.primary : Ink.secondary)
-            Text("kg")
+            Text(weightUnit.symbol)
                 .font(.system(.caption))
                 .foregroundStyle(Ink.tertiary)
         }
@@ -365,7 +366,7 @@ struct MaxesView: View {
             ? "" : String(localized: ", \(history.current.side.name.lowercased()) hand")
         let provenance = history.current.source == .measured
             ? String(localized: "measured ") : String(localized: "recorded ")
-        var sentence = String(localized: "\(history.grip.spoken)\(hand). Max \(kgText(history.current.kg)) kilograms, \(provenance)\(when(history.current)).")
+        var sentence = String(localized: "\(history.grip.spoken)\(hand). Max \(weightText(history.current.kg)) \(weightUnit.spokenName), \(provenance)\(when(history.current)).")
         if !history.earlier.isEmpty {
             let count = history.earlier.count
             sentence += String(localized: " \(count) earlier \(count == 1 ? String(localized: "max") : String(localized: "maxes")).")
@@ -377,8 +378,8 @@ struct MaxesView: View {
         record.recordedAt.formatted(.relative(presentation: .named))
     }
 
-    private func kgText(_ kg: Double) -> String {
-        kg.formatted(.number.precision(.fractionLength(1)))
+    private func weightText(_ kg: Double) -> String {
+        weightUnit.number(kg)
     }
 }
 
@@ -418,6 +419,7 @@ private enum MaxEntry: Identifiable {
 /// "Measure again" buttons — one composer, however you arrive, so the side chips and
 /// the measured-vs-typed provenance rules can never fork.
 struct MaxEntrySheet: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Environment(TemplateStore.self) private var templates
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -560,8 +562,8 @@ struct MaxEntrySheet: View {
             // that stops is read as a ceiling, and being told your max is
             // off-scale is a poor welcome. 100 keeps a typical 25 kg pull at a
             // quarter of the track, which is still a usable drag.
-            ValueRow(title: String(localized: "Max on this grip"), unit: String(localized: "kg"), value: $kg,
-                     range: 0...100, limit: 0...250, step: 0.5, decimals: 1,
+            ValueRow(title: String(localized: "Max on this grip"), unit: weightUnit.symbol, value: weightUnit.binding($kg),
+                     range: weightUnit.sliderRangeFromKg(0...100), limit: weightUnit.rangeFromKg(0...250), step: 0.5, decimals: 1,
                      caption: bandCaption)
 
             existingLine
@@ -584,11 +586,11 @@ struct MaxEntrySheet: View {
         VStack(alignment: .leading, spacing: 18) {
             block(String(localized: "SAVED")) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(kgText(kg))
+                    Text(weightText(kg))
                         .font(.system(.largeTitle, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(Ink.primary)
-                    Text("kg · \(grip.displayName)")
+                    Text("\(weightUnit.symbol) · \(grip.displayName)")
                         .font(.system(.subheadline))
                         .foregroundStyle(Ink.secondary)
                 }
@@ -617,7 +619,7 @@ struct MaxEntrySheet: View {
             }
 
             if !impact.kgOffers.isEmpty, let ratio = impact.ratio {
-                block(String(localized: "TYPED KILOGRAMS")) {
+                block(String(localized: "Weight targets").uppercased()) {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(impact.kgOffers) { offer in
                             VStack(alignment: .leading, spacing: 2) {
@@ -625,7 +627,7 @@ struct MaxEntrySheet: View {
                                     .font(.system(.subheadline, weight: .semibold))
                                     .foregroundStyle(Ink.primary)
                                 ForEach(offer.moves, id: \.self) { move in
-                                    Text(String(localized: "\(bandText(move.oldBand)) kg  →  \(bandText(move.newBand)) kg"))
+                                    Text(String(localized: "\(bandText(move.oldBand)) \(weightUnit.symbol)  →  \(bandText(move.newBand)) \(weightUnit.symbol)"))
                                         .font(.system(.footnote))
                                         .monospacedDigit()
                                         .foregroundStyle(Ink.secondary)
@@ -664,7 +666,7 @@ struct MaxEntrySheet: View {
 
     private func percentLine(_ move: TemplateStore.MaxImpact.PercentMove) -> String {
         let pct = String(localized: "\(Int((move.loPercent * 100).rounded()))–\(Int((move.hiPercent * 100).rounded())) %")
-        var line = String(localized: "\(pct) · now \(bandText(move.newBand)) kg")
+        var line = String(localized: "\(pct) · now \(bandText(move.newBand)) \(weightUnit.symbol)")
         if let old = move.oldBand, old != move.newBand {
             line += String(localized: " · was \(bandText(old))")
         }
@@ -672,7 +674,7 @@ struct MaxEntrySheet: View {
     }
 
     private func bandText(_ band: ClosedRange<Double>) -> String {
-        String(localized: "\(kgText(band.lowerBound))–\(kgText(band.upperBound))")
+        String(localized: "\(weightText(band.lowerBound))–\(weightText(band.upperBound))")
     }
 
     /// The way in to measuring. Offered whatever the gauge is doing — `MaxMeasureView`
@@ -739,7 +741,7 @@ struct MaxEntrySheet: View {
     private var bandCaption: String? {
         guard kg > 0 else { return String(localized: "Enter a max above zero to save it.") }
         guard let band = PlanMath.suggestedBand(maxKg: kg) else { return nil }
-        return String(localized: "20–30 % of that is \(kgText(band.lowerBound))–\(kgText(band.upperBound)) kg")
+        return String(localized: "20–30 % of that is \(weightText(band.lowerBound))–\(weightText(band.upperBound)) \(weightUnit.symbol)")
     }
 
     /// Append, never edit — so the sheet says so before you tap Save rather than leaving
@@ -750,7 +752,7 @@ struct MaxEntrySheet: View {
         // SAME hand, and quoting the other hand's number here would read as a
         // contradiction of what you are about to type.
         if let existing = templates.currentMaxes[MaxTable.key(grip: grip.key, side: side)] {
-            Text(String(localized: "Your current max on this grip\(side == .both ? "" : String(localized: " for that hand")) is \(kgText(existing.kg)) kg, recorded \(existing.recordedAt.formatted(.relative(presentation: .named))). Saving adds a new one and keeps the old as history."))
+            Text(String(localized: "Your current max on this grip\(side == .both ? "" : String(localized: " for that hand")) is \(weightText(existing.kg)) \(weightUnit.symbol), recorded \(existing.recordedAt.formatted(.relative(presentation: .named))). Saving adds a new one and keeps the old as history."))
                 .font(.system(.footnote))
                 .foregroundStyle(Ink.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -804,8 +806,8 @@ struct MaxEntrySheet: View {
         }
     }
 
-    private func kgText(_ value: Double) -> String {
-        value.formatted(.number.precision(.fractionLength(1)))
+    private func weightText(_ value: Double) -> String {
+        weightUnit.number(value)
     }
 }
 

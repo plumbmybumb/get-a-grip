@@ -9,6 +9,7 @@ import SwiftUI
 /// (the builder owns that state), which is what guarantees only ONE dense chip cluster
 /// exists on screen at any moment.
 struct SetRowView: View {
+    @Environment(\.weightUnit) private var weightUnit
     /// **The WHOLE plan, as one keypath-shaped binding — never `$plan.sets[index]`.**
     ///
     /// The row reads it for every resolved number (the inherited hold, the ×2, this
@@ -266,7 +267,7 @@ struct SetRowView: View {
         let range = "\(percentText(percent.lowerBound))–\(percentText(percent.upperBound)) %"
         // PER HAND, through the same formatter the deck and the review use — the
         // document and the deck must never quote different loads for one routine.
-        guard let load = PlanMath.targetText(set, in: plan, maxes: maxes) else {
+        guard let load = weightUnit.targetText(set, in: plan, maxes: maxes) else {
             return String(localized: "Following the routine — \(range) of your max, but there is no max on file for this grip yet, so this set will show no target.")
         }
         let perHand = PlanMath.targetDiffersByHand(set, in: plan, maxes: maxes)
@@ -277,8 +278,8 @@ struct SetRowView: View {
         "\(Int((fraction * 100).rounded()))"
     }
 
-    private func kgText(_ kg: Double) -> String {
-        kg.formatted(.number.precision(.fractionLength(1)))
+    private func weightText(_ kg: Double) -> String {
+        weightUnit.number(kg)
     }
 
     private var moveRow: some View {
@@ -378,7 +379,7 @@ struct SetRowView: View {
         // Since targets are stored per set now, "inherited" is no longer the question;
         // "does this one differ from its neighbours" is.
         if let band = set.targetBand {
-            parts.append(String(localized: "\(kgText(band.lowerBound))–\(kgText(band.upperBound)) kg"))
+            parts.append(String(localized: "\(weightText(band.lowerBound))–\(weightText(band.upperBound)) \(weightUnit.symbol)"))
         } else if percentBandsVary, let percent = set.targetPercentBand {
             parts.append(String(localized: "\(percentText(percent.lowerBound))–\(percentText(percent.upperBound)) %"))
         }
@@ -393,7 +394,7 @@ struct SetRowView: View {
         if let hold = set.holdSeconds { parts.append(String(localized: "\(hold) second hold")) }
         if let rest = set.restSeconds { parts.append(String(localized: "\(rest) second rest")) }
         if let band = set.targetBand {
-            parts.append(String(localized: "target \(kgText(band.lowerBound)) to \(kgText(band.upperBound)) kilograms"))
+            parts.append(String(localized: "target \(weightText(band.lowerBound)) to \(weightText(band.upperBound)) \(weightUnit.spokenName)"))
         } else if percentBandsVary, let percent = set.targetPercentBand {
             parts.append(String(localized: "target \(percentText(percent.lowerBound)) to \(percentText(percent.upperBound)) percent of your max"))
         }

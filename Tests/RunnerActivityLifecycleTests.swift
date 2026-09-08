@@ -62,6 +62,8 @@ final class RunnerActivityLifecycleTests: XCTestCase {
         await Task.yield()
         XCTAssertEqual(activity.states.last?.phase, .resting)
         let restDeadline = try XCTUnwrap(activity.states.last?.endsAt)
+        XCTAssertLessThanOrEqual(restDeadline.timeIntervalSinceNow, 20.01,
+                                 "The Live Activity must not inherit a rounded extra second")
         XCTAssertGreaterThan(restDeadline.timeIntervalSinceNow, 18,
                              "The full rest clock is anchored when the load releases")
         let published = activity.states.count
@@ -80,4 +82,29 @@ final class RunnerActivityLifecycleTests: XCTestCase {
         XCTAssertEqual(activity.starts, 1)
         XCTAssertEqual(activity.states.count, published)
     }
+    func testActivityUsesSelectedWeightUnitWithoutChangingTargets() async throws {
+        var draft = RoutineDraft.blank(named: "Pound targets")
+        draft.plan.sets = [SetPlan(repsPerSide: 2, targetLoKg: 10, targetHiKg: 15)]
+        draft.plan.handMode = .bothHands
+        draft.plan.leadInSeconds = 0
+        let client = RecordingProgressorClient()
+        let device = DeviceStore(client: client)
+        client.setState(.connected)
+        let activity = Recorder()
+        let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
+                                    device: device, liveActivity: activity)
+        session.weightUnit = .lb
+        session.begin()
+        defer { session.end() }
+        XCTAssertEqual(activity.states.last?.displayWeightUnit, .lb)
+        XCTAssertEqual(activity.states.last?.targetLoKg, 10)
+        XCTAssertEqual(activity.states.last?.targetHiKg, 15)
+        let published = activity.states.count
+        session.weightUnit = .kg
+        await Task.yield()
+        XCTAssertEqual(activity.states.count, published + 1)
+        XCTAssertEqual(activity.states.last?.displayWeightUnit, .kg)
+        XCTAssertEqual(session.snapshot.targetBand, 10...15)
+    }
+
 }

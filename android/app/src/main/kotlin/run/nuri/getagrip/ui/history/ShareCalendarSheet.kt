@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.history
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -125,7 +127,7 @@ data class ShareCalendarBestPull(
                 Side.right -> L10n.tr(" · R")
                 Side.both -> ""
             }
-            return L10n.tr("BEST PULL %s KG · %s%s", Fmt.fixed(kg, 1), grip.line, hand).uppercase()
+            return WeightUnits.tr("BEST PULL %s KG · %s%s", WeightUnits.number(kg, 1), grip.line, hand).uppercase()
         }
 }
 

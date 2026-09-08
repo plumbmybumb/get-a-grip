@@ -584,6 +584,8 @@ class RunnerSession(
         // ARMED runs no clock — it waits on you, with no timeout, by design. So the deadline
         // goes out null and the hold LENGTH goes out instead.
         val isArmed = phase == SessionActivityPhase.armed
+        val remainingInterval = runner.countdownRemainingInterval(clock.uptimeSeconds())
+            ?: snapshot.secondsShown.toDouble()
         return SessionActivityState(
             grip = grip,
             side = snapshot.side ?: Side.both,
@@ -595,8 +597,8 @@ class RunnerSession(
             // An ABSOLUTE deadline, recomputed from the same countdown the screen shows.
             // Converting to a wall-clock instant here is what lets the notification tick
             // without us.
-            endsAtEpochMillis = if (phase.runsCountdown && snapshot.secondsShown > 0) {
-                System.currentTimeMillis() + snapshot.secondsShown * 1_000L
+            endsAtEpochMillis = if (phase.runsCountdown && remainingInterval > 0) {
+                System.currentTimeMillis() + (remainingInterval * 1_000).toLong()
             } else {
                 null
             },

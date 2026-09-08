@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.heightIn
@@ -407,9 +409,9 @@ fun MaxMeasureScreen(
             title = { Text(tr("Zero the gauge?")) },
             text = {
                 Text(
-                    tr(
+                    WeightUnits.tr(
                         "There is %s kg on the gauge. Taring now makes that the new zero for this measurement.",
-                        Fmt.fixed(if (prompted.isFinite()) prompted else 0.0, 1),
+                        WeightUnits.number(if (prompted.isFinite()) prompted else 0.0, 1),
                     ),
                 )
             },
@@ -470,7 +472,7 @@ private fun Hero(measurement: MaxMeasurement, phase: MaxMeasurePhase) {
         ". " + tr("No live reading") else ""
     val spoken = (when {
         measurement.hasResult ->
-            L10n.tr("%s kilograms, your hardest pull", Fmt.fixed(measurement.peakKg, 1))
+            WeightUnits.tr("%s kilograms, your hardest pull", WeightUnits.number(measurement.peakKg, 1))
         phase == MaxMeasurePhase.measuring -> tr("No pull yet")
         else -> tr("No measurement yet")
     }) + signal
@@ -483,7 +485,7 @@ private fun Hero(measurement: MaxMeasurement, phase: MaxMeasurePhase) {
     ) {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                if (measurement.hasResult) Fmt.fixed(measurement.peakKg, 1) else tr("—"),
+                if (measurement.hasResult) WeightUnits.number(measurement.peakKg, 1) else tr("—"),
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontSize = HERO_SIZE,
                     fontFeatureSettings = "tnum",
@@ -496,7 +498,7 @@ private fun Hero(measurement: MaxMeasurement, phase: MaxMeasurePhase) {
                 maxLines = 1,
             )
             Text(
-                tr("kg"),
+                WeightUnits.symbol,
                 style = MaterialTheme.typography.titleMedium.copy(fontSize = HERO_UNIT_SIZE),
                 color = palette.inkTertiary,
             )
@@ -530,12 +532,12 @@ private fun LiveReadout() {
             // **Clocks roll, measurements SNAP.** No numeric transition and no animation on
             // this figure: on a readout that changes ten times a second the same animation
             // turns the number you are trying to read mid-pull into a permanent blur.
-            if (isLive) Fmt.fixed(device.currentKg, 1) else "—",
+            if (isLive) WeightUnits.number(device.currentKg, 1) else "—",
             style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"),
             fontWeight = FontWeight.SemiBold,
             color = if (isLive) palette.bleu else palette.inkTertiary,
         )
-        Text(tr("kg"), style = MaterialTheme.typography.labelMedium, color = palette.inkTertiary)
+        Text(WeightUnits.symbol, style = MaterialTheme.typography.labelMedium, color = palette.inkTertiary)
     }
 }
 

@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.builder
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -403,7 +405,7 @@ internal fun overrideText(set: SetPlan, percentBandsVary: Boolean): String {
     val kg = set.targetBand
     val percent = set.targetPercentBand
     if (kg != null) {
-        parts.add(L10n.tr("%s–%s kg", kgText(kg.start), kgText(kg.endInclusive)))
+        parts.add(WeightUnits.tr("%s–%s kg", kgText(kg.start), kgText(kg.endInclusive)))
     } else if (percentBandsVary && percent != null) {
         parts.add(
             L10n.tr(
@@ -426,7 +428,7 @@ internal fun spokenOverride(set: SetPlan, percentBandsVary: Boolean): String {
     val kg = set.targetBand
     val percent = set.targetPercentBand
     if (kg != null) {
-        parts.add(L10n.tr("target %s to %s kilograms", kgText(kg.start), kgText(kg.endInclusive)))
+        parts.add(WeightUnits.tr("target %s to %s kilograms", kgText(kg.start), kgText(kg.endInclusive)))
     } else if (percentBandsVary && percent != null) {
         parts.add(
             L10n.tr(

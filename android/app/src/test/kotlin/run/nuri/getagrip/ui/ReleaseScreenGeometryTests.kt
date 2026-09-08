@@ -18,6 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import run.nuri.getagrip.ui.runner.ReleaseCorner
+import run.nuri.getagrip.ui.runner.ReleaseDisplayFrame
 import run.nuri.getagrip.ui.runner.ReleaseWindowGeometry
 import run.nuri.getagrip.ui.runner.releaseScreenOutline
 import run.nuri.getagrip.ui.runner.releaseWindowGeometry
@@ -168,6 +169,99 @@ class ReleaseScreenGeometryTests {
         assertEquals(Color.TRANSPARENT, bitmap.getPixel(6, 100))
         assertEquals(Color.TRANSPARENT, bitmap.getPixel(60, 100))
         assertEquals(Color.TRANSPARENT, bitmap.getPixel(0, 0), "Do not paint outside the physical curve")
+    }
+
+    @Test fun nativeResolutionMismatchDoesNotDrawAnInsetRectangleOnTheLogicalDisplay() {
+        // Synthetic reproduction of the OnePlus report: the reported native path is
+        // smaller than the logical app display. Also cover an OEM path that is too large.
+        val logical = Path().apply { addRoundRect(RectF(0f, 0f, 180f, 400f), 24f, 24f, Path.Direction.CW) }
+        for (scale in listOf(0.85f, 1.25f)) {
+            val source = Path(logical).apply { transform(Matrix().apply { setScale(scale, scale) }) }
+            val before = region(source)
+            val corrected = releaseScreenOutline(180f, 400f, 0f, 0f,
+                ReleaseWindowGeometry(source, emptyList(), ReleaseDisplayFrame(0f, 0f, 180f, 400f)))
+            val bitmap = Bitmap.createBitmap(180, 400, Bitmap.Config.ARGB_8888)
+            Canvas(bitmap).apply {
+                clipPath(corrected)
+                drawPath(corrected, Paint().apply {
+                    color = Color.BLUE; style = Paint.Style.STROKE; strokeWidth = 8f
+                })
+            }
+            for (offset in 0..3) {
+                assertEquals(Color.BLUE, bitmap.getPixel(offset, 200))
+                assertEquals(Color.BLUE, bitmap.getPixel(179 - offset, 200))
+                assertEquals(Color.BLUE, bitmap.getPixel(90, offset))
+                assertEquals(Color.BLUE, bitmap.getPixel(90, 399 - offset))
+            }
+            assertEquals(Color.TRANSPARENT, bitmap.getPixel(151, 200), "No former right edge remains in the graph")
+            assertEquals(Color.TRANSPARENT, bitmap.getPixel(90, 338), "No former bottom edge crosses the buttons")
+            assertEquals(Color.TRANSPARENT, bitmap.getPixel(0, 0), "The true curved corner stays clear")
+            assertEquals(before, region(source), "Never modify the platform-owned path")
+        }
+    }
+
+    @Test fun scalingUsesTheWholeDisplayBeforeApplyingSplitWindowAndLocalCanvasOffsets() {
+        val source = Path().apply { addRoundRect(RectF(-40f, -10f, 60f, 190f), 20f, 20f, Path.Direction.CW) }
+        val geometry = ReleaseWindowGeometry(source, emptyList(),
+            ReleaseDisplayFrame(-80f, -20f, 200f, 400f))
+        val result = region(releaseScreenOutline(100f, 300f, 10f, 30f, geometry))
+        // This window is an interior crop. Scaling the source to this window rather than
+        // the full 200x400 display would invent rounded corners at its split-screen seams.
+        assertTrue(result.contains(0, 0))
+        assertTrue(result.contains(99, 0))
+        assertTrue(result.contains(0, 299))
+        assertTrue(result.contains(99, 299))
+        assertFalse(result.contains(100, 150))
+    }
+
+    @Test fun scaledLandscapeOutlinePreservesRotatedCornerIdentity() {
+        val logical = Path().apply {
+            addRoundRect(RectF(0f, 0f, 200f, 120f),
+                floatArrayOf(0f, 0f, 20f, 20f, 40f, 40f, 12f, 12f), Path.Direction.CW)
+        }
+        val source = Path(logical).apply { transform(Matrix().apply { setScale(0.75f, 0.75f) }) }
+        val corrected = region(releaseScreenOutline(200f, 120f, 0f, 0f,
+            ReleaseWindowGeometry(source, emptyList(), ReleaseDisplayFrame(0f, 0f, 200f, 120f))))
+        assertEquals(region(logical), corrected)
+        assertTrue(corrected.contains(0, 0))
+        assertFalse(corrected.contains(199, 0))
+        assertFalse(corrected.contains(199, 119))
+    }
+
+    @Test fun partitionedDisplayNeverStretchesTheFullPanelIntoItsSmallerWindow() {
+        val fullPanel = Path().apply { addRoundRect(RectF(-120f, 0f, 120f, 200f), 24f, 24f, Path.Direction.CW) }
+        val partitionCorners = listOf(
+            ReleaseCorner(RoundedCorner.POSITION_TOP_RIGHT, 24f, 96f, 24f),
+            ReleaseCorner(RoundedCorner.POSITION_BOTTOM_RIGHT, 24f, 96f, 176f),
+        )
+        val result = region(releaseScreenOutline(120f, 200f, 0f, 0f,
+            ReleaseWindowGeometry(fullPanel, partitionCorners, ReleaseDisplayFrame(0f, 0f, 120f, 200f))))
+        assertTrue(result.contains(0, 0), "The partition seam stays square")
+        assertTrue(result.contains(0, 199))
+        assertFalse(result.contains(119, 0), "Use the right edge's actual rounded corner")
+        assertFalse(result.contains(119, 199))
+    }
+
+    @Test fun contradictoryOemAspectRatioFallsBackToWindowCornersInsteadOfAnInsetFrame() {
+        val wronglySized = Path().apply {
+            addRoundRect(RectF(0f, 0f, 102f, 180f), 16f, 16f, Path.Direction.CW)
+        }
+        val corrected = region(outline(ReleaseWindowGeometry(wronglySized, unequalCorners,
+            ReleaseDisplayFrame(0f, 0f, 120f, 200f))))
+        val expected = region(outline(ReleaseWindowGeometry(null, unequalCorners)))
+        assertEquals(expected, corrected)
+        assertTrue(corrected.contains(119, 100))
+        assertTrue(corrected.contains(60, 199))
+    }
+
+    @Test fun misreportedCornerCentersCannotPunchHolesInsideTheGraph() {
+        val shifted = ReleaseWindowGeometry(null, listOf(
+            ReleaseCorner(RoundedCorner.POSITION_TOP_RIGHT, 12f, 80f, 12f),
+            ReleaseCorner(RoundedCorner.POSITION_BOTTOM_RIGHT, 12f, 88f, 168f),
+        ))
+        val result = region(outline(shifted))
+        val expected = region(outline(ReleaseWindowGeometry(null, emptyList())))
+        assertEquals(expected, result, "Only corners that reach this canvas edge can trim it")
     }
 
     private fun outline(

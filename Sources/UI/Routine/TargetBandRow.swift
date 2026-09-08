@@ -24,6 +24,7 @@ import SwiftUI
 /// kilograms are then the set's own `targetLoKg`/`targetHiKg`, which `PlanMath.targetBand`
 /// already ranks ahead of any percentage.
 struct TargetBandRow: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Binding var set: SetPlan
     /// Every max on file, by grip and hand — so a percentage can be shown as the ACTUAL
     /// kilograms each hand will be asked for, which is the whole point of the row.
@@ -159,7 +160,7 @@ struct TargetBandRow: View {
                 // presets do not fit.
                 Picker("Unit", selection: unitBinding) {
                     Text("% of max").tag(Unit.percent)
-                    Text("Kilograms").tag(Unit.kilograms)
+                    Text(weightUnit.name).tag(Unit.kilograms)
                 }
                 .pickerStyle(.segmented)
 
@@ -168,9 +169,9 @@ struct TargetBandRow: View {
                 // to the same 5 % / 0.5 kg resolution the app rounds targets to, so
                 // every value it can land on is one people quote to each other exactly.
                 if unit == .kilograms {
-                    BandTrimmer(lo: trimLoKgBinding, hi: trimHiKgBinding,
-                                scale: 0...kgScaleTop, step: 0.5,
-                                format: { "\(kgText($0)) kg" }, spokenUnit: String(localized: "kilograms"))
+                    BandTrimmer(lo: weightUnit.binding(trimLoKgBinding), hi: weightUnit.binding(trimHiKgBinding),
+                                scale: weightUnit.sliderRangeFromKg(0...kgScaleTop), step: 0.5,
+                                format: { "\($0.formatted(.number.precision(.fractionLength(1)))) \(weightUnit.symbol)" }, spokenUnit: weightUnit.spokenName)
                 } else {
                     BandTrimmer(lo: trimLoBinding, hi: trimHiBinding,
                                 scale: SetPlan.percentRange, step: 0.05,
@@ -195,12 +196,12 @@ struct TargetBandRow: View {
     /// Typing keeps exact values; only dragging snaps to the trimmer's detents.
     private var exactBounds: some View {
         let isPercent = unit == .percent
-        let bounds: ClosedRange<Double> = isPercent ? 1...100 : 0...kgScaleTop
+        let bounds: ClosedRange<Double> = isPercent ? 1...100 : 0...weightUnit.fromKg(kgScaleTop)
         return VStack(spacing: 0) {
-            ValueRow(title: String(localized: "Lower bound"), unit: isPercent ? "%" : String(localized: "kg"),
+            ValueRow(title: String(localized: "Lower bound"), unit: isPercent ? "%" : weightUnit.symbol,
                      value: exactBound(lower: true), range: bounds, decimals: isPercent ? 0 : 1,
                      control: .none)
-            ValueRow(title: String(localized: "Upper bound"), unit: isPercent ? "%" : String(localized: "kg"),
+            ValueRow(title: String(localized: "Upper bound"), unit: isPercent ? "%" : weightUnit.symbol,
                      value: exactBound(lower: false), range: bounds, decimals: isPercent ? 0 : 1,
                      control: .none)
         }
@@ -209,11 +210,12 @@ struct TargetBandRow: View {
     private func exactBound(lower: Bool) -> Binding<Double> {
         Binding {
             let current = unit == .percent ? (band ?? 0.20...0.30) : (kgBand ?? Self.defaultKgBand)
-            return (lower ? current.lowerBound : current.upperBound) * (unit == .percent ? 100 : 1)
+            let amount = lower ? current.lowerBound : current.upperBound
+            return unit == .percent ? amount * 100 : weightUnit.fromKg(amount)
         } set: { typed in
             let percent = unit == .percent
             let current = percent ? (band ?? 0.20...0.30) : (kgBand ?? Self.defaultKgBand)
-            let value = percent ? typed / 100 : typed
+            let value = percent ? typed / 100 : weightUnit.toKg(typed)
             // Crossing the other end moves it too, so labels never silently swap roles.
             let next = lower ? value...max(value, current.upperBound) : min(value, current.lowerBound)...value
             if percent { apply(next) } else { applyKg(next) }
@@ -276,10 +278,10 @@ struct TargetBandRow: View {
     /// hands — and the caption underneath carries the two loads, where there is room for
     /// them to wrap.
     private var valueText: String {
-        if let kgBand { return PlanMath.bandText(kgBand) }
+        if let kgBand { return weightUnit.bandText(kgBand) }
         guard let band else { return String(localized: "None") }
         guard !differsByHand, let kg = resolved(sides[0]) else { return percentText(band) }
-        return PlanMath.bandText(kg)
+        return weightUnit.bandText(kg)
     }
 
     private var caption: String? {
@@ -307,9 +309,9 @@ struct TargetBandRow: View {
         }
         let loads = sides.compactMap { side -> String? in
             guard let kg = resolved(side) else { return nil }
-            return "\(side.prompt.prefix(1)) \(PlanMath.bandText(kg, withUnit: false))"
+            return "\(side.prompt.prefix(1)) \(weightUnit.bandText(kg, withUnit: false))"
         }
-        return String(localized: "\(percentText(band)) of each hand's max · \(loads.joined(separator: " · ")) kg")
+        return String(localized: "\(percentText(band)) of each hand's max · \(loads.joined(separator: " · ")) \(weightUnit.symbol)")
     }
 
     private func matches(_ range: ClosedRange<Double>) -> Bool {
@@ -434,7 +436,4 @@ struct TargetBandRow: View {
         "\(Int((band.lowerBound * 100).rounded()))–\(Int((band.upperBound * 100).rounded())) %"
     }
 
-    private func kgText(_ kg: Double) -> String {
-        kg.formatted(.number.precision(.fractionLength(1)))
-    }
 }

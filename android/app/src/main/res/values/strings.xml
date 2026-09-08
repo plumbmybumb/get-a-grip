@@ -18,7 +18,10 @@
     <string name="s_of_max">% of max</string>
     <string name="s_x_ce8efc">%s %%</string>
     <string name="s_x_ab8f46">%1$s %2$s</string>
+    <string name="s_x_dc3df0">"%1$s %2$s  →  %3$s %4$s"</string>
+    <string name="s_since">%1$s %2$s %3$s since %4$s</string>
     <string name="s_kg_since">%1$s %2$s kg since %3$s</string>
+    <string name="s_your_hardest_pull">%1$s %2$s, your hardest pull</string>
     <string name="s_thumb_55886d">%s + thumb</string>
     <string name="s_at_the_gym_today">%s at the gym today</string>
     <string name="s_at_the_gym_today_plus_lld_hang_sessions">%1$s at the gym today, plus %2$d hang sessions</string>
@@ -32,6 +35,7 @@
     <string name="s_is_the_gauge_this_app_has_been_verified_against_on_real">%1$s is the gauge this app has been verified against on real hardware. %2$s</string>
     <string name="s_kg_kg">"%1$s kg  →  %2$s kg"</string>
     <string name="s_kilograms_your_hardest_pull">%s kilograms, your hardest pull</string>
+    <string name="s_of_each_hand_s_max">%1$s of each hand\'s max · %2$s %3$s</string>
     <string name="s_of_each_hand_s_max_kg">%1$s of each hand\'s max · %2$s kg</string>
     <string name="s_of_your_max_on_this_grip">%s of your max on this grip</string>
     <string name="s_rest_1bd51a">%s rest</string>
@@ -41,17 +45,21 @@
     <string name="s_kg_a0527f">%1$s · %2$s kg</string>
     <string name="s_under_tension_4ac996">%1$s · %2$s under tension</string>
     <string name="s_x_700820">%1$s · %2$s · %3$s</string>
+    <string name="s_x_6f7bf5">%1$s · %2$s · %3$s %4$s</string>
     <string name="s_in_total">%1$s · %2$s · %3$s in total</string>
     <string name="s_kg_c91f40">%1$s · %2$s · %3$s kg</string>
+    <string name="s_now_e94fd0">%1$s · now %2$s %3$s</string>
     <string name="s_now_kg">%1$s · now %2$s kg</string>
     <string name="s_x_2c6529">%1$s – %2$s</string>
     <string name="s_x_5f2467">%1$s — %2$s</string>
     <string name="s_pull_4aba2a">%s — PULL</string>
     <string name="s_x_ce9a44">%1$s%2$s</string>
+    <string name="s_max_9e1bd8">%1$s%2$s. Max %3$s %4$s, %5$s%6$s.</string>
     <string name="s_max_kilograms">%1$s%2$s. Max %3$s kilograms, %4$s%5$s.</string>
     <string name="s_x_aff1ed">%1$s, %2$s</string>
     <string name="s_double_tap_to_type_a_value">%1$s, %2$s %3$s. Double tap to type a value.</string>
     <string name="s_lld_seconds_remaining">%1$s, %2$d seconds remaining</string>
+    <string name="s_target_to_df4f9b">%1$s, target %2$s to %3$s %4$s</string>
     <string name="s_target_to_kilograms_26ddd5">%1$s, target %2$s to %3$s kilograms</string>
     <string name="s_x_8daeda">%1$s. %2$s, %3$s%4$s. %5$s.</string>
     <string name="s_x_dfce5f">%1$s. %2$s.</string>
@@ -62,6 +70,8 @@
     <string name="s_lld_of_lld_completed">%1$s: %2$d of %3$d completed</string>
     <string name="s_x_b2ab65">%1$s–%2$s</string>
     <string name="s_x_93a2c7">%1$s–%2$s %%</string>
+    <string name="s_x_7c9c2f">%1$s–%2$s %3$s</string>
+    <string name="s_target">%1$s–%2$s %3$s target</string>
     <string name="s_kg_b676b2">%1$s–%2$s kg</string>
     <string name="s_kg_target">%1$s–%2$s kg target</string>
     <string name="s_lld_16070a">%d</string>
@@ -141,12 +151,14 @@
     <string name="s_lld_lld_of_max">%1$d–%2$d %% of max</string>
     <string name="s_lld_lld_mm">%1$d–%2$d mm</string>
     <string name="s_hand_f5b987">, %s hand</string>
+    <string name="s_one_second_average">, one-second average %1$s %2$s</string>
     <string name="s_one_second_average_kilograms">, one-second average %s kilograms</string>
     <string name="s_timing_only_73f9e8">, timing only</string>
     <string name="s_battery_lld_percent">. Battery %d percent</string>
     <string name="s_peak_target_lld_percent_of_max">. Peak target %d percent of max.</string>
     <string name="s_1h">1h</string>
     <string name="s_1h30">1h30</string>
+    <string name="s_20_30_of_that_is">20–30 %% of that is %1$s–%2$s %3$s</string>
     <string name="s_20_30_of_that_is_kg">20–30 %% of that is %1$s–%2$s kg</string>
     <string name="s_2h">2h</string>
     <string name="s_2h30">2h30</string>
@@ -195,6 +207,7 @@
     <string name="s_at_the_climbing_gym_d41f29">At the climbing gym</string>
     <string name="s_average">Average</string>
     <string name="s_away_from_the_gauge_24683a">Away from the gauge</string>
+    <string name="s_best_pull">BEST PULL %1$s %2$s · %3$s%4$s</string>
     <string name="s_best_pull_kg">BEST PULL %1$s KG · %2$s%3$s</string>
     <string name="s_both_15ee98">BOTH</string>
     <string name="s_both_hands_next">BOTH HANDS NEXT</string>
@@ -205,6 +218,7 @@
     <string name="s_battery">Battery</string>
     <string name="s_below_this_the_clock_stops">Below this, the clock stops.</string>
     <string name="s_benchmark">Benchmark</string>
+    <string name="s_best">Best %1$s %2$s</string>
     <string name="s_best_kg">Best %s kg</string>
     <string name="s_bluetooth_access_is_off_for_get_a_grip">Bluetooth access is off for Get a Grip.</string>
     <string name="s_bluetooth_denied">Bluetooth denied</string>
@@ -224,6 +238,7 @@
     <string name="s_curl">CURL</string>
     <string name="s_camera_access_is_off">Camera access is off</string>
     <string name="s_cancel">Cancel</string>
+    <string name="s_changes_how_weights_are_shown_and_entered_your_scale_s_o">Changes how weights are shown and entered. Your scale’s own unit setting is separate.</string>
     <string name="s_characteristic_discovery_failed">Characteristic discovery failed: %s</string>
     <string name="s_check_on_the_gauge">Check on the gauge</string>
     <string name="s_choose_a_different_time_for_each_daily_reminder">Choose a different time for each daily reminder.</string>
@@ -301,6 +316,7 @@
     <string name="s_done_e9b450">Done</string>
     <string name="s_done_lld_times_today">Done %d times today</string>
     <string name="s_done_today">Done today</string>
+    <string name="s_down_across_lld_sessions">Down %1$s %2$s across %3$d sessions.</string>
     <string name="s_down_kg_across_lld_sessions">Down %1$s kg across %2$d sessions.</string>
     <string name="s_drag">Drag</string>
     <string name="s_duplicate">Duplicate</string>
@@ -308,6 +324,7 @@
     <string name="s_every_day">EVERY DAY</string>
     <string name="s_each_set_carries_its_own_grip_pulls_hold_rest_and_target">Each set carries its own grip, pulls, hold, rest and target — drag the band to set a range; during a session the clock only runs inside it. Add a set copies the last one.</string>
     <string name="s_each_set_says_how_many_pulls_you_do_per_side_the_line_un">Each set says how many pulls you do per side. The line underneath adds up your total time under tension per side.</string>
+    <string name="s_earlier_max_for_recorded">Earlier max for %1$s. %2$s %3$s, recorded %4$s.</string>
     <string name="s_earlier_max_for_kilograms_recorded">Earlier max for %1$s. %2$s kilograms, recorded %3$s.</string>
     <string name="s_easy">Easy</string>
     <string name="s_edge">Edge</string>
@@ -391,6 +408,7 @@
     <string name="s_hold_to_discard">Hold to discard</string>
     <string name="s_hold_to_end">Hold to end</string>
     <string name="s_holding">Holding</string>
+    <string name="s_holding_steady_around">Holding steady around %1$s %2$s.</string>
     <string name="s_holding_steady_around_kg">Holding steady around %s kg.</string>
     <string name="s_how_hard_did_it_feel">How hard did it feel?</string>
     <string name="s_how_hard_it_was_on_your_fingers">How hard it was on your fingers</string>
@@ -489,6 +507,7 @@
     <string name="s_name_it_first">Name it first</string>
     <string name="s_new_grip_d5bda8">New grip</string>
     <string name="s_new_grip_next">New grip next: %s</string>
+    <string name="s_new_grip_next_target_to">New grip next: %1$s, target %2$s to %3$s %4$s</string>
     <string name="s_new_grip_next_target_to_kilograms">New grip next: %1$s, target %2$s to %3$s kilograms</string>
     <string name="s_new_grip_c9ab0a">New grip: %s</string>
     <string name="s_new_max">New max</string>
@@ -500,6 +519,7 @@
     <string name="s_next_grip">Next grip: %s</string>
     <string name="s_next_reminder_at">Next reminder at %s</string>
     <string name="s_next_37caf7">Next: %s</string>
+    <string name="s_next_target_to">Next: %1$s, target %2$s to %3$s %4$s</string>
     <string name="s_next_target_to_kilograms">Next: %1$s, target %2$s to %3$s kilograms</string>
     <string name="s_no_found">No %s found</string>
     <string name="s_no_bluetooth">No Bluetooth</string>
@@ -569,7 +589,7 @@
     <string name="s_pause_is_unavailable_while_connecting">Pause is unavailable while connecting.</string>
     <string name="s_pause_when_i_m_out_of_range">Pause when I\'m out of range</string>
     <string name="s_paused_c7dfb6">Paused</string>
-    <string name="s_peak">Peak</string>
+    <string name="s_peak_c83dbb">Peak</string>
     <string name="s_percent_targets_always_follow_your_newest_max_nothing_to">Percent targets always follow your newest max — nothing to do.</string>
     <string name="s_percentage_targets_use_the_max_saved_for_that_grip_and_h">Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit.</string>
     <string name="s_percentage_targets_use_your_saved_maxes_these_may_no_lon">Percentage targets use your saved maxes. These may no longer reflect your current strength.</string>
@@ -577,10 +597,12 @@
     <string name="s_pinch">Pinch</string>
     <string name="s_pitchsix">PitchSix</string>
     <string name="s_pitchsix_force_board">PitchSix Force Board</string>
+    <string name="s_pounds_0c8c0a">Pounds</string>
     <string name="s_preparing_export">Preparing export…</string>
     <string name="s_preparing_image">Preparing image…</string>
     <string name="s_press_and_hold_to_end_everything_you_ve_already_done_is">Press and hold to end. Everything you\'ve already done is kept.</string>
     <string name="s_press_and_hold_nothing_is_saved">Press and hold. Nothing is saved.</string>
+    <string name="s_previous">Previous: %1$s %2$s</string>
     <string name="s_previous_kg">Previous: %s kg</string>
     <string name="s_privacy_policy">Privacy policy</string>
     <string name="s_privacy_policy_opens_in_your_browser">Privacy policy. Opens in your browser.</string>
@@ -694,6 +716,8 @@
     <string name="s_skip_set">Skip set</string>
     <string name="s_skip_the_guide">Skip the guide</string>
     <string name="s_solid">Solid</string>
+    <string name="s_some_fixed_weight_targets_moved">Some fixed weight targets moved</string>
+    <string name="s_some_fixed_weight_targets_were_set_by_the_sender_review">Some fixed weight targets were set by the sender. Review them for your own training.</string>
     <string name="s_some_kilogram_targets_were_set_by_the_sender_review_them">Some kilogram targets were set by the sender. Review them for your own training.</string>
     <string name="s_some_percentage_targets_have_no_saved_max_so_they_will_s">Some percentage targets have no saved max, so they will show no target.</string>
     <string name="s_some_sets_carry_kilogram_targets_typed_by_whoever_shared">Some sets carry kilogram targets typed by whoever shared this.</string>
@@ -764,6 +788,7 @@
     <string name="s_the_sets">The sets</string>
     <string name="s_the_shaded_band_is_the_load_you_were_asked_for_keep_the">The shaded band is the load you were asked for. Keep the line inside it and the clock runs; below says RE-GRIP and above says EASE OFF.</string>
     <string name="s_there_is_nothing_to_export_yet_finish_a_session_or_recor">There is nothing to export yet. Finish a session or record a max, and it lands here.</string>
+    <string name="s_there_s_on_the_gauge_zero_it">There\'s %1$s %2$s on the gauge. Zero it?</string>
     <string name="s_there_s_kg_on_the_gauge_zero_it">There\'s %s kg on the gauge. Zero it?</string>
     <string name="s_these_are_workout_peaks_not_necessarily_maximum_efforts">These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets.</string>
     <string name="s_these_were_typed_by_hand_so_they_never_move_on_their_own">These were typed by hand, so they never move on their own. Scale them with the new max, or leave them.</string>
@@ -800,6 +825,7 @@
     <string name="s_undo_39fc72">Undo</string>
     <string name="s_undo_e86500">Undo. %s</string>
     <string name="s_unit">Unit</string>
+    <string name="s_up_across_lld_sessions">Up %1$s %2$s across %3$d sessions.</string>
     <string name="s_up_kg_across_lld_sessions">Up %1$s kg across %2$d sessions.</string>
     <string name="s_upper_bound">Upper bound</string>
     <string name="s_use_as_max">Use as max</string>
@@ -814,6 +840,8 @@
     <string name="s_when">WHEN</string>
     <string name="s_waiting_for_the_gauge">Waiting for the gauge</string>
     <string name="s_wake">Wake</string>
+    <string name="s_weight_targets">Weight targets</string>
+    <string name="s_weight_units">Weight units</string>
     <string name="s_weighted_hangs">Weighted hangs</string>
     <string name="s_weighted_or_max_hangs_you_did_on_your_own_no_gauge_behin">Weighted or max hangs you did on your own — no gauge behind it.</string>
     <string name="s_weiheng">Weiheng</string>
@@ -838,6 +866,7 @@
     <string name="s_you_can_change_any_of_it_later_this_same_screen_is_the_e">You can change any of it later — this same screen is the editor.</string>
     <string name="s_you_can_connect_your_gauge_later">You can connect your gauge later.</string>
     <string name="s_your_ceiling_per_grip">Your ceiling, per grip</string>
+    <string name="s_your_current_max_on_this_grip_is_recorded_saving_adds_a">Your current max on this grip%1$s is %2$s %3$s, recorded %4$s. Saving adds a new one and keeps the old as history.</string>
     <string name="s_your_current_max_on_this_grip_is_kg_recorded_saving_adds">Your current max on this grip%1$s is %2$s kg, recorded %3$s. Saving adds a new one and keeps the old as history.</string>
     <string name="s_your_max_on_each_grip">Your max on each grip</string>
     <string name="s_your_numbers">Your numbers</string>
@@ -883,6 +912,7 @@
     <string name="s_kg_138984">kg</string>
     <string name="s_kg_c5a35e">kg · %s</string>
     <string name="s_kilograms_906bc2">kilograms</string>
+    <string name="s_lb">lb</string>
     <string name="s_max_070602">max</string>
     <string name="s_max_for_this_grip">max for this grip.</string>
     <string name="s_maxes_d4f4f4">maxes</string>
@@ -892,13 +922,15 @@
     <string name="s_mm">mm</string>
     <string name="s_no_saved_max_for_this_grip">no saved max for this grip</string>
     <string name="s_not_included">not included</string>
-    <string name="s_now">now</string>
+    <string name="s_now_c9bc84">now</string>
     <string name="s_of_lld">of %d</string>
     <string name="s_of_lld_today">of %d today</string>
+    <string name="s_peak_194d5b">peak %1$s %2$s</string>
     <string name="s_peak_kilograms">peak %s kilograms</string>
     <string name="s_peak_rfd_measurement">peak RFD measurement</string>
     <string name="s_percent_of_max">percent of max</string>
     <string name="s_ported_protocol">ported protocol</string>
+    <string name="s_pounds_736137">pounds</string>
     <string name="s_pull_c872d5">pull</string>
     <string name="s_pulls_6f8ad4">pulls</string>
     <string name="s_recorded">"recorded "</string>
@@ -912,6 +944,7 @@
     <string name="s_start_measurement">start measurement</string>
     <string name="s_stop_measurement">stop measurement</string>
     <string name="s_tare_c06510">tare</string>
+    <string name="s_target_to_bd15c7">target %1$s to %2$s %3$s</string>
     <string name="s_target_to_kilograms_5ca076">target %1$s to %2$s kilograms</string>
     <string name="s_target_to_percent_of_your_max">target %1$s to %2$s percent of your max</string>
     <string name="s_tested_your_maxes_f31019">tested your maxes</string>

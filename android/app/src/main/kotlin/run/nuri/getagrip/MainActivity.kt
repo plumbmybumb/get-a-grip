@@ -132,7 +132,12 @@ class MainActivity : ComponentActivity() {
                     val preview = androidx.compose.runtime.remember {
                         androidx.compose.runtime.mutableStateOf(BuildConfig.DEBUG && intent.getBooleanExtra("previewSummary", false))
                     }
-                    if (preview.value) {
+                    val runnerPreview = androidx.compose.runtime.remember {
+                        androidx.compose.runtime.mutableStateOf(BuildConfig.DEBUG && intent.getBooleanExtra("previewRunner", false))
+                    }
+                    if (runnerPreview.value) {
+                        run.nuri.getagrip.ui.runner.DebugRunnerPreview { runnerPreview.value = false }
+                    } else if (preview.value) {
                         run.nuri.getagrip.ui.runner.DebugSummaryPreview { preview.value = false }
                         if (intent.getBooleanExtra("previewLog", false)) {
                             run.nuri.getagrip.ui.history.SessionLogSheet { preview.value = false }

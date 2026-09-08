@@ -1,0 +1,15 @@
+<en-US>
+Choose pounds or kilograms in Settings for live readings, targets, maxes and history.
+
+Fixed workout borders drawing inside the screen on some phones. Rest now has a quiet gray border and a clearer label below the timer.
+
+Also fixed a countdown rounding issue that could briefly show an extra second.
+</en-US>
+
+<fr-FR>
+Choisissez les livres ou les kilogrammes dans Réglages pour les mesures, les cibles, les max et l'historique.
+
+Correction des bordures qui s'affichaient à l'intérieur de l'écran sur certains téléphones. Le repos a désormais une bordure grise discrète et un libellé plus lisible sous le chrono.
+
+Correction d'un arrondi qui pouvait afficher brièvement une seconde de trop.
+</fr-FR>

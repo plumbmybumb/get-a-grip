@@ -127,7 +127,9 @@ struct SessionLiveActivity: Widget {
                 // The TARGET, which is constant for the whole rep — the only load
                 // figure a surface that updates on state changes can state honestly.
                 if let band = context.state.targetBand {
-                    Text("\(band.lowerBound.formatted(.number.precision(.fractionLength(1))))–\(band.upperBound.formatted(.number.precision(.fractionLength(1)))) kg")
+                    let unit = context.state.displayWeightUnit ?? .kg
+                    Text(unit.bandText(band))
+                        .accessibilityLabel("\(unit.number(band.lowerBound))–\(unit.number(band.upperBound)) \(unit.spokenName)")
                         .font(.system(.caption))
                         .monospacedDigit()
                         .foregroundStyle(.secondary)

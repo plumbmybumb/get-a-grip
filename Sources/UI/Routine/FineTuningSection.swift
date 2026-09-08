@@ -11,6 +11,7 @@ import SwiftUI
 /// is why the row keeps a title and a summary line on its face instead of being a bare
 /// chevron — someone who has never opened it still knows what is in there.
 struct FineTuningSection: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Binding var draft: RoutineDraft
 
     /// View-local and unpersisted BY CONSTRUCTION — the sheet builds a fresh section
@@ -88,11 +89,11 @@ struct FineTuningSection: View {
                 .foregroundStyle(Ink.primary)
 
             ValueRow(title: String(localized: "A pull counts above"),
-                     unit: String(localized: "kg"),
-                     value: $draft.plan.thresholdKg,
-                     range: 0.5...10, limit: 0.5...SessionPlan.thresholdRange.upperBound,
+                     unit: weightUnit.symbol,
+                     value: weightUnit.binding($draft.plan.thresholdKg),
+                     range: weightUnit.sliderRangeFromKg(0.5...10), limit: weightUnit.rangeFromKg(0.5...SessionPlan.thresholdRange.upperBound),
                      step: 0.5,
-                     presets: [1, 2, 3, 5],
+                     presets: weightUnit == .kg ? [1, 2, 3, 5] : [2, 5, 7, 10],
                      decimals: 1)
 
             Text("Below this, the clock stops.")
@@ -255,6 +256,7 @@ private struct ThresholdGaugeStrip: View {
 /// invalidates only this, not the Stop button and static caption beside it — see
 /// `ThresholdGaugeStrip.body`.
 private struct ThresholdReadout: View {
+    @Environment(\.weightUnit) private var weightUnit
     var thresholdKg: Double
 
     @Environment(DeviceStore.self) private var device
@@ -278,11 +280,11 @@ private struct ThresholdReadout: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(device.currentKg, format: .number.precision(.fractionLength(1)))
+            Text(weightUnit.number(device.currentKg))
                 .font(.system(.subheadline, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(crossed ? StatusTint.engaged : Ink.primary)
-            Text("kg")
+            Text(weightUnit.symbol)
                 .font(.system(.caption))
                 .foregroundStyle(Ink.tertiary)
             Spacer(minLength: 8)

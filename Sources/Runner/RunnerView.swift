@@ -11,6 +11,7 @@ import SwiftUI
 /// hit without looking. It owns no timing logic — `RunnerSession` holds the state
 /// machine and this only draws what it says.
 struct RunnerView: View {
+    @Environment(\.weightUnit) private var weightUnit
     let template: SessionTemplate
     /// Run the whole thing on the clock, with no gauge — see `SessionRunner.timerOnly`.
     /// Everything force-shaped leaves the screen rather than sitting there at 0.0 kg,
@@ -151,6 +152,7 @@ struct RunnerView: View {
             // the climber because a max was recorded on another device mid-workout.
             let new = RunnerSession(template: template, device: device,
                                     maxes: templates.maxTable, timerOnly: timerOnly)
+            new.weightUnit = weightUnit
             session = new
             new.begin()
             // AFTER the session exists, in the same block that made it. As its own
@@ -161,6 +163,7 @@ struct RunnerView: View {
             if tour.isRunning { new.send(.pause) }
         }
         .onDisappear { session?.end() }
+        .onChange(of: weightUnit) { _, unit in session?.weightUnit = unit }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 // Bin whatever the radio buffered while we were away — see
@@ -348,27 +351,42 @@ struct RunnerView: View {
     /// 20 pt margin they were a caption. The negative padding cancels most of the
     /// content margin for this row only, so they frame the island rather than crowding it.
     private func counters(_ session: RunnerSession) -> some View {
-        Group {
-            if typeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 4) {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                CapsLabel(setLine(session), size: 14).fixedSize()
+                Spacer(minLength: 0)
+                restPhaseLabel(session)
+                Spacer(minLength: 0)
+                CapsLabel(pullLine(session), size: 14).fixedSize()
+            }
+            VStack(spacing: 4) {
+                restPhaseLabel(session)
+                HStack(alignment: .top, spacing: 8) {
                     CapsLabel(setLine(session), size: 14)
-                    CapsLabel(pullLine(session), size: 14)
+                    Spacer(minLength: 0)
+                    CapsLabel(pullLine(session), size: 14).multilineTextAlignment(.trailing)
                 }
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                HStack {
-                    CapsLabel(setLine(session), size: 14)
-                    Spacer(minLength: 8)
-                    CapsLabel(pullLine(session), size: 14)
-                }
-                .padding(.horizontal, -10)
             }
         }
         .monospacedDigit()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(spokenState(session)), \(countdownCaption(session) ?? "")")
         .accessibilityIdentifier("runner.counters")
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(spokenState(session))
+    }
+
+    /// Reserve the widest rest word in every phase, so rest-to-pull cannot move the
+    /// graph. Compact widths and translated labels can use the two-row fallback.
+    private func restPhaseLabel(_ session: RunnerSession) -> some View {
+        Text("SET BREAK")
+            .hidden().accessibilityHidden(true)
+            .overlay {
+                if let caption = countdownCaption(session) {
+                    Text(caption).foregroundStyle(Ink.secondary)
+                        .accessibilityIdentifier("runner.restPhase")
+                }
+            }
+            .font(.system(.body, weight: .semibold))
+            .fixedSize()
     }
 
     private func setLine(_ session: RunnerSession) -> String {
@@ -575,14 +593,14 @@ struct RunnerView: View {
             }
             return grip.spoken
         }
-        let lo = kgText(band.lowerBound)
-        let hi = kgText(band.upperBound)
+        let lo = weightText(band.lowerBound)
+        let hi = weightText(band.upperBound)
         if resting {
             return changingGrip
-                ? String(localized: "New grip next: \(grip.spoken), target \(lo) to \(hi) kilograms")
-                : String(localized: "Next: \(grip.spoken), target \(lo) to \(hi) kilograms")
+                ? String(localized: "New grip next: \(grip.spoken), target \(lo) to \(hi) \(weightUnit.spokenName)")
+                : String(localized: "Next: \(grip.spoken), target \(lo) to \(hi) \(weightUnit.spokenName)")
         }
-        return String(localized: "\(grip.spoken), target \(lo) to \(hi) kilograms")
+        return String(localized: "\(grip.spoken), target \(lo) to \(hi) \(weightUnit.spokenName)")
     }
 
     private func isWorking(_ session: RunnerSession) -> Bool {
@@ -595,8 +613,8 @@ struct RunnerView: View {
         return false
     }
 
-    private func kgText(_ kg: Double) -> String {
-        kg.formatted(.number.precision(.fractionLength(1)))
+    private func weightText(_ kg: Double) -> String {
+        weightUnit.number(kg)
     }
 
     /// The one thing that has to be readable across a room: which hand, and whether to
@@ -689,16 +707,6 @@ struct RunnerView: View {
     @ViewBuilder
     private func hero(_ session: RunnerSession) -> some View {
         VStack(alignment: .trailing, spacing: 4) {
-            if typeSize.isAccessibilitySize, let caption = countdownCaption(session) {
-                // A whole caption above the clock has room for REPOS or the next
-                // hand. Confining it beside the unit split RE-POS at larger sizes.
-                Text(caption)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Ink.secondary)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }
             HStack(alignment: .lastTextBaseline, spacing: 18) {
                 // No gauge, no kilogram. The clock takes the whole hero rather than sharing
                 // it with a permanent 0.0 — an empty measurement reads as a fault.
@@ -709,7 +717,7 @@ struct RunnerView: View {
                         unit: String(localized: "s"),
                         tint: isStalled(session) ? StatusTint.armed : Ink.primary,
                         rolls: true,
-                        caption: typeSize.isAccessibilitySize ? nil : countdownCaption(session))
+                        caption: nil)
                     .tourAnchor(.runnerClock)
             }
         }
@@ -723,7 +731,7 @@ struct RunnerView: View {
 
     private func countdownCaption(_ session: RunnerSession) -> String? {
         guard session.snapshot.nextRestHand != nil else { return nil }
-        if session.snapshot.phase.isPaused { return session.snapshot.nextRestHandPrompt }
+        if session.snapshot.phase.isPaused { return nil }
         return session.snapshot.isSetBreak ? String(localized: "SET BREAK") : String(localized: "REST")
     }
 
@@ -1110,6 +1118,7 @@ private struct GripCueKey: Equatable {
 /// times a second to move one number. A leaf view reading the store directly means the
 /// invalidation stops here, at the only thing that actually changed.
 private struct LiveForceReadout: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
     var tint: Color
     var size: CGFloat
@@ -1117,7 +1126,7 @@ private struct LiveForceReadout: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(device.currentKg.formatted(.number.precision(.fractionLength(1))))
+            Text(weightUnit.number(device.currentKg))
                 .font(.system(size: size, weight: .thin))
                     .displayTracking(size)
                 .monospacedDigit()
@@ -1126,7 +1135,7 @@ private struct LiveForceReadout: View {
                 // A measurement snaps; only clocks roll.
                 .contentTransition(.identity)
                 .foregroundStyle(tint)
-            Text("kg")
+            Text(weightUnit.symbol)
                 .font(.system(size: unitSize))
                 .foregroundStyle(Ink.tertiary)
         }
@@ -1176,6 +1185,7 @@ private struct LiveRepProgress: View {
 /// The target's live state changes with every force sample, so the chip owns that
 /// high-frequency observation instead of invalidating the runner screen around it.
 private struct LiveTargetChip: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
     var band: ClosedRange<Double>
     var isWorking: Bool
@@ -1185,7 +1195,7 @@ private struct LiveTargetChip: View {
         // In a timer-only session the gauge value is zero or stale by definition. Letting
         // it light this instruction chip would claim that an unmeasured pull is engaged.
         let live = !timerOnly && isWorking && band.contains(device.currentKg)
-        Text("\(kgText(band.lowerBound))–\(kgText(band.upperBound)) kg")
+        Text(String(localized: "\(weightText(band.lowerBound))–\(weightText(band.upperBound)) \(weightUnit.symbol)"))
             .font(.system(.footnote, weight: .semibold))
             .monospacedDigit()
             .foregroundStyle(live ? Color.white : Ink.secondary)
@@ -1200,8 +1210,8 @@ private struct LiveTargetChip: View {
             .accessibilityHidden(true)
     }
 
-    private func kgText(_ kg: Double) -> String {
-        kg.formatted(.number.precision(.fractionLength(1)))
+    private func weightText(_ kg: Double) -> String {
+        weightUnit.number(kg)
     }
 }
 
@@ -1227,6 +1237,7 @@ private struct LiveTrace: View {
 /// keeps taring out of a live rep; confirmation is the warning that prevents an allowed
 /// phase from zeroing a load the climber did not mean to discard.
 private struct TareButton: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
     var session: RunnerSession
 
@@ -1295,7 +1306,7 @@ private struct TareButton: View {
             Button("Zero it", role: .destructive) { confirmTare() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("There's \(promptedKg.formatted(.number.precision(.fractionLength(1)))) kg on the gauge. Zero it?")
+            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Zero it?"))
         }
     }
 

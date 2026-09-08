@@ -587,7 +587,7 @@ class SessionRunner(
             return holdTick(current.slot, t)
         }
         if (!phase.isCountingDown) return emptyList()
-        val remaining = max(0, ceil(countdownEndsAt - t).toInt())
+        val remaining = countdownSeconds(t)
         if (remaining >= lastAnnouncedSecond) return emptyList()
         lastAnnouncedSecond = remaining
         if (remaining <= 0) return countdownFinished(t)
@@ -1001,7 +1001,28 @@ class SessionRunner(
             clock = at
         }
         if (!phaseToRead.isCountingDown) return null
-        return max(0, ceil(countdownEndsAt - clock).toInt())
+        return countdownSeconds(clock)
+    }
+
+    /** Unrounded interval for countdown consumers; stored timing remains unchanged. */
+    fun countdownRemainingInterval(at: Double): Double? {
+        if (!unpaused.isCountingDown) return null
+        val clock = if (phase.isPaused) pausedAt else at
+        return max(0.0, min(countdownDuration, countdownEndsAt - clock))
+    }
+
+    private fun countdownSeconds(clock: Double): Int {
+        val remaining = countdownEndsAt - clock
+        if (remaining <= 0) return 0
+        // Uptime arithmetic can turn 30 seconds into 30.00000000000003. Correct
+        // only floating-point resolution errors, not genuine fractions. A positive
+        // interval never rounds to zero, so the actual deadline still ends the phase.
+        val nearest = kotlin.math.round(remaining)
+        val tolerance = 2 * max(Math.ulp(countdownEndsAt), Math.ulp(clock))
+        if (nearest >= 1 && kotlin.math.abs(remaining - nearest) <= tolerance) {
+            return nearest.toInt()
+        }
+        return ceil(remaining).toInt()
     }
 
     /// The fraction of the CURRENT phase remaining, 1…0 as its clock runs down.

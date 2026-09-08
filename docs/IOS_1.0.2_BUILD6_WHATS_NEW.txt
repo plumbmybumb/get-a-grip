@@ -1,0 +1,7 @@
+Train in pounds or kilograms. Choose your weight unit in Settings and use it throughout the app, from live readings and targets to maxes and history.
+
+Workouts are easier to follow from across the room: blue edges while you pull, orange when it's time to let go, and a quiet gray edge during rest. The rest label is clearer, and you'll see which hand is up next.
+
+New workout peaks stay with the hand that recorded them. Choose which ones to save as maxes, with left, right and both hands kept separate.
+
+We've also improved button spacing, WH-C06 reconnecting, and a countdown rounding issue that could briefly show an extra second.

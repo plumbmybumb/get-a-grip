@@ -52,6 +52,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -95,7 +96,6 @@ import run.nuri.getagrip.ble.MockProgressorClient
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.engine.BackgroundPausePolicy
 import run.nuri.getagrip.engine.FingerSet
-import run.nuri.getagrip.engine.Fmt
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.MaxTable
@@ -133,6 +133,7 @@ import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
+import run.nuri.getagrip.ui.units.WeightUnits
 import run.nuri.getagrip.ui.tour.LocalTourController
 import run.nuri.getagrip.ui.tour.TourAct
 import run.nuri.getagrip.ui.tour.TourTarget
@@ -443,7 +444,7 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
             GripNameRow(snapshot, palette, timerOnly = true)
             GripChangeNotice(snapshot, palette)
             TimerDial(session, snapshot, tint, palette)
-            CapsLabel(tr("%s · %s", setLine(snapshot), pullLine(snapshot)))
+            Counters(snapshot)
         } else {
             // The hand owns the whole top band, so the grip's NAME is all that goes up here —
             // drawing the glyph again would be the same picture twice — and the counters move
@@ -617,7 +618,7 @@ private fun LiveTargetChip(
     // light this instruction chip would claim that an unmeasured pull is engaged.
     val live = !timerOnly && isWorking && device.currentKg in band
     Text(
-        tr("%s–%s kg", kgText(band.start), kgText(band.endInclusive)),
+        WeightUnits.band(band),
         style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
         fontWeight = FontWeight.SemiBold,
         color = if (live) Color.White else palette.inkSecondary,
@@ -698,8 +699,6 @@ private fun Hero(
             seconds = snapshot.secondsShown,
             tint = if (isStalled(snapshot)) palette.armed else palette.inkPrimary,
             palette = palette,
-            annotation = if (snapshot.phase is RunnerPhase.Paused) nextHandText(snapshot)
-                else restPhaseText(snapshot),
             modifier = Modifier.weight(1f).tourAnchor(TourTarget.RunnerClock),
         )
     }
@@ -736,7 +735,7 @@ private fun LiveForceReadout(snapshot: RunnerSnapshot, palette: GripPalette, mod
             autoSize = heroAutoSize,
             modifier = Modifier.weight(1f, fill = false),
         )
-        Text(tr("kg"), style = TextStyle(fontSize = UNIT_SIZE), color = palette.inkTertiary, modifier = Modifier.padding(bottom = 10.dp))
+        Text(WeightUnits.symbol, style = TextStyle(fontSize = UNIT_SIZE), color = palette.inkTertiary, modifier = Modifier.padding(bottom = 10.dp))
     }
 }
 
@@ -751,7 +750,6 @@ private fun CountdownNumeral(
     tint: Color,
     palette: GripPalette,
     modifier: Modifier = Modifier,
-    annotation: String? = null,
 ) {
     Row(
         modifier,
@@ -765,23 +763,8 @@ private fun CountdownNumeral(
             autoSize = heroAutoSize,
             modifier = Modifier.weight(1f, fill = false),
         )
-        Column(
-            Modifier.padding(bottom = 10.dp).widthIn(max = 92.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            if (annotation != null) BasicText(
-                annotation,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    color = palette.inkSecondary,
-                ),
-                // Keep the secondary cue inside the numeral's existing height, including
-                // French and larger text. A third line would push the graph down on pause.
-                autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 11.sp),
-                maxLines = 2,
-            )
-            Text(tr("s"), style = TextStyle(fontSize = UNIT_SIZE), color = palette.inkTertiary)
-        }
+        Text(tr("s"), style = TextStyle(fontSize = UNIT_SIZE), color = palette.inkTertiary,
+            modifier = Modifier.padding(bottom = 10.dp))
     }
 }
 
@@ -828,16 +811,37 @@ private fun RepProgress(session: RunnerSession, snapshot: RunnerSnapshot, palett
 /// Pushed OUT to the screen edges and up a size. They are the two numbers you check from a
 /// metre away between pulls, and at caption size inside the house margin they were a footnote.
 @Composable
-private fun Counters(snapshot: RunnerSnapshot) {
+internal fun Counters(snapshot: RunnerSnapshot) {
+    val palette = LocalGripPalette.current
+    val fontScale = LocalDensity.current.fontScale
+    val annotation = if (snapshot.phase is RunnerPhase.Paused) nextHandText(snapshot)
+        else restPhaseText(snapshot)
     Row(
         Modifier
             .widthIn(max = Metrics.maxContentWidth)
             .fillMaxWidth()
+            // Reserve the same compact band in every phase. Two lines keep French set
+            // breaks/paused hand guidance readable without shifting the graph on change.
+            .height((40 * fontScale).dp)
+            .testTag("runner-counters")
             .semantics(mergeDescendants = true) { contentDescription = spokenState(snapshot) },
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        CapsLabel(setLine(snapshot), Modifier.weight(1f))
-        CapsLabel(pullLine(snapshot), Modifier.weight(1f), textAlign = TextAlign.End)
+        CapsLabel(setLine(snapshot), Modifier.weight(1f).testTag("runner-set-count"))
+        Box(Modifier.weight(1.1f), contentAlignment = Alignment.Center) {
+            if (annotation != null) BasicText(
+                annotation,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.SemiBold, color = palette.inkSecondary,
+                    textAlign = TextAlign.Center,
+                ),
+                autoSize = TextAutoSize.StepBased(minFontSize = 14.sp, maxFontSize = 18.sp),
+                maxLines = 2,
+                modifier = Modifier.fillMaxWidth().testTag("runner-rest-label"),
+            )
+        }
+        CapsLabel(pullLine(snapshot), Modifier.weight(1f).testTag("runner-pull-count"), textAlign = TextAlign.End)
     }
 }
 
@@ -929,7 +933,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 CountdownNumeral(snapshot.secondsShown, palette.inkPrimary, palette)
-                CapsLabel(phasePromptText(snapshot, timerOnly = true, isConnected = false), color = tint)
+                if (!isResting(snapshot) || snapshot.phase.isPaused) {
+                    CapsLabel(phasePromptText(snapshot, timerOnly = true, isConnected = false), color = tint)
+                }
                 nextHandText(snapshot)?.let { nextHand ->
                     BasicText(
                         nextHand,
@@ -1173,7 +1179,7 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
         AlertDialog(
             onDismissRequest = { promptedKg = null },
             title = { Text(tr("Zero the gauge?")) },
-            text = { Text(tr("There's %s kg on the gauge. Zero it?", kgText(prompted))) },
+            text = { Text(WeightUnits.tr("There's %s kg on the gauge. Zero it?", kgText(prompted))) },
             confirmButton = {
                 TextButton(onClick = {
                     when (
@@ -1339,9 +1345,9 @@ private fun spokenGrip(snapshot: RunnerSnapshot, grip: GripSpec, timerOnly: Bool
         val hi = kgText(band.endInclusive)
         when {
             resting && changing ->
-                L10n.tr("New grip next: %s, target %s to %s kilograms", grip.spoken, lo, hi)
-            resting -> L10n.tr("Next: %s, target %s to %s kilograms", grip.spoken, lo, hi)
-            else -> L10n.tr("%s, target %s to %s kilograms", grip.spoken, lo, hi)
+                WeightUnits.tr("New grip next: %s, target %s to %s kilograms", grip.spoken, lo, hi)
+            resting -> WeightUnits.tr("Next: %s, target %s to %s kilograms", grip.spoken, lo, hi)
+            else -> WeightUnits.tr("%s, target %s to %s kilograms", grip.spoken, lo, hi)
         }
     }
     return if (timerOnly) body + L10n.tr(", timing only") else body
@@ -1369,9 +1375,50 @@ private fun isStalled(snapshot: RunnerSnapshot): Boolean = snapshot.isDropped ||
 
 /// Display precision only, guarded against a non-finite reading — `Fmt.fixed` refuses one by
 /// design, and a decoder that hands over a garbage float must not take the hero down with it.
-internal fun kgText(value: Double): String = Fmt.fixed(if (value.isFinite()) value else 0.0, 1)
+internal fun kgText(value: Double): String = WeightUnits.number(value)
 
 // MARK: - Previews
+
+/** Debug intent only: the real runner and a private mock, with no training-store writes. */
+@Composable
+internal fun DebugRunnerPreview(onDone: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val device = remember(scope) {
+        DeviceStore(MockProgressorClient(scope, MockForceProfile.clean), isMock = true, scope = scope)
+    }
+    val plan = remember {
+        SessionPlan(name = "Runner preview", holdSeconds = 5, restSeconds = 20,
+            setBreakSeconds = 30, leadInSeconds = 0,
+            handMode = run.nuri.getagrip.engine.HandMode.alternateEachRep,
+            sets = listOf(SetPlan(grip = GripSpec(), repsPerSide = 3,
+                targetLoKg = 15.0, targetHiKg = 25.0),
+                SetPlan(grip = GripSpec(edgeMM = 15), repsPerSide = 3)))
+    }
+    val session = remember(device, plan) { RunnerSession(plan, plan.name, device, scope = scope) }
+    DisposableEffect(session) {
+        session.begin()
+        device.connect()
+        onDispose { session.end(); device.disconnect() }
+    }
+    LaunchedEffect(device.state.isConnected) { session.startIfReady(StreamStartCause.initial) }
+    LaunchedEffect(session.isFinished) { if (session.isFinished) onDone() }
+    BackHandler(onBack = onDone)
+    KeepScreenOn(true)
+    RunnerWindowChrome(hideStatusBar = true)
+    CompositionLocalProvider(LocalDeviceStore provides device) {
+        Box(Modifier.fillMaxSize()) {
+            RunnerLive(session, timerOnly = false)
+            val snapshot = session.snapshot
+            snapshot.grip?.let { grip ->
+                PalmHand(grip = grip, side = snapshot.side ?: Side.both,
+                    newGripID = snapshot.newGripID, holdsGripCueForRest = snapshot.gripChangesNext,
+                    isActive = !isResting(snapshot), modifier = Modifier.align(Alignment.TopCenter))
+            }
+            RunnerScreenBorder(runnerBorderCue(snapshot, false,
+                device.state.isConnected && device.isStreaming && device.isSignalFresh), Modifier.matchParentSize())
+        }
+    }
+}
 
 @Composable
 private fun previewStore(): DeviceStore {

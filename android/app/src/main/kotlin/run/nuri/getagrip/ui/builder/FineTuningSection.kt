@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.builder
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
@@ -173,15 +175,15 @@ fun FineTuningSection(
                         )
                         ValueRow(
                             title = tr("A pull counts above"),
-                            value = draft.plan.thresholdKg,
-                            range = 0.5..10.0,
-                            unit = tr("kg"),
-                            limit = 0.5..run.nuri.getagrip.engine.SessionPlan.thresholdRange.endInclusive,
-                            step = 0.5,
-                            presets = listOf(1.0, 2.0, 3.0, 5.0),
+                            value = WeightUnits.fromKg(draft.plan.thresholdKg),
+                            range = WeightUnits.sliderRange(0.5..10.0, 0.1),
+                            unit = WeightUnits.symbol,
+                            limit = WeightUnits.fromKg(0.5..run.nuri.getagrip.engine.SessionPlan.thresholdRange.endInclusive),
+                            step = 0.1,
+                            presets = if (WeightUnits.current == run.nuri.getagrip.ui.units.WeightUnit.kg) listOf(1.0, 2.0, 3.0, 5.0) else listOf(2.0, 4.0, 6.0, 10.0),
                             decimals = 1,
                             caption = tr("Below this, the clock stops."),
-                        ) { onChange(draft.copy(plan = draft.plan.copy(thresholdKg = it))) }
+                        ) { onChange(draft.copy(plan = draft.plan.copy(thresholdKg = WeightUnits.toKg(it)))) }
                         ThresholdGaugeStrip(draft.plan.thresholdKg)
                     }
 
@@ -340,7 +342,7 @@ private fun ThresholdReadout(thresholdKg: Double) {
             fontWeight = FontWeight.Medium,
             color = if (crossed) palette.bleu else palette.inkPrimary,
         )
-        Text(tr("kg"), style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
+        Text(WeightUnits.symbol, style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
         Box(Modifier.weight(1f))
         // A WORD as well as a colour: the state has to survive greyscale.
         CapsLabel(

@@ -118,7 +118,7 @@
     {"cues":[],"event":{"type":"tick"},"t":4.100000000000002},
     {"cues":[],"event":{"type":"tick"},"t":4.200000000000002},
     {"cues":[],"event":{"type":"tick"},"t":4.300000000000002},
-    {"cues":[],"event":{"type":"tick"},"t":4.400000000000001}
+    {"cues":[{"seconds":3,"type":"restTick"}],"event":{"type":"tick"},"t":4.400000000000001}
   ],
   "timerOnly": false
 }

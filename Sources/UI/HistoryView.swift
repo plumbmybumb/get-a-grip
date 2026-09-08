@@ -17,6 +17,7 @@ import SwiftUI
 /// at save time. Editing or deleting a routine can therefore never rewrite what history
 /// says you DID. Its NAME is the one deliberate exception — see `displayName(of:)`.
 struct HistoryView: View {
+    @Environment(\.weightUnit) private var weightUnit
     /// Newest first — the session you are most likely looking for is the one you just did.
     @Query(sort: [SortDescriptor(\WorkoutLog.startedAt, order: .reverse)])
     private var logs: [WorkoutLog]
@@ -696,15 +697,15 @@ struct HistoryView: View {
             // 0.28 → 0.02 (ForceTraceView), and these are the same species of data —
             // measured kilograms — so they get the same ink. A naked hairline here
             // made History read as a second, thinner instrument.
-            AreaMark(x: .value("Date", point.date), y: .value("Load", point.avgKg))
+            AreaMark(x: .value("Date", point.date), y: .value("Load", weightUnit.fromKg(point.avgKg)))
                 .interpolationMethod(.monotone)
                 .foregroundStyle(LinearGradient(
                     colors: [Accent.bleu.opacity(0.28), Accent.bleu.opacity(0.02)],
                     startPoint: .top, endPoint: .bottom))
-            LineMark(x: .value("Date", point.date), y: .value("Load", point.avgKg))
+            LineMark(x: .value("Date", point.date), y: .value("Load", weightUnit.fromKg(point.avgKg)))
                 .interpolationMethod(.monotone)
                 .foregroundStyle(Accent.bleu)
-            PointMark(x: .value("Date", point.date), y: .value("Load", point.avgKg))
+            PointMark(x: .value("Date", point.date), y: .value("Load", weightUnit.fromKg(point.avgKg)))
                 .foregroundStyle(Accent.bleu)
                 .symbolSize(28)
         }
@@ -714,6 +715,7 @@ struct HistoryView: View {
                 AxisValueLabel(format: .dateTime.day().month(.abbreviated))
             }
         }
+        .chartYAxisLabel(weightUnit.symbol)
         .chartYAxis {
             AxisMarks { _ in
                 AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
@@ -728,15 +730,15 @@ struct HistoryView: View {
     private func trendSummary(_ series: [TrendPoint]) -> String {
         guard let first = series.first, let last = series.last else { return "" }
         let delta = last.avgKg - first.avgKg
-        let magnitude = abs(delta).formatted(.number.precision(.fractionLength(1)))
+        let magnitude = weightUnit.number(abs(delta))
         // Under half a kilo across a whole series is inside the noise of how you happened
         // to grip it that morning, and calling that progress would be flattery.
         guard abs(delta) >= 0.5 else {
-            return String(localized: "Holding steady around \(last.avgKg.formatted(.number.precision(.fractionLength(1)))) kg.")
+            return String(localized: "Holding steady around \(weightUnit.number(last.avgKg)) \(weightUnit.symbol).")
         }
         return delta > 0
-            ? String(localized: "Up \(magnitude) kg across \(series.count) sessions.")
-            : String(localized: "Down \(magnitude) kg across \(series.count) sessions.")
+            ? String(localized: "Up \(magnitude) \(weightUnit.symbol) across \(series.count) sessions.")
+            : String(localized: "Down \(magnitude) \(weightUnit.symbol) across \(series.count) sessions.")
     }
 
     // MARK: - Derived
@@ -957,6 +959,7 @@ private struct DayCell: View {
 /// on their own line, the date floated top-right — made ten sessions read as ten
 /// documents and fitted four on a screen.
 private struct SessionRow: View {
+    @Environment(\.weightUnit) private var weightUnit
     let log: WorkoutLog
     /// Resolved by `HistoryView.displayName(of:)` — the routine's live name while it
     /// exists, the log's frozen copy once it doesn't. Passed IN rather than read from
@@ -1056,7 +1059,7 @@ private struct SessionRow: View {
         guard log.kind != .benchmark else { return String(localized: "Tested your maxes") }
         let effort = String(localized: "\(log.completedReps)/\(log.plannedReps) pulls · \(PlanMath.clockText(Int(log.totalHeldSeconds.rounded())))")
         guard log.peakKg > 0 else { return effort }
-        return effort + " · " + String(localized: "\(log.peakKg.formatted(.number.precision(.fractionLength(1)))) kg")
+        return effort + " · " + String(localized: "\(weightUnit.number(log.peakKg)) \(weightUnit.symbol)")
     }
 
     private var handLoggedDetails: [String] {
@@ -1130,7 +1133,7 @@ private struct SessionRow: View {
                 String(localized: "\(Int(log.totalHeldSeconds.rounded())) seconds under tension"),
             ]
             if log.peakKg > 0 {
-                parts.append(String(localized: "peak \(log.peakKg.formatted(.number.precision(.fractionLength(1)))) kilograms"))
+                parts.append(String(localized: "peak \(weightUnit.number(log.peakKg)) \(weightUnit.spokenName)"))
             }
         }
         if !log.kind.isLoggedByHand, let grade = log.grade {

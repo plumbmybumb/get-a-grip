@@ -18,6 +18,7 @@ import SwiftUI
 /// The WORKING max is the NEWEST record, not the highest: a benchmark that tests lower
 /// honestly lowers your percentage targets too. Best-ever is shown beside it as the PR.
 struct MaxesTab: View {
+    @Environment(\.weightUnit) private var weightUnit
     /// Oldest first — each grip's slice is then already in chart order.
     @Query(sort: [SortDescriptor(\MaxRecord.recordedAt)])
     private var records: [MaxRecord]
@@ -235,7 +236,7 @@ struct MaxesTab: View {
     @ViewBuilder
     private func currentReadout(_ group: GripGroup, sides: [Side]) -> some View {
         if sides == [.both], let newest = newest(in: group, side: .both) {
-            kgText(newest.kg, style: .title2)
+            weightText(newest.kg, style: .title2)
         } else {
             VStack(alignment: .trailing, spacing: 2) {
                 ForEach(sides, id: \.self) { side in
@@ -244,7 +245,7 @@ struct MaxesTab: View {
                             Text(side == .both ? String(localized: "Both") : (side == .left ? "L" : "R"))
                                 .font(.system(.caption, weight: .semibold))
                                 .foregroundStyle(Ink.tertiary)
-                            kgText(newest.kg, style: .subheadline)
+                            weightText(newest.kg, style: .subheadline)
                         }
                     }
                 }
@@ -252,13 +253,13 @@ struct MaxesTab: View {
         }
     }
 
-    private func kgText(_ kg: Double, style: Font.TextStyle) -> some View {
+    private func weightText(_ kg: Double, style: Font.TextStyle) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 2) {
-            Text(kg.formatted(.number.precision(.fractionLength(1))))
+            Text(weightUnit.number(kg))
                 .font(.system(style, weight: .semibold))
                 .monospacedDigit()
                 .foregroundStyle(Ink.primary)
-            Text("kg")
+            Text(weightUnit.symbol)
                 .font(.system(.caption))
                 .foregroundStyle(Ink.tertiary)
         }
@@ -270,10 +271,10 @@ struct MaxesTab: View {
         let sides = presentSides(in: group)
         let bests = sides.map { side in
             let best = group.records.filter { $0.side == side }.map(\.kg).max() ?? 0
-            let weight = best.formatted(.number.precision(.fractionLength(1)))
+            let weight = weightUnit.number(best)
             return sides.count == 1 ? weight : "\(side.name) \(weight)"
         }.joined(separator: " · ")
-        var parts = [String(localized: "Best \(bests) kg")]
+        var parts = [String(localized: "Best \(bests) \(weightUnit.symbol)")]
         if let newest = group.records.last {
             let series = group.records.filter { $0.side == newest.side }
             if series.count >= 2 {
@@ -282,7 +283,7 @@ struct MaxesTab: View {
                 let when = previous.recordedAt.formatted(.dateTime.day().month(.abbreviated))
                 if abs(delta) >= 0.05 {
                     let verb = delta > 0 ? String(localized: "up") : String(localized: "down")
-                    parts.append(String(localized: "\(verb) \(abs(delta).formatted(.number.precision(.fractionLength(1)))) kg since \(when)"))
+                    parts.append(String(localized: "\(verb) \(weightUnit.number(abs(delta))) \(weightUnit.symbol) since \(when)"))
                 } else {
                     parts.append(String(localized: "held since \(when)"))
                 }
@@ -317,7 +318,7 @@ struct MaxesTab: View {
                     if sides.count == 1 {
                         ForEach(series) { record in
                             AreaMark(x: .value("Date", record.recordedAt),
-                                     y: .value("Max", record.kg))
+                                     y: .value("Max", weightUnit.fromKg(record.kg)))
                                 .interpolationMethod(.monotone)
                                 .foregroundStyle(LinearGradient(
                                     colors: [Accent.bleu.opacity(0.28), Accent.bleu.opacity(0.02)],
@@ -326,13 +327,13 @@ struct MaxesTab: View {
                     }
                     ForEach(series) { record in
                         LineMark(x: .value("Date", record.recordedAt),
-                                 y: .value("Max", record.kg),
+                                 y: .value("Max", weightUnit.fromKg(record.kg)),
                                  series: .value("Hand", side.name))
                             .interpolationMethod(.monotone)
                             .foregroundStyle(Accent.bleu)
                             .lineStyle(dash(for: side))
                         PointMark(x: .value("Date", record.recordedAt),
-                                  y: .value("Max", record.kg))
+                                  y: .value("Max", weightUnit.fromKg(record.kg)))
                             .foregroundStyle(Accent.bleu)
                             .symbolSize(24)
                     }
@@ -344,7 +345,8 @@ struct MaxesTab: View {
                     AxisValueLabel(format: .dateTime.day().month(.abbreviated))
                 }
             }
-            .chartYAxis {
+            .chartYAxisLabel(weightUnit.symbol)
+        .chartYAxis {
                 AxisMarks { _ in
                     AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
                     AxisValueLabel()

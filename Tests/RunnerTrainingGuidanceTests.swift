@@ -35,9 +35,9 @@ final class RunnerTrainingGuidanceTests: XCTestCase {
         XCTAssertEqual(snapshot.screenBorderCue(timerOnly: true, measuredSignalIsLive: false), .pulling)
     }
 
-    func testWaitingRestPauseAndFinishedNeverBorrowTheWorkingBorder() {
+    func testWaitingPauseAndFinishedNeverBorrowTheWorkingBorder() {
         let phases: [RunnerPhase] = [.idle, .leadIn(slot: 0), .armed(slot: 0),
-            .resting(slot: 0), .paused(before: .working(slot: 0)),
+            .paused(before: .resting(slot: 0)), .paused(before: .working(slot: 0)),
             .paused(before: .releasing(slot: 0)), .finished]
         for phase in phases {
             let snapshot = RunnerSnapshot(phase: phase, isDropped: true, hasSignal: true)
@@ -72,7 +72,13 @@ final class RunnerTrainingGuidanceTests: XCTestCase {
         }
         XCTAssertEqual(cue(), .releasing)
         session.send(.sample(ForceSample(kg: 0, deviceMicros: 2_100_000)))
-        XCTAssertNil(cue())
+        XCTAssertEqual(cue(), .resting)
+    }
+
+    func testRestBorderIsQuietAndIgnoresRetiredWorkWarnings() {
+        let snapshot = RunnerSnapshot(phase: .resting(slot: 0), isDropped: true, linkIsDown: true)
+        XCTAssertEqual(snapshot.screenBorderCue(timerOnly: false, measuredSignalIsLive: false), .resting)
+        XCTAssertEqual(RunnerScreenCue.resting.lineWidth, 3)
     }
 
     private func session(mode: HandMode = .alternateEachRep, reps: Int = 2,

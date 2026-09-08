@@ -45,6 +45,34 @@ class RunnerActivityLifecycleTests {
         override fun end() { ends++ }
     }
 
+    @Test fun notificationDeadlineRetainsFractionalRestOnResume() {
+        val clock = FakeClock(uptime = 226.004)
+        val client = RecordingProgressorClient()
+        val device = DeviceStore(client, scope = inertScope(), clock = clock)
+        client.setState(ProgressorConnectionState.Connected)
+        val activity = ActivityRecorder()
+        val session = RunnerSession(
+            plan = SessionPlan(sets = listOf(SetPlan(repsPerSide = 2)),
+                handMode = HandMode.bothHands, restSeconds = 30, leadInSeconds = 0),
+            routineName = "Fractional rest", device = device, scope = inertScope(), clock = clock,
+            activity = activity, service = ServiceRecorder(),
+        )
+        session.begin()
+        session.send(RunnerEvent.SkipRep)
+        clock.uptime += 0.25
+        session.tickNow()
+        session.send(RunnerEvent.Pause)
+        clock.uptime += 10
+        session.tickNow()
+        val before = System.currentTimeMillis()
+        session.send(RunnerEvent.Resume)
+        val after = System.currentTimeMillis()
+        val deadline = activity.states.last().endsAtEpochMillis!!
+        assertTrue(deadline in (before + 29_749)..(after + 29_750),
+            "The notification resumes 29.75 s of rest, not the displayed 30")
+        session.end()
+    }
+
     @Test fun releaseRestPauseAndFinishPublishTheirActualLifecycle() {
         val client = RecordingProgressorClient()
         val device = DeviceStore(client, scope = inertScope(), clock = FakeClock())

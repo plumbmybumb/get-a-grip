@@ -26,6 +26,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import run.nuri.getagrip.engine.GaugeKind
 import java.util.UUID
+import run.nuri.getagrip.ui.units.WeightUnit
+import run.nuri.getagrip.ui.units.WeightUnits
 
 /// Which gauge the app is driving. Split out from the rest of the settings surface
 /// because `DeviceStore.init` chooses its client from the stored kind, so this one answer
@@ -123,6 +125,7 @@ class SettingsStore(
         /// one silently resets somebody's chosen gauge, replays a tour they have seen, or
         /// re-asks for notification permission. Same class of trap as the grip key's
         /// letter order.
+        val weightUnitKey = stringPreferencesKey("weightUnit")
         val gaugeKindKey = stringPreferencesKey("gauge.kind")
         val builderGuideDoneKey = booleanPreferencesKey("builderGuideDone")
         val didAskNotificationPermissionKey = booleanPreferencesKey("didAskNotificationPermission")
@@ -144,6 +147,19 @@ class SettingsStore(
     /// One blocking read for every key — the alternative is one blocking read per
     /// accessor, and they all land in the same file.
     private val loaded: Preferences = runBlocking { dataStore.data.first() }
+
+    init { WeightUnits.current = WeightUnit.fromRaw(loaded[weightUnitKey]) }
+
+    private val weightWriteGeneration = java.util.concurrent.atomic.AtomicLong()
+    val weightUnit: WeightUnit get() = WeightUnits.current
+
+    fun setWeightUnit(value: WeightUnit) {
+        WeightUnits.current = value
+        val generation = weightWriteGeneration.incrementAndGet()
+        // The shared IO scope may enqueue rapid toggles out of order. An older write
+        // cannot replace the latest visible choice after the app next launches.
+        write { if (generation == weightWriteGeneration.get()) it[weightUnitKey] = value.rawValue }
+    }
 
     private var cachedGaugeKind: String? = loaded[gaugeKindKey]
 

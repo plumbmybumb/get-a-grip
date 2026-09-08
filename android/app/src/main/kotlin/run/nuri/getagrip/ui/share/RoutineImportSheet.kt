@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.share
 
+import run.nuri.getagrip.ui.units.WeightUnits
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -336,7 +338,7 @@ private fun setDetailLine(set: SetPlan, plan: SessionPlan): String? {
     val kg = set.targetBand
     val percent = set.targetPercentBand
     if (kg != null) {
-        parts.add(L10n.tr("%s–%s kg target", kgText(kg.start), kgText(kg.endInclusive)))
+        parts.add(WeightUnits.tr("%s–%s kg target", kgText(kg.start), kgText(kg.endInclusive)))
     } else if (percent != null) {
         val lo = Math.round(percent.start * 100)
         val hi = Math.round(percent.endInclusive * 100)
@@ -349,9 +351,7 @@ private fun setDetailLine(set: SetPlan, plan: SessionPlan): String? {
 
 /// Display text, so the DEFAULT locale — the same rule `PlanMath.bandText` states. Wire text
 /// is the locale-free half of the app and this is not it.
-private fun kgText(kg: Double): String = NumberFormat.getNumberInstance(Locale.getDefault())
-    .apply { minimumFractionDigits = 0; maximumFractionDigits = 1 }
-    .format(kg)
+private fun kgText(kg: Double): String = WeightUnits.number(kg)
 
 /// "6 per side" when the hands take turns, "6 pulls" when they are on the edge together. The
 /// pull count comes from `PlanMath.repCount` rather than a `× sideCount` written here — that
@@ -452,7 +452,7 @@ private fun Notes(sets: List<SetPlan>, plan: SessionPlan) {
         }
         if (hasKilograms) {
             Text(
-                tr("Some kilogram targets were set by the sender. Review them for your own training."),
+                tr("Some fixed weight targets were set by the sender. Review them for your own training."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )

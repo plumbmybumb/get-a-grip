@@ -209,6 +209,7 @@ struct MaxMeasureView: View {
 
 /// Keep sample-dependent tare liveness out of the full measurement screen.
 private struct MaxTareButton: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Binding var phase: MaxMeasurePhase
     @Environment(DeviceStore.self) private var device
     @State private var showingConfirmation = false
@@ -228,7 +229,7 @@ private struct MaxTareButton: View {
             Button("Zero it", role: .destructive) { confirmTare() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("There's \(promptedKg.formatted(.number.precision(.fractionLength(1)))) kg on the gauge. Zero it?")
+            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Zero it?"))
         }
     }
 
@@ -282,6 +283,7 @@ private struct MaxTareButton: View {
 /// The peak climbs with the live pull. Keeping every peak/result read here prevents the
 /// surrounding navigation, guidance, controls and connection UI from rebuilding with it.
 private struct MaxMeasurementHero: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
     let measurement: MaxMeasurement
     let phase: MaxMeasurePhase
@@ -295,7 +297,7 @@ private struct MaxMeasurementHero: View {
         VStack(spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(measurement.hasResult
-                     ? measurement.peakKg.formatted(.number.precision(.fractionLength(1)))
+                     ? weightUnit.number(measurement.peakKg)
                      : "—")
                     .font(.system(size: heroSize, weight: .thin))
                     .displayTracking(heroSize)
@@ -304,7 +306,7 @@ private struct MaxMeasurementHero: View {
                     // figure derived from a live signal reads as the app animating a
                     // number it is unsure of.
                     .contentTransition(.identity)
-                Text("kg")
+                Text(weightUnit.symbol)
                     .font(.system(size: unitSize, weight: .regular))
                     .foregroundStyle(Ink.tertiary)
             }
@@ -329,7 +331,7 @@ private struct MaxMeasurementHero: View {
         guard measurement.hasResult else {
             return phase == .measuring ? String(localized: "No pull yet") : String(localized: "No measurement yet")
         }
-        return String(localized: "\(measurement.peakKg.formatted(.number.precision(.fractionLength(1)))) kilograms, your hardest pull")
+        return String(localized: "\(weightUnit.number(measurement.peakKg)) \(weightUnit.spokenName), your hardest pull")
     }
 }
 
@@ -410,6 +412,7 @@ private struct MaxMeasurementUseButton: View {
 /// Keeping it in a leaf means the hero, the controls and the guidance — none of which
 /// change during a pull — are not dragged along with it.
 private struct LiveReadout: View {
+    @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
     private var isLive: Bool { device.isStreaming && device.isSignalFresh }
 
@@ -418,12 +421,12 @@ private struct LiveReadout: View {
             Text(isLive ? String(localized: "now") : String(localized: "No live reading"))
                 .font(.system(.caption, weight: .medium))
                 .foregroundStyle(Ink.tertiary)
-            Text(isLive ? device.currentKg.formatted(.number.precision(.fractionLength(1))) : "—")
+            Text(isLive ? weightUnit.number(device.currentKg) : "—")
                 .font(.system(.subheadline, weight: .semibold))
                 .monospacedDigit()
                 .contentTransition(.identity)
                 .foregroundStyle(isLive ? StatusTint.engaged : Ink.tertiary)
-            Text("kg")
+            Text(weightUnit.symbol)
                 .font(.system(.caption))
                 .foregroundStyle(Ink.tertiary)
         }

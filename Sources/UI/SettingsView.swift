@@ -59,6 +59,7 @@ struct SettingsView: View {
             // it, and everything below this row describes whatever it selects.
             gaugeKindRow.staggerIn(1)
             gaugeRow.staggerIn(2)
+            weightUnitsCard.staggerIn(3)
             // ABOVE About, deliberately. About is the block of statements the app OWES
             // whoever is using it — storage, attribution, licence — and a door out to a
             // person is a thing you DO, so it belongs with the other actions rather than
@@ -66,6 +67,24 @@ struct SettingsView: View {
             SupportCard().staggerIn(4)
             openSourceCard.staggerIn(5)
             aboutCard.staggerIn(6)
+        }
+    }
+
+    private var weightUnitsCard: some View {
+        @Bindable var settings = settings
+        return MaterialCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Weight units").font(.system(.headline, weight: .semibold))
+                Picker("Weight units", selection: $settings.weightUnit) {
+                    ForEach(WeightUnit.allCases, id: \.self) { unit in
+                        Text("\(unit.name) (\(unit.symbol))").tag(unit)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("settings.weightUnits")
+                Text("Changes how weights are shown and entered. Your scale’s own unit setting is separate.")
+                    .font(.system(.caption)).foregroundStyle(Ink.secondary)
+            }
         }
     }
 

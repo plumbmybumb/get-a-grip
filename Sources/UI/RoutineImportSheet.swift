@@ -26,6 +26,7 @@ struct ImportRequest: Identifiable {
 /// prescribes the right load for two people with very different fingers. The two
 /// footnotes exist for the cases where that is not the whole story.
 struct RoutineImportSheet: View {
+    @Environment(\.weightUnit) private var weightUnit
     /// NORMALIZED at init — see the initializer. Read as a value; the sheet observes no
     /// store except for the one save it performs.
     let draft: RoutineDraft
@@ -222,7 +223,7 @@ struct RoutineImportSheet: View {
         if let hold = set.holdSeconds { parts.append(String(localized: "\(PlanMath.durationText(hold)) hold")) }
         if let rest = set.restSeconds { parts.append(String(localized: "\(PlanMath.durationText(rest)) rest")) }
         if let band = set.targetBand {
-            parts.append(String(localized: "\(kgText(band.lowerBound))–\(kgText(band.upperBound)) kg target"))
+            parts.append(String(localized: "\(weightText(band.lowerBound))–\(weightText(band.upperBound)) \(weightUnit.symbol) target"))
         } else if let band = set.targetPercentBand {
             let lo = Int((band.lowerBound * 100).rounded())
             let hi = Int((band.upperBound * 100).rounded())
@@ -231,8 +232,8 @@ struct RoutineImportSheet: View {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    private func kgText(_ kg: Double) -> String {
-        kg.formatted(.number.precision(.fractionLength(0...1)))
+    private func weightText(_ kg: Double) -> String {
+        weightUnit.number(kg)
     }
 
     private func setAccessibilityLabel(_ set: SetPlan) -> String {
@@ -319,7 +320,7 @@ struct RoutineImportSheet: View {
                     note(String(localized: "Percentage targets use your saved maxes. These may no longer reflect your current strength."))
                 }
                 if hasKilogramTargets {
-                    note(String(localized: "Some kilogram targets were set by the sender. Review them for your own training."))
+                    note(String(localized: "Some fixed weight targets were set by the sender. Review them for your own training."))
                 }
             }
         }
