@@ -1,6 +1,7 @@
 # WH-C06 recovery for the next iOS release
 
-Status: development changes; no version/build bump, archive or submission.
+Status: included in the iOS 1.0.2 (5) release candidate. Archive, submission and
+physical-device verification are tracked separately in the release record.
 
 The WH-C06 broadcasts readings rather than accepting Bluetooth command writes.
 iOS already restarted its scan after ten seconds without readings, but a recovery
