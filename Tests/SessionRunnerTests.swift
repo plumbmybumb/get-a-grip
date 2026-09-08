@@ -1331,6 +1331,29 @@ final class SessionRunnerTests: XCTestCase {
         XCTAssertEqual(firstOfSecondSet.repIndex, 0)
     }
 
+    func testCompletedPeaksStayWithTheHandThatPerformedEachPlannedPull() {
+        let cases: [(HandMode, [Side])] = [
+            (.alternateEachRep, [.left, .right, .left, .right]),
+            (.alternateEachSet, [.left, .left, .right, .right]),
+            (.bothHands, [.both, .both])
+        ]
+        for (mode, expectedSides) in cases {
+            var runner = SessionRunner(plan: plan(reps: 2, hold: 1, rest: 1, mode: mode))
+            var feeder = Feeder()
+            let peaks = Array([31.0, 19.0, 35.0, 21.0].prefix(expectedSides.count))
+            runner.handle(.start, at: 0)
+            for peak in peaks {
+                _ = feeder.hold(&runner, kg: peak, seconds: 1.3)
+                feeder.letGo(&runner)
+                _ = feeder.wait(&runner, seconds: 1.2)
+            }
+            XCTAssertEqual(runner.phase, .finished, mode.rawValue)
+            XCTAssertEqual(runner.results.map(\.side), expectedSides, mode.rawValue)
+            XCTAssertEqual(runner.results.map(\.peakKg), peaks, mode.rawValue)
+            XCTAssertTrue(runner.results.allSatisfy { $0.outcome == .completed })
+        }
+    }
+
     func testAnEmptyPlanFinishesImmediatelyRatherThanHanging() {
         var runner = SessionRunner(plan: SessionPlan(name: "Empty", sets: []))
         let opening = runner.handle(.start, at: 0)

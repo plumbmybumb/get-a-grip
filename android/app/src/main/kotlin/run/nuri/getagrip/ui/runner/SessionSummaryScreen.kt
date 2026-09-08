@@ -387,17 +387,21 @@ private fun MaxRow(
         FingerGlyph(candidate.grip.fingers, position = candidate.grip.position,
             dot = 8.dp, gap = 3.dp, tint = if (saved) palette.armed else palette.inkSecondary)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(kgText(candidate.kg), Modifier.alignByBaseline(),
-                    style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
-                    fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
-                Text(tr("kg"), Modifier.alignByBaseline(),
-                    style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(Modifier.align(Alignment.CenterVertically),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(kgText(candidate.kg), Modifier.alignByBaseline(),
+                        style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+                        fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
+                    Text(tr("kg"), Modifier.alignByBaseline(),
+                        style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
+                }
+                Text(handLabel(candidate.side), Modifier.align(Alignment.CenterVertically),
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                    color = palette.inkPrimary)
             }
             Text(candidate.grip.line, style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
-            if (candidate.side != Side.both) {
-                Text(candidate.side.displayName, style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
-            }
             candidate.previous?.let {
                 Text(tr("Previous: %s kg", kgText(it)), style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary)
             }
@@ -410,9 +414,14 @@ private fun MaxRow(
 
 private fun sideLine(candidate: MaxCandidate): String {
     val kg = kgText(candidate.kg)
-    if (candidate.side == Side.both) return L10n.tr("%s · %s kg", candidate.grip.shortName, kg)
-    return L10n.tr("%s · %s · %s kg", candidate.side.displayName, candidate.grip.shortName, kg)
+    return L10n.tr("%s · %s · %s kg", handLabel(candidate.side), candidate.grip.shortName, kg)
 }
+
+private fun handLabel(side: Side): String = L10n.tr(when (side) {
+    Side.left -> "Left hand"
+    Side.right -> "Right hand"
+    Side.both -> "Both hands"
+})
 
 @Composable
 private fun GradeCard(grade: RPE?, palette: GripPalette, onPick: (RPE?) -> Unit) {

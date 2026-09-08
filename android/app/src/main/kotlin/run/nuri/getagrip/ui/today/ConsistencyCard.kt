@@ -132,7 +132,7 @@ private fun LogSessionButton(onLogSession: () -> Unit) {
             .clip(CircleShape)
             .clickable(interactionSource = interaction, indication = null, onClick = onLogSession)
             .pressFeedback(interaction)
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding)
             // Not "at the climbing gym": this sheet also logs hangs done away from the
             // gauge, and a label naming only one of them hides the other entirely from
             // anyone who never sees the button's own text.

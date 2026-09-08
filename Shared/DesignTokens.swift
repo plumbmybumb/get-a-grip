@@ -168,4 +168,7 @@ enum Metrics {
     static let maxContentWidth: CGFloat = 440
     static let fieldHeight: CGFloat = 54
     static let buttonHeight: CGFloat = 56
+    static let buttonHorizontalPadding: CGFloat = 16
+    static let buttonVerticalPadding: CGFloat = 10
+    static let compactButtonHeight: CGFloat = 48
 }

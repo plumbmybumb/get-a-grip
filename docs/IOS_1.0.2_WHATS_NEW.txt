@@ -1,0 +1,15 @@
+English (en-US)
+
+It's easier to follow a workout from across the room. The screen gets a blue border while you're pulling, orange when it's time to let go, and red when a reading needs your attention. During rest, you'll see which hand is up next.
+
+Workout peaks now stay with the hand that recorded them. Choose which ones to save as maxes, with left, right and both hands kept separate.
+
+We've also cleaned up button spacing and larger-text layouts, and improved reconnecting to the WH-C06 after a lost signal.
+
+French (fr-FR)
+
+Les séances sont plus faciles à suivre à distance. Un contour bleu apparaît pendant le tirage, orange lorsqu'il faut relâcher, et rouge si une mesure demande votre attention. Pendant le repos, la prochaine main est clairement indiquée.
+
+Les pics d'une séance restent associés à la main qui les a enregistrés. Vous choisissez ceux à conserver comme maximums, séparément pour la main gauche, la main droite et les deux mains.
+
+Nous avons aussi amélioré l'espacement des boutons, l'affichage des grands caractères et la reconnexion à la WH-C06 après une perte de signal.

@@ -197,6 +197,7 @@
     <string name="s_away_from_the_gauge_24683a">Away from the gauge</string>
     <string name="s_best_pull_kg">BEST PULL %1$s KG · %2$s%3$s</string>
     <string name="s_both_15ee98">BOTH</string>
+    <string name="s_both_hands_next">BOTH HANDS NEXT</string>
     <string name="s_back">Back</string>
     <string name="s_back_2">Back 2</string>
     <string name="s_back_3">Back 3</string>
@@ -420,6 +421,7 @@
     <string name="s_l_4a7991">L %s</string>
     <string name="s_l_r">L %1$s · R %2$s</string>
     <string name="s_left_969e2c">LEFT</string>
+    <string name="s_left_hand_next">LEFT HAND NEXT</string>
     <string name="s_let_go_25ac58">LET GO</string>
     <string name="s_laps_circuits_an_easy_evening_real_load_well_short_of_ma">Laps, circuits, an easy evening — real load, well short of maximal.</string>
     <string name="s_last_14_days">Last 14 days</string>
@@ -602,6 +604,7 @@
     <string name="s_rfd_series_measurement">RFD series measurement</string>
     <string name="s_rhythm">RHYTHM</string>
     <string name="s_right_952532">RIGHT</string>
+    <string name="s_right_hand_next">RIGHT HAND NEXT</string>
     <string name="s_recent_connection_and_signal_breadcrumbs_kept_on_this_de">Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit.</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not.</string>
     <string name="s_refresh_battery">Refresh battery</string>

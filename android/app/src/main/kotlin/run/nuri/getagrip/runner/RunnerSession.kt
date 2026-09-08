@@ -681,7 +681,7 @@ class RunnerSession(
     /// A pull inside a session that beat a grip's working max, offered as the new max per
     /// HAND. COMPLETED reps only, and only real pulls: a timer-only session records 0 kg
     /// peaks, and offering "0.0 kg — new max!" would be the app talking nonsense.
-    private fun maxCandidates(reps: List<RepSummary>): List<MaxCandidate> {
+    internal fun maxCandidates(reps: List<RepSummary>): List<MaxCandidate> {
         val best = LinkedHashMap<String, MaxCandidate>()
         for (rep in reps) {
             if (rep.outcome != RepOutcome.completed || !rep.peakKg.isFinite() || rep.peakKg <= MAX_CANDIDATE_FLOOR_KG) continue
@@ -692,7 +692,9 @@ class RunnerSession(
                 grip = rep.grip,
                 side = rep.side,
                 kg = rep.peakKg,
-                previous = maxes.max(rep.grip.key, rep.side),
+                // A shared target fallback is not a recorded peak for this hand. Offer
+                // its first measured max even when that pull is below the shared value.
+                previous = maxes.exact(rep.grip.key, rep.side),
             )
         }
         return best.values

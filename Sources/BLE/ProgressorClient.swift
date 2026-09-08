@@ -102,6 +102,9 @@ enum StreamStopCause: String, Sendable, CaseIterable {
 /// They let the store's in-memory breadcrumb ring include quarantine boundaries without
 /// passing CoreBluetooth objects out of the client.
 enum ProgressorClientDiagnostic: Sendable {
+    /// Advertisement-only gauges have scan lifecycle events, not command writes.
+    /// Strings contain fixed event descriptions only, never device identifiers or data.
+    case broadcastScan(String)
     case retiringPeripheral
     case quarantineReleased
     case streamStartDeferred(StreamStartCause)

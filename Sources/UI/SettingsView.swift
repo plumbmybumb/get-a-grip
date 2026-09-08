@@ -277,8 +277,7 @@ struct SettingsView: View {
                                     Text(justCopied ? "Copied" : "Copy")
                                         .font(.system(.footnote, weight: .semibold))
                                         .foregroundStyle(Accent.graphite)
-                                        .padding(.horizontal, 12)
-                                        .frame(minHeight: 44)
+                                        .actionLabelLayout(minHeight: 44)
                                         .accessibleGlass(nil, in: .capsule)
                                         .contentShape(.capsule)
                                 }
@@ -583,8 +582,7 @@ private struct SupportCard: View {
             Text(justCopied ? "Copied" : "Copy")
                 .font(.system(.footnote, weight: .semibold))
                 .foregroundStyle(Accent.graphite)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)
+                .actionLabelLayout(minHeight: 44)
                 .accessibleGlass(nil, in: .capsule)
                 .contentShape(.capsule)
         }

@@ -20,6 +20,8 @@ struct DebugSummaryPreview: View {
             }
             .environment(preview.store)
             .modelContainer(preview.container)
+            // Match the production root when auditing the largest supported text.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility3)
             .background { AppBackground() }
     }
 }
@@ -38,7 +40,8 @@ private final class SummaryPreviewState {
         let container = try! ModelContainer(for: SessionTemplate.self, WorkoutLog.self, MaxRecord.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         self.container = container
-        let grips = [
+        let previewHands = ProcessInfo.processInfo.arguments.contains("-previewHandMaxes")
+        let defaultGrips = [
             GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp),
             GripSpec(edgeMM: 20, fingers: .frontThree, position: .halfCrimp),
             GripSpec(edgeMM: 20, fingers: .middleTwo, position: .openHand),
@@ -46,6 +49,7 @@ private final class SummaryPreviewState {
             GripSpec(edgeMM: 20, fingers: .four, position: .drag),
             GripSpec(edgeMM: 45, fingers: .four, position: .pinch)
         ]
+        let grips = previewHands ? Array(repeating: defaultGrips[0], count: 3) : defaultGrips
         var draft = RoutineDraft.blank(named: "Daily routine · preview")
         draft.plan.sets = grips.map { SetPlan(grip: $0, repsPerSide: 1) }
         draft.plan.handMode = .bothHands
@@ -55,12 +59,16 @@ private final class SummaryPreviewState {
             var rep = RepSummary()
             rep.setIndex = index
             rep.grip = grip
-            rep.side = .both
+            rep.side = previewHands ? [Side.left, .right, .both][index] : .both
             rep.heldSeconds = 10
-            rep.peakKg = Double(12 + index)
+            rep.peakKg = previewHands ? [35.0, 30.0, 45.0][index] : Double(12 + index)
             rep.avgKg = Double(10 + index)
             rep.outcome = .completed
             return rep
+        }
+        if previewHands {
+            container.mainContext.insert(MaxRecord(grip: grips[0], kg: 40, source: .manual, side: .both))
+            try! container.mainContext.save()
         }
         store = TemplateStore(context: container.mainContext,
             clock: DayClock(), settings: SettingsStore(), storageMode: .localOnly)

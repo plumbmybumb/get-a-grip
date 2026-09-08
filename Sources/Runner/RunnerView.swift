@@ -16,6 +16,10 @@ struct RunnerView: View {
     /// Everything force-shaped leaves the screen rather than sitting there at 0.0 kg,
     /// which would read as a broken gauge instead of an absent one.
     var timerOnly: Bool = false
+    #if DEBUG
+    /// In-memory screenshot fixtures use the production layout and live snapshot.
+    var previewSession: RunnerSession?
+    #endif
 
     @Environment(DeviceStore.self) private var device
     @Environment(TourController.self) private var tour
@@ -23,6 +27,7 @@ struct RunnerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     @State private var session: RunnerSession?
     /// Whether the grip hangs off the Dynamic Island — which is a fact about the DEVICE,
@@ -64,6 +69,14 @@ struct RunnerView: View {
                     side: session?.snapshot.side,
                     isActive: !(session.map { isResting($0) } ?? true),
                     enabled: hasIsland, emphasized: gripEmphasis)
+        .overlay {
+            if let session,
+               let cue = session.snapshot.screenBorderCue(
+                   timerOnly: session.timerOnly,
+                   measuredSignalIsLive: device.state.isConnected && device.isStreaming && device.isSignalFresh) {
+                RunnerScreenBorder(cue: cue)
+            }
+        }
         .animation(Motion.state(reduceMotion),
                    value: session?.isFinished ?? false)
         .task(id: GripCueKey(id: session?.snapshot.newGripID,
@@ -128,6 +141,12 @@ struct RunnerView: View {
         .onAppear {
             hasIsland = IslandHand.isSupported
             guard session == nil else { return }
+            #if DEBUG
+            if let previewSession {
+                session = previewSession
+                return
+            }
+            #endif
             // The maxes are read ONCE, here — a session's targets must not move under
             // the climber because a max was recorded on another device mid-workout.
             let new = RunnerSession(template: template, device: device,
@@ -212,7 +231,29 @@ struct RunnerView: View {
 
     // MARK: - The session screen
 
+    @ViewBuilder
     private func live(_ session: RunnerSession) -> some View {
+        if typeSize.isAccessibilitySize {
+            // At large accessibility sizes a small phone cannot hold five readable
+            // actions and the measurements at once. Keep every action reachable by
+            // scrolling instead of clipping labels or reducing their chosen type.
+            GeometryReader { geometry in
+                ScrollView {
+                    liveContent(session)
+                        .frame(minHeight: max(0, geometry.size.height - (hasIsland ? 46 : 0)), alignment: .top)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .accessibilityIdentifier("runner.content")
+                // The camera hand is fixed at the root. Keep the scrolling viewport
+                // below it, so the top content cannot slide through the fingers.
+                .padding(.top, hasIsland ? 46 : 0)
+            }
+        } else {
+            liveContent(session)
+        }
+    }
+
+    private func liveContent(_ session: RunnerSession) -> some View {
         VStack(spacing: 12) {
             if timerOnly {
                 timerOnlyIdentity(session)
@@ -251,7 +292,8 @@ struct RunnerView: View {
                         noSignalNotice(session)
                     }
                 }
-                .frame(maxHeight: .infinity)
+                .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil,
+                       maxHeight: .infinity)
                 .background(.regularMaterial,
                             in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
                 .overlay {
@@ -295,7 +337,7 @@ struct RunnerView: View {
         .padding(.horizontal, Metrics.hPadding)
         // The fingers reach ~92 pt down the screen and content starts at 59, so the hand
         // needs the gap bought for it — otherwise the grip name lands under the knuckles.
-        .padding(.top, hasIsland ? 46 : 8)
+        .padding(.top, hasIsland ? (typeSize.isAccessibilitySize ? 0 : 46) : 8)
         .padding(.bottom, Metrics.spacing)
         .frame(maxWidth: Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
@@ -306,13 +348,25 @@ struct RunnerView: View {
     /// 20 pt margin they were a caption. The negative padding cancels most of the
     /// content margin for this row only, so they frame the island rather than crowding it.
     private func counters(_ session: RunnerSession) -> some View {
-        HStack {
-            CapsLabel(setLine(session), size: 14)
-            Spacer(minLength: 8)
-            CapsLabel(pullLine(session), size: 14)
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    CapsLabel(setLine(session), size: 14)
+                    CapsLabel(pullLine(session), size: 14)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack {
+                    CapsLabel(setLine(session), size: 14)
+                    Spacer(minLength: 8)
+                    CapsLabel(pullLine(session), size: 14)
+                }
+                .padding(.horizontal, -10)
+            }
         }
-        .padding(.horizontal, -10)
         .monospacedDigit()
+        .accessibilityIdentifier("runner.counters")
         .accessibilityElement(children: .combine)
         .accessibilityLabel(spokenState(session))
     }
@@ -363,11 +417,7 @@ struct RunnerView: View {
     private func gripLine(_ session: RunnerSession, timerOnly: Bool = false) -> some View {
         if let grip = session.snapshot.grip {
             VStack(spacing: 6) {
-                FingerGlyph(fingers: grip.fingers, position: grip.position,
-                            dot: 18, gap: 7,
-                            tint: gripEmphasis ? StatusTint.armed : Accent.graphite)
-                    .scaleEffect(gripEmphasis && !reduceMotion ? 1.25 : 1)
-                    .frame(height: 44)
+                RunnerGripGlyph(grip: grip, emphasized: gripEmphasis)
                 nameRow(session, timerOnly: timerOnly)
             }
             .frame(maxWidth: .infinity)
@@ -552,12 +602,20 @@ struct RunnerView: View {
     /// The one thing that has to be readable across a room: which hand, and whether to
     /// be pulling right now.
     private func prompt(_ session: RunnerSession) -> some View {
-        Text(promptText(session))
+        ZStack {
+            // Keep the original phase label's line height when a longer translated
+            // hand instruction scales to fit. The graph must not move at REST→PULL
+            // or REST→PAUSED just because one prompt needs smaller lettering.
+            Text("REST").hidden().accessibilityHidden(true)
+            Text(measuredPromptText(session))
+        }
             .tourAnchor(.runnerHand)
             .font(.system(.largeTitle, weight: .heavy))
             .foregroundStyle(tint(session))
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
+            .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+            .minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.6)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: typeSize.isAccessibilitySize)
             .frame(maxWidth: .infinity)
             // The one decision-critical word on this screen — PULL, RE-GRIP, EASE OFF,
             // LET GO, PAUSED — was hidden from VoiceOver with no substitute anywhere
@@ -567,7 +625,18 @@ struct RunnerView: View {
             // "only the screen has words"; pause/resume emit no cue at all). An explicit
             // label — matching what `timerDial`'s `spokenDialState` already does for the
             // gauge-free fallback — replaces the old `.accessibilityHidden(true)`.
-            .accessibilityLabel(promptText(session))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(measuredPromptText(session))
+            .accessibilityIdentifier("runner.prompt")
+    }
+
+    /// The next hand is the large instruction while resting; REST / SET BREAK sits
+    /// beside the countdown instead. Both occupy existing space, so the graph stays
+    /// exactly the same height when a hand changes or a rest begins.
+    private func measuredPromptText(_ session: RunnerSession) -> String {
+        if case .resting = session.snapshot.phase,
+           let nextHand = session.snapshot.nextRestHandPrompt { return nextHand }
+        return promptText(session)
     }
 
     private func promptText(_ session: RunnerSession) -> String {
@@ -619,22 +688,43 @@ struct RunnerView: View {
     /// vanished for the ten seconds it mattered most.
     @ViewBuilder
     private func hero(_ session: RunnerSession) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 18) {
-            // No gauge, no kilogram. The clock takes the whole hero rather than sharing
-            // it with a permanent 0.0 — an empty measurement reads as a fault.
-            if !timerOnly {
-                LiveForceReadout(tint: forceTint(session), size: heroSize, unitSize: unitSize)
+        VStack(alignment: .trailing, spacing: 4) {
+            if typeSize.isAccessibilitySize, let caption = countdownCaption(session) {
+                // A whole caption above the clock has room for REPOS or the next
+                // hand. Confining it beside the unit split RE-POS at larger sizes.
+                Text(caption)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Ink.secondary)
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            readout(value: "\(session.snapshot.secondsShown)",
-                    unit: String(localized: "s"),
-                    tint: isStalled(session) ? StatusTint.armed : Ink.primary,
-                    rolls: true)
-                .tourAnchor(.runnerClock)
+            HStack(alignment: .lastTextBaseline, spacing: 18) {
+                // No gauge, no kilogram. The clock takes the whole hero rather than sharing
+                // it with a permanent 0.0 — an empty measurement reads as a fault.
+                if !timerOnly {
+                    LiveForceReadout(tint: forceTint(session), size: heroSize, unitSize: unitSize)
+                }
+                readout(value: "\(session.snapshot.secondsShown)",
+                        unit: String(localized: "s"),
+                        tint: isStalled(session) ? StatusTint.armed : Ink.primary,
+                        rolls: true,
+                        caption: typeSize.isAccessibilitySize ? nil : countdownCaption(session))
+                    .tourAnchor(.runnerClock)
+            }
         }
         .frame(maxWidth: .infinity)
         // A numeral changing 80×/second is unusable under VoiceOver; the cue sounds and
         // the counters row are the accessible channel.
-        .accessibilityHidden(true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(countdownCaption(session) ?? "")
+        .accessibilityHidden(countdownCaption(session) == nil)
+    }
+
+    private func countdownCaption(_ session: RunnerSession) -> String? {
+        guard session.snapshot.nextRestHand != nil else { return nil }
+        if session.snapshot.phase.isPaused { return session.snapshot.nextRestHandPrompt }
+        return session.snapshot.isSetBreak ? String(localized: "SET BREAK") : String(localized: "REST")
     }
 
     /// `rolls` is the difference between a CLOCK and a MEASUREMENT.
@@ -644,17 +734,38 @@ struct RunnerView: View {
     /// second the same animation turns the one number you are trying to read mid-pull
     /// into a permanent blur. It snaps.
     private func readout(value: String, unit: String, tint: Color,
-                         rolls: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(value)
-                .font(.system(size: heroSize, weight: .thin))
-                    .displayTracking(heroSize)
-                .monospacedDigit()
-                .contentTransition(rolls ? .numericText() : .identity)
-                .foregroundStyle(tint)
-            Text(unit)
-                .font(.system(size: unitSize))
-                .foregroundStyle(Ink.tertiary)
+                         rolls: Bool, caption: String? = nil) -> some View {
+        HStack(alignment: .lastTextBaseline, spacing: 4) {
+            ZStack(alignment: Alignment(horizontal: .center, vertical: .lastTextBaseline)) {
+                // Reserve the numeral's original line height even when horizontal
+                // pressure scales it down. A translated next-hand caption must neither
+                // split 20 into 2/0 nor move the graph when pausing a rest.
+                Text("0").hidden().accessibilityHidden(true)
+                Text(value)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .contentTransition(rolls ? .numericText() : .identity)
+                    .foregroundStyle(tint)
+            }
+            .font(.system(size: heroSize, weight: .thin))
+            .displayTracking(heroSize)
+            .monospacedDigit()
+            VStack(alignment: .leading, spacing: 2) {
+                if let caption {
+                    Text(caption)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Ink.secondary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.6)
+                        .frame(maxWidth: 92, alignment: .leading)
+                        // Ask for the caption's ideal width within that cap: a short
+                        // REST label must not reserve an invisible 92-point column.
+                        .fixedSize(horizontal: true, vertical: true)
+                }
+                Text(unit)
+                    .font(.system(size: unitSize))
+                    .foregroundStyle(Ink.tertiary)
+            }
         }
         .animation(rolls ? Motion.live : nil, value: value)
     }
@@ -758,6 +869,8 @@ struct RunnerView: View {
     /// would bring back the duplication this mode is designed to remove.
     private func timerPositionLine(_ session: RunnerSession) -> some View {
         CapsLabel(String(localized: "\(setLine(session)) · \(pullLine(session))"))
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity)
             .monospacedDigit()
             .accessibilityElement(children: .ignore)
@@ -793,6 +906,15 @@ struct RunnerView: View {
                 CapsLabel(promptText(session), tint: tint(session))
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
+                if let nextHand = session.snapshot.nextRestHandPrompt {
+                    Text(nextHand)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(Ink.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.75)
+                        .padding(.horizontal, 24)
+                }
             }
         }
         // **A PREFERRED size, not a fixed one.** `dialDiameter` is `@ScaledMetric`, so at
@@ -828,7 +950,9 @@ struct RunnerView: View {
     }
 
     private func spokenDialState(_ session: RunnerSession) -> String {
-        String(localized: "\(promptText(session)), \(session.snapshot.secondsShown) seconds remaining")
+        let countdown = String(localized: "\(promptText(session)), \(session.snapshot.secondsShown) seconds remaining")
+        guard let nextHand = session.snapshot.nextRestHandPrompt else { return countdown }
+        return "\(countdown), \(nextHand)"
     }
 
     private func noSignalNotice(_ session: RunnerSession) -> some View {
@@ -856,7 +980,8 @@ struct RunnerView: View {
     /// advertisements — so telling somebody to pair with a Progressor they do not own is
     /// wrong twice over.
     private var connectHint: String {
-        device.gaugeCapabilities.isBroadcast
+        if device.canCancelBroadcastSearch { return device.state.label }
+        return device.gaugeCapabilities.isBroadcast
             ? String(localized: "Tap Connect to start listening for your \(device.gaugeKind.displayName).")
             : String(localized: "Tap Connect to pair with your \(device.gaugeKind.displayName).")
     }
@@ -884,7 +1009,7 @@ struct RunnerView: View {
         let skipReason = RunnerControlPolicy.skipDisabledReason(for: phase)
 
         return VStack(spacing: 10) {
-            HStack(spacing: 10) {
+            AdaptiveActionRow(spacing: 10) {
                 // The buttons KEEP their identity while disabled: the visible reason
                 // the house rule demands is the prompt above them, which says PAUSED /
                 // CONNECTING at large-title weight — swapping the labels spent the two
@@ -896,24 +1021,36 @@ struct RunnerView: View {
                            enabled: pauseEnabled, disabledReason: pauseReason) {
                     session.send(phase.isPaused ? .resume : .pause)
                 }
+                .accessibilityIdentifier("runner.pause")
                 // Neither Tare nor Connect belongs here without a gauge: one has nothing
                 // to zero and the other would offer to change the session you are in.
                 if timerOnly {
                     EmptyView()
                 } else if device.state.isConnected {
                     TareButton(session: session)
+                        .accessibilityIdentifier("runner.tare")
+                } else if device.canCancelBroadcastSearch {
+                    wideButton(String(localized: "Cancel"), systemImage: "xmark") {
+                        device.disconnect()
+                    }
+                    .accessibilityLabel(String(localized: "Cancel"))
+                    .accessibilityValue(device.state.label)
+                    .accessibilityIdentifier("gauge.connectionAction")
                 } else {
                     wideButton(String(localized: "Connect"), systemImage: "dot.radiowaves.left.and.right") {
                         device.connect()
                     }
                 }
             }
-            HStack(spacing: 10) {
+            AdaptiveActionRow(spacing: 10) {
                 wideButton(String(localized: "Skip pull"), enabled: skipEnabled,
                            disabledReason: skipReason) { session.send(.skipRep) }
+                    .accessibilityIdentifier("runner.skipPull")
                 wideButton(String(localized: "Skip set"), enabled: skipEnabled,
                            disabledReason: skipReason) { session.send(.skipSet) }
-                HoldToEndButton { session.send(.abort) }
+                    .accessibilityIdentifier("runner.skipSet")
+                HoldToEndButton(allowsScrolling: typeSize.isAccessibilitySize) { session.send(.abort) }
+                    .accessibilityIdentifier("runner.end")
             }
         }
     }
@@ -938,10 +1075,7 @@ struct RunnerView: View {
             }
             .font(.system(.subheadline, weight: .semibold))
             .foregroundStyle(enabled ? tint : Ink.tertiary.opacity(0.5))
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
+            .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
             .accessibleGlass(nil, in: .capsule)
             .contentShape(.capsule)
         }
@@ -987,6 +1121,8 @@ private struct LiveForceReadout: View {
                 .font(.system(size: size, weight: .thin))
                     .displayTracking(size)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
                 // A measurement snaps; only clocks roll.
                 .contentTransition(.identity)
                 .foregroundStyle(tint)
@@ -1144,10 +1280,7 @@ private struct TareButton: View {
                      : (TarePolicy.disabledLabel(for: session.snapshot.phase) ?? String(localized: "Tare")))
             }
             .font(.system(.subheadline, weight: .semibold))
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
+            .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
             .accessibleGlass(nil, in: .capsule)
             .contentShape(.capsule)
         }
@@ -1236,6 +1369,7 @@ private struct TareButton: View {
 /// sure" in the gesture itself: the button fills while you mean it, and letting go early
 /// costs nothing. Nothing is destroyed either way — everything already done is kept.
 private struct HoldToEndButton: View {
+    var allowsScrolling = false
     var action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -1251,54 +1385,56 @@ private struct HoldToEndButton: View {
     @State private var holdTask: Task<Void, Never>?
     @State private var firedTick = 0
     @State private var slidOff = false
+    @State private var hitFrame: CGRect = .zero
 
     /// Long enough to be deliberate, short enough not to feel like a punishment.
     private static let holdSeconds: Double = 0.9
     private static let slideSlop: CGFloat = 24
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                Capsule().fill(Accent.alarm.opacity(0.16))
-                // The fill IS the progress indicator — no separate spinner to read.
-                //
-                // **Masked to the button's OWN capsule, not a second shape at partial
-                // width.** A `Capsule()` sized to `progress * width` draws its OWN fully
-                // rounded outline at that width — bigger than the button at low progress
-                // (Nuri: "the loading is more rectangular than the shape of the button
-                // itself… and bigger than the actual button"), and at small `progress` a
-                // width-constrained capsule degenerates into a circle. Masking a
-                // full-bleed capsule with a leading-aligned rectangle keeps the fill's
-                // outline exactly the button's own outline — rounded leading edge,
-                // straight trailing sweep — and it can never exceed the button's bounds.
-                Capsule()
-                    .fill(Accent.alarm.opacity(0.42))
-                    .mask(alignment: .leading) {
-                        Rectangle()
-                            .frame(width: geo.size.width * progress)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                Text(isHolding ? "Keep holding…" : "Hold to end")
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(Accent.alarm)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    // Belt and braces: even reached by some other animated transaction, the
-                    // label REPLACES rather than dissolving through the outgoing one.
-                    .contentTransition(.identity)
-                    .animation(nil, value: isHolding)
-            }
-            .contentShape(.capsule)
-            // `minimumDistance: 0` so the fill starts on touch-DOWN; a LongPressGesture
-            // gives no progress to draw until it has already succeeded.
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { updateHold(at: $0.location, in: geo.size) }
-                    .onEnded { _ in endHold() }
-            )
+        ZStack {
+            // Reserve both titles so beginning a hold cannot reflow the action row.
+            Text("Keep holding…").hidden().accessibilityHidden(true)
+            Text("Hold to end").hidden().accessibilityHidden(true)
+            Text(isHolding ? "Keep holding…" : "Hold to end")
+                .foregroundStyle(Accent.alarm)
+                .contentTransition(.identity)
+                .animation(nil, value: isHolding)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 48)
+        .font(.system(.subheadline, weight: .semibold))
+        .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
+        .background {
+            GeometryReader { geo in
+                ZStack {
+                    Capsule().fill(Accent.alarm.opacity(0.16))
+                    Capsule()
+                        .fill(Accent.alarm.opacity(0.42))
+                        .mask(alignment: .leading) {
+                            Rectangle()
+                                .frame(width: geo.size.width * progress)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                }
+            }
+        }
+        .contentShape(.capsule)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { hitFrame = $0 }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                .onChanged {
+                    if allowsScrolling,
+                       abs($0.translation.width) > 10 || abs($0.translation.height) > 10 {
+                        slidOff = true
+                        cancelHold()
+                    } else {
+                        let localPoint = CGPoint(x: $0.location.x - hitFrame.minX,
+                                                 y: $0.location.y - hitFrame.minY)
+                        updateHold(at: localPoint, in: hitFrame.size)
+                    }
+                }
+                .onEnded { _ in endHold() }
+        )
+        .onDisappear { endHold() }
         .sensoryFeedback(.impact(weight: .heavy, intensity: 0.9), trigger: firedTick)
         .accessibilityElement()
         .accessibilityLabel("End session")

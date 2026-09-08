@@ -161,11 +161,9 @@ struct RoutineShareSheet: View {
         .foregroundStyle(prominent
                          ? Color.adaptive(Color(hex: "FFFFFF"), Color(hex: "1B1F25"))
                          : Accent.graphite)
-        .lineLimit(1)
-        .minimumScaleFactor(0.85)
         // Full-width and padded, so the drawn label is nowhere near the tappable area
         // SwiftUI would infer from it on its own.
-        .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
+        .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
         .contentShape(.rect)
     }
 

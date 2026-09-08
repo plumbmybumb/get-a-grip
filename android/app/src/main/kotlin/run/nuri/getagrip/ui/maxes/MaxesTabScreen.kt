@@ -71,6 +71,7 @@ import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.preview.PreviewWorld
 import run.nuri.getagrip.ui.theme.LocalGripPalette
+import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
 
 /// How strong you are at your limit, per grip, over time — the fourth tab.
@@ -180,7 +181,7 @@ private fun MaxesOverview(
         },
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
+            Modifier.fillMaxSize().padding(padding).readablePageWidth(),
             contentPadding = PaddingValues(
             start = Metrics.hPadding, end = Metrics.hPadding, top = 12.dp,
             bottom = 12.dp + LocalFloatingTabBarInset.current,
@@ -226,7 +227,7 @@ private fun MaxesOverview(
             item("add") {
                 SecondaryButton(
                     title = tr("Add a max"),
-                    modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+                    modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
                 ) { onAddMax(null) }
             }
         }
@@ -495,7 +496,7 @@ private fun Card(
     Surface(
         shape = RoundedCornerShape(Metrics.radiusCard),
         color = LocalGripPalette.current.card,
-        modifier = modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+        modifier = modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }

@@ -5,7 +5,8 @@ import SwiftUI
 
 /// The gauge's status, as a single glass pill: dot + name + battery.
 ///
-/// Tapping connects (or reconnects). It is a Button whose whole visual capsule is
+/// Tapping connects (or reconnects), or cancels an active broadcast search.
+/// It is a Button whose whole visual capsule is
 /// the hit target — glass INSIDE the label, then `.contentShape(.capsule)`, because
 /// glass wrapped around a container swallows the button's touches and padding alone
 /// contributes nothing to SwiftUI's default hit area.
@@ -14,7 +15,13 @@ struct DeviceChip: View {
 
     var body: some View {
         Button {
-            if device.state.isConnected { device.readBattery() } else { device.connect() }
+            if device.canCancelBroadcastSearch {
+                device.disconnect()
+            } else if device.state.isConnected {
+                device.readBattery()
+            } else {
+                device.connect()
+            }
         } label: {
             HStack(spacing: 8) {
                 Circle()
@@ -25,6 +32,13 @@ struct DeviceChip: View {
                 Text(title)
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(Ink.primary)
+
+                if device.canCancelBroadcastSearch {
+                    Image(systemName: "xmark")
+                        .font(.system(.caption, weight: .semibold))
+                        .foregroundStyle(Ink.secondary)
+                        .accessibilityHidden(true)
+                }
 
                 if let fraction = device.batteryFraction {
                     // No `.accessibilityLabel` here any more: an explicit label on the
@@ -38,16 +52,17 @@ struct DeviceChip: View {
                         .foregroundStyle(fraction < 0.15 ? Accent.alarm : Ink.tertiary)
                 }
             }
-            .padding(.horizontal, 14)
-            .frame(height: 40)
+            .actionLabelLayout(minHeight: 44)
             .glassEffect(.regular.interactive(), in: .capsule)
-            // Keep the visible capsule at 40 pt while the label's hit area reaches
-            // the 44 pt house floor.
-            .padding(.vertical, 2)
             .contentShape(.capsule)
         }
         .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityLabel(String(localized: "Gauge: \(title)\(batterySuffix). \(device.state.isConnected ? String(localized: "Refresh battery") : String(localized: "Connect"))"))
+        .accessibilityLabel(String(localized: "Gauge: \(title)\(batterySuffix). \(actionTitle)"))
+    }
+
+    private var actionTitle: String {
+        if device.canCancelBroadcastSearch { return String(localized: "Cancel") }
+        return device.state.isConnected ? String(localized: "Refresh battery") : String(localized: "Connect")
     }
 
     /// The battery fact, folded into the outer label rather than left on the glyph — see

@@ -1534,6 +1534,30 @@ class SessionRunnerTests {
     }
 
     @Test
+    fun completedPeaksStayWithTheHandThatPerformedEachPlannedPull() {
+        val cases = listOf(
+            HandMode.alternateEachRep to listOf(Side.left, Side.right, Side.left, Side.right),
+            HandMode.alternateEachSet to listOf(Side.left, Side.left, Side.right, Side.right),
+            HandMode.bothHands to listOf(Side.both, Side.both),
+        )
+        for ((mode, expectedSides) in cases) {
+            val runner = SessionRunner(plan = plan(reps = 2, hold = 1, rest = 1, mode = mode))
+            val feeder = Feeder()
+            val peaks = listOf(31.0, 19.0, 35.0, 21.0).take(expectedSides.size)
+            runner.handle(RunnerEvent.Start, at = 0.0)
+            for (peak in peaks) {
+                feeder.hold(runner, kg = peak, seconds = 1.3)
+                feeder.letGo(runner)
+                feeder.wait(runner, seconds = 1.2)
+            }
+            assertEquals(RunnerPhase.Finished, runner.phase, mode.toString())
+            assertEquals(expectedSides, runner.results.map { it.side }, mode.toString())
+            assertEquals(peaks, runner.results.map { it.peakKg }, mode.toString())
+            assertTrue(runner.results.all { it.outcome == RepOutcome.completed })
+        }
+    }
+
+    @Test
     fun anEmptyPlanFinishesImmediatelyRatherThanHanging() {
         val runner = SessionRunner(plan = SessionPlan(name = "Empty", sets = emptyList()))
         val opening = runner.handle(RunnerEvent.Start, at = 0.0)

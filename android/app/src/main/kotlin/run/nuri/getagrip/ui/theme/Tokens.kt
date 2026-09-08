@@ -115,6 +115,9 @@ object Metrics {
     val maxContentWidth = 440.dp
     val fieldHeight = 54.dp
     val buttonHeight = 56.dp
+    val buttonHorizontalPadding = 16.dp
+    val buttonVerticalPadding = 10.dp
+    val controlMinHeight = 48.dp
 }
 
 /// THE MOTION LADDER — every animation in the app comes from here. Three curves, never

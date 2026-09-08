@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -71,6 +72,7 @@ import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
+import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
 
 /// Scaled by the system's own font setting, never a fixed pixel height: `sp` is the whole
@@ -121,6 +123,7 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .readablePageWidth()
             .padding(horizontal = Metrics.hPadding)
             .padding(bottom = Metrics.spacing + LocalFloatingTabBarInset.current),
         verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -134,8 +137,8 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
             shape = RoundedCornerShape(Metrics.radiusCard),
             color = palette.card,
             modifier = Modifier
-                .fillMaxWidth()
                 .widthIn(max = Metrics.maxContentWidth)
+                .fillMaxWidth()
                 .height(TRACE_HEIGHT),
         ) {
             ForceTraceView(
@@ -154,7 +157,7 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
 
         if (device.state.isConnected) {
             Row(
-                Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+                Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 SecondaryButton(
@@ -229,7 +232,7 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
             if (device.isMock) {
                 TextButton(
                     onClick = { device.useMockDevice(false) },
-                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = Metrics.controlMinHeight),
                 ) {
                     Text(
                         tr("Leave demo mode"),
@@ -243,7 +246,7 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
                 // or in review — this is the only way to see the app actually work.
                 TextButton(
                     onClick = { device.useMockDevice(true) },
-                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = Metrics.controlMinHeight),
                 ) {
                     Text(
                         tr("Try demo mode"),
@@ -415,8 +418,8 @@ private fun GaugeReadouts() {
 
     Row(
         Modifier
-            .fillMaxWidth()
             .widthIn(max = Metrics.maxContentWidth)
+            .fillMaxWidth()
             .semantics(mergeDescendants = true) { contentDescription = summary },
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -478,7 +481,7 @@ private fun Readout(title: String, value: String, unit: String, modifier: Modifi
 private fun WaitingForGauge() {
     val palette = LocalGripPalette.current
     Row(
-        Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+        Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

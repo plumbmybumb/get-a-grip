@@ -97,6 +97,7 @@ import run.nuri.getagrip.ui.components.spokenSession
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.preview.PreviewWorld
 import run.nuri.getagrip.ui.theme.LocalGripPalette
+import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
 
 /// What you have actually done, and whether it is going anywhere.
@@ -197,7 +198,7 @@ fun HistoryScreen(
         },
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
+            Modifier.fillMaxSize().padding(padding).readablePageWidth(),
             contentPadding = PaddingValues(bottom = Metrics.spacing + LocalFloatingTabBarInset.current),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
@@ -709,7 +710,7 @@ private fun LogSessionRow(onLogSession: () -> Unit, modifier: Modifier = Modifie
     SecondaryButton(
         title = tr("Log a session"),
         icon = Icons.Outlined.Add,
-        modifier = modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+        modifier = modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
         onClick = onLogSession,
     )
 }
@@ -720,7 +721,7 @@ private fun EmptyCard(onLogSession: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         shape = RoundedCornerShape(Metrics.radiusCard),
         color = palette.card,
-        modifier = modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+        modifier = modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CapsLabel(tr("Nothing here yet"))

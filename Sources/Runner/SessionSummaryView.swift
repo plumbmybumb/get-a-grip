@@ -62,7 +62,7 @@ struct SessionSummaryView: View {
         .onAppear {
             guard !didLoadCandidates else { return }
             didLoadCandidates = true
-            maxCandidates = computeMaxCandidates()
+            maxCandidates = SessionMaxCandidate.from(reps: reps, maxes: templates.maxTable)
         }
     }
 
@@ -139,33 +139,8 @@ struct SessionSummaryView: View {
     /// type, depending on the side you're pulling on"). One tap; `measured` provenance
     /// — the gauge genuinely saw it. Deliberately does NOT mark a benchmark day: this
     /// session already logged, and settling the day would cancel the evening ritual.
-    private struct MaxCandidate: Identifiable {
-        let grip: GripSpec
-        let side: Side
-        let kg: Double
-        /// nil = the grip had no max at all — a first number, not a beat.
-        let previous: Double?
-        var id: String { grip.key + "·" + side.rawValue }
-    }
-
     /// Freeze the candidates so selections and row positions survive view updates.
-    @State private var maxCandidates: [MaxCandidate] = []
-
-    /// COMPLETED reps only, and only real pulls: a timer-only session records 0 kg
-    /// peaks, and offering "0.0 kg — new max!" would be the app talking nonsense.
-    private func computeMaxCandidates() -> [MaxCandidate] {
-        var best: [String: MaxCandidate] = [:]
-        for rep in completed where rep.peakKg.isFinite && rep.peakKg > 1 {
-            let key = rep.grip.key + "·" + rep.side.rawValue
-            if let held = best[key], held.kg >= rep.peakKg { continue }
-            best[key] = MaxCandidate(grip: rep.grip, side: rep.side, kg: rep.peakKg,
-                                     previous: templates.maxTable.max(grip: rep.grip.key,
-                                                                      side: rep.side))
-        }
-        return best.values
-            .filter { candidate in candidate.previous.map { candidate.kg > $0 } ?? true }
-            .sorted { $0.kg > $1.kg }
-    }
+    @State private var maxCandidates: [SessionMaxCandidate] = []
 
     @ViewBuilder
     private var newMaxCard: some View {
@@ -208,7 +183,7 @@ struct SessionSummaryView: View {
         }
     }
 
-    private func maxRow(_ candidate: MaxCandidate, saved: Bool) -> some View {
+    private func maxRow(_ candidate: SessionMaxCandidate, saved: Bool) -> some View {
         Button {
             if saved { chosenMaxIDs.remove(candidate.id) }
             else { chosenMaxIDs.insert(candidate.id) }
@@ -219,20 +194,21 @@ struct SessionSummaryView: View {
                             dot: 8, gap: 3, tint: saved ? StatusTint.armed : Ink.secondary)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(candidate.kg.formatted(.number.precision(.fractionLength(1))))
-                            .font(.system(.title2, weight: .semibold))
-                            .foregroundStyle(Ink.primary)
-                        Text("kg").font(.system(.caption)).foregroundStyle(Ink.secondary)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            peakWeight(candidate)
+                            peakHand(candidate.side)
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                        VStack(alignment: .leading, spacing: 2) {
+                            peakWeight(candidate)
+                            peakHand(candidate.side)
+                        }
                     }
                     .monospacedDigit()
                     Text(candidate.grip.line)
                         .font(.system(.caption)).foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    if candidate.side != .both {
-                        Text(candidate.side.name)
-                            .font(.system(.caption)).foregroundStyle(Ink.secondary)
-                    }
                     if let previous = candidate.previous {
                         Text("Previous: \(previous.formatted(.number.precision(.fractionLength(1)))) kg")
                             .font(.system(.caption2)).foregroundStyle(Ink.tertiary)
@@ -248,17 +224,40 @@ struct SessionSummaryView: View {
             .contentShape(.rect)
         }
         .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityIdentifier("summary.peak.\(candidate.id)")
         .accessibilityLabel(sideLine(candidate))
         .accessibilityValue(saved ? String(localized: "Selected") : String(localized: "Use as max"))
         .accessibilityAddTraits(saved ? .isSelected : [])
     }
 
-    private func sideLine(_ candidate: MaxCandidate) -> String {
-        let kg = candidate.kg.formatted(.number.precision(.fractionLength(1)))
-        if candidate.side == .both {
-            return String(localized: "\(candidate.grip.shortName) · \(kg) kg")
+    private func peakWeight(_ candidate: SessionMaxCandidate) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(candidate.kg.formatted(.number.precision(.fractionLength(1))))
+                .font(.system(.title2, weight: .semibold))
+                .foregroundStyle(Ink.primary)
+            Text("kg").font(.system(.caption)).foregroundStyle(Ink.secondary)
         }
-        return String(localized: "\(candidate.side.name) · \(candidate.grip.shortName) · \(kg) kg")
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func peakHand(_ side: Side) -> some View {
+        Text(handLabel(side))
+            .font(.system(.caption, weight: .semibold))
+            .foregroundStyle(Ink.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func handLabel(_ side: Side) -> String {
+        switch side {
+        case .left: String(localized: "Left hand")
+        case .right: String(localized: "Right hand")
+        case .both: String(localized: "Both hands")
+        }
+    }
+
+    private func sideLine(_ candidate: SessionMaxCandidate) -> String {
+        let kg = candidate.kg.formatted(.number.precision(.fractionLength(1)))
+        return String(localized: "\(handLabel(candidate.side)) · \(candidate.grip.shortName) · \(kg) kg")
     }
 
     private var gradeCard: some View {
@@ -367,60 +366,39 @@ private struct HoldToDiscardButton: View {
     private static let slideSlop: CGFloat = 24
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                Capsule().fill(Accent.alarm.opacity(0.12))
-                // Masked to the button's own capsule, not a second shape at partial
-                // width — see `HoldToEndButton`, where a width-constrained `Capsule()`
-                // drew its own fully rounded (and oversized) outline instead of the
-                // button's.
-                Capsule()
-                    .fill(Accent.alarm.opacity(0.36))
-                    .mask(alignment: .leading) {
-                        Rectangle()
-                            .frame(width: geo.size.width * progress)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                Text(isHolding ? "Keep holding…" : "Hold to discard")
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(Accent.alarm)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    // The label REPLACES rather than dissolving through the outgoing one —
-                    // see `HoldToEndButton`, where a cross-fade left two strings overlapping
-                    // for the whole hold.
-                    .contentTransition(.identity)
-                    .animation(nil, value: isHolding)
-            }
-            .contentShape(.capsule)
-            // `.simultaneousGesture`, not `.gesture` — this button sits inside the
-            // summary's `ScrollView`, and a `DragGesture(minimumDistance: 0)` attached
-            // exclusively claims every touch that starts on it, including a scroll that
-            // happens to start here (the button legitimately sits below the fold on a
-            // session with several new maxes or many sets). `HoldToEndButton` uses the
-            // same gesture but lives on a screen with no `ScrollView`, so it never hit
-            // this. The house fix for exactly this conflict is already in the codebase —
-            // `RepeatingStep` (`ValueRow.swift`) attaches its own hold-and-repeat drag the
-            // same way, cancelled once the touch moves past a small slop, "so a scroll
-            // starting on the glyph still scrolls" (CLAUDE.md). Letting the ScrollView's
-            // own pan recognize ALONGSIDE this one — rather than claiming the touch
-            // outright — restores scrolling; the GLOBAL-space drift cancel below is what
-            // stops the hold from completing once the scroll takes over. Global, not
-            // local: local coordinates scroll WITH the content, so during a page scroll
-            // the finger never moves relative to the button and a bounds test cannot
-            // see the scroll at all — which would have let a scroll fire an
-            // irreversible discard with no undo behind it.
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                    .onChanged { updateHold(translation: $0.translation) }
-                    .onEnded { _ in endHold() }
-            )
-            // A hold in flight when the view leaves (the summary can be dismissed by
-            // its own buttons) must not complete off-screen — `RepeatingStep`'s rule.
-            .onDisappear { endHold() }
+        ZStack {
+            Text("Keep holding…").hidden().accessibilityHidden(true)
+            Text("Hold to discard").hidden().accessibilityHidden(true)
+            Text(isHolding ? "Keep holding…" : "Hold to discard")
+                .foregroundStyle(Accent.alarm)
+                .contentTransition(.identity)
+                .animation(nil, value: isHolding)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 48)
+        .font(.system(.subheadline, weight: .semibold))
+        .actionLabelLayout(fullWidth: true)
+        .background {
+            GeometryReader { geo in
+                ZStack {
+                    Capsule().fill(Accent.alarm.opacity(0.12))
+                    Capsule()
+                        .fill(Accent.alarm.opacity(0.36))
+                        .mask(alignment: .leading) {
+                            Rectangle()
+                                .frame(width: geo.size.width * progress)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                }
+            }
+        }
+        .contentShape(.capsule)
+        // Keep scrolling available if a gesture begins here. Global translation
+        // cancels the hold as the page moves beneath the finger.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                .onChanged { updateHold(translation: $0.translation) }
+                .onEnded { _ in endHold() }
+        )
+        .onDisappear { endHold() }
         .sensoryFeedback(.impact(weight: .heavy, intensity: 0.9), trigger: firedTick)
         .accessibilityElement()
         .accessibilityLabel("Discard this session")

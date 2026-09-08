@@ -1,6 +1,21 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "LEFT HAND NEXT" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "MAIN GAUCHE ENSUITE" } }
+      }
+    },
+    "RIGHT HAND NEXT" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "MAIN DROITE ENSUITE" } }
+      }
+    },
+    "BOTH HANDS NEXT" : {
+      "localizations" : {
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "DEUX MAINS ENSUITE" } }
+      }
+    },
     "Leave demo mode": {
       "localizations": {
         "fr": {

@@ -276,7 +276,7 @@ struct ShareCalendarSheet: View {
         }
         .font(.system(.headline, weight: .semibold))
         .foregroundStyle(primaryLabelColor)
-        .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
+        .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
         .contentShape(.rect)
     }
 
@@ -287,7 +287,7 @@ struct ShareCalendarSheet: View {
         }
         .font(.system(.headline, weight: .semibold))
         .foregroundStyle(Accent.graphite)
-        .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
+        .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
         .contentShape(.rect)
     }
 

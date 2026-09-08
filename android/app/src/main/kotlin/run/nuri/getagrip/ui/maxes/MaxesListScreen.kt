@@ -76,6 +76,7 @@ import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.preview.PreviewWorld
 import run.nuri.getagrip.ui.theme.LocalGripPalette
+import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
@@ -122,7 +123,7 @@ fun MaxesListScreen(
     val rows = remember(histories, expanded) { entriesOf(histories, expanded) }
 
     LazyColumn(
-        modifier.fillMaxSize(),
+        modifier.fillMaxSize().readablePageWidth(),
         contentPadding = PaddingValues(
             start = Metrics.hPadding, end = Metrics.hPadding, top = 12.dp,
             bottom = 12.dp + LocalFloatingTabBarInset.current,
@@ -289,8 +290,8 @@ private fun GripRow(
         shape = RoundedCornerShape(Metrics.radiusCard),
         color = palette.card,
         modifier = Modifier
-            .fillMaxWidth()
             .widthIn(max = Metrics.maxContentWidth)
+            .fillMaxWidth()
             .then(
                 if (history.earlier.isEmpty()) Modifier
                 else Modifier
@@ -378,8 +379,8 @@ private fun EarlierRow(record: MaxRecordEntity, grip: GripSpec) {
         // its content pushed over.
         modifier = Modifier
             .padding(start = 22.dp)
-            .fillMaxWidth()
             .widthIn(max = Metrics.maxContentWidth)
+            .fillMaxWidth()
             .semantics(mergeDescendants = true) {
                 contentDescription = spoken
             },
@@ -415,8 +416,8 @@ private fun AddRow(onAdd: () -> Unit) {
     val dashInk = palette.inkTertiary.copy(alpha = 0.45f)
     Row(
         Modifier
-            .fillMaxWidth()
             .widthIn(max = Metrics.maxContentWidth)
+            .fillMaxWidth()
             .heightIn(min = 50.dp)
             .clickable(
                 interactionSource = interaction,
@@ -459,7 +460,7 @@ private fun EmptyCard() {
     Surface(
         shape = RoundedCornerShape(Metrics.radiusCard),
         color = palette.card,
-        modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+        modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CapsLabel(tr("No maxes yet"))

@@ -225,7 +225,7 @@ struct ValueRow: View {
     }
 
     private var presetRow: some View {
-        HStack(spacing: 8) {
+        AdaptiveActionRow(spacing: 8) {
             ForEach(presets, id: \.self) { preset in
                 Button {
                     value = preset
@@ -233,14 +233,11 @@ struct ValueRow: View {
                     Text(preset.formatted(.number.precision(.fractionLength(decimals))))
                         .font(.system(.subheadline, weight: .medium))
                         .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .frame(maxWidth: .infinity)
                         // 44, not 40. THE HIT-TARGET FLOOR — `Chip` has always used 44
                         // and these presets sat four points under it, on every slider row
                         // in the app. Four points is exactly the kind of miss that reads
                         // as "the tap didn't register" rather than as a mistake.
-                        .frame(height: 44)
+                        .actionLabelLayout(minHeight: 44, fullWidth: true, fillsRowHeight: true)
                         .foregroundStyle(abs(value - preset) < 0.001 ? Ink.primary : Ink.secondary)
                         .background {
                             if abs(value - preset) < 0.001 {

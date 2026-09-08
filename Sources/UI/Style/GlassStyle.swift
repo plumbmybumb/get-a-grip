@@ -240,7 +240,7 @@ struct GlassPillButton<Label: View>: View {
         Button(action: action) {
             label()
                 .foregroundStyle(tint.text)
-                .padding(.horizontal, 16).padding(.vertical, 12)
+                .actionLabelLayout()
                 .glassEffect(tint.style, in: .capsule)
                 .contentShape(.capsule)
         }
@@ -278,8 +278,9 @@ extension View {
     /// field height, and the capsule.
     func glassFieldChrome() -> some View {
         self
-            .padding(.horizontal, 18)
-            .frame(height: Metrics.fieldHeight)
+            .padding(.horizontal, Metrics.buttonHorizontalPadding)
+            .padding(.vertical, Metrics.buttonVerticalPadding)
+            .frame(minHeight: Metrics.fieldHeight)
             .glassEffect(.regular, in: .capsule)
     }
 }
@@ -314,11 +315,7 @@ struct PrimaryGlassButton: View {
             // second session" runs past one line at accessibility sizes, and the one
             // control the whole ritual hangs off must never render as a cut-off word.
             // Short titles still measure exactly Metrics.buttonHeight.
-            .lineLimit(2)
-            .minimumScaleFactor(0.85)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: Metrics.buttonHeight)
+            .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
         }
         .buttonStyle(.glassProminent)
         .tint(tint)
@@ -359,11 +356,7 @@ struct SolidPrimaryButton: View {
             }
             .font(.system(size: textSize, weight: .semibold))
             .foregroundStyle(labelColor)
-            .lineLimit(2)
-            .minimumScaleFactor(0.85)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: Metrics.buttonHeight)
+            .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
             .background(tint, in: .capsule)
             .contentShape(.capsule)
         }
@@ -387,8 +380,7 @@ struct SolidSecondaryButton: View {
             }
             .font(.system(size: textSize, weight: .semibold))
             .foregroundStyle(Ink.primary)
-            .frame(height: Metrics.fieldHeight)
-            .padding(.horizontal, 22)
+            .actionLabelLayout(minHeight: Metrics.fieldHeight)
             .background(Color.adaptive(Color(hex: "FFFFFF"), Color(hex: "343A44")),
                         in: .capsule)
             .contentShape(.capsule)
@@ -413,8 +405,7 @@ struct SecondaryGlassButton: View {
                 Text(title)
             }
             .font(.system(size: textSize, weight: .semibold))
-            .frame(height: Metrics.fieldHeight)
-            .padding(.horizontal, 22)
+            .actionLabelLayout(minHeight: Metrics.fieldHeight)
         }
         .buttonStyle(.glass)
         .tint(tint)

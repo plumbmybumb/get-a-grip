@@ -222,8 +222,7 @@ struct MaxesTab: View {
             Text(label)
                 .font(.system(.footnote, weight: .semibold))
                 .foregroundStyle(Accent.graphite)
-                .padding(.horizontal, 14)
-                .frame(minHeight: 44)
+                .actionLabelLayout(minHeight: 44)
                 .overlay(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
                 .contentShape(.capsule)
         }

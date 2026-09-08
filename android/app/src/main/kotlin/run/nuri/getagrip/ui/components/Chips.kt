@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -36,7 +39,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,6 +48,7 @@ import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
+import run.nuri.getagrip.ui.theme.Metrics
 
 // The app's ONE selection control, ported from Sources/UI/Components/Chips.swift.
 //
@@ -94,7 +97,7 @@ fun Chip(
         border = if (isSelected) null else BorderStroke(1.dp, palette.inkTertiary.copy(alpha = 0.35f)),
     ) {
         Row(
-            Modifier.padding(horizontal = 12.dp),
+            Modifier.padding(horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -103,8 +106,6 @@ fun Chip(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 color = if (isSelected) palette.inkPrimary else palette.inkSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
             )
         }
@@ -144,8 +145,8 @@ fun ChipGrid(
         val columns = chipColumns(available, minimum, spacing).coerceAtMost(maxOf(1, content.size))
         Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
             content.chunked(columns).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                    row.forEach { cell -> cell(Modifier.weight(1f)) }
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    row.forEach { cell -> cell(Modifier.weight(1f).fillMaxHeight()) }
                     // The last row keeps the grid's column WIDTH rather than stretching
                     // two chips across six columns' worth of space — a row of chips that
                     // change size between lines reads as two different controls.

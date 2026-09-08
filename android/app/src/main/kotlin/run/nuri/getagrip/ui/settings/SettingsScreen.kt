@@ -78,6 +78,7 @@ import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.gauge.GaugeScreen
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.LocalGripPalette
+import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.tour.LocalTourController
 
@@ -154,6 +155,7 @@ private fun SettingsRoot(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .readablePageWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = Metrics.hPadding)
                 .padding(bottom = Metrics.spacing + LocalFloatingTabBarInset.current),
@@ -232,6 +234,7 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
     Column(
         modifier
             .fillMaxSize()
+            .readablePageWidth()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Metrics.hPadding)
             .padding(bottom = Metrics.spacing + LocalFloatingTabBarInset.current),
@@ -544,7 +547,7 @@ private fun Card(
     Surface(
         shape = RoundedCornerShape(Metrics.radiusCard),
         color = LocalGripPalette.current.card,
-        modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+        modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
     ) {
         Column(
             Modifier.padding(contentPadding),
@@ -585,8 +588,8 @@ private fun NavRow(
         shape = RoundedCornerShape(Metrics.radiusCard),
         color = palette.card,
         modifier = modifier
-            .fillMaxWidth()
             .widthIn(max = Metrics.maxContentWidth)
+            .fillMaxWidth()
             .heightIn(min = 44.dp)
             .clickable(
                 interactionSource = interactionSource,

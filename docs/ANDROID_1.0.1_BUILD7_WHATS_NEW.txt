@@ -1,0 +1,6 @@
+<en-US>
+Training cues are easier to see from a distance: blue while pulling, orange when it's time to let go, and red when a pull needs attention. Rest now shows which hand is next. New workout maxes keep the hand that earned them, with a choice before saving. Buttons have more breathing room, especially in French and with larger text. Includes the WH-C06 connection and long-session responsiveness fixes.
+</en-US>
+<fr-FR>
+Les repères sont plus visibles de loin : bleu pendant le tirage, orange pour relâcher, rouge si le tirage demande votre attention. Le repos indique la prochaine main. Les nouveaux maxes d’une séance gardent la main utilisée, avec un choix avant d’enregistrer. Les boutons sont mieux espacés, notamment avec du texte agrandi. Les correctifs de connexion et de réactivité des WH-C06 sont inclus.
+</fr-FR>

@@ -1567,10 +1567,36 @@ class TemplateStoreTests {
                 newMaxes = listOf(MaxRecordEntity.from(grip = grip, kg = 12.0, source = MaxSource.measured, side = Side.left)))
             assertEquals(allowsSave, result != null)
             assertEquals(if (allowsSave) 1 else 0, workoutLogs(w).size)
-            assertEquals(if (allowsSave) 1 else 0, w.db.maxes().all().size)
-            assertEquals(if (allowsSave) 12.0 else null, w.store.maxTable.max(grip.key, Side.left))
+            val storedMaxes = w.db.maxes().all()
+            assertEquals(if (allowsSave) 1 else 0, storedMaxes.size)
+            assertEquals(if (allowsSave) listOf("left") else emptyList(), storedMaxes.map { it.sideRaw })
+            assertEquals(if (allowsSave) 12.0 else null, w.store.maxTable.exact(grip.key, Side.left))
+            assertNull(w.store.maxTable.exact(grip.key, Side.right))
+            assertNull(w.store.maxTable.exact(grip.key, Side.both))
             assertFalse(w.store.benchmarkedToday)
         }
+    }
+
+    @Test fun workoutPeaksPersistEachHandWithoutReplacingTheSharedMax() = runTest {
+        val w = makeWorld()
+        val grip = GripSpec()
+        val shared = MaxRecordEntity.from(grip = grip, kg = 40.0, source = MaxSource.manual, side = Side.both)
+        assertNotNull(w.store.recordSession(plan = SessionPlan(), template = null, reps = emptyList(),
+            startedAt = Instant.now(), finishedAt = Instant.now(), rpe = null, newMaxes = listOf(shared)))
+
+        val handPeaks = listOf(
+            MaxRecordEntity.from(grip = grip, kg = 35.0, source = MaxSource.measured, side = Side.left),
+            MaxRecordEntity.from(grip = grip, kg = 30.0, source = MaxSource.measured, side = Side.right),
+        )
+        assertNotNull(w.store.recordSession(plan = SessionPlan(), template = null, reps = emptyList(),
+            startedAt = Instant.now(), finishedAt = Instant.now(), rpe = null, newMaxes = handPeaks))
+
+        assertEquals(mapOf("left" to 35.0, "right" to 30.0, "both" to 40.0),
+            w.db.maxes().all().associate { it.sideRaw to it.kg })
+        assertEquals(35.0, w.store.maxTable.exact(grip.key, Side.left))
+        assertEquals(30.0, w.store.maxTable.exact(grip.key, Side.right))
+        assertEquals(40.0, w.store.maxTable.exact(grip.key, Side.both))
+        assertFalse(w.store.benchmarkedToday)
     }
 
     /// The sheet used to dismiss unconditionally, so a failed write closed the form over a

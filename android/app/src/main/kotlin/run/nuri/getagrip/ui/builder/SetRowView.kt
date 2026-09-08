@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -303,7 +304,8 @@ fun SetRowView(
                     // Chevrons in the expanded row cover reordering, so no drag gesture is
                     // load-bearing and the long-press menu is a convenience rather than the
                     // only way in.
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         MoveButton(tr("Move up"), Icons.Filled.KeyboardArrowUp, canMoveUp, tr("Already the first set"), onMoveUp)
                         MoveButton(tr("Move down"), Icons.Filled.KeyboardArrowDown, canMoveDown, tr("Already the last set"), onMoveDown)
                     }
@@ -344,7 +346,7 @@ private fun MoveButton(
         Modifier
             .heightIn(min = 44.dp)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding)
             .semantics(mergeDescendants = true) {
                 role = Role.Button
                 // The dim state otherwise says nothing about WHY: at either end of the list

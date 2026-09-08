@@ -11,6 +11,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +21,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -63,6 +67,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.contentDescription
@@ -112,6 +118,7 @@ import run.nuri.getagrip.store.TareConfirmationDecision
 import run.nuri.getagrip.store.TarePolicy
 import run.nuri.getagrip.store.TareTapDecision
 import run.nuri.getagrip.ui.components.CapsLabel
+import run.nuri.getagrip.ui.components.AdaptiveActionRow
 import run.nuri.getagrip.ui.components.FingerGlyph
 import run.nuri.getagrip.ui.components.ForceTraceView
 import run.nuri.getagrip.ui.components.HoldToEndButton
@@ -124,6 +131,7 @@ import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.GripPalette
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Motion
+import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.tour.LocalTourController
 import run.nuri.getagrip.ui.tour.TourAct
@@ -295,6 +303,8 @@ fun RunnerHost(
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
+            RunnerScreenBorder(runnerBorderCue(snapshot, timerOnly,
+                device.state.isConnected && device.isStreaming && device.isSignalFresh), Modifier.matchParentSize())
         }
     }
 }
@@ -402,11 +412,13 @@ private fun RunnerLifecycle(session: RunnerSession, device: DeviceStore, timerOn
 // MARK: - The session screen
 
 @Composable
-private fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
+internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
     val snapshot = session.snapshot
     val tint = RunnerTint.of(snapshot, palette, timerOnly, device.state.isConnected)
+    val scrollsForLargeText = LocalDensity.current.fontScale >= 1.5f
+    val scrollState = rememberScrollState()
 
     Column(
         Modifier
@@ -415,13 +427,15 @@ private fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
             // draws behind the cutout and the status bar is hidden, which is exactly what
             // lets the fingers align beneath the physical camera region.
             .windowInsetsPadding(WindowInsets.navigationBars)
+            .readablePageWidth()
             .padding(horizontal = Metrics.hPadding)
             // The longest finger grows 9.5dp during its cue. Fourteen dp clears that
             // expansion; the remaining space belongs to the graph, not an empty header.
             .padding(
                 top = PalmGeometry.TOTAL_HEIGHT.dp + cameraHandOffset() + if (timerOnly) 22.dp else 14.dp,
                 bottom = if (timerOnly) Metrics.spacing else 12.dp,
-            ),
+            )
+            .then(if (scrollsForLargeText) Modifier.verticalScroll(scrollState) else Modifier),
         verticalArrangement = Arrangement.spacedBy(if (timerOnly) 12.dp else 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -444,15 +458,15 @@ private fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                 shape = RoundedCornerShape(Metrics.radiusCard),
                 color = palette.card,
                 modifier = Modifier
-                    .fillMaxWidth()
                     .widthIn(max = Metrics.maxContentWidth)
-                    .weight(1f)
+                    .fillMaxWidth()
+                    .then(if (scrollsForLargeText) Modifier.height(220.dp) else Modifier.weight(1f))
                     // The tour's "lane" step lights the whole card, not the Canvas: the band
                     // is drawn inside it and a hole cropped to the plot would cut the card's
                     // own corners off.
                     .tourAnchor(TourTarget.RunnerTrace),
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                Box(Modifier.testTag("runner-plot"), contentAlignment = Alignment.Center) {
                     ForceTraceView(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
                         thresholdKg = session.plan.thresholdKg,
@@ -487,9 +501,13 @@ private fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
 internal fun GripNameRow(snapshot: RunnerSnapshot, palette: GripPalette, timerOnly: Boolean) {
     val grip = snapshot.grip ?: return
     val resting = isResting(snapshot)
+    val fontScale = LocalDensity.current.fontScale
+    // Reserve two text lines at accessibility sizes, even when this particular grip's
+    // short name fits one. A rest badge or grip change must never shift the live metrics.
+    val rowHeight = ((if (fontScale >= 1.3f) 44 else 28) * fontScale).dp
     Row(
         Modifier.fillMaxWidth()
-            .heightIn(min = (28 * androidx.compose.ui.platform.LocalDensity.current.fontScale).dp)
+            .heightIn(min = rowHeight)
             .semantics(mergeDescendants = true) {
             contentDescription = spokenGrip(snapshot, grip, timerOnly)
         },
@@ -506,7 +524,8 @@ internal fun GripNameRow(snapshot: RunnerSnapshot, palette: GripPalette, timerOn
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium,
             color = palette.inkSecondary,
-            maxLines = 1,
+            maxLines = 2,
+            modifier = Modifier.weight(1f, fill = false),
         )
         val band = snapshot.targetBand
         if (band != null) LiveTargetChip(band, isWorking(snapshot), timerOnly, palette)
@@ -617,24 +636,33 @@ private fun LiveTargetChip(
 /// one line, and the alternatives are both wrong: ellipsis turns the decision-critical word
 /// into "RIGHT — PU…", and wrapping shoves the hero numeral down mid-rep.
 @Composable
-private fun Prompt(
+internal fun Prompt(
     snapshot: RunnerSnapshot,
     tint: Color,
     timerOnly: Boolean,
     isConnected: Boolean,
 ) {
     val text = promptText(snapshot, timerOnly, isConnected)
-    BasicText(
-        text,
-        style = MaterialTheme.typography.displaySmall.copy(
-            fontWeight = FontWeight.ExtraBold,
-            color = tint,
-            textAlign = TextAlign.Center,
-        ),
-        maxLines = 1,
-        autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp),
-        modifier = Modifier.fillMaxWidth().semantics { contentDescription = text },
-    )
+    val style = MaterialTheme.typography.displaySmall
+    val fontScale = LocalDensity.current.fontScale
+    val promptHeight = if (fontScale >= 1.5f) (48 * fontScale).dp
+        else with(LocalDensity.current) { style.lineHeight.toDp() }
+    // Preserve the original full-size prompt line even when a longer translation needs
+    // smaller glyphs. Otherwise pausing from HAND NEXT makes the graph jump vertically.
+    Box(Modifier.fillMaxWidth().height(promptHeight).semantics {
+            contentDescription = spokenPrompt(snapshot, timerOnly, isConnected)
+        },
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            text,
+            style = style.copy(fontWeight = FontWeight.ExtraBold, color = tint,
+                textAlign = TextAlign.Center, lineHeight = 1.1.em),
+            maxLines = if (fontScale >= 1.5f) 2 else 1,
+            autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 /// BOTH numbers, always: what you are pulling and how much longer.
@@ -670,6 +698,8 @@ private fun Hero(
             seconds = snapshot.secondsShown,
             tint = if (isStalled(snapshot)) palette.armed else palette.inkPrimary,
             palette = palette,
+            annotation = if (snapshot.phase is RunnerPhase.Paused) nextHandText(snapshot)
+                else restPhaseText(snapshot),
             modifier = Modifier.weight(1f).tourAnchor(TourTarget.RunnerClock),
         )
     }
@@ -721,6 +751,7 @@ private fun CountdownNumeral(
     tint: Color,
     palette: GripPalette,
     modifier: Modifier = Modifier,
+    annotation: String? = null,
 ) {
     Row(
         modifier,
@@ -734,7 +765,23 @@ private fun CountdownNumeral(
             autoSize = heroAutoSize,
             modifier = Modifier.weight(1f, fill = false),
         )
-        Text(tr("s"), style = TextStyle(fontSize = UNIT_SIZE), color = palette.inkTertiary, modifier = Modifier.padding(bottom = 10.dp))
+        Column(
+            Modifier.padding(bottom = 10.dp).widthIn(max = 92.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            if (annotation != null) BasicText(
+                annotation,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = palette.inkSecondary,
+                ),
+                // Keep the secondary cue inside the numeral's existing height, including
+                // French and larger text. A third line would push the graph down on pause.
+                autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 11.sp),
+                maxLines = 2,
+            )
+            Text(tr("s"), style = TextStyle(fontSize = UNIT_SIZE), color = palette.inkTertiary)
+        }
     }
 }
 
@@ -767,8 +814,8 @@ private fun RepProgress(session: RunnerSession, snapshot: RunnerSnapshot, palett
             color = palette.bleu,
             trackColor = palette.inkTertiary.copy(alpha = 0.2f),
             modifier = Modifier
-                .fillMaxWidth()
                 .widthIn(max = Metrics.maxContentWidth)
+                .fillMaxWidth()
                 .height(4.dp)
                 .clearAndSetSemantics {},
         )
@@ -784,13 +831,13 @@ private fun RepProgress(session: RunnerSession, snapshot: RunnerSnapshot, palett
 private fun Counters(snapshot: RunnerSnapshot) {
     Row(
         Modifier
-            .fillMaxWidth()
             .widthIn(max = Metrics.maxContentWidth)
+            .fillMaxWidth()
             .semantics(mergeDescendants = true) { contentDescription = spokenState(snapshot) },
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CapsLabel(setLine(snapshot))
-        CapsLabel(pullLine(snapshot))
+        CapsLabel(setLine(snapshot), Modifier.weight(1f))
+        CapsLabel(pullLine(snapshot), Modifier.weight(1f), textAlign = TextAlign.End)
     }
 }
 
@@ -856,7 +903,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
     val strokeDp = if (working) 12.dp else 7.dp
     val spoken = tr(
         "%s, %d seconds remaining",
-        promptText(snapshot, timerOnly = true, isConnected = false),
+        spokenPrompt(snapshot, timerOnly = true, isConnected = false),
         snapshot.secondsShown,
     )
 
@@ -864,7 +911,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
         Modifier
             // The dial is the hero, so it is the element that takes the slack — the same job
             // the trace card's weight does in the measured layout.
-            .weight(1f)
+            .then(if (LocalDensity.current.fontScale >= 1.5f) Modifier.height(320.dp) else Modifier.weight(1f))
             .fillMaxWidth()
             .semantics(mergeDescendants = true) { contentDescription = spoken },
         contentAlignment = Alignment.Center,
@@ -882,7 +929,20 @@ private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 CountdownNumeral(snapshot.secondsShown, palette.inkPrimary, palette)
-                CapsLabel(promptText(snapshot, timerOnly = true, isConnected = false), color = tint)
+                CapsLabel(phasePromptText(snapshot, timerOnly = true, isConnected = false), color = tint)
+                nextHandText(snapshot)?.let { nextHand ->
+                    BasicText(
+                        nextHand,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = palette.inkSecondary,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                        ),
+                        autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = 18.sp),
+                        maxLines = if (LocalDensity.current.fontScale >= 1.5f) 2 else 1,
+                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    )
+                }
             }
         }
     }
@@ -944,10 +1004,10 @@ private fun Controls(session: RunnerSession, snapshot: RunnerSnapshot, timerOnly
     val skipEnabled = RunnerControlPolicy.skipEnabled(phase)
 
     Column(
-        Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+        Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             // The buttons KEEP their identity while disabled: the visible reason the house
             // rule demands is the prompt above them, which says PAUSED / CONNECTING at
             // display weight. Swapping the labels spent the two Skips' names on the same
@@ -958,7 +1018,7 @@ private fun Controls(session: RunnerSession, snapshot: RunnerSnapshot, timerOnly
                 icon = if (phase.isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
                 enabled = pauseEnabled,
                 disabledReason = RunnerControlPolicy.pauseDisabledReason(phase),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
             ) {
                 session.send(if (phase.isPaused) RunnerEvent.Resume else RunnerEvent.Pause)
             }
@@ -966,30 +1026,31 @@ private fun Controls(session: RunnerSession, snapshot: RunnerSnapshot, timerOnly
             // and the other would offer to change the session you are in.
             if (!timerOnly) {
                 if (device.state.isConnected) {
-                    TareButton(session, snapshot, Modifier.weight(1f))
+                    TareButton(session, snapshot, Modifier.weight(1f).fillMaxHeight())
                 } else {
                     WideButton(
                         title = tr("Connect"),
                         icon = Icons.Outlined.SettingsInputAntenna,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                     ) { device.connect() }
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            WideButton(
-                title = tr("Skip pull"),
-                enabled = skipEnabled,
-                disabledReason = RunnerControlPolicy.skipDisabledReason(phase),
-                modifier = Modifier.weight(1f),
-            ) { session.send(RunnerEvent.SkipRep) }
-            WideButton(
-                title = tr("Skip set"),
-                enabled = skipEnabled,
-                disabledReason = RunnerControlPolicy.skipDisabledReason(phase),
-                modifier = Modifier.weight(1f),
-            ) { session.send(RunnerEvent.SkipSet) }
-            HoldToEndButton(Modifier.weight(1f)) { session.send(RunnerEvent.Abort) }
+        val skipPull = tr("Skip pull")
+        val skipSet = tr("Skip set")
+        AdaptiveActionRow(listOf(listOf(skipPull), listOf(skipSet),
+            listOf(tr("Hold to end"), tr("Keep holding…")))) { index, cell ->
+            when (index) {
+                0 -> WideButton(title = skipPull, enabled = skipEnabled,
+                    disabledReason = RunnerControlPolicy.skipDisabledReason(phase), modifier = cell) {
+                    session.send(RunnerEvent.SkipRep)
+                }
+                1 -> WideButton(title = skipSet, enabled = skipEnabled,
+                    disabledReason = RunnerControlPolicy.skipDisabledReason(phase), modifier = cell) {
+                    session.send(RunnerEvent.SkipSet)
+                }
+                else -> HoldToEndButton(cell) { session.send(RunnerEvent.Abort) }
+            }
         }
     }
 }
@@ -1018,9 +1079,10 @@ private fun WideButton(
             disabledContainerColor = palette.card.copy(alpha = 0.6f),
             disabledContentColor = palette.inkTertiary.copy(alpha = 0.5f),
         ),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding),
         modifier = modifier
-            .height(48.dp)
+            .heightIn(min = Metrics.controlMinHeight)
             .pressFeedback(interactionSource)
             .semantics {
                 if (disabledReason != null) contentDescription = L10n.tr("%s. %s", title, disabledReason)
@@ -1035,7 +1097,7 @@ private fun WideButton(
                 title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -1178,7 +1240,33 @@ object RunnerTint {
     }
 }
 
-private fun promptText(snapshot: RunnerSnapshot, timerOnly: Boolean, isConnected: Boolean): String =
+/** During rest, the engine's display slot already points at the actual next pull. */
+internal fun nextHandText(snapshot: RunnerSnapshot): String? {
+    if (!isResting(snapshot)) return null
+    return when (snapshot.side) {
+        Side.left -> L10n.tr("LEFT HAND NEXT")
+        Side.right -> L10n.tr("RIGHT HAND NEXT")
+        Side.both -> L10n.tr("BOTH HANDS NEXT")
+        null -> null
+    }
+}
+
+internal fun restPhaseText(snapshot: RunnerSnapshot): String? =
+    if (isResting(snapshot)) {
+        if (snapshot.isSetBreak) L10n.tr("SET BREAK") else L10n.tr("REST")
+    } else null
+
+internal fun promptText(snapshot: RunnerSnapshot, timerOnly: Boolean, isConnected: Boolean): String =
+    if (snapshot.phase is RunnerPhase.Resting) {
+        nextHandText(snapshot) ?: phasePromptText(snapshot, timerOnly, isConnected)
+    } else phasePromptText(snapshot, timerOnly, isConnected)
+
+private fun spokenPrompt(snapshot: RunnerSnapshot, timerOnly: Boolean, isConnected: Boolean): String {
+    val phase = phasePromptText(snapshot, timerOnly, isConnected)
+    return nextHandText(snapshot)?.let { L10n.tr("%s · %s", phase, it) } ?: phase
+}
+
+private fun phasePromptText(snapshot: RunnerSnapshot, timerOnly: Boolean, isConnected: Boolean): String =
     when (snapshot.phase) {
         is RunnerPhase.Idle -> if (timerOnly || isConnected) L10n.tr("GET READY") else L10n.tr("CONNECTING")
         is RunnerPhase.LeadIn -> L10n.tr("GET READY")
@@ -1328,6 +1416,8 @@ private fun PreviewRunner(dark: Boolean, timerOnly: Boolean, drive: (RunnerSessi
                         modifier = Modifier.align(Alignment.TopCenter),
                     )
                 }
+                RunnerScreenBorder(runnerBorderCue(session.snapshot, timerOnly,
+                    store.state.isConnected && store.isStreaming && store.isSignalFresh), Modifier.matchParentSize())
             }
         }
     }

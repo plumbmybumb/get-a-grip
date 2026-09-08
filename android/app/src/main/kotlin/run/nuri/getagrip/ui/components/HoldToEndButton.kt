@@ -7,12 +7,13 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,17 +27,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
@@ -46,6 +51,7 @@ import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Motion
+import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
 /// Ending a session takes a deliberate HOLD, not a tap plus a dialog.
@@ -63,8 +69,8 @@ fun HoldToEndButton(modifier: Modifier = Modifier, onEnd: () -> Unit) {
         spokenLabel = tr("End session"),
         trackAlpha = 0.16f,
         fillAlpha = 0.42f,
-        // Not inside a scroller, so the whole button plus a generous slop is the hold area —
-        // a thumb that drifts a few dp during a 0.9 s press has not changed its mind.
+        // Preserve a generous slop for chalky fingers; consumed scrolling still cancels
+        // this hold when the large-text runner needs a scrolling layout.
         cancel = HoldCancel.LeavesBounds(SLIDE_SLOP_DP),
         onFire = onEnd,
     )
@@ -164,7 +170,7 @@ private fun HoldButton(
     Box(
         modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .heightIn(min = Metrics.controlMinHeight)
             // **Clipped to the button's OWN capsule.** iOS learned this the hard way: a
             // second capsule sized to `progress * width` draws its own fully rounded outline
             // at that width — bigger than the button at low progress, and degenerating into a
@@ -192,7 +198,7 @@ private fun HoldButton(
                         if (change == null || !change.pressed) break
                         if (slidOff) continue
                         val left = when (cancel) {
-                            is HoldCancel.LeavesBounds -> !Rect(
+                            is HoldCancel.LeavesBounds -> change.isConsumed || !Rect(
                                 -slopPx,
                                 -slopPx,
                                 size.width + slopPx,
@@ -222,19 +228,23 @@ private fun HoldButton(
             },
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            Modifier
-                .fillMaxWidth(progress.value)
-                .fillMaxHeight()
-                .background(palette.alarm.copy(alpha = fillAlpha)),
-        )
-        Text(
-            if (isHolding) holdingLabel else idleLabel,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = palette.alarm,
-            maxLines = 1,
-        )
+        // Decoration must not measure the button. matchParentSize keeps the label in
+        // charge of height, including when the summary footer has a tall constraint.
+        Canvas(Modifier.matchParentSize()) {
+            drawRect(palette.alarm.copy(alpha = fillAlpha),
+                size = Size(size.width * progress.value, size.height))
+        }
+        // Reserve both labels. Pressing and cancelling a hold must never move the
+        // control under the finger, even when its translation wraps differently.
+        Box(Modifier.padding(horizontal = Metrics.buttonHorizontalPadding,
+            vertical = Metrics.buttonVerticalPadding), contentAlignment = Alignment.Center) {
+            for ((label, visible) in listOf(idleLabel to !isHolding, holdingLabel to isHolding)) {
+                Text(label, style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold, color = palette.alarm,
+                    textAlign = TextAlign.Center,
+                    modifier = if (visible) Modifier else Modifier.alpha(0f).clearAndSetSemantics {})
+            }
+        }
     }
 }
 

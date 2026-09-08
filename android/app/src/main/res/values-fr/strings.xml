@@ -197,6 +197,7 @@
     <string name="s_away_from_the_gauge_24683a">Loin du capteur</string>
     <string name="s_best_pull_kg">MEILLEUR TIRAGE %1$s KG · %2$s%3$s</string>
     <string name="s_both_15ee98">LES DEUX</string>
+    <string name="s_both_hands_next">DEUX MAINS ENSUITE</string>
     <string name="s_back">Retour</string>
     <string name="s_back_2">Arrière 2</string>
     <string name="s_back_3">Arrière 3</string>
@@ -420,6 +421,7 @@
     <string name="s_l_4a7991">G %s</string>
     <string name="s_l_r">G %1$s · D %2$s</string>
     <string name="s_left_969e2c">GAUCHE</string>
+    <string name="s_left_hand_next">MAIN GAUCHE ENSUITE</string>
     <string name="s_let_go_25ac58">RELÂCHE</string>
     <string name="s_laps_circuits_an_easy_evening_real_load_well_short_of_ma">Longueurs, circuits, une soirée tranquille — une vraie charge, loin du maximal.</string>
     <string name="s_last_14_days">14 derniers jours</string>
@@ -601,6 +603,7 @@
     <string name="s_rfd_series_measurement">mesure de série RFD</string>
     <string name="s_rhythm">RYTHME</string>
     <string name="s_right_952532">DROITE</string>
+    <string name="s_right_hand_next">MAIN DROITE ENSUITE</string>
     <string name="s_recent_connection_and_signal_breadcrumbs_kept_on_this_de">Traces récentes de connexion et de signal, gardées sur cet appareil en mémoire seulement — elles sont perdues si l\'app est forcée à quitter.</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Enregistre ce que tu peux tenir sur chaque prise, par main si elles diffèrent, et mesures-en un au capteur d\'ici. Les pourcentages en ont besoin ; les kilos non.</string>
     <string name="s_refresh_battery">Actualiser la batterie</string>

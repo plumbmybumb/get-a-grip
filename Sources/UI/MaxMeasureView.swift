@@ -125,13 +125,7 @@ struct MaxMeasureView: View {
                     .foregroundStyle(Ink.tertiary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                // Mirrors `GaugeView.connectTitle`: a static "Connect" during the
-                // multi-second BLE connect showed a dimmed button with no spinner and no
-                // state change, worse here than on the sibling screen because the user
-                // has already committed to the gauge path mid-way through recording a max.
-                PrimaryGlassButton(title: connectTitle, systemImage: "dot.radiowaves.left.and.right",
-                                   tint: Accent.bleu) { device.connect() }
-                    .disabled(device.state.isBusy)
+                GaugeConnectButton(connectTitle: String(localized: "Connect"))
             }
         } else {
             switch phase {
@@ -159,10 +153,6 @@ struct MaxMeasureView: View {
                 }
             }
         }
-    }
-
-    private var connectTitle: String {
-        device.state.isBusy ? device.state.label : String(localized: "Connect")
     }
 
     // MARK: - Running

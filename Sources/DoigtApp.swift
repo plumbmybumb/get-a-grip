@@ -42,7 +42,12 @@ struct DoigtApp: App {
         WindowGroup {
             Group {
                 #if DEBUG
-                if showSummaryPreview {
+                if let phase = RunnerCuePreviewPhase.requested {
+                    DebugRunnerPreview(
+                        phase: phase,
+                        timerOnly: ProcessInfo.processInfo.arguments.contains("-previewRunnerTimer"),
+                        paused: ProcessInfo.processInfo.arguments.contains("-previewRunnerPaused"))
+                } else if showSummaryPreview {
                     DebugSummaryPreview { showSummaryPreview = false }
                 } else {
                     RootTabView()

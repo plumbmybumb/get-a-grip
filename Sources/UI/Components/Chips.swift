@@ -23,9 +23,10 @@ struct Chip: View {
                 .font(.system(.subheadline, weight: isSelected ? .semibold : .medium))
                 .monospacedDigit()
                 .foregroundStyle(isSelected ? Ink.primary : Ink.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 12)
+                .padding(.vertical, Metrics.buttonVerticalPadding)
                 // Drawn at 44 and shaped at 44: the visual IS the target. Padding and a
                 // capsule background contribute nothing to SwiftUI's default hit area,
                 // so the content shape is mandatory, not decoration.

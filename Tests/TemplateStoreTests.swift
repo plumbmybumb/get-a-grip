@@ -1439,6 +1439,80 @@ final class TemplateStoreTests: XCTestCase {
         add(attachment)
     }
 
+    func testSessionPeakSelectionsSaveOnlyTheirExactHands() throws {
+        let cases: [(HandMode, Set<Side>)] = [
+            (.alternateEachRep, []),
+            (.alternateEachRep, [.left]),
+            (.alternateEachRep, [.right]),
+            (.alternateEachRep, [.left, .right]),
+            (.bothHands, [.both])
+        ]
+        for (mode, chosenSides) in cases {
+            let w = try makeWorld()
+            let grip = GripSpec()
+            var plan = SessionPlan()
+            plan.handMode = mode
+            plan.sets = [SetPlan(grip: grip, repsPerSide: 1)]
+            let weights: [Side: Double] = [.left: 35, .right: 30, .both: 60]
+            let reps = PlanMath.sequence(for: plan).map { slot in
+                RepSummary(setIndex: slot.setIndex, repIndex: slot.repIndex,
+                           side: slot.side, grip: slot.grip, heldSeconds: 10,
+                           peakKg: weights[slot.side]!, avgKg: weights[slot.side]!)
+            }
+            let candidates = SessionMaxCandidate.from(reps: reps, maxes: w.store.maxTable)
+            let chosenIDs = Set(candidates.filter { chosenSides.contains($0.side) }.map(\.id))
+            let selected = candidates.filter { chosenIDs.contains($0.id) }.map {
+                MaxRecord(grip: $0.grip, kg: $0.kg, source: .measured, side: $0.side)
+            }
+
+            let log = w.store.recordSession(plan: plan, template: nil, reps: reps,
+                startedAt: .now, finishedAt: .now, rpe: nil, newMaxes: selected)
+
+            XCTAssertNotNil(log)
+            XCTAssertEqual(workoutLogs(w).count, 1)
+            let records = try w.context.fetch(FetchDescriptor<MaxRecord>())
+            XCTAssertEqual(records.count, chosenSides.count)
+            XCTAssertEqual(Set(records.map(\.side)), chosenSides)
+            XCTAssertTrue(records.allSatisfy { $0.source == .measured })
+            for side in Side.allCases {
+                XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: side),
+                               chosenSides.contains(side) ? weights[side] : nil,
+                               "Saving \(chosenSides) must not create a record for \(side)")
+            }
+            XCTAssertFalse(w.store.benchmarkedToday,
+                           "Routine peaks stay part of the workout, without an extra benchmark")
+        }
+    }
+
+    func testSelectingFirstLeftSessionPeakPreservesExistingRightAndSharedMaxes() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        XCTAssertTrue(w.store.recordMax(60, for: grip, side: .both))
+        XCTAssertTrue(w.store.recordMax(32, for: grip, side: .right))
+        let previousIDs = Set(w.store.currentMaxes.values.map(\.id))
+        let reps = [
+            RepSummary(side: .left, grip: grip, heldSeconds: 10, peakKg: 35, avgKg: 30),
+            RepSummary(side: .right, grip: grip, heldSeconds: 10, peakKg: 34, avgKg: 30)
+        ]
+        let candidates = SessionMaxCandidate.from(reps: reps, maxes: w.store.maxTable)
+        let left = try XCTUnwrap(candidates.first { $0.side == .left })
+        XCTAssertNil(left.previous)
+        let chosenIDs: Set<String> = [left.id]
+        let selected = candidates.filter { chosenIDs.contains($0.id) }.map {
+            MaxRecord(grip: $0.grip, kg: $0.kg, source: .measured, side: $0.side)
+        }
+
+        XCTAssertNotNil(w.store.recordSession(plan: .init(), template: nil, reps: reps,
+            startedAt: .now, finishedAt: .now, rpe: nil, newMaxes: selected))
+
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .left), 35)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .right), 32)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .both), 60)
+        XCTAssertTrue(previousIDs.isSubset(of: Set(w.store.currentMaxes.values.map(\.id))),
+                      "Unselected hands retain the same existing records")
+        XCTAssertEqual(try w.context.fetch(FetchDescriptor<MaxRecord>()).count, 3)
+    }
+
     // MARK: - Failure handling
 
     func testWorkoutAndChosenMaxesCommitOrRollbackTogether() throws {
@@ -1456,7 +1530,9 @@ final class TemplateStoreTests: XCTestCase {
             XCTAssertEqual(result != nil, allowsSave)
             XCTAssertEqual(workoutLogs(w).count, allowsSave ? 1 : 0)
             XCTAssertEqual(try w.context.fetch(FetchDescriptor<MaxRecord>()).count, allowsSave ? 1 : 0)
-            XCTAssertEqual(w.store.maxTable.max(grip: grip.key, side: .left), allowsSave ? 12 : nil)
+            XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .left), allowsSave ? 12 : nil)
+            XCTAssertNil(w.store.maxTable.exact(grip: grip.key, side: .right))
+            XCTAssertNil(w.store.maxTable.exact(grip: grip.key, side: .both))
             XCTAssertFalse(w.store.benchmarkedToday, "A session peak must not log a second benchmark workout")
         }
     }

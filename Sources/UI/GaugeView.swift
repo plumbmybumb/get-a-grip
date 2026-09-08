@@ -83,11 +83,7 @@ struct GaugeView: View {
             }
         } else {
             VStack(spacing: 12) {
-                PrimaryGlassButton(title: connectTitle, systemImage: "dot.radiowaves.left.and.right",
-                                   tint: Accent.bleu) {
-                    device.connect()
-                }
-                .disabled(device.state.isBusy)
+                GaugeConnectButton(connectTitle: String(localized: "Connect gauge"))
 
                 if device.isMock {
                     Button("Leave demo mode") { device.useMockDevice(false) }
@@ -151,10 +147,6 @@ struct GaugeView: View {
                 promptTare()
             }
         }
-    }
-
-    private var connectTitle: String {
-        device.state.isBusy ? device.state.label : String(localized: "Connect gauge")
     }
 }
 

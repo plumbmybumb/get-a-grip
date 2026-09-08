@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -120,7 +121,7 @@ fun PrimaryButton(
             disabledContainerColor = tint.copy(alpha = 0.35f),
             disabledContentColor = palette.graphiteInverse.copy(alpha = 0.6f),
         ),
-        contentPadding = ButtonDefaults.ContentPadding,
+        contentPadding = PaddingValues(horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding),
         modifier = modifier
             .fillMaxWidth()
             // A MINIMUM, not a hard height: a long title at a large text size must grow
@@ -139,7 +140,6 @@ fun PrimaryButton(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
-                maxLines = 2,
             )
         }
     }
@@ -171,7 +171,7 @@ fun SecondaryButton(
         // Tonal surfaces replace glass here, so the card needs an edge to read as a
         // control rather than as a patch of background.
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        contentPadding = ButtonDefaults.ContentPadding,
+        contentPadding = PaddingValues(horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding),
         modifier = modifier
             .defaultMinSize(minHeight = Metrics.fieldHeight)
             .heightIn(min = Metrics.fieldHeight)
@@ -182,7 +182,7 @@ fun SecondaryButton(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) Icon(icon, contentDescription = null)
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
         }
     }
 }
@@ -198,10 +198,12 @@ fun CapsLabel(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = LocalGripPalette.current.inkTertiary,
+    textAlign: TextAlign? = null,
 ) {
     Text(
         text.uppercase(),
         modifier = modifier,
+        textAlign = textAlign,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.8.sp,

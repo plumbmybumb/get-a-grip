@@ -63,8 +63,7 @@ struct ConsistencyCard: View {
             }
             .font(.system(.footnote, weight: .semibold))
             .foregroundStyle(Accent.graphite)
-            .padding(.horizontal, 12)
-            .frame(minHeight: 44)
+            .actionLabelLayout(minHeight: 44)
             .accessibleGlass(nil, in: .capsule)
             .contentShape(.capsule)
         }

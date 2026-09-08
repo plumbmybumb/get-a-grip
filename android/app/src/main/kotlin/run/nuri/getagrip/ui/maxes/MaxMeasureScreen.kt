@@ -84,6 +84,7 @@ import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
+import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.Motion
 
@@ -231,7 +232,7 @@ fun MaxMeasureScreen(
             )
         },
     ) { padding ->
-        BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding).readablePageWidth()) {
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -243,7 +244,7 @@ fun MaxMeasureScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Column(
-                    Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+                    Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     CapsLabel(tr("THIS MAX IS FOR"))
@@ -266,8 +267,8 @@ fun MaxMeasureScreen(
                     shape = RoundedCornerShape(Metrics.radiusCard),
                     color = palette.card,
                     modifier = Modifier
-                        .fillMaxWidth()
                         .widthIn(max = Metrics.maxContentWidth)
+                        .fillMaxWidth()
                         .height(TRACE_HEIGHT),
                 ) {
                     ForceTraceView(
@@ -320,7 +321,7 @@ fun MaxMeasureScreen(
                             SecondaryButton(
                                 title = if (device.isReadingLive) tr("Zero the gauge") else tr("Wake"),
                                 icon = Icons.Outlined.Refresh,
-                                modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+                                modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
                             ) {
                                 when (
                                     TarePolicy.tapDecision(
@@ -380,7 +381,7 @@ fun MaxMeasureScreen(
                                 title = tr("Try again"),
                                 icon = Icons.Outlined.Refresh,
                                 enabled = device.state.isConnected && !isSaving,
-                                modifier = Modifier.fillMaxWidth().widthIn(max = Metrics.maxContentWidth),
+                                modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
                             ) { start() }
                             PrimaryButton(
                                 title = tr("Use this max"),

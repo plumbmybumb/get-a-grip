@@ -364,9 +364,20 @@ final class DeviceStore {
         resetPeak(preservingTrace: true)
     }
 
+    /// Search cancellation is an explicit disconnect; automatic recovery must not
+    /// revive it afterward. Shared by Today, the gauge, max test and session controls.
+    var canCancelBroadcastSearch: Bool {
+        gaugeCapabilities.isBroadcast && state == .scanning
+    }
+
     func startStreaming(cause: StreamStartCause) {
         guard state.isConnected else { return }
-        record(.streamStartRequested(cause))
+        // A broadcast watchdog usually finds the existing scan already running.
+        // Preserve the client's actual scan facts without filling the ring with
+        // repeated requests that did not change anything on the radio.
+        if !gaugeCapabilities.isBroadcast || cause != .watchdog {
+            record(.streamStartRequested(cause))
+        }
         isStreaming = true
         client.startStreaming(cause: cause)
     }
@@ -659,6 +670,8 @@ final class DeviceStore {
         client.onDiagnostic = { [weak self] diagnostic in
             guard let self else { return }
             switch diagnostic {
+            case .broadcastScan(let event):
+                self.record(.broadcastScan(event))
             case .retiringPeripheral:
                 self.record(.retiringPeripheral)
             case .quarantineReleased:

@@ -6,6 +6,7 @@ import Foundation
 /// The small, in-memory vocabulary used to explain a post-session force-line dropout.
 /// It deliberately records no device identifier, user data or network payload.
 enum DiagnosticBreadcrumb: Equatable, Sendable {
+    case broadcastScan(String)
     case connection(ProgressorConnectionState)
     case retiringPeripheral
     case quarantineReleased
@@ -26,6 +27,8 @@ enum DiagnosticBreadcrumb: Equatable, Sendable {
 
     var text: String {
         switch self {
+        case .broadcastScan(let event):
+            "Bluetooth scan: " + event
         case .connection(let state):
             "Connection: " + state.label
         case .retiringPeripheral:
@@ -71,6 +74,9 @@ struct DiagnosticBreadcrumbRing: Sendable {
     private(set) var entries: [DiagnosticBreadcrumbEntry] = []
 
     mutating func append(_ event: DiagnosticBreadcrumb, at date: Date = .now) {
+        // Keep the first time a repeated no-op was observed. A different event
+        // still gets its own row, so loss and recovery boundaries remain visible.
+        if case .broadcastScan = event, entries.last?.event == event { return }
         if case .traceFlush(let added) = event,
            let lastIndex = entries.indices.last,
            case .traceFlush(let existing) = entries[lastIndex].event {
