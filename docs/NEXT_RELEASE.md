@@ -2,7 +2,8 @@
 
 ## App-wide weight units — iOS and Android
 
-Status: implemented for iOS **1.0.2 (6)** and Android **1.0.1 (8)**; release validation is in progress.
+Status: implemented and submitted for iOS **1.0.2 (6)** and Android **1.0.1 (8)**.
+See [release verification and submission status](RELEASE_2026-09-08_UNITS_AND_BORDERS.md).
 
 - [x] Add a persistent **Weight units: kg / lb** preference in Settings, keeping
   kilograms as the existing default. Switching should update the app immediately.
@@ -28,7 +29,8 @@ targets retain their existing meaning.
 
 ## Countdown rounding — iOS and Android
 
-Status: fixed for iOS **1.0.2 (6)** and Android **1.0.1 (8)**; release validation is in progress.
+Status: fixed, verified and included in the submitted iOS **1.0.2 (6)** and Android
+**1.0.1 (8)** builds.
 
 - [x] Fix countdown-to-whole-seconds rounding in both engines without changing
   actual countdown deadlines or measured pull-time accumulation.

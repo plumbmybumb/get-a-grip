@@ -1,5 +1,9 @@
 # iOS 1.0.2 — 8 September 2026
 
+**Superseded:** build 5 was withdrawn before release and replaced by
+[1.0.2 (6)](RELEASE_2026-09-08_UNITS_AND_BORDERS.md). The evidence below records
+the original build 5 submission.
+
 Get a Grip **1.0.2 (5)** was archived and uploaded to App Store Connect from
 source commit `ff3d162591e5d13f7dc53ed97bc3eccb214964b1`. The app and its widget
 both carry marketing version 1.0.2 and build number 5.
