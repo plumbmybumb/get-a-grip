@@ -136,6 +136,113 @@ class BroadcastGaugeClientTests {
         assertTrue(transport.stops.isEmpty())
     }
 
+    @Test fun fiveHealthyRenewalsPreserveTareHandTimingAndConnectionWithoutFakeSamples() {
+        connectAndEmit(3.0)
+        client.send(ProgressorCommand.tare)
+        val leaseSeconds = (BroadcastGaugeClient.healthyScanRenewalMillis / 1_000).toInt()
+        repeat(leaseSeconds * 5) { index ->
+            val second = index + 1
+            val previous = transport.starts.last()
+            val lastMicros = samples.last().deviceMicros
+            advance(1_000)
+            assertEquals(second, samples.size, "Renewal cannot emit a made-up force reading")
+            if (second % leaseSeconds == 0) {
+                assertNotSame(previous, transport.starts.last())
+                // Retired callbacks and another scale still cannot contaminate this link.
+                previous.onAdvertisement(advertisement(100.0))
+                transport.starts.last().onAdvertisement(advertisement(50.0, address = "other-scale"))
+                assertEquals(second, samples.size)
+            }
+            emit(8.0)
+            assertEquals(5.0, samples.last().kg, "Software tare must survive every healthy renewal")
+            assertEquals(1_000_000u, samples.last().deviceMicros - lastMicros)
+            assertEquals(1 + second / leaseSeconds, transport.starts.size)
+        }
+        assertEquals(6, transport.starts.size, "Healthy renewal cannot consume an acquisition retry budget")
+        assertEquals(5, transport.stops.size)
+        assertEquals(listOf(ProgressorConnectionState.Scanning, ProgressorConnectionState.Connected), states)
+        assertFalse(diagnostics.any { it is ProgressorClientDiagnostic.StreamStartWritten })
+    }
+
+    @Test fun renewalStartsFromActualRegistrationTimeAndOldTimersDieOnDisconnect() {
+        connectAndEmit()
+        repeat(120) { advance(1_000); emit() }
+        client.disconnect()
+        client.connect()
+        emit()
+        repeat(120) { advance(1_000); emit() }
+        assertEquals(2, transport.starts.size, "The retired scan's four-minute timer cannot renew this scan")
+        repeat(120) { advance(1_000); emit() }
+        assertEquals(3, transport.starts.size, "Replacement renews four minutes after its own start")
+        client.disconnect()
+        advance(BroadcastGaugeClient.healthyScanRenewalMillis * 2)
+        assertEquals(3, transport.starts.size)
+    }
+
+    @Test fun renewalRateLimitFailureBreaksConnectionAndHonorsCooldown() {
+        connectAndEmit(3.0)
+        client.send(ProgressorCommand.tare)
+        transport.onStart = { if (transport.starts.size == 2) it.onFailure(6) }
+        repeat(239) { advance(1_000); emit(8.0) }
+        val previous = transport.starts.last()
+        advance(1_000)
+        assertEquals(2, transport.starts.size)
+        assertTrue(states[states.lastIndex - 1] is ProgressorConnectionState.Disconnected)
+        assertEquals(ProgressorConnectionState.Scanning, client.state)
+        assertNull(client.deviceName)
+        client.startStreaming(StreamStartCause.manualWake)
+        advance(30_999)
+        assertEquals(2, transport.starts.size)
+        advance(1)
+        assertEquals(3, transport.starts.size)
+        previous.onFailure(6)
+        emit(8.0)
+        assertTrue(client.state.isConnected)
+        assertEquals(8.0, samples.last().kg, "A failed registration is a real link break, unlike healthy renewal")
+    }
+
+    @Test fun throwingRenewalRegistrationUsesRealLossAndBoundedRecovery() {
+        connectAndEmit(3.0)
+        client.send(ProgressorCommand.tare)
+        transport.onStart = { if (transport.starts.size == 2) throw IllegalStateException("Scanner unavailable") }
+        repeat(239) { advance(1_000); emit(8.0) }
+        advance(1_000)
+        assertTrue(states[states.lastIndex - 1] is ProgressorConnectionState.Disconnected)
+        assertEquals(ProgressorConnectionState.Scanning, client.state)
+        advance(1_999)
+        assertEquals(2, transport.starts.size)
+        advance(1)
+        assertEquals(3, transport.starts.size)
+        emit(8.0)
+        assertEquals(8.0, samples.last().kg)
+    }
+
+    @Test fun silentRenewalStillUsesTheExistingTenSecondLossWatchdog() {
+        connectAndEmit(3.0)
+        client.send(ProgressorCommand.tare)
+        repeat(239) { advance(1_000); emit(8.0) }
+        advance(1_000) // registration renewed; no new advertisement arrives
+        assertEquals(2, transport.starts.size)
+        assertTrue(client.state.isConnected)
+        advance(9_000) // ten seconds since the last actual sample
+        assertEquals(3, transport.starts.size)
+        assertTrue(states[states.lastIndex - 1] is ProgressorConnectionState.Disconnected)
+        assertEquals(ProgressorConnectionState.Scanning, client.state)
+        emit(8.0)
+        assertEquals(8.0, samples.last().kg)
+    }
+
+    @Test fun radioOffCancelsHealthyRenewal() {
+        connectAndEmit()
+        transport.changeRadio(ProgressorConnectionState.BluetoothOff)
+        advance(BroadcastGaugeClient.healthyScanRenewalMillis * 2)
+        assertEquals(1, transport.starts.size)
+        assertEquals(ProgressorConnectionState.BluetoothOff, client.state)
+        transport.changeRadio(ProgressorConnectionState.Idle)
+        emit()
+        assertEquals(2, transport.starts.size)
+    }
+
     @Test fun tenSecondSilenceActuallyReplacesScanThenReceivesAgain() {
         connectAndEmit(3.0)
         client.send(ProgressorCommand.tare)

@@ -25,6 +25,8 @@ import kotlin.math.max
 /// retires the link and replaces its scan, with bounded retries rather than waiting forever
 /// on a wedged scanner. Each registration has a fresh listener; a link owns its address
 /// lock, tare and watchdog. The scan quota survives disconnect/reconnect and radio-off.
+/// Healthy registrations are renewed before Android's long-scan downgrade. This changes
+/// only the Android registration, never the live measurement's state, tare or timestamps.
 ///
 /// Protocol knowledge ported from hangtime-grip-connect (BSD-2-Clause, © 2024
 /// Stevie-Ray Hartog, https://github.com/Stevie-Ray/hangtime-grip-connect).
@@ -58,6 +60,10 @@ class BroadcastGaugeClient internal constructor(
         const val scanRateWindowSeconds = 31.0
         const val maximumScanStartsPerWindow = 4
         const val scanTooFrequentError = 6
+        // AOSP defaults to ten minutes, but the verified Realme uses five. Renew with a
+        // one-minute margin; device-config access is privileged, so no permission or hidden
+        // API dependency belongs in this app. Short stream watchdog checks never renew.
+        const val healthyScanRenewalMillis = 4 * 60 * 1_000L
     }
 
     private var wantsConnection = false
@@ -70,6 +76,7 @@ class BroadcastGaugeClient internal constructor(
     private var silenceJob: Job? = null
     private var firstFrameJob: Job? = null
     private var retryJob: Job? = null
+    private var renewalJob: Job? = null
     private var acquisitionAttempts = 0
     private var acquisitionReason = "initial"
     private val recentScanStarts = ArrayDeque<Double>()
@@ -134,14 +141,7 @@ class BroadcastGaugeClient internal constructor(
         if (!wantsConnection || activeScan != null || !radioAvailable()) return
         retryJob?.cancel()
         retryJob = null
-        val now = clock.uptimeSeconds()
-        while (recentScanStarts.isNotEmpty() && now - recentScanStarts.first() >= scanRateWindowSeconds) {
-            recentScanStarts.removeFirst()
-        }
-        val quotaDelay = if (recentScanStarts.size >= maximumScanStartsPerWindow) {
-            recentScanStarts.first() + scanRateWindowSeconds - now
-        } else 0.0
-        val waitSeconds = max(minimumDelaySeconds, max(quotaDelay, scanCooldownUntil - now))
+        val waitSeconds = max(minimumDelaySeconds, scanStartDelaySeconds())
         if (waitSeconds > 0) {
             val watchGeneration = generation
             diagnostic("scan retry in ${ceil(waitSeconds).toInt()} s")
@@ -153,7 +153,20 @@ class BroadcastGaugeClient internal constructor(
             }
             return
         }
-        startScanAttempt(now)
+        startScanAttempt(clock.uptimeSeconds())
+    }
+
+    /// Shared by acquisition and healthy renewal. Check BEFORE retiring a healthy scan,
+    /// so a quota/cooldown wait cannot manufacture ten seconds of missing measurements.
+    private fun scanStartDelaySeconds(): Double {
+        val now = clock.uptimeSeconds()
+        while (recentScanStarts.isNotEmpty() && now - recentScanStarts.first() >= scanRateWindowSeconds) {
+            recentScanStarts.removeFirst()
+        }
+        val quotaDelay = if (recentScanStarts.size >= maximumScanStartsPerWindow) {
+            recentScanStarts.first() + scanRateWindowSeconds - now
+        } else 0.0
+        return max(0.0, max(quotaDelay, scanCooldownUntil - now))
     }
 
     private fun startScanAttempt(startedAt: Double) {
@@ -189,6 +202,31 @@ class BroadcastGaugeClient internal constructor(
             return
         }
         if (!state.isConnected) startFirstFrameDeadline(listener)
+        scheduleScanRenewal(listener, startedAt + healthyScanRenewalMillis / 1_000.0)
+    }
+
+    private fun scheduleScanRenewal(listener: BroadcastScanTransport.Listener, dueAt: Double) {
+        renewalJob?.cancel()
+        val watchGeneration = generation
+        renewalJob = scope.launch(Dispatchers.Main.immediate) {
+            delay(max(1L, ceil((dueAt - clock.uptimeSeconds()) * 1_000).toLong()))
+            if (generation != watchGeneration || !wantsConnection || activeScan !== listener) return@launch
+            renewalJob = null
+            if (!state.isConnected || !radioAvailable()) return@launch
+            val waitSeconds = scanStartDelaySeconds()
+            if (waitSeconds > 0) {
+                diagnostic("scan renewal delayed ${ceil(waitSeconds).toInt()} s")
+                scheduleScanRenewal(listener, clock.uptimeSeconds() + waitSeconds)
+                return@launch
+            }
+            // This is scanner maintenance, not a lost scale. Keep the link generation,
+            // address, tare, last sample and silence watchdog. A failed replacement flows
+            // through attemptFailed, which DOES publish an actual link loss before retry.
+            retireScan("scheduled renewal")
+            acquisitionAttempts = 0
+            acquisitionReason = "renewal"
+            requestScan()
+        }
     }
 
     private fun scanFailed(errorCode: Int) {
@@ -297,6 +335,8 @@ class BroadcastGaugeClient internal constructor(
     }
 
     private fun retireScan(reason: String) {
+        renewalJob?.cancel()
+        renewalJob = null
         val previous = activeScan ?: return
         activeScan = null
         runCatching { transport.stop(previous) }
@@ -318,6 +358,8 @@ class BroadcastGaugeClient internal constructor(
         firstFrameJob = null
         retryJob?.cancel()
         retryJob = null
+        renewalJob?.cancel()
+        renewalJob = null
     }
 
     private fun finishFailure(

@@ -1,0 +1,6 @@
+<en-US>
+WH-C06 scales should stay responsive during longer sessions and reconnect after losing signal. You can now cancel a search and try again. If you send a bug report, the Bluetooth diagnostics give us a clearer picture of what happened.
+</en-US>
+<fr-FR>
+Les balances WH-C06 devraient rester réactives pendant les séances longues et se reconnecter après une perte de signal. Vous pouvez aussi annuler une recherche et réessayer. Les diagnostics Bluetooth inclus dans vos signalements nous aident à mieux comprendre les problèmes.
+</fr-FR>
