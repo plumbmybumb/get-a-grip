@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.settings
 
+import run.nuri.getagrip.store.diagnosticTimeline
+
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import android.icu.text.ListFormatter
 import androidx.compose.foundation.clickable
@@ -203,7 +205,7 @@ private fun SettingsRoot(
                 gauge = device.gaugeKind.displayName + if (device.isMock) " (${tr("Demo device")})" else "",
                 diagnostics = {
                     if (device.diagnosticEntries.isEmpty()) null
-                    else device.diagnosticEntries.joinToString("\n") { it.text } +
+                    else device.diagnosticEntries.diagnosticTimeline() +
                         "\n\n" + device.pipelineDiagnostics.report()
                 },
             )
@@ -415,7 +417,7 @@ private fun AboutCard() {
             sourceUriHandler.openUri("https://github.com/plumbmybumb/get-a-grip/blob/main/THIRD_PARTY_NOTICES.txt")
         }) { Text(tr("Open-source licenses")) }
         androidx.compose.material3.TextButton(onClick = {
-            val report = device.diagnosticEntries.joinToString("\n") { it.text } +
+            val report = device.diagnosticEntries.diagnosticTimeline() +
                 "\n\n" + device.pipelineDiagnostics.report()
             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
                 as android.content.ClipboardManager

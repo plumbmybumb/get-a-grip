@@ -115,6 +115,8 @@ enum class StreamStopCause(val rawValue: String) {
 /// They let the store's in-memory breadcrumb ring include quarantine boundaries without
 /// passing Bluetooth objects out of the client.
 sealed interface ProgressorClientDiagnostic {
+    /// A scanner lifecycle fact, never a device write or an advertisement payload.
+    data class BroadcastScan(val event: String) : ProgressorClientDiagnostic
     data object RetiringPeripheral : ProgressorClientDiagnostic
     data object QuarantineReleased : ProgressorClientDiagnostic
     data class StreamStartDeferred(val cause: StreamStartCause) : ProgressorClientDiagnostic

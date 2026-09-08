@@ -7,10 +7,12 @@ import run.nuri.getagrip.ble.ProgressorConnectionState
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
 import java.util.UUID
+import java.util.Locale
 
 /// The small, in-memory vocabulary used to explain a post-session force-line dropout.
 /// It deliberately records no device identifier, user data or network payload.
 sealed interface DiagnosticBreadcrumb {
+    data class BroadcastScan(val event: String) : DiagnosticBreadcrumb
     data class Connection(val state: ProgressorConnectionState) : DiagnosticBreadcrumb
     data object RetiringPeripheral : DiagnosticBreadcrumb
     data object QuarantineReleased : DiagnosticBreadcrumb
@@ -33,6 +35,7 @@ sealed interface DiagnosticBreadcrumb {
 
     val text: String
         get() = when (this) {
+            is BroadcastScan -> "Bluetooth scan: $event"
             is Connection -> "Connection: " + state.label
             RetiringPeripheral -> "Peripheral retired and quarantined"
             QuarantineReleased -> "Peripheral quarantine released"
@@ -77,6 +80,9 @@ class DiagnosticBreadcrumbRing {
     val entries: List<DiagnosticBreadcrumbEntry> get() = storage.toList()
 
     fun append(event: DiagnosticBreadcrumb, at: Double = 0.0) {
+        // Repeated watchdog no-ops must not evict the transition that explains a stall.
+        // Keep the first timestamp; a different event starts a new entry as usual.
+        if (event is DiagnosticBreadcrumb.BroadcastScan && storage.lastOrNull()?.event == event) return
         if (event is DiagnosticBreadcrumb.TraceFlush && storage.isNotEmpty()) {
             val lastIndex = storage.lastIndex
             val existing = storage[lastIndex].event
@@ -92,5 +98,14 @@ class DiagnosticBreadcrumbRing {
 
         storage.add(DiagnosticBreadcrumbEntry(id = UUID.randomUUID(), at = at, event = event))
         while (storage.size > capacity) storage.removeAt(0)
+    }
+}
+
+/** Relative times explain long-lived scans without including a person's wall-clock date. */
+fun List<DiagnosticBreadcrumbEntry>.diagnosticTimeline(): String {
+    val start = firstOrNull()?.at ?: return ""
+    return "Elapsed from first retained event\n" + joinToString("\n") {
+        val elapsed = (it.at - start).coerceAtLeast(0.0)
+        "[+${String.format(Locale.ROOT, "%.1f", elapsed)}s] ${it.text}"
     }
 }

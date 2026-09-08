@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Refresh
@@ -222,12 +223,23 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
                 }
             }
         } else {
+            // A broadcast scan can stay Searching while the scale is silent. Always
+            // leave a manual way to stop it and return to Connect gauge; a disabled
+            // Searching button otherwise leaves restarting the app as the only escape.
+            val canCancelScan = device.gaugeCapabilities.isBroadcast &&
+                device.state == ProgressorConnectionState.Scanning
             PrimaryButton(
-                title = if (device.state.isBusy) device.state.label else tr("Connect gauge"),
-                icon = Icons.Outlined.SettingsInputAntenna,
-                enabled = !device.state.isBusy,
+                title = when {
+                    canCancelScan -> tr("Cancel")
+                    device.state.isBusy -> device.state.label
+                    else -> tr("Connect gauge")
+                },
+                icon = if (canCancelScan) Icons.Filled.Close else Icons.Outlined.SettingsInputAntenna,
+                enabled = canCancelScan || !device.state.isBusy,
                 modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
-            ) { device.connect() }
+            ) {
+                if (canCancelScan) device.disconnect() else device.connect()
+            }
 
             if (device.isMock) {
                 TextButton(

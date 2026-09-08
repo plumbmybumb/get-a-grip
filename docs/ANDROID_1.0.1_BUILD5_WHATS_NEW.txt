@@ -1,0 +1,6 @@
+<en-US>
+A fix for WH-C06 scales getting stuck on “Searching…” after losing signal. You can also cancel a search and try again. If you send a bug report, its Bluetooth diagnostics now give us a clearer picture of what happened.
+</en-US>
+<fr-FR>
+Correction d’un blocage sur « Recherche… » après une perte de signal avec les balances WH-C06. Vous pouvez aussi annuler une recherche et réessayer. Si vous signalez un bug, les diagnostics Bluetooth nous aident désormais à mieux comprendre ce qui s’est passé.
+</fr-FR>

@@ -439,7 +439,11 @@ class DeviceStore(
 
     fun startStreaming(cause: StreamStartCause) {
         if (!state.isConnected) return
-        record(DiagnosticBreadcrumb.StreamStartRequested(cause))
+        // The broadcast client reports whether it actually restarted or kept its scan.
+        // Recording every 500 ms no-op here would drown out those recovery facts.
+        if (!gaugeCapabilities.isBroadcast || cause != StreamStartCause.watchdog) {
+            record(DiagnosticBreadcrumb.StreamStartRequested(cause))
+        }
         publishStreaming(true)
         client.startStreaming(cause)
     }
@@ -630,6 +634,8 @@ class DeviceStore(
         }
         client.onDiagnostic = { diagnostic ->
             when (diagnostic) {
+                is ProgressorClientDiagnostic.BroadcastScan ->
+                    record(DiagnosticBreadcrumb.BroadcastScan(diagnostic.event))
                 ProgressorClientDiagnostic.RetiringPeripheral ->
                     record(DiagnosticBreadcrumb.RetiringPeripheral)
                 ProgressorClientDiagnostic.QuarantineReleased ->
