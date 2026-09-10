@@ -24,7 +24,14 @@ tracks proposed work; it does not claim features are implemented or released.
 ## Optional developer support — decision pending
 
 An optional “Buy me a coffee” / “Support development” action is being considered.
-No payment feature, provider, product, price or entitlement is configured yet.
+Existing support page: <https://buymeacoffee.com/irunnuri> (provided by Nuri).
+The public page was checked on 10 September 2026: it identifies Nuri, links to
+nuri.run, offers a custom contribution with a $1 USD minimum, and leaves the
+“Make this monthly” option unchecked. No digital perks are advertised on that
+page. Public-page inspection does not verify checkout completion or account
+payout readiness.
+
+No in-app payment feature, product, price or entitlement is configured yet.
 Keep any support action separate from project attribution, with no training
 features or assistance dependent on paying.
 
