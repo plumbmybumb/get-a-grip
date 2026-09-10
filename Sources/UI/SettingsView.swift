@@ -211,7 +211,7 @@ struct SettingsView: View {
 
     private var openSourceCard: some View {
         MaterialCard {
-            SettingsDisclosure("Open source") {
+            SettingsDisclosure("Open source & community") {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Get a Grip is open source under the Mozilla Public License 2.0.")
                         .font(.footnote).foregroundStyle(Ink.secondary)
@@ -220,6 +220,17 @@ struct SettingsView: View {
                     sourceLink("MPL 2.0", symbol: "doc.text", path: "/blob/main/LICENSE")
                     sourceLink("Open-source licenses", symbol: "doc.on.doc",
                                path: "/blob/main/THIRD_PARTY_NOTICES.txt")
+
+                    Divider()
+
+                    communityLink("Grip Connect", symbol: "wave.3.right",
+                                  description: "Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause).",
+                                  destination: "https://github.com/Stevie-Ray/hangtime-grip-connect")
+                        .accessibilityIdentifier("settings.community.gripConnect")
+                    communityLink("Crimpdeq", symbol: "wrench.and.screwdriver",
+                                  description: "Open-source force sensor. Thanks to its creator for testing Get a Grip.",
+                                  destination: "https://crimpdeq.com/")
+                        .accessibilityIdentifier("settings.community.crimpdeq")
                 }
             }
         }
@@ -237,6 +248,36 @@ struct SettingsView: View {
             .contentShape(Rectangle())
         }
         .tint(Accent.graphite)
+    }
+
+    private func communityLink(_ name: String, symbol: String,
+                               description: LocalizedStringKey, destination: String) -> some View {
+        Link(destination: URL(string: destination)!) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: symbol)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(verbatim: name)
+                        .font(.subheadline.weight(.medium))
+                    Text(description)
+                        .font(.footnote)
+                        .foregroundStyle(Ink.secondary)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.up.right")
+                    .font(.caption)
+                    .foregroundStyle(Ink.tertiary)
+                    .accessibilityHidden(true)
+            }
+            .font(.subheadline)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .tint(Accent.graphite)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - About
@@ -262,14 +303,6 @@ struct SettingsView: View {
                         Text("Get a Grip works with force gauges from \(makersSentence). It is not made by, affiliated with, or endorsed by any of them.")
                             .font(.system(.footnote))
                             .foregroundStyle(Ink.secondary)
-
-                        // The Tindeq protocol is published by Tindeq itself; everything else here
-                        // is somebody's reverse-engineering work, given away under a licence that
-                        // asks for exactly this notice.
-                        Text("Protocol support for every gauge other than the Tindeq Progressor is ported from hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray Hartog).")
-                            .font(.system(.footnote))
-                            .foregroundStyle(Ink.secondary)
-
                     }
                 }
 

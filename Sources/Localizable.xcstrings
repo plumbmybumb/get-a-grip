@@ -1,6 +1,11 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Open source & community" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Open source et communauté"}}}},
+    "Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause)." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Protocoles des capteurs par Stevie-Ray Hartog (© 2024, BSD-2-Clause)."}}}},
+    "Open-source force sensor. Thanks to its creator for testing Get a Grip." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Capteur de force open source. Merci à son créateur d’avoir testé Get a Grip."}}}},
+    "Grip Connect" : {"shouldTranslate": false},
+    "Crimpdeq" : {"shouldTranslate": false},
     ", one-second average %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": ", moyenne sur une seconde %1$@ %2$@"}}}},
     "20–30 %% of that is %@–%@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "20–30 %% de cela représente %1$@–%2$@ %3$@"}}}},
     "%@–%@ %@ target" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "cible %1$@–%2$@ %3$@"}}}},

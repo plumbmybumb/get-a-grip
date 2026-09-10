@@ -10,6 +10,11 @@ import run.nuri.getagrip.ui.components.Chip
 
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import android.icu.text.ListFormatter
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +34,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SettingsInputAntenna
@@ -60,12 +68,14 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -85,6 +95,8 @@ import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
+import run.nuri.getagrip.ui.theme.Motion
+import run.nuri.getagrip.ui.theme.rememberReduceMotion
 import run.nuri.getagrip.ui.tour.LocalTourController
 
 private const val ROUTE_SETTINGS = "settings"
@@ -215,6 +227,7 @@ private fun SettingsRoot(
                 },
             )
             LegalCard()
+            OpenSourceCommunityCard()
             AboutCard()
         }
     }
@@ -376,6 +389,107 @@ private fun andList(items: List<String>): String = when (items.size) {
 // MARK: - About
 
 @Composable
+private fun OpenSourceCommunityCard() {
+    val palette = LocalGripPalette.current
+    val reduceMotion = rememberReduceMotion()
+    var expanded by remember { mutableStateOf(false) }
+    val disclosureState = tr(if (expanded) "Expanded" else "Collapsed")
+
+    Card {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = Metrics.controlMinHeight)
+                .clip(RoundedCornerShape(Metrics.radiusInner))
+                .clickable(role = Role.Button) { expanded = !expanded }
+                .semantics { stateDescription = disclosureState },
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                tr("Open source & community"),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleSmall,
+                color = palette.inkPrimary,
+            )
+            Icon(
+                if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                tint = palette.inkTertiary,
+            )
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = if (reduceMotion) fadeIn(Motion.state(true)) else
+                expandVertically(Motion.state(false)) + fadeIn(Motion.state(false)),
+            exit = if (reduceMotion) fadeOut(Motion.state(true)) else
+                shrinkVertically(Motion.state(false)) + fadeOut(Motion.state(false)),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                CommunityLink(
+                    title = tr("Source code"),
+                    url = "https://github.com/plumbmybumb/get-a-grip",
+                )
+                CommunityLink(
+                    title = tr("Open-source licenses"),
+                    url = "https://github.com/plumbmybumb/get-a-grip/blob/main/THIRD_PARTY_NOTICES.txt",
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    color = palette.inkTertiary.copy(alpha = 0.15f),
+                )
+                CommunityLink(
+                    title = "Grip Connect",
+                    description = tr("Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause)."),
+                    url = "https://github.com/Stevie-Ray/hangtime-grip-connect",
+                )
+                CommunityLink(
+                    title = "Crimpdeq",
+                    description = tr("Open-source force sensor. Thanks to its creator for testing Get a Grip."),
+                    url = "https://crimpdeq.com/",
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityLink(title: String, url: String, description: String? = null) {
+    val palette = LocalGripPalette.current
+    val uriHandler = LocalUriHandler.current
+    val actionLabel = tr("Open in a browser")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = Metrics.controlMinHeight)
+            .clip(RoundedCornerShape(Metrics.radiusInner))
+            .clickable(role = Role.Button, onClickLabel = actionLabel) { uriHandler.openUri(url) }
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = palette.graphite,
+            )
+            description?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
+            }
+        }
+        Icon(
+            Icons.AutoMirrored.Outlined.OpenInNew,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = palette.inkTertiary,
+        )
+    }
+}
+
+@Composable
 private fun AboutCard() {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
@@ -407,7 +521,6 @@ private fun AboutCard() {
             }.getOrNull() ?: L10n.tr("—")
         }
     }
-    val sourceUriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val makers = remember { andList(GaugeKind.selectable.map { it.maker }.distinct()) }
 
     Card {
@@ -415,12 +528,6 @@ private fun AboutCard() {
         Spacer(Modifier.size(4.dp))
         LabelledValue(tr("App"), "Get a Grip")
         LabelledValue(tr("Version"), version)
-        androidx.compose.material3.TextButton(onClick = {
-            sourceUriHandler.openUri("https://github.com/plumbmybumb/get-a-grip")
-        }) { Text(tr("Source code")) }
-        androidx.compose.material3.TextButton(onClick = {
-            sourceUriHandler.openUri("https://github.com/plumbmybumb/get-a-grip/blob/main/THIRD_PARTY_NOTICES.txt")
-        }) { Text(tr("Open-source licenses")) }
         androidx.compose.material3.TextButton(onClick = {
             val report = device.diagnosticEntries.diagnosticTimeline() +
                 "\n\n" + device.pipelineDiagnostics.report()

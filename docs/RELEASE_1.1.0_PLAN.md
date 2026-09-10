@@ -3,23 +3,31 @@
 Started 10 September 2026 on `codex/release-1-1-0`, based on public commit
 `333d630fa63b728335fcc7309d8f0e0f32cf005e`. This is the next shared iOS/Android
 development branch. The existing release tags remain immutable. This document
-tracks proposed work; it does not claim features are implemented or released.
+tracks proposed and completed work. Checked items are implemented on this branch;
+they have not been released unless explicitly noted.
 
-## Open source and community — scoped
+## Open source and community — implemented
 
-- [ ] Extend the existing Settings source/credits area on both platforms with a
+- [x] Extend the existing Settings source/credits area on both platforms with a
   compact “Open source & community” disclosure or section.
-- [ ] Link **Grip Connect** to
+- [x] Link **Grip Connect** to
   <https://github.com/Stevie-Ray/hangtime-grip-connect>, crediting gauge protocol
   ports from Stevie-Ray Hartog's project. Retain the existing BSD-2-Clause
   copyright and full notices in every distributed copy.
-- [ ] Link **Crimpdeq** to <https://crimpdeq.com/>. Describe it as an open-source
+- [x] Link **Crimpdeq** to <https://crimpdeq.com/>. Describe it as an open-source
   force sensor and thank its creator for testing Get a Grip. This is a community
   report, not new first-party hardware verification; do not change gauge flags.
-- [ ] Keep links optional, open them in the browser and preserve short localized
+- [x] Keep links optional, open them in the browser and preserve short localized
   descriptions and accessible native tap targets. Avoid partnership or broad
   compatibility claims.
-- [ ] Verify English/French layout, large text and link destinations on both apps.
+- [x] Verify English/French layout, large text and link destinations on both apps.
+
+Verified 10 September 2026: iOS simulator build and Android `assembleDebug` pass;
+15 existing Android Settings tests pass. Both project links open the intended
+browser destinations on both platforms. Inspected English and French layouts,
+including the largest requested iOS accessibility text size and Android 200%
+font size. Preview screenshots are in the ignored
+`build/review/community-links/` directory. Test simulators are shut down.
 
 ## Optional developer support — decision pending
 

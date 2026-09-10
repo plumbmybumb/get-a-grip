@@ -12,7 +12,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1073) {
+val STRING_KEYS: Map<String, Int> = buildMap(1078) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -372,6 +372,7 @@ private fun string_keysChunk2(into: MutableMap<String, Int>) {
     into["Couldn't share"] = R.string.s_couldn_t_share
     into["Couldn't write to Photos."] = R.string.a_couldn_t_write_to_photos
     into["Counting"] = R.string.s_counting
+    into["Crimpdeq"] = R.string.s_crimpdeq
     into["Current %1\$s kilograms, peak %2\$s kilograms%3\$s"] = R.string.s_current_kilograms_peak_kilograms
     into["Current %s kilograms, peak %s kilograms%s"] = R.string.s_current_kilograms_peak_kilograms
     into["Custom"] = R.string.s_custom
@@ -469,6 +470,7 @@ private fun string_keysChunk2(into: MutableMap<String, Int>) {
     into["Gauge control point cannot acknowledge tare writes"] = R.string.s_gauge_control_point_cannot_acknowledge_tare_writes
     into["Gauge did not acknowledge the command. Reconnect and try again."] = R.string.s_gauge_did_not_acknowledge_the_command_reconnect_and_try
     into["Gauge not connected"] = R.string.s_gauge_not_connected
+    into["Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause)."] = R.string.s_gauge_protocols_by_stevie_ray_hartog_2024_bsd_2_clause
     into["Gauge. Currently %s."] = R.string.s_gauge_currently
     into["Gauge: %1\$s%2\$s. %3\$s"] = R.string.s_gauge_c36f16
     into["Gauge: %s%s. %s"] = R.string.s_gauge_c36f16
@@ -478,16 +480,17 @@ private fun string_keysChunk2(into: MutableMap<String, Int>) {
     into["Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice."] = R.string.a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose
     into["Get a Grip is open source under the Mozilla Public License 2.0."] = R.string.s_get_a_grip_is_open_source_under_the_mozilla_public_licen
     into["Get a Grip runs your hangboard sessions"] = R.string.s_get_a_grip_runs_your_hangboard_sessions
-    into["Get a Grip works with force gauges from %s. It is not made by, affiliated with, or endorsed by any of them."] = R.string.s_get_a_grip_works_with_force_gauges_from_it_is_not_made_b
-    into["Get a Grip — %s"] = R.string.s_get_a_grip_334823
 }
 
 private fun string_keysChunk3(into: MutableMap<String, Int>) {
+    into["Get a Grip works with force gauges from %s. It is not made by, affiliated with, or endorsed by any of them."] = R.string.s_get_a_grip_works_with_force_gauges_from_it_is_not_made_b
+    into["Get a Grip — %s"] = R.string.s_get_a_grip_334823
     into["Get a Grip — Bug report"] = R.string.s_get_a_grip_bug_report
     into["Get a Grip — Feature request"] = R.string.s_get_a_grip_feature_request
     into["Get a Grip — training export"] = R.string.s_get_a_grip_training_export
     into["Get ready"] = R.string.s_get_ready_70c1b9
     into["Grip"] = R.string.s_grip_bcd6f0
+    into["Grip Connect"] = R.string.s_grip_connect
     into["Grips from your routines. Tap one, then change anything you like."] = R.string.s_grips_from_your_routines_tap_one_then_change_anything_yo
     into["Griptonite"] = R.string.s_griptonite
     into["Griptonite Motherboard"] = R.string.s_griptonite_motherboard
@@ -630,12 +633,12 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Next reminder at %s"] = R.string.s_next_reminder_at
     into["Next: %1\$s, target %2\$s to %3\$s %4\$s"] = R.string.s_next_target_to
     into["Next: %1\$s, target %2\$s to %3\$s kilograms"] = R.string.s_next_target_to_kilograms
-    into["Next: %s"] = R.string.s_next_37caf7
-    into["Next: %s, target %s to %s %s"] = R.string.s_next_target_to
-    into["Next: %s, target %s to %s kilograms"] = R.string.s_next_target_to_kilograms
 }
 
 private fun string_keysChunk4(into: MutableMap<String, Int>) {
+    into["Next: %s"] = R.string.s_next_37caf7
+    into["Next: %s, target %s to %s %s"] = R.string.s_next_target_to
+    into["Next: %s, target %s to %s kilograms"] = R.string.s_next_target_to_kilograms
     into["No %s found"] = R.string.s_no_found
     into["No Bluetooth"] = R.string.s_no_bluetooth
     into["No daily target and no reminders — it waits on Today until you feel like it."] = R.string.s_no_daily_target_and_no_reminders_it_waits_on_today_until
@@ -689,6 +692,8 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Open Settings"] = R.string.s_open_settings
     into["Open in a browser"] = R.string.a_open_in_a_browser
     into["Open source"] = R.string.s_open_source
+    into["Open source & community"] = R.string.s_open_source_community
+    into["Open-source force sensor. Thanks to its creator for testing Get a Grip."] = R.string.s_open_source_force_sensor_thanks_to_its_creator_for_testi
     into["Open-source licenses"] = R.string.s_open_source_licenses
     into["Opens an email draft with your app version, Android version, phone model and selected gauge."] = R.string.a_opens_an_email_draft_with_your_app_version_android_versi
     into["Opens the grip picker"] = R.string.s_opens_the_grip_picker
@@ -781,14 +786,14 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Save this as your max on this grip, or try again."] = R.string.s_save_this_as_your_max_on_this_grip_or_try_again
     into["Save to Photos"] = R.string.s_save_to_photos
     into["Save when you are happy"] = R.string.s_save_when_you_are_happy
+}
+
+private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Saved"] = R.string.s_saved_c0ae8f
     into["Saved at %1\$d × %2\$d points at %3\$d×, so it lands in Photos at the size a story wants."] = R.string.a_saved_at_1_d_2_d_points_at_3_d_so_it_lands_in_photos_at
     into["Saved to Photos"] = R.string.s_saved_to_photos
     into["Saving…"] = R.string.s_saving
     into["Scale stopped broadcasting"] = R.string.s_scale_stopped_broadcasting
-}
-
-private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Scale with the new max"] = R.string.s_scale_with_the_new_max
     into["Scan a routine"] = R.string.s_scan_a_routine
     into["Scan a shared routine"] = R.string.a_scan_a_shared_routine
@@ -934,14 +939,14 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["This is what Today calls it. Everything else you build underneath, and nothing is saved until you tap Save."] = R.string.s_this_is_what_today_calls_it_everything_else_you_build_un
     into["This is your routine"] = R.string.s_this_is_your_routine
     into["This link isn't a routine from Get a Grip."] = R.string.s_this_link_isn_t_a_routine_from_get_a_grip
+}
+
+private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["This routine asks for %d a day."] = R.string.a_this_routine_asks_for_d_a_day
     into["This routine code couldn't be read."] = R.string.s_this_routine_code_couldn_t_be_read
     into["This routine code couldn't be read. It may be damaged or incomplete."] = R.string.s_this_routine_code_couldn_t_be_read_it_may_be_damaged_or
     into["This routine is too large to import."] = R.string.s_this_routine_is_too_large_to_import
     into["This routine was shared from a newer version of Get a Grip. Update the app to import it."] = R.string.s_this_routine_was_shared_from_a_newer_version_of_get_a_gr
-}
-
-private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Thumb"] = R.string.s_thumb_557518
     into["Thumb, %s"] = R.string.s_thumb_2ce0ce
     into["Time for a session."] = R.string.s_time_for_a_session
@@ -1087,14 +1092,14 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["pull"] = R.string.s_pull_c872d5
     into["pulls"] = R.string.s_pulls_6f8ad4
     into["recorded "] = R.string.s_recorded
+}
+
+private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["runner.rest.badge.next"] = R.string.s_runner_rest_badge_next
     into["s"] = R.string.s_s
     into["seconds"] = R.string.a_seconds
     into["session"] = R.string.s_session_fcbdc4
     into["sessions"] = R.string.s_sessions_781791
-}
-
-private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["set"] = R.string.s_set_65c10d
     into["sets"] = R.string.s_sets_d6c822
     into["sleep"] = R.string.s_sleep

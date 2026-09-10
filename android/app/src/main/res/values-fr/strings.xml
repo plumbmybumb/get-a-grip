@@ -371,6 +371,7 @@
     <string name="s_gauge_control_point_cannot_acknowledge_tare_writes">Le point de contrôle du capteur ne peut pas accuser réception des tares</string>
     <string name="s_gauge_did_not_acknowledge_the_command_reconnect_and_try">La jauge n’a pas confirmé la commande. Reconnectez-la et réessayez.</string>
     <string name="s_gauge_not_connected">Capteur non connecté</string>
+    <string name="s_gauge_protocols_by_stevie_ray_hartog_2024_bsd_2_clause">Protocoles des capteurs par Stevie-Ray Hartog (© 2024, BSD-2-Clause).</string>
     <string name="s_gauge_currently">Capteur. Actuellement %s.</string>
     <string name="s_gauge_c36f16">Capteur : %1$s%2$s. %3$s</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you_so_you">Get a Grip connecte et tare ton capteur à ta place, tu peux donc toucher ceci avant de te magnésier. Si le capteur dort encore, il attend.</string>
@@ -573,6 +574,8 @@
     <string name="s_open">Tendue</string>
     <string name="s_open_settings">Ouvrir Réglages</string>
     <string name="s_open_source">Code source ouvert</string>
+    <string name="s_open_source_community">Open source et communauté</string>
+    <string name="s_open_source_force_sensor_thanks_to_its_creator_for_testi">Capteur de force open source. Merci à son créateur d’avoir testé Get a Grip.</string>
     <string name="s_open_source_licenses">Licences open source</string>
     <string name="s_opens_the_grip_picker">Ouvre le sélecteur de prise</string>
     <string name="s_opens_the_routine_builder">Ouvre le créateur de routine.</string>

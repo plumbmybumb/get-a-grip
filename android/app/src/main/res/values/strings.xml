@@ -283,6 +283,7 @@
     <string name="s_couldn_t_save_this_workout_please_try_again">Couldn\'t save this workout. Please try again.</string>
     <string name="s_couldn_t_share">Couldn\'t share</string>
     <string name="s_counting">Counting</string>
+    <string name="s_crimpdeq" translatable="false">Crimpdeq</string>
     <string name="s_current_kilograms_peak_kilograms">Current %1$s kilograms, peak %2$s kilograms%3$s</string>
     <string name="s_custom">Custom</string>
     <string name="s_doigt">DOIGT</string>
@@ -371,6 +372,7 @@
     <string name="s_gauge_control_point_cannot_acknowledge_tare_writes">Gauge control point cannot acknowledge tare writes</string>
     <string name="s_gauge_did_not_acknowledge_the_command_reconnect_and_try">Gauge did not acknowledge the command. Reconnect and try again.</string>
     <string name="s_gauge_not_connected">Gauge not connected</string>
+    <string name="s_gauge_protocols_by_stevie_ray_hartog_2024_bsd_2_clause">Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause).</string>
     <string name="s_gauge_currently">Gauge. Currently %s.</string>
     <string name="s_gauge_c36f16">Gauge: %1$s%2$s. %3$s</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you_so_you">Get a Grip connects and tares your gauge for you, so you can tap this before you chalk up. If the gauge is still asleep it waits.</string>
@@ -385,6 +387,7 @@
     <string name="s_get_a_grip_training_export">Get a Grip — training export</string>
     <string name="s_get_ready_70c1b9">Get ready</string>
     <string name="s_grip_bcd6f0">Grip</string>
+    <string name="s_grip_connect" translatable="false">Grip Connect</string>
     <string name="s_grips_from_your_routines_tap_one_then_change_anything_yo">Grips from your routines. Tap one, then change anything you like.</string>
     <string name="s_griptonite">Griptonite</string>
     <string name="s_griptonite_motherboard">Griptonite Motherboard</string>
@@ -574,6 +577,8 @@
     <string name="s_open">Open</string>
     <string name="s_open_settings">Open Settings</string>
     <string name="s_open_source">Open source</string>
+    <string name="s_open_source_community">Open source &amp; community</string>
+    <string name="s_open_source_force_sensor_thanks_to_its_creator_for_testi">Open-source force sensor. Thanks to its creator for testing Get a Grip.</string>
     <string name="s_open_source_licenses">Open-source licenses</string>
     <string name="s_opens_the_grip_picker">Opens the grip picker</string>
     <string name="s_opens_the_routine_builder">Opens the routine builder.</string>
