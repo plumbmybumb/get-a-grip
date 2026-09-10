@@ -44,8 +44,6 @@ internal fun SupportCard(gauge: String, diagnostics: () -> String?) {
                 if (report == null) compose(bug = true) else pendingDiagnostics = report
             }
             SupportRow(tr("Request a feature"), Icons.Outlined.Lightbulb) { compose(bug = false) }
-            Text(tr("Opens an email draft with your app version, Android version, phone model and selected gauge."),
-                style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
         }
     }
 

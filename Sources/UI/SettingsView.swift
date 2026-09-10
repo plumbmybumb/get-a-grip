@@ -535,13 +535,6 @@ private struct SupportCard: View {
                     startBugReport()
                 }
 
-                SettingsDisclosure("Email details") {
-                    Text("Both open an email. Your app version, iOS version, device and selected gauge are added at the end of the message, so a report arrives with the context to act on it.")
-                        .font(.system(.caption, weight: .medium))
-                        .foregroundStyle(Ink.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
                 if showsAddress {
                     addressRow
                 }

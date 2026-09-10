@@ -29,6 +29,57 @@ including the largest requested iOS accessibility text size and Android 200%
 font size. Preview screenshots are in the ignored
 `build/review/community-links/` directory. Test simulators are shut down.
 
+## Settings support copy — implemented
+
+- [x] Remove the iOS “Email details” disclosure and equivalent Android explanatory
+  paragraph. Keep both support actions, email metadata, diagnostics consent and
+  fallback behavior intact.
+
+Verified 10 September 2026: iOS simulator build passes; Android app compilation
+and all six existing `SupportTests` pass.
+
+## Rest presentation — design proposal
+
+The proposed layout is not implemented in either app yet.
+
+- [ ] For rests originally scheduled for at least 10 seconds, replace the measured
+  weight hero with a modestly larger glyph, a prominent next-hand heading and full
+  grip wording. Retain a secondary upcoming target when present.
+- [ ] Center a large rest countdown over the existing graph area, with a quiet
+  native material treatment. Keep the graph frame and bottom actions in place;
+  make set/pull position easier to read. Avoid duplicating the grip-change banner.
+- [ ] Decide the layout from the rest-owning slot's scheduled `restAfter`, including
+  set breaks and per-set overrides. Do not switch it back as remaining time crosses
+  10 or 3 seconds. Keep short rests in the current layout.
+- [ ] Enter only during actual rest, after release. Keep LET GO and measured load
+  visible while releasing. Restore the live view immediately when rest ends.
+- [ ] Preserve the resting layout through pause with a clear paused timer. Signal
+  recovery notices must remain visible; tare must retain its load confirmation.
+- [ ] Use one restrained entry/exit transition, no frame-by-frame graph blur or
+  new live-data subscriptions. Preserve reduced-motion/transparency behavior.
+- [ ] Use native iOS materials and Android Material surfaces; verify long/short
+  rests, set changes, hand changes, pause, disconnect, skip, timer-only sessions,
+  English/French, large text and small screens before integrating.
+
+Existing snapshots already look ahead to the upcoming grip, side, target and
+set/pull position during rest. They need a coarse presentation flag or scheduled
+rest duration; `secondsShown` alone cannot select this layout correctly.
+
+## iOS nested corners — audit complete, changes proposed
+
+Only `RunnerScreenBorder` explicitly uses `ConcentricRectangle` today. Cards use
+fixed continuous radii; custom glass buttons use capsules, while other buttons
+use native glass styles. There are no explicit `containerShape` declarations.
+
+- [ ] Adopt container-aware concentric corners for appropriate nested surfaces,
+  starting with the proposed graph/rest treatment. Keep capsule buttons and the
+  intentional finger-glyph geometry. Review existing card/badge pairs separately.
+
+Apple treats fixed shapes, capsules and concentric shapes as complementary tools:
+[Build a SwiftUI app with the new design](https://developer.apple.com/videos/play/wwdc2025/356/).
+Use glass selectively for a distinct functional layer, with readable content:
+[Materials guidance](https://developer.apple.com/design/human-interface-guidelines/materials).
+
 ## Optional developer support — decision pending
 
 An optional “Buy me a coffee” / “Support development” action is being considered.
