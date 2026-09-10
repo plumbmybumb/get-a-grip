@@ -1,5 +1,8 @@
 # Next release fixes and features
 
+Active development has moved to the [1.1.0 plan](RELEASE_1.1.0_PLAN.md) on
+`codex/release-1-1-0`. The completed items below document the preceding release.
+
 ## App-wide weight units — iOS and Android
 
 Status: implemented and submitted for iOS **1.0.2 (6)** and Android **1.0.1 (8)**.
