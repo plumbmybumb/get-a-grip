@@ -35,6 +35,7 @@ final class MaxesFlowUITests: XCTestCase {
         let save = app.buttons["max.measure.save"]
         XCTAssertEqual(save.label, "Save maxes")
         tap(save, in: app)
+        dismissReceiptIfPresent(in: app)
         XCTAssertTrue(app.buttons["maxes.edit.\(sharedGrip)"].waitForExistence(timeout: 5))
         XCTAssertEqual(current(sharedGrip, side: "left", in: app).value as? String,
                        "\(number(in: leftValue)) kg")
@@ -72,7 +73,7 @@ final class MaxesFlowUITests: XCTestCase {
         screenshot(app, name: "Cancelled capture leaves existing maxes intact")
     }
 
-    func testEditPrefillsExactHandsCancelsDraftAndSavesOnlyChangedHand() {
+    func testEditPrefillsExactHandsCancelsDraftAndCommitsFocusedFieldOnSave() {
         let app = launch()
         defer { app.terminate() }
         openEdit(for: splitGrip, in: app)
@@ -90,14 +91,16 @@ final class MaxesFlowUITests: XCTestCase {
         XCTAssertTrue(valueButton("Left hand", in: app).label.contains("20.5 kg"))
         XCTAssertTrue(valueButton("Right hand", in: app).label.contains("21.8 kg"))
         enter("22.2", for: "Left hand", in: app)
-        screenshot(app, name: "Manual edit changes one exact hand")
+        typeWithoutFinishing("23.4", for: "Right hand", in: app)
+        screenshot(app, name: "Save while the right-hand field still has focus")
         tap(app.buttons["maxEdit.save"], in: app)
+        dismissReceiptIfPresent(in: app)
         XCTAssertTrue(app.buttons["maxes.edit.\(splitGrip)"].waitForExistence(timeout: 5))
 
         openEdit(for: splitGrip, in: app)
         XCTAssertTrue(valueButton("Left hand", in: app).label.contains("22.2 kg"))
-        XCTAssertTrue(valueButton("Right hand", in: app).label.contains("21.8 kg"),
-                      "Saving left must retain the exact right-hand value")
+        XCTAssertTrue(valueButton("Right hand", in: app).label.contains("23.4 kg"),
+                      "Toolbar Save must commit the focused field together with the completed left edit")
         XCTAssertFalse(app.buttons["maxEdit.save"].isEnabled)
         XCTAssertTrue(app.buttons["maxEdit.history"].exists)
     }
@@ -111,9 +114,137 @@ final class MaxesFlowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["maxEdit.save"].waitForExistence(timeout: 3))
         enter("32.1", for: "Left hand", in: app)
         tap(app.buttons["maxEdit.save"], in: app)
+        dismissReceiptIfPresent(in: app)
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(app.navigationBars["New max"].exists)
         XCTAssertFalse(app.navigationBars["Edit maxes"].exists)
+    }
+
+    func testExplicitUnchangedRetestAddsHistoryForOnlyTheSelectedHand() {
+        let app = launch()
+        defer { app.terminate() }
+        openEdit(for: splitGrip, in: app)
+        let leftRetest = app.buttons["maxEdit.retest.left"]
+        let rightRetest = app.buttons["maxEdit.retest.right"]
+        XCTAssertTrue(leftRetest.waitForExistence(timeout: 3))
+        XCTAssertTrue(rightRetest.exists)
+        XCTAssertFalse(leftRetest.isSelected)
+        XCTAssertFalse(rightRetest.isSelected)
+        XCTAssertFalse(app.buttons["maxEdit.save"].isEnabled)
+        tap(leftRetest, in: app)
+        XCTAssertTrue(leftRetest.isSelected)
+        XCTAssertFalse(rightRetest.isSelected)
+        XCTAssertTrue(app.buttons["maxEdit.save"].isEnabled)
+        tap(app.buttons["maxEdit.cancel"], in: app)
+
+        openEdit(for: splitGrip, in: app)
+        XCTAssertFalse(leftRetest.isSelected, "Cancelling must discard explicit retest selections")
+        XCTAssertFalse(app.buttons["maxEdit.save"].isEnabled)
+        tap(leftRetest, in: app)
+        screenshot(app, name: "Explicit unchanged left-hand retest")
+        tap(app.buttons["maxEdit.save"], in: app)
+        dismissReceiptIfPresent(in: app)
+        XCTAssertTrue(app.buttons["maxes.edit.\(splitGrip)"].waitForExistence(timeout: 5))
+        XCTAssertEqual(current(splitGrip, side: "left", in: app).value as? String, "20.5 kg")
+        XCTAssertEqual(current(splitGrip, side: "right", in: app).value as? String, "21.8 kg")
+
+        openEdit(for: splitGrip, in: app)
+        tap(app.buttons["maxEdit.history"], in: app)
+        let leftHistory = historyRow("left", in: app)
+        let rightHistory = historyRow("right", in: app)
+        XCTAssertTrue(leftHistory.waitForExistence(timeout: 3))
+        XCTAssertTrue(leftHistory.label.contains("20.5 kilograms, recorded "))
+        XCTAssertTrue(leftHistory.label.contains("2 earlier maxes"),
+                      "An explicitly repeated value must append a new dated record")
+        XCTAssertTrue(rightHistory.label.contains("21.8 kilograms, measured "))
+        XCTAssertTrue(rightHistory.label.contains("1 earlier max"),
+                      "The untouched hand must retain its existing record and provenance")
+        screenshot(app, name: "Unchanged retest appends only the selected hand's history")
+    }
+
+    func testRecentGripChoicePrefillsItsExactHandValuesWithoutWriting() {
+        let app = launch()
+        defer { app.terminate() }
+        tap(app.buttons["maxes.add"], in: app)
+        let recent = app.descendants(matching: .any).matching(identifier: "newMax.recentGrips").firstMatch
+        XCTAssertTrue(recent.waitForExistence(timeout: 3))
+        let choice = app.buttons["newMax.grip.\(splitGrip)"]
+        for _ in 0..<5 where !choice.isHittable { recent.swipeLeft() }
+        tap(choice, in: app)
+        XCTAssertTrue(choice.isSelected)
+        screenshot(app, name: "Choose a recent routine grip before entering maxes")
+        tap(app.buttons["Enter by hand"], in: app)
+        XCTAssertTrue(app.buttons["maxEdit.save"].waitForExistence(timeout: 3))
+        XCTAssertTrue(valueButton("Left hand", in: app).label.contains("20.5 kg"))
+        XCTAssertTrue(valueButton("Right hand", in: app).label.contains("21.8 kg"))
+        XCTAssertFalse(app.buttons["maxEdit.shared"].exists,
+                       "The chosen grip must replace every component of the initial seed")
+        XCTAssertFalse(app.buttons["maxEdit.save"].isEnabled)
+        tap(app.buttons["maxEdit.cancel"], in: app)
+        let newMax = app.navigationBars["New max"]
+        XCTAssertTrue(newMax.waitForExistence(timeout: 3))
+        tap(newMax.buttons["Cancel"], in: app)
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(current(splitGrip, side: "left", in: app).value as? String, "20.5 kg")
+        XCTAssertEqual(current(splitGrip, side: "right", in: app).value as? String, "21.8 kg")
+        openEdit(for: splitGrip, in: app)
+        tap(app.buttons["maxEdit.history"], in: app)
+        XCTAssertTrue(historyRow("left", in: app).label.contains("1 earlier max"))
+        XCTAssertTrue(historyRow("right", in: app).label.contains("1 earlier max"))
+    }
+
+    func testMeasurementCorrectionCanBeCancelledThenSavedWithHonestProvenanceAndTargetReceipt() {
+        let app = launch(withTargetRoutines: true)
+        defer { app.terminate() }
+        openMeasurement(for: sharedGrip, in: app)
+        let measured = capture("left", in: app)
+        tap(app.buttons["max.measure.adjust"], in: app)
+        XCTAssertTrue(app.buttons["max.adjust.apply"].waitForExistence(timeout: 3))
+        XCTAssertFalse(valueButton("Right hand", in: app).exists,
+                       "Adjusting a captured left peak cannot fabricate a right-hand value")
+        typeWithoutFinishing("27.4", for: "Left hand", in: app)
+        tap(app.buttons["max.adjust.cancel"], in: app)
+        XCTAssertEqual(app.buttons["max.measure.left"].value as? String, measured,
+                       "Cancelling correction must keep the original captured value")
+        XCTAssertEqual(app.buttons["max.measure.right"].value as? String, "Not measured")
+
+        tap(app.buttons["max.measure.adjust"], in: app)
+        XCTAssertTrue(valueButton("Left hand", in: app).label.contains("\(number(in: measured)) kg"))
+        typeWithoutFinishing("24.5", for: "Left hand", in: app)
+        screenshot(app, name: "Correct captured left-hand value before saving")
+        tap(app.buttons["max.adjust.apply"], in: app)
+        XCTAssertTrue((app.buttons["max.measure.left"].value as? String ?? "").hasPrefix("24.5 "))
+        XCTAssertEqual(app.buttons["max.measure.right"].value as? String, "Not measured")
+        tap(app.buttons["max.measure.save"], in: app)
+
+        XCTAssertTrue(app.buttons["max.receipt.done"].waitForExistence(timeout: 5))
+        let dailyChange = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
+            "max.receipt.percent.", "Daily no-hangs")).firstMatch
+        XCTAssertTrue(dailyChange.waitForExistence(timeout: 3))
+        XCTAssertTrue(dailyChange.label.contains("Left"))
+        XCTAssertTrue(dailyChange.label.contains("18–22 %"))
+        XCTAssertTrue(dailyChange.label.contains("now 4.5–5.5 kg"))
+        XCTAssertTrue(dailyChange.label.contains("was 5.5–6.5"))
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@",
+                                                        "max.receipt.scale.")).count, 0,
+                       "One-hand correction cannot offer to scale a shared typed kg band")
+        XCTAssertFalse(app.buttons["max.receipt.leave"].exists)
+        reveal(dailyChange, in: app)
+        screenshot(app, name: "Saved correction explains the percentage targets that changed")
+        tap(app.buttons["max.receipt.done"], in: app)
+
+        XCTAssertTrue(app.buttons["maxes.edit.\(sharedGrip)"].waitForExistence(timeout: 5))
+        XCTAssertEqual(current(sharedGrip, side: "left", in: app).value as? String, "24.5 kg")
+        XCTAssertFalse(current(sharedGrip, side: "right", in: app).exists)
+        XCTAssertEqual(current(sharedGrip, side: "both", in: app).value as? String, "30.5 kg")
+        openEdit(for: sharedGrip, in: app)
+        tap(app.buttons["maxEdit.history"], in: app)
+        let saved = historyRow("left", in: app)
+        XCTAssertTrue(saved.waitForExistence(timeout: 3))
+        XCTAssertTrue(saved.label.contains("24.5 kilograms, recorded "))
+        XCTAssertFalse(saved.label.contains("measured "),
+                       "A corrected value must be saved as manual, not as the raw gauge measurement")
     }
 
     func testFrenchMaxesAndMeasurementRemainReachableWithLargeText() {
@@ -150,12 +281,14 @@ final class MaxesFlowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["maxEdit.cancel"].isHittable)
     }
 
-    private func launch(language: String = "en", largeText: Bool = false) -> XCUIApplication {
+    private func launch(language: String = "en", largeText: Bool = false,
+                        withTargetRoutines: Bool = false) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
         // seedHistory also resets and seeds maxes: shared 30.5 kg on the four-finger
         // grip, exact left 20.5 / right 21.8 kg on the front-three grip.
-        app.launchArguments = ["-seedRoutine", "-seedHistory", "-mockDevice", "-tab", "2",
+        app.launchArguments = [withTargetRoutines ? "-seedTwoRoutines" : "-seedRoutine",
+                               "-seedHistory", "-mockDevice", "-tab", "2",
                                "-AppleLanguages", "(\(language))", "-AppleLocale",
                                language == "fr" ? "fr_FR" : "en_US", "-weightUnit", "kg"]
         if largeText {
@@ -208,6 +341,11 @@ final class MaxesFlowUITests: XCTestCase {
         if frenchConnect.exists { tap(frenchConnect, in: app) }
     }
 
+    private func dismissReceiptIfPresent(in app: XCUIApplication) {
+        let done = app.buttons["max.receipt.done"]
+        if done.waitForExistence(timeout: 2) { tap(done, in: app) }
+    }
+
     private func assertNoExactHandMaxes(in app: XCUIApplication) {
         XCTAssertTrue(valueButton("Left hand", in: app).label.contains("0.0 kg"))
         XCTAssertTrue(valueButton("Right hand", in: app).label.contains("0.0 kg"))
@@ -225,12 +363,23 @@ final class MaxesFlowUITests: XCTestCase {
             .matching(identifier: "maxes.current.\(grip).\(side)").firstMatch
     }
 
+    private func historyRow(_ side: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", ", \(side) hand. Max ")).firstMatch
+    }
+
     private func enter(_ text: String, for hand: String, in app: XCUIApplication) {
+        typeWithoutFinishing(text, for: hand, in: app)
+        tap(app.buttons["Done"].firstMatch, in: app)
+    }
+
+    /// Leave the field active so toolbar actions exercise the pending-value commit path.
+    private func typeWithoutFinishing(_ text: String, for hand: String, in app: XCUIApplication) {
         tap(valueButton(hand, in: app), in: app)
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 3))
         field.typeText(text)
-        tap(app.buttons["Done"].firstMatch, in: app)
+        XCTAssertEqual(field.value as? String, text)
     }
 
     private func number(in capturedValue: String) -> String {

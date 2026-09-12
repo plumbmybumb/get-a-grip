@@ -1498,6 +1498,249 @@ final class TemplateStoreTests: XCTestCase {
         }
     }
 
+    func testBatchMaxReceiptUsesBothFinalHandValuesWithoutChangingSharedMax() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var alternating = RoutineDraft.blank(named: "Alternating")
+        alternating.plan.handMode = .alternateEachRep
+        alternating.plan.sets = [SetPlan(grip: grip, targetLoPercent: 0.25, targetHiPercent: 0.30)]
+        let alternatingRoutine = try XCTUnwrap(w.store.create(alternating))
+        var both = alternating
+        both.plan.name = "Together"
+        both.plan.handMode = .bothHands
+        _ = try XCTUnwrap(w.store.create(both))
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .left, kg: 30, source: .measured),
+            .init(grip: grip, side: .right, kg: 40, source: .measured)
+        ]))
+
+        XCTAssertEqual(receipt.percentMoves.count, 2)
+        XCTAssertEqual(Set(receipt.percentMoves.map { $0.move.routineID }), [alternatingRoutine.id])
+        let left = try XCTUnwrap(receipt.percentMoves.first { $0.move.side == .left }?.move)
+        let right = try XCTUnwrap(receipt.percentMoves.first { $0.move.side == .right }?.move)
+        XCTAssertEqual(left.oldBand, 15...18)
+        XCTAssertEqual(right.oldBand, 15...18)
+        XCTAssertEqual(left.newBand, 7.5...9)
+        XCTAssertEqual(right.newBand, 10...12)
+        XCTAssertTrue(receipt.rescaleOffers.isEmpty)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .both), 60)
+    }
+
+    func testReceiptWithSharedAndIndividualBatchDoesNotOfferSharedBandRescale() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var alternating = RoutineDraft.blank(named: "Alternating")
+        alternating.plan.handMode = .alternateEachRep
+        alternating.plan.sets = [SetPlan(grip: grip, targetLoPercent: 0.25, targetHiPercent: 0.30),
+                                 SetPlan(grip: grip, targetLoKg: 20, targetHiKg: 24)]
+        let alternatingRoutine = try XCTUnwrap(w.store.create(alternating))
+        var both = alternating
+        both.plan.name = "Together"
+        both.plan.handMode = .bothHands
+        let bothRoutine = try XCTUnwrap(w.store.create(both))
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .both, kg: 66, source: .measured),
+            .init(grip: grip, side: .left, kg: 30, source: .manual),
+            .init(grip: grip, side: .right, kg: 40, source: .manual)
+        ]))
+
+        XCTAssertEqual(receipt.percentMoves.count, 3, "one final move per routine and hand, never intermediate fallback moves")
+        let alternatingMoves = receipt.percentMoves.filter { $0.move.routineID == alternatingRoutine.id }
+        XCTAssertEqual(alternatingMoves.first { $0.move.side == .left }?.move.newBand, 7.5...9)
+        XCTAssertEqual(alternatingMoves.first { $0.move.side == .right }?.move.newBand, 10...12)
+        let offer = try XCTUnwrap(receipt.rescaleOffers.first)
+        XCTAssertEqual(offer.routines.map(\.routineID), [bothRoutine.id])
+        XCTAssertEqual(alternatingRoutine.plan.sets[1].targetBand, 20...24)
+    }
+
+    func testMeasuredSharedMaxReceiptLeavesWeightTargetsUntilExplicitScale() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var draft = RoutineDraft.blank(named: "Shared targets")
+        draft.plan.handMode = .alternateEachRep
+        draft.plan.sets = [SetPlan(grip: grip, targetLoKg: 20, targetHiKg: 24)]
+        let routine = try XCTUnwrap(w.store.create(draft))
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .both, kg: 66, source: .measured)
+        ]))
+        let offer = try XCTUnwrap(receipt.rescaleOffers.first)
+        XCTAssertEqual(offer.ratio, 1.1, accuracy: 0.0001)
+        XCTAssertEqual(routine.plan.sets[0].targetBand, 20...24,
+                       "saving a max is not permission to rewrite typed targets")
+        XCTAssertTrue(w.store.applyMaxRescale(offer))
+        XCTAssertEqual(routine.plan.sets[0].targetBand, 22...26.5)
+        XCTAssertFalse(w.store.applyMaxRescale(offer), "a completed proposal cannot compound the ratio")
+        XCTAssertEqual(routine.plan.sets[0].targetBand, 22...26.5)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .both), 66)
+    }
+
+    func testMaxReceiptRefusesScaleAfterAnotherHandGetsItsOwnMax() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var draft = RoutineDraft.blank(named: "Shared targets")
+        draft.plan.handMode = .alternateEachRep
+        draft.plan.sets = [SetPlan(grip: grip, targetLoKg: 20, targetHiKg: 24)]
+        let routine = try XCTUnwrap(w.store.create(draft))
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .both, kg: 66, source: .measured)
+        ]))
+        let offer = try XCTUnwrap(receipt.rescaleOffers.first)
+        XCTAssertTrue(w.store.recordMax(30, for: grip, side: .left))
+
+        XCTAssertFalse(w.store.applyMaxRescale(offer))
+        XCTAssertEqual(routine.plan.sets[0].targetBand, 20...24)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .both), 66)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .left), 30)
+    }
+
+    func testMaxReceiptRefusesScaleAfterReviewedRoutineChanges() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var draft = RoutineDraft.blank(named: "Shared targets")
+        draft.plan.handMode = .bothHands
+        draft.plan.sets = [SetPlan(grip: grip, targetLoKg: 20, targetHiKg: 24)]
+        let routine = try XCTUnwrap(w.store.create(draft))
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .both, kg: 66, source: .measured)
+        ]))
+        let offer = try XCTUnwrap(receipt.rescaleOffers.first)
+        var updated = w.store.draft(editing: routine)
+        updated.plan.sets[0].targetLoKg = 14
+        updated.plan.sets[0].targetHiKg = 18
+        XCTAssertTrue(w.store.update(routine, with: updated))
+
+        XCTAssertFalse(w.store.applyMaxRescale(offer))
+        XCTAssertEqual(routine.plan.sets[0].targetBand, 14...18)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .both), 66)
+    }
+
+    func testFailedMaxSaveDoesNotProduceReceiptOrPersistEitherHand() throws {
+        let w = try makeWorld(allowsSave: false)
+        let grip = GripSpec()
+        XCTAssertNil(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .left, kg: 30, source: .measured),
+            .init(grip: grip, side: .right, kg: 40, source: .measured)
+        ]))
+        XCTAssertTrue(w.store.maxTable.isEmpty)
+        XCTAssertEqual(try w.context.fetchCount(FetchDescriptor<MaxRecord>()), 0)
+        XCTAssertEqual(try w.context.fetchCount(FetchDescriptor<WorkoutLog>()), 0)
+    }
+
+    func testMaxReceiptOmitsAmbiguousRoutineIDsButKeepsUniqueRoutines() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var draft = RoutineDraft.blank(named: "Unique")
+        draft.plan.handMode = .bothHands
+        draft.plan.sets = [SetPlan(grip: grip, targetLoPercent: 0.25, targetHiPercent: 0.30),
+                           SetPlan(grip: grip, targetLoKg: 20, targetHiKg: 24)]
+        let unique = try XCTUnwrap(w.store.create(draft))
+        draft.plan.name = "Ambiguous"
+        let first = try XCTUnwrap(w.store.create(draft))
+        let duplicate = SessionTemplate(draft: draft.normalized, sortIndex: 2)
+        duplicate.id = first.id
+        w.context.insert(duplicate)
+        try w.context.save()
+        w.store.syncDerived()
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .both, kg: 66, source: .measured)
+        ]))
+
+        XCTAssertEqual(receipt.percentMoves.map { $0.move.routineID }, [unique.id])
+        XCTAssertEqual(Set(receipt.percentMoves.map(\.id)).count, receipt.percentMoves.count)
+        let offer = try XCTUnwrap(receipt.rescaleOffers.first)
+        XCTAssertEqual(offer.routines.map(\.routineID), [unique.id])
+        XCTAssertEqual(Set(offer.expectedPlans.keys), [unique.id])
+        XCTAssertTrue(w.store.applyMaxRescale(offer))
+        XCTAssertEqual(unique.plan.sets[1].targetBand, 22...26.5)
+        XCTAssertEqual(first.plan.sets[1].targetBand, 20...24)
+        XCTAssertEqual(duplicate.plan.sets[1].targetBand, 20...24)
+    }
+
+    func testMaxRescaleToleratesUnrelatedDuplicateRoutineIDs() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        let otherGrip = GripSpec(edgeMM: 15)
+        var draft = RoutineDraft.blank(named: "Reviewed")
+        draft.plan.handMode = .bothHands
+        draft.plan.sets = [SetPlan(grip: grip, targetLoKg: 20, targetHiKg: 24)]
+        let reviewed = try XCTUnwrap(w.store.create(draft))
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .both, kg: 66, source: .measured)
+        ]))
+        let offer = try XCTUnwrap(receipt.rescaleOffers.first)
+
+        var unrelated = RoutineDraft.blank(named: "Unrelated")
+        unrelated.plan.sets = [SetPlan(grip: otherGrip, targetLoKg: 10, targetHiKg: 12)]
+        let first = try XCTUnwrap(w.store.create(unrelated))
+        let duplicate = SessionTemplate(draft: unrelated.normalized, sortIndex: 2)
+        duplicate.id = first.id
+        w.context.insert(duplicate)
+        try w.context.save()
+        w.store.syncDerived()
+
+        XCTAssertTrue(w.store.applyMaxRescale(offer), "unrelated duplicated UUIDs must not crash or block the valid reviewed proposal")
+        XCTAssertEqual(reviewed.plan.sets[0].targetBand, 22...26.5)
+        XCTAssertEqual(first.plan.sets[0].targetBand, 10...12)
+        XCTAssertEqual(duplicate.plan.sets[0].targetBand, 10...12)
+    }
+
+    func testMaxRescaleRejectsNewlyAmbiguousTargetBeforeChangingAnyRoutine() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var draft = RoutineDraft.blank(named: "First reviewed")
+        draft.plan.handMode = .bothHands
+        draft.plan.sets = [SetPlan(grip: grip, targetLoKg: 20, targetHiKg: 24)]
+        let unique = try XCTUnwrap(w.store.create(draft))
+        draft.plan.name = "Second reviewed"
+        let ambiguous = try XCTUnwrap(w.store.create(draft))
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .both, kg: 66, source: .measured)
+        ]))
+        let offer = try XCTUnwrap(receipt.rescaleOffers.first)
+        XCTAssertEqual(offer.routines.count, 2)
+
+        let duplicate = SessionTemplate(draft: draft.normalized, sortIndex: 2)
+        duplicate.id = ambiguous.id
+        w.context.insert(duplicate)
+        try w.context.save()
+        w.store.syncDerived()
+
+        XCTAssertFalse(w.store.applyMaxRescale(offer))
+        XCTAssertEqual(unique.plan.sets[0].targetBand, 20...24, "validation of every target must precede every mutation")
+        XCTAssertEqual(ambiguous.plan.sets[0].targetBand, 20...24)
+        XCTAssertEqual(duplicate.plan.sets[0].targetBand, 20...24)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .both), 66)
+    }
+
+    func testUnchangedManualRetestCanSaveWithoutInventingTargetMoves() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var draft = RoutineDraft.blank(named: "Percentage routine")
+        draft.plan.handMode = .alternateEachRep
+        draft.plan.sets = [SetPlan(grip: grip, targetLoPercent: 0.25, targetHiPercent: 0.30)]
+        _ = try XCTUnwrap(w.store.create(draft))
+        XCTAssertTrue(w.store.recordMax(30, for: grip, side: .left))
+
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .left, kg: 30, source: .manual)
+        ]))
+        XCTAssertFalse(receipt.hasDetails)
+        XCTAssertEqual(receipt.values.count, 1)
+        XCTAssertEqual(try w.context.fetchCount(FetchDescriptor<MaxRecord>()), 2)
+    }
+
     func testHistoryDateUsesManualDayAcrossTimeZonesButPreservesTimedStart() throws {
         let day = DayStamp(year: 2026, month: 9, day: 5)
         let entered = Date(timeIntervalSince1970: 1_788_739_200)

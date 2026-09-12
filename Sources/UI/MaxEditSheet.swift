@@ -12,10 +12,13 @@ struct MaxEditSheet: View {
 
     @Environment(TemplateStore.self) private var templates
     @Environment(\.weightUnit) private var weightUnit
+    @FocusedValue(\.commitValueField) private var commitValueField: ValueFieldCommitAction?
     @State private var draft = MaxEditDraft()
     @State private var loaded = false
     @State private var failed = false
+    @State private var committed = false
     @State private var editingShared = false
+    @State private var receipt: TemplateStore.MaxSaveReceipt?
 
     var body: some View {
         NavigationStack {
@@ -45,15 +48,19 @@ struct MaxEditSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .bold()
-                        .disabled(!loaded || !draft.canSave)
+                        .disabled(committed || !loaded || (!draft.canSave && commitValueField == nil))
                         .accessibilityIdentifier("maxEdit.save")
                 }
             }
             .sheet(isPresented: $editingShared) {
                 MaxEntrySheet(seed: grip, side: .both) { editingShared = false }
             }
+            .sheet(item: $receipt, onDismiss: finishSave) { saved in
+                MaxSaveReceiptView(receipt: saved) { receipt = nil }
+            }
         }
         .onAppear { loadOnce() }
+        .sensoryFeedback(.selection, trigger: draft.repeatedTests)
         .onChange(of: templates.maxTable) { _, current in
             guard loaded else { return }
             draft.rebase(leftKg: current.exact(grip: grip.key, side: .left),
@@ -104,17 +111,43 @@ struct MaxEditSheet: View {
     }
 
     private func handValue(_ side: Side, kilograms: Binding<Double>) -> some View {
-        ValueRow(
-            title: side == .left ? String(localized: "Left hand") : String(localized: "Right hand"),
-            unit: weightUnit.symbol,
-            value: weightUnit.binding(kilograms),
-            range: weightUnit.sliderRangeFromKg(0...100),
-            limit: weightUnit.rangeFromKg(0...250),
-            step: 0.5,
-            decimals: 1,
-            caption: draft.originalKg(for: side) == nil && kilograms.wrappedValue == 0
-                ? String(localized: "Not set. Enter a value to save a max for this hand.") : nil
-        )
+        VStack(alignment: .leading, spacing: 4) {
+            ValueRow(
+                title: side == .left ? String(localized: "Left hand") : String(localized: "Right hand"),
+                unit: weightUnit.symbol,
+                value: weightUnit.binding(kilograms),
+                range: weightUnit.sliderRangeFromKg(0...100),
+                limit: weightUnit.rangeFromKg(0...250),
+                step: 0.5,
+                decimals: 1,
+                caption: bandCaption(kilograms.wrappedValue)
+            )
+            if let previous = draft.originalKg(for: side), previous == kilograms.wrappedValue {
+                let selected = draft.recordsAnotherTest(for: side)
+                Button {
+                    draft.setRecordsAnotherTest(!selected, for: side)
+                } label: {
+                    Label("Record another test",
+                          systemImage: selected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(.subheadline, weight: .medium))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(minHeight: 44)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(PressFeedbackButtonStyle())
+                .foregroundStyle(Accent.graphite)
+                .accessibilityAddTraits(selected ? [.isSelected] : [])
+                .accessibilityIdentifier("maxEdit.retest.\(side.rawValue)")
+            }
+        }
+    }
+
+    private func bandCaption(_ kg: Double) -> String? {
+        guard kg > 0 else {
+            return String(localized: "Not set. Enter a value to save a max for this hand.")
+        }
+        guard let band = PlanMath.suggestedBand(maxKg: kg) else { return nil }
+        return String(localized: "20–30 % of that is \(weightUnit.number(band.lowerBound))–\(weightUnit.number(band.upperBound)) \(weightUnit.symbol)")
     }
 
     private var sharedKg: Double? {
@@ -184,14 +217,24 @@ struct MaxEditSheet: View {
     }
 
     private func save() {
-        guard loaded, draft.canSave else { return }
+        commitValueField?.commit()
+        guard loaded, !committed, draft.canSave else { return }
         let values = draft.changes.map {
             TemplateStore.MaxSave(grip: grip, side: $0.side, kg: $0.kg, source: .manual)
         }
-        guard templates.recordMaxes(values) else {
+        guard let saved = templates.recordMaxesWithReceipt(values) else {
             failed = true
             return
         }
+        committed = true
+        if saved.hasDetails {
+            receipt = saved
+        } else {
+            finishSave()
+        }
+    }
+
+    private func finishSave() {
         onSaved?()
         onClose()
     }

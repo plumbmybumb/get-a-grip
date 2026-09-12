@@ -5,6 +5,59 @@ import XCTest
 @testable import Doigt
 
 final class MaxMeasurementDraftTests: XCTestCase {
+    func testCorrectionBeforeSaveKeepsHandOwnershipAndChangesOnlyItsProvenance() {
+        var draft = MaxMeasurementDraft()
+        draft.begin(side: .left)
+        draft.finish(peakKg: 37)
+        draft.begin(side: .right)
+        draft.finish(peakKg: 42)
+        XCTAssertTrue(draft.correct([.init(side: .left, kg: 36.5)]))
+        XCTAssertEqual(draft.results, [.init(side: .left, kg: 36.5, source: .manual),
+                                      .init(side: .right, kg: 42)])
+        XCTAssertEqual(draft.measuredPeak(for: .left), 37)
+        XCTAssertTrue(draft.correct([.init(side: .left, kg: 37)]))
+        XCTAssertEqual(draft.results.first?.source, .measured)
+    }
+
+    func testCorrectionRejectsInvalidValuesAtomicallyAndCannotInventAHand() {
+        var draft = MaxMeasurementDraft()
+        draft.begin(side: .left)
+        draft.finish(peakKg: 37)
+        draft.begin(side: .right)
+        draft.finish(peakKg: 42)
+        let original = draft.results
+        for bad in [0, -1, Double.nan, .infinity] {
+            XCTAssertFalse(draft.correct([.init(side: .left, kg: 36), .init(side: .right, kg: bad)]))
+            XCTAssertEqual(draft.results, original)
+        }
+        XCTAssertFalse(draft.correct([.init(side: .both, kg: 80)]))
+        XCTAssertFalse(draft.correct([.init(side: .left, kg: 36), .init(side: .left, kg: 35)]))
+        XCTAssertEqual(draft.results, original)
+        draft.begin(side: .left)
+        XCTAssertFalse(draft.correct([.init(side: .right, kg: 40)]))
+    }
+
+    func testFailedRetryPreservesCorrectionButValidRetryRestoresMeasuredSource() {
+        var draft = MaxMeasurementDraft()
+        draft.begin(side: .left)
+        draft.finish(peakKg: 37)
+        draft.correct([.init(side: .left, kg: 36.5)])
+        draft.begin(side: .left)
+        draft.finish(peakKg: 0)
+        XCTAssertEqual(draft.results, [.init(side: .left, kg: 36.5, source: .manual)])
+        draft.begin(side: .left)
+        draft.finish(peakKg: 38)
+        XCTAssertEqual(draft.results, [.init(side: .left, kg: 38)])
+    }
+
+    func testCombinedCorrectionRemainsOneSharedManualResult() {
+        var draft = MaxMeasurementDraft(bothTogether: true)
+        draft.begin(side: .both)
+        draft.finish(peakKg: 80)
+        XCTAssertTrue(draft.correct([.init(side: .both, kg: 78)]))
+        XCTAssertEqual(draft.results, [.init(side: .both, kg: 78, source: .manual)])
+    }
+
     func testSeparateAttemptsStayAttachedToTheirOriginalHands() {
         var draft = MaxMeasurementDraft()
         XCTAssertTrue(draft.begin(side: .left))

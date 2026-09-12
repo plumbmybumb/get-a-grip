@@ -1250,6 +1250,131 @@ final class TemplateStore {
         return MaxImpact(percentMoves: percentMoves, kgOffers: kgOffers, ratio: ratio)
     }
 
+    /// A receipt describes one committed save, not an intermediate left/right state.
+    /// In particular, a batch containing shared and individual values must resolve its
+    /// targets from the final table, with the individual values taking precedence.
+    struct MaxSaveReceipt: Identifiable, Sendable {
+        struct PercentMove: Identifiable, Sendable {
+            let grip: GripSpec
+            let move: MaxImpact.PercentMove
+            var id: String { grip.key + "|" + move.id }
+        }
+
+        struct RescaleOffer: Identifiable, Sendable {
+            let grip: GripSpec
+            let ratio: Double
+            let newMaxKg: Double
+            let routines: [MaxImpact.KgOffer]
+            /// Offers are reviewable snapshots. A routine edited while the receipt is
+            /// open must not be silently scaled using a now-outdated preview.
+            let expectedPlans: [UUID: SessionPlan]
+            var id: String { grip.key }
+        }
+
+        let id = UUID()
+        let values: [MaxSave]
+        let percentMoves: [PercentMove]
+        let rescaleOffers: [RescaleOffer]
+        var hasDetails: Bool { !percentMoves.isEmpty || !rescaleOffers.isEmpty }
+    }
+
+    /// Take the old table before the atomic write, then explain only the targets that
+    /// actually changed. nil means no save occurred; once committed, even a failed
+    /// routine fetch still returns a receipt for the successfully saved max values.
+    func recordMaxesWithReceipt(_ values: [MaxSave]) -> MaxSaveReceipt? {
+        guard !values.isEmpty else { return nil }
+        let previous = maxTable
+        guard recordMaxes(values) else { return nil }
+        let current = maxTable
+        let candidates = fetchRoutines() ?? []
+        // CloudKit does not guarantee unique routine UUIDs. An ambiguous ID cannot
+        // identify a reviewable target, but must not hide unrelated valid routines.
+        let routinesByID = Dictionary(grouping: candidates, by: \.id)
+        let routines = candidates.filter { routinesByID[$0.id]?.count == 1 }
+        var percentMoves: [MaxSaveReceipt.PercentMove] = []
+        var rescaleOffers: [MaxSaveReceipt.RescaleOffer] = []
+        let grips = Dictionary(grouping: values, by: { $0.grip.key })
+
+        for gripKey in grips.keys.sorted() {
+            guard let changes = grips[gripKey], let grip = changes.first?.grip else { continue }
+            let sharedChange = changes.first { $0.side == .both }
+            let ratio = sharedChange.flatMap { change in
+                previous.exact(grip: gripKey, side: .both).map { change.kg / $0 }
+            }
+            var kgOffers: [MaxImpact.KgOffer] = []
+            var expectedPlans: [UUID: SessionPlan] = [:]
+
+            for routine in routines {
+                let plan = routine.plan.executable
+                let sides: [Side] = plan.handMode == .bothHands ? [.both] : [.left, .right]
+                // A shared typed band can be rescaled only if both alternating hands
+                // used, and still use, that same shared benchmark. New exact values in
+                // this very batch disqualify the offer just like older exact values do.
+                let canScale = sharedChange != nil && (plan.handMode == .bothHands ||
+                    [Side.left, .right].allSatisfy {
+                        previous.exact(grip: gripKey, side: $0) == nil &&
+                            current.exact(grip: gripKey, side: $0) == nil
+                    })
+                var seenPercents: Set<String> = []
+                var kgMoves: [MaxImpact.KgOffer.Move] = []
+
+                for set in plan.sets where set.grip.key == gripKey {
+                    if let explicit = set.targetBand {
+                        guard canScale, let ratio, ratio.isFinite, ratio > 0 else { continue }
+                        let newBand = Self.scaled(explicit, by: ratio)
+                        guard explicit != newBand else { continue }
+                        let move = MaxImpact.KgOffer.Move(oldBand: explicit, newBand: newBand)
+                        if !kgMoves.contains(move) { kgMoves.append(move) }
+                    } else if let percent = PlanMath.targetPercent(set, in: plan) {
+                        let key = "\(percent.lowerBound)–\(percent.upperBound)"
+                        guard seenPercents.insert(key).inserted else { continue }
+                        for side in sides {
+                            let oldBand = previous.max(grip: gripKey, side: side)
+                                .flatMap { PlanMath.targetBand(set, in: plan, maxKg: $0) }
+                            guard let newKg = current.max(grip: gripKey, side: side),
+                                  let newBand = PlanMath.targetBand(set, in: plan, maxKg: newKg),
+                                  oldBand != newBand else { continue }
+                            let move = MaxImpact.PercentMove(
+                                routineID: routine.id, routineName: routine.name, side: side,
+                                loPercent: percent.lowerBound, hiPercent: percent.upperBound,
+                                oldBand: oldBand, newBand: newBand)
+                            percentMoves.append(.init(grip: grip, move: move))
+                        }
+                    }
+                }
+                if !kgMoves.isEmpty {
+                    kgOffers.append(.init(routineID: routine.id, routineName: routine.name, moves: kgMoves))
+                    expectedPlans[routine.id] = routine.plan
+                }
+            }
+            if !kgOffers.isEmpty, let ratio, let sharedChange {
+                rescaleOffers.append(.init(grip: grip, ratio: ratio, newMaxKg: sharedChange.kg,
+                                          routines: kgOffers, expectedPlans: expectedPlans))
+            }
+        }
+        return MaxSaveReceipt(values: values, percentMoves: percentMoves, rescaleOffers: rescaleOffers)
+    }
+
+    /// Apply only the exact proposal that was shown. Failed or outdated proposals leave
+    /// the saved max intact and let the receipt remain open instead of claiming success.
+    @discardableResult
+    func applyMaxRescale(_ offer: MaxSaveReceipt.RescaleOffer) -> Bool {
+        guard maxTable.exact(grip: offer.grip.key, side: .both) == offer.newMaxKg,
+              let routines = fetchRoutines() else { return false }
+        let current = Dictionary(grouping: routines, by: \.id)
+        for proposal in offer.routines {
+            guard let matches = current[proposal.routineID], matches.count == 1,
+                  let routine = matches.first,
+                  routine.plan == offer.expectedPlans[proposal.routineID] else { return false }
+            if routine.plan.handMode != .bothHands,
+               [Side.left, .right].contains(where: { maxTable.exact(grip: offer.grip.key, side: $0) != nil }) {
+                return false
+            }
+        }
+        return scaleKgTargets(grip: offer.grip, ratio: offer.ratio,
+                              routineIDs: offer.routines.map(\.routineID))
+    }
+
     /// Apply the accepted rescale: every explicit-kg set on `grip` in the given
     /// routines, multiplied by `ratio`. Normalized exactly as a builder save is, so a
     /// rescale cannot produce a routine the builder itself would have refused.

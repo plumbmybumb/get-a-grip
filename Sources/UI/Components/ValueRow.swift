@@ -3,6 +3,37 @@
 
 import SwiftUI
 
+/// A focused callback needs stable identity: publishing a fresh raw closure on
+/// every render makes its observing form render again, feeding back into the field.
+/// Equality follows the field instance while its action reads live State handles.
+struct ValueFieldCommitAction: Equatable {
+    private let id: UUID
+    private let action: () -> Void
+
+    init(id: UUID, action: @escaping () -> Void) {
+        self.id = id
+        self.action = action
+    }
+
+    func commit() { action() }
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
+}
+
+private struct ValueFieldCommitKey: FocusedValueKey {
+    typealias Value = ValueFieldCommitAction
+}
+
+extension FocusedValues {
+    /// A form's Save/Apply can finish the currently focused numeric edit before
+    /// reading its draft. The field still owns typing state, and the ordinary
+    /// binding changes only at commit rather than on every keystroke.
+    var commitValueField: ValueFieldCommitAction? {
+        get { self[ValueFieldCommitKey.self] }
+        set { self[ValueFieldCommitKey.self] = newValue }
+    }
+}
+
 /// A number you can drag, tap or type — the app's control for every quantity.
 ///
 /// Replaces the chip grids that used to carry these. Chips are right for a handful of
@@ -299,6 +330,7 @@ struct ValueField: View {
 
     @State private var draft = ""
     @State private var committed = false
+    @State private var commitIdentity = UUID()
 
     var body: some View {
         HStack(spacing: 6) {
@@ -308,6 +340,8 @@ struct ValueField: View {
                 .multilineTextAlignment(.trailing)
                 .keyboardType(decimals > 0 ? .decimalPad : .numberPad)
                 .focused(focus)
+                .focusedValue(\.commitValueField,
+                              ValueFieldCommitAction(id: commitIdentity, action: commit))
                 .frame(minWidth: 64)
                 .onSubmit(commit)
             if !unit.isEmpty {

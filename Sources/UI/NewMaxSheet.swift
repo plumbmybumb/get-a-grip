@@ -7,11 +7,13 @@ import SwiftUI
 /// opening or cancelling this screen never creates a record or a library entry.
 struct NewMaxSheet: View {
     @Environment(TemplateStore.self) private var templates
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var grip: GripSpec
     @State private var capture: Capture?
     @State private var editing = false
     @State private var shared = false
     @State private var saved = false
+    @State private var gripSelectionTick = 0
     var onClose: () -> Void
 
     init(seed: GripSpec, onClose: @escaping () -> Void) {
@@ -38,6 +40,8 @@ struct NewMaxSheet: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
+
+                    if !templates.recentGrips.isEmpty { recentGrips }
 
                     IntValueRow(title: String(localized: "Edge"), unit: String(localized: "mm"),
                                 value: $grip.edgeMM, range: 4...45, limit: GripSpec.edgeRange,
@@ -91,11 +95,11 @@ struct NewMaxSheet: View {
             }
             .fullScreenCover(item: $capture, onDismiss: closeAfterSave) { target in
                 MaxMeasureView(grip: target.grip, initialSide: target.side) { readings in
-                    let success = templates.recordMaxes(readings.map {
-                        .init(grip: target.grip, side: $0.side, kg: $0.kg, source: .measured)
+                    let receipt = templates.recordMaxesWithReceipt(readings.map {
+                        .init(grip: target.grip, side: $0.side, kg: $0.kg, source: $0.source)
                     })
-                    if success { saved = true }
-                    return success
+                    if receipt != nil { saved = true }
+                    return receipt
                 }
             }
             .sheet(isPresented: $editing, onDismiss: closeAfterSave) {
@@ -105,6 +109,54 @@ struct NewMaxSheet: View {
                 MaxEntrySheet(seed: grip, side: .both, onSaved: { saved = true }) { shared = false }
             }
         }
+    }
+
+    /// These are the grips already present in routines, used only to seed this form.
+    /// Selecting one creates no saved grip or max and leaves every field editable.
+    private var recentGrips: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            CapsLabel(String(localized: "START FROM"))
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(templates.recentGrips, id: \.key) { candidate in
+                        let selected = candidate.key == grip.key
+                        Button {
+                            guard !selected else { return }
+                            withAnimation(Motion.state(reduceMotion)) { grip = candidate }
+                            gripSelectionTick += 1
+                        } label: {
+                            HStack(spacing: 8) {
+                                FingerGlyph(fingers: candidate.fingers,
+                                            position: candidate.position, dot: 5.5, gap: 2)
+                                Text(candidate.shortName)
+                                    .font(.system(.caption, weight: .semibold))
+                                    .fixedSize()
+                            }
+                            .foregroundStyle(selected ? Ink.primary : Ink.secondary)
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 44)
+                            .background(Ink.primary.opacity(selected ? 0.10 : 0.04),
+                                        in: RoundedRectangle(cornerRadius: Metrics.radiusInner,
+                                                             style: .continuous))
+                            .contentShape(.rect(cornerRadius: Metrics.radiusInner))
+                        }
+                        .buttonStyle(PressFeedbackButtonStyle())
+                        .accessibilityLabel(candidate.spoken)
+                        .accessibilityAddTraits(selected ? [.isSelected] : [])
+                        .accessibilityIdentifier("newMax.grip.\(candidate.key)")
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+            .accessibilityIdentifier("newMax.recentGrips")
+            Text("Grips from your routines. Tap one, then change anything you like.")
+                .font(.system(.footnote))
+                .foregroundStyle(Ink.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .sensoryFeedback(.selection, trigger: gripSelectionTick)
     }
 
     private func closeAfterSave() {

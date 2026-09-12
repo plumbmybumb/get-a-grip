@@ -62,17 +62,21 @@ struct MaxesTab: View {
                         }
                     }
                 }
-                SecondaryGlassButton(title: String(localized: "Add a max"), systemImage: "plus") {
-                    adding = true
-                }
-                .accessibilityIdentifier("maxes.add")
                 footnote
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Add a max", systemImage: "plus") { adding = true }
+                        .labelStyle(.iconOnly)
+                        .tint(Accent.graphite)
+                        .accessibilityIdentifier("maxes.add")
+                }
             }
         }
         .fullScreenCover(item: $measuring) { target in
             MaxMeasureView(grip: target.grip) { readings in
-                templates.recordMaxes(readings.map {
-                    .init(grip: target.grip, side: $0.side, kg: $0.kg, source: .measured)
+                templates.recordMaxesWithReceipt(readings.map {
+                    .init(grip: target.grip, side: $0.side, kg: $0.kg, source: $0.source)
                 })
             }
         }

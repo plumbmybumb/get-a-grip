@@ -125,4 +125,60 @@ final class MaxEditDraftTests: XCTestCase {
         XCTAssertTrue(draft.changes.isEmpty)
         XCTAssertFalse(draft.canSave)
     }
+
+    func testExplicitUnchangedRetestSavesOnlyTheSelectedHand() {
+        var draft = MaxEditDraft(leftKg: 40, rightKg: 45)
+        draft.setRecordsAnotherTest(true, for: .left)
+        XCTAssertTrue(draft.canSave)
+        XCTAssertEqual(draft.changes, [.init(side: .left, kg: 40)])
+        XCTAssertFalse(draft.recordsAnotherTest(for: .right))
+    }
+
+    func testUnchangedRetestsCanBeSelectedForBothHandsIndependently() {
+        var draft = MaxEditDraft(leftKg: 40, rightKg: 45)
+        draft.setRecordsAnotherTest(true, for: .left)
+        draft.setRecordsAnotherTest(true, for: .right)
+        XCTAssertEqual(draft.changes, [.init(side: .left, kg: 40), .init(side: .right, kg: 45)])
+        draft.setRecordsAnotherTest(false, for: .left)
+        XCTAssertEqual(draft.changes, [.init(side: .right, kg: 45)])
+    }
+
+    func testRemovingTheRetestSelectionLeavesTheUnchangedEditorUnsavable() {
+        var draft = MaxEditDraft(leftKg: 40, rightKg: 45)
+        draft.setRecordsAnotherTest(true, for: .left)
+        draft.setRecordsAnotherTest(false, for: .left)
+        XCTAssertFalse(draft.canSave)
+        XCTAssertTrue(draft.changes.isEmpty)
+    }
+
+    func testRetestDoesNotInventMissingHandOrSharedValues() {
+        var draft = MaxEditDraft(leftKg: 40)
+        draft.setRecordsAnotherTest(true, for: .right)
+        draft.setRecordsAnotherTest(true, for: .both)
+        XCTAssertTrue(draft.repeatedTests.isEmpty)
+        XCTAssertTrue(draft.changes.isEmpty)
+        XCTAssertFalse(draft.canSave)
+    }
+
+    func testAnExplicitRetestKeepsItsValueWhenThePriorRecordChanges() {
+        var draft = MaxEditDraft(leftKg: 40, rightKg: 45)
+        draft.setRecordsAnotherTest(true, for: .left)
+        draft.rebase(leftKg: 30, rightKg: 44)
+        XCTAssertEqual(draft.leftKg, 40)
+        XCTAssertEqual(draft.originalKg(for: .left), 30)
+        XCTAssertEqual(draft.rightKg, 44)
+        XCTAssertEqual(draft.changes, [.init(side: .left, kg: 40)])
+    }
+
+    func testInvalidValueStillBlocksAnExplicitRetest() {
+        var draft = MaxEditDraft(leftKg: 40, rightKg: 45)
+        draft.setRecordsAnotherTest(true, for: .left)
+        draft.leftKg = 0
+        XCTAssertTrue(draft.hasInvalidChanges)
+        XCTAssertFalse(draft.canSave)
+        draft.rebase(leftKg: nil, rightKg: 45)
+        XCTAssertTrue(draft.hasInvalidChanges,
+                      "Removing the prior record must not silently ignore a selected invalid retest.")
+        XCTAssertFalse(draft.canSave)
+    }
 }

@@ -1,6 +1,14 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Measured" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Measured"}}, "fr": {"stringUnit": {"state": "translated", "value": "Mesuré"}}}},
+    "Record another test" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Record another test"}}, "fr": {"stringUnit": {"state": "translated", "value": "Enregistrer un nouveau test"}}}},
+    "Measured: %@" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Measured: %@"}}, "fr": {"stringUnit": {"state": "translated", "value": "Mesuré : %@"}}}},
+    "Adjusted values are saved as manual entries. Your recorded trace stays unchanged." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Adjusted values are saved as manual entries. Your recorded trace stays unchanged."}}, "fr": {"stringUnit": {"state": "translated", "value": "Les valeurs ajustées sont enregistrées comme saisies manuelles. Le tracé mesuré reste inchangé."}}}},
+    "Adjust values" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Adjust values"}}, "fr": {"stringUnit": {"state": "translated", "value": "Ajuster les valeurs"}}}},
+    "Apply" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Apply"}}, "fr": {"stringUnit": {"state": "translated", "value": "Appliquer"}}}},
+    "Weight targets updated" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Weight targets updated"}}, "fr": {"stringUnit": {"state": "translated", "value": "Cibles de poids mises à jour"}}}},
+    "Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are."}}, "fr": {"stringUnit": {"state": "translated", "value": "Impossible de mettre à jour les cibles de poids. Tes max sont enregistrés. Réessaie ou conserve les cibles actuelles."}}}},
     "No new pull recorded. Your previous measurement is still ready to save." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "No new pull recorded. Your previous measurement is still ready to save."}}, "fr": {"stringUnit": {"state": "translated", "value": "Aucun nouveau tirage enregistré. Ta mesure précédente est toujours prête à être enregistrée."}}}},
     "READY TO SAVE" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "READY TO SAVE"}}, "fr": {"stringUnit": {"state": "translated", "value": "PRÊT À ENREGISTRER"}}}},
     "Both hands together" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Both hands together"}}, "fr": {"stringUnit": {"state": "translated", "value": "Les deux mains ensemble"}}}},

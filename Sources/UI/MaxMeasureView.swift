@@ -8,6 +8,7 @@ private enum MaxMeasurePhase { case ready, measuring, done }
 struct MaxMeasurementResult: Equatable, Sendable {
     let side: Side
     let kg: Double
+    var source: MaxSource = .measured
 }
 
 /// Transient measurements, with a hand fixed before the first sample arrives. Nothing
@@ -16,6 +17,7 @@ struct MaxMeasurementDraft {
     let bothTogether: Bool
     private(set) var activeSide: Side?
     private var peaks: [Side: Double] = [:]
+    private var corrections: [Side: Double] = [:]
 
     init(bothTogether: Bool = false) {
         self.bothTogether = bothTogether
@@ -24,11 +26,28 @@ struct MaxMeasurementDraft {
     var results: [MaxMeasurementResult] {
         guard activeSide == nil else { return [] }
         return [Side.left, .right, .both].compactMap { side in
-            peaks[side].map { MaxMeasurementResult(side: side, kg: $0) }
+            peaks[side].map {
+                MaxMeasurementResult(side: side, kg: corrections[side] ?? $0,
+                                     source: corrections[side] == nil ? .measured : .manual)
+            }
         }
     }
 
-    func peak(for side: Side) -> Double? { peaks[side] }
+    func peak(for side: Side) -> Double? { corrections[side] ?? peaks[side] }
+    func measuredPeak(for side: Side) -> Double? { peaks[side] }
+
+    /// Corrections belong to this unsaved draft. Returning to the exact captured
+    /// peak restores measured provenance; a correction never fabricates another hand.
+    @discardableResult
+    mutating func correct(_ values: [MaxMeasurementResult]) -> Bool {
+        guard activeSide == nil, !values.isEmpty,
+              Set(values.map(\.side)).count == values.count,
+              values.allSatisfy({ peaks[$0.side] != nil && $0.kg.isFinite && $0.kg > 0 }) else { return false }
+        for value in values {
+            corrections[value.side] = value.kg == peaks[value.side] ? nil : value.kg
+        }
+        return true
+    }
 
     /// A retry reserves its hand, but the last valid result stays staged until a
     /// replacement exists. A disconnected or empty attempt must not erase an effort.
@@ -44,6 +63,7 @@ struct MaxMeasurementDraft {
         activeSide = nil
         if peakKg.isFinite, peakKg >= MaxAttempt.releaseKg {
             peaks[side] = peakKg
+            corrections[side] = nil
         }
         return side
     }
@@ -54,7 +74,7 @@ struct MaxMeasurementDraft {
 struct MaxMeasureView: View {
     let grip: GripSpec
     /// The caller owns persistence. A failed save leaves both measured peaks intact.
-    var onUse: ([MaxMeasurementResult]) -> Bool
+    var onUse: ([MaxMeasurementResult]) -> TemplateStore.MaxSaveReceipt?
 
     @Environment(DeviceStore.self) private var device
     @Environment(\.dismiss) private var dismiss
@@ -74,11 +94,14 @@ struct MaxMeasureView: View {
     @State private var saveFailed = false
     @State private var selectionTick = 0
     @State private var completionTick = 0
+    @State private var adjusting = false
+    @State private var receipt: TemplateStore.MaxSaveReceipt?
+    @State private var committed = false
 
     private static let timeoutSeconds = 45
 
     init(grip: GripSpec, initialSide: Side = .left,
-         onUse: @escaping ([MaxMeasurementResult]) -> Bool) {
+         onUse: @escaping ([MaxMeasurementResult]) -> TemplateStore.MaxSaveReceipt?) {
         self.grip = grip
         self.onUse = onUse
         _selectedSide = State(initialValue: initialSide)
@@ -99,7 +122,7 @@ struct MaxMeasureView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         handSelection
-                        CapsLabel(phase == .done && draft.peak(for: selectedSide) != nil ? String(localized: "READY TO SAVE") : String(localized: "HARDEST PULL"),
+                        CapsLabel(phase == .done && draft.peak(for: selectedSide) != nil ? String(localized: "Measured") : String(localized: "HARDEST PULL"),
                                   tint: Ink.tertiary)
                         MaxMeasurementHero(measurement: measurement, phase: phase)
                         MaxMeasurementTrace(measurement: measurement,
@@ -143,6 +166,17 @@ struct MaxMeasureView: View {
             }
         }
         .onDisappear { teardown() }
+        .sheet(isPresented: $adjusting) {
+            MaxMeasurementAdjustmentSheet(results: draft.results,
+                                          measuredPeaks: Dictionary(uniqueKeysWithValues: draft.results.compactMap { result in
+                draft.measuredPeak(for: result.side).map { (result.side, $0) }
+            }), onApply: { values in
+                if draft.correct(values) { adjusting = false; saveFailed = false }
+            }, onCancel: { adjusting = false })
+        }
+        .sheet(item: $receipt, onDismiss: { dismiss() }) { saved in
+            MaxSaveReceiptView(receipt: saved) { receipt = nil }
+        }
     }
 
     // MARK: - Hands
@@ -233,10 +267,16 @@ struct MaxMeasureView: View {
             // A captured peak is local data. Connection loss or selecting an unmeasured
             // hand cannot hide the action that saves the hand already completed.
             if phase != .measuring, !draft.results.isEmpty {
+                SecondaryGlassButton(title: String(localized: "Adjust values"), systemImage: "pencil") {
+                    adjusting = true
+                }
+                .accessibilityIdentifier("max.measure.adjust")
                 PrimaryGlassButton(title: draft.results.count == 1 ? String(localized: "Save max") : String(localized: "Save maxes"),
                                    systemImage: "checkmark", tint: Accent.graphite) { save() }
                     .accessibilityIdentifier("max.measure.save")
-                Text("Saved maxes update percentage targets. Weight targets stay as entered.")
+                Text(draft.results.contains { $0.source == .manual }
+                     ? String(localized: "Adjusted values are saved as manual entries. Your recorded trace stays unchanged.")
+                     : String(localized: "Saved maxes update percentage targets. Weight targets stay as entered."))
                     .font(.caption)
                     .foregroundStyle(Ink.tertiary)
                     .multilineTextAlignment(.center)
@@ -288,9 +328,11 @@ struct MaxMeasureView: View {
 
     private func save() {
         let results = draft.results
-        guard !results.isEmpty else { return }
-        if onUse(results) { dismiss() }
-        else { saveFailed = true }
+        guard !committed, !results.isEmpty else { return }
+        guard let saved = onUse(results) else { saveFailed = true; return }
+        committed = true
+        if saved.hasDetails { receipt = saved }
+        else { dismiss() }
     }
 
     // MARK: - Running

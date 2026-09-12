@@ -1,7 +1,13 @@
 Fixed the 20-pull limit: sets now support up to 100 pulls per hand.
 
-A few small additions to make each session easier to follow:
-• Preview a routine’s grips, timing and hand order before you start. Edit it from the same screen.
+Maxes is easier to use:
+• Measure again opens the gauge straight away.
+• Measure your left and right hands in one visit, or save just one hand.
+• Edit values by hand, review earlier records, and see how a new max changes your routine targets.
+• Use the + button to add a max for another grip.
+
+A few smaller additions:
+• Preview a routine’s grips, timing and hand order before you start.
 • Tap Last 14 days to open your history.
-• With a gauge, rests of 10 seconds or more show your next hand and grip clearly, with a larger countdown. The live graph stays visible.
+• During longer rests, see your next hand and grip with a larger countdown. The graph stays visible.
 • Tidier Settings, with links to the Grip Connect and Crimpdeq open-source projects.

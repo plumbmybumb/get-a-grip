@@ -1,7 +1,9 @@
-La limite de 20 tirages est corrigée : chaque série accepte désormais jusqu’à 100 tirages par main.
+La limite de 20 tirages a été corrigée : chaque série peut désormais compter jusqu’à 100 tirages par main.
 
-Quelques petits ajouts pour mieux suivre vos séances :
-• Consultez les prises, les temps et l’ordre des mains avant de commencer. Modifiez la routine depuis ce même écran.
-• Touchez « 14 derniers jours » pour ouvrir l’historique.
-• Avec un capteur, les repos d’au moins 10 secondes affichent plus clairement la prochaine main et la prochaine prise, avec un grand compte à rebours. Le graphique reste visible.
-• Des réglages plus épurés, avec des liens vers les projets open source Grip Connect et Crimpdeq.
+L’onglet Max est plus simple à utiliser :
+• Mesurer à nouveau ouvre directement le dynamomètre.
+• Mesurez les deux mains dans le même écran, ou enregistrez une seule main.
+• Modifiez les valeurs, consultez les anciens tests et voyez l’effet d’un nouveau max sur les cibles de vos routines.
+• Ajoutez un max pour une autre prise avec le bouton +.
+
+Quelques petites nouveautés : aperçu des prises, du rythme et de l’ordre des mains avant de commencer ; accès à l’historique depuis Les 14 derniers jours ; compte à rebours plus lisible et prochaine prise pendant les repos longs, sans masquer le graphique ; réglages simplifiés et liens vers Grip Connect et Crimpdeq.
