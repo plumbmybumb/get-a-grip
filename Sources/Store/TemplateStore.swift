@@ -1079,13 +1079,41 @@ final class TemplateStore {
         }
     }
 
+    /// Unsaved values from one editing or measurement flow. Existing records remain
+    /// untouched so a new working max preserves the history for its grip and hand.
+    struct MaxSave: Hashable, Sendable {
+        let grip: GripSpec
+        let side: Side
+        let kg: Double
+        let source: MaxSource
+    }
+
     @discardableResult
     func recordMax(_ kg: Double, for grip: GripSpec, source: MaxSource = .manual,
                    side: Side = .both, marksBenchmarkDay: Bool = true) -> Bool {
+        saveMaxes([MaxSave(grip: grip, side: side, kg: kg, source: source)],
+                  marksBenchmarkDay: marksBenchmarkDay)
+    }
+
+    /// One Save commits every selected hand together, including its benchmark day.
+    /// Reject the whole batch before inserting anything if a value is invalid or two
+    /// entries compete to become the current max for the same grip and hand.
+    @discardableResult
+    func recordMaxes(_ values: [MaxSave]) -> Bool {
+        saveMaxes(values, marksBenchmarkDay: true)
+    }
+
+    private func saveMaxes(_ values: [MaxSave], marksBenchmarkDay: Bool) -> Bool {
+        guard !values.isEmpty else { return true }
         // A zero or NaN max would make every percentage-of-max caption in the app lie,
         // and `PlanMath.percentOfMax` would have to defend against it forever.
-        guard kg.isFinite, kg > 0 else { return false }
-        context.insert(MaxRecord(grip: grip, kg: kg, source: source, side: side))
+        guard values.allSatisfy({ $0.kg.isFinite && $0.kg > 0 }) else { return false }
+        let keys = values.map { MaxTable.key(grip: $0.grip.key, side: $0.side) }
+        guard Set(keys).count == values.count else { return false }
+        for value in values {
+            context.insert(MaxRecord(grip: value.grip, kg: value.kg,
+                                     source: value.source, side: value.side))
+        }
         // **A MEASURED max makes today a benchmark day** — the lightweight version of a
         // test session (Nuri, 2026-08-10): no ceremony, but the day still reads as
         // trained, the grid fills, and no reminder nags after maximal pulls. One log
@@ -1093,7 +1121,8 @@ final class TemplateStore {
         // because typing is not training. `marksBenchmarkDay: false` is the session-PR
         // path: a max hit INSIDE a routine already logged its session, and settling
         // the day on top would silently cancel the evening ritual.
-        if marksBenchmarkDay, source == .measured, benchmarkedToday == false,
+        if marksBenchmarkDay, values.contains(where: { $0.source == .measured }),
+           benchmarkedToday == false,
            let todaysLogs = fetchLogs(from: clock.today), !todaysLogs.benchmark(on: clock.today) {
             let target = fetchRoutines()?.first?.sessionsPerDay ?? 1
             context.insert(WorkoutLog(logged: .benchmark, day: clock.today, at: .now,

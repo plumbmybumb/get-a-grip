@@ -35,7 +35,6 @@ enum TourTarget: String, Hashable, CaseIterable {
     case runnerTrace
     case historyMonth
     case maxesCurves
-    case maxesManage
 }
 
 /// The three places the tour has something to say. Each is seen — or skipped — on its own,
@@ -131,12 +130,7 @@ extension TourStep {
         TourStep(
             target: .maxesCurves,
             title: String(localized: "Maxes"),
-            body: String(localized: "Every grip's ceiling, drawn over time. Measure one from here — a measured max marks the day as a benchmark, and your percent targets follow the newest number on their own."),
-            tab: 2),
-        TourStep(
-            target: .maxesManage,
-            title: String(localized: "Your numbers"),
-            body: String(localized: "Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets."),
+            body: String(localized: "Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom."),
             tab: 2),
         TourStep(
             target: nil,

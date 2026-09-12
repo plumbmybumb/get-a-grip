@@ -5,50 +5,114 @@ import SwiftUI
 
 private enum MaxMeasurePhase { case ready, measuring, done }
 
-/// Measuring a max on the gauge, as its own full screen.
-///
-/// **Why it takes the whole screen rather than sitting in the composer sheet:** during
-/// the one moment this view exists for, the phone is propped on a bench and you are
-/// hanging off a fingerboard with both hands. A live number inside a scrolling form is
-/// unreadable from there, and it can be scrolled away by the same finger that started
-/// it. Everything here is sized to be read at arm's length.
-///
-/// The rule — the hardest the gauge saw — lives in `MaxAttempt`, tested away from any of
-/// this, along with the reason it is no longer a sustained hold. The result is drawn
-/// across the trace as the dashed rule, so the shape of the pull and the number it
-/// produced are one picture rather than two things to reconcile.
+struct MaxMeasurementResult: Equatable, Sendable {
+    let side: Side
+    let kg: Double
+}
+
+/// Transient measurements, with a hand fixed before the first sample arrives. Nothing
+/// here changes a working benchmark until the caller successfully saves the results.
+struct MaxMeasurementDraft {
+    let bothTogether: Bool
+    private(set) var activeSide: Side?
+    private var peaks: [Side: Double] = [:]
+
+    init(bothTogether: Bool = false) {
+        self.bothTogether = bothTogether
+    }
+
+    var results: [MaxMeasurementResult] {
+        guard activeSide == nil else { return [] }
+        return [Side.left, .right, .both].compactMap { side in
+            peaks[side].map { MaxMeasurementResult(side: side, kg: $0) }
+        }
+    }
+
+    func peak(for side: Side) -> Double? { peaks[side] }
+
+    /// A retry reserves its hand, but the last valid result stays staged until a
+    /// replacement exists. A disconnected or empty attempt must not erase an effort.
+    mutating func begin(side: Side) -> Bool {
+        guard activeSide == nil, (side == .both) == bothTogether else { return false }
+        activeSide = side
+        return true
+    }
+
+    @discardableResult
+    mutating func finish(peakKg: Double) -> Side? {
+        guard let side = activeSide else { return nil }
+        activeSide = nil
+        if peakKg.isFinite, peakKg >= MaxAttempt.releaseKg {
+            peaks[side] = peakKg
+        }
+        return side
+    }
+}
+
+/// One visit to the gauge can capture either hand or both in turn. Combined-hand
+/// testing is an explicit entry mode, never inferred from two separate measurements.
 struct MaxMeasureView: View {
     let grip: GripSpec
-    /// Handed the measured result when it is accepted. The caller owns saving — this
-    /// screen never writes to the store, so "measure" and "record" stay separable and
-    /// the number lands in the same field a typed one would.
-    var onUse: (Double) -> Void
+    /// The caller owns persistence. A failed save leaves both measured peaks intact.
+    var onUse: ([MaxMeasurementResult]) -> Bool
 
     @Environment(DeviceStore.self) private var device
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.weightUnit) private var weightUnit
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var measurement = MaxMeasurement()
-    @State private var frozenTrace: [DeviceStore.TracePoint]?
+    @State private var selectedSide: Side
+    @State private var draft: MaxMeasurementDraft
+    @State private var leftMeasurement = MaxMeasurement()
+    @State private var rightMeasurement = MaxMeasurement()
+    @State private var bothMeasurement = MaxMeasurement()
+    @State private var traces: [Side: [DeviceStore.TracePoint]] = [:]
+    @State private var completedMeasurements: [Side: MaxMeasurement] = [:]
+    @State private var keptPreviousAfterRetry = false
     @State private var phase: MaxMeasurePhase = .ready
     @State private var timeout: Task<Void, Never>?
+    @State private var saveFailed = false
+    @State private var selectionTick = 0
+    @State private var completionTick = 0
 
-    /// Long enough for a full attempt including a slow set-up on the edge; short enough
-    /// that a screen left open cannot flatten the gauge's battery. The same guard the
-    /// builder's threshold check uses, sized for a longer job.
     private static let timeoutSeconds = 45
+
+    init(grip: GripSpec, initialSide: Side = .left,
+         onUse: @escaping ([MaxMeasurementResult]) -> Bool) {
+        self.grip = grip
+        self.onUse = onUse
+        _selectedSide = State(initialValue: initialSide)
+        _draft = State(initialValue: MaxMeasurementDraft(bothTogether: initialSide == .both))
+    }
+
+    private var measurement: MaxMeasurement {
+        switch selectedSide {
+        case .left: leftMeasurement
+        case .right: rightMeasurement
+        case .both: bothMeasurement
+        }
+    }
 
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
                 ScrollView {
                     VStack(spacing: 16) {
-                        header
-                        hero
-                        trace
-                        guidance
+                        handSelection
+                        CapsLabel(phase == .done && draft.peak(for: selectedSide) != nil ? String(localized: "READY TO SAVE") : String(localized: "HARDEST PULL"),
+                                  tint: Ink.tertiary)
+                        MaxMeasurementHero(measurement: measurement, phase: phase)
+                        MaxMeasurementTrace(measurement: measurement,
+                                            isMeasuring: phase == .measuring,
+                                            frozenTrace: phase == .measuring ? nil : traces[selectedSide] ?? [])
+                        MaxMeasurementGuidance(measurement: measurement, phase: phase,
+                                               hasOtherResult: !draft.bothTogether && draft.peak(for: selectedSide.other) != nil,
+                                               bothTogether: draft.bothTogether,
+                                               keptPreviousAfterRetry: keptPreviousAfterRetry)
                         Spacer(minLength: 0)
                         controls
                     }
+                    .padding(.top, 12)
                     .frame(minHeight: geometry.size.height)
                 }
                 .scrollBounceBehavior(.basedOnSize)
@@ -64,17 +128,15 @@ struct MaxMeasureView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("max.measure.cancel")
                 }
             }
         }
-        // The moment a result exists is worth feeling: you are looking at the edge, not
-        // at the phone.
-        .sensoryFeedback(.success, trigger: measurement.isComplete)
+        .sensoryFeedback(.success, trigger: completionTick)
+        .sensoryFeedback(.selection, trigger: selectionTick)
         .onChange(of: measurement.isComplete) { _, complete in
             if complete { stop(cause: .measurementComplete) }
         }
-        // A disconnect clears DeviceStore.isStreaming. Keep the attempt and its callback
-        // alive, then explicitly restart the stream when auto-reconnect restores the link.
         .onChange(of: device.state.isConnected) { _, connected in
             if connected, phase == .measuring {
                 device.startStreaming(cause: .reconnect)
@@ -83,89 +145,168 @@ struct MaxMeasureView: View {
         .onDisappear { teardown() }
     }
 
-    // MARK: - Face
+    // MARK: - Hands
 
-    private var header: some View {
-        CapsLabel(phase == .done ? String(localized: "YOUR MAX ON THIS GRIP") : String(localized: "HARDEST PULL"),
-                  tint: Ink.tertiary)
+    @ViewBuilder
+    private var handSelection: some View {
+        if draft.bothTogether {
+            VStack(spacing: 6) {
+                Text("Both hands together")
+                    .font(.system(.title3, weight: .semibold))
+                Text("One combined measurement")
+                    .font(.footnote)
+                    .foregroundStyle(Ink.secondary)
+            }
             .frame(maxWidth: .infinity)
+        } else {
+            HStack(spacing: 12) {
+                handButton(.left)
+                handButton(.right)
+            }
+            .disabled(phase == .measuring)
+        }
     }
 
-    /// THE NUMBER THAT WILL BE SAVED — the peak, which is what climbs and then holds
-    /// still. The live reading stays demoted to the line underneath: it falls away the
-    /// instant you ease off, and watching the figure you are about to record drop back
-    /// toward zero is not what anyone wants at the end of a max effort.
-    private var hero: some View {
-        MaxMeasurementHero(measurement: measurement, phase: phase)
+    private func handButton(_ side: Side) -> some View {
+        let selected = side == selectedSide
+        let peak = draft.peak(for: side)
+        let shape = RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous)
+        return Button { select(side) } label: {
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(side.name)
+                    if peak != nil {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                    }
+                }
+                .font(.system(.headline, weight: .semibold))
+                Text(peak.map { "\(weightUnit.number($0)) \(weightUnit.symbol)" } ?? "—")
+                    .font(.system(.title3, weight: .medium))
+                    .monospacedDigit()
+                    .contentTransition(.identity)
+            }
+            .foregroundStyle(selected ? Ink.primary : Ink.secondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 72)
+            .background(selected ? Accent.bleu.opacity(0.12) : Ink.primary.opacity(0.04), in: shape)
+            .overlay { shape.strokeBorder(selected ? Accent.bleu : Ink.tertiary.opacity(0.2), lineWidth: selected ? 1.5 : 1) }
+            .contentShape(shape)
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityLabel(side == .left ? String(localized: "Left hand") : String(localized: "Right hand"))
+        .accessibilityValue(peak.map { String(localized: "\(weightUnit.number($0)) \(weightUnit.spokenName), ready to save") }
+                            ?? String(localized: "Not measured"))
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityIdentifier(side == .left ? "max.measure.left" : "max.measure.right")
     }
 
-    /// The shape of the pull, with the result drawn across it as the dashed rule — so
-    /// the number and the effort that produced it are one picture.
-    private var trace: some View {
-        MaxMeasurementTrace(measurement: measurement, isMeasuring: phase == .measuring, frozenTrace: frozenTrace)
-    }
-
-    /// No peak-versus-held footnote any more: with the result BEING the peak there is no
-    /// gap left to explain, and the line that explained it went with the rule.
-    private var guidance: some View {
-        MaxMeasurementGuidance(measurement: measurement, phase: phase)
+    private func select(_ side: Side) {
+        guard phase != .measuring, side != selectedSide else { return }
+        withAnimation(Motion.state(reduceMotion)) {
+            selectedSide = side
+            phase = draft.peak(for: side) == nil ? .ready : .done
+            keptPreviousAfterRetry = false
+            saveFailed = false
+        }
+        selectionTick += 1
     }
 
     // MARK: - Controls
 
-    @ViewBuilder
     private var controls: some View {
-        // A completed attempt is local data: disconnecting cannot take away its save action.
-        if !device.state.isConnected, phase != .done {
-            // SHOWN rather than a disabled button: a control you cannot use teaches
-            // nothing, and the way out is what matters here.
-            VStack(spacing: 12) {
-                Text("Connect your gauge to measure. You can always type a max in instead.")
+        VStack(spacing: 12) {
+            if !device.state.isConnected, phase == .ready {
+                Text("Connect your gauge to measure.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.tertiary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 GaugeConnectButton(connectTitle: String(localized: "Connect"))
+            } else {
+                attemptControls
             }
-        } else {
-            switch phase {
-            case .ready:
-                VStack(spacing: 12) {
-                    // Zeroing belongs BEFORE the pull and nowhere else: taring mid-attempt
-                    // would zero out the load already on the edge and silently rewrite the
-                    // result. It is offered here because a hanging sling or a mounted
-                    // block reads as several kilograms the gauge would otherwise count.
-                    MaxTareButton(phase: $phase)
-                    PrimaryGlassButton(title: String(localized: "Start"), systemImage: "play.fill",
-                                       tint: Accent.bleu) { start() }
-                }
-            case .measuring:
-                PrimaryGlassButton(title: String(localized: "Done"), systemImage: "stop.fill",
-                                   tint: Accent.alarm) { finishByHand(cause: .userStopped) }
-            case .done:
-                VStack(spacing: 12) {
-                    SecondaryGlassButton(title: String(localized: "Try again"),
-                                         systemImage: "arrow.counterclockwise") { start() }
-                        .disabled(!device.state.isConnected)
-                    MaxMeasurementUseButton(measurement: measurement,
-                                            onUse: onUse,
-                                            onDismiss: { dismiss() })
-                }
+
+            // A captured peak is local data. Connection loss or selecting an unmeasured
+            // hand cannot hide the action that saves the hand already completed.
+            if phase != .measuring, !draft.results.isEmpty {
+                PrimaryGlassButton(title: draft.results.count == 1 ? String(localized: "Save max") : String(localized: "Save maxes"),
+                                   systemImage: "checkmark", tint: Accent.graphite) { save() }
+                    .accessibilityIdentifier("max.measure.save")
+                Text("Saved maxes update percentage targets. Weight targets stay as entered.")
+                    .font(.caption)
+                    .foregroundStyle(Ink.tertiary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if saveFailed {
+                Text("Couldn’t save. Your measurements are still here — try again.")
+                    .font(.footnote)
+                    .foregroundStyle(Accent.alarm)
+                    .multilineTextAlignment(.center)
             }
         }
+    }
+
+    @ViewBuilder
+    private var attemptControls: some View {
+        switch phase {
+        case .ready:
+            MaxTareButton(phase: $phase)
+            PrimaryGlassButton(title: startTitle, systemImage: "play.fill", tint: Accent.bleu) { start() }
+                .accessibilityIdentifier("max.measure.start")
+        case .measuring:
+            PrimaryGlassButton(title: String(localized: "Done"), systemImage: "stop.fill", tint: Accent.alarm) {
+                finishByHand(cause: .userStopped)
+            }
+            .accessibilityIdentifier("max.measure.finish")
+        case .done:
+            if !draft.bothTogether, draft.peak(for: selectedSide.other) == nil {
+                SecondaryGlassButton(title: selectedSide == .left ? String(localized: "Measure right hand") : String(localized: "Measure left hand"),
+                                     systemImage: "arrow.right") { select(selectedSide.other) }
+                    .accessibilityIdentifier("max.measure.other")
+            }
+            SecondaryGlassButton(title: String(localized: "Try again"), systemImage: "arrow.counterclockwise") {
+                // Return to setup so the gauge can be zeroed before the replacement attempt.
+                phase = .ready
+                saveFailed = false
+            }
+            .accessibilityIdentifier("max.measure.retry")
+        }
+    }
+
+    private var startTitle: String {
+        switch selectedSide {
+        case .left: String(localized: "Measure left hand")
+        case .right: String(localized: "Measure right hand")
+        case .both: String(localized: "Start")
+        }
+    }
+
+    private func save() {
+        let results = draft.results
+        guard !results.isEmpty else { return }
+        if onUse(results) { dismiss() }
+        else { saveFailed = true }
     }
 
     // MARK: - Running
 
     private func start() {
-        guard device.state.isConnected else { return }
-        measurement.reset()
-        // The trace is the attempt's own picture; leftovers from a previous go would be
-        // drawn as part of this one, and the axis is latched off what it has seen.
+        guard device.state.isConnected, draft.begin(side: selectedSide) else { return }
+        // Retain the completed object and trace until this fresh attempt earns a
+        // replacement. Resetting the old object would also reset the saved hero.
+        let attempt = MaxMeasurement()
+        setMeasurement(attempt, for: selectedSide)
+        keptPreviousAfterRetry = false
+        saveFailed = false
         device.resetPeak()
-        device.onTracePoint = { point in measurement.receive(point) }
+        // Capture the attempt object, never a changing selected-hand lookup.
+        device.onTracePoint = { point in attempt.receive(point) }
         device.startStreaming(cause: .manualMeasurement)
-        frozenTrace = nil
         phase = .measuring
 
         timeout?.cancel()
@@ -176,29 +317,41 @@ struct MaxMeasureView: View {
         }
     }
 
-    /// The cause travels from the TRIGGER, because this is reached from two of them:
-    /// the Done button and the timeout. Labelling both "measurement finished" would put a
-    /// completion in the log for a pull that never completed.
     private func finishByHand(cause: StreamStopCause) {
         measurement.finish()
         stop(cause: cause)
     }
 
-    /// Stop the stream but KEEP the result on screen — this is the transition into
-    /// `.done`, not a teardown.
     private func stop(cause: StreamStopCause) {
         guard phase == .measuring else { return }
         timeout?.cancel()
         timeout = nil
         device.onTracePoint = nil
         if device.isStreaming { device.stopStreaming(cause: cause) }
-        frozenTrace = device.trace
+        let attempt = measurement
+        if let side = draft.finish(peakKg: attempt.peakKg) {
+            if attempt.hasResult, attempt.peakKg.isFinite {
+                completedMeasurements[side] = attempt
+                traces[side] = device.trace
+                completionTick += 1
+            } else if let previous = completedMeasurements[side] {
+                setMeasurement(previous, for: side)
+                keptPreviousAfterRetry = true
+            } else {
+                traces[side] = device.trace
+            }
+        }
         phase = .done
     }
 
-    /// UNCONDITIONAL, and gated on the DEVICE's own truth rather than on `phase`: a
-    /// Progressor left streaming behind a dismissed screen is a dead battery the user
-    /// blames on the app. Same precedent as GaugeView and the builder's gauge strip.
+    private func setMeasurement(_ value: MaxMeasurement, for side: Side) {
+        switch side {
+        case .left: leftMeasurement = value
+        case .right: rightMeasurement = value
+        case .both: bothMeasurement = value
+        }
+    }
+
     private func teardown() {
         timeout?.cancel()
         timeout = nil
@@ -314,7 +467,7 @@ private struct MaxMeasurementHero: View {
             .lineLimit(1)
             .minimumScaleFactor(0.6)
 
-            LiveReadout()
+            if phase != .done { LiveReadout() }
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
@@ -363,6 +516,9 @@ private struct MaxMeasurementTrace: View {
 private struct MaxMeasurementGuidance: View {
     let measurement: MaxMeasurement
     let phase: MaxMeasurePhase
+    var hasOtherResult: Bool = false
+    var bothTogether: Bool = false
+    var keptPreviousAfterRetry: Bool = false
 
     var body: some View {
         Text(guidanceText)
@@ -382,26 +538,14 @@ private struct MaxMeasurementGuidance: View {
                 ? String(localized: "Let go when you are ready to finish.")
                 : String(localized: "Pull…")
         case .done:
+            if keptPreviousAfterRetry {
+                return String(localized: "No new pull recorded. Your previous measurement is still ready to save.")
+            }
             return measurement.hasResult
-                ? String(localized: "Save this as your max on this grip, or try again.")
+                ? (bothTogether ? String(localized: "Save this combined max, or try again.") :
+                    hasOtherResult ? String(localized: "Both hands are ready to save.") : String(localized: "Save this max, or measure your other hand."))
                 : String(localized: "No pull was recorded. You can close this or try again.")
         }
-    }
-}
-
-/// The result is read at activation inside this leaf, never by the parent controls tree.
-private struct MaxMeasurementUseButton: View {
-    let measurement: MaxMeasurement
-    var onUse: (Double) -> Void
-    var onDismiss: () -> Void
-
-    var body: some View {
-        PrimaryGlassButton(title: String(localized: "Use this max"), systemImage: "checkmark",
-                           tint: Accent.graphite) {
-            onUse(measurement.peakKg)
-            onDismiss()
-        }
-        .disabled(!measurement.hasResult)
     }
 }
 

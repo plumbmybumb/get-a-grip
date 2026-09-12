@@ -12,13 +12,16 @@ import SwiftUI
 /// `MaxRecord` is append-only precisely so this screen costs nothing — every max ever
 /// recorded is still there, and a card here is just one grip's rows drawn as a curve.
 ///
-/// Manage opens the saved-record list within this tab; charts and testing stay one
-/// back gesture away. Both screens use the same append-only max records.
+/// A grip has two direct actions: measure it again, or edit its hand values.
+/// Editing appends records; the chart and percentage targets keep their identities.
 ///
 /// The WORKING max is the NEWEST record, not the highest: a benchmark that tests lower
 /// honestly lowers your percentage targets too. Best-ever is shown beside it as the PR.
 struct MaxesTab: View {
     @Environment(\.weightUnit) private var weightUnit
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .body) private var glyphTileSize: CGFloat = 44
+    @ScaledMetric(relativeTo: .body) private var chartHeight: CGFloat = 130
     /// Oldest first — each grip's slice is then already in chart order.
     @Query(sort: [SortDescriptor(\MaxRecord.recordedAt)])
     private var records: [MaxRecord]
@@ -29,6 +32,8 @@ struct MaxesTab: View {
     @Environment(TemplateStore.self) private var templates
 
     @State private var measuring: MeasureTarget?
+    @State private var editing: MeasureTarget?
+    @State private var adding = false
 
     var body: some View {
         let gripGroups = groups
@@ -56,25 +61,26 @@ struct MaxesTab: View {
                             invitationCard(grip).staggerIn(gripGroups.count)
                         }
                     }
-                    footnote
                 }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        MaxesView()
-                    } label: {
-                        Text("Manage")
-                    }
-                    .accessibilityLabel("Manage maxes")
-                    .tourAnchor(.maxesManage)
+                SecondaryGlassButton(title: String(localized: "Add a max"), systemImage: "plus") {
+                    adding = true
                 }
+                .accessibilityIdentifier("maxes.add")
+                footnote
             }
         }
-        .sheet(item: $measuring) { target in
-            MaxEntrySheet(seed: target.grip) {
-                measuring = nil
+        .fullScreenCover(item: $measuring) { target in
+            MaxMeasureView(grip: target.grip) { readings in
+                templates.recordMaxes(readings.map {
+                    .init(grip: target.grip, side: $0.side, kg: $0.kg, source: .measured)
+                })
             }
+        }
+        .sheet(item: $editing) { target in
+            MaxEditSheet(grip: target.grip) { editing = nil }
+        }
+        .sheet(isPresented: $adding) {
+            NewMaxSheet(seed: templates.recentGrips.first ?? GripSpec()) { adding = false }
         }
     }
 
@@ -132,29 +138,43 @@ struct MaxesTab: View {
                     Text(group.grip.displayName)
                         .font(.system(.title3, weight: .semibold))
                         .foregroundStyle(Ink.primary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                    Spacer(minLength: 8)
-                    currentReadout(group, sides: sides)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                        .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.8)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
                 }
+
+                currentReadout(group, sides: sides)
 
                 if group.records.count >= 2 {
                     chart(group, sides: sides)
                 }
 
-                HStack(spacing: 8) {
-                    Text(progressLine(group))
-                        .font(.system(.footnote))
-                        .monospacedDigit()
-                        .foregroundStyle(Ink.tertiary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    Spacer(minLength: 8)
+                Text(progressLine(group))
+                    .font(.system(.footnote))
+                    .monospacedDigit()
+                    .foregroundStyle(Ink.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 12) {
+                    Button {
+                        editing = MeasureTarget(grip: group.grip)
+                    } label: {
+                        Label("Edit", systemImage: "slider.horizontal.3")
+                            .font(.system(.subheadline, weight: .semibold))
+                            .foregroundStyle(Accent.graphite)
+                            .actionLabelLayout(minHeight: 44)
+                            .contentShape(.capsule)
+                    }
+                    .buttonStyle(PressFeedbackButtonStyle())
+                    .accessibilityLabel("Edit maxes for \(group.grip.spoken)")
+                    .accessibilityIdentifier("maxes.edit.\(group.grip.key)")
+                    Spacer(minLength: 0)
                     measureButton(group.grip, label: String(localized: "Measure again"))
                 }
             }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     private func invitationCard(_ grip: GripSpec) -> some View {
@@ -189,7 +209,6 @@ struct MaxesTab: View {
                     .font(.system(.subheadline))
                     .foregroundStyle(Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                measureButton(templates.recentGrips.first ?? GripSpec(), label: String(localized: "Measure a max"))
             }
         }
     }
@@ -209,7 +228,7 @@ struct MaxesTab: View {
     private func glyphTile(_ grip: GripSpec) -> some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
             .fill(Ink.tertiary.opacity(0.16))
-            .frame(width: 44, height: 44)
+            .frame(width: glyphTileSize, height: glyphTileSize)
             .overlay {
                 FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 5, gap: 2.5)
             }
@@ -221,7 +240,7 @@ struct MaxesTab: View {
             measuring = MeasureTarget(grip: grip)
         } label: {
             Text(label)
-                .font(.system(.footnote, weight: .semibold))
+                .font(.system(.subheadline, weight: .semibold))
                 .foregroundStyle(Accent.graphite)
                 .actionLabelLayout(minHeight: 44)
                 .overlay(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
@@ -229,25 +248,30 @@ struct MaxesTab: View {
         }
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityLabel("\(label) for \(grip.spoken)")
+        .accessibilityIdentifier("maxes.measure.\(grip.key)")
     }
 
     /// The current working numbers, trailing the title. One value for a both-hands
     /// grip; a compact L/R pair once the hands have their own records.
     @ViewBuilder
     private func currentReadout(_ group: GripGroup, sides: [Side]) -> some View {
-        if sides == [.both], let newest = newest(in: group, side: .both) {
-            weightText(newest.kg, style: .title2)
-        } else {
-            VStack(alignment: .trailing, spacing: 2) {
-                ForEach(sides, id: \.self) { side in
-                    if let newest = newest(in: group, side: side) {
-                        HStack(spacing: 4) {
-                            Text(side == .both ? String(localized: "Both") : (side == .left ? "L" : "R"))
-                                .font(.system(.caption, weight: .semibold))
-                                .foregroundStyle(Ink.tertiary)
-                            weightText(newest.kg, style: .subheadline)
-                        }
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 20))
+        layout {
+            ForEach(sides, id: \.self) { side in
+                if let record = newest(in: group, side: side) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(side == .both ? String(localized: "Shared max") : side.name)
+                            .font(.system(.caption, weight: .medium))
+                            .foregroundStyle(Ink.secondary)
+                        weightText(record.kg, style: .title2)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(side == .both ? String(localized: "Shared max") : side.name)
+                    .accessibilityValue(weightUnit.text(record.kg))
+                    .accessibilityIdentifier("maxes.current.\(group.grip.key).\(side.rawValue)")
                 }
             }
         }
@@ -340,7 +364,7 @@ struct MaxesTab: View {
                 }
             }
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 3)) { _ in
+                AxisMarks(values: .automatic(desiredCount: dynamicTypeSize.isAccessibilitySize ? 2 : 3)) { _ in
                     AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
                     AxisValueLabel(format: .dateTime.day().month(.abbreviated))
                 }
@@ -352,7 +376,7 @@ struct MaxesTab: View {
                     AxisValueLabel()
                 }
             }
-            .frame(height: 130)
+            .frame(height: chartHeight)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(group.grip.spoken): \(progressLine(group))")
 

@@ -21,9 +21,13 @@ final class WeightUnitsUITests: XCTestCase {
         reveal(pounds, in: app)
         XCTAssertTrue(pounds.isSelected, pounds.debugDescription)
         app.tabBars.buttons["Maxes"].tap()
-        app.buttons["Manage maxes"].tap()
-        app.buttons["Add a max"].tap()
-        let amount = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Max on this grip,")).firstMatch
+        let addMax = app.buttons["maxes.add"]
+        reveal(addMax, in: app)
+        addMax.tap()
+        let manual = app.buttons["Enter by hand"]
+        reveal(manual, in: app)
+        manual.tap()
+        let amount = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Left hand,")).firstMatch
         XCTAssertTrue(amount.waitForExistence(timeout: 3))
         reveal(amount, in: app)
         XCTAssertTrue(amount.label.contains("lb"))
@@ -34,7 +38,7 @@ final class WeightUnitsUITests: XCTestCase {
         app.buttons["Done"].firstMatch.tap()
         XCTAssertTrue(amount.label.contains("50.0 lb"))
         screenshot(app, name: "iPhone manual max in pounds")
-        app.buttons["Cancel"].tap()
+        app.buttons["maxEdit.cancel"].tap()
         app.terminate()
     }
 

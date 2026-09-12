@@ -1153,6 +1153,148 @@ final class TemplateStoreTests: XCTestCase {
         XCTAssertEqual(w.store.currentMaxes.count, 2, "two current records, not one")
     }
 
+    func testManualMaxBatchPreservesHistoryOtherGripsAndRoutinePrescriptions() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        let other = GripSpec(edgeMM: 10)
+        let previous = [
+            MaxRecord(grip: grip, kg: 60, source: .measured, side: .both,
+                      recordedAt: .now.addingTimeInterval(-60)),
+            MaxRecord(grip: grip, kg: 45, source: .manual, side: .left,
+                      recordedAt: .now.addingTimeInterval(-60)),
+            MaxRecord(grip: grip, kg: 40, source: .manual, side: .right,
+                      recordedAt: .now.addingTimeInterval(-60)),
+            MaxRecord(grip: other, kg: 25, source: .manual, side: .left,
+                      recordedAt: .now.addingTimeInterval(-60))
+        ]
+        for record in previous { w.context.insert(record) }
+        try w.context.save()
+        w.store.syncDerived()
+        let previousValues = previous.map { ($0.id, $0.kg, $0.recordedAt, $0.maxKey, $0.source) }
+        var draft = RoutineDraft.blank(named: "Per-hand percentages")
+        draft.plan.handMode = .alternateEachRep
+        draft.plan.sets = [
+            SetPlan(grip: grip, targetLoPercent: 0.25, targetHiPercent: 0.30),
+            SetPlan(grip: grip, targetLoKg: 12, targetHiKg: 15),
+            SetPlan(grip: other, targetLoPercent: 0.25, targetHiPercent: 0.30)
+        ]
+        let routine = try XCTUnwrap(w.store.create(draft))
+        let planBefore = routine.plan
+
+        XCTAssertTrue(w.store.recordMaxes([
+            .init(grip: grip, side: .left, kg: 40, source: .manual),
+            .init(grip: grip, side: .right, kg: 30, source: .manual)
+        ]))
+
+        let records = try w.context.fetch(FetchDescriptor<MaxRecord>())
+        XCTAssertEqual(records.count, 6, "Both new hands append even when their max comes down")
+        for (id, kg, date, key, source) in previousValues {
+            let retained = try XCTUnwrap(records.first { $0.id == id })
+            XCTAssertEqual(retained.kg, kg)
+            XCTAssertEqual(retained.recordedAt, date)
+            XCTAssertEqual(retained.maxKey, key)
+            XCTAssertEqual(retained.source, source)
+        }
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .left), 40)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .right), 30)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .both), 60)
+        XCTAssertEqual(w.store.maxTable.exact(grip: other.key, side: .left), 25)
+        XCTAssertEqual(routine.plan, planBefore, "Saving maxes never rewrites kg or percentage prescriptions")
+        let set = try XCTUnwrap(routine.plan.sets.first)
+        XCTAssertEqual(PlanMath.targetBand(set, in: routine.plan, side: .left,
+                                          maxes: w.store.maxTable), 10...12)
+        XCTAssertEqual(PlanMath.targetBand(set, in: routine.plan, side: .right,
+                                          maxes: w.store.maxTable), 7.5...9)
+        XCTAssertTrue(workoutLogs(w).isEmpty, "Typing numbers is not a benchmark workout")
+        XCTAssertFalse(w.store.benchmarkedToday)
+    }
+
+    func testMaxBatchRejectsEveryInvalidValueBeforeSavingAnyHand() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+        let existingID = try XCTUnwrap(w.store.currentMaxes.values.first?.id)
+
+        for invalid in [0.0, -1, .nan, .infinity, -.infinity] {
+            XCTAssertFalse(w.store.recordMaxes([
+                .init(grip: grip, side: .left, kg: 35, source: .measured),
+                .init(grip: grip, side: .right, kg: invalid, source: .manual)
+            ]))
+            let records = try w.context.fetch(FetchDescriptor<MaxRecord>())
+            XCTAssertEqual(records.map(\.id), [existingID])
+            XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .both), 60)
+            XCTAssertNil(w.store.maxTable.exact(grip: grip.key, side: .left))
+            XCTAssertNil(w.store.maxTable.exact(grip: grip.key, side: .right))
+            XCTAssertFalse(w.context.hasChanges, "Rejected batches leave no pending insert to autosave")
+            XCTAssertTrue(workoutLogs(w).isEmpty)
+            XCTAssertFalse(w.store.benchmarkedToday)
+        }
+    }
+
+    func testMaxBatchRejectsDuplicateGripAndHandKeys() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        XCTAssertFalse(w.store.recordMaxes([
+            .init(grip: grip, side: .left, kg: 35, source: .measured),
+            .init(grip: grip, side: .left, kg: 36, source: .manual)
+        ]))
+        XCTAssertTrue(try w.context.fetch(FetchDescriptor<MaxRecord>()).isEmpty)
+        XCTAssertTrue(w.store.maxTable.isEmpty)
+        XCTAssertTrue(workoutLogs(w).isEmpty)
+        XCTAssertFalse(w.context.hasChanges)
+    }
+
+    func testMeasuredMaxBatchAndBenchmarkDayCommitOrRollbackTogether() throws {
+        for allowsSave in [true, false] {
+            let w = try makeWorld(allowsSave: allowsSave)
+            let grip = GripSpec()
+            XCTAssertEqual(w.store.recordMaxes([
+                .init(grip: grip, side: .left, kg: 40, source: .measured),
+                .init(grip: grip, side: .right, kg: 35, source: .measured)
+            ]), allowsSave)
+
+            let records = try w.context.fetch(FetchDescriptor<MaxRecord>())
+            XCTAssertEqual(records.count, allowsSave ? 2 : 0)
+            XCTAssertTrue(records.allSatisfy { $0.source == .measured })
+            XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .left), allowsSave ? 40 : nil)
+            XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .right), allowsSave ? 35 : nil)
+            XCTAssertNil(w.store.maxTable.exact(grip: grip.key, side: .both))
+            XCTAssertEqual(workoutLogs(w).filter { $0.kind == .benchmark }.count, allowsSave ? 1 : 0)
+            XCTAssertEqual(w.store.benchmarkedToday, allowsSave)
+            XCTAssertEqual(w.store.saveError == nil, allowsSave)
+            XCTAssertFalse(w.context.hasChanges)
+        }
+    }
+
+    func testMixedMaxBatchMarksOnlyOneBenchmarkAcrossFurtherSaves() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        XCTAssertTrue(w.store.recordMaxes([
+            .init(grip: grip, side: .left, kg: 40, source: .manual),
+            .init(grip: grip, side: .right, kg: 35, source: .measured)
+        ]))
+        XCTAssertTrue(w.store.recordMaxes([
+            .init(grip: GripSpec(edgeMM: 10), side: .left, kg: 25, source: .measured)
+        ]))
+        XCTAssertEqual(workoutLogs(w).filter { $0.kind == .benchmark }.count, 1)
+        XCTAssertEqual(w.store.currentMaxes[MaxTable.key(grip: grip.key, side: .left)]?.source, .manual)
+        XCTAssertEqual(w.store.currentMaxes[MaxTable.key(grip: grip.key, side: .right)]?.source, .measured)
+    }
+
+    func testEmptyMaxBatchAndSessionPeakWrapperNeverCreateBenchmarkDays() throws {
+        let w = try makeWorld()
+        XCTAssertTrue(w.store.recordMaxes([]))
+        XCTAssertTrue(try w.context.fetch(FetchDescriptor<MaxRecord>()).isEmpty)
+        XCTAssertTrue(workoutLogs(w).isEmpty)
+        XCTAssertFalse(w.context.hasChanges)
+
+        XCTAssertTrue(w.store.recordMax(35, for: GripSpec(), source: .measured,
+                                        side: .left, marksBenchmarkDay: false))
+        XCTAssertEqual(w.store.maxTable.exact(grip: GripSpec().key, side: .left), 35)
+        XCTAssertTrue(workoutLogs(w).isEmpty)
+        XCTAssertFalse(w.store.benchmarkedToday)
+    }
+
     /// A both-hands max still covers every hand, so nothing changes for anyone who never
     /// touches the picker — and a later side-specific max overrides only that side.
     func testABothHandsMaxCoversEitherHandUntilThatHandHasItsOwn() throws {

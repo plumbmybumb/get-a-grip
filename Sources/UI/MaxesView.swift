@@ -4,26 +4,10 @@
 import SwiftData
 import SwiftUI
 
-/// The screen that makes "about 25 % of your max on this grip" mean something.
-///
-/// Until this existed, every percentage caption in the set editor read *"Add your max
-/// for this grip to see percentages"* — an instruction with nowhere to carry it out.
-/// The whole low-intensity prescription this app is built around is a FRACTION (a fifth
-/// to a third), and a fraction with no denominator is not advice, it is a blank.
-///
-/// Two decisions worth stating, because both look like omissions:
-///
-/// **This is not a grip library.** There is no saved-grip list to curate, no folder, no
-/// "create grip" step — the thing Doigt exists to refuse. The composer opens on a grip
-/// you already use (`TemplateStore.recentGrips`, which falls back to the seed palette so
-/// the rail works on day one) and every field is editable in place. A grip is still a
-/// VALUE; the rail is a shortcut to typing one, not a record of one.
-///
-/// **Nothing is ever edited.** `MaxRecord` is append-only, so recording again for the
-/// same grip key adds a row and the previous one becomes history. That is why a grip row
-/// with a past behind it opens: without somewhere to show the earlier records, they
-/// would exist, count for nothing, and be impossible to delete.
+/// Saved records for one grip, grouped by hand. Swipe reveals deletion; removing a
+/// current record restores the preceding record as that hand's working max.
 struct MaxesView: View {
+    let grip: GripSpec
     @Environment(\.weightUnit) private var weightUnit
     /// Newest first — which is also what makes the fold below correct. Grips come out in
     /// order of their most recent record, and the first record in each bucket is that
@@ -35,7 +19,6 @@ struct MaxesView: View {
     @Environment(TemplateStore.self) private var templates
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var composing = false
     @State private var deleteFailed = false
     /// The grip key whose earlier records are showing — at most one open at a time, the
     /// same accordion rule the builder's set rows follow.
@@ -53,7 +36,6 @@ struct MaxesView: View {
                 emptyCard.houseListRow(top: 12, bottom: 10)
             }
 
-            addRow.houseListRow(top: foldedHistories.isEmpty ? 2 : 12, bottom: 6)
             if deleteFailed {
                 Text("Couldn't delete this max. Please try again.")
                     .font(.system(.footnote))
@@ -81,16 +63,10 @@ struct MaxesView: View {
         // disturbs the safe-area layout and the title creeps under the status bar.
         .background { AppBackground() }
         .scrollEdgeEffectStyle(.soft, for: .bottom)
-        .navigationTitle("Manage maxes")
-        .navigationSubtitle("Your max on each grip")
+        .navigationTitle("Earlier records")
+        .navigationSubtitle(grip.displayName)
         .sensoryFeedback(.selection, trigger: expanded)
-        .sheet(isPresented: $composing) {
-            // Seeded from a grip already in the user's routines, so the composer opens on
-            // something real rather than on an arbitrary default.
-            MaxEntrySheet(seed: templates.recentGrips.first ?? GripSpec()) {
-                composing = false
-            }
-        }
+
     }
 
     // MARK: - Rows
@@ -246,36 +222,6 @@ struct MaxesView: View {
 
     // MARK: - Chrome
 
-    /// The screen's primary action, drawn as a row rather than hidden behind a toolbar
-    /// glyph — on a screen you visit in order to add something, the add must be the first
-    /// thing under your thumb and must never scroll away behind a list.
-    private var addRow: some View {
-        Button {
-            composing = true
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "plus")
-                Text("Add a max")
-                Spacer(minLength: 0)
-            }
-            .font(.system(.subheadline, weight: .semibold))
-            .foregroundStyle(Accent.graphite)
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
-                    .strokeBorder(Ink.tertiary.opacity(0.45),
-                                  style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
-            }
-            // MANDATORY: the label holds a Spacer and draws full-width, and a stroked
-            // background contributes nothing to SwiftUI's default hit area.
-            .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
-        }
-        .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityLabel("Add a max")
-    }
-
-    /// Plain language, no jargon, and honest about what the app cannot do for you.
     private var emptyCard: some View {
         MaterialCard {
             VStack(alignment: .leading, spacing: 12) {
@@ -326,7 +272,7 @@ struct MaxesView: View {
     private var histories: [GripHistory] {
         var order: [String] = []
         var buckets: [String: [MaxRecord]] = [:]
-        for record in records {                     // already newest-first
+        for record in records where record.gripKey == grip.key { // already newest-first
             let key = record.maxKey
             if buckets[key] == nil { order.append(key) }
             buckets[key, default: []].append(record)
@@ -409,15 +355,8 @@ private enum MaxEntry: Identifiable {
 
 // MARK: - The composer
 
-/// Adding a max, as one short document rather than a picker followed by a form.
-///
-/// Every control here is the same one the builder uses for the same job, deliberately:
-/// the edge is an `IntValueRow`, the fingers are `FingerPips`, the position is a
-/// `PositionChipRow`. Someone who has built a routine has already learned this screen.
-///
-/// Internal, not file-private: the Maxes TAB presents this same sheet from its
-/// "Measure again" buttons — one composer, however you arrive, so the side chips and
-/// the measured-vs-typed provenance rules can never fork.
+/// The legacy shared benchmark remains editable separately from individual hands.
+/// Its explicit weight-target rescale receipt is preserved; no automatic rewriting.
 struct MaxEntrySheet: View {
     @Environment(\.weightUnit) private var weightUnit
     @Environment(TemplateStore.self) private var templates
@@ -426,6 +365,7 @@ struct MaxEntrySheet: View {
     /// Closing belongs to the presenter. Reading the environment dismiss action here
     /// changes its identity with focus, which rebuilt this whole typing-heavy sheet on
     /// every keystroke — the same measured failure the routine builder avoids.
+    var onSaved: (() -> Void)?
     var onClose: () -> Void
 
     /// A VALUE, edited freely and written exactly once on Save — same shape as the
@@ -433,30 +373,21 @@ struct MaxEntrySheet: View {
     /// cannot fire dozens of CloudKit writes.
     @State private var grip: GripSpec
     @State private var kg: Double = 0
+    @State private var loaded = false
     @State private var failed = false
     @State private var savedTick = 0
-    @State private var measuring = false
     /// Defaults to `.both`, which is what an untouched picker has always meant and what
     /// every record written before hands existed means. Nothing here is required.
     @State private var side: Side = .both
-    /// What the gauge last handed back, if anything. Provenance is derived by COMPARING
-    /// it to the live value rather than by a flag, which makes the answer self-correcting:
-    /// drag or type the number away from what was measured and the record honestly
-    /// becomes `.manual` again, with no ordering rules about which `onChange` runs first.
-    @State private var measuredKg: Double?
     /// Set the moment Save lands with anything to report; the sheet then shows the
     /// receipt instead of dismissing. nil = still editing.
     @State private var impact: TemplateStore.MaxImpact?
 
-    init(seed: GripSpec, onClose: @escaping () -> Void) {
+    init(seed: GripSpec, side: Side = .both, onSaved: (() -> Void)? = nil, onClose: @escaping () -> Void) {
         self.onClose = onClose
+        self.onSaved = onSaved
         _grip = State(initialValue: seed)
-    }
-
-    /// `.measured` ONLY while the value still is the one the gauge produced — see
-    /// `measuredKg`. The distinction is on the row afterwards, so it has to be earned.
-    private var source: MaxSource {
-        measuredKg == kg ? .measured : .manual
+        _side = State(initialValue: side)
     }
 
     var body: some View {
@@ -471,7 +402,7 @@ struct MaxEntrySheet: View {
             .scrollDismissesKeyboard(.interactively)
             .background { AppBackground() }
             .scrollEdgeEffectStyle(.soft, for: .bottom)
-            .navigationTitle(impact == nil ? "New max" : "Saved")
+            .navigationTitle(impact == nil ? "Shared max" : "Saved")
             .navigationBarTitleDisplayMode(.inline)
             // The grip as it currently stands, live — so the thing being recorded is
             // stated somewhere fixed while you are three controls deep changing it.
@@ -496,61 +427,29 @@ struct MaxEntrySheet: View {
                     }
                 }
             }
-            // Full screen, not a nested sheet: you are hanging off a fingerboard while
-            // it is up, and it has to be readable across the room. See `MaxMeasureView`.
-            .fullScreenCover(isPresented: $measuring) {
-                MaxMeasureView(grip: grip) { measured in
-                    kg = measured
-                    measuredKg = measured
-                }
-            }
+
         }
         .sensoryFeedback(.success, trigger: savedTick)
-    }
-
-    /// WHICH HAND this max is for. Visible rather than folded behind a disclosure: it is
-    /// pre-answered with "Both hands", so it costs nothing to ignore, and a control
-    /// hidden behind a chevron is one nobody discovers — which would waste the whole
-    /// feature on the people whose hands differ enough to need it.
-    ///
-    /// The caption is where the consequence lives, because the chips cannot say it: a
-    /// side-specific max is a statement that your OTHER hand is different, and it stops
-    /// applying to that hand the moment you pick one.
-    private var handBlock: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "THIS MAX IS FOR"))
-            MaxSideChipRow(selection: $side)
-            Text(side == .both
-                 ? String(localized: "Used for both hands. Pick a hand if yours differ — most people's do.")
-                 : String(localized: "Only your \(side.name.lowercased()) hand. Its targets come from this number; your other hand needs its own."))
-                .font(.system(.footnote))
-                .foregroundStyle(Ink.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
+        .onAppear {
+            if !loaded {
+                kg = templates.maxTable.exact(grip: grip.key, side: side) ?? 0
+                loaded = true
+            }
         }
     }
 
     /// The editing form — everything the sheet is until Save lands.
     private var formContent: some View {
         VStack(alignment: .leading, spacing: 18) {
-            gripRail
-
-            IntValueRow(title: String(localized: "Edge"), unit: String(localized: "mm"), value: $grip.edgeMM,
-                        range: 4...45, limit: GripSpec.edgeRange,
-                        presets: [6, 10, 20, 30])
-
-            block(String(localized: "FINGERS")) {
-                FingerPips(fingers: $grip.fingers, position: grip.position)
+            HStack(spacing: 16) {
+                FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 9, gap: 4)
+                Text(grip.displayName)
+                    .font(.system(.headline))
             }
-
-            block(String(localized: "GRIP")) {
-                PositionChipRow(selection: $grip.position)
-            }
-
-            Divider().overlay(Ink.tertiary.opacity(0.22))
-
-            handBlock
-
-            measureRow
+            Text("Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged.")
+                .font(.system(.subheadline))
+                .foregroundStyle(Ink.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             // No section label above it: the row states its own subject, and a
             // "MAX" caps label over a row titled "Max on this grip" is the same
@@ -677,52 +576,6 @@ struct MaxEntrySheet: View {
         String(localized: "\(weightText(band.lowerBound))–\(weightText(band.upperBound))")
     }
 
-    /// The way in to measuring. Offered whatever the gauge is doing — `MaxMeasureView`
-    /// handles a missing connection with a Connect button and a way back, which is more
-    /// use than a disabled control that explains nothing.
-    private var measureRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SecondaryGlassButton(title: String(localized: "Measure on the gauge"),
-                                 systemImage: "waveform.path.ecg") {
-                measuring = true
-            }
-            Text("Pull as hard as you can — Get a Grip keeps the hardest the gauge sees. Or set it by hand below.")
-                .font(.system(.footnote))
-                .foregroundStyle(Ink.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: Blocks
-
-    /// Grips you already train, offered as a starting point — NOT a library. Nothing here
-    /// is stored, nothing is curated, and the pick is only a seed: every field below stays
-    /// editable, so a grip you have never used costs three taps rather than a setup step.
-    private var gripRail: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "START FROM"))
-            ScrollView(.horizontal) {
-                HStack(spacing: 8) {
-                    ForEach(templates.recentGrips, id: \.key) { candidate in
-                        Chip(title: candidate.shortName,
-                             isSelected: candidate.key == grip.key) {
-                            grip = candidate
-                        }
-                        .accessibilityLabel(candidate.spoken)
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-            .scrollIndicators(.hidden)
-            .scrollBounceBehavior(.basedOnSize)
-
-            Text("Grips from your routines. Tap one, then change anything you like.")
-                .font(.system(.footnote))
-                .foregroundStyle(Ink.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     @ViewBuilder
     private func block<Content: View>(_ label: String,
                                       @ViewBuilder content: () -> Content) -> some View {
@@ -773,9 +626,7 @@ struct MaxEntrySheet: View {
     /// that was true and would be a lie the moment measuring shipped — so it moved with
     /// the feature rather than being deleted by it.
     private var provenanceLine: some View {
-        Text(source == .measured
-             ? "Measured on the gauge — your hardest pull on this grip."
-             : "A number you entered. Check its value and units before using it for targets.")
+        Text("A number you entered. Check its value and units before using it for targets.")
             .font(.system(.footnote))
             .foregroundStyle(Ink.tertiary)
             .fixedSize(horizontal: false, vertical: true)
@@ -789,14 +640,12 @@ struct MaxEntrySheet: View {
         // Asked BEFORE the record lands — afterwards the old max is just history and
         // the ratio it anchors is gone.
         let previousMaxes = templates.maxTable
-        // Spelled out rather than left to the default — and now it is genuinely a
-        // choice: `source` is `.measured` only while the value is still the one the
-        // gauge produced.
-        guard templates.recordMax(kg, for: grip, source: source, side: side) else {
+        guard templates.recordMax(kg, for: grip, source: .manual, side: side) else {
             failed = true
             return
         }
         savedTick += 1
+        onSaved?()
         let computed = templates.maxImpact(grip: grip, previousMaxes: previousMaxes, newKg: kg, side: side)
         if computed.isEmpty {
             onClose()

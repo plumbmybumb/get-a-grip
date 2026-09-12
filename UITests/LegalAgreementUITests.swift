@@ -5,24 +5,24 @@ import XCTest
 /// Run on a fresh simulator: no production data or acceptance records are reset.
 @MainActor
 final class LegalAgreementUITests: XCTestCase {
-    func testMaxesManagementLivesInMaxesTab() {
+    func testMaxesCreationLivesInMaxesTab() {
         let app = XCUIApplication()
-        app.launchArguments = ["-seedRoutine", "-mockDevice", "-tab", "2"]
+        app.launchArguments = ["-seedRoutine", "-mockDevice", "-tab", "2", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         let skip = app.buttons["Skip"]
         if skip.waitForExistence(timeout: 2) { skip.tap() }
-        let manage = app.buttons["Manage maxes"]
-        XCTAssertTrue(manage.waitForExistence(timeout: 5))
-        manage.tap()
-        XCTAssertTrue(app.navigationBars["Manage maxes"].waitForExistence(timeout: 3))
-        let add = app.buttons["Add a max"]
+        XCTAssertFalse(app.buttons["Manage maxes"].exists)
+        let add = app.buttons["maxes.add"]
+        for _ in 0..<12 where !add.isHittable { app.swipeUp() }
         XCTAssertTrue(add.isHittable)
         add.tap()
         XCTAssertTrue(app.navigationBars["New max"].waitForExistence(timeout: 3))
         app.buttons["Cancel"].tap()
-        app.navigationBars["Manage maxes"].buttons.firstMatch.tap()
-        XCTAssertTrue(manage.waitForExistence(timeout: 3))
-        app.tabBars.buttons["Settings"].tap()
+        // Scrolling to Add collapses the native tab bar; expand it before switching.
+        let settings = app.tabBars.buttons["Settings"]
+        if !settings.exists { app.tabBars.buttons["Maxes"].tap() }
+        XCTAssertTrue(settings.waitForExistence(timeout: 3))
+        settings.tap()
         XCTAssertFalse(app.buttons["Maxes. What you can pull on each grip."].exists)
         app.terminate()
     }
