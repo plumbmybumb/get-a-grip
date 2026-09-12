@@ -216,18 +216,21 @@ enum PlanMath {
         return plan.leadInSeconds + reps * hold(set, in: plan) + (reps - 1) * rest(set, in: plan)
     }
 
-    /// Wall-clock estimate. A fold over `sequence`, never a parallel formula.
+    /// Fold the same resolved set timing used by `sequence`, without allocating every
+    /// pull just to show a builder total. Zero-pull sets contribute no lead-in or break.
     static func totalSeconds(_ plan: SessionPlan) -> Int {
-        sequence(for: plan).reduce(0) { $0 + $1.totalSeconds }
+        let live = plan.executable
+        return live.sets.reduce(0) { $0 + setSeconds($1, in: live) }
+            + max(0, live.sets.count - 1) * live.setBreakSeconds
     }
 
     /// Time under tension across the whole session (both sides together).
     static func tensionSeconds(_ plan: SessionPlan) -> Int {
-        sequence(for: plan).reduce(0) { $0 + $1.holdSeconds }
+        plan.executable.sets.reduce(0) { $0 + repCount($1, mode: plan.handMode) * hold($1, in: plan) }
     }
 
     static func totalReps(_ plan: SessionPlan) -> Int {
-        sequence(for: plan).count
+        plan.executable.sets.reduce(0) { $0 + repCount($1, mode: plan.handMode) }
     }
 
     static func setCount(_ plan: SessionPlan) -> Int {

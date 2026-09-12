@@ -134,7 +134,10 @@ final class LegalAgreementUITests: XCTestCase {
         app.launch()
         let skip = app.buttons["Skip"]
         if skip.waitForExistence(timeout: 2) { skip.tap() }
-        let edit = app.buttons["Edit routine"].firstMatch
+        let overview = app.buttons["routine.overview.open"].firstMatch
+        XCTAssertTrue(overview.waitForExistence(timeout: 5))
+        overview.tap()
+        let edit = app.buttons["routine.overview.edit"]
         XCTAssertTrue(edit.waitForExistence(timeout: 5))
         edit.tap()
         let target = app.buttons["Target load"].firstMatch

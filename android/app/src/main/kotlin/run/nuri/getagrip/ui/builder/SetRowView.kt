@@ -268,8 +268,8 @@ fun SetRowView(
                     IntValueRow(
                         title = tr("Pulls per side"),
                         value = set.repsPerSide,
-                        range = 1..12,
-                        limit = 1..20,
+                        range = 1..40,
+                        limit = 1..SetPlan.repsRange.last,
                         caption = tr("= %s", tensionText),
                         control = ValueControl.Stepper,
                     ) { onSetChange(set.copy(repsPerSide = it)) }

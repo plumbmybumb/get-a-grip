@@ -171,7 +171,10 @@ data class SetPlan(
     companion object {
         /// Decode clamps. `repsRange` starts at 0 because a zero-rep set is representable
         /// (and dropped by `SessionPlan.executable`); the UI floor is 1.
-        val repsRange = 0..20
+        // A practical storage bound while the runner records individual pulls, including
+        // skipped pulls. The editor shares this range so saving never reduces a count
+        // the user was allowed to enter.
+        val repsRange = 0..100
         // Match the hold dial: positive whole seconds, including short 1–2 s pulls.
         val holdRange = 1..120
         val restRange = 0..600

@@ -278,6 +278,30 @@ final class TemplateStoreTests: XCTestCase {
         XCTAssertEqual(created.name, "Morning no-hangs")
     }
 
+    func testLargerPullCountsSurviveSavingAndReopeningTheEditor() throws {
+        let w = try makeWorld()
+        var initial = RoutineDraft.blank(named: "Long set")
+        initial.plan.sets = [SetPlan()]
+        let created = try XCTUnwrap(w.store.save(initial))
+        for count in [36, 100] {
+            var edited = BuilderDraftPreparation.editable(w.store.draft(editing: created))
+            edited.plan.sets[0].repsPerSide = count
+            let saved = try XCTUnwrap(w.store.save(edited))
+
+            // Read through a fresh context so this exercises the stored set blob,
+            // not just the editor's still-live value.
+            let reopenedContext = ModelContext(w.container)
+            let reopened = try XCTUnwrap(reopenedContext.fetch(FetchDescriptor<SessionTemplate>())
+                .first { $0.id == saved.id })
+            let draft = BuilderDraftPreparation.editable(w.store.draft(editing: reopened))
+            XCTAssertEqual(draft.plan.sets[0].repsPerSide, count)
+            let shared = try RoutineShare.draft(from: XCTUnwrap(RoutineShare.url(for: draft)))
+            XCTAssertEqual(shared.plan.sets[0].repsPerSide, count)
+            XCTAssertEqual(SessionRunner(plan: shared.plan).plannedRepCount,
+                           count * shared.plan.handMode.sideCount)
+        }
+    }
+
     func testDuplicateAppendsWithANewIDFreshSetIDsAndACopyOfPrefix() throws {
         let w = try makeWorld()
         let original = try XCTUnwrap(w.store.create(.starter))

@@ -105,6 +105,11 @@ val DarkPalette = GripPalette(
 
 val LocalGripPalette = staticCompositionLocalOf { LightPalette }
 
+/** Orange used as text needs a darker light-mode ink than the bright cue outline.
+ * Matches the readable armed text pair used by the iOS grip-change description. */
+val GripPalette.armedText: Color
+    get() = if (this == DarkPalette) Color(0xFFFFB37A) else Color(0xFFBF360C)
+
 /// House metrics (points → dp, one to one).
 object Metrics {
     val radiusSheet = 32.dp

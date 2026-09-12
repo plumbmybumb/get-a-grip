@@ -1,0 +1,7 @@
+La limite de 20 tirages est corrigée : chaque série accepte désormais jusqu’à 100 tirages par main.
+
+Quelques petits ajouts pour mieux suivre vos séances :
+• Consultez les prises, les temps et l’ordre des mains avant de commencer. Modifiez la routine depuis ce même écran.
+• Touchez « 14 derniers jours » pour ouvrir l’historique.
+• Les repos d’au moins 10 secondes affichent plus clairement la prochaine main et la prochaine prise, avec un grand compte à rebours. Le graphique reste visible.
+• Des réglages plus épurés, avec des liens vers les projets open source Grip Connect et Crimpdeq.

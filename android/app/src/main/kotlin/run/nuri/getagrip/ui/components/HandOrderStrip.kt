@@ -44,21 +44,19 @@ fun HandOrderStrip(
 ) {
     val palette = LocalGripPalette.current
 
-    // A throwaway `SetPlan` so the count comes out of `PlanMath.handSequence` — the single
-    // ×2 resolver. Multiplying `repsPerSide` by `sideCount` here instead is exactly the
-    // shortcut that makes a routine twice as long as its own summary claims.
-    val sides = PlanMath.handSequence(
-        SetPlan(repsPerSide = maxOf(0, repsPerSide)),
-        SessionPlan(handMode = mode),
-    )
-    val sentence = sentence(mode, sides.size, maxOf(0, repsPerSide))
+    val set = SetPlan(repsPerSide = maxOf(0, repsPerSide))
+    val totalPulls = PlanMath.repCount(set, mode)
+    // Large sets use a sentence. Do not allocate a hand marker for every pull just
+    // to discover that the diagram would be too dense to display.
+    val sides = if (totalPulls in 1..12) PlanMath.handSequence(set, SessionPlan(handMode = mode)) else emptyList()
+    val sentence = sentence(mode, totalPulls, maxOf(0, repsPerSide))
 
     // ONE element with one spoken sentence: twelve focusable capsules is twelve swipes to
     // learn something a sentence says once.
     Box(modifier.semantics(mergeDescendants = true) { contentDescription = sentence }) {
         // Past twelve pulls a row of capsules stops being countable at a glance and becomes
         // a texture, so the sentence takes over.
-        if (sides.isEmpty() || sides.size > 12) {
+        if (totalPulls == 0 || totalPulls > 12) {
             Sentence(sentence)
         } else {
             BoxWithConstraints {

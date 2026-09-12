@@ -211,13 +211,18 @@ object PlanMath {
         return plan.leadInSeconds + reps * hold(set, plan) + (reps - 1) * rest(set, plan)
     }
 
-    /// Wall-clock estimate. A fold over `sequence`, never a parallel formula.
-    fun totalSeconds(plan: SessionPlan): Int = sequence(plan).sumOf { it.totalSeconds }
+    /// Fold the same resolved set timing used by `sequence`, without allocating every
+    /// pull just to show a builder total. Zero-pull sets contribute no lead-in or break.
+    fun totalSeconds(plan: SessionPlan): Int {
+        val live = plan.executable
+        return live.sets.sumOf { setSeconds(it, live) } + maxOf(0, live.sets.size - 1) * live.setBreakSeconds
+    }
 
     /// Time under tension across the whole session (both sides together).
-    fun tensionSeconds(plan: SessionPlan): Int = sequence(plan).sumOf { it.holdSeconds }
+    fun tensionSeconds(plan: SessionPlan): Int =
+        plan.executable.sets.sumOf { repCount(it, plan.handMode) * hold(it, plan) }
 
-    fun totalReps(plan: SessionPlan): Int = sequence(plan).size
+    fun totalReps(plan: SessionPlan): Int = plan.executable.sets.sumOf { repCount(it, plan.handMode) }
 
     fun setCount(plan: SessionPlan): Int = plan.executable.sets.size
 

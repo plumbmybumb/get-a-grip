@@ -159,51 +159,17 @@ private val UNIT_SIZE = 22.sp
 /// here touches a store other than `DeviceStore`, which is what keeps the screen previewable.
 @Composable
 fun RunnerHost(
-    plan: SessionPlan,
-    routineName: String,
-    /// How many sessions the routine asks for in a day. Carried through to `SessionOutcome`
-    /// for the log; the runner itself has no use for it.
-    sessionsPerDayTarget: Int,
-    maxes: MaxTable,
+    workout: run.nuri.getagrip.runner.ActiveWorkout,
+    submissionScope: kotlinx.coroutines.CoroutineScope,
     modifier: Modifier = Modifier,
-    /// Run the whole thing on the clock, with no gauge — see `SessionRunner.timerOnly`.
-    /// Everything force-shaped leaves the screen rather than sitting there at 0.0 kg, which
-    /// would read as a broken gauge instead of an absent one.
-    timerOnly: Boolean = false,
     onFinished: suspend (run.nuri.getagrip.runner.SessionOutcome, SessionSummaryDecision) -> Boolean,
     onExit: () -> Unit,
 ) {
     val device = LocalDeviceStore.current
-    val palette = LocalGripPalette.current
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    val cues = remember(context) { CuePlayer(context) }
-    // The Live Update and the thing that keeps it alive. Both are per-SESSION rather than
-    // per-composition: a publisher that outlived its session would go on updating a card
-    // for a workout that had ended.
-    val activity = remember(context) { AndroidActivityPublisher(context) }
-    val sessionService = remember(context) { AndroidSessionServiceController(context) }
-    val session = remember(plan, timerOnly) {
-        RunnerSession(
-            plan = plan,
-            routineName = routineName,
-            device = device,
-            // The maxes are read ONCE, here — a session's targets must not move under the
-            // climber because a max was recorded on another device mid-workout.
-            maxes = maxes,
-            timerOnly = timerOnly,
-            scope = scope,
-            cues = cues,
-            activity = activity,
-            service = sessionService,
-        )
-    }
-
-    DisposableEffect(session) {
-        session.begin()
-        onDispose { session.end() }
-    }
+    val session = workout.session
+    val timerOnly = session.timerOnly
+    // The ViewModel owns begin/end and the ticker. Disposing this drawing during
+    // Activity recreation must not stop the gauge or discard the workout.
 
     // **THE SESSION ACT, on the first MEASURED session you run.**
     //
@@ -221,15 +187,14 @@ fun RunnerHost(
     // and the resume is guarded on having been the one to pause, so ending the tour can never
     // restart a session the climber paused themselves.
     val teaching = tour.sessionPausesRunner
-    var pausedByTour by remember { mutableStateOf(false) }
     LaunchedEffect(teaching) {
         if (teaching) {
             if (!session.snapshot.phase.isPaused) {
                 session.send(RunnerEvent.Pause)
-                pausedByTour = true
+                workout.pausedByTour = true
             }
-        } else if (pausedByTour) {
-            pausedByTour = false
+        } else if (workout.pausedByTour) {
+            workout.pausedByTour = false
             if (session.snapshot.phase.isPaused) session.send(RunnerEvent.Resume)
         }
     }
@@ -245,11 +210,10 @@ fun RunnerHost(
     RunnerLifecycle(session, device, timerOnly)
 
     // `onChange`, not "on every composition": `connectionChanged` sends real engine events.
-    var lastConnected by remember { mutableStateOf<Boolean?>(null) }
     val connected = device.state.isConnected
     LaunchedEffect(connected) {
-        if (lastConnected != null && lastConnected != connected) session.connectionChanged(connected)
-        lastConnected = connected
+        if (workout.lastConnected != null && workout.lastConnected != connected) session.connectionChanged(connected)
+        workout.lastConnected = connected
     }
 
     // **System back PAUSES; it never ends.** Ending a session is the hold, and only the
@@ -272,10 +236,12 @@ fun RunnerHost(
             // FROZEN at the moment the session ended. Recomputing it every recomposition
             // would move `finishedAt` and re-derive the max candidates under the rows the
             // climber is tapping.
-            val outcome = remember(session) { session.outcome() }
+            val outcome = workout.outcome()
             SessionSummaryScreen(
                 outcome = outcome,
-                sessionsPerDayTarget = sessionsPerDayTarget,
+                sessionsPerDayTarget = workout.template.sessionsPerDay,
+                state = workout.summary,
+                submissionScope = submissionScope,
                 modifier = Modifier.safeDrawingPadding(),
                 onDone = { finishedOutcome, decision ->
                     val success = onFinished(finishedOutcome, decision)
@@ -301,6 +267,7 @@ fun RunnerHost(
                     // Dimmed while resting, so the hand says "this is what's COMING" rather
                     // than "pull this now".
                     isActive = !isResting(snapshot),
+                    restFocus = !timerOnly && snapshot.showsRestFocus,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
@@ -450,11 +417,20 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
             // drawing the glyph again would be the same picture twice — and the counters move
             // DOWN to sit above the graph. They read just as well there: they are the two
             // numbers you check between pulls, not while pulling.
-            GripNameRow(snapshot, palette, timerOnly = false)
-            Prompt(snapshot, tint, timerOnly, device.state.isConnected)
-            Hero(session, snapshot, palette, timerOnly)
-            RepProgress(session, snapshot, palette)
-            Counters(snapshot)
+            RestFocusHeaderFrame(
+                focused = snapshot.showsRestFocus,
+                liveHeader = {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        GripNameRow(snapshot, palette, timerOnly = false)
+                        Prompt(snapshot, tint, timerOnly, device.state.isConnected)
+                        Hero(session, snapshot, palette, timerOnly, measureOnly = snapshot.showsRestFocus)
+                        RepProgress(session, snapshot, palette)
+                        Counters(snapshot)
+                    }
+                },
+                restHeader = { RunnerRestFocus(snapshot) },
+            )
             Surface(
                 shape = RoundedCornerShape(Metrics.radiusCard),
                 color = palette.card,
@@ -484,8 +460,15 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                     // renders as a lie — it reads as a device measuring nothing rather than
                     // an app receiving nothing, and there is no way to tell them apart by
                     // looking. Say it, and say what to do.
-                    if (!snapshot.hasSignal) NoSignalNotice(device)
-                    GraphGripChangeCue(snapshot, palette, Modifier.matchParentSize())
+                    // Focus replaces the old prompt that normally reports a lost link.
+                    // hasSignal means a sample has arrived at least once, not that the
+                    // gauge is still sending. Keep its live warning visible in the graph.
+                    if (!snapshot.hasSignal || (snapshot.showsRestFocus &&
+                            (snapshot.linkIsDown || !device.state.isConnected || !device.isSignalFresh))) {
+                        NoSignalNotice(device)
+                    }
+                    GraphGripChangeCue(snapshot, palette, Modifier.matchParentSize(),
+                        showBanner = !snapshot.showsRestFocus)
                 }
             }
         }
@@ -678,10 +661,12 @@ private fun Hero(
     snapshot: RunnerSnapshot,
     palette: GripPalette,
     timerOnly: Boolean,
+    measureOnly: Boolean = false,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
+            .testTag("runner.hero")
             // A numeral changing 80×/second is unusable under TalkBack; the cues and the
             // counters row are the accessible channel.
             .clearAndSetSemantics {},
@@ -694,7 +679,10 @@ private fun Hero(
         // Each half takes a WEIGHT, which is what bounds the numeral's width — `autoSize`
         // shrinks to the constraints it is given, and two unbounded 76 sp figures side by
         // side simply overflow at a large font scale.
-        if (!timerOnly) LiveForceReadout(snapshot, palette, Modifier.weight(1f))
+        if (!timerOnly) {
+            if (measureOnly) ForceReadoutText("0.0", palette.inkPrimary, palette, Modifier.weight(1f))
+            else LiveForceReadout(snapshot, palette, Modifier.weight(1f))
+        }
         CountdownNumeral(
             seconds = snapshot.secondsShown,
             tint = if (isStalled(snapshot)) palette.armed else palette.inkPrimary,
@@ -720,13 +708,19 @@ private fun LiveForceReadout(snapshot: RunnerSnapshot, palette: GripPalette, mod
         isStalled(snapshot) -> palette.armed
         else -> palette.bleu
     }
+    ForceReadoutText(kgText(device.currentKg), tint, palette, modifier)
+}
+
+/** The hidden header uses the same typography without observing live force. */
+@Composable
+private fun ForceReadoutText(value: String, tint: Color, palette: GripPalette, modifier: Modifier) {
     Row(
         modifier,
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
     ) {
         BasicText(
-            kgText(device.currentKg),
+            value,
             // **CLOCKS ROLL, MEASUREMENTS SNAP.** No animation at all on this number: a
             // value changing ten times a second under an animated transition turns the
             // figure you are trying to read mid-pull into a permanent blur.
@@ -850,7 +844,8 @@ private fun NoSignalNotice(device: DeviceStore) {
     val palette = LocalGripPalette.current
     val connected = device.state.isConnected
     Column(
-        Modifier.padding(horizontal = 24.dp).semantics(mergeDescendants = true) {},
+        Modifier.padding(horizontal = 24.dp).testTag("runner.signalWarning")
+            .semantics(mergeDescendants = true) {},
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -1412,6 +1407,7 @@ internal fun DebugRunnerPreview(onDone: () -> Unit) {
             snapshot.grip?.let { grip ->
                 PalmHand(grip = grip, side = snapshot.side ?: Side.both,
                     newGripID = snapshot.newGripID, holdsGripCueForRest = snapshot.gripChangesNext,
+                    restFocus = snapshot.showsRestFocus,
                     isActive = !isResting(snapshot), modifier = Modifier.align(Alignment.TopCenter))
             }
             RunnerScreenBorder(runnerBorderCue(snapshot, false,
@@ -1460,6 +1456,7 @@ private fun PreviewRunner(dark: Boolean, timerOnly: Boolean, drive: (RunnerSessi
                         grip = grip,
                         side = session.snapshot.side ?: Side.both,
                         isActive = !isResting(session.snapshot),
+                        restFocus = !timerOnly && session.snapshot.showsRestFocus,
                         modifier = Modifier.align(Alignment.TopCenter),
                     )
                 }

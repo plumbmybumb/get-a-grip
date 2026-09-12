@@ -330,6 +330,29 @@ class TemplateStoreTests {
     }
 
     @Test
+    fun largerPullCountsSurviveSavingAndReopeningTheEditor() = runTest {
+        val w = makeWorld()
+        val initial = RoutineDraft.blank("Long set").let {
+            it.copy(plan = it.plan.copy(sets = listOf(SetPlan())))
+        }
+        val created = assertNotNull(w.store.save(initial))
+        for (count in listOf(36, 100)) {
+            val edited = run.nuri.getagrip.ui.builder.BuilderDraft.editable(w.store.draft(created))
+                .let { it.copy(plan = it.plan.copy(sets = listOf(it.plan.sets[0].copy(repsPerSide = count)))) }
+            val saved = assertNotNull(w.store.save(edited))
+
+            // A fresh Room read exercises the stored set blob, not the editor value.
+            val reopened = routines(w).single { it.id == saved.id }
+            val draft = run.nuri.getagrip.ui.builder.BuilderDraft.editable(w.store.draft(reopened))
+            assertEquals(count, draft.plan.sets[0].repsPerSide)
+            val shared = RoutineShare.draft(assertNotNull(RoutineShare.url(draft)))
+            assertEquals(count, shared.plan.sets[0].repsPerSide)
+            assertEquals(count * shared.plan.handMode.sideCount,
+                run.nuri.getagrip.engine.SessionRunner(shared.plan).plannedRepCount)
+        }
+    }
+
+    @Test
     fun duplicateAppendsWithANewIDFreshSetIDsAndACopyOfPrefix() = runTest {
         val w = makeWorld()
         val original = assertNotNull(w.store.create(RoutineDraft.starter))

@@ -29,7 +29,9 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $selection) {
-            Tab("Today", systemImage: "figure.climbing", value: 0) { TodayView() }
+            Tab("Today", systemImage: "figure.climbing", value: 0) {
+                TodayView(onShowHistory: { selection = 1 })
+            }
             Tab("History", systemImage: "chart.xyaxis.line", value: 1) { HistoryView() }
             // The SOFT NUDGE: once the newest measured max is four weeks stale the
             // icon pulses — the schedule-free version of a benchmark reminder (Nuri,

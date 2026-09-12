@@ -33,6 +33,7 @@ struct IslandHand: View {
     /// "pull this now".
     var isActive: Bool = true
     var emphasized: Bool = false
+    var restFocused: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -112,8 +113,9 @@ struct IslandHand: View {
             hand(width: geo.size.width)
                 .frame(height: 100, alignment: .top)
                 // Keep the roots below the physical island; only the drawing grows.
-                .scaleEffect(emphasized && !reduceMotion ? 1.25 : 1,
+                .scaleEffect(emphasized && !reduceMotion ? 1.25 : (restFocused ? 1.2 : 1),
                              anchor: UnitPoint(x: 0.5, y: 0.5433))
+                .animation(reduceMotion ? nil : Motion.state(false), value: restFocused)
         }
         .ignoresSafeArea()
         // Decoration over the status bar: it must never eat a touch, and VoiceOver
@@ -166,7 +168,7 @@ struct IslandHand: View {
 
         return RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
             // Pure black matches the hardware at rest; orange names an actual grip change.
-            .fill(on ? gripInk.opacity(isActive || emphasized ? 1 : 0.4)
+            .fill(on ? gripInk.opacity(isActive || emphasized || restFocused ? 1 : 0.4)
                      : gripInk.opacity(0.12))
             .frame(width: Self.barWidth, height: length)
             .offset(x: originX + CGFloat(slot) * (Self.barWidth + Self.barGap),
@@ -198,7 +200,7 @@ struct IslandHand: View {
         let pivotY = Self.islandBottom + Self.gap + 4
 
         return Capsule()
-            .fill(gripInk.opacity(isActive || emphasized ? 1 : 0.4))
+            .fill(gripInk.opacity(isActive || emphasized || restFocused ? 1 : 0.4))
             .frame(width: Self.thumbLength, height: Self.thumbThickness)
             // Drawn INTO the palm on a hand swap: scaling along its own length toward the
             // root makes it disappear at the knuckle rather than shrinking to a dot.
@@ -223,10 +225,12 @@ extension View {
     /// window to ask — would say "no island" and leave the screen laid out for a hand
     /// that then appears anyway.
     @ViewBuilder
-    func islandHand(grip: GripSpec?, side: Side?, isActive: Bool, enabled: Bool, emphasized: Bool = false) -> some View {
+    func islandHand(grip: GripSpec?, side: Side?, isActive: Bool, enabled: Bool,
+                    emphasized: Bool = false, restFocused: Bool = false) -> some View {
         if enabled, let grip {
             overlay(alignment: .top) {
-                IslandHand(grip: grip, side: side ?? .both, isActive: isActive, emphasized: emphasized)
+                IslandHand(grip: grip, side: side ?? .both, isActive: isActive,
+                           emphasized: emphasized, restFocused: restFocused)
             }
         } else {
             self

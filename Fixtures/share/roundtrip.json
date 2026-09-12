@@ -54,5 +54,21 @@
       "sessionsPerDay" : 1
     },
     "name" : "fingerCurl"
+  },
+  {
+    "draft" : {
+      "isOnDemand" : false,
+      "plan" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"36 pulls per side\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"note\":\"\",\"repsPerSide\":36}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "sessionsPerDay" : 1
+    },
+    "name" : "thirtySixPullsPerSide"
+  },
+  {
+    "draft" : {
+      "isOnDemand" : false,
+      "plan" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"100 pulls per side\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"note\":\"\",\"repsPerSide\":100}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "sessionsPerDay" : 1
+    },
+    "name" : "oneHundredPullsPerSide"
   }
 ]

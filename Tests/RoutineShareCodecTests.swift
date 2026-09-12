@@ -274,7 +274,7 @@ final class RoutineShareCodecTests: XCTestCase {
         XCTAssertEqual(imported.plan.thresholdKg, 0.1, accuracy: 0.0001,
                        "a zero threshold would read as engaged against sensor noise")
         XCTAssertEqual(imported.plan.sets[0].grip.edgeMM, 1)
-        XCTAssertEqual(imported.plan.sets[0].repsPerSide, 20)
+        XCTAssertEqual(imported.plan.sets[0].repsPerSide, 99, "Valid larger pull counts are not reduced during import")
     }
 
     /// A pinch IS thumb opposition, so a thumbless one is not a grip anybody can perform

@@ -11,6 +11,15 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewModelScope
+import run.nuri.getagrip.runner.WorkoutViewModel
+import run.nuri.getagrip.runner.RunnerSession
+import run.nuri.getagrip.runner.CuePlayer
+import run.nuri.getagrip.runner.AndroidActivityPublisher
+import run.nuri.getagrip.runner.AndroidSessionServiceController
+import run.nuri.getagrip.store.LocalDeviceStore
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -152,10 +161,11 @@ fun RootTabView() {
     val tour = LocalTourController.current
     val reduceMotion = rememberReduceMotion()
 
-    // A session covers EVERYTHING, tab bar included — the iOS full-screen cover. Plain
-    // `remember`, not saveable: a session cannot survive process death, and pretending
-    // otherwise would resurrect a runner with no gauge stream behind it.
-    var running by remember { mutableStateOf<RunRequest?>(null) }
+    // Retain the route AND runner across Activity recreation. Neither is restored
+    // after process death, when the original gauge timeline no longer exists.
+    val workouts: WorkoutViewModel = viewModel()
+    val device = LocalDeviceStore.current
+    val appContext = LocalContext.current.applicationContext
 
     // **A shared routine lands on Today, so the tab moves FIRST.** Answering an import while
     // Settings is on screen would leave you on a page with no trace of what happened.
@@ -172,19 +182,15 @@ fun RootTabView() {
         }
     }
 
-    val request = running
+    val request = workouts.active
     if (request != null) {
         // **Every presented container needs its own host.** The runner replaces the root
         // outright, so the intro act's overlay is gone by the time this draws; the session act
         // is hosted here, over the screen it describes.
-        LaunchedEffect(request) { templates.noteSessionStarted(request.template) }
         TourHost(TourAct.Session) {
         RunnerHost(
-            plan = request.template.plan,
-            routineName = request.template.name,
-            sessionsPerDayTarget = request.template.sessionsPerDay,
-            maxes = templates.maxTable,
-            timerOnly = request.timerOnly,
+            workout = request,
+            submissionScope = workouts.viewModelScope,
             onFinished = { outcome, decision ->
                 // Discard means NOTHING is written; a session nobody pulled in is not
                 // worth logging either (both rules from the iOS runner).
@@ -205,7 +211,7 @@ fun RootTabView() {
                     saved != null
                 } else true
             },
-            onExit = { running = null },
+            onExit = { workouts.finish(request) },
         )
         }
         return
@@ -360,7 +366,20 @@ fun RootTabView() {
                     onStart = { template, timerOnly ->
                         // Written on START, not on finish: the useful question at 19:00 is
                         // "which one am I in the middle of", not "which one did I complete".
-                        running = RunRequest(template, timerOnly)
+                        val started = workouts.start(template) { sessionScope ->
+                            RunnerSession(
+                                plan = template.plan,
+                                routineName = template.name,
+                                device = device,
+                                maxes = templates.maxTable,
+                                timerOnly = timerOnly,
+                                scope = sessionScope,
+                                cues = CuePlayer(appContext),
+                                activity = AndroidActivityPublisher(appContext),
+                                service = AndroidSessionServiceController(appContext),
+                            )
+                        }
+                        if (started) templates.noteSessionStarted(template)
                     },
                     onBuild = {
                         building = if (templates.routines.isEmpty()) BuilderMode.FirstRun else BuilderMode.AddAnother
@@ -371,6 +390,7 @@ fun RootTabView() {
                         tour.builderOpened()
                     },
                     onEdit = { template -> building = BuilderMode.Edit(template.id) },
+                    onShowHistory = { current = Tab.History },
                     onLogSession = { loggingSession = true },
                     // The two presentations Today cannot see: both are hosted here and both
                     // leave this screen composed underneath them, so the guard has to be
@@ -418,9 +438,6 @@ fun RootTabView() {
 private fun composerDraft(seed: GripSpec?, fallback: GripSpec?): MaxEntryDraft =
     MaxEntryDraft(seed ?: fallback ?: GripSpec())
 
-
-/// What Today asked for: the routine to run and whether to run it on the clock alone.
-private data class RunRequest(val template: SessionTemplateEntity, val timerOnly: Boolean)
 
 /// What Maxes asked for: one grip, one hand, on the gauge.
 ///

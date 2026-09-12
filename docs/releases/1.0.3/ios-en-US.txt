@@ -1,0 +1,7 @@
+Fixed the 20-pull limit: sets now support up to 100 pulls per hand.
+
+A few small additions to make each session easier to follow:
+• Preview a routine’s grips, timing and hand order before you start. Edit it from the same screen.
+• Tap Last 14 days to open your history.
+• Rests of 10 seconds or more show your next hand and grip clearly, with a larger countdown. The live graph stays visible.
+• Tidier Settings, with links to the Grip Connect and Crimpdeq open-source projects.

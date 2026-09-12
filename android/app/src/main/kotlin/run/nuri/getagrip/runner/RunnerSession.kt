@@ -80,8 +80,8 @@ class RunnerSession(
     /// happens to be connected.
     val timerOnly: Boolean = false,
 
-    /// The ticker and the watchdog live here. `RunnerHost` hands over a scope tied to the
-    /// composition so both die with the screen even if `end()` is never reached.
+    /// The ticker and watchdog share the retained workout's scope. Recreating its
+    /// Activity must not cancel measurement; explicit finish or ViewModel cleanup does.
     private val scope: CoroutineScope,
 
     /// Injected because `SystemClock.elapsedRealtimeNanos()` reads a stubbed zero forever
@@ -524,6 +524,7 @@ class RunnerSession(
             gripChangesNext = runner.nextGripDiffers,
             newGripID = runner.newGripID, upcomingGrip = runner.upcomingGrip,
             isSetBreak = runner.isSetBreak,
+            scheduledRestSeconds = RestFocusPresentation.scheduledRestSeconds(runner.phase, runner.slots),
             // Whole seconds belong in the screen snapshot. The measured fraction stays
             // separate so smoothing the small progress bar cannot redraw the whole runner.
             secondsShown = secondsShown,
@@ -760,7 +761,14 @@ data class RunnerSnapshot(
 
     /// Whole seconds on whichever clock is running.
     val secondsShown: Int = 0,
-)
+    /// Original duration of the completed slot's rest. It does not shrink with the
+    /// countdown or accidentally inherit the next grip's rest while labels look ahead.
+    val scheduledRestSeconds: Int? = null,
+) {
+    val showsRestFocus: Boolean
+        get() = RestFocusPresentation.isResting(phase) &&
+            (scheduledRestSeconds ?: 0) >= RestFocusPresentation.minimumScheduledSeconds
+}
 
 /// A pull that beat the grip's working max — offered per HAND, because a left and a right
 /// max are different numbers and a session pulls on one hand at a time.

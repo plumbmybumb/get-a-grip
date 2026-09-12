@@ -391,7 +391,9 @@ class RunnerReleaseRestCueTests {
         }
     }
 
-    private class Harness(rest: Int = 20, reps: Int = 2, mode: HandMode = HandMode.alternateEachRep,
+    // These tests cover the compact rest interface. Long-rest presentation has its
+    // own geometry, phase and accessibility coverage in RestFocusUiTests.
+    private class Harness(rest: Int = 9, reps: Int = 2, mode: HandMode = HandMode.alternateEachRep,
         timerOnly: Boolean = false) : AutoCloseable {
         val clock = FakeClock()
         val scope = inertScope()
@@ -400,7 +402,7 @@ class RunnerReleaseRestCueTests {
         val session = RunnerSession(
             SessionPlan(name = "Release review", sets = listOf(
                 SetPlan(grip = GripSpec(), repsPerSide = reps), SetPlan(grip = GripSpec(edgeMM = 15), repsPerSide = reps)),
-                holdSeconds = 1, restSeconds = rest, setBreakSeconds = 30, leadInSeconds = 0, handMode = mode),
+                holdSeconds = 1, restSeconds = rest, setBreakSeconds = 9, leadInSeconds = 0, handMode = mode),
             "Release review", device, scope = scope, clock = clock, timerOnly = timerOnly,
         ).also { it.begin() }
         var micros = 0u

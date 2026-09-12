@@ -7,13 +7,14 @@ import SwiftUI
 /// The ritual front door — the screen Nuri sees every single day, twice.
 ///
 /// What you do today is the first thing on screen and one tap from starting. There is
-/// no library to assemble, no session to pick apart from the routine: the routine IS
-/// the thing, and the only door to changing it is the summary row on its own card.
+/// no library to assemble. The card's plan row opens a preparation overview; its
+/// Edit action and the card menu lead to the existing builder.
 ///
 /// Deliberately no footer disclaimer. Schengen's dashboard carries one because every
 /// number there is legally load-bearing; nothing here is. The Tindeq non-affiliation
 /// line lives in Settings › About.
 struct TodayView: View {
+    var onShowHistory: () -> Void = {}
     /// Sorted the same way `TemplateStore` sorts, so the two can never disagree about
     /// which routine is primary. The `id` tiebreak is applied in `ordered` rather than
     /// here because `UUID` is not `Comparable` and a SwiftData `SortDescriptor` cannot
@@ -43,6 +44,8 @@ struct TodayView: View {
     /// target out from under anyone parked on the card.
     private static let ghostID = UUID()
     @State private var builder: BuilderMode?
+    @State private var overview: RoutineOverviewRequest?
+    @State private var pendingOverviewEditID: UUID?
     @Environment(TourController.self) private var tour
 
     @State private var running: SessionTemplate?
@@ -82,6 +85,7 @@ struct TodayView: View {
     /// mattered most.
     private var canPresentImport: Bool {
         builder == nil && running == nil && pendingStartID == nil
+            && overview == nil && pendingOverviewEditID == nil
             && !loggingSession && shareRequest == nil && !scanningRoutine
             && importPreview == nil && importError == nil
     }
@@ -130,7 +134,9 @@ struct TodayView: View {
             // With no routine there is no ritual, and nothing the strip could honestly
             // describe.
             if !ordered.isEmpty {
-                ConsistencyCard(days: templates.consistency) { loggingSession = true }
+                ConsistencyCard(days: templates.consistency,
+                                onLogClimb: { loggingSession = true },
+                                onShowHistory: onShowHistory)
                     .tourAnchor(.consistency)
                     .staggerIn(2)
             }
@@ -141,6 +147,20 @@ struct TodayView: View {
         // the 50 pt on the one screen in the app that is fighting for vertical space.
         // Still a COVER and never a push: nothing here touches SwiftData until Save, so
         // Cancel IS undo and a back chevron would promise save-as-you-go.
+        .sheet(item: $overview, onDismiss: {
+            // Let the sheet finish dismissing before presenting the editor. A queued
+            // import waits until the edit has finished, just as it waits for a runner.
+            if let id = pendingOverviewEditID {
+                pendingOverviewEditID = nil
+                if ordered.contains(where: { $0.id == id }) { builder = .edit(id) }
+            }
+            drainImportInbox()
+        }) { request in
+            RoutineOverviewSheet(request: request, onEdit: {
+                pendingOverviewEditID = request.id
+                overview = nil
+            }, onClose: { overview = nil })
+        }
         .fullScreenCover(item: $builder,
                          onDismiss: { startPendingRoutine(); drainImportInbox() }) { mode in
             // Closing is OURS: the builder must not read `@Environment(\.dismiss)`, which
@@ -398,6 +418,10 @@ struct TodayView: View {
             onStart: { start(routine) },
             onStartTimerOnly: { start(routine, timerOnly: true) },
             onEdit: { builder = .edit(routine.id) },
+            onOverview: {
+                overview = RoutineOverviewRequest(id: routine.id, plan: routine.plan,
+                                                  summary: templates.summary(for: routine))
+            },
             onDuplicate: { _ = templates.duplicate(routine) },
             onShare: { share(routine) },
             // `.addAnother` zooms out of the deck's ghost card when the deck exists;

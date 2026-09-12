@@ -17,6 +17,7 @@ struct ConsistencyCard: View {
     /// the strip because the strip is what it changes: the control is next to the thing
     /// it affects, which is the whole of good mapping.
     var onLogClimb: () -> Void
+    var onShowHistory: () -> Void = {}
 
     var body: some View {
         // 12 rather than the house 16 vertically: this is the least load-bearing card on
@@ -25,29 +26,45 @@ struct ConsistencyCard: View {
         MaterialCard(verticalPadding: 12) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    CapsLabel(String(localized: "Last 14 days"))
-                    Spacer(minLength: 8)
+                    Button(action: onShowHistory) {
+                        HStack(spacing: 6) {
+                            CapsLabel(String(localized: "Last 14 days"))
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Ink.tertiary)
+                            Spacer(minLength: 0)
+                        }
+                        .frame(minHeight: 44)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(PressFeedbackButtonStyle())
+                    .accessibilityLabel("History")
                     logClimbButton
                 }
 
-                ConsistencyStrip(days: days)
-
-                if let first = days.first {
-                    HStack(spacing: 0) {
-                        CapsLabel(first.day.formatted())
-                        Spacer(minLength: 8)
-                        CapsLabel(String(localized: "Today"))
+                Button(action: onShowHistory) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ConsistencyStrip(days: days)
+                        if let first = days.first {
+                            HStack(spacing: 0) {
+                                CapsLabel(first.day.formatted())
+                                Spacer(minLength: 8)
+                                CapsLabel(String(localized: "Today"))
+                            }
+                            .accessibilityHidden(true)
+                        }
+                        if ConsistencyEmptyState.showsFirstUseHint(days) {
+                            Text("Your sessions will show up here.")
+                                .font(.system(.footnote))
+                                .foregroundStyle(Ink.tertiary)
+                        }
                     }
-                    // The strip speaks the whole fortnight in one sentence; the axis is
-                    // a visual aid to it, not a second element to swipe through.
-                    .accessibilityHidden(true)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(.rect)
                 }
-
-                if ConsistencyEmptyState.showsFirstUseHint(days) {
-                    Text("Your sessions will show up here.")
-                        .font(.system(.footnote))
-                        .foregroundStyle(Ink.tertiary)
-                }
+                .buttonStyle(PressFeedbackButtonStyle())
+                .accessibilityIdentifier("consistency.history")
+                .accessibilityHint("Opens History.")
             }
         }
     }
@@ -68,6 +85,7 @@ struct ConsistencyCard: View {
             .contentShape(.capsule)
         }
         .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityIdentifier("consistency.log")
         // Not "at the climbing gym" any more: this sheet also logs hangs done away from
         // the gauge, and a label naming only one of them hides the other entirely from
         // anyone who never sees the button's own text.

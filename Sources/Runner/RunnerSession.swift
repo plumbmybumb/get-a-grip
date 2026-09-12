@@ -524,6 +524,8 @@ final class RunnerSession {
             gripChangesNext: runner.nextGripDiffers,
             newGripID: runner.newGripID, upcomingGrip: runner.upcomingGrip,
             isSetBreak: runner.isSetBreak,
+            scheduledRestSeconds: RestFocusPresentation.scheduledRestSeconds(
+                phase: runner.phase, slots: runner.slots),
             // WHOLE seconds: the screen cannot show more precision than this, so
             // publishing more only buys invalidations. The exact measured progress lives
             // on `repProgress` instead, published just above — never here.
@@ -679,6 +681,11 @@ struct RunnerSnapshot: Equatable {
     /// True while the rest currently running is a SET BREAK rather than a between-pulls
     /// rest. Describes the rest, not the rep ahead — see `SessionRunner.isSetBreak`.
     var isSetBreak = false
+
+    /// Original duration of the rest currently running, not the ticking remainder.
+    /// Read from the completed slot that owns this rest, while `grip` and `side`
+    /// describe the upcoming slot. nil outside rest, including the release gate.
+    var scheduledRestSeconds: Int? = nil
 
     /// Whole seconds on whichever clock is running.
     var secondsShown = 0

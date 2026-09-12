@@ -15,8 +15,9 @@
     <string name="s_r_d7be60">" · R"</string>
     <string name="s_was">" · was %s"</string>
     <string name="s_x_4345cb">%</string>
-    <string name="s_of_max">% of max</string>
+    <string name="s_of_max_f0fa38">% of max</string>
     <string name="s_x_ce8efc">%s %%</string>
+    <string name="s_of_max_0caf47">%s %% of max</string>
     <string name="s_x_ab8f46">%1$s %2$s</string>
     <string name="s_x_dc3df0">"%1$s %2$s  →  %3$s %4$s"</string>
     <string name="s_since">%1$s %2$s %3$s since %4$s</string>
@@ -70,8 +71,9 @@
     <string name="s_lld_of_lld_completed">%1$s: %2$d of %3$d completed</string>
     <string name="s_x_b2ab65">%1$s–%2$s</string>
     <string name="s_x_93a2c7">%1$s–%2$s %%</string>
+    <string name="s_of_max_f1b423">%1$s–%2$s %% of max</string>
     <string name="s_x_7c9c2f">%1$s–%2$s %3$s</string>
-    <string name="s_target">%1$s–%2$s %3$s target</string>
+    <string name="s_target_790dca">%1$s–%2$s %3$s target</string>
     <string name="s_kg_b676b2">%1$s–%2$s kg</string>
     <string name="s_kg_target">%1$s–%2$s kg target</string>
     <string name="s_lld_16070a">%d</string>
@@ -115,8 +117,10 @@
     </plurals>
     <string name="s_lld_per_side">%d per side</string>
     <string name="s_lld_per_side_under_tension_per_side">%1$d per side · %2$s under tension per side</string>
+    <string name="s_lld_per_side_lld_pulls_total">%1$d per side · %2$d pulls total</string>
     <string name="s_lld_per_side_lld_s_hold_lld_s_rest">%1$d per side · %2$d s hold · %3$d s rest</string>
     <string name="s_lld_pulls_per_side_under_tension_per_side">%1$d pulls per side · %2$s under tension per side</string>
+    <string name="s_lld_pulls_total">%d pulls total</string>
     <string name="s_lld_s">%d s</string>
     <string name="s_lld_s_hold">%d s hold</string>
     <string name="s_lld_s_rest">%d s rest</string>
@@ -156,6 +160,7 @@
     <string name="s_timing_only_73f9e8">, timing only</string>
     <string name="s_battery_lld_percent">. Battery %d percent</string>
     <string name="s_peak_target_lld_percent_of_max">. Peak target %d percent of max.</string>
+    <string name="s_1_pull_total">1 pull total</string>
     <string name="s_1h">1h</string>
     <string name="s_1h30">1h30</string>
     <string name="s_20_30_of_that_is">20–30 %% of that is %1$s–%2$s %3$s</string>
@@ -210,7 +215,7 @@
     <string name="s_best_pull">BEST PULL %1$s %2$s · %3$s%4$s</string>
     <string name="s_best_pull_kg">BEST PULL %1$s KG · %2$s%3$s</string>
     <string name="s_both_15ee98">BOTH</string>
-    <string name="s_both_hands_next">BOTH HANDS NEXT</string>
+    <string name="s_both_hands_next_9f127c">BOTH HANDS NEXT</string>
     <string name="s_back">Back</string>
     <string name="s_back_2">Back 2</string>
     <string name="s_back_3">Back 3</string>
@@ -226,6 +231,7 @@
     <string name="s_bluetooth_off">Bluetooth off</string>
     <string name="s_both_1f4698">Both</string>
     <string name="s_both_hands">Both hands</string>
+    <string name="s_both_hands_next_d612dc">Both hands next</string>
     <string name="s_both_open_an_email_your_app_version_ios_version_device_a">Both open an email. Your app version, iOS version, device and selected gauge are added at the end of the message, so a report arrives with the context to act on it.</string>
     <string name="s_both_sessions_done_today">Both sessions done today</string>
     <string name="s_break_between_sets">Break between sets</string>
@@ -329,6 +335,7 @@
     <string name="s_earlier_max_for_kilograms_recorded">Earlier max for %1$s. %2$s kilograms, recorded %3$s.</string>
     <string name="s_easy">Easy</string>
     <string name="s_edge">Edge</string>
+    <string name="s_edit">Edit</string>
     <string name="s_edit_routine">Edit routine</string>
     <string name="s_email">Email %s</string>
     <string name="s_email_details">Email details</string>
@@ -336,6 +343,7 @@
     <string name="s_enter_a_max_above_zero_to_save_it">Enter a max above zero to save it.</string>
     <string name="s_entralpi">Entralpi</string>
     <string name="s_entralpi_force_plate">Entralpi force plate</string>
+    <string name="s_estimated_duration">Estimated duration</string>
     <string name="s_every_grip_s_ceiling_drawn_over_time_measure_one_from_he">Every grip\'s ceiling, drawn over time. Measure one from here — a measured max marks the day as a benchmark, and your percent targets follow the newest number on their own.</string>
     <string name="s_every_pull">Every pull</string>
     <string name="s_every_session_you_have_done_and_five_weeks_of_them_at_a">Every session you have done, and five weeks of them at a glance. A fuller square is a day you did more of.</string>
@@ -442,7 +450,7 @@
     <string name="s_l_4a7991">L %s</string>
     <string name="s_l_r">L %1$s · R %2$s</string>
     <string name="s_left_969e2c">LEFT</string>
-    <string name="s_left_hand_next">LEFT HAND NEXT</string>
+    <string name="s_left_hand_next_95b75f">LEFT HAND NEXT</string>
     <string name="s_let_go_25ac58">LET GO</string>
     <string name="s_laps_circuits_an_easy_evening_real_load_well_short_of_ma">Laps, circuits, an easy evening — real load, well short of maximal.</string>
     <string name="s_last_14_days">Last 14 days</string>
@@ -453,6 +461,8 @@
     <string name="s_leave_them_as_they_are">Leave them as they are</string>
     <string name="s_left_8ae1c3">Left</string>
     <string name="s_left_hand">Left hand</string>
+    <string name="s_left_hand_first_then_right_within_each_set">Left hand first, then right, within each set.</string>
+    <string name="s_left_hand_next_328ac8">Left hand next</string>
     <string name="s_left_right_left_right">Left, right, left, right — %s</string>
     <string name="s_left_right_left_right_swapping_hands_every_pull">Left, right, left, right — swapping hands every pull.</string>
     <string name="s_let_go_f2de3c">Let go</string>
@@ -519,8 +529,10 @@
     <string name="s_new_routine_32809d">New routine</string>
     <string name="s_new_routine_906eb9">New routine…</string>
     <string name="s_next_bc9819">Next</string>
-    <string name="s_next_grip">Next grip: %s</string>
+    <string name="s_next_grip_5a4dbd">Next grip</string>
+    <string name="s_next_grip_da4061">Next grip: %s</string>
     <string name="s_next_reminder_at">Next reminder at %s</string>
+    <string name="s_next_target">Next target: %1$s–%2$s %3$s</string>
     <string name="s_next_37caf7">Next: %s</string>
     <string name="s_next_target_to">Next: %1$s, target %2$s to %3$s %4$s</string>
     <string name="s_next_target_to_kilograms">Next: %1$s, target %2$s to %3$s kilograms</string>
@@ -570,6 +582,7 @@
     <string name="s_one_card_one_ritual_the_dots_are_today_s_sessions_and_a">One card, one ritual. The dots are today\'s sessions, and a filled dot is one you have done.</string>
     <string name="s_one_hand_at_a_time">One hand at a time</string>
     <string name="s_one_mark_a_day_a_session_at_the_climbing_gym_or_hangs_do">One mark a day. A session at the climbing gym, or hangs done away from the gauge, count too: log them here and they join the day.</string>
+    <string name="s_one_pull_with_both_hands_on_the_edge">One pull with both hands on the edge.</string>
     <string name="s_one_pull_with_both_hands_on_the_edge_reps_per_side_is_ju">One pull with both hands on the edge. Reps per side is just the number of pulls.</string>
     <string name="s_one_pull_both_hands">One pull, both hands — %s</string>
     <string name="s_one_session_so_far_a_second_gives_this_a_direction">One session so far. A second gives this a direction.</string>
@@ -580,6 +593,7 @@
     <string name="s_open_source_community">Open source &amp; community</string>
     <string name="s_open_source_force_sensor_thanks_to_its_creator_for_testi">Open-source force sensor. Thanks to its creator for testing Get a Grip.</string>
     <string name="s_open_source_licenses">Open-source licenses</string>
+    <string name="s_opens_history">Opens History.</string>
     <string name="s_opens_the_grip_picker">Opens the grip picker</string>
     <string name="s_opens_the_routine_builder">Opens the routine builder.</string>
     <string name="s_opens_the_target_editor">Opens the target editor</string>
@@ -612,6 +626,7 @@
     <string name="s_privacy_policy">Privacy policy</string>
     <string name="s_privacy_policy_opens_in_your_browser">Privacy policy. Opens in your browser.</string>
     <string name="s_protocol_support_for_every_gauge_other_than_the_tindeq_p">Protocol support for every gauge other than the Tindeq Progressor is ported from hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray Hartog).</string>
+    <string name="s_pull_5219eb">Pull</string>
     <string name="s_pull_lld_of_lld">Pull %1$d of %2$d</string>
     <string name="s_pull_and_watch_the_force_in_real_time">Pull and watch the force in real time</string>
     <string name="s_pull_as_hard_as_you_can_get_a_grip_keeps_the_hardest_the_c40be2">Pull as hard as you can — Get a Grip keeps the hardest the gauge sees. Or set it by hand below.</string>
@@ -631,7 +646,7 @@
     <string name="s_rfd_series_measurement">RFD series measurement</string>
     <string name="s_rhythm">RHYTHM</string>
     <string name="s_right_952532">RIGHT</string>
-    <string name="s_right_hand_next">RIGHT HAND NEXT</string>
+    <string name="s_right_hand_next_0ba39f">RIGHT HAND NEXT</string>
     <string name="s_recent_connection_and_signal_breadcrumbs_kept_on_this_de">Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit.</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not.</string>
     <string name="s_refresh_battery">Refresh battery</string>
@@ -646,11 +661,13 @@
     <string name="s_resume">Resume</string>
     <string name="s_right_954daa">Right</string>
     <string name="s_right_hand">Right hand</string>
+    <string name="s_right_hand_next_861ec2">Right hand next</string>
     <string name="s_ring">Ring</string>
     <string name="s_ritual_or_whenever">Ritual or whenever</string>
     <string name="s_routine_deleted">Routine deleted</string>
     <string name="s_routine_name">Routine name</string>
     <string name="s_routine_options">Routine options</string>
+    <string name="s_routine_overview">Routine overview</string>
     <string name="s_runs_the_timers_and_hand_prompts_only_nothing_is_measure">Runs the timers and hand prompts only. Nothing is measured.</string>
     <string name="s_saved_24f3f7">SAVED</string>
     <string name="s_session_lld">SESSION %d</string>
@@ -691,6 +708,7 @@
     <string name="s_sessions_and_trends">Sessions and trends</string>
     <string name="s_sessions_lld_max_records_lld">Sessions: %1$d · Max records: %2$d</string>
     <string name="s_set_448ab7">Set</string>
+    <string name="s_set_lld">Set %d</string>
     <string name="s_set_lld_of_lld_8e1097">Set %1$d of %2$d</string>
     <string name="s_set_lld_of_lld_f52e6b">Set %1$d of %2$d · %3$s</string>
     <string name="s_set_lld_of_lld_pull_lld_of_lld_hand">Set %1$d of %2$d, pull %3$d of %4$d, %5$s hand, %6$s</string>
@@ -754,6 +772,8 @@
     <string name="s_tap_connect_to_start_listening_for_your">Tap Connect to start listening for your %s.</string>
     <string name="s_tap_a_set_for_its_grip_its_pulls_its_own_hold_and_rest_a">Tap a set for its grip, its pulls, its own hold and rest, and its target. Add a set copies the last one, so a uniform routine is quick.</string>
     <string name="s_tap_it_and_set_the_edge_which_fingers_how_many_pulls_and">Tap it and set the edge, which fingers, how many pulls and how long. Nothing is saved until you tap Save, and the tour carries on when you are back.</string>
+    <string name="s_tap_the_days_to_open_history_use_log_a_session_to_add_cl">Tap the days to open History. Use Log a session to add climbing or hangs done away from the gauge.</string>
+    <string name="s_tap_the_plan_to_see_your_grips_timing_and_hand_order_you">Tap the plan to see your grips, timing and hand order. You can edit the routine from its overview.</string>
     <string name="s_tare_71c87f">Tare</string>
     <string name="s_tare_is_unavailable_during_the_pull">Tare is unavailable during the pull.</string>
     <string name="s_tare_is_unavailable_while_waiting_for_you_to_let_go">Tare is unavailable while waiting for you to let go.</string>
@@ -761,6 +781,7 @@
     <string name="s_target_load_for_this_grip">Target load for this grip</string>
     <string name="s_target_loads_are_percentages_of_your_own_maxes">Target loads are percentages of your own maxes.</string>
     <string name="s_target_range">Target range</string>
+    <string name="s_target_b346c9">Target: %s</string>
     <string name="s_taxed">Taxed</string>
     <string name="s_tested">Tested %s</string>
     <string name="s_tested_your_maxes_c47639">Tested your maxes</string>

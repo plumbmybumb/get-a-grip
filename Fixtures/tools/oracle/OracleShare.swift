@@ -193,6 +193,13 @@ private func fingerCurlDraft() -> RoutineDraft {
     return source
 }
 
+private func largerPullCountDraft(_ count: Int) -> RoutineDraft {
+    var source = oneSetDraft()
+    source.plan.name = "\(count) pulls per side"
+    source.plan.sets[0].repsPerSide = count
+    return source
+}
+
 private func encoderDrafts() -> [(name: String, draft: RoutineDraft)] {
     [
         ("starter", stableIDs(.starter)),
@@ -202,6 +209,8 @@ private func encoderDrafts() -> [(name: String, draft: RoutineDraft)] {
         ("unknownGripPositions", unknownGripPositions()),
         ("oneSet", oneSetDraft()),
         ("fingerCurl", fingerCurlDraft()),
+        ("thirtySixPullsPerSide", largerPullCountDraft(36)),
+        ("oneHundredPullsPerSide", largerPullCountDraft(100)),
     ]
 }
 

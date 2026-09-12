@@ -6,13 +6,17 @@ import XCTest
 @MainActor
 final class InputResponsivenessUITests: XCTestCase {
     func testBuilderStepperRespondsToTapAndHoldWithoutEditingDuringScroll() throws {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-seedRoutine", "-mockDevice"]
         app.launch()
         defer { app.terminate() }
         let skip = app.buttons["Skip"]
         if skip.waitForExistence(timeout: 2) { skip.tap() }
-        let edit = app.buttons["Edit routine"].firstMatch
+        let overview = app.buttons["routine.overview.open"].firstMatch
+        XCTAssertTrue(overview.waitForExistence(timeout: 5))
+        overview.tap()
+        let edit = app.buttons["routine.overview.edit"]
         XCTAssertTrue(edit.waitForExistence(timeout: 5))
         edit.tap()
         let increase = app.buttons["Increase Pulls per side"].firstMatch
@@ -39,5 +43,30 @@ final class InputResponsivenessUITests: XCTestCase {
         start.press(forDuration: 0.05,
                     thenDragTo: start.withOffset(CGVector(dx: 0, dy: -80)))
         XCTAssertEqual(try amount(), afterHold)
+
+        // Typed entry is the escape hatch for long sets; the real builder must not
+        // silently clamp it to the old 20-pull limit.
+        for count in [36, 100] {
+            // The preceding scroll gesture can leave the number partly outside
+            // the viewport. An accessibility match is not proof that its whole
+            // touch target is visible; bring it clear of the screen edges first.
+            let visibleArea = app.frame.insetBy(dx: 0, dy: 150)
+            for _ in 0..<5 where !visibleArea.contains(number.frame) {
+                if number.frame.midY > visibleArea.maxY { app.swipeUp() }
+                else { app.swipeDown() }
+            }
+            XCTAssertTrue(visibleArea.contains(number.frame))
+            XCTAssertTrue(number.isHittable)
+            let previous = try amount()
+            number.tap()
+            let field = app.textFields.matching(NSPredicate(
+                format: "placeholderValue == %@", String(previous))).firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 2))
+            field.typeText(String(count))
+            app.buttons["Done"].firstMatch.tap()
+            XCTAssertEqual(try amount(), count)
+        }
+        increase.tap()
+        XCTAssertEqual(try amount(), 100)
     }
 }

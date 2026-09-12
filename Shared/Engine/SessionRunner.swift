@@ -302,7 +302,7 @@ struct SessionRunner: Sendable {
         self.plan = executable
         let slots = PlanMath.sequence(for: executable, maxes: maxes)
         self.slots = slots
-        self.setCount = Set(slots.map(\.setIndex)).count
+        self.setCount = executable.sets.count
         self.engageKg = executable.thresholdKg
         self.releaseKg = max(0, executable.thresholdKg - Self.releaseBand(for: executable.thresholdKg))
         self.timerOnly = timerOnly
@@ -1002,7 +1002,7 @@ struct SessionRunner: Sendable {
     var repNumberInSet: Int? { displaySlot.map { $0.repIndex + 1 } }
     var repsInCurrentSet: Int? {
         guard let slot = displaySlot else { return nil }
-        return slots.filter { $0.setIndex == slot.setIndex }.count
+        return PlanMath.repCount(plan.sets[slot.setIndex], mode: plan.handMode)
     }
 
     var isFinished: Bool { phase == .finished }

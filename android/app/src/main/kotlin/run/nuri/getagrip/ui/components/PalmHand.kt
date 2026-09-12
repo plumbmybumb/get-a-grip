@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import run.nuri.getagrip.ui.theme.LocalGripPalette
+import run.nuri.getagrip.ui.theme.Motion
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -69,6 +70,8 @@ fun PalmHand(
     isActive: Boolean = true,
     newGripID: String? = null,
     holdsGripCueForRest: Boolean = false,
+    /// A small, drawn-only lift while the long-rest header prepares the next pull.
+    restFocus: Boolean = false,
     /// The spotlight tour's anchor. Passed IN rather than read from a composition local, so
     /// this drawing still knows nothing about a tour and stays previewable.
     tourAnchor: Modifier = Modifier,
@@ -77,6 +80,10 @@ fun PalmHand(
     val darkTheme = isSystemInDarkTheme()
     val changeColor = LocalGripPalette.current.armed
     val emphasis = rememberGripChangeEmphasis(newGripID, holdsGripCueForRest, reduceMotion)
+    val restScale by animateFloatAsState(
+        targetValue = if (restFocus && !reduceMotion) 1.2f else 1f,
+        animationSpec = Motion.state(reduceMotion), label = "restHandEmphasis",
+    )
 
     /// The hand currently DRAWN, which lags `side` by one beat while the thumb retracts.
     var shown by remember { mutableStateOf(side) }
@@ -148,7 +155,7 @@ fun PalmHand(
 
         val ink = lerp(Color.Black, changeColor, emphasis.value)
         // Growth uses the existing 22dp header clearance; no layout or metric moves.
-        scale(scale = if (reduceMotion) 1f else 1f + 0.25f * emphasis.value,
+        scale(scale = if (reduceMotion) 1f else maxOf(restScale, 1f + 0.25f * emphasis.value),
             pivot = Offset(size.width / 2f, fingerTop)) {
         for (slot in 0 until 4) {
             val anatomical = PalmGeometry.anatomical(slot, shown)

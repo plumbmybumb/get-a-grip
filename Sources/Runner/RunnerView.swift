@@ -69,7 +69,8 @@ struct RunnerView: View {
         .islandHand(grip: session?.isFinished == true ? nil : session?.snapshot.grip,
                     side: session?.snapshot.side,
                     isActive: !(session.map { isResting($0) } ?? true),
-                    enabled: hasIsland, emphasized: gripEmphasis)
+                    enabled: hasIsland, emphasized: gripEmphasis,
+                    restFocused: session.map { showsRestFocus($0) } ?? false)
         .overlay {
             if let session,
                let cue = session.snapshot.screenBorderCue(
@@ -263,18 +264,7 @@ struct RunnerView: View {
                 timerDial(session)
                 timerPositionLine(session)
             } else {
-                // The island owns the hand on supported phones; compact devices keep
-                // the glyph in the document. Counts and the rest word always sit
-                // below the numbers, in the same position relative to the graph.
-                if hasIsland {
-                    gripLineText(session)
-                } else {
-                    gripLine(session)
-                }
-                prompt(session)
-                hero(session)
-                progress(session)
-                counters(session)
+                measuredTop(session)
                 ZStack {
                     LiveTrace(thresholdKg: session.plan.thresholdKg,
                               // Only while the rep is actually live. A lane drawn during
@@ -286,8 +276,10 @@ struct RunnerView: View {
                     // renders as a lie — it reads as a device measuring nothing rather
                     // than an app receiving nothing, and there is no way to tell them
                     // apart by looking. Say it, and say what to do.
-                    if !session.snapshot.hasSignal {
+                    if !session.snapshot.hasSignal
+                        || (showsRestFocus(session) && !restSignalIsAvailable(session)) {
                         noSignalNotice(session)
+                            .accessibilityIdentifier("runner.signalWarning")
                     }
                 }
                 .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil,
@@ -305,7 +297,7 @@ struct RunnerView: View {
                     // An overlay never participates in the graph's layout. Keep the
                     // newest readings at the right edge clear, and let signal warnings
                     // take priority over the brief grip cue.
-                    if gripEmphasis, session.snapshot.hasSignal,
+                    if gripEmphasis, session.snapshot.hasSignal, !showsRestFocus(session),
                        let grip = session.snapshot.grip {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("New grip")
@@ -328,6 +320,8 @@ struct RunnerView: View {
                         .accessibilityHidden(true)
                     }
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("runner.graph")
                 .tourAnchor(.runnerTrace)
             }
             controls(session)
@@ -339,6 +333,60 @@ struct RunnerView: View {
         .padding(.bottom, Metrics.spacing)
         .frame(maxWidth: Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
+    }
+
+    /// The scheduled interval, not the dwindling numeral,
+    /// chooses the rest layout, so a ten-second rest stays readable all the way to zero.
+    private func showsRestFocus(_ session: RunnerSession) -> Bool {
+        !timerOnly && session.snapshot.showsRestFocus
+    }
+
+    private func restSignalIsAvailable(_ session: RunnerSession) -> Bool {
+        session.snapshot.hasSignal && !session.snapshot.linkIsDown
+            && device.state.isConnected && device.isSignalFresh
+    }
+
+    /// The long-rest summary uses only the existing space above the graph. Reserve
+    /// that whole block so the graph and controls stay anchored through a hand swap.
+    /// Accessibility sizes reflow naturally inside the existing scrolling layout.
+    private func measuredTop(_ session: RunnerSession) -> some View {
+        let focused = showsRestFocus(session)
+        return Group {
+            if focused && typeSize.isAccessibilitySize {
+                RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland)
+            } else {
+                Group {
+                    if focused {
+                        // Hidden retains geometry and removes the old live readout
+                        // from both the drawing and the accessibility tree.
+                        measuredTopContents(session).hidden()
+                    } else {
+                        measuredTopContents(session)
+                    }
+                }
+                .overlay {
+                    if focused {
+                        RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland)
+                            .transition(.opacity)
+                    }
+                }
+            }
+        }
+        .animation(Motion.state(reduceMotion), value: focused)
+    }
+
+    private func measuredTopContents(_ session: RunnerSession) -> some View {
+        VStack(spacing: 12) {
+            if hasIsland {
+                gripLineText(session)
+            } else {
+                gripLine(session)
+            }
+            prompt(session)
+            hero(session)
+            progress(session)
+            counters(session)
+        }
     }
 
     /// Pushed OUT to the screen edges and up a size (Nuri, 2026-08-09). They are the two
@@ -485,20 +533,23 @@ struct RunnerView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(spokenGrip(session, grip: grip) + String(localized: ", timing only"))
             } else {
-                HStack(spacing: 8) {
-                    if isResting(session) {
-                        restBadge(session)
-                    }
-                    // The full name now fits: the glyph no longer shares this row, so
-                    // the old truncation to "…half cri…" that forced the short form only
-                    // has to be avoided when a target chip is also present.
-                    Text(gripDisplayName(session, grip: grip))
-                        .font(.system(.subheadline, weight: .medium))
-                        .foregroundStyle(Ink.secondary)
-                        .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    if let band = session.snapshot.targetBand {
-                        LiveTargetChip(band: band, isWorking: isWorking(session))
+                ZStack {
+                    // Reserve the rest badge's height in every phase. Its padding
+                    // otherwise moves the graph a few points when REST becomes PULL.
+                    // The existing grip row is wider, so this adds no empty badge slot.
+                    restBadge(session).hidden().accessibilityHidden(true)
+                    HStack(spacing: 8) {
+                        if isResting(session) {
+                            restBadge(session)
+                        }
+                        Text(gripDisplayName(session, grip: grip))
+                            .font(.system(.subheadline, weight: .medium))
+                            .foregroundStyle(Ink.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        if let band = session.snapshot.targetBand {
+                            LiveTargetChip(band: band, isWorking: isWorking(session))
+                        }
                     }
                 }
                 .accessibilityElement(children: .combine)
@@ -721,8 +772,8 @@ struct RunnerView: View {
         // the counters row are the accessible channel.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(countdownCaption(session) ?? "")
-        .accessibilityHidden(countdownCaption(session) == nil)
         .accessibilityIdentifier("runner.hero")
+        .accessibilityHidden(showsRestFocus(session) || countdownCaption(session) == nil)
     }
 
     private func countdownCaption(_ session: RunnerSession) -> String? {
@@ -1218,10 +1269,9 @@ private struct LiveTrace: View {
     var thresholdKg: Double?
     var targetBand: ClosedRange<Double>?
     var tint: Color
-
     var body: some View {
-        ForceTraceView(samples: device.trace, thresholdKg: thresholdKg,
-                       targetBand: targetBand, tint: tint,
+        ForceTraceView(samples: device.trace,
+                       thresholdKg: thresholdKg, targetBand: targetBand, tint: tint,
                        nominalSampleRate: device.gaugeCapabilities.nominalSampleRate,
                        bridgesSparseDelivery: device.gaugeCapabilities.isBroadcast,
                        diagnostics: device.pipelineDiagnostics)

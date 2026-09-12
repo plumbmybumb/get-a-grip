@@ -190,8 +190,8 @@ struct ValueRow: View {
             }
             .foregroundStyle(Ink.primary)
             .padding(.horizontal, 10)
-            // 44 both ways — a short unitless value (e.g. "Pulls per side", 1-20, no
-            // `unit:`) is a 1-2 digit glyph plus 20 pt of padding, well under the
+            // 44 both ways — a short unitless value (e.g. "Pulls per side", no
+            // `unit:`) can be one digit plus 20 pt of padding, well under the
             // house floor, sandwiched between two correctly-sized 44×44 steppers.
             .frame(minWidth: 44, minHeight: 44)
             .contentShape(.rect(cornerRadius: 10))

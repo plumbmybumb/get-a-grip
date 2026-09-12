@@ -23,7 +23,7 @@ struct HandOrderStrip: View {
         // an absent candidate measures zero, fits, and wins, which would draw nothing at
         // all for a set with no pulls in it.
         Group {
-            if sequence.isEmpty || sequence.count > 12 {
+            if totalPulls == 0 || totalPulls > 12 {
                 sentenceText
             } else {
                 ViewThatFits(in: .horizontal) {
@@ -75,6 +75,10 @@ struct HandOrderStrip: View {
 
     // MARK: Derived
 
+    private var totalPulls: Int {
+        PlanMath.repCount(SetPlan(repsPerSide: max(0, repsPerSide)), mode: mode)
+    }
+
     /// A throwaway `SetPlan` so the count comes out of `PlanMath.repCount` — the single
     /// ×2 resolver. Multiplying `repsPerSide` by `sideCount` here instead is exactly the
     /// shortcut that makes a routine twice as long as its own summary claims.
@@ -88,11 +92,11 @@ struct HandOrderStrip: View {
         let perSide = max(0, repsPerSide)
         switch mode {
         case .alternateEachRep:
-            return String(localized: "Left, right, left, right — \(pulls(sequence.count))")
+            return String(localized: "Left, right, left, right — \(pulls(totalPulls))")
         case .alternateEachSet:
             return String(localized: "All \(perSide) on the left, then all \(perSide) on the right")
         case .bothHands:
-            return String(localized: "One pull, both hands — \(pulls(sequence.count))")
+            return String(localized: "One pull, both hands — \(pulls(totalPulls))")
         }
     }
 

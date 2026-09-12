@@ -74,6 +74,7 @@ import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.runner.MaxCandidate
 import run.nuri.getagrip.runner.SessionOutcome
+import run.nuri.getagrip.runner.WorkoutSummaryState
 import run.nuri.getagrip.runner.SessionSummaryDecision
 import run.nuri.getagrip.ui.components.EffortPicker
 import run.nuri.getagrip.ui.components.CapsLabel
@@ -100,19 +101,16 @@ fun SessionSummaryScreen(
     outcome: SessionOutcome,
     sessionsPerDayTarget: Int,
     modifier: Modifier = Modifier,
+    state: WorkoutSummaryState = remember { WorkoutSummaryState() },
+    submissionScope: kotlinx.coroutines.CoroutineScope = rememberCoroutineScope(),
     onDone: suspend (SessionOutcome, SessionSummaryDecision) -> Boolean,
 ) {
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
-    var grade by remember { mutableStateOf<RPE?>(null) }
-    var finished by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    var saveFailed by remember { mutableStateOf(false) }
 
     /// FROZEN at first appearance — recording a candidate updates the max table, and a live
     /// computation would then drop the row it should be flipping to a checkmark.
     val candidates = remember(outcome) { outcome.maxCandidates }
-    var chosenMaxIDs by remember { mutableStateOf(setOf<String>()) }
 
     val reps = outcome.results
     val heldSeconds = outcome.totalHeldSeconds.roundToInt()
@@ -120,19 +118,19 @@ fun SessionSummaryScreen(
     fun finish(save: Boolean) {
         // Guard against a double tap producing two logs — the button is on screen while the
         // caller's save round-trips.
-        if (finished) return
-        finished = true
-        scope.launch {
+        if (state.finished) return
+        state.finished = true
+        submissionScope.launch {
             val success = onDone(
                 outcome,
                 SessionSummaryDecision(
                     save = save && outcome.didAnyWork,
-                    rpe = if (save) grade else null,
-                    newMaxes = if (save) candidates.filter { it.id in chosenMaxIDs } else emptyList(),
+                    rpe = if (save) state.rpe else null,
+                    newMaxes = if (save) candidates.filter { it.id in state.chosenMaxIDs } else emptyList(),
                 ),
             )
-            saveFailed = !success
-            if (!success) finished = false
+            state.saveFailed = !success
+            if (!success) state.finished = false
         }
     }
 
@@ -171,19 +169,22 @@ fun SessionSummaryScreen(
             )
 
             if (outcome.didAnyWork && candidates.isNotEmpty()) {
-                NewMaxCard(candidates, chosenMaxIDs, palette) { candidate ->
+                NewMaxCard(candidates, state.chosenMaxIDs, palette,
+                    expanded = state.maxesExpanded,
+                    onToggle = { state.maxesExpanded = !state.maxesExpanded },
+                ) { candidate ->
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    chosenMaxIDs = if (candidate.id in chosenMaxIDs) chosenMaxIDs - candidate.id else chosenMaxIDs + candidate.id
+                    state.chosenMaxIDs = if (candidate.id in state.chosenMaxIDs) state.chosenMaxIDs - candidate.id else state.chosenMaxIDs + candidate.id
                 }
             }
 
             if (outcome.didAnyWork) {
-                GradeCard(grade, palette) { level ->
-                    grade = level
+                GradeCard(state.rpe, palette) { level ->
+                    state.rpe = level
                 }
             }
 
-            SetBreakdown(reps, palette)
+            SetBreakdown(reps, palette, state.setsExpanded) { state.setsExpanded = !state.setsExpanded }
         }
         // This sibling reserves its own space; expanded details scroll above the actions.
         Column(
@@ -191,7 +192,7 @@ fun SessionSummaryScreen(
                 .padding(horizontal = Metrics.hPadding, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (saveFailed) {
+            if (state.saveFailed) {
                 Text(tr("Couldn't save this workout. Please try again."),
                      color = palette.armed, style = MaterialTheme.typography.bodySmall)
             }
@@ -333,14 +334,15 @@ private fun NewMaxCard(
     candidates: List<MaxCandidate>,
     chosen: Set<String>,
     palette: GripPalette,
+    expanded: Boolean,
+    onToggle: () -> Unit,
     onSave: (MaxCandidate) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.armed.copy(alpha = 0.05f).compositeOver(palette.card)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 44.dp)
-                    .clickable(role = Role.Button) { expanded = !expanded }
+                    .clickable(role = Role.Button, onClick = onToggle)
                     .semantics {
                         contentDescription = L10n.tr("New peaks to review")
                         stateDescription = L10n.tr(if (expanded) "Expanded" else "Collapsed")
@@ -437,16 +439,16 @@ private fun GradeCard(grade: RPE?, palette: GripPalette, onPick: (RPE?) -> Unit)
 
 /// Per set, so a bad set is visible rather than averaged away.
 @Composable
-private fun SetBreakdown(reps: List<RepSummary>, palette: GripPalette) {
+private fun SetBreakdown(reps: List<RepSummary>, palette: GripPalette,
+                         expanded: Boolean, onToggle: () -> Unit) {
     val order = LinkedHashMap<Int, MutableList<RepSummary>>()
     for (rep in reps) order.getOrPut(rep.setIndex) { mutableListOf() }.add(rep)
 
-    var expanded by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Surface(shape = RoundedCornerShape(Metrics.radiusInner), color = palette.card) {
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .clickable(role = Role.Button) { expanded = !expanded }
+                    .clickable(role = Role.Button, onClick = onToggle)
                     .semantics {
                         contentDescription = L10n.tr("Sets")
                         stateDescription = L10n.tr(if (expanded) "Expanded" else "Collapsed")

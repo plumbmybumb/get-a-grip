@@ -40,7 +40,7 @@ final class WeightUnitsUITests: XCTestCase {
 
     func testRestLabelStaysBetweenCountersAndPoundPreviewKeepsActionsVisible() {
         let app = XCUIApplication()
-        app.launchArguments = ["-previewRunnerRest", "-previewWeightLb", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = ["-previewRunnerRest", "-previewRunnerRestSeconds", "3", "-previewWeightLb", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         let counters = app.descendants(matching: .any).matching(identifier: "runner.counters").firstMatch
         XCTAssertTrue(counters.waitForExistence(timeout: 5))

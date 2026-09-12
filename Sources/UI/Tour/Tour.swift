@@ -110,7 +110,7 @@ extension TourStep {
         TourStep(
             target: .gripLadder,
             title: String(localized: "What you are pulling"),
-            body: String(localized: "The plan in one line: edge, sets, pulls and how long it runs. Tap it to change any of that.")),
+            body: String(localized: "Tap the plan to see your grips, timing and hand order. You can edit the routine from its overview.")),
         TourStep(
             target: .startButton,
             title: String(localized: "Start here"),
@@ -122,7 +122,7 @@ extension TourStep {
         TourStep(
             target: .consistency,
             title: String(localized: "The last fortnight"),
-            body: String(localized: "One mark a day. A session at the climbing gym, or hangs done away from the gauge, count too: log them here and they join the day.")),
+            body: String(localized: "Tap the days to open History. Use Log a session to add climbing or hangs done away from the gauge.")),
         TourStep(
             target: .historyMonth,
             title: String(localized: "History"),

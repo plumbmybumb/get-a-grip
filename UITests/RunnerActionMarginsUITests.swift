@@ -15,7 +15,7 @@ final class RunnerActionMarginsUITests: XCTestCase {
 
     private func checkFrenchRunnerActions(category: String, name: String, allowsScrolling: Bool) {
         let app = XCUIApplication()
-        app.launchArguments = ["-previewRunnerRest", "-AppleLanguages", "(fr)",
+        app.launchArguments = ["-previewRunnerRest", "-previewRunnerRestSeconds", "3", "-AppleLanguages", "(fr)",
                                "-AppleLocale", "fr_FR", "-UIPreferredContentSizeCategoryName",
                                category]
         app.launch()

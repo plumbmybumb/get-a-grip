@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,7 +74,7 @@ import run.nuri.getagrip.ui.tour.TourAct
 ///
 /// What you do today is the first thing on screen and one tap from starting. There is no
 /// library to assemble and no session to pick apart from the routine: the routine IS the
-/// thing, and the only door to changing it is the plan row on its own card.
+/// thing. Its plan row previews the session; its options menu opens the editor directly.
 ///
 /// **TODAY IS ONE SCREEN.** It is a dashboard, not a document, and it does not scroll — but
 /// it is still a scroll CONTAINER, because at accessibility text sizes it overflows and
@@ -92,6 +93,7 @@ fun TodayScreen(
     /// The builder, for a first routine and for a second one.
     onBuild: () -> Unit = {},
     onEdit: (SessionTemplateEntity) -> Unit = {},
+    onShowHistory: () -> Unit = {},
     /// The log sheet, shared with History — a gym session or a hang done away from the gauge.
     onLogSession: () -> Unit = {},
     /// Whether the HOST has nothing of its own on screen. Today owns every presentation a
@@ -151,13 +153,15 @@ fun TodayScreen(
     /// The scanner could not be opened at all — no Play services, or the module has never
     /// downloaded. Separate from `importError`, which is about a code that WAS read.
     var scannerError by remember { mutableStateOf<String?>(null) }
+    var overviewID by rememberSaveable { mutableStateOf<String?>(null) }
+    val overview = routines.firstOrNull { it.id.toString() == overviewID }
 
     /// The single door from the store's inbox to the screen, called on arrival and whenever
     /// a presentation closes. Nothing this view presents may be up, and the host must have
     /// nothing up either.
     fun drainImportInbox() {
         if (!canPresentImport) return
-        if (shareRequest != null || importPreview != null || importError != null) return
+        if (shareRequest != null || importPreview != null || importError != null || overviewID != null) return
         val message = templates.claimPendingImportError()
         if (message != null) {
             importError = message
@@ -174,6 +178,13 @@ fun TodayScreen(
         // keying the effect on the fields themselves means the first pass sweeps whatever is
         // already waiting, so there is no separate "on appear" door to keep in step.
         drainImportInbox()
+    }
+
+    LaunchedEffect(routines, overviewID) {
+        if (overviewID != null && overview == null) {
+            overviewID = null
+            drainImportInbox()
+        }
     }
 
     val startScan = rememberRoutineScanner(
@@ -281,6 +292,7 @@ fun TodayScreen(
                     },
                     onStart = { onStart(it, false) },
                     onStartTimerOnly = { onStart(it, true) },
+                    onOverview = { overviewID = it.id.toString() },
                     onEdit = onEdit,
                     onDuplicate = { routine -> scope.launch { templates.duplicate(routine) } },
                     onNew = onBuild,
@@ -303,6 +315,7 @@ fun TodayScreen(
                 ConsistencyCard(
                     days = templates.consistency,
                     modifier = Modifier.padding(horizontal = Metrics.hPadding),
+                    onShowHistory = onShowHistory,
                     onLogSession = onLogSession,
                 )
             }
@@ -323,6 +336,20 @@ fun TodayScreen(
 
     // Every presentation drains the inbox as it closes — the deferral idiom the iOS screen
     // uses, and the reason a code scanned while the share sheet was open still arrives.
+    overview?.let { routine ->
+        RoutineOverviewSheet(
+            routine = routine,
+            summary = templates.summary(routine),
+            onClose = { overviewID = null; drainImportInbox() },
+            onEdit = {
+                // Clear the sheet before opening the existing full-screen builder.
+                // Pending imports remain queued until the builder returns to Today.
+                overviewID = null
+                onEdit(routine)
+            },
+        )
+    }
+
     shareRequest?.let { request ->
         RoutineShareSheet(request) {
             shareRequest = null

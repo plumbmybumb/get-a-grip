@@ -305,7 +305,7 @@ class RoutineShareCodecTests {
         assertEquals(0.1, imported.plan.thresholdKg, 0.0001,
             "a zero threshold would read as engaged against sensor noise")
         assertEquals(1, imported.plan.sets[0].grip.edgeMM)
-        assertEquals(20, imported.plan.sets[0].repsPerSide)
+        assertEquals(99, imported.plan.sets[0].repsPerSide, "Valid larger pull counts are not reduced during import")
     }
 
     /// A pinch IS thumb opposition, so a thumbless one is not a grip anybody can perform

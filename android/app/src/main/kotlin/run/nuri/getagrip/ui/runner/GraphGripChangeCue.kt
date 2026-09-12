@@ -41,7 +41,8 @@ import run.nuri.getagrip.ui.components.rememberGripChangeEmphasis
 
 /** Draw-only attention inside the chart: it cannot resize the plot or its neighbours. */
 @Composable
-internal fun GraphGripChangeCue(snapshot: RunnerSnapshot, palette: GripPalette, modifier: Modifier = Modifier) {
+internal fun GraphGripChangeCue(snapshot: RunnerSnapshot, palette: GripPalette, modifier: Modifier = Modifier,
+    showBanner: Boolean = true) {
     val reduceMotion = rememberReduceMotion()
     val visibility = rememberGripChangeEmphasis(snapshot.newGripID, snapshot.gripChangesNext, reduceMotion)
     val pulse = remember { Animatable(1f) }
@@ -69,7 +70,7 @@ internal fun GraphGripChangeCue(snapshot: RunnerSnapshot, palette: GripPalette, 
                 style = Stroke(width),
             )
         }
-        Column(
+        if (showBanner) Column(
             Modifier.padding(start = 12.dp, top = 12.dp, end = 64.dp)
                 .graphicsLayer { alpha = visibility.value }
                 .background(palette.armed, RoundedCornerShape(Metrics.radiusInner))

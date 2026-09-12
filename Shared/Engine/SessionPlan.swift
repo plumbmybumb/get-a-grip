@@ -116,7 +116,10 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
 
     /// Decode clamps. `repsRange` starts at 0 because a zero-rep set is representable
     /// (and dropped by `SessionPlan.executable`); the UI floor is 1.
-    static let repsRange = 0...20
+    // A practical storage bound while the runner records individual pulls, including
+    // skipped pulls. Keep the editor tied to this same range so saving never reduces
+    // a count the user was allowed to enter.
+    static let repsRange = 0...100
     // Match the hold dial: positive whole seconds, including short 1–2 s pulls.
     static let holdRange = 1...120
     static let restRange = 0...600

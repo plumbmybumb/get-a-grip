@@ -6,6 +6,7 @@ package run.nuri.getagrip
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -188,6 +189,15 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         clock.refresh()
         lifecycleScope.launch { templates.refreshIfDayChanged() }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Compose observes uiMode and redraws in place. Refresh system-bar icon
+        // contrast too, while preserving the runner's transparent navigation bar.
+        val navigationContrast = window.isNavigationBarContrastEnforced
+        enableEdgeToEdge()
+        window.isNavigationBarContrastEnforced = navigationContrast
     }
 
     override fun onDestroy() {

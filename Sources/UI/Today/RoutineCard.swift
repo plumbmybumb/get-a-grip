@@ -5,7 +5,7 @@ import SwiftUI
 import UIKit
 
 /// The routine you are committing to, as one card, in three ZONES: identity + today's
-/// status (tight), the plan as one line (which IS the edit surface), and the one action.
+/// status (tight), the plan as one line (opening its overview), and the one action.
 /// Spacing does the grouping — 6 pt inside a zone, 16 pt between zones — because
 /// proximity is how the eye assigns belonging: when every row sat a uniform 14 pt from
 /// its neighbour, title, dots, plan and button read as six unrelated things "slapped in"
@@ -42,6 +42,7 @@ struct RoutineCard: View {
     /// The same session with no gauge — timers, count-in and hand prompts only.
     var onStartTimerOnly: () -> Void
     var onEdit: () -> Void
+    var onOverview: () -> Void = {}
     var onDuplicate: () -> Void
     /// Opens the QR sheet. The card hands the tap up rather than building the code
     /// itself — encoding needs the draft, and this view only ever sees a summary VALUE.
@@ -380,7 +381,7 @@ struct RoutineCard: View {
     /// clusters sat directly above saying the same thing in pictures, and now nothing
     /// else on the card would say how many sets there are.
     private var planRow: some View {
-        Button(action: onEdit) {
+        Button(action: onOverview) {
             HStack(spacing: 6) {
                 // Glyphed stats rather than one dotted sentence — the values carry the
                 // weight and the symbols give the row texture, which is the difference
@@ -435,10 +436,11 @@ struct RoutineCard: View {
             .contentShape(.rect)
         }
         .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityLabel(String(localized: "Edit routine"))
+        .accessibilityLabel(String(localized: "Routine overview"))
+        .accessibilityIdentifier("routine.overview.open")
         // The card no longer draws the grips, so it must not speak them either — the
-        // value is exactly what is on screen. The grips are spoken in the editor this
-        // row opens, where they can also be changed. `metaLine`, not the glyph row's
+        // value is exactly what is on screen. The overview speaks the ordered grips
+        // and timing, and offers an Edit action. `metaLine`, not the glyph row's
         // fragments: the sentence and the glyphs state the same facts by construction
         // (both read the summary's own fields), and the sentence is the spoken form.
         // The intensity suffix rides here because the rung's colour is invisible to

@@ -487,8 +487,8 @@ private fun ValueRowPreview() {
             IntValueRow(
                 title = tr("Pulls per side"),
                 value = pulls,
-                range = 1..12,
-                limit = 1..20,
+                range = 1..40,
+                limit = 1..run.nuri.getagrip.engine.SetPlan.repsRange.last,
                 control = ValueControl.Stepper,
                 caption = L10n.tr("= %s", L10n.tr("%s under tension per side", "1:00")),
             ) { pulls = it }

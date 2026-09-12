@@ -15,8 +15,9 @@
     <string name="s_r_d7be60">" · D"</string>
     <string name="s_was">" · avant %s"</string>
     <string name="s_x_4345cb">%</string>
-    <string name="s_of_max">% du max</string>
+    <string name="s_of_max_f0fa38">% du max</string>
     <string name="s_x_ce8efc">%s %%</string>
+    <string name="s_of_max_0caf47">%s %% du max</string>
     <string name="s_x_ab8f46">%1$s %2$s</string>
     <string name="s_x_dc3df0">"%1$s %2$s  →  %3$s %4$s"</string>
     <string name="s_since">%1$s de %2$s %3$s depuis %4$s</string>
@@ -70,8 +71,9 @@
     <string name="s_lld_of_lld_completed">%1$s : %2$d sur %3$d effectués</string>
     <string name="s_x_b2ab65">%1$s–%2$s</string>
     <string name="s_x_93a2c7">%1$s–%2$s %%</string>
+    <string name="s_of_max_f1b423">%1$s–%2$s %% du max</string>
     <string name="s_x_7c9c2f">%1$s–%2$s %3$s</string>
-    <string name="s_target">cible %1$s–%2$s %3$s</string>
+    <string name="s_target_790dca">cible %1$s–%2$s %3$s</string>
     <string name="s_kg_b676b2">%1$s–%2$s kg</string>
     <string name="s_kg_target">cible %1$s–%2$s kg</string>
     <string name="s_lld_16070a">%d</string>
@@ -115,8 +117,10 @@
     </plurals>
     <string name="s_lld_per_side">%d par côté</string>
     <string name="s_lld_per_side_under_tension_per_side">%1$d par côté · %2$s sous tension par côté</string>
+    <string name="s_lld_per_side_lld_pulls_total">%1$d par côté · %2$d tirages au total</string>
     <string name="s_lld_per_side_lld_s_hold_lld_s_rest">%1$d par côté · tenue %2$d s · repos %3$d s</string>
     <string name="s_lld_pulls_per_side_under_tension_per_side">%1$d tirages par côté · %2$s sous tension par côté</string>
+    <string name="s_lld_pulls_total">%d tirages au total</string>
     <string name="s_lld_s">%d s</string>
     <string name="s_lld_s_hold">tenue %d s</string>
     <string name="s_lld_s_rest">repos %d s</string>
@@ -156,6 +160,7 @@
     <string name="s_timing_only_73f9e8">, chrono seulement</string>
     <string name="s_battery_lld_percent">. Batterie %d pour cent</string>
     <string name="s_peak_target_lld_percent_of_max">. Cible maximale %d pour cent du max.</string>
+    <string name="s_1_pull_total">1 tirage au total</string>
     <string name="s_1h">1 h</string>
     <string name="s_1h30">1 h 30</string>
     <string name="s_20_30_of_that_is">20–30 %% de cela représente %1$s–%2$s %3$s</string>
@@ -210,7 +215,7 @@
     <string name="s_best_pull">MEILLEUR TIRAGE %1$s %2$s · %3$s%4$s</string>
     <string name="s_best_pull_kg">MEILLEUR TIRAGE %1$s KG · %2$s%3$s</string>
     <string name="s_both_15ee98">LES DEUX</string>
-    <string name="s_both_hands_next">DEUX MAINS ENSUITE</string>
+    <string name="s_both_hands_next_9f127c">DEUX MAINS ENSUITE</string>
     <string name="s_back">Retour</string>
     <string name="s_back_2">Arrière 2</string>
     <string name="s_back_3">Arrière 3</string>
@@ -226,6 +231,7 @@
     <string name="s_bluetooth_off">Bluetooth éteint</string>
     <string name="s_both_1f4698">Les deux</string>
     <string name="s_both_hands">Les deux mains</string>
+    <string name="s_both_hands_next_d612dc">Deux mains ensuite</string>
     <string name="s_both_open_an_email_your_app_version_ios_version_device_a">Les deux ouvrent un e-mail. Ta version de l\'app, ta version d\'iOS, ton appareil et le capteur sélectionné sont ajoutés à la fin du message, pour qu\'un signalement arrive avec le contexte nécessaire.</string>
     <string name="s_both_sessions_done_today">Les deux séances faites aujourd\'hui</string>
     <string name="s_break_between_sets">Pause entre séries</string>
@@ -328,6 +334,7 @@
     <string name="s_earlier_max_for_kilograms_recorded">Max antérieur pour %1$s. %2$s kilogrammes, enregistré %3$s.</string>
     <string name="s_easy">Facile</string>
     <string name="s_edge">Réglette</string>
+    <string name="s_edit">Modifier</string>
     <string name="s_edit_routine">Modifier la routine</string>
     <string name="s_email">Écrire à %s</string>
     <string name="s_email_details">Détails de l’e-mail</string>
@@ -335,6 +342,7 @@
     <string name="s_enter_a_max_above_zero_to_save_it">Saisis un max supérieur à zéro pour l\'enregistrer.</string>
     <string name="s_entralpi">Entralpi</string>
     <string name="s_entralpi_force_plate">Plaque de force Entralpi</string>
+    <string name="s_estimated_duration">Durée estimée</string>
     <string name="s_every_grip_s_ceiling_drawn_over_time_measure_one_from_he">Le plafond de chaque prise, tracé dans le temps. Mesures-en un d\'ici — un max mesuré marque la journée comme test de référence, et tes cibles en pourcentage suivent le dernier chiffre toutes seules.</string>
     <string name="s_every_pull">Chaque traction</string>
     <string name="s_every_session_you_have_done_and_five_weeks_of_them_at_a">Toutes tes séances, et cinq semaines d\'un coup d\'œil. Un carré plus rempli est un jour où tu en as fait plus.</string>
@@ -440,7 +448,7 @@
     <string name="s_l_4a7991">G %s</string>
     <string name="s_l_r">G %1$s · D %2$s</string>
     <string name="s_left_969e2c">GAUCHE</string>
-    <string name="s_left_hand_next">MAIN GAUCHE ENSUITE</string>
+    <string name="s_left_hand_next_95b75f">MAIN GAUCHE ENSUITE</string>
     <string name="s_let_go_25ac58">RELÂCHE</string>
     <string name="s_laps_circuits_an_easy_evening_real_load_well_short_of_ma">Longueurs, circuits, une soirée tranquille — une vraie charge, loin du maximal.</string>
     <string name="s_last_14_days">14 derniers jours</string>
@@ -451,6 +459,8 @@
     <string name="s_leave_them_as_they_are">Les laisser telles quelles</string>
     <string name="s_left_8ae1c3">Gauche</string>
     <string name="s_left_hand">Main gauche</string>
+    <string name="s_left_hand_first_then_right_within_each_set">La main gauche, puis la droite, dans chaque série.</string>
+    <string name="s_left_hand_next_328ac8">Main gauche ensuite</string>
     <string name="s_left_right_left_right">Gauche, droite, gauche, droite — %s</string>
     <string name="s_left_right_left_right_swapping_hands_every_pull">Gauche, droite, gauche, droite — on change de main à chaque tirage.</string>
     <string name="s_let_go_f2de3c">Relâche</string>
@@ -516,8 +526,10 @@
     <string name="s_new_routine_32809d">Nouvelle routine</string>
     <string name="s_new_routine_906eb9">Nouvelle routine…</string>
     <string name="s_next_bc9819">Suivant</string>
-    <string name="s_next_grip">Prise suivante : %s</string>
+    <string name="s_next_grip_5a4dbd">Prise suivante</string>
+    <string name="s_next_grip_da4061">Prise suivante : %s</string>
     <string name="s_next_reminder_at">Prochain rappel à %s</string>
+    <string name="s_next_target">Prochaine cible : %1$s–%2$s %3$s</string>
     <string name="s_next_37caf7">Ensuite : %s</string>
     <string name="s_next_target_to">Ensuite : %1$s, cible de %2$s à %3$s %4$s</string>
     <string name="s_next_target_to_kilograms">Ensuite : %1$s, cible de %2$s à %3$s kilogrammes</string>
@@ -567,6 +579,7 @@
     <string name="s_one_card_one_ritual_the_dots_are_today_s_sessions_and_a">Une carte, un rituel. Les points sont les séances du jour, et un point plein est une séance faite.</string>
     <string name="s_one_hand_at_a_time">Une main à la fois</string>
     <string name="s_one_mark_a_day_a_session_at_the_climbing_gym_or_hangs_do">Une marque par jour. Une séance à la salle, ou des suspensions faites loin du capteur, comptent aussi : enregistre-les ici et elles rejoignent la journée.</string>
+    <string name="s_one_pull_with_both_hands_on_the_edge">Un tirage avec les deux mains sur la prise.</string>
     <string name="s_one_pull_with_both_hands_on_the_edge_reps_per_side_is_ju">Un tirage avec les deux mains sur la réglette. Les tirages par côté sont simplement le nombre de tirages.</string>
     <string name="s_one_pull_both_hands">Un tirage, les deux mains — %s</string>
     <string name="s_one_session_so_far_a_second_gives_this_a_direction">Une seule séance pour l\'instant. Une deuxième donnera une direction.</string>
@@ -577,6 +590,7 @@
     <string name="s_open_source_community">Open source et communauté</string>
     <string name="s_open_source_force_sensor_thanks_to_its_creator_for_testi">Capteur de force open source. Merci à son créateur d’avoir testé Get a Grip.</string>
     <string name="s_open_source_licenses">Licences open source</string>
+    <string name="s_opens_history">Ouvre l’historique.</string>
     <string name="s_opens_the_grip_picker">Ouvre le sélecteur de prise</string>
     <string name="s_opens_the_routine_builder">Ouvre le créateur de routine.</string>
     <string name="s_opens_the_target_editor">Ouvre l\'éditeur de cible</string>
@@ -609,6 +623,7 @@
     <string name="s_privacy_policy">Politique de confidentialité</string>
     <string name="s_privacy_policy_opens_in_your_browser">Politique de confidentialité. S\'ouvre dans ton navigateur.</string>
     <string name="s_protocol_support_for_every_gauge_other_than_the_tindeq_p">La prise en charge des protocoles de tous les capteurs autres que le Tindeq Progressor est reprise de hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray Hartog).</string>
+    <string name="s_pull_5219eb">Tirage</string>
     <string name="s_pull_lld_of_lld">Tirage %1$d sur %2$d</string>
     <string name="s_pull_and_watch_the_force_in_real_time">Tire et regarde la force en temps réel</string>
     <string name="s_pull_as_hard_as_you_can_get_a_grip_keeps_the_hardest_the_c40be2">Tire aussi fort que possible — Get a Grip retient le plus fort que le capteur voit. Ou saisis-le à la main ci-dessous.</string>
@@ -628,7 +643,7 @@
     <string name="s_rfd_series_measurement">mesure de série RFD</string>
     <string name="s_rhythm">RYTHME</string>
     <string name="s_right_952532">DROITE</string>
-    <string name="s_right_hand_next">MAIN DROITE ENSUITE</string>
+    <string name="s_right_hand_next_0ba39f">MAIN DROITE ENSUITE</string>
     <string name="s_recent_connection_and_signal_breadcrumbs_kept_on_this_de">Traces récentes de connexion et de signal, gardées sur cet appareil en mémoire seulement — elles sont perdues si l\'app est forcée à quitter.</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Enregistre ce que tu peux tenir sur chaque prise, par main si elles diffèrent, et mesures-en un au capteur d\'ici. Les pourcentages en ont besoin ; les kilos non.</string>
     <string name="s_refresh_battery">Actualiser la batterie</string>
@@ -643,11 +658,13 @@
     <string name="s_resume">Reprendre</string>
     <string name="s_right_954daa">Droite</string>
     <string name="s_right_hand">Main droite</string>
+    <string name="s_right_hand_next_861ec2">Main droite ensuite</string>
     <string name="s_ring">Annulaire</string>
     <string name="s_ritual_or_whenever">Rituel ou libre</string>
     <string name="s_routine_deleted">Routine supprimée</string>
     <string name="s_routine_name">Nom de la routine</string>
     <string name="s_routine_options">Options de la routine</string>
+    <string name="s_routine_overview">Aperçu de la routine</string>
     <string name="s_runs_the_timers_and_hand_prompts_only_nothing_is_measure">Ne lance que les chronos et les consignes de main. Rien n\'est mesuré.</string>
     <string name="s_saved_24f3f7">ENREGISTRÉ</string>
     <string name="s_session_lld">SÉANCE %d</string>
@@ -688,6 +705,7 @@
     <string name="s_sessions_and_trends">Séances et tendances</string>
     <string name="s_sessions_lld_max_records_lld">Séances : %1$d · Max enregistrés : %2$d</string>
     <string name="s_set_448ab7">Série</string>
+    <string name="s_set_lld">Série %d</string>
     <string name="s_set_lld_of_lld_8e1097">Série %1$d sur %2$d</string>
     <string name="s_set_lld_of_lld_f52e6b">Série %1$d sur %2$d · %3$s</string>
     <string name="s_set_lld_of_lld_pull_lld_of_lld_hand">Série %1$d sur %2$d, tirage %3$d sur %4$d, main %5$s, %6$s</string>
@@ -751,6 +769,8 @@
     <string name="s_tap_connect_to_start_listening_for_your">Touche Connecter pour commencer à écouter ton %s.</string>
     <string name="s_tap_a_set_for_its_grip_its_pulls_its_own_hold_and_rest_a">Touche une série pour sa prise, ses tirages, sa tenue et son repos propres, et sa cible. Ajouter une série copie la dernière, une routine uniforme est donc rapide.</string>
     <string name="s_tap_it_and_set_the_edge_which_fingers_how_many_pulls_and">Touche-la et règle la réglette, les doigts, le nombre de tirages et la durée. Rien n\'est enregistré tant que tu ne touches pas Enregistrer, et la visite reprend à ton retour.</string>
+    <string name="s_tap_the_days_to_open_history_use_log_a_session_to_add_cl">Touche les jours pour ouvrir l’historique. Utilise Ajouter une séance pour noter de l’escalade ou des suspensions sans capteur.</string>
+    <string name="s_tap_the_plan_to_see_your_grips_timing_and_hand_order_you">Touche le programme pour voir les prises, les durées et l’ordre des mains. Tu peux modifier la routine depuis son aperçu.</string>
     <string name="s_tare_71c87f">Tarer</string>
     <string name="s_tare_is_unavailable_during_the_pull">Tarer est indisponible pendant le tirage.</string>
     <string name="s_tare_is_unavailable_while_waiting_for_you_to_let_go">Tarer est indisponible tant que tu n\'as pas relâché.</string>
@@ -758,6 +778,7 @@
     <string name="s_target_load_for_this_grip">Charge cible pour cette prise</string>
     <string name="s_target_loads_are_percentages_of_your_own_maxes">Les charges cibles sont des pourcentages de tes propres max.</string>
     <string name="s_target_range">Plage cible</string>
+    <string name="s_target_b346c9">Cible : %s</string>
     <string name="s_taxed">Éprouvé</string>
     <string name="s_tested">Testé %s</string>
     <string name="s_tested_your_maxes_c47639">Max testés</string>

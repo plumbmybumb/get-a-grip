@@ -1061,7 +1061,7 @@ class SessionRunner(
     /// STORED, not computed. `slots` is fixed at `init` and never mutates, but this was
     /// read from `RunnerSession.publish()` — which runs on EVERY sample — so an Array-map
     /// plus a Set construction ran ~96,000 times a session to recompute a constant.
-    val setCount: Int = slots.map { it.setIndex }.toSet().size
+    val setCount: Int = this.plan.sets.size
 
     /// 1-based rep position within the current set.
     val repNumberInSet: Int? get() = displaySlot?.let { it.repIndex + 1 }
@@ -1069,7 +1069,7 @@ class SessionRunner(
     val repsInCurrentSet: Int?
         get() {
             val slot = displaySlot ?: return null
-            return slots.count { it.setIndex == slot.setIndex }
+            return PlanMath.repCount(plan.sets[slot.setIndex], plan.handMode)
         }
 
     val isFinished: Boolean get() = phase is RunnerPhase.Finished

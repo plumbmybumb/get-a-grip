@@ -190,7 +190,7 @@ struct SetRowView: View {
             // a max protocol asks for. It repeats while held.
             IntValueRow(title: String(localized: "Pulls per side"),
                         value: setBinding.repsPerSide,
-                        range: 1...12, limit: 1...20,
+                        range: 1...40, limit: 1...SetPlan.repsRange.upperBound,
                         caption: String(localized: "= \(tensionText)"),
                         control: .stepper)
 

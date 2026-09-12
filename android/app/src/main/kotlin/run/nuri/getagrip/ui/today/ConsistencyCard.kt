@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -72,6 +73,7 @@ import run.nuri.getagrip.ui.tour.tourAnchor
 fun ConsistencyCard(
     days: List<DayRecord>,
     modifier: Modifier = Modifier,
+    onShowHistory: () -> Unit = {},
     /// Logging a climb lives HERE rather than in the routine card's ⋯ menu, which is for
     /// managing the routine — a gym session is not a fact about the routine. It sits on the
     /// strip because the strip is what it changes: the control is next to the thing it
@@ -94,27 +96,44 @@ fun ConsistencyCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CapsLabel(tr("Last 14 days"), Modifier.weight(1f))
+                Box(
+                    Modifier.weight(1f).heightIn(min = 44.dp)
+                        .clickable(role = Role.Button, onClick = onShowHistory),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    CapsLabel(tr("Last 14 days"))
+                }
                 LogSessionButton(onLogSession)
             }
 
-            ConsistencyStrip(days)
-
-            days.firstOrNull()?.let { first ->
-                // The strip speaks the whole fortnight in one sentence; the axis is a visual
-                // aid to it, not a second element to swipe through.
-                Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
-                    CapsLabel(AXIS_DATE.format(first.day.localDate()), Modifier.weight(1f))
-                    CapsLabel(tr("Today"))
+            // Only the history body navigates; Log is a sibling touch target above
+            // it, so tapping that action can never also switch tabs.
+            Column(
+                Modifier.fillMaxWidth().heightIn(min = 44.dp)
+                    .testTag("today.history")
+                    .clickable(role = Role.Button, onClick = onShowHistory)
+                    .clearAndSetSemantics {
+                        role = Role.Button
+                        contentDescription = L10n.tr("History")
+                        stateDescription = spokenSummary(days)
+                        onClick(label = L10n.tr("History")) { onShowHistory(); true }
+                    },
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ConsistencyStrip(days)
+                days.firstOrNull()?.let { first ->
+                    Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
+                        CapsLabel(AXIS_DATE.format(first.day.localDate()), Modifier.weight(1f))
+                        CapsLabel(tr("Today"))
+                    }
                 }
-            }
-
-            if (ConsistencyEmptyState.showsFirstUseHint(days)) {
-                Text(
-                    tr("Your sessions will show up here."),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = palette.inkTertiary,
-                )
+                if (ConsistencyEmptyState.showsFirstUseHint(days)) {
+                    Text(
+                        tr("Your sessions will show up here."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.inkTertiary,
+                    )
+                }
             }
         }
     }

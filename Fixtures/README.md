@@ -26,6 +26,8 @@ re-encode round-trip is a free byte check.
   pins `GripSpec.key` of the decoded value. Note the two array rules: a TOP-LEVEL array drops
   only its broken elements, but a NESTED array read through `value(.sets, or: [])` is
   all-or-nothing — one bad element empties the key.
+  `SetPlan` accepts 0–100 pulls per side; zero remains representable and is removed only
+  from the executable plan. The 36- and 100-pull cases guard against the old 20-pull cap.
 
 ## `keys/`
 
@@ -79,7 +81,8 @@ One file per gauge: `{gauge, cases:[{name, answering?, frames:[hex…], expect}]
   encoder and read back by `oracle share verify`.
 - `roundtrip.json` — `[{name, draft:{plan, sessionsPerDay, isOnDemand}}]` (`plan` a canonical JSON
   string): encode → decode must yield the same canonical envelope, and the URL must honour the
-  documented caps.
+  documented caps. The 36- and 100-pull drafts must retain their counts across the Swift and
+  Kotlin encoders; the share link's 50-set cap is unchanged.
 
 ## `export/`
 

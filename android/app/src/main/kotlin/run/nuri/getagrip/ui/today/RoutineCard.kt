@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -122,6 +123,7 @@ fun RoutineCard(
     onStart: () -> Unit = {},
     /// The same session with no gauge — timers, count-in and hand prompts only.
     onStartTimerOnly: () -> Unit = {},
+    onOverview: () -> Unit = {},
     onEdit: () -> Unit = {},
     onDuplicate: () -> Unit = {},
     onNew: () -> Unit = {},
@@ -205,7 +207,7 @@ fun RoutineCard(
                 )
                 CompletionRow(summary, completionText)
             }
-            PlanRow(summary, onEdit)
+            PlanRow(summary, onOverview)
             StartBlock(summary, deviceState, battery, onStart, onStartTimerOnly, onDemo)
         }
     }
@@ -482,7 +484,7 @@ private fun SessionDots(summary: RoutineSummary) {
 /// nothing to frame, and a platter drawn around a single footnote makes a sentence look
 /// like a text field. The chevron and the press feedback are what say this row is a door.
 @Composable
-private fun PlanRow(summary: RoutineSummary, onEdit: () -> Unit) {
+private fun PlanRow(summary: RoutineSummary, onOverview: () -> Unit) {
     val palette = LocalGripPalette.current
     val interaction = remember { MutableInteractionSource() }
     val fontScale = LocalDensity.current.fontScale
@@ -495,15 +497,14 @@ private fun PlanRow(summary: RoutineSummary, onEdit: () -> Unit) {
             .clickable(
                 interactionSource = interaction,
                 indication = null,
-                // The row IS the door to the editor — a full-width row that opens something
-                // is a button, and without this TalkBack never says the control type.
                 role = Role.Button,
-                onClick = onEdit,
+                onClick = onOverview,
             )
             .pressFeedback(interaction, scales = false)
             .tourAnchor(TourTarget.GripLadder)
+            .testTag("today.routineOverview")
             .semantics {
-                contentDescription = L10n.tr("Edit routine")
+                contentDescription = L10n.tr("Routine overview")
                 // The card no longer draws the grips, so it must not speak them either.
                 // The intensity suffix rides here because the rung's colour is invisible to
                 // TalkBack and to greyscale — the number is the fact, the colour the glance.

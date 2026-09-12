@@ -15,7 +15,7 @@
     {
       "name": "out-of-range numbers are clamped, never rejected",
       "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000005\",\"grip\":{\"edgeMM\":0,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":1000000000,\"holdSeconds\":0,\"restSeconds\":100000}",
-      "canonical": "{\"grip\":{\"edgeMM\":1,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"holdSeconds\":1,\"id\":\"8B2C4E8A-0000-4000-8000-000000000005\",\"note\":\"\",\"repsPerSide\":20,\"restSeconds\":600}"
+      "canonical": "{\"grip\":{\"edgeMM\":1,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"holdSeconds\":1,\"id\":\"8B2C4E8A-0000-4000-8000-000000000005\",\"note\":\"\",\"repsPerSide\":100,\"restSeconds\":600}"
     },
     {
       "name": "every field set, and a lowercase id is re-encoded uppercase",
@@ -46,6 +46,16 @@
       "name": "2-second hold survives decoding",
       "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000001\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":6,\"holdSeconds\":2}",
       "canonical": "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"holdSeconds\":2,\"id\":\"8B2C4E8A-0000-4000-8000-000000000001\",\"note\":\"\",\"repsPerSide\":6}"
+    },
+    {
+      "name": "36 pulls per side survives decoding",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000036\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":36}",
+      "canonical": "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"8B2C4E8A-0000-4000-8000-000000000036\",\"note\":\"\",\"repsPerSide\":36}"
+    },
+    {
+      "name": "100 pulls per side survives decoding",
+      "input": "{\"id\":\"8B2C4E8A-0000-4000-8000-000000000100\",\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"repsPerSide\":100}",
+      "canonical": "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"8B2C4E8A-0000-4000-8000-000000000100\",\"note\":\"\",\"repsPerSide\":100}"
     }
   ]
 }
