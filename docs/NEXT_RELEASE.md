@@ -1,7 +1,9 @@
 # Next release fixes and features
 
-Active development has moved to the [1.1.0 plan](RELEASE_1.1.0_PLAN.md) on
-`codex/release-1-1-0`. The completed items below document the preceding release.
+The work scoped in the [1.1.0 plan](RELEASE_1.1.0_PLAN.md) is being packaged as
+[iOS 1.0.3 (7) and Android 1.0.1 (9)](RELEASE_2026-09-12_1.0.3.md), following
+the developer’s final version choice. The completed items below document the
+preceding release.
 
 ## App-wide weight units — iOS and Android
 

@@ -1,5 +1,5 @@
 • Fixed the 20-pull limit: sets now support 100 pulls per hand.
 • Switching light/dark mode keeps your workout and unsaved summary.
 • Preview a routine’s grips and timing before starting, and tap Last 14 days to open History.
-• Longer rests show the next hand and grip with a larger countdown. The live graph stays visible.
+• With a gauge, longer rests show the next hand and grip with a larger countdown. The live graph stays visible.
 • Tidier Settings, with links to Grip Connect and Crimpdeq.

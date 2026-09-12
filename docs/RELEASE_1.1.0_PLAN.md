@@ -191,13 +191,14 @@ and release:
 - [Google Play payment-policy FAQ](https://support.google.com/googleplay/android-developer/answer/10281818?hl=en):
   “Do direct tips or contributions from user to creator require Play’s billing system?”
 
-## Release preparation — later
+## Release preparation — 12 September 2026
 
 - [ ] Add upcoming features and regression reports to this plan as scope evolves.
-- [ ] Set both marketing versions to 1.1.0 and assign fresh build numbers when
-  preparing test/store artifacts; current manifests still identify the preceding
-  releases.
-- [ ] Run relevant platform, UI, shared-fixture and physical-device checks.
+- [x] Package the completed work as iOS 1.0.3 (7) and Android 1.0.1 (9),
+  following the developer’s final version choice.
+- [x] Run platform, UI and shared-fixture checks; install the combined iPhone
+  preview. No new gauge hardware verification is claimed for this UI/persistence release.
 - [ ] Confirm the Android border fix on the reporter's actual device if available.
-- [ ] Write final release notes, verify signed artifacts, tag exact source and
-  submit only after the planned feature/testing work is complete.
+- [x] Write final release notes, verify signed artifacts, tag exact source and
+  submit the completed work. Store review status is recorded in
+  `RELEASE_2026-09-12_1.0.3.md`; neither build is claimed approved yet.

@@ -1,5 +1,5 @@
 • Limite corrigée : jusqu’à 100 tirages par main dans chaque série.
 • Passer du mode clair au mode sombre conserve votre séance et son bilan non enregistré.
 • Aperçu des prises et des temps avant de commencer ; accès à l’historique depuis les 14 derniers jours.
-• Pendant les longs repos : prochaine main et prise plus visibles, grand compte à rebours et graphique toujours affiché.
+• Avec un capteur, pendant les longs repos : prochaine main et prise plus visibles, grand compte à rebours et graphique toujours affiché.
 • Réglages épurés et liens vers Grip Connect et Crimpdeq.
