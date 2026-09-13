@@ -22,6 +22,7 @@
     <string name="s_x_dc3df0">"%1$s %2$s  →  %3$s %4$s"</string>
     <string name="s_since">%1$s %2$s %3$s since %4$s</string>
     <string name="s_kg_since">%1$s %2$s kg since %3$s</string>
+    <string name="s_ready_to_save_3a4d28">%1$s %2$s, ready to save</string>
     <string name="s_your_hardest_pull">%1$s %2$s, your hardest pull</string>
     <string name="s_thumb_55886d">%s + thumb</string>
     <string name="s_at_the_gym_today">%s at the gym today</string>
@@ -199,6 +200,8 @@
     <string name="s_add_a_set">Add a set</string>
     <string name="s_add_at_least_one_set_with_a_pull_in_it">Add at least one set with a pull in it.</string>
     <string name="s_add_to_my_routines">Add to my routines</string>
+    <string name="s_adjust_values">Adjust values</string>
+    <string name="s_adjusted_values_are_saved_as_manual_entries_your_recorde">Adjusted values are saved as manual entries. Your recorded trace stays unchanged.</string>
     <string name="s_all_lld_on_the_left_then_all_lld_on_the_right">All %1$d on the left, then all %2$d on the right</string>
     <string name="s_all_i_had">All I had</string>
     <string name="s_all_history">All history</string>
@@ -209,6 +212,7 @@
     <string name="s_already_the_last_set">Already the last set</string>
     <string name="s_alternate_each_pull">Alternate each pull</string>
     <string name="s_anything_marked_as_a_ported_protocol_speaks_a_protocol_t">Anything marked as a ported protocol speaks a protocol taken from the open-source hangtime-grip-connect project and has never been tested against that hardware here. Check the first pull on one against a number you already trust.</string>
+    <string name="s_apply">Apply</string>
     <string name="s_at_the_climbing_gym_d41f29">At the climbing gym</string>
     <string name="s_average">Average</string>
     <string name="s_away_from_the_gauge_24683a">Away from the gauge</string>
@@ -231,7 +235,9 @@
     <string name="s_bluetooth_off">Bluetooth off</string>
     <string name="s_both_1f4698">Both</string>
     <string name="s_both_hands">Both hands</string>
+    <string name="s_both_hands_are_ready_to_save">Both hands are ready to save.</string>
     <string name="s_both_hands_next_d612dc">Both hands next</string>
+    <string name="s_both_hands_together">Both hands together</string>
     <string name="s_both_open_an_email_your_app_version_ios_version_device_a">Both open an email. Your app version, iOS version, device and selected gauge are added at the end of the message, so a report arrives with the context to act on it.</string>
     <string name="s_both_sessions_done_today">Both sessions done today</string>
     <string name="s_break_between_sets">Break between sets</string>
@@ -265,6 +271,7 @@
     <string name="s_connect">Connect</string>
     <string name="s_connect_and_start">Connect and start</string>
     <string name="s_connect_gauge">Connect gauge</string>
+    <string name="s_connect_your_gauge_to_measure">Connect your gauge to measure.</string>
     <string name="s_connect_your_gauge_to_measure_you_can_always_type_a_max">Connect your gauge to measure. You can always type a max in instead.</string>
     <string name="s_connect_your_gauge_to_try_it_you_can_change_this_any_tim">Connect your gauge to try it — you can change this any time.</string>
     <string name="s_connected">Connected</string>
@@ -288,6 +295,9 @@
     <string name="s_couldn_t_save">Couldn\'t save</string>
     <string name="s_couldn_t_save_this_workout_please_try_again">Couldn\'t save this workout. Please try again.</string>
     <string name="s_couldn_t_share">Couldn\'t share</string>
+    <string name="s_couldn_t_save_your_maxes_your_changes_are_still_here_ple">Couldn’t save your maxes. Your changes are still here—please try again.</string>
+    <string name="s_couldn_t_save_your_measurements_are_still_here_try_again">Couldn’t save. Your measurements are still here — try again.</string>
+    <string name="s_couldn_t_update_the_weight_targets_your_maxes_are_saved">Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are.</string>
     <string name="s_counting">Counting</string>
     <string name="s_crimpdeq" translatable="false">Crimpdeq</string>
     <string name="s_current_kilograms_peak_kilograms">Current %1$s kilograms, peak %2$s kilograms%3$s</string>
@@ -333,14 +343,20 @@
     <string name="s_each_set_says_how_many_pulls_you_do_per_side_the_line_un">Each set says how many pulls you do per side. The line underneath adds up your total time under tension per side.</string>
     <string name="s_earlier_max_for_recorded">Earlier max for %1$s. %2$s %3$s, recorded %4$s.</string>
     <string name="s_earlier_max_for_kilograms_recorded">Earlier max for %1$s. %2$s kilograms, recorded %3$s.</string>
+    <string name="s_earlier_records">Earlier records</string>
     <string name="s_easy">Easy</string>
     <string name="s_edge">Edge</string>
     <string name="s_edit">Edit</string>
+    <string name="s_edit_maxes">Edit maxes</string>
+    <string name="s_edit_maxes_for">Edit maxes for %s</string>
     <string name="s_edit_routine">Edit routine</string>
+    <string name="s_edit_shared_max">Edit shared max</string>
     <string name="s_email">Email %s</string>
     <string name="s_email_details">Email details</string>
     <string name="s_end_session">End session</string>
     <string name="s_enter_a_max_above_zero_to_save_it">Enter a max above zero to save it.</string>
+    <string name="s_enter_a_max_above_zero_to_remove_a_record_open_earlier_r">Enter a max above zero. To remove a record, open Earlier records.</string>
+    <string name="s_enter_by_hand">Enter by hand</string>
     <string name="s_entralpi">Entralpi</string>
     <string name="s_entralpi_force_plate">Entralpi force plate</string>
     <string name="s_estimated_duration">Estimated duration</string>
@@ -498,15 +514,23 @@
     <string name="s_measure_a_max">Measure a max</string>
     <string name="s_measure_a_peak_on_your_gauge_or_record_a_previous_measur">Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need.</string>
     <string name="s_measure_again">Measure again</string>
+    <string name="s_measure_again_opens_the_gauge_for_this_grip_edit_changes">Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom.</string>
+    <string name="s_measure_both_hands_together">Measure both hands together</string>
     <string name="s_measure_it_on_the_gauge_or_pull_as_hard_as_you_can_and_s">Measure it on the gauge, or pull as hard as you can and set the number yourself. It doesn\'t have to be exact, and you can add a newer one whenever it changes.</string>
+    <string name="s_measure_left_hand">Measure left hand</string>
     <string name="s_measure_on_the_gauge">Measure on the gauge</string>
+    <string name="s_measure_right_hand">Measure right hand</string>
     <string name="s_measure_the_most_a_grip_can_hold_and_it_lands_here_every">Measure the most a grip can hold and it lands here — every later test draws the curve of you getting stronger.</string>
+    <string name="s_measure_your_left_and_right_hands_in_one_visit_or_enter">Measure your left and right hands in one visit, or enter the values you already know.</string>
+    <string name="s_measured_955037">Measured</string>
     <string name="s_measured_on_the_gauge_your_hardest_pull_on_this_grip">Measured on the gauge — your hardest pull on this grip.</string>
+    <string name="s_measured_225ed4">Measured: %s</string>
     <string name="s_middle">Middle</string>
     <string name="s_middle_2">Middle 2</string>
     <string name="s_missing_control_characteristic">Missing control characteristic</string>
     <string name="s_missing_control_point">Missing control point</string>
     <string name="s_missing_data_characteristic">Missing data characteristic</string>
+    <string name="s_more_max_options">More max options</string>
     <string name="s_move_down">Move down</string>
     <string name="s_move_up">Move up</string>
     <string name="s_my_routine">My routine</string>
@@ -547,6 +571,7 @@
     <string name="s_no_maxes_yet_5a8a83">No maxes yet</string>
     <string name="s_no_measured_pulls_to_chart_yet">No measured pulls to chart yet.</string>
     <string name="s_no_measurement_yet">No measurement yet</string>
+    <string name="s_no_new_pull_recorded_your_previous_measurement_is_still">No new pull recorded. Your previous measurement is still ready to save.</string>
     <string name="s_no_pull_was_recorded_you_can_close_this_or_try_again">No pull was recorded. You can close this or try again.</string>
     <string name="s_no_pull_yet">No pull yet</string>
     <string name="s_no_scale_found">No scale found</string>
@@ -561,9 +586,11 @@
     <string name="s_not_a_progressor">Not a Progressor</string>
     <string name="s_not_connected">Not connected</string>
     <string name="s_not_done_yet_today">Not done yet today</string>
+    <string name="s_not_measured">Not measured</string>
     <string name="s_not_now">Not now</string>
     <string name="s_not_rated">Not rated</string>
     <string name="s_not_set">Not set</string>
+    <string name="s_not_set_enter_a_value_to_save_a_max_for_this_hand">Not set. Enter a value to save a max for this hand.</string>
     <string name="s_nothing">Nothing</string>
     <string name="s_nothing_here_yet">Nothing here yet</string>
     <string name="s_nothing_is_saved_the_session_is_gone">Nothing is saved. The session is gone.</string>
@@ -580,12 +607,14 @@
     <string name="s_once_a_day_a9afbb">Once a day</string>
     <string name="s_once_a_day_782e23">Once a day · %s</string>
     <string name="s_one_card_one_ritual_the_dots_are_today_s_sessions_and_a">One card, one ritual. The dots are today\'s sessions, and a filled dot is one you have done.</string>
+    <string name="s_one_combined_measurement">One combined measurement</string>
     <string name="s_one_hand_at_a_time">One hand at a time</string>
     <string name="s_one_mark_a_day_a_session_at_the_climbing_gym_or_hangs_do">One mark a day. A session at the climbing gym, or hangs done away from the gauge, count too: log them here and they join the day.</string>
     <string name="s_one_pull_with_both_hands_on_the_edge">One pull with both hands on the edge.</string>
     <string name="s_one_pull_with_both_hands_on_the_edge_reps_per_side_is_ju">One pull with both hands on the edge. Reps per side is just the number of pulls.</string>
     <string name="s_one_pull_both_hands">One pull, both hands — %s</string>
     <string name="s_one_session_so_far_a_second_gives_this_a_direction">One session so far. A second gives this a direction.</string>
+    <string name="s_one_value_for_both_hands">One value for both hands</string>
     <string name="s_only_your_hand_its_targets_come_from_this_number_your_ot">Only your %s hand. Its targets come from this number; your other hand needs its own.</string>
     <string name="s_open">Open</string>
     <string name="s_open_settings">Open Settings</string>
@@ -610,6 +639,7 @@
     <string name="s_paused_c7dfb6">Paused</string>
     <string name="s_peak_c83dbb">Peak</string>
     <string name="s_percent_targets_always_follow_your_newest_max_nothing_to">Percent targets always follow your newest max — nothing to do.</string>
+    <string name="s_percentage_targets_follow_the_values_you_save_earlier_re">Percentage targets follow the values you save. Earlier records stay in your history.</string>
     <string name="s_percentage_targets_use_the_max_saved_for_that_grip_and_h">Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit.</string>
     <string name="s_percentage_targets_use_your_saved_maxes_these_may_no_lon">Percentage targets use your saved maxes. These may no longer reflect your current strength.</string>
     <string name="s_photos_access_is_off_for_get_a_grip_settings_privacy_pho">Photos access is off for Get a Grip — Settings &gt; Privacy &gt; Photos.</string>
@@ -641,6 +671,7 @@
     <string name="s_r_065765">R</string>
     <string name="s_r_041dd0">R %s</string>
     <string name="s_re_grip">RE-GRIP</string>
+    <string name="s_ready_to_save_b13266">READY TO SAVE</string>
     <string name="s_rest_cbaaa1">REST</string>
     <string name="s_rest_hands">REST &amp; HANDS</string>
     <string name="s_rfd_series_measurement">RFD series measurement</string>
@@ -648,6 +679,7 @@
     <string name="s_right_952532">RIGHT</string>
     <string name="s_right_hand_next_0ba39f">RIGHT HAND NEXT</string>
     <string name="s_recent_connection_and_signal_breadcrumbs_kept_on_this_de">Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit.</string>
+    <string name="s_record_another_test">Record another test</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not.</string>
     <string name="s_refresh_battery">Refresh battery</string>
     <string name="s_remind_me">Remind me</string>
@@ -678,11 +710,16 @@
     <string name="s_save">Save</string>
     <string name="s_save_and_finish">Save and finish</string>
     <string name="s_save_as_max">Save as max</string>
+    <string name="s_save_max">Save max</string>
+    <string name="s_save_maxes">Save maxes</string>
     <string name="s_save_routine">Save routine</string>
     <string name="s_save_this_as_your_max_on_this_grip_or_try_again">Save this as your max on this grip, or try again.</string>
+    <string name="s_save_this_combined_max_or_try_again">Save this combined max, or try again.</string>
+    <string name="s_save_this_max_or_measure_your_other_hand">Save this max, or measure your other hand.</string>
     <string name="s_save_to_photos">Save to Photos</string>
     <string name="s_save_when_you_are_happy">Save when you are happy</string>
     <string name="s_saved_c0ae8f">Saved</string>
+    <string name="s_saved_maxes_update_percentage_targets_weight_targets_sta">Saved maxes update percentage targets. Weight targets stay as entered.</string>
     <string name="s_saved_to_photos">Saved to Photos</string>
     <string name="s_saving">Saving…</string>
     <string name="s_scale_stopped_broadcasting">Scale stopped broadcasting</string>
@@ -725,6 +762,7 @@
     <string name="s_share_the_code">Share the code</string>
     <string name="s_share_the_document">Share the document</string>
     <string name="s_share_this_five_week_calendar">Share this five-week calendar</string>
+    <string name="s_shared_max">Shared max</string>
     <string name="s_shared_routine">Shared routine</string>
     <plurals name="s_show_lld_earlier_sessions">
         <item quantity="one">Show %d earlier sessions</item>
@@ -857,6 +895,8 @@
     <string name="s_use_as_max">Use as max</string>
     <string name="s_use_this_max">Use this max</string>
     <string name="s_used_for_both_hands_pick_a_hand_if_yours_differ_most_peo">Used for both hands. Pick a hand if yours differ — most people\'s do.</string>
+    <string name="s_used_when_a_hand_has_no_individual_max_and_for_pulls_wit">Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged.</string>
+    <string name="s_used_when_a_hand_has_no_max_of_its_own_and_for_two_hande">Used when a hand has no max of its own, and for two-handed pulls.</string>
     <string name="s_volume">Volume</string>
     <string name="s_volume_climbing">Volume climbing</string>
     <string name="s_volume_session">Volume session</string>
@@ -867,6 +907,7 @@
     <string name="s_waiting_for_the_gauge">Waiting for the gauge</string>
     <string name="s_wake">Wake</string>
     <string name="s_weight_targets">Weight targets</string>
+    <string name="s_weight_targets_updated">Weight targets updated</string>
     <string name="s_weight_units">Weight units</string>
     <string name="s_weighted_hangs">Weighted hangs</string>
     <string name="s_weighted_or_max_hangs_you_did_on_your_own_no_gauge_behin">Weighted or max hangs you did on your own — no gauge behind it.</string>
@@ -982,6 +1023,5 @@
     <string name="s_your_fingers_felt">your fingers felt %s</string>
     <string name="s_lld_hangs">· %d hangs</string>
     <string name="s_1_hang">· 1 hang</string>
-    <string name="s_x_1b9379">—</string>
     <string name="s_lld_min_7e09eb">≈%d min</string>
 </resources>

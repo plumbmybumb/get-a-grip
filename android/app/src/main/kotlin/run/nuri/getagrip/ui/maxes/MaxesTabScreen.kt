@@ -27,20 +27,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import run.nuri.getagrip.ui.theme.InstrumentSurface as Surface
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -83,8 +81,8 @@ import run.nuri.getagrip.ui.theme.Metrics
 /// `MaxRecordEntity` is append-only precisely so this screen costs nothing — every max ever
 /// recorded is still there, and a card here is just one grip's rows drawn as a curve.
 ///
-/// Manage opens the saved-record list within this tab. Charts, testing and record
-/// management share the same data and the composer's existing save flow.
+/// Each grip opens measurement directly, or its exact hand values and earlier records.
+/// The toolbar + chooses another grip. All routes preserve the same max history.
 ///
 /// **The WORKING max is the NEWEST record, not the highest**: a benchmark that tests lower
 /// honestly lowers your percentage targets too. Best-ever is shown beside it as the PR.
@@ -93,57 +91,27 @@ import run.nuri.getagrip.ui.theme.Metrics
 fun MaxesTabScreen(
     onAddMax: (GripSpec?) -> Unit,
     onMeasure: (GripSpec, Side) -> Unit,
+    onEdit: (GripSpec) -> Unit,
     modifier: Modifier = Modifier,
     cardsAnchor: Modifier = Modifier,
     manageAnchor: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
 ) {
-    val nav = rememberNavController()
-    val palette = LocalGripPalette.current
-    NavHost(nav, startDestination = "overview", modifier = modifier.fillMaxSize()) {
-        composable("overview") {
-            MaxesOverview(onAddMax, onMeasure, cardsAnchor = cardsAnchor,
-                manageAnchor = manageAnchor, onManage = { nav.navigate("manage") }, feed = feed)
-        }
-        composable("manage") {
-            Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                topBar = {
-                    TopAppBar(title = { Text(tr("Manage maxes")) },
-                        windowInsets = WindowInsets(0, 0, 0, 0),
-                        navigationIcon = {
-                            IconButton(onClick = { nav.popBackStack() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Back"))
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                            titleContentColor = palette.inkPrimary))
-                }) { padding ->
-                MaxesListScreen(onAddMax, Modifier.padding(padding), feed = feed)
-            }
-        }
-    }
+    MaxesOverview(onAddMax, onMeasure, onEdit, modifier = modifier,
+        cardsAnchor = cardsAnchor, manageAnchor = manageAnchor, feed = feed)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MaxesOverview(
-    /// Opens the composer — the sheet where a max is typed, a hand is chosen and the
-    /// measure door is offered. **Not built in this wave**: `MaxEntrySheet` is made of the
-    /// same input controls as the routine builder, so it belongs to that one. Null means
-    /// "no grip in mind", which is the empty state's Add.
     onAddMax: (GripSpec?) -> Unit,
-    /// Goes straight to the gauge for one grip and one hand, skipping the composer. The
-    /// side is the one the card's current record was pulled with, so "Measure again" tests
-    /// the same thing it is showing you.
     onMeasure: (GripSpec, Side) -> Unit,
+    onEdit: (GripSpec) -> Unit,
     modifier: Modifier = Modifier,
     /// The spotlight tour's anchor for the grip cards. Passed IN, so this screen never reads
     /// a tour and stays previewable.
     cardsAnchor: Modifier = Modifier,
     manageAnchor: Modifier = Modifier,
-    onManage: () -> Unit,
     feed: HistoryFeed = LocalHistoryFeed.current,
 ) {
     val palette = LocalGripPalette.current
@@ -168,9 +136,10 @@ private fun MaxesOverview(
             LargeTopAppBar(
                 title = { Text(tr("Maxes")) },
                 actions = {
-                    TextButton(onClick = onManage, modifier = manageAnchor.semantics {
-                        contentDescription = L10n.tr("Manage maxes")
-                    }) { Text(tr("Manage"), color = palette.inkPrimary) }
+                    IconButton(onClick = { onAddMax(null) },
+                        modifier = manageAnchor.testTag("maxes.add")) {
+                        Icon(Icons.Default.Add, contentDescription = tr("Add a max"), tint = palette.inkPrimary)
+                    }
                 },
                 scrollBehavior = scrollBehavior,
                 windowInsets = WindowInsets(0, 0, 0, 0),
@@ -202,16 +171,16 @@ private fun MaxesOverview(
             }
 
             if (groups.isEmpty() && invitations.isEmpty()) {
-                item("empty") { EmptyCard { onAddMax(templates.recentGrips.firstOrNull()) } }
+                item("empty") { EmptyCard(cardsAnchor) }
             } else {
                 items(groups, key = { it.key }) { group ->
                     // The FIRST card carries the anchor. Lighting the whole `LazyColumn` would
                     // be lighting the screen, which is not a spotlight; the first card is what
                     // "a grip's ceiling, drawn over time" actually looks like.
-                    GripCard(group, onMeasure, if (group.key == groups.first().key) cardsAnchor else Modifier)
+                    GripCard(group, onMeasure, onEdit, if (group.key == groups.first().key) cardsAnchor else Modifier)
                 }
                 items(invitations, key = { "invite-${it.key}" }) { grip ->
-                    InvitationCard(grip) { onMeasure(grip, Side.both) }
+                    InvitationCard(grip, if (groups.isEmpty() && grip == invitations.first()) cardsAnchor else Modifier) { onMeasure(grip, Side.left) }
                 }
                 item("footnote") {
                     // The same footnote contract as History's: what this screen's numbers
@@ -226,12 +195,7 @@ private fun MaxesOverview(
                 }
             }
 
-            item("add") {
-                SecondaryButton(
-                    title = tr("Add a max"),
-                    modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
-                ) { onAddMax(null) }
-            }
+
         }
     }
 }
@@ -316,20 +280,14 @@ internal fun relative(instant: Instant, now: Instant = Instant.now()): String {
 private fun GripCard(
     group: MaxGripGroup,
     onMeasure: (GripSpec, Side) -> Unit,
+    onEdit: (GripSpec) -> Unit,
     anchor: Modifier = Modifier,
 ) {
     val palette = LocalGripPalette.current
     val sides = remember(group) { presentSides(group) }
     val line = remember(group, WeightUnits.current) { progressLine(group) }
 
-    // Read outside the semantics lambda, which is not composable.
-    val spoken = tr("%s: %s", group.grip.spoken, line)
-
-    Card(
-        Modifier.semantics(mergeDescendants = true) {
-            contentDescription = spoken
-        },
-    ) {
+    Card(anchor) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -345,8 +303,8 @@ private fun GripCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            CurrentReadout(group, sides)
         }
+        CurrentReadout(group, sides)
 
         // A chart needs two points to have a direction; one record is a fact, not a trend.
         if (group.records.size >= 2) {
@@ -362,32 +320,26 @@ private fun GripCard(
             )
         }
 
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                line,
-                style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                color = palette.inkTertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            SecondaryButton(title = tr("Measure again")) {
-                // The hand the card's newest record was pulled with — "again" means the same
-                // test, not a different one.
-                onMeasure(group.grip, group.records.last().side)
+        Text(line, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+            color = palette.inkTertiary)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { onEdit(group.grip) }, modifier = Modifier.weight(1f)
+                .testTag("maxes.edit.${group.key}")) {
+                Text(tr("Edit"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold)
+            }
+            SecondaryButton(title = tr("Measure again"), modifier = Modifier.weight(1f)
+                .testTag("maxes.measure.${group.key}")) {
+                onMeasure(group.grip, Side.left)
             }
         }
     }
 }
 
 @Composable
-private fun InvitationCard(grip: GripSpec, onMeasure: () -> Unit) {
+private fun InvitationCard(grip: GripSpec, anchor: Modifier = Modifier, onMeasure: () -> Unit) {
     val palette = LocalGripPalette.current
-    Card {
+    Card(anchor) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -415,16 +367,15 @@ private fun InvitationCard(grip: GripSpec, onMeasure: () -> Unit) {
 }
 
 @Composable
-private fun EmptyCard(onAdd: () -> Unit) {
+private fun EmptyCard(anchor: Modifier = Modifier) {
     val palette = LocalGripPalette.current
-    Card {
+    Card(anchor) {
         CapsLabel(tr("No maxes yet"))
         Text(
             tr("Measure the most a grip can hold and it lands here — every later test draws the curve of you getting stronger."),
             style = MaterialTheme.typography.bodyMedium,
             color = palette.inkSecondary,
         )
-        SecondaryButton(title = tr("Measure a max"), modifier = Modifier.fillMaxWidth(), onClick = onAdd)
     }
 }
 
@@ -434,26 +385,23 @@ private fun EmptyCard(onAdd: () -> Unit) {
 @Composable
 private fun CurrentReadout(group: MaxGripGroup, sides: List<Side>) {
     val palette = LocalGripPalette.current
-    if (sides == listOf(Side.both)) {
-        newest(group, Side.both)?.let { KgText(it.kg, prominent = true) }
-        return
-    }
-    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        sides.forEach { side ->
-            newest(group, side)?.let { record ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    Text(
-                        if (side == Side.both) tr("Both") else if (side == Side.left) tr("L") else tr("R"),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = palette.inkTertiary,
-                    )
-                    KgText(record.kg, prominent = false)
-                }
+    val largeText = LocalDensity.current.fontScale >= 1.5f
+    @Composable fun Readout(side: Side, modifier: Modifier = Modifier) {
+        newest(group, side)?.let { record ->
+            val label = if (side == Side.both) tr("Shared max") else side.displayName
+            Column(modifier.testTag("maxes.current.${group.key}.${side.rawValue}")
+                .clearAndSetSemantics { contentDescription = "$label, ${WeightUnits.text(record.kg)}" },
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(label, style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary)
+                KgText(record.kg, prominent = true)
             }
+        }
+    }
+    if (largeText) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { sides.forEach { Readout(it) } }
+    } else {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            sides.forEach { Readout(it, Modifier.weight(1f)) }
         }
     }
 }
@@ -508,6 +456,6 @@ private fun Card(
 @Composable
 private fun MaxesTabPreview() {
     PreviewWorld { feed ->
-        MaxesTabScreen(onAddMax = {}, onMeasure = { _, _ -> }, feed = feed)
+        MaxesTabScreen(onAddMax = {}, onMeasure = { _, _ -> }, onEdit = {}, feed = feed)
     }
 }

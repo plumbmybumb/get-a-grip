@@ -2,7 +2,7 @@
 
 This preview is isolated on `codex/ios-maxes-rework`, based on `86528f6`.
 The initial preview left Android and the submitted iOS 1.0.3 (7) release unchanged.
-The approved redesign is now being ported to Android and prepared as iOS 1.0.3 (8).
+The approved redesign was ported to Android (1.0.1 build 10) and shipped as the iOS 1.0.3 (8) replacement build; see `docs/RELEASE_2026-09-12_1.0.3.md`.
 
 ## Flow
 

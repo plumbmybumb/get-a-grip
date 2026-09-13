@@ -93,8 +93,9 @@ KOTLIN = os.path.join(
 )
 EXTRA = os.path.join(HERE, "android_extra.json")
 
-# Bundle metadata, not UI. The Android label is `app_name`.
-SKIP_KEYS = {"CFBundleDisplayName", "CFBundleName"}
+# Bundle metadata and a language-independent dash. The dash is literal UI punctuation;
+# Xcode may mark it untranslatable in one bundle and localize it unchanged in another.
+SKIP_KEYS = {"CFBundleDisplayName", "CFBundleName", "—"}
 
 REGENERATE = "python3 android/scripts/xcstrings_to_android.py"
 

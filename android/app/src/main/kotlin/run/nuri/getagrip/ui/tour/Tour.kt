@@ -221,7 +221,7 @@ object TourScript {
             TourStep(
                 target = TourTarget.MaxesManage,
                 title = L10n.tr("Your numbers"),
-                body = L10n.tr("Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets."),
+                body = L10n.tr("Use + to add a max. Each grip has an Edit button for changing hand values and reviewing earlier records. Your charts and percentage targets use these same numbers."),
                 tab = 2,
             ),
             TourStep(

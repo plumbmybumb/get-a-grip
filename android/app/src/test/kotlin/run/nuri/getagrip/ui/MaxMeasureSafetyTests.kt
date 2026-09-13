@@ -6,9 +6,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.Density
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -22,104 +24,294 @@ import run.nuri.getagrip.ble.ProgressorConnectionState
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.engine.ForceSample
 import run.nuri.getagrip.engine.GripSpec
+import run.nuri.getagrip.engine.MaxMeasurementResult
+import run.nuri.getagrip.engine.MaxSource
 import run.nuri.getagrip.engine.ProgressorCommand
 import run.nuri.getagrip.engine.ProgressorEvent
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.store.DeviceStore
 import run.nuri.getagrip.store.LocalDeviceStore
+import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.ui.maxes.MaxMeasureScreen
 import run.nuri.getagrip.ui.theme.GetAGripTheme
+import run.nuri.getagrip.ui.units.WeightUnit
+import run.nuri.getagrip.ui.units.WeightUnits
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "w393dp-h820dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MaxMeasureSafetyTests {
     @get:Rule val compose = createComposeRule()
 
-    @Test
-    @Config(qualifiers = "w393dp-h820dp-mdpi")
-    fun compactPhoneShowsHandAndPrimaryActionsWithoutScrolling() {
+    private class World {
         val client = RecordingProgressorClient()
         val clock = FakeClock()
         val device = DeviceStore(client = client, scope = inertScope(), clock = clock)
-        client.setState(ProgressorConnectionState.Connected)
-        var result: Pair<Double, Side>? = null
-        compose.setContent {
-            CompositionLocalProvider(LocalDeviceStore provides device) {
-                GetAGripTheme(darkTheme = false) {
-                    MaxMeasureScreen(
-                        GripSpec(),
-                        initialSide = Side.right,
-                        onMeasured = { kg, side -> result = kg to side },
-                        onCancel = {},
-                    )
-                }
-            }
+        private var sampleIndex = 0
+        init { client.setState(ProgressorConnectionState.Connected) }
+        fun sample(kg: Double) {
+            sampleIndex += 1
+            clock.uptime = 10.0 + sampleIndex / 80.0
+            clock.wall = 1_000.0 + sampleIndex / 80.0
+            client.emit(ProgressorEvent.Sample(ForceSample(kg, (sampleIndex * 12_500).toUInt())))
         }
-        // No performScrollTo: the hand and primary action must coexist in the viewport.
-        compose.onNodeWithText("Both hands").assertIsDisplayed()
-        compose.onNodeWithText("Left hand").assertIsDisplayed().performClick().assertIsSelected()
-        compose.onNodeWithText("Right hand").assertIsDisplayed()
-        compose.onNodeWithText("Start").assertIsDisplayed()
-        captureReview("android-ready.png")
-        compose.onNodeWithText("Start").performClick()
-        compose.mainClock.advanceTimeBy(50)
-        compose.runOnIdle {
-            repeat(321) { index ->
-                val t = index / 80.0
-                clock.uptime = 10.0 + t
-                clock.wall = 1_000.0 + t
-                val kg = when {
-                    t < 1.0 -> t * 31.5
-                    t < 2.5 -> 31.5
-                    else -> (31.5 - (t - 2.5) * 24.0).coerceAtLeast(0.0)
-                }
-                client.emit(ProgressorEvent.Sample(ForceSample(kg = kg, deviceMicros = (index * 12_500).toUInt())))
-            }
-        }
-        compose.onNodeWithText("Done").assertIsDisplayed().performClick()
-        compose.mainClock.advanceTimeBy(200)
-        compose.onNodeWithText("Left hand").assertIsDisplayed().assertIsSelected()
-        compose.onNodeWithText("Try again").assertIsDisplayed()
-        compose.onNodeWithText("Use this max").assertIsDisplayed()
-        captureReview("android-done.png")
-        compose.onNodeWithText("Use this max").performClick()
-        compose.runOnIdle { assertEquals(31.5 to Side.left, result) }
     }
 
-    @Test
-    @Config(qualifiers = "w393dp-h820dp-mdpi")
-    fun largeTextCanScrollToHandAndMeasurementActions() {
-        val client = RecordingProgressorClient()
-        val device = DeviceStore(client = client, scope = inertScope(), clock = FakeClock())
-        client.setState(ProgressorConnectionState.Connected)
-        var result: Pair<Double, Side>? = null
+    private fun show(
+        world: World,
+        side: Side = Side.left,
+        largeText: Boolean = false,
+        onClose: () -> Unit = {},
+        onSave: suspend (List<MaxMeasurementResult>) -> TemplateStore.MaxSaveReceipt? = { null },
+    ) {
+        WeightUnits.current = WeightUnit.kg
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(
-                LocalDeviceStore provides device,
-                LocalDensity provides Density(density.density, fontScale = 2f),
+                LocalDeviceStore provides world.device,
+                LocalDensity provides Density(density.density, fontScale = if (largeText) 2f else 1f),
             ) {
-                GetAGripTheme {
-                    MaxMeasureScreen(
-                        GripSpec(),
-                        initialSide = Side.right,
-                        onMeasured = { kg, side -> result = kg to side },
-                        onCancel = {},
-                    )
+                GetAGripTheme(darkTheme = false) {
+                    MaxMeasureScreen(GripSpec(), initialSide = side, onSave = onSave, onClose = onClose)
                 }
             }
         }
-        compose.onNodeWithText("Left hand").performScrollTo().assertIsDisplayed().performClick()
-        compose.onNodeWithText("Start").performScrollTo().assertIsDisplayed().performClick()
+    }
+
+    private fun receipt(values: List<MaxMeasurementResult>) = TemplateStore.MaxSaveReceipt(
+        values = values.map { TemplateStore.MaxSave(GripSpec(), it.side, it.kg, it.source) },
+        percentMoves = emptyList(), rescaleOffers = emptyList(),
+    )
+
+    private fun click(tag: String) {
+        compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed().performClick()
         compose.mainClock.advanceTimeBy(50)
+    }
+
+    private fun pull(world: World, kg: Double) {
+        click("max.measure.start")
+        compose.runOnIdle { world.sample(kg) }
+        click("max.measure.finish")
+    }
+
+    private fun handValue(side: String, value: String) {
+        compose.onNodeWithTag("max.measure.$side")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value))
+    }
+
+    @Test fun compactPhoneShowsHandsAndStartTogetherAndCanSaveOnlyLeft() {
+        val world = World()
+        var result: List<MaxMeasurementResult>? = null
+        show(world, side = Side.right, onSave = { result = it; receipt(it) })
+        compose.onNodeWithTag("max.measure.left").assertIsDisplayed().performClick().assertIsSelected()
+        compose.onNodeWithTag("max.measure.right").assertIsDisplayed()
+        compose.onNodeWithText("Both hands").assertDoesNotExist()
+        compose.onNodeWithTag("max.measure.start").assertIsDisplayed()
+        captureReview("android-ready.png")
+        pull(world, 31.5)
+        handValue("left", "31.5 kg, ready to save")
+        handValue("right", "Not measured")
+        compose.onNodeWithTag("max.measure.save").performScrollTo().assertIsDisplayed()
+        captureReview("android-done.png")
+        click("max.measure.save")
+        compose.runOnIdle { assertEquals(listOf(MaxMeasurementResult(Side.left, 31.5)), result) }
+    }
+
+    @Test fun oneVisitKeepsDistinctHandsAndLocksOwnershipDuringEachPull() {
+        val world = World()
+        var result: List<MaxMeasurementResult>? = null
+        show(world, onSave = { result = it; receipt(it) })
+        click("max.measure.start")
+        compose.onNodeWithTag("max.measure.left").performScrollTo().assertIsSelected().assertIsNotEnabled()
+        compose.onNodeWithTag("max.measure.right").assertIsNotEnabled().performClick()
+        compose.onNodeWithTag("max.measure.left").assertIsSelected()
+        compose.runOnIdle { world.sample(31.5) }
+        click("max.measure.finish")
+        handValue("right", "Not measured")
+        click("max.measure.other")
+        pull(world, 42.5)
+        handValue("left", "31.5 kg, ready to save")
+        handValue("right", "42.5 kg, ready to save")
+        compose.onNodeWithTag("max.measure.left").performScrollTo()
+        captureReview("android-both-captured.png")
+        click("max.measure.save")
         compose.runOnIdle {
-            client.emit(ProgressorEvent.Sample(ForceSample(kg = 23.0, deviceMicros = 12_500u)))
+            assertEquals(listOf(MaxMeasurementResult(Side.left, 31.5), MaxMeasurementResult(Side.right, 42.5)), result)
         }
-        compose.onNodeWithText("Done").performScrollTo().assertIsDisplayed().performClick()
-        compose.onNodeWithText("Use this max").performScrollTo().assertIsDisplayed().performClick()
-        compose.runOnIdle { assertEquals(23.0 to Side.left, result) }
+    }
+
+    @Test fun largeTextCanReachBothHandsAndMeasurementActions() {
+        val world = World()
+        var result: List<MaxMeasurementResult>? = null
+        show(world, side = Side.right, largeText = true, onSave = { result = it; receipt(it) })
+        click("max.measure.left")
+        pull(world, 23.0)
+        click("max.measure.save")
+        compose.runOnIdle { assertEquals(listOf(MaxMeasurementResult(Side.left, 23.0)), result) }
+    }
+
+    @Test fun reconnectInvalidatesTarePromptAndLostSignalKeepsPeakAccessible() {
+        val world = World()
+        world.device.startStreaming(StreamStartCause.initial)
+        world.sample(5.0)
+        show(world)
+        click("max.measure.tare")
+        compose.onNodeWithText("Zero the gauge?").assertIsDisplayed()
+        compose.runOnIdle {
+            world.client.setState(ProgressorConnectionState.Disconnected(null))
+            world.client.setState(ProgressorConnectionState.Connected)
+            world.device.startStreaming(StreamStartCause.reconnect)
+            world.sample(5.0)
+        }
+        compose.onNodeWithText("Tare").performClick()
+        compose.mainClock.advanceTimeBy(50)
+        compose.runOnIdle { assertEquals(0, world.client.commands.count { it == ProgressorCommand.tare }) }
+        compose.onNodeWithText("Zero the gauge?").assertDoesNotExist()
+        click("max.measure.start")
+        compose.runOnIdle {
+            world.sample(10.0)
+            world.client.setState(ProgressorConnectionState.Disconnected(null))
+        }
+        compose.mainClock.advanceTimeBy(50)
+        compose.onNodeWithContentDescription("10.0 kilograms, your hardest pull. No live reading").assertExists()
+        compose.onNodeWithTag("max.measure.finish").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("max.measure.save").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun selectingAnUnmeasuredHandAfterDisconnectStillSavesOnlyTheCapturedHand() {
+        val world = World()
+        var result: List<MaxMeasurementResult>? = null
+        show(world, onSave = { result = it; receipt(it) })
+        pull(world, 42.0)
+        compose.runOnIdle { world.client.setState(ProgressorConnectionState.Disconnected(null)) }
+        click("max.measure.right")
+        handValue("right", "Not measured")
+        handValue("left", "42.0 kg, ready to save")
+        compose.onNodeWithTag("max.measure.save").assertIsEnabled()
+        click("max.measure.save")
+        compose.runOnIdle { assertEquals(listOf(MaxMeasurementResult(Side.left, 42.0)), result) }
+    }
+
+    @Test fun failedRetryKeepsBothThePreviousHeroAndOtherHand() {
+        val world = World()
+        var result: List<MaxMeasurementResult>? = null
+        show(world, onSave = { result = it; receipt(it) })
+        pull(world, 31.5)
+        click("max.measure.other")
+        pull(world, 42.5)
+        click("max.measure.left")
+        click("max.measure.retry")
+        pull(world, 0.4)
+        handValue("left", "31.5 kg, ready to save")
+        handValue("right", "42.5 kg, ready to save")
+        compose.onNodeWithContentDescription("31.5 kilograms, your hardest pull. No live reading").assertDoesNotExist()
+        compose.onNodeWithContentDescription("31.5 kilograms, your hardest pull").assertExists()
+        click("max.measure.save")
+        compose.runOnIdle {
+            assertEquals(listOf(MaxMeasurementResult(Side.left, 31.5), MaxMeasurementResult(Side.right, 42.5)), result)
+        }
+    }
+
+    @Test fun pendingSaveLocksActionsAndFailureKeepsBothValuesForRetry() {
+        val world = World()
+        val firstSave = CompletableDeferred<TemplateStore.MaxSaveReceipt?>()
+        val submissions = mutableListOf<List<MaxMeasurementResult>>()
+        show(world, onSave = {
+            submissions += it
+            if (submissions.size == 1) firstSave.await() else receipt(it)
+        })
+        pull(world, 23.0)
+        click("max.measure.other")
+        pull(world, 27.0)
+        click("max.measure.save")
+        compose.onNodeWithTag("max.measure.save").assertIsNotEnabled().performClick()
+        compose.onNodeWithTag("max.measure.retry").assertIsNotEnabled()
+        compose.onNodeWithTag("max.measure.left").assertIsNotEnabled()
+        compose.onNodeWithTag("max.measure.cancel").assertIsNotEnabled()
+        compose.runOnIdle {
+            assertEquals(1, submissions.size)
+            firstSave.complete(null)
+        }
+        compose.mainClock.advanceTimeBy(100)
+        compose.onNodeWithTag("max.measure.saveFailed").performScrollTo().assertIsDisplayed()
+        handValue("left", "23.0 kg, ready to save")
+        handValue("right", "27.0 kg, ready to save")
+        click("max.measure.save")
+        compose.runOnIdle {
+            assertEquals(2, submissions.size)
+            assertEquals(submissions[0], submissions[1])
+        }
+    }
+
+    @Test fun correctionCancelAndToolbarApplyKeepOwnershipAndRawPeak() {
+        val world = World()
+        var result: List<MaxMeasurementResult>? = null
+        show(world, onSave = { result = it; receipt(it) })
+        pull(world, 31.5)
+        click("max.measure.other")
+        pull(world, 42.5)
+        click("max.measure.adjust")
+        compose.onNodeWithContentDescription("Left hand, 31.5 kg. Double tap to type a value.")
+            .performScrollTo().performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("49.2")
+        compose.onNodeWithTag("max.adjust.cancel").performClick()
+        handValue("left", "31.5 kg, ready to save")
+        click("max.measure.adjust")
+        compose.onNodeWithContentDescription("Left hand, 31.5 kg. Double tap to type a value.")
+            .performScrollTo().performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("29.3")
+        // No inline Done: Apply must commit the still-focused field first.
+        compose.onNodeWithTag("max.adjust.apply").performClick()
+        compose.mainClock.advanceTimeBy(100)
+        handValue("left", "29.3 kg, ready to save")
+        handValue("right", "42.5 kg, ready to save")
+        click("max.measure.left")
+        compose.onNodeWithContentDescription("31.5 kilograms, your hardest pull").assertExists()
+        click("max.measure.save")
+        compose.runOnIdle {
+            assertEquals(listOf(MaxMeasurementResult(Side.left, 29.3, MaxSource.manual),
+                                MaxMeasurementResult(Side.right, 42.5)), result)
+        }
+    }
+
+    @Test fun bothHandsTogetherRequiresItsExplicitEntryMode() {
+        val world = World()
+        var result: List<MaxMeasurementResult>? = null
+        show(world, side = Side.both, onSave = { result = it; receipt(it) })
+        compose.onNodeWithText("Both hands together").assertIsDisplayed()
+        compose.onNodeWithTag("max.measure.left").assertDoesNotExist()
+        compose.onNodeWithTag("max.measure.right").assertDoesNotExist()
+        pull(world, 62.0)
+        click("max.measure.save")
+        compose.runOnIdle { assertEquals(listOf(MaxMeasurementResult(Side.both, 62.0)), result) }
+    }
+
+    @Test fun cancellationDuringPullNeverSubmitsAndReleasesTheStream() {
+        val world = World()
+        val visible = mutableStateOf(true)
+        var submissions = 0
+        compose.setContent {
+            CompositionLocalProvider(LocalDeviceStore provides world.device) {
+                GetAGripTheme {
+                    if (visible.value) MaxMeasureScreen(GripSpec(),
+                        onSave = { submissions += 1; receipt(it) }, onClose = { visible.value = false })
+                }
+            }
+        }
+        click("max.measure.start")
+        compose.runOnIdle { world.sample(30.0) }
+        compose.onNodeWithTag("max.measure.cancel").performClick()
+        compose.mainClock.advanceTimeBy(100)
+        compose.runOnIdle {
+            assertEquals(0, submissions)
+            assertNull(world.device.onTracePoint)
+            assertFalse(world.device.isStreaming)
+            assertTrue(ProgressorCommand.stopWeightMeasurement in world.client.commands)
+        }
     }
 
     private fun captureReview(name: String) {
@@ -129,152 +321,5 @@ class MaxMeasureSafetyTests {
             compose.onRoot().captureToImage().asAndroidBitmap()
                 .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
         }
-    }
-
-    @Test fun reconnectInvalidatesTarePromptAndLostSignalKeepsPeakAccessible() {
-        val client = RecordingProgressorClient()
-        val device = DeviceStore(client = client, scope = inertScope(), clock = FakeClock())
-        client.setState(ProgressorConnectionState.Connected)
-        device.startStreaming(StreamStartCause.initial)
-        client.emit(ProgressorEvent.Sample(ForceSample(kg = 5.0, deviceMicros = 1u)))
-        compose.setContent {
-            CompositionLocalProvider(LocalDeviceStore provides device) {
-                GetAGripTheme { MaxMeasureScreen(GripSpec(), onMeasured = { _, _ -> }, onCancel = {}) }
-            }
-        }
-        compose.mainClock.advanceTimeBy(50)
-        compose.onNodeWithText("Zero the gauge").performScrollTo().assertIsDisplayed().performClick()
-        compose.mainClock.advanceTimeBy(50)
-        compose.onNodeWithText("Zero the gauge?").assertIsDisplayed()
-        compose.runOnIdle {
-            client.setState(ProgressorConnectionState.Disconnected(null))
-            client.setState(ProgressorConnectionState.Connected)
-            device.startStreaming(StreamStartCause.reconnect)
-            client.emit(ProgressorEvent.Sample(ForceSample(kg = 5.0, deviceMicros = 2u)))
-        }
-        compose.mainClock.advanceTimeBy(50)
-        compose.onNodeWithText("Tare").performClick()
-        compose.mainClock.advanceTimeBy(50)
-        compose.runOnIdle { assertEquals(0, client.commands.count { it == ProgressorCommand.tare }) }
-        compose.onNodeWithText("Zero the gauge?").assertDoesNotExist()
-
-        compose.onNodeWithText("Start").performScrollTo().assertIsDisplayed().performClick()
-        compose.mainClock.advanceTimeBy(50)
-        compose.runOnIdle {
-            client.emit(ProgressorEvent.Sample(ForceSample(kg = 10.0, deviceMicros = 12_502u)))
-            client.setState(ProgressorConnectionState.Disconnected(null))
-        }
-        compose.mainClock.advanceTimeBy(50)
-        compose.onNodeWithContentDescription("10.0 kilograms, your hardest pull. No live reading").assertExists()
-    }
-
-    @Test fun changeHandBeforeMeasuringLocksDuringPullAndReturnsSelectedHand() {
-        val client = RecordingProgressorClient()
-        val device = DeviceStore(client = client, scope = inertScope(), clock = FakeClock())
-        client.setState(ProgressorConnectionState.Connected)
-        var result: Pair<Double, Side>? = null
-        compose.setContent {
-            CompositionLocalProvider(LocalDeviceStore provides device) {
-                GetAGripTheme {
-                    MaxMeasureScreen(
-                        GripSpec(),
-                        initialSide = Side.right,
-                        onMeasured = { kg, side -> result = kg to side },
-                        onCancel = {},
-                    )
-                }
-            }
-        }
-        compose.onNodeWithText("Right hand").assertIsSelected()
-        compose.onNodeWithText("Left hand").performClick().assertIsSelected()
-        compose.onNodeWithText("Start").performScrollTo().performClick()
-        compose.mainClock.advanceTimeBy(50)
-        compose.onNodeWithText("Left hand").performScrollTo().assertIsSelected().assertIsNotEnabled()
-        compose.onNodeWithText("Right hand").assertIsNotEnabled().performClick()
-        compose.onNodeWithText("Left hand").assertIsSelected()
-        compose.runOnIdle {
-            client.emit(ProgressorEvent.Sample(ForceSample(kg = 23.0, deviceMicros = 12_500u)))
-        }
-        compose.onNodeWithText("Done").performScrollTo().performClick()
-        compose.mainClock.advanceTimeBy(50)
-        compose.onNodeWithText("Left hand").assertIsEnabled().assertIsSelected()
-        compose.onNodeWithText("Use this max").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(23.0 to Side.left, result) }
-    }
-
-    @Test fun finishedMeasurementCanCorrectHandEvenAfterDisconnecting() {
-        val client = RecordingProgressorClient()
-        val device = DeviceStore(client = client, scope = inertScope(), clock = FakeClock())
-        client.setState(ProgressorConnectionState.Connected)
-        var result: Pair<Double, Side>? = null
-        compose.setContent {
-            CompositionLocalProvider(LocalDeviceStore provides device) {
-                GetAGripTheme {
-                    MaxMeasureScreen(
-                        GripSpec(),
-                        initialSide = Side.left,
-                        onMeasured = { kg, side -> result = kg to side },
-                        onCancel = {},
-                    )
-                }
-            }
-        }
-        compose.onNodeWithText("Start").performScrollTo().performClick()
-        compose.mainClock.advanceTimeBy(50)
-        compose.runOnIdle {
-            client.emit(ProgressorEvent.Sample(ForceSample(kg = 42.0, deviceMicros = 12_500u)))
-        }
-        compose.onNodeWithText("Done").performScrollTo().performClick()
-        compose.runOnIdle { client.setState(ProgressorConnectionState.Disconnected(null)) }
-        compose.onNodeWithText("Both hands").performScrollTo().assertIsEnabled().performClick().assertIsSelected()
-        compose.onNodeWithText("Use this max").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(42.0 to Side.both, result) }
-    }
-
-    @Test fun pendingSaveLocksActionsAndFailureKeepsTheResultForRetry() {
-        val client = RecordingProgressorClient()
-        val device = DeviceStore(client = client, scope = inertScope(), clock = FakeClock())
-        client.setState(ProgressorConnectionState.Connected)
-        val saving = mutableStateOf(false)
-        val failed = mutableStateOf(false)
-        val results = mutableListOf<Pair<Double, Side>>()
-        compose.setContent {
-            CompositionLocalProvider(LocalDeviceStore provides device) {
-                GetAGripTheme {
-                    MaxMeasureScreen(
-                        GripSpec(),
-                        initialSide = Side.left,
-                        isSaving = saving.value,
-                        saveFailed = failed.value,
-                        onMeasured = { kg, side ->
-                            results += kg to side
-                            saving.value = true
-                        },
-                        onCancel = {},
-                    )
-                }
-            }
-        }
-        compose.onNodeWithText("Start").performScrollTo().performClick()
-        compose.mainClock.advanceTimeBy(50)
-        compose.runOnIdle {
-            client.emit(ProgressorEvent.Sample(ForceSample(kg = 23.0, deviceMicros = 12_500u)))
-        }
-        compose.onNodeWithText("Done").performScrollTo().performClick()
-        compose.onNodeWithText("Use this max").performScrollTo().performClick()
-        compose.onNodeWithText("Use this max").assertIsNotEnabled().performClick()
-        compose.onNodeWithText("Try again").assertIsNotEnabled()
-        compose.onNodeWithText("Left hand").assertIsNotEnabled().assertIsSelected()
-        compose.onNodeWithContentDescription("Cancel").assertIsNotEnabled()
-        compose.runOnIdle {
-            assertEquals(listOf(23.0 to Side.left), results)
-            saving.value = false
-            failed.value = true
-        }
-        compose.onNodeWithText("That couldn't be saved — nothing was recorded. Try again.")
-            .performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Left hand").assertIsEnabled().assertIsSelected()
-        compose.onNodeWithText("Use this max").performScrollTo().assertIsEnabled().performClick()
-        compose.runOnIdle { assertEquals(listOf(23.0 to Side.left, 23.0 to Side.left), results) }
     }
 }

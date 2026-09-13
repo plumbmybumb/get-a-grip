@@ -46,7 +46,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,7 +61,6 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import run.nuri.getagrip.ui.theme.InstrumentSurface
 import run.nuri.getagrip.ui.theme.screenArrival
 import androidx.compose.ui.graphics.vector.ImageVector
-import kotlinx.coroutines.launch
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
@@ -75,11 +73,13 @@ import run.nuri.getagrip.ui.builder.RoutineBuilderHost
 import run.nuri.getagrip.ui.history.HistoryScreen
 import run.nuri.getagrip.ui.history.SessionLogSheet
 import run.nuri.getagrip.ui.l10n.tr
-import run.nuri.getagrip.ui.maxes.MaxEntryDraft
-import run.nuri.getagrip.ui.maxes.MaxEntrySheet
+import run.nuri.getagrip.ui.maxes.NewMaxDraft
+import run.nuri.getagrip.ui.maxes.NewMaxSheet
+import run.nuri.getagrip.ui.maxes.MaxEditSheet
+import run.nuri.getagrip.ui.maxes.SharedMaxSheet
+import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.ui.maxes.MaxMeasureScreen
 import run.nuri.getagrip.ui.maxes.MaxesTabScreen
-import run.nuri.getagrip.ui.components.SubmissionState
 import run.nuri.getagrip.ui.runner.RunnerHost
 import run.nuri.getagrip.ui.settings.SettingsScreen
 import run.nuri.getagrip.ui.theme.LocalGripPalette
@@ -157,7 +157,6 @@ fun RootTabView() {
     val palette = LocalGripPalette.current
     val templates = LocalTemplateStore.current
     val feed = LocalHistoryFeed.current
-    val scope = rememberCoroutineScope()
     val tour = LocalTourController.current
     val reduceMotion = rememberReduceMotion()
 
@@ -229,50 +228,53 @@ fun RootTabView() {
         return
     }
 
-    // **The max composer's draft lives HERE, above the measure host, and that placement is
-    // the whole trick.** "Measure on the gauge" is a full-screen destination, so the sheet
-    // leaves composition while it is up; a draft remembered inside the sheet would come back
-    // blank — the grip you were building, the hand you picked and the number you had typed
-    // all gone. Declared before the early return below, this `remember` keeps its slot.
-    var maxEntry by remember { mutableStateOf<MaxEntryDraft?>(null) }
-
-    // Measuring a max is full screen too: the phone is on a bench and you are on a
-    // fingerboard with both hands. The screen never writes; the number lands here.
+    // Keep the grip composer above each child destination: Cancel returns to the same
+    // grip, while a successful save closes the whole creation flow after its receipt.
+    var newMax by remember { mutableStateOf<NewMaxDraft?>(null) }
+    var editingMax by remember { mutableStateOf<MaxEditRequest?>(null) }
+    var editingSharedMax by remember { mutableStateOf<MaxEditRequest?>(null) }
     var measuring by remember { mutableStateOf<MeasureRequest?>(null) }
-    val maxSubmission = remember { SubmissionState() }
-    var maxSaveFailed by remember(measuring) { mutableStateOf(false) }
+    var measurementSaved by remember(measuring) { mutableStateOf(false) }
     val measure = measuring
     if (measure != null) {
         MaxMeasureScreen(
             grip = measure.grip,
             initialSide = measure.side,
-            isSaving = maxSubmission.isRunning,
-            saveFailed = maxSaveFailed,
-            onMeasurementStarted = { maxSaveFailed = false },
-            onMeasured = { kg, side ->
-                val composer = maxEntry
-                if (measure.intoComposer && composer != null) {
-                    // Straight back into the field a typed number would land in — the sheet
-                    // is what decides provenance, by comparing this to whatever the value is
-                    // when Save is tapped. Nothing is written here.
-                    composer.receiveMeasured(kg, side)
-                    measuring = null
-                } else {
-                    // The Maxes tab's "Measure again", which skips the composer entirely: one
-                    // grip, one hand, straight to the record.
-                    maxSubmission.launch(scope) {
-                        maxSaveFailed = false
-                        if (!templates.recordMax(kg = kg, grip = measure.grip, source = MaxSource.measured, side = side)) {
-                            maxSaveFailed = true
-                            return@launch
-                        }
-                        feed.refresh()
-                        measuring = null
-                    }
+            onSave = { values ->
+                val receipt = templates.recordMaxesWithReceipt(values.map {
+                    TemplateStore.MaxSave(measure.grip, it.side, it.kg, it.source)
+                })
+                if (receipt != null) {
+                    measurementSaved = true
+                    feed.refresh()
                 }
+                receipt
             },
-            onCancel = { if (!maxSubmission.isRunning) measuring = null },
+            onClose = {
+                if (measurementSaved && measure.fromNew) newMax = null
+                measuring = null
+            },
         )
+        return
+    }
+    editingSharedMax?.let { request ->
+        SharedMaxSheet(request.grip,
+            onSaved = { if (request.fromNew) newMax = null },
+            onClose = { editingSharedMax = null })
+        return
+    }
+    editingMax?.let { request ->
+        MaxEditSheet(request.grip,
+            onSaved = { if (request.fromNew) newMax = null },
+            onClose = { editingMax = null })
+        return
+    }
+    newMax?.let { draft ->
+        NewMaxSheet(draft,
+            onMeasure = { grip, side -> measuring = MeasureRequest(grip, side, fromNew = true) },
+            onEnter = { grip -> editingMax = MaxEditRequest(grip, fromNew = true) },
+            onShared = { grip -> editingSharedMax = MaxEditRequest(grip, fromNew = true) },
+            onClose = { newMax = null })
         return
     }
 
@@ -395,7 +397,7 @@ fun RootTabView() {
                     // The two presentations Today cannot see: both are hosted here and both
                     // leave this screen composed underneath them, so the guard has to be
                     // told. Everything else that could collide replaces Today outright.
-                    canPresentImport = !loggingSession && maxEntry == null,
+                    canPresentImport = !loggingSession,
                 )
                 Tab.History -> HistoryScreen(
                     onLogSession = { loggingSession = true },
@@ -405,7 +407,8 @@ fun RootTabView() {
                     monthAnchor = Modifier.tourAnchor(TourTarget.HistoryMonth),
                 )
                 Tab.Maxes -> MaxesTabScreen(
-                    onAddMax = { seed -> maxEntry = composerDraft(seed, templates.recentGrips.firstOrNull()) },
+                    onAddMax = { seed -> newMax = NewMaxDraft(seed ?: templates.recentGrips.firstOrNull() ?: GripSpec()) },
+                    onEdit = { grip -> editingMax = MaxEditRequest(grip) },
                     onMeasure = { grip, side -> measuring = MeasureRequest(grip, side) },
                     cardsAnchor = Modifier.tourAnchor(TourTarget.MaxesCurves),
                     manageAnchor = Modifier.tourAnchor(TourTarget.MaxesManage),
@@ -423,29 +426,13 @@ fun RootTabView() {
         SessionLogSheet(onClose = { loggingSession = false })
     }
 
-    maxEntry?.let { draft ->
-        MaxEntrySheet(
-            draft = draft,
-            onMeasure = { measuring = MeasureRequest(draft.grip, draft.side, intoComposer = true) },
-            onClose = { maxEntry = null },
-        )
-    }
 }
 
-/// A composer seeded with the grip the caller had in mind, else the most recent grip the
-/// routines train, else the app's default. Never empty: a blank edge and no fingers is a
-/// grip nobody pulls, and the rail below is a starting point rather than a requirement.
-private fun composerDraft(seed: GripSpec?, fallback: GripSpec?): MaxEntryDraft =
-    MaxEntryDraft(seed ?: fallback ?: GripSpec())
+private data class MaxEditRequest(val grip: GripSpec, val fromNew: Boolean = false)
 
-
-/// What Maxes asked for: one grip, one hand, on the gauge.
-///
-/// `intoComposer` is which of the two doors asked. From the composer the number goes back
-/// into its draft and the SHEET decides provenance and writes; from the tab's "Measure
-/// again" there is no composer to return to and the record is written here.
+/** Both individual hands are measured in one visit; shared measurement is explicitly chosen. */
 private data class MeasureRequest(
     val grip: GripSpec,
     val side: Side,
-    val intoComposer: Boolean = false,
+    val fromNew: Boolean = false,
 )

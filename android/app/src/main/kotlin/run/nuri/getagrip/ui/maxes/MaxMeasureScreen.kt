@@ -5,6 +5,22 @@ package run.nuri.getagrip.ui.maxes
 
 import run.nuri.getagrip.ui.units.WeightUnits
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import run.nuri.getagrip.engine.MaxMeasurementDraft
+import run.nuri.getagrip.engine.MaxMeasurementResult
+import run.nuri.getagrip.engine.MaxSource
+import run.nuri.getagrip.store.TemplateStore
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.heightIn
@@ -67,7 +83,6 @@ import run.nuri.getagrip.ble.MockForceProfile
 import run.nuri.getagrip.ble.MockProgressorClient
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
-import run.nuri.getagrip.engine.Fmt
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.MaxAttempt
@@ -88,119 +103,162 @@ import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
-import run.nuri.getagrip.ui.theme.Motion
 
 private enum class MaxMeasurePhase { ready, measuring, done }
 
-/// Measuring a max on the gauge, as its own full screen.
-///
-/// **Why it takes the whole screen rather than sitting in the composer sheet:** during the
-/// one moment this view exists for, the phone is propped on a bench and you are hanging off
-/// a fingerboard with both hands. A live number inside a scrolling form is unreadable from
-/// there, and it can be scrolled away by the same finger that started it. Everything here
-/// is sized to be read at arm's length.
-///
-/// The rule — **the hardest the gauge saw** — lives in `MaxAttempt`, tested away from any of
-/// this, along with the reason it is no longer a sustained hold. The result is drawn across
-/// the trace as the dashed rule, so the shape of the pull and the number it produced are one
-/// picture rather than two things to reconcile.
+/** One visit can capture either hand or both in turn. Values stay local until Save. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaxMeasureScreen(
     grip: GripSpec,
-    /// Handed the measured result when it is accepted. **The caller owns saving** — this
-    /// screen never writes to the store, so "measure" and "record" stay separable and the
-    /// number lands in the same field a typed one would.
-    onMeasured: (Double, Side) -> Unit,
-    onCancel: () -> Unit,
+    onSave: suspend (List<MaxMeasurementResult>) -> TemplateStore.MaxSaveReceipt?,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
-    initialSide: Side = Side.both,
-    isSaving: Boolean = false,
-    saveFailed: Boolean = false,
-    onMeasurementStarted: () -> Unit = {},
+    initialSide: Side = Side.left,
 ) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
-
-    val measurement = remember { MaxMeasurement() }
-    var frozenTrace by remember { mutableStateOf<List<DeviceStore.TracePoint>?>(null) }
+    val scope = rememberCoroutineScope()
+    var draft by remember(grip.key, initialSide) { mutableStateOf(MaxMeasurementDraft(initialSide == Side.both)) }
+    var selectedSide by remember(grip.key, initialSide) { mutableStateOf(initialSide) }
+    val attempts = remember(grip.key, initialSide) {
+        mutableStateMapOf(Side.left to MaxMeasurement(), Side.right to MaxMeasurement(), Side.both to MaxMeasurement())
+    }
+    val completed = remember(grip.key, initialSide) { mutableMapOf<Side, MaxMeasurement>() }
+    val traces = remember(grip.key, initialSide) { mutableMapOf<Side, List<DeviceStore.TracePoint>>() }
+    val measurement = attempts.getValue(selectedSide)
     var phase by remember { mutableStateOf(MaxMeasurePhase.ready) }
-    var selectedSide by remember(initialSide) { mutableStateOf(initialSide) }
-    /// Bumped on every Start, so the timeout effect restarts with the attempt rather than
-    /// continuing to count from the first one.
     var attemptTick by remember { mutableIntStateOf(0) }
+    var keptPreviousAfterRetry by remember { mutableStateOf(false) }
     var promptedKg by remember { mutableStateOf<Double?>(null) }
     var promptedEpoch by remember { mutableStateOf(0uL) }
+    var adjusting by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
+    var saveFailed by remember { mutableStateOf(false) }
+    var committed by remember { mutableStateOf(false) }
+    var savedReceipt by remember { mutableStateOf<TemplateStore.MaxSaveReceipt?>(null) }
 
-    // A screen you look at with both hands on an edge; the phone timing out mid-pull is the
-    // app going blind.
     KeepScreenOn(phase == MaxMeasurePhase.measuring)
 
     fun stop(cause: StreamStopCause) {
         if (phase != MaxMeasurePhase.measuring) return
         device.onTracePoint = null
         if (device.isStreaming) device.stopStreaming(cause)
-        frozenTrace = device.trace.toList()
+        val next = draft.copy()
+        next.finish(measurement.peakKg)?.let { side ->
+            if (measurement.hasResult && measurement.peakKg.isFinite()) {
+                completed[side] = measurement
+                traces[side] = device.trace.toList()
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            } else {
+                attempts[side] = completed[side] ?: MaxMeasurement()
+                keptPreviousAfterRetry = completed[side] != null
+            }
+        }
+        draft = next
         phase = MaxMeasurePhase.done
     }
 
     fun start() {
-        if (!device.state.isConnected) return
-        onMeasurementStarted()
-        measurement.reset()
-        // The trace is the attempt's own picture; leftovers from a previous go would be
-        // drawn as part of this one, and the axis is latched off what it has seen.
+        if (!device.state.isConnected || isSaving || committed) return
+        val next = draft.copy()
+        if (!next.begin(selectedSide)) return
+        draft = next
+        val attempt = MaxMeasurement()
+        attempts[selectedSide] = attempt
+        keptPreviousAfterRetry = false
+        saveFailed = false
         device.resetPeak()
-        // **`onTracePoint`, not `onSample`.** The runner accrues hang time from raw device
-        // deltas; anything measuring over a WINDOW OF SECONDS — which is what ending an
-        // attempt is — needs the store's monotone PLAYBACK clock, which cannot jump
-        // backwards across a tare or a device counter reset.
-        device.onTracePoint = { point -> measurement.receive(point) }
+        // The callback owns this attempt object, never the changing selected-hand lookup.
+        // Playback time remains the clock for release detection across reconnects/tare.
+        device.onTracePoint = { point -> attempt.receive(point) }
         device.startStreaming(StreamStartCause.manualMeasurement)
-        frozenTrace = null
         phase = MaxMeasurePhase.measuring
         attemptTick += 1
     }
 
-    // Pull, hold, let go — no tap. `MaxAttempt` ends itself once the load has been off the
-    // edge for two seconds, and this is the only thing watching for it.
-    LaunchedEffect(measurement.isComplete) {
-        if (measurement.isComplete && phase == MaxMeasurePhase.measuring) {
-            // The moment a result exists is worth feeling: you are looking at the edge, not
-            // at the phone.
-            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-            stop(StreamStopCause.measurementComplete)
+    fun select(side: Side) {
+        if (phase == MaxMeasurePhase.measuring || isSaving || committed || side == selectedSide) return
+        selectedSide = side
+        phase = if (draft.peak(side) == null) MaxMeasurePhase.ready else MaxMeasurePhase.done
+        keptPreviousAfterRetry = false
+        saveFailed = false
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+    }
+
+    fun save() {
+        val values = draft.results
+        if (isSaving || committed || values.isEmpty()) return
+        isSaving = true
+        saveFailed = false
+        scope.launch {
+            try {
+                val receipt = onSave(values)
+                if (receipt == null) {
+                    saveFailed = true
+                } else {
+                    committed = true
+                    device.onTracePoint = null
+                    if (device.isStreaming) device.stopStreaming(StreamStopCause.measurementComplete)
+                    if (receipt.hasDetails) savedReceipt = receipt else onClose()
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                saveFailed = true
+            } finally {
+                isSaving = false
+            }
         }
     }
 
-    // Long enough for a full attempt including a slow set-up on the edge; short enough that
-    // a screen left open cannot flatten the gauge's battery.
+    LaunchedEffect(measurement, measurement.isComplete) {
+        if (measurement.isComplete && phase == MaxMeasurePhase.measuring) stop(StreamStopCause.measurementComplete)
+    }
     LaunchedEffect(attemptTick, phase) {
         if (phase != MaxMeasurePhase.measuring) return@LaunchedEffect
         delay((MaxMeasureTiming.TIMEOUT_SECONDS * 1000).toLong())
-        // The cause travels from the TRIGGER, because `finish` is reached from two of them.
-        // Labelling both "measurement finished" would put a completion in the log for a pull
-        // that never completed.
         measurement.finish()
         stop(StreamStopCause.timedOut)
     }
-
-    // A disconnect clears `isStreaming`. Keep the attempt and its callback alive, then
-    // explicitly restart the stream when auto-reconnect restores the link.
     LaunchedEffect(device.state.isConnected) {
         if (device.state.isConnected && phase == MaxMeasurePhase.measuring) {
             device.startStreaming(StreamStartCause.reconnect)
         }
     }
-
-    // UNCONDITIONAL, and gated on the DEVICE's own truth rather than on `phase`: a gauge
-    // left streaming behind a dismissed screen is a dead battery the user blames on the app.
     DisposableEffect(device) {
         onDispose {
             device.onTracePoint = null
             if (device.isStreaming) device.stopStreaming(StreamStopCause.screenClosed)
         }
+    }
+    BackHandler(enabled = savedReceipt == null) {
+        if (!isSaving) {
+            if (adjusting) adjusting = false else onClose()
+        }
+    }
+
+    val receipt = savedReceipt
+    if (receipt != null) {
+        MaxSaveReceiptScreen(receipt = receipt, onDone = onClose)
+        return
+    }
+    if (adjusting) {
+        MaxMeasurementCorrectionScreen(
+            results = draft.results,
+            measuredPeaks = draft.results.associate { it.side to (draft.measuredPeak(it.side) ?: it.kg) },
+            onApply = { values ->
+                val next = draft.copy()
+                if (next.correct(values)) {
+                    draft = next
+                    adjusting = false
+                    saveFailed = false
+                }
+            },
+            onCancel = { adjusting = false },
+        )
+        return
     }
 
     Scaffold(
@@ -212,16 +270,13 @@ fun MaxMeasureScreen(
                 title = {
                     Column {
                         Text(tr("Measure a max"), style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            grip.displayName,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = palette.inkTertiary,
-                        )
+                        Text(grip.displayName, style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
                     }
                 },
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 navigationIcon = {
-                    IconButton(onClick = onCancel, enabled = !isSaving) {
+                    IconButton(onClick = onClose, enabled = !isSaving && !committed,
+                               modifier = Modifier.testTag("max.measure.cancel")) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Cancel"))
                     }
                 },
@@ -236,163 +291,137 @@ fun MaxMeasureScreen(
     ) { padding ->
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding).readablePageWidth()) {
             Column(
-                Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .heightIn(min = maxHeight)
-                    .padding(horizontal = Metrics.hPadding)
+                Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                    .heightIn(min = maxHeight).padding(horizontal = Metrics.hPadding)
                     .padding(bottom = Metrics.spacing),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Column(
-                    Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CapsLabel(tr("THIS MAX IS FOR"))
-                    MaxHandPicker(
-                        selectedSide = selectedSide,
-                        onSelected = { selectedSide = it },
-                        enabled = phase != MaxMeasurePhase.measuring && !isSaving,
-                    )
+                if (draft.bothTogether) {
+                    Text(tr("Both hands together"), style = MaterialTheme.typography.titleLarge,
+                         fontWeight = FontWeight.SemiBold)
+                    Text(tr("One combined measurement"), style = MaterialTheme.typography.bodySmall,
+                         color = palette.inkSecondary)
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        listOf(Side.left, Side.right).forEach { side ->
+                            MeasurementHand(
+                                side = side, peak = draft.peak(side), selected = selectedSide == side,
+                                enabled = phase != MaxMeasurePhase.measuring && !isSaving && !committed,
+                                modifier = Modifier.weight(1f), onClick = { select(side) },
+                            )
+                        }
+                    }
                 }
-
-                CapsLabel(
-                    if (phase == MaxMeasurePhase.done) tr("YOUR MAX ON THIS GRIP") else tr("HARDEST PULL"),
-                    Modifier.fillMaxWidth(),
-                )
-
+                CapsLabel(if (phase == MaxMeasurePhase.done && draft.peak(selectedSide) != null)
+                              tr("Measured") else tr("HARDEST PULL"), Modifier.fillMaxWidth())
                 Hero(measurement, phase)
-
-                // The shape of the pull, with the result drawn across it as the dashed rule.
                 Surface(
-                    shape = RoundedCornerShape(Metrics.radiusCard),
-                    color = palette.card,
-                    modifier = Modifier
-                        .widthIn(max = Metrics.maxContentWidth)
-                        .fillMaxWidth()
-                        .height(TRACE_HEIGHT),
+                    shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card,
+                    modifier = Modifier.fillMaxWidth().height(TRACE_HEIGHT),
                 ) {
                     ForceTraceView(
-                        frozenSamples = frozenTrace,
+                        frozenSamples = if (phase == MaxMeasurePhase.measuring) null else traces[selectedSide] ?: emptyList(),
                         modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
                         thresholdKg = if (measurement.hasResult) measurement.peakKg else null,
                         tint = if (phase == MaxMeasurePhase.measuring) palette.bleu else palette.inkTertiary,
                     )
                 }
-
                 Text(
-                    guidance(measurement, phase),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = palette.inkSecondary,
-                    textAlign = TextAlign.Center,
+                    if (keptPreviousAfterRetry) tr("No new pull recorded. Your previous measurement is still ready to save.")
+                    else guidance(measurement, phase),
+                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
+                    color = palette.inkSecondary, textAlign = TextAlign.Center,
                 )
-
                 Spacer(Modifier.weight(1f))
-
-                // A completed attempt is local data: disconnecting cannot hide its save action.
-                if (!device.state.isConnected && phase != MaxMeasurePhase.done) {
-                    // SHOWN rather than a disabled button: a control you cannot use teaches
-                    // nothing, and the way out is what matters here.
-                    Text(
-                        tr("Connect your gauge to measure. You can always type a max in instead."),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = palette.inkTertiary,
-                        textAlign = TextAlign.Center,
-                    )
+                if (!device.state.isConnected && phase == MaxMeasurePhase.ready) {
+                    Text(tr("Connect your gauge to measure."), style = MaterialTheme.typography.bodySmall,
+                         color = palette.inkTertiary, textAlign = TextAlign.Center)
                     PrimaryButton(
-                        // A static "Connect" during the multi-second BLE connect showed a dimmed
-                        // button with no state change — worse here than on the gauge screen,
-                        // because the user has already committed to the gauge path.
                         title = if (device.state.isBusy) device.state.label else tr("Connect"),
-                        icon = Icons.Outlined.SettingsInputAntenna,
-                        tint = palette.bleu,
-                        enabled = !device.state.isBusy,
-                        modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
+                        icon = Icons.Outlined.SettingsInputAntenna, tint = palette.bleu,
+                        enabled = !device.state.isBusy && !isSaving, modifier = Modifier.testTag("max.measure.connect"),
                     ) { device.connect() }
                 } else {
                     when (phase) {
                         MaxMeasurePhase.ready -> {
-                            // Zeroing belongs BEFORE the pull and nowhere else: taring
-                            // mid-attempt would zero out the load already on the edge and
-                            // silently rewrite the result. It is offered here because a hanging
-                            // sling or a mounted block reads as several kilograms the gauge would
-                            // otherwise count.
                             SecondaryButton(
                                 title = if (device.isReadingLive) tr("Zero the gauge") else tr("Wake"),
-                                icon = Icons.Outlined.Refresh,
-                                modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
+                                icon = Icons.Outlined.Refresh, enabled = !isSaving && !committed,
+                                modifier = Modifier.fillMaxWidth().testTag("max.measure.tare"),
                             ) {
-                                when (
-                                    TarePolicy.tapDecision(
-                                        phase = RunnerPhase.Idle,
-                                        isReadingLive = device.isReadingLive,
-                                        isLoadedForTare = device.isLoadedForTare,
-                                    )
-                                ) {
-                                    TareTapDecision.wakeStream ->
-                                        device.startStreaming(StreamStartCause.manualWake)
+                                when (TarePolicy.tapDecision(phase = RunnerPhase.Idle,
+                                          isReadingLive = device.isReadingLive, isLoadedForTare = device.isLoadedForTare)) {
+                                    TareTapDecision.wakeStream -> device.startStreaming(StreamStartCause.manualWake)
                                     TareTapDecision.blocked -> Unit
                                     TareTapDecision.confirm -> {
                                         promptedKg = device.currentKg
                                         promptedEpoch = device.connectionEpoch
                                     }
                                     TareTapDecision.tare -> {
-                                        if (
-                                            TarePolicy.isSafeToTareNow(
-                                                device.secondsSinceLastSample(),
-                                                device.tareReadingMaxAge,
-                                            )
-                                        ) {
+                                        if (TarePolicy.isSafeToTareNow(device.secondsSinceLastSample(), device.tareReadingMaxAge)) {
                                             device.tare()
                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        } else {
-                                            device.startStreaming(StreamStartCause.manualWake)
-                                        }
+                                        } else device.startStreaming(StreamStartCause.manualWake)
                                     }
                                 }
                             }
                             PrimaryButton(
-                                title = tr("Start"),
-                                icon = Icons.Filled.PlayArrow,
-                                tint = palette.bleu,
-                                modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
+                                title = when (selectedSide) {
+                                    Side.left -> tr("Measure left hand")
+                                    Side.right -> tr("Measure right hand")
+                                    Side.both -> tr("Start")
+                                }, icon = Icons.Filled.PlayArrow, tint = palette.bleu,
+                                enabled = !isSaving && !committed,
+                                modifier = Modifier.testTag("max.measure.start"),
                             ) { start() }
                         }
                         MaxMeasurePhase.measuring -> PrimaryButton(
-                            title = tr("Done"),
-                            icon = Icons.Filled.Stop,
-                            tint = palette.alarm,
-                            modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
+                            title = tr("Done"), icon = Icons.Filled.Stop, tint = palette.alarm,
+                            modifier = Modifier.testTag("max.measure.finish"),
                         ) {
                             measurement.finish()
                             stop(StreamStopCause.userStopped)
                         }
                         MaxMeasurePhase.done -> {
-                            if (saveFailed) {
-                                Text(
-                                    tr("That couldn't be saved — nothing was recorded. Try again."),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Medium,
-                                    color = palette.alarm,
-                                )
+                            val other = if (selectedSide == Side.left) Side.right else Side.left
+                            if (!draft.bothTogether && draft.peak(other) == null) {
+                                SecondaryButton(
+                                    title = if (other == Side.left) tr("Measure left hand") else tr("Measure right hand"),
+                                    enabled = !isSaving && !committed, modifier = Modifier.testTag("max.measure.other"),
+                                ) { select(other) }
                             }
                             SecondaryButton(
-                                title = tr("Try again"),
-                                icon = Icons.Outlined.Refresh,
-                                enabled = device.state.isConnected && !isSaving,
-                                modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
-                            ) { start() }
-                            PrimaryButton(
-                                title = tr("Use this max"),
-                                icon = Icons.Filled.Check,
-                                enabled = measurement.hasResult && !isSaving,
-                                modifier = Modifier.widthIn(max = Metrics.maxContentWidth),
-                            ) { onMeasured(measurement.peakKg, selectedSide) }
+                                title = tr("Try again"), icon = Icons.Outlined.Refresh,
+                                enabled = !isSaving && !committed, modifier = Modifier.testTag("max.measure.retry"),
+                            ) {
+                                phase = MaxMeasurePhase.ready
+                                keptPreviousAfterRetry = false
+                                saveFailed = false
+                            }
                         }
                     }
+                }
+                if (phase != MaxMeasurePhase.measuring && draft.results.isNotEmpty()) {
+                    SecondaryButton(
+                        title = tr("Adjust values"), icon = Icons.Outlined.Edit,
+                        enabled = !isSaving && !committed, modifier = Modifier.testTag("max.measure.adjust"),
+                    ) { adjusting = true }
+                    PrimaryButton(
+                        title = if (draft.results.size == 1) tr("Save max") else tr("Save maxes"),
+                        icon = Icons.Filled.Check, enabled = !isSaving && !committed,
+                        modifier = Modifier.testTag("max.measure.save"),
+                    ) { save() }
+                    if (draft.results.any { it.source == MaxSource.manual }) {
+                        Text(tr("Adjusted values are saved as manual entries. Your recorded trace stays unchanged."),
+                             style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary,
+                             textAlign = TextAlign.Center)
+                    }
+                }
+                if (saveFailed) {
+                    Text(tr("That couldn't be saved — nothing was recorded. Try again."),
+                         style = MaterialTheme.typography.bodySmall, color = palette.alarm,
+                         modifier = Modifier.testTag("max.measure.saveFailed"))
                 }
             }
         }
@@ -456,11 +485,49 @@ fun MaxMeasureScreen(
     }
 }
 
+@Composable
+private fun MeasurementHand(
+    side: Side,
+    peak: Double?,
+    selected: Boolean,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val palette = LocalGripPalette.current
+    val title = if (side == Side.left) tr("Left hand") else tr("Right hand")
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(Metrics.radiusInner),
+        color = if (selected) palette.bleu.copy(alpha = 0.12f) else palette.inkPrimary.copy(alpha = 0.04f),
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp,
+                             if (selected) palette.bleu else palette.inkTertiary.copy(alpha = 0.2f)),
+        modifier = modifier.testTag("max.measure.${side.rawValue}").semantics {
+            role = Role.Button
+            this.selected = selected
+            contentDescription = title
+            stateDescription = if (peak == null) L10n.tr("Not measured")
+                else L10n.tr("%s %s, ready to save", WeightUnits.number(peak, 1), WeightUnits.symbol)
+        },
+    ) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+               horizontalAlignment = Alignment.CenterHorizontally,
+               verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall,
+                 fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
+            Text(peak?.let { WeightUnits.text(it) } ?: "—",
+                 style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+                 color = if (selected) palette.inkPrimary else palette.inkSecondary)
+        }
+    }
+}
+
 private val TRACE_HEIGHT = 168.dp
 private val HERO_SIZE = 76.sp
 private val HERO_UNIT_SIZE = 21.sp
 
-/// THE NUMBER THAT WILL BE SAVED — the peak, which climbs and then holds still. The live
+/// The measured peak climbs and then holds still; corrected working values live in the hand tiles. The live
 /// reading stays demoted to the line underneath: it falls away the instant you ease off, and
 /// watching the figure you are about to record drop back toward zero is not what anyone
 /// wants at the end of a max effort.
@@ -645,7 +712,7 @@ private fun MaxMeasurePreview() {
     }
     GetAGripTheme {
         CompositionLocalProvider(LocalDeviceStore provides device) {
-            MaxMeasureScreen(grip = GripSpec(), onMeasured = { _, _ -> }, onCancel = {})
+            MaxMeasureScreen(grip = GripSpec(), onSave = { null }, onClose = {})
         }
     }
 }

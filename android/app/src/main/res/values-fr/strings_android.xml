@@ -48,4 +48,5 @@
     <string name="a_terms_of_use">Conditions d’utilisation</string>
     <string name="a_open_in_a_browser">Ouvrir dans un navigateur</string>
     <string name="a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose">Get a Grip n’est pas un dispositif médical et ne diagnostique, ne traite, ne guérit ni ne prévient aucune affection. Consultez un professionnel de santé pour un avis médical.</string>
+    <string name="a_use_to_add_a_max_each_grip_has_an_edit_button_for_changi">Utilisez + pour ajouter un max. Chaque prise a un bouton Modifier pour ajuster les valeurs de chaque main et consulter les anciens tests. Ces mêmes valeurs servent aux graphiques et aux cibles en pourcentage.</string>
 </resources>

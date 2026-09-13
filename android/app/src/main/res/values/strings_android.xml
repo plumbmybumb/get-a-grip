@@ -49,4 +49,5 @@
     <string name="a_terms_of_use">Terms of use</string>
     <string name="a_open_in_a_browser">Open in a browser</string>
     <string name="a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose">Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice.</string>
+    <string name="a_use_to_add_a_max_each_grip_has_an_edit_button_for_changi">Use + to add a max. Each grip has an Edit button for changing hand values and reviewing earlier records. Your charts and percentage targets use these same numbers.</string>
 </resources>

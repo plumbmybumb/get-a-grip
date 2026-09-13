@@ -83,7 +83,7 @@ import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
-/// Saved-record management, reached through Maxes → Manage.
+/// Saved-record history, reached through a grip’s Edit → Earlier records.
 /// Numbers are added, read back and deleted here.
 ///
 /// Two decisions worth stating, because both look like omissions:
@@ -104,6 +104,7 @@ fun MaxesListScreen(
     onAddMax: (GripSpec?) -> Unit,
     modifier: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
+    grip: GripSpec? = null,
 ) {
     val palette = LocalGripPalette.current
     val templates = LocalTemplateStore.current
@@ -120,7 +121,9 @@ fun MaxesListScreen(
 
     // Newest first, which is what makes the fold below correct: the first record in each
     // bucket is that grip-and-hand's CURRENT max.
-    val newestFirst = remember(feed.maxRecords) { feed.maxRecords.sortedByDescending { it.recordedAt } }
+    val newestFirst = remember(feed.maxRecords, grip?.key) {
+        feed.maxRecords.filter { grip == null || it.gripKey == grip.key }.sortedByDescending { it.recordedAt }
+    }
     val histories = remember(newestFirst) { historiesOf(newestFirst) }
     val rows = remember(histories, expanded) { entriesOf(histories, expanded) }
 
@@ -136,7 +139,7 @@ fun MaxesListScreen(
             item("empty") { EmptyCard() }
         }
 
-        item("add") {
+        if (grip == null) item("add") {
             // The screen's PRIMARY action, drawn as a row rather than hidden behind a
             // toolbar glyph: on a screen you visit in order to add something, the add must
             // be the first thing under your thumb and must never scroll away behind a list.

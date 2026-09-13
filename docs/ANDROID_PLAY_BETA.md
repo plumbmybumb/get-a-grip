@@ -1,6 +1,22 @@
 # Android Play closed beta
 
-## Current status — 8 September 2026
+## Current status — 13 September 2026
+
+Build **1.0.1 (9)** — the 100-pull limit, appearance-change recovery, routine overviews
+and the long-rest presentation — was submitted to the closed Alpha track on 12 September
+2026 and showed **Changes in review**; its state since then has not been checked.
+
+Build **1.0.1 (10)** — the Maxes rework (direct measurement, both hands in one visit,
+per-hand edits, save receipts, the + button) — is built and verified in source as of
+13 September 2026 (1,077 tests pass; exercised on the API 36 emulator) but **not yet
+signed or uploaded**. Build the bundle with the private upload key, check its certificate
+against the build 9 upload, tag `android-v1.0.1-10`, then create the next release on the
+same track with the notes in `releases/android-1.0.1-10/`. See
+[the 1.0.3 release record](RELEASE_2026-09-12_1.0.3.md) for hashes and the iOS side.
+
+## Previous submission — 8 September 2026
+
+The status below is historical.
 
 Version **1.0.1 (6)**, release **1.0.1 (6) — WH-C06 responsiveness and recovery**,
 has been submitted to the existing closed Alpha track at 100% rollout. Play

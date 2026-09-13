@@ -14,6 +14,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import run.nuri.getagrip.BuildConfig
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.SessionTemplateEntity
@@ -924,17 +926,35 @@ class TemplateStore(
 
     // MARK: - Maxes
 
+    data class MaxSave(val grip: GripSpec, val side: Side, val kg: Double, val source: MaxSource)
+
+    private val maxSaveMutex = Mutex()
+
     suspend fun recordMax(
         kg: Double,
         grip: GripSpec,
         source: MaxSource = MaxSource.manual,
         side: Side = Side.both,
         marksBenchmarkDay: Boolean = true,
+    ): Boolean = maxSaveMutex.withLock {
+        saveMaxes(listOf(MaxSave(grip, side, kg, source)), marksBenchmarkDay)
+    }
+
+    suspend fun recordMaxes(values: List<MaxSave>): Boolean = maxSaveMutex.withLock {
+        saveMaxes(values, marksBenchmarkDay = true)
+    }
+
+    private suspend fun saveMaxes(
+        values: List<MaxSave>,
+        marksBenchmarkDay: Boolean,
+        snapshot: ((MaxTable, MaxTable, List<SessionTemplateEntity>) -> Unit)? = null,
     ): Boolean {
+        if (values.isEmpty()) return true
         // A zero or NaN max would make every percentage-of-max caption in the app lie,
         // and `PlanMath.percentOfMax` would have to defend against it forever.
-        if (!kg.isFinite() || kg <= 0) return false
-        val record = MaxRecordEntity.from(grip = grip, kg = kg, source = source, side = side)
+        if (values.any { !it.kg.isFinite() || it.kg <= 0 }) return false
+        val keys = values.map { MaxTable.key(it.grip.key, it.side) }
+        if (keys.toSet().size != keys.size) return false
 
         // **A MEASURED max makes today a benchmark day** — the lightweight version of a
         // test session (Nuri, 2026-08-10): no ceremony, but the day still reads as
@@ -945,24 +965,30 @@ class TemplateStore(
         // top would silently cancel the evening ritual.
         // A failed read is not evidence that today has no benchmark. Keep the max,
         // but don't invent a second day marker when the history cannot be checked.
-        val todaysLogs = if (marksBenchmarkDay && source == MaxSource.measured && !benchmarkedToday)
-            gateway.logsFrom(clock.today.raw) else null
-        val alreadyBenchmarked = benchmarkedToday || todaysLogs == null || todaysLogs.benchmark(clock.today)
-        val benchmarkLog =
-            if (marksBenchmarkDay && source == MaxSource.measured && !alreadyBenchmarked) {
-                WorkoutLogEntity.logged(
-                    kind = SessionKind.benchmark,
-                    day = clock.today,
-                    at = storedNow(),
-                    sessionsPerDayTarget = firstRoutineSessionsPerDay(),
-                )
-            } else {
-                null
+        persistAndSync { writer ->
+            val existing = checkNotNull(writer.allMaxes()) { "Couldn't read existing maxes" }
+            val newest = newestPerGrip(existing)
+            val previous = table(newest)
+            val current = previous.copy()
+            val now = storedNow()
+            val records = values.map { value ->
+                // Room stores milliseconds. Two saves in one millisecond must still
+                // append a newer working max instead of losing a correction in a tie.
+                val last = newest[MaxTable.key(value.grip.key, value.side)]?.recordedAt
+                val recordedAt = if (last != null && !now.isAfter(last)) last.plusMillis(1) else now
+                current.record(value.kg, value.grip.key, value.side)
+                MaxRecordEntity.from(value.grip, value.kg, value.source, value.side, recordedAt)
             }
-
-        persistAndSync {
-            it.putMax(record)
-            benchmarkLog?.let { log -> it.putLog(log) }
+            val routines = writer.allRoutines() ?: emptyList()
+            val measured = marksBenchmarkDay && values.any { it.source == MaxSource.measured }
+            val todaysLogs = if (measured) writer.logsFrom(clock.today.raw) else null
+            val benchmarkLog = if (measured && todaysLogs != null && !todaysLogs.benchmark(clock.today)) {
+                WorkoutLogEntity.logged(SessionKind.benchmark, clock.today, now,
+                    routines.sortedWith(routineOrder).firstOrNull()?.sessionsPerDay ?: 1)
+            } else null
+            records.forEach { writer.putMax(it) }
+            benchmarkLog?.let { writer.putLog(it) }
+            snapshot?.invoke(previous, current, routines)
         }
         return saveError == null
     }
@@ -1078,6 +1104,130 @@ class TemplateStore(
             }
         }
         return MaxImpact(percentMoves, kgOffers, ratio)
+    }
+
+    data class MaxSaveReceipt(
+        val values: List<MaxSave>,
+        val percentMoves: List<PercentMove>,
+        val rescaleOffers: List<RescaleOffer>,
+        val id: UUID = UUID.randomUUID(),
+    ) {
+        data class PercentMove(val grip: GripSpec, val move: MaxImpact.PercentMove) {
+            val id: String get() = "${grip.key}|${move.routineID}|${move.side.rawValue}|${move.loPercent}|${move.hiPercent}"
+        }
+        data class RescaleOffer(
+            val grip: GripSpec,
+            val ratio: Double,
+            val newMaxKg: Double,
+            val routines: List<MaxImpact.KgOffer>,
+            val expectedPlans: Map<UUID, SessionPlan>,
+        ) {
+            val id: String get() = grip.key
+        }
+        val hasDetails: Boolean get() = percentMoves.isNotEmpty() || rescaleOffers.isNotEmpty()
+    }
+
+    /** One atomic commit, with its before/after receipt captured in the same transaction. */
+    suspend fun recordMaxesWithReceipt(values: List<MaxSave>): MaxSaveReceipt? = maxSaveMutex.withLock {
+        if (values.isEmpty()) return@withLock null
+        var receipt: MaxSaveReceipt? = null
+        val saved = saveMaxes(values, marksBenchmarkDay = true) { previous, current, routines ->
+            receipt = maxSaveReceipt(values, previous, current, routines)
+        }
+        if (saved) receipt else null
+    }
+
+    private fun maxSaveReceipt(
+        values: List<MaxSave>,
+        previous: MaxTable,
+        current: MaxTable,
+        candidates: List<SessionTemplateEntity>,
+    ): MaxSaveReceipt {
+        // Room currently enforces routine IDs, but imported/alternate gateways must not
+        // make a duplicate ID identify two different proposals or two Compose rows.
+        val byID = candidates.groupBy { it.id }
+        val routines = candidates.filter { byID[it.id]?.size == 1 }.sortedWith(routineOrder)
+        val percentMoves = mutableListOf<MaxSaveReceipt.PercentMove>()
+        val rescaleOffers = mutableListOf<MaxSaveReceipt.RescaleOffer>()
+        for ((gripKey, changes) in values.groupBy { it.grip.key }.toSortedMap()) {
+            val grip = changes.first().grip
+            val sharedChange = changes.firstOrNull { it.side == Side.both }
+            val ratio = sharedChange?.let { shared ->
+                previous.exact(gripKey, Side.both)?.let { shared.kg / it }
+            }
+            val kgOffers = mutableListOf<MaxImpact.KgOffer>()
+            val expectedPlans = mutableMapOf<UUID, SessionPlan>()
+            for (routine in routines) {
+                val plan = routine.plan.executable
+                val sides = if (plan.handMode == HandMode.bothHands) listOf(Side.both)
+                    else listOf(Side.left, Side.right)
+                val canScale = sharedChange != null && (plan.handMode == HandMode.bothHands ||
+                    listOf(Side.left, Side.right).all {
+                        previous.exact(gripKey, it) == null && current.exact(gripKey, it) == null
+                    })
+                val seenPercents = mutableSetOf<String>()
+                val kgMoves = mutableListOf<MaxImpact.KgOffer.Move>()
+                for (set in plan.sets.filter { it.grip.key == gripKey }) {
+                    val explicit = set.targetBand
+                    if (explicit != null) {
+                        if (!canScale || ratio == null || !ratio.isFinite() || ratio <= 0) continue
+                        val newBand = scaled(explicit, ratio)
+                        if (explicit == newBand) continue
+                        val move = MaxImpact.KgOffer.Move(explicit, newBand)
+                        if (move !in kgMoves) kgMoves.add(move)
+                    } else {
+                        val percent = PlanMath.targetPercent(set, plan) ?: continue
+                        if (!seenPercents.add("${percent.start}–${percent.endInclusive}")) continue
+                        for (side in sides) {
+                            val oldBand = previous.max(gripKey, side)?.let { PlanMath.targetBand(set, plan, it) }
+                            val newKg = current.max(gripKey, side) ?: continue
+                            val newBand = PlanMath.targetBand(set, plan, newKg) ?: continue
+                            if (oldBand == newBand) continue
+                            percentMoves.add(MaxSaveReceipt.PercentMove(grip, MaxImpact.PercentMove(
+                                routine.id, routine.name, side, percent.start, percent.endInclusive, oldBand, newBand,
+                            )))
+                        }
+                    }
+                }
+                if (kgMoves.isNotEmpty()) {
+                    kgOffers.add(MaxImpact.KgOffer(routine.id, routine.name, kgMoves))
+                    expectedPlans[routine.id] = routine.plan
+                }
+            }
+            if (kgOffers.isNotEmpty() && ratio != null && sharedChange != null) {
+                rescaleOffers.add(MaxSaveReceipt.RescaleOffer(grip, ratio, sharedChange.kg, kgOffers, expectedPlans))
+            }
+        }
+        return MaxSaveReceipt(values.toList(), percentMoves, rescaleOffers)
+    }
+
+    /** Validate and apply the displayed proposal inside one Room transaction. */
+    suspend fun applyMaxRescale(offer: MaxSaveReceipt.RescaleOffer): Boolean = maxSaveMutex.withLock {
+        if (offer.routines.isEmpty() || !offer.ratio.isFinite() || offer.ratio <= 0) return@withLock false
+        persistAndSync(maxesChanged = false) { writer ->
+            val maxes = table(newestPerGrip(checkNotNull(writer.allMaxes()) { "Couldn't read existing maxes" }))
+            check(maxes.exact(offer.grip.key, Side.both) == offer.newMaxKg) { "The shared max has changed" }
+            val current = checkNotNull(writer.allRoutines()) { "Couldn't read routines" }.groupBy { it.id }
+            val updated = offer.routines.map { proposal ->
+                val matches = checkNotNull(current[proposal.routineID]) { "The reviewed routine is missing" }
+                check(matches.size == 1) { "The reviewed routine is ambiguous" }
+                val routine = matches.single()
+                check(routine.plan == offer.expectedPlans[proposal.routineID]) { "The reviewed routine has changed" }
+                check(routine.plan.handMode == HandMode.bothHands || listOf(Side.left, Side.right).all {
+                    maxes.exact(offer.grip.key, it) == null
+                }) { "The hands now have separate maxes" }
+                val draft = routine.draft
+                val changed = draft.copy(plan = draft.plan.copy(sets = draft.plan.sets.map { set ->
+                    if (set.grip.key != offer.grip.key || !set.hasTarget) set else set.copy(
+                        targetLoKg = set.targetLoKg?.let { scaledKg(it, offer.ratio) },
+                        targetHiKg = set.targetHiKg?.let { scaledKg(it, offer.ratio) },
+                    )
+                }))
+                routine.applying(changed.normalized)
+            }
+            updated.forEach { writer.putRoutine(it) }
+        }
+        saveError == null
     }
 
     /// Apply the accepted rescale: every explicit-kg set on `grip` in the given routines,
@@ -1275,6 +1425,10 @@ class TemplateStore(
 private class AuditingWriter(private val inner: StoreWriter) : StoreWriter {
     var touchedMax = false
         private set
+
+    override suspend fun allRoutines() = inner.allRoutines()
+    override suspend fun allMaxes() = inner.allMaxes()
+    override suspend fun logsFrom(dayKey: Int) = inner.logsFrom(dayKey)
 
     override suspend fun putRoutine(row: SessionTemplateEntity) = inner.putRoutine(row)
     override suspend fun removeRoutine(id: UUID) = inner.removeRoutine(id)

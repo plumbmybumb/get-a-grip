@@ -44,6 +44,11 @@ interface StoreGateway {
 /// `persistAndSync` able to see whether a write touched a `MaxRecord`, and therefore
 /// whether the unbounded max refold may be skipped.
 interface StoreWriter {
+    /// Reads inside the same transaction as the writes they validate. A max save or
+    /// reviewed target rescale must not race another screen's changes between calls.
+    suspend fun allRoutines(): List<SessionTemplateEntity>?
+    suspend fun allMaxes(): List<MaxRecordEntity>?
+    suspend fun logsFrom(dayKey: Int): List<WorkoutLogEntity>?
     suspend fun putRoutine(row: SessionTemplateEntity)
     suspend fun removeRoutine(id: UUID)
     suspend fun putLog(row: WorkoutLogEntity)
@@ -90,6 +95,9 @@ class RoomStoreGateway(
 }
 
 private class RoomWriter(private val db: GetAGripDatabase) : StoreWriter {
+    override suspend fun allRoutines() = db.routines().all()
+    override suspend fun allMaxes() = db.maxes().all()
+    override suspend fun logsFrom(dayKey: Int) = db.logs().from(dayKey)
     override suspend fun putRoutine(row: SessionTemplateEntity) = db.routines().upsert(row)
     override suspend fun removeRoutine(id: UUID) = db.routines().delete(id)
     override suspend fun putLog(row: WorkoutLogEntity) = db.logs().upsert(row)

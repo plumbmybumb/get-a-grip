@@ -1,0 +1,6 @@
+L’onglet Max est plus simple :
+• Mesurer à nouveau ouvre directement le dynamomètre.
+• Mesurez les deux mains dans le même écran, ou enregistrez une seule main.
+• Modifiez chaque valeur et consultez les anciens tests depuis la fiche de la prise.
+• Voyez l’effet d’un nouveau max sur les cibles de vos routines. Ajuster les charges saisies reste facultatif.
+• Ajoutez un max pour une autre prise avec le bouton +.
