@@ -29,7 +29,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -261,9 +260,12 @@ fun MaxMeasureScreen(
         return
     }
 
+    // Hosted at the ROOT (RootTabView returns this screen in place of the tabs), so unlike the
+    // four tab screens nothing above it pads the system bars: the Scaffold and its TopAppBar
+    // keep the Material defaults (status bar over the title, navigation bar under the button),
+    // the same as MaxesFlowScaffold and the builder. Zeroing them drew the title under the clock.
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier,
         topBar = {
             TopAppBar(
@@ -273,7 +275,6 @@ fun MaxMeasureScreen(
                         Text(grip.displayName, style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
                     }
                 },
-                windowInsets = WindowInsets(0, 0, 0, 0),
                 navigationIcon = {
                     IconButton(onClick = onClose, enabled = !isSaving && !committed,
                                modifier = Modifier.testTag("max.measure.cancel")) {

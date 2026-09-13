@@ -6,7 +6,6 @@ package run.nuri.getagrip.ui.maxes
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -63,11 +62,9 @@ internal fun MaxMeasurementCorrectionScreen(
 
     Scaffold(
         containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text(tr("Adjust values"), style = MaterialTheme.typography.titleMedium) },
-                windowInsets = WindowInsets(0, 0, 0, 0),
                 navigationIcon = {
                     IconButton(onClick = onCancel, enabled = !applying,
                                modifier = Modifier.testTag("max.adjust.cancel")) {
