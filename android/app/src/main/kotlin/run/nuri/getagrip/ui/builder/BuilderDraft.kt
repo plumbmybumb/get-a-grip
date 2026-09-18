@@ -95,7 +95,8 @@ object BuilderDraft {
     /// Cheap string signatures, because the guide needs one comparable value per thing it
     /// can react to and the draft as a whole changes on every keystroke.
     fun rhythmSignature(draft: RoutineDraft): String =
-        "${draft.plan.setBreakSeconds}|${draft.plan.handMode.rawValue}|${draft.plan.waitForReleaseBeforeRest}"
+        "${draft.plan.setBreakSeconds}|${draft.plan.handMode.rawValue}|${draft.plan.startingHand.rawValue}|" +
+            "${draft.plan.waitForReleaseBeforeRest}"
 
     fun gripSignature(draft: RoutineDraft): String =
         draft.plan.sets.joinToString(",") { it.grip.key }

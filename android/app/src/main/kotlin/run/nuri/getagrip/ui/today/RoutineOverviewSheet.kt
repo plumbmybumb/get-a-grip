@@ -48,6 +48,7 @@ import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.RoutineSummary
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
+import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.EdgeMark
 import run.nuri.getagrip.ui.components.FingerGlyph
@@ -158,7 +159,7 @@ fun RoutineOverviewSheet(
                         )
                     }
                     Text(
-                        overviewHandOrder(plan.handMode),
+                        overviewHandOrder(plan.handMode, plan.startingHand),
                         style = MaterialTheme.typography.bodyMedium,
                         color = palette.inkSecondary,
                     )
@@ -249,10 +250,17 @@ private fun OverviewSet(set: SetPlan, plan: SessionPlan, index: Int) {
     }
 }
 
-internal fun overviewHandOrder(mode: HandMode): String = when (mode) {
-    HandMode.alternateEachRep -> L10n.tr("Left, right, left, right — swapping hands every pull.")
-    HandMode.alternateEachSet -> L10n.tr("Left hand first, then right, within each set.")
-    HandMode.bothHands -> L10n.tr("One pull with both hands on the edge.")
+internal fun overviewHandOrder(mode: HandMode, startingHand: Side = Side.left): String {
+    val startsRight = startingHand == Side.right
+    return when (mode) {
+        HandMode.alternateEachRep ->
+            if (startsRight) L10n.tr("Right, left, right, left — swapping hands every pull.")
+            else L10n.tr("Left, right, left, right — swapping hands every pull.")
+        HandMode.alternateEachSet ->
+            if (startsRight) L10n.tr("Right hand first, then left, within each set.")
+            else L10n.tr("Left hand first, then right, within each set.")
+        HandMode.bothHands -> L10n.tr("One pull with both hands on the edge.")
+    }
 }
 
 internal fun overviewPullCount(set: SetPlan, plan: SessionPlan): String {

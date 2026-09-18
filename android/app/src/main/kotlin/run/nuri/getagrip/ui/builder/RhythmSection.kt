@@ -3,33 +3,51 @@
 
 package run.nuri.getagrip.ui.builder
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import run.nuri.getagrip.ui.theme.InstrumentSurface as Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import run.nuri.getagrip.engine.RoutineDraft
+import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.HandModeChipRow
 import run.nuri.getagrip.ui.components.HandOrderStrip
 import run.nuri.getagrip.ui.components.IntValueRow
 import run.nuri.getagrip.ui.components.ValueControl
+import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
@@ -107,9 +125,64 @@ fun RhythmSection(
                 HandOrderStrip(
                     mode = plan.handMode,
                     repsPerSide = plan.executable.sets.firstOrNull()?.repsPerSide ?: 6,
+                    startingHand = plan.startingHand,
                 )
+                if (plan.handMode.sideCount > 1) {
+                    // The strip is fill-vs-outline with no legend, so on its own it cannot
+                    // say which hand it starts on (Nuri, 2026-09-18: "I can't tell what I'm
+                    // swapping"). The sentence says it; the button swaps it.
+                    val startsRight = plan.startingHand == Side.right
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            if (startsRight) tr("Starts on the right hand") else tr("Starts on the left hand"),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = palette.inkSecondary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        SwapHandsAction(startsRight = startsRight) {
+                            onChange(draft.copy(plan = plan.copy(startingHand = it)))
+                        }
+                    }
+                }
             }
         }
+    }
+}
+
+/// The one writer of `startingHand` (Nuri, 2026-09-18: "a lil swap button … so you can
+/// start with right hand instead of left"). It sits beside the sentence that names the
+/// current starting hand, under the strip that shows it: tap, and both flip. Hidden under
+/// Both hands, where there is no first hand to swap. The spoken description names the
+/// OUTCOME of the tap, which is what a toggle should tell TalkBack.
+@Composable
+private fun SwapHandsAction(startsRight: Boolean, onSwap: (Side) -> Unit) {
+    val palette = LocalGripPalette.current
+    val haptics = LocalHapticFeedback.current
+    val interaction = remember { MutableInteractionSource() }
+    val outcome = if (startsRight) tr("Start with the left hand") else tr("Start with the right hand")
+    TextButton(
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            onSwap(if (startsRight) Side.left else Side.right)
+        },
+        interactionSource = interaction,
+        shape = CircleShape,
+        border = BorderStroke(1.dp, palette.inkTertiary.copy(alpha = 0.35f)),
+        colors = ButtonDefaults.textButtonColors(contentColor = palette.inkSecondary),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier
+            .heightIn(min = 44.dp)
+            .pressFeedback(interaction, scales = false)
+            .semantics { contentDescription = outcome },
+    ) {
+        Icon(Icons.Outlined.SwapHoriz, contentDescription = null, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.size(6.dp))
+        Text(tr("Swap"), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
     }
 }
 

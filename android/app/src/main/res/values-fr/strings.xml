@@ -206,6 +206,7 @@
     <string name="s_adjust_values">Ajuster les valeurs</string>
     <string name="s_adjusted_values_are_saved_as_manual_entries_your_recorde">Les valeurs ajustées sont enregistrées comme saisies manuelles. Le tracé mesuré reste inchangé.</string>
     <string name="s_all_lld_on_the_left_then_all_lld_on_the_right">Les %1$d à gauche, puis les %2$d à droite</string>
+    <string name="s_all_lld_on_the_right_then_all_lld_on_the_left">Les %1$d à droite, puis les %2$d à gauche</string>
     <string name="s_all_i_had">À fond</string>
     <string name="s_all_history">Tout l’historique</string>
     <string name="s_all_six_on_the_left_then_all_six_on_the_right_inside_one">Les six à gauche, puis les six à droite, dans une même série.</string>
@@ -711,7 +712,10 @@
     <string name="s_resume">Reprendre</string>
     <string name="s_right_954daa">Droite</string>
     <string name="s_right_hand">Main droite</string>
+    <string name="s_right_hand_first_then_left_within_each_set">La main droite, puis la gauche, dans chaque série.</string>
     <string name="s_right_hand_next_861ec2">Main droite ensuite</string>
+    <string name="s_right_left_right_left">Droite, gauche, droite, gauche — %s</string>
+    <string name="s_right_left_right_left_swapping_hands_every_pull">Droite, gauche, droite, gauche — on change de main à chaque tirage.</string>
     <string name="s_ring">Annulaire</string>
     <string name="s_ritual_or_whenever">Rituel ou libre</string>
     <string name="s_routine_deleted">Routine supprimée</string>
@@ -815,12 +819,17 @@
     <string name="s_start_session_lld">Commencer la séance %d</string>
     <string name="s_start_the_rest_when_i_let_go">Démarrer le repos quand je relâche</string>
     <string name="s_start_third_session">Commencer la troisième séance</string>
+    <string name="s_start_with_the_left_hand">Commencer par la main gauche</string>
+    <string name="s_start_with_the_right_hand">Commencer par la main droite</string>
     <string name="s_start_without_a_gauge">Commencer sans capteur</string>
+    <string name="s_starts_on_the_left_hand">Commence par la main gauche</string>
+    <string name="s_starts_on_the_right_hand">Commence par la main droite</string>
     <string name="s_status">État</string>
     <string name="s_stop">Arrêter</string>
     <string name="s_stopped">Arrêté</string>
     <string name="s_summary">Résumé</string>
     <string name="s_support">Assistance</string>
+    <string name="s_swap">Inverser</string>
     <string name="s_targets_that_followed">CIBLES QUI ONT SUIVI</string>
     <string name="s_this_max_is_for">CE MAX CONCERNE</string>
     <string name="s_typed_kilograms">KILOS SAISIS</string>

@@ -8,7 +8,7 @@
   },
   "maxes": [],
   "name": "lead-in-only-before-a-sets-first-rep",
-  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":3,\"leadInSeconds\":2,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":2,\"setBreakSeconds\":2,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000001\",\"note\":\"\",\"repsPerSide\":2}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":3,\"leadInSeconds\":2,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":2,\"setBreakSeconds\":2,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000001\",\"note\":\"\",\"repsPerSide\":2}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
   "steps": [
     {"cues":[{"seconds":2,"type":"leadInTick"}],"event":{"type":"start"},"t":0},
     {"cues":[],"event":{"type":"tick"},"t":0.1},

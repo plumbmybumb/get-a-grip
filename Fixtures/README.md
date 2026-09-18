@@ -63,7 +63,9 @@ One file per gauge: `{gauge, cases:[{name, answering?, frames:[hex…], expect}]
 - `sequences.json` — a bare array of `{name, plan, maxes:[{grip:key, side, kg}], slots:[{setIndex,
   repIndex, side, grip:key, holdSeconds, leadInBefore, restAfter, targetLo|null, targetHi|null,
   isFirstOfSet, isLastOfSet}], totalSeconds, tensionSeconds, totalReps, setCount,
-  handSequence:[[side…] per set]}`. `plan` is a STRING of canonical `SessionPlan` JSON.
+  handSequence:[[side…] per set]}`. `plan` is a STRING of canonical `SessionPlan` JSON. The two
+  right-first cases pin `startingHand`: the same rows mirrored, and the reset at every set
+  boundary landing on the right.
 
 ## `share/`
 

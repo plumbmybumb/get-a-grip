@@ -59,6 +59,17 @@ enum class Side(val rawValue: String) {
     companion object {
         fun fromRaw(raw: String): Side? = entries.firstOrNull { it.rawValue == raw }
         fun fromJson(element: JsonElement?): Side? = JsonRead.string(element)?.let { fromRaw(it) }
+
+        /// The hand a routine STARTS on, read from a raw. `both` is not a hand to start
+        /// on and an unknown raw is a newer build's idea, so both read as null — "no
+        /// readable choice" — and `startingHandFallback` turns that into the default, left.
+        fun startingHandOrNull(raw: String): Side? = when (fromRaw(raw)) {
+            left -> left
+            right -> right
+            else -> null
+        }
+
+        fun startingHandFallback(raw: String): Side = startingHandOrNull(raw) ?: left
     }
 }
 
@@ -77,12 +88,14 @@ enum class HandMode(val rawValue: String) {
         }
 
     /// Every set starts here — alternation RESETS at each set boundary, so no set ever
-    /// begins on the "wrong" hand because the set before it had an odd rep count.
-    val startSide: Side
-        get() = when (this) {
-            alternateEachRep, alternateEachSet -> Side.left
-            bothHands -> Side.both
-        }
+    /// begins on the "wrong" hand because the set before it had an odd rep count. WHICH
+    /// hand that is belongs to the routine (`SessionPlan.startingHand`); the mode only
+    /// says whether there is a first hand at all. A `both` handed in as a starting hand
+    /// is not one, and reads as the default, left.
+    fun startSide(startingHand: Side): Side = when (this) {
+        alternateEachRep, alternateEachSet -> if (startingHand == Side.right) Side.right else Side.left
+        bothHands -> Side.both
+    }
 
     val displayName: String
         get() = when (this) {
@@ -236,6 +249,13 @@ data class SessionPlan(
     val sets: List<SetPlan> = emptyList(),
     val handMode: HandMode = HandMode.alternateEachRep,
 
+    /// Which hand the first pull of every set is on, under either alternating mode
+    /// (Nuri, 2026-09-18: "start with right hand instead of left"). Left, as every
+    /// routine before this field was; the builder's swap button is its only writer.
+    /// `bothHands` ignores it, and it is never `both` itself — the decoder reads that,
+    /// and any raw it does not know, as left.
+    val startingHand: Side = Side.left,
+
     /// RHYTHM — the routine-level defaults every set inherits unless it overrides.
     val holdSeconds: Int = 10,
     val restSeconds: Int = 20,
@@ -300,6 +320,7 @@ data class SessionPlan(
             "name" to JsonPrimitive(name),
             "sets" to JsonArray(sets.map { it.toJson() }),
             "handMode" to JsonPrimitive(handMode.rawValue),
+            "startingHand" to JsonPrimitive(startingHand.rawValue),
             "holdSeconds" to JsonPrimitive(holdSeconds),
             "restSeconds" to JsonPrimitive(restSeconds),
             "setBreakSeconds" to JsonPrimitive(setBreakSeconds),
@@ -343,6 +364,11 @@ data class SessionPlan(
             // build is never rewritten by this build reading it.
             handMode = HandMode.fallback(
                 o.stringOr("handMode", HandMode.alternateEachRep.rawValue)
+            ),
+            // Left for every blob written before the field existed, and for a raw this
+            // build does not know — `both` included, which is not a hand to start on.
+            startingHand = Side.startingHandFallback(
+                o.stringOr("startingHand", Side.left.rawValue)
             ),
             holdSeconds = SetPlan.holdRange.clamping(o.intOr("holdSeconds", 10)),
             restSeconds = SetPlan.restRange.clamping(o.intOr("restSeconds", 20)),

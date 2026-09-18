@@ -206,6 +206,7 @@
     <string name="s_adjust_values">Adjust values</string>
     <string name="s_adjusted_values_are_saved_as_manual_entries_your_recorde">Adjusted values are saved as manual entries. Your recorded trace stays unchanged.</string>
     <string name="s_all_lld_on_the_left_then_all_lld_on_the_right">All %1$d on the left, then all %2$d on the right</string>
+    <string name="s_all_lld_on_the_right_then_all_lld_on_the_left">All %1$d on the right, then all %2$d on the left</string>
     <string name="s_all_i_had">All I had</string>
     <string name="s_all_history">All history</string>
     <string name="s_all_six_on_the_left_then_all_six_on_the_right_inside_one">All six on the left, then all six on the right, inside one set.</string>
@@ -714,7 +715,10 @@
     <string name="s_resume">Resume</string>
     <string name="s_right_954daa">Right</string>
     <string name="s_right_hand">Right hand</string>
+    <string name="s_right_hand_first_then_left_within_each_set">Right hand first, then left, within each set.</string>
     <string name="s_right_hand_next_861ec2">Right hand next</string>
+    <string name="s_right_left_right_left">Right, left, right, left — %s</string>
+    <string name="s_right_left_right_left_swapping_hands_every_pull">Right, left, right, left — swapping hands every pull.</string>
     <string name="s_ring">Ring</string>
     <string name="s_ritual_or_whenever">Ritual or whenever</string>
     <string name="s_routine_deleted">Routine deleted</string>
@@ -818,12 +822,17 @@
     <string name="s_start_session_lld">Start session %d</string>
     <string name="s_start_the_rest_when_i_let_go">Start the rest when I let go</string>
     <string name="s_start_third_session">Start third session</string>
+    <string name="s_start_with_the_left_hand">Start with the left hand</string>
+    <string name="s_start_with_the_right_hand">Start with the right hand</string>
     <string name="s_start_without_a_gauge">Start without a gauge</string>
+    <string name="s_starts_on_the_left_hand">Starts on the left hand</string>
+    <string name="s_starts_on_the_right_hand">Starts on the right hand</string>
     <string name="s_status">Status</string>
     <string name="s_stop">Stop</string>
     <string name="s_stopped">Stopped</string>
     <string name="s_summary">Summary</string>
     <string name="s_support">Support</string>
+    <string name="s_swap">Swap</string>
     <string name="s_targets_that_followed">TARGETS THAT FOLLOWED</string>
     <string name="s_this_max_is_for">THIS MAX IS FOR</string>
     <string name="s_typed_kilograms">TYPED KILOGRAMS</string>

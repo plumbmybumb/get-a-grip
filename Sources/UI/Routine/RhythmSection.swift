@@ -42,7 +42,24 @@ struct RhythmSection: View {
                     CapsLabel(String(localized: "HANDS"))
                         .padding(.top, 2)
                     HandModeChipRow(selection: $draft.plan.handMode)
-                    HandOrderStrip(mode: draft.plan.handMode, repsPerSide: firstSetReps)
+                    HandOrderStrip(mode: draft.plan.handMode,
+                                   startingHand: draft.plan.startingHand,
+                                   repsPerSide: firstSetReps)
+                    if draft.plan.handMode.sideCount > 1 {
+                        // The strip is fill-vs-outline with no legend, so on its own it
+                        // cannot say which hand it starts on (Nuri, 2026-09-18: "I can't
+                        // tell what I'm swapping"). The sentence says it; the button swaps it.
+                        HStack(alignment: .center, spacing: 12) {
+                            Text(draft.plan.startingHand == .right
+                                 ? "Starts on the right hand"
+                                 : "Starts on the left hand")
+                                .font(.system(.footnote, weight: .medium))
+                                .foregroundStyle(Ink.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                            swapHandsButton
+                        }
+                    }
                 }
             }
         }
@@ -79,5 +96,31 @@ struct RhythmSection: View {
     /// about to do; `executable` so an emptied-out row cannot decide it.
     private var firstSetReps: Int {
         draft.plan.executable.sets.first?.repsPerSide ?? 6
+    }
+
+    /// The one writer of `startingHand` (Nuri, 2026-09-18: "a lil swap button … so you
+    /// can start with right hand instead of left"). It sits beside the sentence that
+    /// names the current starting hand, under the strip that shows it: tap, and both
+    /// flip. Hidden under Both hands, where there is no first hand to swap. The spoken
+    /// label names the OUTCOME of the tap, which is what a toggle should tell a screen
+    /// reader.
+    private var swapHandsButton: some View {
+        let startsRight = draft.plan.startingHand == .right
+        return Button {
+            draft.plan.startingHand = startsRight ? .left : .right
+        } label: {
+            Label(String(localized: "Swap"), systemImage: "arrow.left.arrow.right")
+                .font(.system(.footnote, weight: .medium))
+                .foregroundStyle(Ink.secondary)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .overlay(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
+                .contentShape(.capsule)
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityLabel(startsRight
+                            ? String(localized: "Start with the left hand")
+                            : String(localized: "Start with the right hand"))
+        .sensoryFeedback(.selection, trigger: draft.plan.startingHand)
     }
 }

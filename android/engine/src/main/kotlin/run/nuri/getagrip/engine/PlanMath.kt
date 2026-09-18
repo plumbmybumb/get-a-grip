@@ -139,19 +139,27 @@ object PlanMath {
     ///   `alternateEachRep`, 3/side → L R L R L R
     ///   `alternateEachSet`, 3/side → L L L R R R
     ///   `bothHands`,        3/side → B B B
-    fun side(forRep: Int, mode: HandMode, repsPerSide: Int): Side {
+    ///
+    /// `startingHand = right` mirrors the two alternating rows (R L R L R L, R R R L L L)
+    /// and changes nothing under `bothHands`.
+    fun side(forRep: Int, mode: HandMode, repsPerSide: Int, startingHand: Side = Side.left): Side {
         val rep = maxOf(0, forRep)
+        val first = mode.startSide(startingHand)
         return when (mode) {
             HandMode.bothHands -> Side.both
-            HandMode.alternateEachRep -> if (rep % 2 == 0) mode.startSide else mode.startSide.other
-            HandMode.alternateEachSet ->
-                if (rep < maxOf(0, repsPerSide)) mode.startSide else mode.startSide.other
+            HandMode.alternateEachRep -> if (rep % 2 == 0) first else first.other
+            HandMode.alternateEachSet -> if (rep < maxOf(0, repsPerSide)) first else first.other
         }
     }
 
     fun handSequence(set: SetPlan, plan: SessionPlan): List<Side> =
         (0 until repCount(set, plan.handMode)).map {
-            side(forRep = it, mode = plan.handMode, repsPerSide = set.repsPerSide)
+            side(
+                forRep = it,
+                mode = plan.handMode,
+                repsPerSide = set.repsPerSide,
+                startingHand = plan.startingHand,
+            )
         }
 
     // MARK: - The sequence
@@ -177,7 +185,12 @@ object PlanMath {
             for (repIndex in 0 until reps) {
                 val isFirst = repIndex == 0
                 val isLast = repIndex == reps - 1
-                val repSide = side(forRep = repIndex, mode = live.handMode, repsPerSide = set.repsPerSide)
+                val repSide = side(
+                    forRep = repIndex,
+                    mode = live.handMode,
+                    repsPerSide = set.repsPerSide,
+                    startingHand = live.startingHand,
+                )
                 slots.add(
                     RepSlot(
                         setIndex = setIndex,

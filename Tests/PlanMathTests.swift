@@ -153,7 +153,7 @@ final class PlanMathTests: XCTestCase {
             XCTAssertEqual(PlanMath.totalReps(plan), 6, "\(mode)")
             XCTAssertNil(PlanMath.repsPerSide(plan), "\(mode)")
             XCTAssertEqual(PlanMath.sequence(for: plan).map(\.side),
-                           Array(repeating: mode.startSide, count: 6), "\(mode)")
+                           Array(repeating: mode.startSide(startingHand: .left), count: 6), "\(mode)")
         }
     }
 
@@ -191,7 +191,7 @@ final class PlanMathTests: XCTestCase {
                 XCTAssertEqual(first?.isFirstOfSet, true)
             }
             XCTAssertEqual(PlanMath.side(forRep: 0, mode: mode, repsPerSide: 3), .left)
-            XCTAssertEqual(mode.startSide, .left)
+            XCTAssertEqual(mode.startSide(startingHand: .left), .left)
         }
     }
 
@@ -206,6 +206,52 @@ final class PlanMathTests: XCTestCase {
                 XCTAssertEqual(sides.filter { $0 == .right }.count, repsPerSide, "\(mode) \(repsPerSide)")
             }
         }
+    }
+
+    // MARK: - The starting hand
+
+    /// Nuri's swap (2026-09-18): the same two rows, mirrored. Alternation still resets at
+    /// every set boundary — to the RIGHT now — and the per-set balance is untouched.
+    func testAStartingHandOfRightMirrorsBothAlternatingModes() {
+        var plan = SessionPlan()
+        plan.startingHand = .right
+        plan.sets = [1, 3].map { SetPlan(grip: GripSpec(), repsPerSide: $0) }
+
+        plan.handMode = .alternateEachRep
+        XCTAssertEqual(PlanMath.handSequence(plan.sets[1], in: plan),
+                       [.right, .left, .right, .left, .right, .left])
+        XCTAssertEqual(PlanMath.sequence(for: plan).map(\.side),
+                       [.right, .left, .right, .left, .right, .left, .right, .left])
+
+        plan.handMode = .alternateEachSet
+        XCTAssertEqual(PlanMath.handSequence(plan.sets[1], in: plan),
+                       [.right, .right, .right, .left, .left, .left])
+        XCTAssertEqual(PlanMath.sequence(for: plan).map(\.side),
+                       [.right, .left, .right, .right, .right, .left, .left, .left])
+    }
+
+    /// Both hands on the edge is one event with no first hand; the field is inert there
+    /// rather than an error, so flipping modes in the builder never loses the choice.
+    func testTheStartingHandIsInertUnderBothHands() {
+        var plan = SessionPlan()
+        plan.handMode = .bothHands
+        plan.startingHand = .right
+        plan.sets = [SetPlan(grip: GripSpec(), repsPerSide: 2)]
+        XCTAssertEqual(PlanMath.handSequence(plan.sets[0], in: plan), [.both, .both])
+        XCTAssertEqual(HandMode.bothHands.startSide(startingHand: .right), .both)
+    }
+
+    /// `both` is not a hand to start on, and neither is a raw this build has never heard
+    /// of: each reads as left, the hand every routine started on before the field existed.
+    func testOnlyLeftAndRightAreStartingHands() {
+        XCTAssertEqual(Side.startingHand(from: "right"), .right)
+        XCTAssertEqual(Side.startingHand(from: "left"), .left)
+        XCTAssertNil(Side.startingHand(from: "both"))
+        XCTAssertNil(Side.startingHand(from: "dominant"))
+        XCTAssertEqual(Side.startingHand(fallback: "both"), .left)
+        XCTAssertEqual(HandMode.alternateEachRep.startSide(startingHand: .both), .left)
+        XCTAssertEqual(PlanMath.side(forRep: 0, mode: .alternateEachSet, repsPerSide: 2,
+                                     startingHand: .both), .left)
     }
 
     // MARK: - Rests, breaks and lead-ins

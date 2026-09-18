@@ -125,6 +125,21 @@ class BlobCodecTests {
         assertEquals(SetPlan.percentRange, clamped.targetPercentBand)
     }
 
+    /// The starting hand is ADDITIVE: absent on every blob written before it existed and
+    /// read as left; `both` and a raw from a newer build read as left too, never as a
+    /// decode failure; right survives the round trip.
+    @Test
+    fun theStartingHandDecodesLeniently() {
+        fun decode(text: String) = assertNotNull(BlobCodec.decode(text) { SessionPlan.fromJson(it) })
+        assertEquals(Side.left, decode("""{"name":"x","sets":[]}""").startingHand)
+        assertEquals(Side.left, decode("""{"name":"x","sets":[],"startingHand":"both"}""").startingHand)
+        assertEquals(Side.left, decode("""{"name":"x","sets":[],"startingHand":"dominant"}""").startingHand)
+
+        val text = assertNotNull(BlobCodec.encode(SessionPlan(startingHand = Side.right)))
+        assertTrue(""""startingHand":"right"""" in text)
+        assertEquals(Side.right, decode(text).startingHand)
+    }
+
     /// A lenient read, not a typed one: a field a newer build retyped costs that one
     /// field, never the whole routine.
     @Test

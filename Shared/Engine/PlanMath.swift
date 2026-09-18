@@ -142,21 +142,27 @@ enum PlanMath {
     ///   `.alternateEachRep`, 3/side → L R L R L R
     ///   `.alternateEachSet`, 3/side → L L L R R R
     ///   `.bothHands`,        3/side → B B B
-    static func side(forRep r: Int, mode: HandMode, repsPerSide: Int) -> Side {
+    ///
+    /// `startingHand: .right` mirrors the two alternating rows (R L R L R L, R R R L L L)
+    /// and changes nothing under `.bothHands`.
+    static func side(forRep r: Int, mode: HandMode, repsPerSide: Int,
+                     startingHand: Side = .left) -> Side {
         let rep = Swift.max(0, r)
+        let first = mode.startSide(startingHand: startingHand)
         switch mode {
         case .bothHands:
             return .both
         case .alternateEachRep:
-            return rep.isMultiple(of: 2) ? mode.startSide : mode.startSide.other
+            return rep.isMultiple(of: 2) ? first : first.other
         case .alternateEachSet:
-            return rep < Swift.max(0, repsPerSide) ? mode.startSide : mode.startSide.other
+            return rep < Swift.max(0, repsPerSide) ? first : first.other
         }
     }
 
     static func handSequence(_ set: SetPlan, in plan: SessionPlan) -> [Side] {
         (0..<repCount(set, mode: plan.handMode)).map {
-            side(forRep: $0, mode: plan.handMode, repsPerSide: set.repsPerSide)
+            side(forRep: $0, mode: plan.handMode, repsPerSide: set.repsPerSide,
+                 startingHand: plan.startingHand)
         }
     }
 
@@ -184,7 +190,8 @@ enum PlanMath {
                 let isFirst = repIndex == 0
                 let isLast = repIndex == reps - 1
                 let repSide = side(forRep: repIndex, mode: live.handMode,
-                                   repsPerSide: set.repsPerSide)
+                                   repsPerSide: set.repsPerSide,
+                                   startingHand: live.startingHand)
                 slots.append(RepSlot(
                     setIndex: setIndex,
                     repIndex: repIndex,

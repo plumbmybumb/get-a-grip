@@ -85,3 +85,23 @@ The countdown fixture update changes one expected rest tick at
 `4.400000000000001` seconds. Inputs, timestamps, recorded reps and final state are
 unchanged. The Swift oracle verifies all 39 scenarios / 4,130 steps, plus 70 routine
 share URLs and 18 export scenarios. Bluetooth transport code is unchanged.
+
+
+## Start an alternating routine on the right hand — iOS and Android
+
+Status: implemented on the Frez Dyno branch, unreleased.
+
+- [x] A routine-level **starting hand** (`SessionPlan.startingHand`, left by default)
+  mirrors both alternating modes: L R L R becomes R L R L, and L L L R R R becomes
+  R R R L L L. Alternation still resets at every set boundary, to that hand. Both
+  hands ignore it.
+- [x] One control writes it: a small **Swap** button on the hand-order strip in the
+  builder's REST & HANDS card, hidden under Both hands. The strip and its spoken
+  sentence flip with it, and the routine overview says which hand leads.
+- [x] Persisted as a raw column beside the hand mode (`startingHandRaw`; Room schema
+  version 2 by auto-migration), carried by the undo snapshot, the share link and the
+  workout log's frozen plan. Every blob written before the field reads as left; `both`
+  and unknown raws read as left too, never as a failure.
+- [x] Cross-engine fixtures: the blob, sequence and share fixtures carry the field,
+  and a right-first runner trace (`hands-alternate-right-first`) is recorded by the
+  Kotlin engine and replayed by the Swift oracle.

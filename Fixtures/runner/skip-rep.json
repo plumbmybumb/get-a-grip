@@ -8,7 +8,7 @@
   },
   "maxes": [],
   "name": "skip-rep",
-  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":5,\"leadInSeconds\":0,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":3,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":2}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":5,\"leadInSeconds\":0,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":3,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":2}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
   "steps": [
     {"cues":[{"side":"both","type":"armed"}],"event":{"type":"start"},"t":0},
     {

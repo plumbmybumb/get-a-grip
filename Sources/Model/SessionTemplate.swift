@@ -23,6 +23,10 @@ final class SessionTemplate {
     /// survives a round-trip through this build untouched. `apply(_:)` is what keeps
     /// that promise — see the rule there.
     var handModeRaw: String = "alternateEachRep"
+    /// See `SessionPlan.startingHand`. Raw for the same reason `handModeRaw` is, and
+    /// defaulted `"left"` — what every routine was before the column existed — so the
+    /// additive migration needs no backfill.
+    var startingHandRaw: String = "left"
     var holdSeconds: Int = 10           // the RHYTHM block: routine-level defaults every
     var restSeconds: Int = 20           // set inherits unless it overrides
     var setBreakSeconds: Int = 60
@@ -114,12 +118,16 @@ extension SessionTemplate {
     /// the one caller that needs to know the fallback happened.
     var handMode: HandMode? { HandMode(rawValue: handModeRaw) }
 
+    /// nil ONLY for a raw this build cannot read as a starting hand — see `handMode`.
+    var startingHand: Side? { Side.startingHand(from: startingHandRaw) }
+
     /// The engine-facing value type. Every number the app quotes about this routine is a
     /// fold over this plan, never over the columns directly.
     var plan: SessionPlan {
         SessionPlan(name: name,
                     sets: sets,
                     handMode: HandMode(fallback: handModeRaw),
+                    startingHand: Side.startingHand(fallback: startingHandRaw),
                     holdSeconds: holdSeconds,
                     restSeconds: restSeconds,
                     setBreakSeconds: setBreakSeconds,
@@ -152,6 +160,7 @@ extension SessionTemplate {
 
         name = source.name
         applyHandMode(source.handMode)
+        applyStartingHand(source.startingHand)
         holdSeconds = source.holdSeconds
         restSeconds = source.restSeconds
         setBreakSeconds = source.setBreakSeconds
@@ -179,6 +188,13 @@ extension SessionTemplate {
         let rawIsUnreadable = handMode == nil
         if rawIsUnreadable && picked == HandMode(fallback: handModeRaw) { return }
         handModeRaw = picked.rawValue
+    }
+
+    /// The same rule for the starting hand, whose raw a newer build may also widen.
+    private func applyStartingHand(_ picked: Side) {
+        let rawIsUnreadable = startingHand == nil
+        if rawIsUnreadable && picked == Side.startingHand(fallback: startingHandRaw) { return }
+        startingHandRaw = picked.rawValue
     }
 
     var estimatedSeconds: Int { PlanMath.totalSeconds(plan) }

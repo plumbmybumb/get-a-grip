@@ -14,6 +14,7 @@ import run.nuri.getagrip.engine.ReminderTime
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
+import run.nuri.getagrip.engine.Side
 import java.time.Instant
 import java.util.UUID
 
@@ -46,6 +47,11 @@ data class SessionTemplateEntity(
     /// survives a round-trip through this build untouched. `applying(_:)` is what keeps
     /// that promise — see the rule there.
     val handModeRaw: String = "alternateEachRep",
+    /// See `SessionPlan.startingHand`. Raw for the same reason `handModeRaw` is, and
+    /// defaulted `left` — what every routine was before the column existed — with the
+    /// default declared to Room too, so the 1 → 2 auto-migration adds the column under
+    /// existing rows without a backfill.
+    @ColumnInfo(defaultValue = "left") val startingHandRaw: String = "left",
     val holdSeconds: Int = 10,          // the RHYTHM block: routine-level defaults every
     val restSeconds: Int = 20,          // set inherits unless it overrides
     val setBreakSeconds: Int = 60,
@@ -99,6 +105,9 @@ data class SessionTemplateEntity(
     /// caller that needs to know the fallback happened.
     val handMode: HandMode? get() = HandMode.fromRaw(handModeRaw)
 
+    /// null ONLY for a raw this build cannot read as a starting hand — see `handMode`.
+    val startingHand: Side? get() = Side.startingHandOrNull(startingHandRaw)
+
     /// The engine-facing value type. Every number the app quotes about this routine is a
     /// fold over this plan, never over the columns directly.
     val plan: SessionPlan
@@ -106,6 +115,7 @@ data class SessionTemplateEntity(
             name = name,
             sets = sets,
             handMode = HandMode.fallback(handModeRaw),
+            startingHand = Side.startingHandFallback(startingHandRaw),
             holdSeconds = holdSeconds,
             restSeconds = restSeconds,
             setBreakSeconds = setBreakSeconds,
@@ -145,6 +155,7 @@ data class SessionTemplateEntity(
         return copy(
             name = source.name,
             handModeRaw = appliedHandModeRaw(source.handMode),
+            startingHandRaw = appliedStartingHandRaw(source.startingHand),
             holdSeconds = source.holdSeconds,
             restSeconds = source.restSeconds,
             setBreakSeconds = source.setBreakSeconds,
@@ -173,6 +184,13 @@ data class SessionTemplateEntity(
     private fun appliedHandModeRaw(picked: HandMode): String {
         val rawIsUnreadable = handMode == null
         if (rawIsUnreadable && picked == HandMode.fallback(handModeRaw)) return handModeRaw
+        return picked.rawValue
+    }
+
+    /// The same rule for the starting hand, whose raw a newer build may also widen.
+    private fun appliedStartingHandRaw(picked: Side): String {
+        val rawIsUnreadable = startingHand == null
+        if (rawIsUnreadable && picked == Side.startingHandFallback(startingHandRaw)) return startingHandRaw
         return picked.rawValue
     }
 
