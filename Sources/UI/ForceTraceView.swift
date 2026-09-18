@@ -103,6 +103,12 @@ struct ForceTraceView: View {
     /// window's freshly-computed `newestTime` every render, so a stale expiry for an
     /// old sample simply stops matching the moment a new one lands.
     @State private var expiredNewestTime: TimeInterval?
+    /// The registered observer can differ from the incoming value until SwiftUI
+    /// delivers its lifecycle update. Keep the exact object we opened so a frozen
+    /// trace cannot close another visible graph's registration, and a resumed trace
+    /// registers even though its view identity never changed.
+    @State private var registeredDiagnostics: PipelineDiagnostics?
+    @State private var isDiagnosticsVisible = false
 
     /// The y-axis ceiling, LATCHED and EASED — never a per-frame function of the
     /// rolling buffer.
@@ -173,8 +179,25 @@ struct ForceTraceView: View {
         // above already does for free. The watcher's only job is the opposite
         // direction — noticing when nothing is left to draw.
         .task(id: frozenAt != nil) { if frozenAt == nil { await watchForExpiry() } }
-        .onAppear { diagnostics?.graphOpened() }
-        .onDisappear { diagnostics?.graphClosed() }
+        .onAppear {
+            isDiagnosticsVisible = true
+            updateDiagnosticsRegistration()
+        }
+        .onChange(of: diagnostics.map(ObjectIdentifier.init)) { _, _ in
+            updateDiagnosticsRegistration()
+        }
+        .onDisappear {
+            isDiagnosticsVisible = false
+            updateDiagnosticsRegistration()
+        }
+    }
+
+    private func updateDiagnosticsRegistration() {
+        let visibleDiagnostics = isDiagnosticsVisible ? diagnostics : nil
+        guard registeredDiagnostics !== visibleDiagnostics else { return }
+        registeredDiagnostics?.graphClosed()
+        registeredDiagnostics = visibleDiagnostics
+        registeredDiagnostics?.graphOpened()
     }
 
     /// Records the render pass's one message to the watcher task — a plain field
