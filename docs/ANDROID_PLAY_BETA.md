@@ -5,18 +5,14 @@
 Build **1.0.1 (11)** — Frez Dyno support (official protocol, untested on hardware; the
 one-time note from Frez; the calibration lookup, the app's first and only network
 request), the right-hand start for alternating routines, the WH-C06 pounds fix, and the
-2026-09-18 legal revision — is committed and verified in source (iOS, Android engine and
-app suites green; the Swift oracle replays 40 runner traces and 74 share URLs). **Not yet
-signed or uploaded.** Build 10 was never uploaded, so this is the next code after the
-live build 9. To ship: build the bundle with the private upload key
-(`./android/build.sh :app:bundleRelease` with the four `getagrip.keystore`/`keyAlias`/
-`storePassword`/`keyPassword` properties, and `getagrip.frezAccessKey` present in
-`~/.gradle/gradle.properties`), check its certificate against the build 9 upload, tag
-`android-v1.0.1-11`, and create the next release on the same track with the notes in
-`releases/android-1.0.1-11/`. **Before submitting, update Play Console › Data safety**:
-the app now declares the `INTERNET` permission and shares the Dyno's serial number with
-Frez — see `ANDROID_RELEASE_PRIVACY.md` and `FREZ_DYNO.md` for the exact answers. The
-privacy policy at nuri.run already carries the 2026-09-18 text.
+2026-09-18 legal revision — was **submitted to the closed Alpha track at 100% rollout on
+18 September 2026, 21:05**, together with the updated Data safety questionnaire (Device
+or other IDs: collected and shared with a third party, optional, app functionality, not
+ephemeral). Play Console showed **Changes in review** behind its quick checks. The
+source is tag `android-v1.0.1-11` (commit `4c5b712`); the bundle's signing certificate
+matched the upload key registered in Play (SHA-256 `DA:6D:B7:CC:…:CF:24`). See
+[the release record](releases/notes/RELEASE_2026-09-18_ANDROID_11.md) for hashes. Build 10
+was never uploaded. Build 9 remains live for testers until this one is approved.
 
 ## Previous status — 13 September 2026
 
