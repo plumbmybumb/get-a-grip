@@ -2117,6 +2117,28 @@ final class TemplateStoreTests: XCTestCase {
         XCTAssertEqual(clean.sessionsPerDay, 4)
         XCTAssertNil(clean.validationIssue)
     }
+
+    // MARK: - Review prompt gate
+
+    @MainActor
+    func testHangSessionCountCountsOnlySessionsTheAppRan() throws {
+        let w = try makeWorld()
+        XCTAssertEqual(w.store.hangSessionCount(), 0)
+        XCTAssertEqual(w.store.sessionsSavedThisLaunch, 0)
+        XCTAssertNotNil(w.store.recordLoggedSession(.climbLimit))
+        XCTAssertNotNil(w.store.recordLoggedSession(.hangManual))
+        XCTAssertEqual(w.store.hangSessionCount(), 0,
+                       "climbs and hand-logged hangs are not sessions the app ran")
+        XCTAssertEqual(w.store.sessionsSavedThisLaunch, 0, "only the runner's saves move the counter")
+        for _ in 0..<5 {
+            XCTAssertNotNil(w.store.recordSession(plan: .init(), template: nil, reps: [],
+                                                  startedAt: .now, finishedAt: .now, rpe: nil))
+        }
+        XCTAssertEqual(w.store.hangSessionCount(), 5)
+        XCTAssertEqual(w.store.sessionsSavedThisLaunch, 5)
+        XCTAssertTrue(ReviewRequestPolicy.shouldAsk(hangSessionsLogged: w.store.hangSessionCount(),
+                                                    alreadyAsked: false))
+    }
 }
 
 // MARK: - The summary's edge line and signature grip

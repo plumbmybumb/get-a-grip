@@ -501,6 +501,7 @@ private struct SupportCard: View {
                 row(title: String(localized: "Report a bug"), systemImage: "ladybug") {
                     startBugReport()
                 }
+                rateRow
 
                 if showsAddress {
                     addressRow
@@ -538,6 +539,32 @@ private struct SupportCard: View {
     /// The bare-row shape every other row on a shared `MaterialCard` uses: 44 pt tall, an
     /// explicit content shape because it draws full-width, and `scales: false` so pressing
     /// it does not shrink its content off the card's own backdrop.
+    /// The persistent link Apple allows on a settings screen (StoreKit ›
+    /// `RequestReviewAction`), straight to the write-a-review page — and the one place
+    /// the ask can say WHY, since the system prompt's words are Apple's. See
+    /// `ReviewRequestPolicy` for the prompt itself.
+    private static let writeReviewURL = URL(string: "https://apps.apple.com/app/id6804236185?action=write-review")!
+
+    private var rateRow: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                openURL(Self.writeReviewURL)
+            } label: {
+                Label(String(localized: "Rate on the App Store"), systemImage: "star")
+                    .font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(Accent.graphite)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PressFeedbackButtonStyle(scales: false))
+            .accessibilityLabel(String(localized: "Rate on the App Store. Opens the App Store."))
+            Text("Get a Grip is free and open source. A rating helps other climbers find it.")
+                .font(.system(.caption))
+                .foregroundStyle(Ink.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private func row(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: systemImage)

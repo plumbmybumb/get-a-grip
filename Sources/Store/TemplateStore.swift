@@ -340,6 +340,21 @@ final class TemplateStore {
 
     /// `dayKey` is an Int column precisely so this is a cheap predicate rather than a
     /// Calendar pass over every log ever written.
+    /// How many sessions `recordSession` has saved since launch. Today compares it
+    /// across a runner cover to know that the cover just SAVED a session, as opposed to
+    /// discarding one — the moment the review prompt is allowed to consider itself.
+    private(set) var sessionsSavedThisLaunch = 0
+
+    /// Every runner-driven session ever saved — the engagement the review prompt gates
+    /// on (`ReviewRequestPolicy`). A count, not a fetch, and it runs once per finished
+    /// session; climbs and hand-logged hangs are not sessions the app ran.
+    func hangSessionCount() -> Int {
+        let hang = SessionKind.hang.rawValue
+        let descriptor = FetchDescriptor<WorkoutLog>(
+            predicate: #Predicate<WorkoutLog> { $0.kindRaw == hang })
+        return (try? context.fetchCount(descriptor)) ?? 0
+    }
+
     private func fetchLogs(from earliest: DayStamp) -> [WorkoutLog]? {
         let floor = earliest.raw
         let descriptor = FetchDescriptor<WorkoutLog>(
@@ -977,6 +992,7 @@ final class TemplateStore {
         for max in newMaxes { context.insert(max) }
         persistAndSync(maxesChanged: !newMaxes.isEmpty)
         guard saveError == nil else { return nil }
+        sessionsSavedThisLaunch += 1
         return log
     }
 

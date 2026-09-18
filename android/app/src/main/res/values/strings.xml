@@ -417,6 +417,7 @@
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you_so_you">Get a Grip connects and tares your gauge for you, so you can tap this before you chalk up. If the gauge is still asleep it waits.</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you">Get a Grip connects and tares your gauge for you.</string>
     <string name="s_get_a_grip_is_built_around_one_routine_you_actually_comm">Get a Grip is built around one routine you actually commit to.</string>
+    <string name="s_get_a_grip_is_free_and_open_source_a_rating_helps_other">Get a Grip is free and open source. A rating helps other climbers find it.</string>
     <string name="s_get_a_grip_is_open_source_under_the_mozilla_public_licen">Get a Grip is open source under the Mozilla Public License 2.0.</string>
     <string name="s_get_a_grip_runs_your_hangboard_sessions">Get a Grip runs your hangboard sessions</string>
     <string name="s_get_a_grip_works_with_force_gauges_from_it_is_not_made_b">Get a Grip works with force gauges from %s. It is not made by, affiliated with, or endorsed by any of them.</string>
@@ -699,6 +700,8 @@
     <string name="s_rhythm">RHYTHM</string>
     <string name="s_right_952532">RIGHT</string>
     <string name="s_right_hand_next_0ba39f">RIGHT HAND NEXT</string>
+    <string name="s_rate_on_the_app_store">Rate on the App Store</string>
+    <string name="s_rate_on_the_app_store_opens_the_app_store">Rate on the App Store. Opens the App Store.</string>
     <string name="s_recent_connection_and_signal_breadcrumbs_kept_on_this_de">Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit.</string>
     <string name="s_record_another_test">Record another test</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not.</string>

@@ -77,6 +77,12 @@ final class SettingsStore {
         didSet { store.set(frezIntroSeen, forKey: "frezIntroSeen") }
     }
 
+    /// The App Store rating prompt has been requested once on this device. Persisted, so
+    /// the ask never repeats here — see `ReviewRequestPolicy`.
+    var reviewRequested: Bool {
+        didSet { store.set(reviewRequested, forKey: "reviewRequested") }
+    }
+
     init(defaults: UserDefaults? = nil) {
         let s = defaults ?? AppGroup.defaults ?? .standard
         self.store = s
@@ -92,5 +98,6 @@ final class SettingsStore {
         lastStartedDayRaw = s.object(forKey: "lastStartedDayRaw") as? Int ?? 0
         draftStash = s.data(forKey: "draftStash")
         frezIntroSeen = s.bool(forKey: "frezIntroSeen")
+        reviewRequested = s.bool(forKey: "reviewRequested")
     }
 }

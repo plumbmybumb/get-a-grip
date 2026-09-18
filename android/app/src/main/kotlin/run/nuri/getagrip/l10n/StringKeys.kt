@@ -12,7 +12,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1181) {
+val STRING_KEYS: Map<String, Int> = buildMap(1184) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -523,6 +523,7 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Get a Grip connects and tares your gauge for you, so you can tap this before you chalk up. If the gauge is still asleep it waits."] = R.string.s_get_a_grip_connects_and_tares_your_gauge_for_you_so_you
     into["Get a Grip connects and tares your gauge for you."] = R.string.s_get_a_grip_connects_and_tares_your_gauge_for_you
     into["Get a Grip is built around one routine you actually commit to."] = R.string.s_get_a_grip_is_built_around_one_routine_you_actually_comm
+    into["Get a Grip is free and open source. A rating helps other climbers find it."] = R.string.s_get_a_grip_is_free_and_open_source_a_rating_helps_other
     into["Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice."] = R.string.a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose
     into["Get a Grip is open source under the Mozilla Public License 2.0."] = R.string.s_get_a_grip_is_open_source_under_the_mozilla_public_licen
     into["Get a Grip runs your hangboard sessions"] = R.string.s_get_a_grip_runs_your_hangboard_sessions
@@ -632,10 +633,10 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Make this the one Today opens on"] = R.string.s_make_this_the_one_today_opens_on
     into["Manage"] = R.string.s_manage
     into["Manage maxes"] = R.string.s_manage_maxes
-    into["Max"] = R.string.s_max_a95e85
 }
 
 private fun string_keysChunk4(into: MutableMap<String, Int>) {
+    into["Max"] = R.string.s_max_a95e85
     into["Max day"] = R.string.s_max_day
     into["Max on this grip"] = R.string.s_max_on_this_grip
     into["Max testing"] = R.string.s_max_testing
@@ -785,10 +786,10 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit."] = R.string.s_percentage_targets_use_the_max_saved_for_that_grip_and_h
     into["Percentage targets use your saved maxes. These may no longer reflect your current strength."] = R.string.s_percentage_targets_use_your_saved_maxes_these_may_no_lon
     into["Photos access is off for Get a Grip — Settings > Privacy > Photos."] = R.string.s_photos_access_is_off_for_get_a_grip_settings_privacy_pho
-    into["Pinch"] = R.string.s_pinch
 }
 
 private fun string_keysChunk5(into: MutableMap<String, Int>) {
+    into["Pinch"] = R.string.s_pinch
     into["PitchSix"] = R.string.s_pitchsix
     into["PitchSix Force Board"] = R.string.s_pitchsix_force_board
     into["Point your camera at a Get a Grip routine QR code."] = R.string.a_point_your_camera_at_a_get_a_grip_routine_qr_code
@@ -826,6 +827,8 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["RHYTHM"] = R.string.s_rhythm
     into["RIGHT"] = R.string.s_right_952532
     into["RIGHT HAND NEXT"] = R.string.s_right_hand_next_0ba39f
+    into["Rate on the App Store"] = R.string.s_rate_on_the_app_store
+    into["Rate on the App Store. Opens the App Store."] = R.string.s_rate_on_the_app_store_opens_the_app_store
     into["Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit."] = R.string.s_recent_connection_and_signal_breadcrumbs_kept_on_this_de
     into["Recent connection and signal details will be added to your email. You can review them before sending."] = R.string.a_recent_connection_and_signal_details_will_be_added_to_yo
     into["Record another test"] = R.string.s_record_another_test
@@ -936,12 +939,12 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Skip set"] = R.string.s_skip_set
     into["Skip the guide"] = R.string.s_skip_the_guide
     into["Solid"] = R.string.s_solid
-    into["Some fixed weight targets moved"] = R.string.s_some_fixed_weight_targets_moved
-    into["Some fixed weight targets were set by the sender. Review them for your own training."] = R.string.s_some_fixed_weight_targets_were_set_by_the_sender_review
-    into["Some kilogram targets were set by the sender. Review them for your own training."] = R.string.s_some_kilogram_targets_were_set_by_the_sender_review_them
 }
 
 private fun string_keysChunk6(into: MutableMap<String, Int>) {
+    into["Some fixed weight targets moved"] = R.string.s_some_fixed_weight_targets_moved
+    into["Some fixed weight targets were set by the sender. Review them for your own training."] = R.string.s_some_fixed_weight_targets_were_set_by_the_sender_review
+    into["Some kilogram targets were set by the sender. Review them for your own training."] = R.string.s_some_kilogram_targets_were_set_by_the_sender_review_them
     into["Some percentage targets have no saved max, so they will show no target."] = R.string.s_some_percentage_targets_have_no_saved_max_so_they_will_s
     into["Some sets carry kilogram targets typed by whoever shared this."] = R.string.s_some_sets_carry_kilogram_targets_typed_by_whoever_shared
     into["Source"] = R.string.s_source
@@ -1089,12 +1092,12 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["WHAT YOU'LL PULL"] = R.string.s_what_you_ll_pull
     into["WHEN"] = R.string.s_when
     into["Waiting for the gauge"] = R.string.s_waiting_for_the_gauge
-    into["Wake"] = R.string.s_wake
-    into["We keep our hardware margins low because we believe everyone should have access to their own data."] = R.string.s_we_keep_our_hardware_margins_low_because_we_believe_ever
-    into["Weight targets"] = R.string.s_weight_targets
 }
 
 private fun string_keysChunk7(into: MutableMap<String, Int>) {
+    into["Wake"] = R.string.s_wake
+    into["We keep our hardware margins low because we believe everyone should have access to their own data."] = R.string.s_we_keep_our_hardware_margins_low_because_we_believe_ever
+    into["Weight targets"] = R.string.s_weight_targets
     into["Weight targets updated"] = R.string.s_weight_targets_updated
     into["Weight units"] = R.string.s_weight_units
     into["Weighted hangs"] = R.string.s_weighted_hangs

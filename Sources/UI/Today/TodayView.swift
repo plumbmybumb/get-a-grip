@@ -2,6 +2,7 @@
 // Original contributions Copyright 2026 Nuri Bruner.
 
 import SwiftData
+import StoreKit
 import SwiftUI
 
 /// The ritual front door — the screen Nuri sees every single day, twice.
@@ -26,6 +27,9 @@ struct TodayView: View {
 
     @Environment(DeviceStore.self) private var device
     @Environment(TemplateStore.self) private var templates
+    @Environment(SettingsStore.self) private var settings
+    @Environment(\.requestReview) private var requestReview
+    @State private var sessionSavesSeen = 0
     @Environment(DayClock.self) private var clock
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -94,6 +98,24 @@ struct TodayView: View {
     /// every presentation's `onDismiss` — the same deferral idiom as
     /// `startPendingRoutine()`, and for the same reason: presenting in the runloop turn
     /// that dismissed something else is routinely dropped.
+    /// Once, on Today, after the fifth saved session has closed — see `ReviewRequestPolicy`.
+    /// Decided HERE, not in the summary: this is the settled screen the prompt lands on,
+    /// a beat after the cover is gone, never from a tap (it may show nothing), and the
+    /// summary stays free of a settings dependency it has no other use for. "The cover
+    /// just saved a session" is read off the store's save counter, so a discarded
+    /// session never counts.
+    private func askForReviewIfDue() {
+        guard templates.sessionsSavedThisLaunch > sessionSavesSeen else { return }
+        sessionSavesSeen = templates.sessionsSavedThisLaunch
+        guard ReviewRequestPolicy.shouldAsk(hangSessionsLogged: templates.hangSessionCount(),
+                                            alreadyAsked: settings.reviewRequested) else { return }
+        settings.reviewRequested = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1))
+            requestReview()
+        }
+    }
+
     private func drainImportInbox() {
         guard canPresentImport else { return }
         if let message = templates.claimPendingImportError() {
@@ -173,7 +195,7 @@ struct TodayView: View {
             }
             .navigationTransition(.zoom(sourceID: mode.zoomID, in: zoom))
         }
-        .fullScreenCover(item: $running, onDismiss: { drainImportInbox() }) { routine in
+        .fullScreenCover(item: $running, onDismiss: { drainImportInbox(); askForReviewIfDue() }) { routine in
             RunnerView(template: routine, timerOnly: runningTimerOnly)
                 .onAppear { templates.noteSessionStarted(routine) }
         }

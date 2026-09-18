@@ -168,3 +168,33 @@ draft's.
 - [ ] Android: the Compose builder has the same shape; port both changes.
 - [ ] Ask the tester to retry on the next TestFlight build, and, if any lag remains,
   to try Reduce Transparency, which separates blur cost from layout cost.
+
+## Ask for a rating once, after the fifth session — iOS first
+
+Status: implemented on iOS for 1.0.4, unreleased. Android to follow.
+
+What Apple allows, from the Human Interface Guidelines (Ratings and reviews), the
+StoreKit `RequestReviewAction` reference and App Store Review Guidelines 1.1.7 and
+3.2.2:
+
+- Only the system prompt. Custom rating UI is disallowed and the prompt's wording is
+  Apple's. A persistent link to the write-a-review page is allowed on a settings
+  screen.
+- Ask after demonstrated engagement, such as a completed task, never on first launch
+  or during onboarding, at a natural stopping point, and never in response to a tap,
+  because the prompt may not appear at all.
+- The system shows it at most three times per 365 days per device, not at all to
+  people who opted out, always in development builds and never in TestFlight.
+- No incentives, no gating of features on a rating, no manipulation.
+
+- [x] `ReviewRequestPolicy`: once per device, from the fifth saved runner session.
+  Today notices, from the store's save counter, that the runner cover it just closed
+  saved a session, checks the policy and calls `requestReview` a second later, on the
+  settled screen. Climbs and hand-logged hangs do not count; only sessions the app
+  ran. A discarded session never triggers it.
+- [x] Settings › Support: "Rate on the App Store" opens the write-review page directly,
+  under the line "Get a Grip is free and open source. A rating helps other climbers
+  find it." The open-source framing lives here because the system prompt cannot
+  carry it.
+- [ ] Android: the same policy over Google Play's in-app review API, which has its own
+  quota and forbids incentives in the same way.

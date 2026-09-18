@@ -416,6 +416,7 @@
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you_so_you">Get a Grip connecte et tare ton capteur à ta place, tu peux donc toucher ceci avant de te magnésier. Si le capteur dort encore, il attend.</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you">Get a Grip connecte et tare ton capteur à ta place.</string>
     <string name="s_get_a_grip_is_built_around_one_routine_you_actually_comm">Get a Grip est construit autour d\'une seule routine à laquelle tu t\'engages vraiment.</string>
+    <string name="s_get_a_grip_is_free_and_open_source_a_rating_helps_other">Get a Grip est gratuit et open source. Une note aide d\'autres grimpeurs à le trouver.</string>
     <string name="s_get_a_grip_is_open_source_under_the_mozilla_public_licen">Get a Grip est un logiciel libre sous licence Mozilla Public License 2.0.</string>
     <string name="s_get_a_grip_runs_your_hangboard_sessions">Get a Grip mène tes séances de poutre</string>
     <string name="s_get_a_grip_works_with_force_gauges_from_it_is_not_made_b">Get a Grip fonctionne avec les capteurs de force de %s. L\'app n\'est ni fabriquée, ni affiliée, ni approuvée par aucun d\'eux.</string>
@@ -696,6 +697,8 @@
     <string name="s_rhythm">RYTHME</string>
     <string name="s_right_952532">DROITE</string>
     <string name="s_right_hand_next_0ba39f">MAIN DROITE ENSUITE</string>
+    <string name="s_rate_on_the_app_store">Noter sur l\'App Store</string>
+    <string name="s_rate_on_the_app_store_opens_the_app_store">Noter sur l\'App Store. Ouvre l\'App Store.</string>
     <string name="s_recent_connection_and_signal_breadcrumbs_kept_on_this_de">Traces récentes de connexion et de signal, gardées sur cet appareil en mémoire seulement — elles sont perdues si l\'app est forcée à quitter.</string>
     <string name="s_record_another_test">Enregistrer un nouveau test</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Enregistre ce que tu peux tenir sur chaque prise, par main si elles diffèrent, et mesures-en un au capteur d\'ici. Les pourcentages en ont besoin ; les kilos non.</string>
