@@ -1,0 +1,4 @@
+New gauge: Frez Dyno. Choose it under Gauge; a one-time note from Frez appears first. Its calibration is fetched once per unit from Frez — the app's only network request. Untested on real hardware: please report what you see.
+• Start an alternating routine on the right hand: tap Swap under Hands in the routine builder.
+• WH-C06 set to pounds no longer reads 2.2× too heavy; Diagnostics now name the scale's unit.
+• Privacy policy and terms updated for the calibration lookup.

@@ -1,0 +1,4 @@
+Nouvelle balance : Frez Dyno. Choisissez-la sous Balance ; un mot de Frez s'affiche une fois. Son étalonnage est récupéré une fois par appareil auprès de Frez, la seule requête réseau de l'app. Non testé sur du matériel réel : dites-nous ce que vous voyez.
+• Routine alternée : commencez par la main droite avec Inverser, sous Mains dans l'éditeur.
+• Une WH-C06 réglée en livres ne lit plus 2,2× trop lourd ; Diagnostics nomme l'unité.
+• Confidentialité et conditions mises à jour.
