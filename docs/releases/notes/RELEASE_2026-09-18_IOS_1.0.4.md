@@ -60,3 +60,19 @@ Release tag `ios-v1.0.4-9` pins `5a0c043`; this record is a documentation-only c
 5. Privacy Policy URL is unchanged; the pages at nuri.run carry the 2026-09-18 text.
 6. Export compliance is unchanged (standard HTTPS, `ITSAppUsesNonExemptEncryption`
    false), and the CloudKit schema needs no deployment: no model change since 1.0.3.
+
+## App Store Connect state, 18 September 2026 (evening)
+
+- Build 9 uploaded through Xcode's signed-in account (`xcodebuild -exportArchive`
+  with `destination: upload`), processed, "Ready to Submit", visible to the internal
+  TestFlight group (one tester). The same archive was installed directly on the
+  developer's iPhone with `devicectl`.
+- Version 1.0.4 created and saved: What's New (English), promotional text, the
+  description naming the Frez Dyno, the v2 screenshot set in both the 6.9" and
+  6.5" slots in the playbook order, review notes for the Frez note and the rating
+  prompt, build 9 attached. The listing has no French localization, so the French
+  What's New in `releases/1.0.4/` is unused until one is added.
+- App Privacy: "Other Data Types" (App Functionality, not linked, no tracking)
+  entered up to the dialog's Publish button and left there, because publishing
+  changes the live product page at once and the developer had not asked for that.
+- Not submitted for review; the developer tests the build first.
