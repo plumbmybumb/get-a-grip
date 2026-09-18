@@ -71,10 +71,44 @@ unit's serial number (Device Information › Serial Number String, `FrezDyno-###
 5. Android only: confirm the MTU 85 request is granted and no truncated frames are
    logged.
 
-## Privacy and legal follow-ups (owner decisions)
+## Privacy and legal
 
-- The in-app legal agreement states that the Android app does not request Internet
-  access. The Dyno's calibration lookup needs the `INTERNET` permission, so the
-  agreement text needs a new revision and a re-accept on both platforms.
-- The lookup sends the Dyno's serial number to Frez's server. The privacy text should
-  say so, and the store privacy declarations should be reviewed.
+Done in this branch: the in-app agreement is revised to `2026-09-18` (the old revision
+is archived, both loaders point at the new file, and no re-accept is forced because
+the agreement no longer gates training). The privacy policy now states the Internet
+permission's single purpose, describes the lookup (what is sent, to whom, when, what
+is kept), names Frez among the providers, and the terms say a manufacturer's
+calibration service is outside the developer's control. The iOS privacy manifest
+declares one collected data type (Other Data Types, app functionality, not linked, no
+tracking). `docs/ANDROID_RELEASE_PRIVACY.md` carries the Android side.
+
+Still outside this repository: the published copies at nuri.run/getagrip/privacy and
+/terms (and their French pages) must be regenerated from
+`Legal/current/agreement-2026-09-18.json`, because the website's version has to be
+identical to the bundled one.
+
+## Store submissions
+
+The apps now make one network request that a third party answers, so both store
+privacy declarations change. Everything below is what to enter; none of it is
+submitted from this repository.
+
+**App Store Connect › App Privacy.** The app can no longer be declared as "Data Not
+Collected". Add one data type: **Other Data Types**, with the description "the serial
+number of a connected Frez Dyno force gauge, sent to the gauge's manufacturer to fetch
+its calibration". Purpose: **App Functionality**. Not linked to the user's identity.
+Not used for tracking. Nothing else changes: no accounts, no analytics, no advertising.
+Export compliance is unchanged (standard HTTPS is exempt). In the review notes, mention
+that the Frez note shown on first selection is a disclosure the hardware maker requires
+and contains no purchase link or button, and that reviewers can use demo mode since
+the Dyno needs hardware.
+
+**Google Play Console › Data safety.** Declare data **shared** (not collected by the
+developer): **Device or other IDs** — the serial number of a Frez Dyno — purpose
+**App functionality**, optional (only when the user selects that gauge), encrypted in
+transit, not ephemeral on the third party's side, deletion requests go to Frez. The
+`INTERNET` permission needs no permissions declaration. Everything else in the
+existing draft stands; see `ANDROID_RELEASE_PRIVACY.md`.
+
+**Both stores.** Point the privacy-policy field at the regenerated web pages after
+they carry the 2026-09-18 text.

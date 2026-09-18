@@ -1,7 +1,8 @@
 # Android privacy and release declarations
 
-Reviewed September 5, 2026 for `run.nuri.getagrip`. This is a release handoff,
-not a claim that Google has reviewed or approved the app. Re-audit when changing
+Reviewed September 5, 2026 for `run.nuri.getagrip`; updated September 18, 2026 for the
+Frez Dyno calibration lookup (the app's first and only network request). This is a
+release handoff, not a claim that Google has reviewed or approved the app. Re-audit when changing
 SDKs, permissions, backups, support handling or sharing.
 
 ## Published documents
@@ -24,7 +25,7 @@ is needed simply to open the documents. Source lives in the existing
 | --- | --- |
 | Training and preferences | Room database and DataStore; local routines, grips, results, timing, maximums and settings. No developer training backend or account. |
 | Backup | `res/xml/data_extraction_rules.xml` includes the database and DataStore for system cloud backup/device transfer. Provider and device settings control availability. Not live sync, not Android–iOS sync. Export cache is excluded. |
-| Network | The merged release manifest has no `INTERNET` permission. No advertising, analytics, automatic crash-report SDK, account SDK or billing SDK was found. |
+| Network | The merged release manifest holds `INTERNET` for exactly one request: when a Frez Dyno connects for the first time, `ble/FrezCalibration.kt` sends that unit's serial number to `https://api.frez.app/v1/dyno/coefficient` over HTTPS with the developer's Frez access key and stores the returned coefficient locally; the request is never repeated for that unit and no other feature opens a socket. No advertising, analytics, automatic crash-report SDK, account SDK or billing SDK was found. |
 | Gauges | Nearby-device permission; Bluetooth names/connection identifiers, readings, battery and link status. No location permission. |
 | Background session | `SessionForegroundService` uses `connectedDevice`, with an ongoing session notification. |
 | QR scan | Optional camera, on-device ZXing decoding. No camera-frame saving/uploading. |
@@ -45,14 +46,23 @@ and deletion. [Google User Data policy](https://support.google.com/googleplay/an
 
 ### Data safety
 
-Do not infer “No data collected” just from the missing Internet permission.
-In particular, users can send diagnostics to the developer through email.
+Do not infer “No data collected” from the near-absence of network use. Users can
+send diagnostics to the developer through email, and a Frez Dyno's serial number
+is sent to Frez (a third party) for calibration.
 Google distinguishes collection from sharing, excludes on-device-only processing,
 and has an exception for expected, user-initiated sharing. The declaration is
 package-wide, including other active versions. [Google's definitions and form](https://support.google.com/googleplay/android-developer/answer/10787469?hl=en).
 
 Conservative draft for review in the actual console:
 
+- Optional sharing with a third party: the **serial number of a Frez Dyno** goes to
+  Frez's calibration service the first time that unit connects (once per unit, over
+  HTTPS, not linked to the user, not processed ephemerally on Frez's side because
+  Frez registers the unit under the developer's account). Google's closest category
+  is **Device or other IDs**; purpose **App functionality**; only when the user
+  chooses that gauge. Google's exception for expected, user-initiated sharing may
+  apply — the in-app note and picker footnote disclose it — but the conservative
+  answer is to declare it.
 - Optional collection: **Email address**, **Emails**, and **Diagnostics** when a
   user sends a support report. Purpose: app functionality/support; also analytics
   in Google's broad sense when diagnosing performance and improving the app.

@@ -42,7 +42,7 @@ class LegalBundle(val json: JSONObject, val fingerprint: String) {
         @Synchronized
         fun load(context: Context): LegalBundle {
             cached?.let { return it }
-            val bytes = context.assets.open("agreement-2026-09-06-r2.json").use { it.readBytes() }
+            val bytes = context.assets.open("agreement-2026-09-18.json").use { it.readBytes() }
             val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
             return LegalBundle(JSONObject(bytes.toString(Charsets.UTF_8)), hash).also { cached = it }
         }
