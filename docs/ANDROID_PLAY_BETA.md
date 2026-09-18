@@ -12,7 +12,7 @@ per-hand edits, save receipts, the + button) — is built and verified in source
 signed or uploaded**. Build the bundle with the private upload key, check its certificate
 against the build 9 upload, tag `android-v1.0.1-10`, then create the next release on the
 same track with the notes in `releases/android-1.0.1-10/`. See
-[the 1.0.3 release record](RELEASE_2026-09-12_1.0.3.md) for hashes and the iOS side.
+[the 1.0.3 release record](releases/notes/RELEASE_2026-09-12_1.0.3.md) for hashes and the iOS side.
 
 ## Previous submission — 8 September 2026
 
@@ -29,7 +29,7 @@ This update repairs WH-C06 scan recovery, renews long-running scans before the
 observed Android slowdown, and adds search cancellation and clearer optional
 diagnostics. All 939 Android tests pass, and real WH-C06 hardware testing verified
 two consecutive four-minute renewals with sustained response. No change to
-permissions or supported devices. See [release verification](RELEASE_2026-09-08.md).
+permissions or supported devices. See [release verification](releases/notes/RELEASE_2026-09-08.md).
 
 ## Previous submission — 7 September 2026
 
@@ -43,7 +43,7 @@ Build 3 was verified available to testers before this submission and remains liv
 
 The update adds hand selection directly to max measurement and preserves results
 after failed saves. All 899 Android tests pass. No change to permissions or
-supported devices. See [release verification](RELEASE_2026-09-07.md).
+supported devices. See [release verification](releases/notes/RELEASE_2026-09-07.md).
 
 ## Previous submission — 6 September 2026
 
@@ -59,7 +59,7 @@ The source is commit `08ac463da23a9e344439d7b937c68f7638bee3d6`, tagged
 `android-v1.0.1-3`. The upload certificate matches the preceding official bundle.
 Permissions and supported devices are unchanged. The only Console warning is
 missing native debug symbols from dependencies; ReTrace mapping is attached.
-See [release verification](RELEASE_2026-09-06.md) for artifact hashes and checks.
+See [release verification](releases/notes/RELEASE_2026-09-06.md) for artifact hashes and checks.
 
 ## Initial submission record — 5 September 2026
 

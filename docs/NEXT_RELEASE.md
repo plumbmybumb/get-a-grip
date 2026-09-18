@@ -1,14 +1,14 @@
 # Next release fixes and features
 
 The work scoped in the [1.1.0 plan](RELEASE_1.1.0_PLAN.md) is being packaged as
-[iOS 1.0.3 (7) and Android 1.0.1 (9)](RELEASE_2026-09-12_1.0.3.md), following
+[iOS 1.0.3 (7) and Android 1.0.1 (9)](releases/notes/RELEASE_2026-09-12_1.0.3.md), following
 the developer’s final version choice. The completed items below document the
 preceding release.
 
 ## App-wide weight units — iOS and Android
 
 Status: implemented and submitted for iOS **1.0.2 (6)** and Android **1.0.1 (8)**.
-See [release verification and submission status](RELEASE_2026-09-08_UNITS_AND_BORDERS.md).
+See [release verification and submission status](releases/notes/RELEASE_2026-09-08_UNITS_AND_BORDERS.md).
 
 - [x] Add a persistent **Weight units: kg / lb** preference in Settings, keeping
   kilograms as the existing default. Switching should update the app immediately.
