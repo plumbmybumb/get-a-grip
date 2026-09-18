@@ -126,6 +126,7 @@ import run.nuri.getagrip.ui.components.cameraHandOffset
 import run.nuri.getagrip.ui.components.PalmGeometry
 import run.nuri.getagrip.ui.components.PalmHand
 import run.nuri.getagrip.ui.components.pressFeedback
+import run.nuri.getagrip.ui.gauge.calibrationNote
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.GripPalette
@@ -863,7 +864,13 @@ private fun NoSignalNotice(device: DeviceStore) {
         )
         Text(
             if (connected) {
-                tr("Connected, but no readings yet. Tap Wake to restart it.")
+                // A connected gauge with nothing to show is usually a stalled stream —
+                // unless it is a Dyno still waiting on its calibration, in which case Wake
+                // would not help and the honest line is the one the calibration status
+                // carries. `calibrationNote` is nil for every gauge that needs none, which
+                // is exactly the fallthrough this had before.
+                calibrationNote(device.calibrationStatus)
+                    ?: tr("Connected, but no readings yet. Tap Wake to restart it.")
             } else {
                 // **Names the gauge that is actually selected, and does not promise a pairing
                 // that does not exist.** A broadcast scale is never paired with — the app

@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import no.nordicsemi.android.ble.BleManager
 import no.nordicsemi.android.ble.observer.ConnectionObserver
 import run.nuri.getagrip.engine.ForceSample
+import run.nuri.getagrip.engine.FrezDynoCodec
 import run.nuri.getagrip.engine.GaugeFrameDecoder
 import run.nuri.getagrip.engine.GaugeGattProfile
 import run.nuri.getagrip.engine.GaugeKind
@@ -64,6 +65,10 @@ class GattGaugeClient(
     override val kind: GaugeKind,
     private val profile: GaugeGattProfile,
     private val clock: HostClock = SystemHostClock,
+    /// Answers the coefficient question for a gauge that `requiresRemoteCalibration`;
+    /// nil for every other kind, which never asks. See `FrezCalibration.kt` for the
+    /// rules that keep this the app's only non-platform network call.
+    private val calibration: GaugeCalibrationResolver? = null,
 ) : ProgressorClient {
 
     override var onEvent: ((ProgressorEvent) -> Unit)? = null
@@ -107,6 +112,18 @@ class GattGaugeClient(
         val firmwareRevisionUUID: UUID =
             UUID.fromString("00002A26-0000-1000-8000-00805F9B34FB")
 
+        /// Software Revision String, the other Device Information slot a version can live
+        /// in. Read only when a device has no Firmware Revision to offer — Frez publishes
+        /// the Dyno's firmware/API version here.
+        val softwareRevisionUUID: UUID =
+            UUID.fromString("00002A28-0000-1000-8000-00805F9B34FB")
+
+        /// Serial Number String. Wanted by exactly one kind of gauge, the one whose counts
+        /// need a per-device coefficient that the serial is the key to; never read
+        /// otherwise.
+        val serialNumberUUID: UUID =
+            UUID.fromString("00002A25-0000-1000-8000-00805F9B34FB")
+
         const val attemptLimit = 5
         const val scanDeadlineMillis = 15_000L
         const val connectTimeoutMillis = 8_000L
@@ -125,6 +142,16 @@ class GattGaugeClient(
         /// and the CTS500 sends checksummed frames — a 20-byte payload ceiling is the wrong
         /// bet on any of them, and asking costs one round trip per link.
         const val requestedMtu = 517
+
+        /// **A gauge whose maker names an MTU gets that one.** Frez asks for 85 and a v1
+        /// Dyno notification is 74 bytes; the blanket 517 above is the right ask for a
+        /// board whose framing nobody here has documentation for, and the wrong one to
+        /// send a device that published a number. Either way the peripheral answers with
+        /// what it supports and nothing depends on the result.
+        fun preferredMtu(kind: GaugeKind): Int = when (kind) {
+            GaugeKind.frezdyno -> FrezDynoCodec.preferredMTU
+            else -> requestedMtu
+        }
 
         /// **Service UUIDs that are evidence of a SERIAL MODULE, not of a device.** These
         /// are the stock 16-bit vendor services (HM-10/JDY `FFF0` and `FFE0`) and the two
@@ -159,6 +186,8 @@ class GattGaugeClient(
             // The reference accepts both, and the two model lines share this protocol.
             GaugeKind.cts500 -> listOf("CTS500", "CTS-300")
             GaugeKind.pb700bt -> listOf("NSD Workout")
+            // Frez's own rule: "a device whose advertised name starts with FrezDyno-".
+            GaugeKind.frezdyno -> listOf(FrezDynoCodec.advertisedNamePrefix)
             // Not driven by this client: the Progressor has its own, and the WH-C06 is
             // matched on manufacturer data by `BroadcastGaugeClient`.
             GaugeKind.progressor, GaugeKind.whc06 -> emptyList()
@@ -201,6 +230,10 @@ class GattGaugeClient(
 
     /// A paced start sequence in flight. See `beginStartSequence`.
     private var startSequenceJob: Job? = null
+
+    /// The lookup in flight for THIS link. Cancelled with the link: a coefficient that
+    /// arrives for a connection that has since gone must not mint a decoder for the next.
+    private var calibrationJob: Job? = null
 
     private var isScanning = false
 
@@ -748,6 +781,9 @@ class GattGaugeClient(
         // sequence that has already returned.
         startSequenceJob?.cancel()
         startSequenceJob = null
+        // A coefficient still in flight belongs to the link that asked for it.
+        calibrationJob?.cancel()
+        calibrationJob = null
         clearInFlightWrite()
         // Both die with the link, and for the same reason: a half-reassembled frame and a
         // captured zero are facts about one connection only.
@@ -856,8 +892,76 @@ class GattGaugeClient(
         // outstanding reads cannot cross-pair the way a version reply once parsed as
         // battery millivolts.
         bleManager.readStandardBatteryLevel()
-        bleManager.readFirmwareRevision()
+        bleManager.readVersionString()
+        beginCalibrationIfNeeded()
         drainWriteQueue()
+    }
+
+    // MARK: - Remote calibration
+
+    /// Frez's connection order, honoured exactly: subscribe, read the serial, fetch the
+    /// coefficient, and only then let counts become kilograms. The start payload may
+    /// already be queued — nothing gates the start, per the house rule — and until the
+    /// decoder exists the notifications it produces are dropped at `ingest`, which is the
+    /// fail-closed answer Frez asks for: no calibrated force without a coefficient.
+    private fun beginCalibrationIfNeeded() {
+        if (!capabilities.requiresRemoteCalibration) return
+        val bleManager = manager ?: return
+        if (!bleManager.hasSerialCharacteristic) {
+            reportCalibration(
+                GaugeCalibrationStatus.Failed(null, GaugeCalibrationFailure.MissingSerial),
+            )
+            return
+        }
+        reportCalibration(GaugeCalibrationStatus.WaitingForSerial)
+        val readGeneration = generation
+        // The serial is the one read whose FAILURE has to be reported: a calibrated gauge
+        // left waiting on it would sit at "connected" with no force and no explanation.
+        bleManager.readSerialNumber { serial ->
+            if (generation != readGeneration || !state.isConnected) return@readSerialNumber
+            resolveCalibration(serial)
+        }
+    }
+
+    /// The serial arrived (or failed to). One lookup per link, tied to the generation that
+    /// asked, so an answer for a connection that has since gone mints nothing.
+    private fun resolveCalibration(rawSerial: String?) {
+        val serial = rawSerial?.trim { it.isWhitespace() || it == '\u0000' } ?: ""
+        if (serial.isEmpty()) {
+            reportCalibration(
+                GaugeCalibrationStatus.Failed(null, GaugeCalibrationFailure.MissingSerial),
+            )
+            return
+        }
+        val resolver = calibration
+        if (resolver == null) {
+            reportCalibration(
+                GaugeCalibrationStatus.Failed(serial, GaugeCalibrationFailure.NoAccessKey),
+            )
+            return
+        }
+        reportCalibration(GaugeCalibrationStatus.Resolving(serial))
+        val resolveGeneration = generation
+        calibrationJob?.cancel()
+        calibrationJob = scope.launch(Dispatchers.Main.immediate) {
+            val answer = resolver.calibration(serial)
+            if (generation != resolveGeneration || !state.isConnected) return@launch
+            calibrationJob = null
+            when (answer) {
+                is GaugeCalibrationAnswer.Resolved -> {
+                    decoder = kind.makeCalibratedFrameDecoder(answer.calibration.coefficient)
+                    reportCalibration(
+                        GaugeCalibrationStatus.Ready(serial, answer.calibration),
+                    )
+                }
+                is GaugeCalibrationAnswer.Unavailable ->
+                    reportCalibration(GaugeCalibrationStatus.Failed(serial, answer.failure))
+            }
+        }
+    }
+
+    private fun reportCalibration(status: GaugeCalibrationStatus) {
+        onDiagnostic?.invoke(ProgressorClientDiagnostic.Calibration(status))
     }
 
     private fun handleDisconnect(disconnected: BluetoothDevice, reason: Int) {
@@ -948,6 +1052,8 @@ class GattGaugeClient(
         var tareCharacteristic: BluetoothGattCharacteristic? = null
         private var batteryCharacteristic: BluetoothGattCharacteristic? = null
         private var firmwareCharacteristic: BluetoothGattCharacteristic? = null
+        private var softwareRevisionCharacteristic: BluetoothGattCharacteristic? = null
+        private var serialCharacteristic: BluetoothGattCharacteristic? = null
         private var streamCharacteristics: List<BluetoothGattCharacteristic> = emptyList()
 
         var notifyingCount: Int = 0
@@ -1005,6 +1111,14 @@ class GattGaugeClient(
                     if (uuid == firmwareRevisionUUID && firmwareCharacteristic == null) {
                         firmwareCharacteristic = characteristic
                     }
+                    if (uuid == softwareRevisionUUID && softwareRevisionCharacteristic == null) {
+                        softwareRevisionCharacteristic = characteristic
+                    }
+                    if (capabilities.requiresRemoteCalibration && uuid == serialNumberUUID &&
+                        serialCharacteristic == null
+                    ) {
+                        serialCharacteristic = characteristic
+                    }
                 }
             }
 
@@ -1028,14 +1142,18 @@ class GattGaugeClient(
                 return false
             }
             streamCharacteristics = candidates
-            // The decoder is minted HERE, one per link, and dropped by `clearLinkState`.
-            decoder = kind.makeFrameDecoder()
+            // The decoder is minted HERE, one per link, and dropped by `clearLinkState` —
+            // except for a gauge whose counts need a coefficient. That one gets its decoder
+            // the moment the coefficient is in hand (`resolveCalibration`) and none before:
+            // a decoder without a slope could only invent numbers, and Frez's rule is that
+            // no calibrated force is shown until the lookup has succeeded.
+            decoder = if (capabilities.requiresRemoteCalibration) null else kind.makeFrameDecoder()
             return true
         }
 
         override fun initialize() {
             val notificationGeneration = activeGeneration
-            requestMtu(requestedMtu).enqueue()
+            requestMtu(preferredMtu(kind)).enqueue()
             notifyingCount = 0
             for (candidate in streamCharacteristics) {
                 setNotificationCallback(candidate).with { _, packet ->
@@ -1071,6 +1189,8 @@ class GattGaugeClient(
             tareCharacteristic = null
             batteryCharacteristic = null
             firmwareCharacteristic = null
+            softwareRevisionCharacteristic = null
+            serialCharacteristic = null
             streamCharacteristics = emptyList()
             notifyingCount = 0
         }
@@ -1145,14 +1265,33 @@ class GattGaugeClient(
             }.enqueue()
         }
 
-        fun readFirmwareRevision() {
-            val characteristic = firmwareCharacteristic ?: return
+        /// Firmware Revision, or Software Revision for a device that publishes its
+        /// version there instead. One read either way, nothing depends on it arriving, and
+        /// the event it produces is the same.
+        fun readVersionString() {
+            val characteristic = firmwareCharacteristic ?: softwareRevisionCharacteristic ?: return
             readCharacteristic(characteristic).with { _, packet ->
                 val bytes = packet.value ?: return@with
                 val text = String(bytes, Charsets.UTF_8).trim { it <= ' ' }
                 if (text.isEmpty()) return@with
                 onMain { onEvent?.invoke(ProgressorEvent.AppVersion(text)) }
             }.enqueue()
+        }
+
+        val hasSerialCharacteristic: Boolean get() = serialCharacteristic != null
+
+        /// The serial, or null for a read that failed or came back empty. **Answers
+        /// either way**: the caller is a gauge that can show no force until this lands, so
+        /// a read that silently never calls back is a screen stuck on "connected".
+        fun readSerialNumber(onAnswer: (String?) -> Unit) {
+            val characteristic = serialCharacteristic ?: return onAnswer(null)
+            readCharacteristic(characteristic)
+                .with { _, packet ->
+                    val text = packet.value?.let { String(it, Charsets.UTF_8) }
+                    onMain { onAnswer(text) }
+                }
+                .fail { _, _ -> onMain { onAnswer(null) } }
+                .enqueue()
         }
     }
 }

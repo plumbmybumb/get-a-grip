@@ -111,6 +111,7 @@ class MultiGaugeStoreTests {
         assertEquals("motherboard", GaugeKind.motherboard.rawValue)
         assertEquals("cts500", GaugeKind.cts500.rawValue)
         assertEquals("pb700bt", GaugeKind.pb700bt.rawValue)
+        assertEquals("frezdyno", GaugeKind.frezdyno.rawValue)
     }
 
     // MARK: - Persistence

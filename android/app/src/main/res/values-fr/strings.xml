@@ -41,6 +41,8 @@
     <string name="s_of_each_hand_s_max_kg">%1$s du max de chaque main · %2$s kg</string>
     <string name="s_of_your_max_on_this_grip">%s de ton max sur cette prise</string>
     <string name="s_rest_1bd51a">%s de repos</string>
+    <string name="s_sends_raw_sensor_counts_so_the_first_time_a_unit_connect">%s envoie des valeurs brutes de capteur : la première fois qu\'un exemplaire se connecte, l\'app demande une seule fois son étalonnage à son fabricant, par numéro de série. La réponse reste sur ce téléphone et n\'est plus jamais redemandée ; aucun autre capteur ne passe par un serveur.</string>
+    <string name="s_speaks_a_protocol_its_maker_published_but_no_unit_has_be">%s parle un protocole publié par son fabricant, mais aucun exemplaire n\'a encore été essayé avec cette app.</string>
     <string name="s_under_tension_cf82bb">%s sous tension</string>
     <string name="s_under_tension_per_side">%s sous tension par côté</string>
     <string name="s_x_6c2c70">%1$s · %2$s</string>
@@ -183,6 +185,7 @@
     <string name="s_a_max_is_the_hardest_you_can_pull_on_one_grip">Un max, c\'est le plus fort que tu peux tirer sur une prise.</string>
     <string name="s_a_max_records_your_hardest_measured_pull_on_a_grip">Un max correspond à votre traction mesurée la plus forte sur une prise.</string>
     <string name="s_a_max_testing_day_new_ceilings_on_the_gauge">Une journée de test de max — de nouveaux plafonds au capteur.</string>
+    <string name="s_a_note_from_frez">Un mot de Frez</string>
     <string name="s_a_number_you_entered_check_its_value_and_units_before_us">Une valeur saisie par vous. Vérifiez sa valeur et son unité avant de l’utiliser pour vos cibles.</string>
     <string name="s_a_number_you_set_yourself_measure_it_on_the_gauge_if_you">Un nombre que tu fixes toi-même. Mesure-le au capteur si tu préfères ne pas deviner.</string>
     <string name="s_a_pinch_always_includes_the_thumb_c3d051">Une pince inclut toujours le pouce</string>
@@ -332,6 +335,7 @@
     <string name="s_done_e9b450">Terminé</string>
     <string name="s_done_lld_times_today">Fait %d fois aujourd\'hui</string>
     <string name="s_done_today">Fait aujourd\'hui</string>
+    <string name="s_donghyun_kim">Donghyun Kim</string>
     <string name="s_down_across_lld_sessions">En baisse de %1$s %2$s sur %3$d séances.</string>
     <string name="s_down_kg_across_lld_sessions">En baisse de %1$s kg sur %2$d séances.</string>
     <string name="s_drag">À plat</string>
@@ -382,6 +386,16 @@
     <string name="s_following_the_routine_which_is_on_your">Selon la routine — %1$s, soit %2$s d\'après %3$s</string>
     <string name="s_for_both_hands">Pour les deux mains</string>
     <string name="s_for_the_hand_only">Uniquement pour la main %s</string>
+    <string name="s_frez">Frez</string>
+    <string name="s_frez_dyno">Frez Dyno</string>
+    <string name="s_frez_could_not_produce_a_calibration_for_this_dyno">Frez n\'a pas pu produire d\'étalonnage pour ce Dyno.</string>
+    <string name="s_frez_did_not_accept_this_app_s_access_key">Frez n\'a pas accepté la clé d\'accès de cette app.</string>
+    <string name="s_frez_has_no_calibration_on_file_for_this_dyno">Frez n\'a aucun étalonnage enregistré pour ce Dyno.</string>
+    <string name="s_frez_has_reached_the_number_of_dynos_this_app_may_regist">Frez a atteint le nombre de Dynos que cette app peut enregistrer.</string>
+    <string name="s_frez_is_busy_try_again_in_a_minute">Frez est occupé. Réessaie dans une minute.</string>
+    <string name="s_frez_is_reviewing_this_dyno_s_ownership_before_it_can_be">Frez vérifie la propriété de ce Dyno avant de pouvoir l\'enregistrer.</string>
+    <string name="s_frez_rejected_the_calibration_request">Frez a refusé la demande d\'étalonnage.</string>
+    <string name="s_frez_sent_an_answer_this_app_could_not_read">Frez a envoyé une réponse que cette app n\'a pas pu lire.</string>
     <string name="s_front_2">Avant 2</string>
     <string name="s_front_3">Avant 3</string>
     <string name="s_frosted">Givré</string>
@@ -427,6 +441,7 @@
     <string name="s_hard">Dur</string>
     <string name="s_hard_bouldering_or_projecting_a_maximal_pull_on_your_fin">Bloc dur ou travail de projet — une sollicitation maximale des doigts.</string>
     <string name="s_harder_than_your_max">Plus dur que ton max</string>
+    <string name="s_hello_i_m_donghyun_kim_founder_of_frez">Hello, I’m Donghyun Kim, founder of Frez.</string>
     <string name="s_hints_reset_open_a_routine_to_see_them">Conseils réinitialisés — ouvre une routine pour les voir</string>
     <string name="s_history">Historique</string>
     <string name="s_hold_3bd328">Tenue</string>
@@ -442,7 +457,9 @@
     <string name="s_how_long_the_session_was">Combien de temps a duré la séance</string>
     <string name="s_how_much_on_each_side">Combien de chaque côté</string>
     <string name="s_how_often_bd8848">Fréquence</string>
+    <string name="s_i_hope_frez_will_be_with_you_for_many_years_to_come">I hope Frez will be with you for many years to come.</string>
     <string name="s_idle">Au repos</string>
+    <string name="s_if_you_enjoy_using_frez_dyno_and_would_like_to_support_t">If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro.</string>
     <string name="s_in_your_routine_never_tested">Dans ta routine — jamais testée</string>
     <string name="s_include_gauge_diagnostics_4522a0">Inclure les diagnostics du capteur</string>
     <string name="s_include_gauge_diagnostics_9ac65b">Inclure les diagnostics du capteur ?</string>
@@ -493,6 +510,7 @@
     <string name="s_load_per_grip">Charge par prise</string>
     <string name="s_log_a_session">Enregistrer une séance</string>
     <string name="s_log_a_session_you_did_elsewhere_climbing_or_hangs_off_th">Enregistre une séance faite ailleurs — escalade, ou suspensions sans capteur</string>
+    <string name="s_looking_up_this_dyno_s_calibration">Recherche de l\'étalonnage de ce Dyno…</string>
     <string name="s_lower_bound">Borne basse</string>
     <string name="s_make_this_the_one_today_opens_on">En faire celle qu\'Aujourd\'hui ouvre</string>
     <string name="s_manage">Gérer</string>
@@ -820,6 +838,7 @@
     <string name="s_taxed">Éprouvé</string>
     <string name="s_tested">Testé %s</string>
     <string name="s_tested_your_maxes_c47639">Max testés</string>
+    <string name="s_thank_you">Thank you,</string>
     <string name="s_that_change_couldn_t_be_saved">Ce changement n\'a pas pu être enregistré — %s</string>
     <string name="s_that_change_couldn_t_be_saved_the_routine_is_still_here">Ce changement n\'a pas pu être enregistré — la routine est toujours là. Réessaie.</string>
     <string name="s_that_completes_no_reminders_and_a_full_day_on_your_calen">Ça complète %s — pas de rappels, et une journée pleine sur ton calendrier. Tu peux quand même faire une séance de poutre si tu veux.</string>
@@ -833,6 +852,7 @@
     <string name="s_the_big_word_is_the_hand_that_goes_on_the_edge_your_fing">Le grand mot est la main qui va sur la réglette. Tes doigts pendent sous la Dynamic Island, la prise se lit donc sans un mot.</string>
     <string name="s_the_break_between_sets_how_the_hands_split_the_work_and">La pause entre séries, la répartition du travail entre les mains, et si un repos attend que tu relâches. Tout le reste vit sur chaque série.</string>
     <string name="s_the_break_between_sets_how_your_hands_split_the_work_and">La pause entre séries, la répartition du travail entre tes mains, et si un repos attend que tu relâches. Tout le reste vit sur chaque série.</string>
+    <string name="s_the_calibration_lookup_needs_an_internet_connection_the">La recherche de l\'étalonnage a besoin d\'une connexion internet la première fois qu\'un Dyno est utilisé.</string>
     <string name="s_the_camera_scanner_isn_t_available_right_now_try_again_w">Le scanner est indisponible pour le moment. Réessaie quand l’appareil photo sera disponible, ou ouvre directement le lien de la routine.</string>
     <string name="s_the_clock">Le chrono</string>
     <string name="s_the_clock_only_runs_while_you_are_inside_the_target_rang">Le chrono ne tourne que tant que tu es dans la plage cible.</string>
@@ -853,7 +873,9 @@
     <string name="s_there_s_kg_on_the_gauge_zero_it">Il y a %s kg sur le capteur. Le mettre à zéro ?</string>
     <string name="s_these_are_workout_peaks_not_necessarily_maximum_efforts">Ces pics de séance ne sont pas forcément des efforts maximaux. Choisissez uniquement ceux à utiliser pour vos prochains objectifs en pourcentage.</string>
     <string name="s_these_were_typed_by_hand_so_they_never_move_on_their_own">Elles ont été saisies à la main, elles ne bougent donc jamais toutes seules. Recalcule-les avec le nouveau max, ou laisse-les.</string>
+    <string name="s_this_dyno_did_not_report_a_serial_number_so_its_calibrat">Ce Dyno n\'a pas indiqué de numéro de série, son étalonnage ne peut donc pas être recherché.</string>
     <string name="s_this_build_can_t_reach_its_shared_storage_so_routines_sa">Cette version n\'atteint pas son stockage partagé, les routines enregistrées avant peuvent donc ne pas apparaître ici.</string>
+    <string name="s_this_build_has_no_frez_access_key_so_the_dyno_s_calibrat">Cette version de l\'app n\'a pas de clé d\'accès Frez, l\'étalonnage du Dyno ne peut donc pas être récupéré.</string>
     <string name="s_this_code_contains_a_routine_with_no_pulls_in_it">Ce code contient une routine sans aucun tirage.</string>
     <string name="s_this_code_couldn_t_be_drawn">Ce code n\'a pas pu être dessiné.</string>
     <string name="s_this_device_has_no_bluetooth_radio">Cet appareil n\'a pas de radio Bluetooth.</string>
@@ -903,6 +925,7 @@
     <string name="s_when">QUAND</string>
     <string name="s_waiting_for_the_gauge">En attente du capteur</string>
     <string name="s_wake">Réveiller</string>
+    <string name="s_we_keep_our_hardware_margins_low_because_we_believe_ever">We keep our hardware margins low because we believe everyone should have access to their own data. Frez Pro helps us develop new features and provide reliable devices. In fact, Frez Dyno was made possible by our early Pro subscribers.</string>
     <string name="s_weight_targets">Cibles de poids</string>
     <string name="s_weight_targets_updated">Cibles de poids mises à jour</string>
     <string name="s_weight_units">Unité de poids</string>
@@ -989,6 +1012,7 @@
     <string name="s_now_c9bc84">maintenant</string>
     <string name="s_of_lld">sur %d</string>
     <string name="s_of_lld_today">sur %d aujourd\'hui</string>
+    <string name="s_official_protocol_untested_here">protocole officiel, non testé ici</string>
     <string name="s_peak_194d5b">pic à %1$s %2$s</string>
     <string name="s_peak_kilograms">pic à %s kilogrammes</string>
     <string name="s_peak_rfd_measurement">mesure du pic RFD</string>

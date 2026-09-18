@@ -33,6 +33,10 @@ sealed interface DiagnosticBreadcrumb {
     data object BackgroundDisconnectScheduled : DiagnosticBreadcrumb
     data object BackgroundDisconnectCancelled : DiagnosticBreadcrumb
 
+    /// A remotely calibrated gauge's progress from "connected" to "produces force". The
+    /// string is a fixed phase description — never the serial, per the rule above.
+    data class Calibration(val phase: String) : DiagnosticBreadcrumb
+
     val text: String
         get() = when (this) {
             is BroadcastScan -> "Bluetooth scan: $event"
@@ -50,6 +54,7 @@ sealed interface DiagnosticBreadcrumb {
                 "Backgrounded — holding the link, disconnect scheduled"
             BackgroundDisconnectCancelled ->
                 "Back in time — link kept, disconnect cancelled"
+            is Calibration -> "Calibration: " + phase
         }
 }
 

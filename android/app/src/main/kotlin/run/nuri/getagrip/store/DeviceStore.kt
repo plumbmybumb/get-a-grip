@@ -18,7 +18,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import run.nuri.getagrip.ble.BroadcastGaugeClient
+import run.nuri.getagrip.ble.FrezCoefficientResolver
 import run.nuri.getagrip.ble.GattGaugeClient
+import run.nuri.getagrip.ble.GaugeCalibrationFailure
+import run.nuri.getagrip.ble.GaugeCalibrationResolver
+import run.nuri.getagrip.ble.GaugeCalibrationStatus
 import run.nuri.getagrip.ble.HostClock
 import run.nuri.getagrip.ble.LiveProgressorClient
 import run.nuri.getagrip.ble.MockForceProfile
@@ -84,10 +88,20 @@ class AndroidGaugeClientFactory(
     override fun make(kind: GaugeKind): ProgressorClient =
         when (GaugeClientRouting.shape(kind)) {
             GaugeClientShape.gatt ->
-                GattGaugeClient(context, scope, kind, kind.gatt!!, clock)
+                GattGaugeClient(context, scope, kind, kind.gatt!!, clock, calibration(kind))
             GaugeClientShape.broadcast -> BroadcastGaugeClient(context, scope, clock)
             GaugeClientShape.progressor -> LiveProgressorClient(context, scope)
         }
+
+    /// The resolver exists only for a gauge that needs one. Every other kind gets null and
+    /// never constructs a byte of networking — see `FrezCalibration.kt`.
+    private fun calibration(kind: GaugeKind): GaugeCalibrationResolver? {
+        if (!kind.capabilities.requiresRemoteCalibration) return null
+        return FrezCoefficientResolver(
+            preferences = context.applicationContext
+                .getSharedPreferences(FrezCoefficientResolver.preferencesName, Context.MODE_PRIVATE),
+        )
+    }
 }
 
 /// **Asking for BLUETOOTH_SCAN / BLUETOOTH_CONNECT belongs to a Connect tap, never to
@@ -157,6 +171,12 @@ class DeviceStore(
         private set
 
     var batteryFraction: Double? by mutableStateOf(null)
+        private set
+
+    /// Where a remotely calibrated gauge (Frez Dyno) stands between "connected" and
+    /// "produces force". `NotRequired` for every other gauge. The screens read this to
+    /// say WHY a connected Dyno shows no force instead of showing a silent zero.
+    var calibrationStatus: GaugeCalibrationStatus by mutableStateOf(GaugeCalibrationStatus.NotRequired)
         private set
 
     var isStreaming: Boolean by mutableStateOf(false)
@@ -296,6 +316,13 @@ class DeviceStore(
     private var freshnessStartedAt: Double? = null
     private var lastSignalAt: Double? = null
     private val diagnosticRing = DiagnosticBreadcrumbRing()
+
+    private val traceCapacity: Int
+        get() = max(
+            minimumTraceCapacity,
+            (traceSeconds * gaugeCapabilities.nominalSampleRate).toInt(),
+        )
+
     private var client: ProgressorClient = client
 
     init {
@@ -630,6 +657,8 @@ class DeviceStore(
                 publishSignalFresh(false)
                 freshnessStartedAt = null
                 lastSignalAt = null
+                // A coefficient belongs to a link; the client re-resolves on the next one.
+                calibrationStatus = GaugeCalibrationStatus.NotRequired
             }
         }
         client.onDiagnostic = { diagnostic ->
@@ -644,6 +673,10 @@ class DeviceStore(
                     record(DiagnosticBreadcrumb.StreamStartDeferred(diagnostic.cause))
                 is ProgressorClientDiagnostic.StreamStartWritten ->
                     record(DiagnosticBreadcrumb.StreamStartWritten(diagnostic.cause))
+                is ProgressorClientDiagnostic.Calibration -> {
+                    calibrationStatus = diagnostic.status
+                    record(DiagnosticBreadcrumb.Calibration(calibrationPhase(diagnostic.status)))
+                }
             }
         }
         client.onEvent = { event -> handle(event) }
@@ -655,6 +688,7 @@ class DeviceStore(
         deviceName = null
         firmwareVersion = null
         batteryFraction = null
+        calibrationStatus = GaugeCalibrationStatus.NotRequired
         publishStreaming(false)
         publishSignalFresh(false)
         isReadingLive = false
@@ -864,9 +898,35 @@ class DeviceStore(
     }
 
     companion object {
-        /// ~6 seconds of history at 80 Hz — enough to see the shape of a pull without the
-        /// trace becoming an unreadable smear.
-        private const val traceCapacity = 480
+        /// ~6 seconds of history — enough to see the shape of a pull without the trace
+        /// becoming an unreadable smear. Sized from the gauge's own rate: 480 points was
+        /// exactly six seconds of the Progressor's 80 Hz, and at the Dyno's 250 Hz the same
+        /// buffer would hold under two seconds, so the graph would end mid-pull.
+        private const val traceSeconds: Double = 6.0
+        private const val minimumTraceCapacity = 480
+
+        /// Fixed English for the breadcrumb ring — a phase, never the serial the status
+        /// carries, because the ring travels in support mail.
+        private fun calibrationPhase(status: GaugeCalibrationStatus): String = when (status) {
+            GaugeCalibrationStatus.NotRequired -> "not required"
+            GaugeCalibrationStatus.WaitingForSerial -> "waiting for serial"
+            is GaugeCalibrationStatus.Resolving -> "looking up coefficient"
+            is GaugeCalibrationStatus.Ready ->
+                if (status.calibration.cached) "ready (cached)" else "ready (fetched)"
+            is GaugeCalibrationStatus.Failed -> when (status.failure) {
+                GaugeCalibrationFailure.MissingSerial -> "failed (no serial)"
+                GaugeCalibrationFailure.NoAccessKey -> "failed (no access key)"
+                GaugeCalibrationFailure.InvalidRequest -> "failed (400)"
+                GaugeCalibrationFailure.InvalidAccessKey -> "failed (401)"
+                GaugeCalibrationFailure.DeviceLimitReached -> "failed (403)"
+                GaugeCalibrationFailure.DeviceNotFound -> "failed (404)"
+                GaugeCalibrationFailure.OwnershipReview -> "failed (409)"
+                GaugeCalibrationFailure.CalibrationUnavailable -> "failed (422)"
+                GaugeCalibrationFailure.RateLimited -> "failed (429)"
+                GaugeCalibrationFailure.BadResponse -> "failed (bad response)"
+                is GaugeCalibrationFailure.Network -> "failed (network)"
+            }
+        }
 
         /// The twin of iOS's `-mockDevice` launch argument, which `./build.sh run` passes
         /// because a Simulator build can never reach real hardware. Here it is

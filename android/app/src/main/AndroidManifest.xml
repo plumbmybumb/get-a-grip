@@ -47,6 +47,15 @@
          a save does, so there is one plan and one place that writes it. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- **The Frez Dyno's one-off calibration lookup, and nothing else.** That gauge
+         streams raw sensor counts, so the first time a unit connects the app asks Frez's
+         coefficient API for that unit's slope, by serial number, once — the answer is
+         cached on the device and never asked for again. It is the only request either app
+         makes to a server that is not the platform's own; no training data, no identifier
+         of the person, and no other feature in the app opens a socket. A build with no
+         Frez access key never makes it at all. See `ble/FrezCalibration.kt`. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Requested only when scanning. Frames stay on-device and are never saved. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />

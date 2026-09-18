@@ -46,6 +46,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -60,6 +61,7 @@ import run.nuri.getagrip.ble.ProgressorConnectionState
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
 import run.nuri.getagrip.engine.Fmt
+import run.nuri.getagrip.ble.GaugeCalibrationStatus
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.RunnerPhase
 import run.nuri.getagrip.runner.KeepScreenOn
@@ -159,6 +161,21 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
         Spacer(Modifier.weight(1f))
 
         if (device.state.isConnected) {
+            // A remotely calibrated gauge can be connected and still have no force to
+            // show. Frez's rule is to say why rather than display a guess, and this is the
+            // one line that does so — only for the gauge that has a why.
+            calibrationNote(device.calibrationStatus)?.let { note ->
+                Text(
+                    note,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (device.calibrationStatus.isReady) palette.inkTertiary else palette.armed,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .widthIn(max = Metrics.maxContentWidth)
+                        .fillMaxWidth()
+                        .testTag("gauge.calibration"),
+                )
+            }
             Row(
                 Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -486,6 +503,15 @@ private fun Readout(title: String, value: String, unit: String, modifier: Modifi
             }
         }
     }
+}
+
+/// Nil for every gauge that reports kilograms itself, and for a calibrated one once its
+/// coefficient is in hand — the readout is the answer then.
+internal fun calibrationNote(status: GaugeCalibrationStatus): String? = when (status) {
+    GaugeCalibrationStatus.NotRequired, is GaugeCalibrationStatus.Ready -> null
+    GaugeCalibrationStatus.WaitingForSerial, is GaugeCalibrationStatus.Resolving ->
+        L10n.tr("Looking up this Dyno's calibration…")
+    is GaugeCalibrationStatus.Failed -> status.failure.label
 }
 
 /// **A connected-but-silent gauge must SAY so.** "0.0 kg" on a live screen reads as a
