@@ -31,7 +31,14 @@ import run.nuri.getagrip.ui.theme.readablePageWidth
 
 /// The note Frez asks every app on its Dyno API to show ONCE, the first time someone
 /// picks the Dyno. A letter, so it reads as one: the words are Donghyun Kim's, verbatim,
-/// and stay in English in every locale — only the title and the button are ours.
+/// and stay in English in every locale — only the title, the footnote and the button
+/// are ours.
+///
+/// It is set the way its author laid it out (Donghyun Kim, 2026-09-18, asking for "a few
+/// line breaks to improve readability"): every line he wrote is its own paragraph with a
+/// visible gap after it — a break that only shows when the line before happens to wrap is
+/// no break at all — and the salutation carries the card as a heading with the signature
+/// closing it, so a glance sees a letter, not a wall of terms.
 ///
 /// Next is the only way out. Swiping or backing out would leave the selection half-made,
 /// and the note is the maker's one ask for lending its calibration service; after Next the
@@ -45,17 +52,20 @@ import run.nuri.getagrip.ui.theme.readablePageWidth
 @Composable
 fun FrezIntroSheet(onNext: () -> Unit) {
     val palette = LocalGripPalette.current
+    val body = MaterialTheme.typography.bodyLarge
 
-    // Verbatim, in every locale: the catalog carries these four paragraphs with their
-    // English as the French, which is the maker's ask and not an untranslated string.
+    // Verbatim, in every locale: the catalog carries the letter's lines with their English
+    // as the French, which is the maker's ask and not an untranslated string.
+    val greeting = tr("Hello,")
+    val introduction = tr("I’m Donghyun Kim, founder of Frez.")
+    // One paragraph per line he wrote.
     val paragraphs = listOf(
-        tr("Hello, I’m Donghyun Kim, founder of Frez."),
         tr(
             "We keep our hardware margins low because we believe everyone should have " +
-                "access to their own data. Frez Pro helps us develop new features and " +
-                "provide reliable devices. In fact, Frez Dyno was made possible by our " +
-                "early Pro subscribers.",
+                "access to their own data.",
         ),
+        tr("Frez Pro helps us develop new features and provide reliable devices."),
+        tr("In fact, Frez Dyno was made possible by our early Pro subscribers."),
         tr(
             "If you enjoy using Frez Dyno and would like to support the future of Frez, " +
                 "please consider trying Frez Pro.",
@@ -107,30 +117,44 @@ fun FrezIntroSheet(onNext: () -> Unit) {
                             .fillMaxWidth(),
                     ) {
                         Column(
-                            Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                            Modifier.padding(horizontal = 16.dp, vertical = 22.dp),
+                            verticalArrangement = Arrangement.spacedBy(18.dp),
                         ) {
-                            for (paragraph in paragraphs) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(
-                                    paragraph,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    greeting,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = palette.inkPrimary,
                                 )
+                                Text(introduction, style = body, color = palette.inkPrimary)
                             }
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    tr("Thank you,"),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = palette.inkPrimary,
-                                )
+                            for (paragraph in paragraphs) {
+                                Text(paragraph, style = body, color = palette.inkPrimary)
+                            }
+                            Column(
+                                Modifier.padding(top = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(tr("Thank you,"), style = body, color = palette.inkPrimary)
                                 Text(
                                     tr("Donghyun Kim"),
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = body,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = palette.inkPrimary,
                                 )
                             }
                         }
                     }
+                    Text(
+                        tr("Shown once, the first time you pick the Dyno."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.inkTertiary,
+                        modifier = Modifier
+                            .widthIn(max = Metrics.maxContentWidth)
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, start = 4.dp, end = 4.dp),
+                    )
                 }
                 PrimaryButton(
                     tr("Next"),

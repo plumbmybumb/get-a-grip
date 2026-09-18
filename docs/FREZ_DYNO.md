@@ -26,7 +26,7 @@ unit's serial number (Device Information › Serial Number String, `FrezDyno-###
 | Serial read, coefficient gate, decoder minting | `Sources/BLE/GattGaugeClient.swift` | `android/app/…/ble/GattGaugeClient.kt` |
 | Coefficient API client, cache, failure vocabulary | `Sources/BLE/FrezCalibration.swift` | `android/app/…/ble/FrezCalibration.kt` |
 | Calibration status for the screens | `DeviceStore.calibrationStatus` | `DeviceStore.calibrationStatus` |
-| The maker's note, shown once | `Sources/UI/FrezIntroSheet.swift` | the gauge picker in `SettingsScreen.kt` |
+| The maker's note, shown once | `Sources/UI/FrezIntroSheet.swift` | `android/app/…/ui/settings/FrezIntroSheet.kt` |
 | Cross-platform contract | `Fixtures/codec/frezdyno.json` | same file, asserted by `CodecFixtureTests.kt` |
 
 ## Rules that are not obvious from the code
@@ -55,9 +55,9 @@ unit's serial number (Device Information › Serial Number String, `FrezDyno-###
   a shipped binary can be extracted; it is a usage credential with device and rate
   limits, not a secret that protects anyone's data.
 - **The maker's note is shown once.** The first selection of the Dyno in the gauge
-  picker presents Donghyun Kim's note, verbatim and in English in every locale, with
-  Next as the only way through; `frezIntroSeen` is then persisted. No other gauge
-  shows it.
+  picker presents Donghyun Kim's note, verbatim and in English in every locale, one
+  paragraph per line as he laid it out (his review, 2026-09-18), with Next as the only
+  way through; `frezIntroSeen` is then persisted. No other gauge shows it.
 
 ## Hardware checks still owed
 
