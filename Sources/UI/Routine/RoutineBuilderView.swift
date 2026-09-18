@@ -175,7 +175,8 @@ private struct BuilderDocument: View {
                         setsBlock(proxy)
                         totalsBlock(proxy)
                         everyDayBlock(proxy)
-                        FineTuningSection(draft: $draft)
+                        FineTuningSection(access: access, defaults: draft.plan.routineLevel)
+                            .equatable()
                         finishBlock
                     }
                     .padding(.horizontal, Metrics.hPadding)
@@ -324,7 +325,10 @@ private struct BuilderDocument: View {
     private func rhythmBlock(_ proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             coachCard(2, proxy)
-            RhythmSection(draft: $draft)
+            RhythmSection(access: access,
+                          defaults: draft.plan.routineLevel,
+                          firstSetReps: draft.plan.executable.sets.first?.repsPerSide ?? 6)
+                .equatable()
                 .tourAnchor(.builderRhythm)
         }
         .id(BuilderAnchor.rhythm)
@@ -332,27 +336,35 @@ private struct BuilderDocument: View {
 
     private func setsBlock(_ proxy: ScrollViewProxy) -> some View {
         let percentBandsVary = Set(draft.plan.executable.sets.map(\.targetPercentBand)).count > 1
+        // Once per body, not once per row: every row compares itself on this.
+        let defaults = draft.plan.routineLevel
+        let last = draft.plan.sets.count - 1
         return VStack(alignment: .leading, spacing: 10) {
             coachCard(3, proxy)
             // A plain row, never a `Section` header: plain-style headers PIN, and
             // content then scrolls illegibly behind a clear background.
             CapsLabel(String(localized: "SETS"))
             ForEach(Array(draft.plan.sets.enumerated()), id: \.element.id) { index, set in
-                // `$draft.plan`, NOT `$draft.plan.sets[index]` — a subscript binding is
-                // the one input SwiftUI can never prove unchanged, and it was costing a
-                // full rebuild of every row on every keystroke typed anywhere on this
-                // screen. See `SetRowView.plan`.
-                SetRowView(plan: $draft.plan,
-                           setID: set.id,
+                // VALUES in, one binding to write through, and `.equatable()` so a row
+                // re-runs only when its own numbers change — `SetRowView` has the
+                // measurement. The actions are keyed on the set's ID, never on `index`:
+                // a row whose neighbour was removed keeps its old closures (nothing IT
+                // draws changed), and an index captured in them would point one row off.
+                SetRowView(set: set,
+                           defaults: defaults,
                            isExpanded: expanded == set.id,
+                           canMoveUp: index > 0,
+                           canMoveDown: index < last,
                            maxes: templates.maxTable,
                            percentBandsVary: percentBandsVary,
+                           live: setAccess(for: set),
                            onTap: { toggle(set.id) },
                            onEditGrip: { editingGrip = set.id },
-                           onMoveUp: { move(index, by: -1) },
-                           onMoveDown: { move(index, by: 1) },
-                           onDuplicate: { duplicate(index) },
-                           onRemove: { remove(at: index) })
+                           onMoveUp: { move(set.id, by: -1) },
+                           onMoveDown: { move(set.id, by: 1) },
+                           onDuplicate: { duplicate(set.id) },
+                           onRemove: { remove(set.id) })
+                    .equatable()
                     // The context menu (with its compact preview) lives on the row's
                     // HEADER inside `SetRowView` — chevrons in the expanded row still
                     // cover reordering, so no drag gesture is load-bearing.
@@ -408,7 +420,8 @@ private struct BuilderDocument: View {
     private func everyDayBlock(_ proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             coachCard(5, proxy)
-            EveryDaySection(draft: $draft)
+            EveryDaySection(access: access, schedule: draft.schedule)
+                .equatable()
         }
         .id(BuilderAnchor.everyDay)
     }
@@ -631,8 +644,33 @@ private struct BuilderDocument: View {
         }
     }
 
-    private func duplicate(_ index: Int) {
-        guard draft.plan.sets.indices.contains(index) else { return }
+    /// Resolved at the moment of the tap, never captured in a row's closure — a row
+    /// keeps its closures across its neighbours' removals. See `setsBlock`.
+    private func index(of id: UUID) -> Int? {
+        draft.plan.sets.firstIndex { $0.id == id }
+    }
+
+    /// The children's write path — a closure over the document's own state. `DraftAccess`
+    /// says why this is not a binding, and why the children never read through it.
+    private var access: DraftAccess {
+        DraftAccess(mutate: { change in
+            var copy = draft
+            change(&copy)
+            draft = copy
+        })
+    }
+
+    /// A row's write path: writes the set back by id, seeded with the value the row
+    /// draws so its reads never touch the draft.
+    private func setAccess(for set: SetPlan) -> SetAccess {
+        SetAccess(current: set) { updated in
+            guard let index = index(of: set.id) else { return }
+            draft.plan.sets[index] = updated
+        }
+    }
+
+    private func duplicate(_ id: UUID) {
+        guard let index = index(of: id) else { return }
         var copy = draft.plan.sets[index]
         copy.id = UUID()
         withAnimation(Motion.state(reduceMotion)) {
@@ -641,10 +679,10 @@ private struct BuilderDocument: View {
         }
     }
 
-    private func move(_ index: Int, by offset: Int) {
+    private func move(_ id: UUID, by offset: Int) {
+        guard let index = index(of: id) else { return }
         let target = index + offset
-        guard draft.plan.sets.indices.contains(index),
-              draft.plan.sets.indices.contains(target) else { return }
+        guard draft.plan.sets.indices.contains(target) else { return }
         withAnimation(Motion.state(reduceMotion)) {
             draft.plan.sets.swapAt(index, target)
         }
@@ -652,8 +690,8 @@ private struct BuilderDocument: View {
 
     /// Removal holds the `SetPlan` WITH ITS ORIGINAL id and index: Undo has to put the
     /// same row back where it was, not an equal-looking new one two places down.
-    private func remove(at index: Int) {
-        guard draft.plan.sets.indices.contains(index) else { return }
+    private func remove(_ id: UUID) {
+        guard let index = index(of: id) else { return }
         let set = draft.plan.sets[index]
         withAnimation(Motion.state(reduceMotion)) {
             draft.plan.sets.remove(at: index)

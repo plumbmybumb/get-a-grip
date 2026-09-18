@@ -77,6 +77,9 @@ struct MaterialCard<Content: View>: View {
     /// Overridable only where a screen has to fit — see `ConsistencyCard`. Everything
     /// else keeps 16 on all four sides.
     var verticalPadding: CGFloat = 16
+    /// `.flat` where many cards share one scrolling screen and get animated while
+    /// someone is editing — the builder. `CardSurface` has the measured reason.
+    var surface: CardSurface = .material
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -84,7 +87,7 @@ struct MaterialCard<Content: View>: View {
             .padding(.horizontal, 16)
             .padding(.vertical, verticalPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .cardSurface(surface, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
     }
 }
 

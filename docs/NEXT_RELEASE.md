@@ -128,3 +128,43 @@ Status: implemented on the Frez Dyno branch, unreleased.
 - [x] Cross-engine fixtures: the blob, sequence and share fixtures carry the field,
   and a right-first runner trace (`hands-alternate-right-first`) is recorded by the
   Kotlin engine and replayed by the Swift oracle.
+
+## Builder lag while editing during an animation — iOS first
+
+Status: implemented on iOS, unreleased. Android to follow.
+
+A tester on an iPhone 13 mini reported the UI "lagging a bit" whenever they were
+editing something while an animation played. Counted on the pinned simulator with
+`_printChanges()` in the builder, editing the seeded six-set routine:
+
+| Edit | Views re-evaluated before | after |
+| --- | --- | --- |
+| One keystroke in the routine name | 15 | 3 |
+| One detent of the set-break dial | 14 | 7 |
+| One frame of a target-band drag (the trimmer writes every frame) | 25 | 14 |
+| Expanding a set | 28, all six rows | 12, that row only |
+
+What remains per edit is the document body (it owns the draft), the child whose value
+changed, and that child's own controls. A keystroke also re-runs each value row on
+screen once, through its focus state, which is the keyboard's doing rather than the
+draft's.
+
+- [x] **Rows and sections compare themselves on values.** Every child of the builder
+  used to take the whole draft or plan as a binding, so any edit re-ran all of them.
+  `SetRowView`, `RhythmSection`, `FineTuningSection` and `EveryDaySection` now take
+  one binding to write through and values for everything they draw
+  (`SessionPlan.routineLevel`, `RoutineDraft.schedule` — `BuilderInputs.swift`), are
+  `Equatable` on those values and are wrapped in `.equatable()`. The set actions are
+  keyed on the set's id rather than a captured index, because a row whose neighbour
+  was removed keeps its old closures.
+- [x] **The builder's cards are flat fills, not materials.** Nine `.regularMaterial`
+  cards sat on one scrolling screen over a static, low-frequency background, each a
+  live blur re-rendered every frame it moved or resized. `CardSurface.flat` is a
+  translucent fill fitted from screenshot pixels to the material's rendered colour
+  in both schemes (`CardFill.swift`), opaque under Reduce Transparency. Real glass
+  stays on chrome that content scrolls under. Verified by sampling the same six
+  patches of the edit screen before and after in each scheme: every card patch is
+  within 1.3 RGB units of the material, and the margins are unchanged.
+- [ ] Android: the Compose builder has the same shape; port both changes.
+- [ ] Ask the tester to retry on the next TestFlight build, and, if any lag remains,
+  to try Reduce Transparency, which separates blur cost from layout cost.

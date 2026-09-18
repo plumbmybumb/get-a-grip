@@ -8,36 +8,44 @@ import SwiftUI
 /// The accordion is not only a readability device: at most one row is open at a time
 /// (the builder owns that state), which is what guarantees only ONE dense chip cluster
 /// exists on screen at any moment.
-struct SetRowView: View {
+///
+/// **It compares itself on VALUES, and writes through closures.** Every edit
+/// anywhere in the builder re-evaluates the document (it owns the draft), and each row
+/// used to take the whole plan as its input — so a keystroke in the name, or one frame
+/// of a band drag in another set, re-ran all six rows: 15 bodies per keystroke and 25
+/// per drag frame, counted with `_printChanges()` on the pinned sim (2026-09-18), which
+/// on a tester's iPhone 13 mini was the stutter they reported. Now `set` and `defaults`
+/// arrive as values, `==` compares only those (and the flags), the builder wraps the
+/// row in `.equatable()`, and the write path is `SetAccess` — closures, because a row
+/// holding ANY `Binding` is re-run whenever that binding's value changes, `==` or no
+/// `==` (see `DraftAccess`). So a row re-runs when ITS numbers change and at no other
+/// time. History, for the record: this took a subscript binding first
+/// (`$draft.plan.sets[index]`, rebuilt on every keypress into any field), then the
+/// whole-plan binding (2026-08-18), which fixed the keypresses that did not change the
+/// plan and left every edit that did.
+struct SetRowView: View, Equatable {
     @Environment(\.weightUnit) private var weightUnit
-    /// **The WHOLE plan, as one keypath-shaped binding — never `$plan.sets[index]`.**
-    ///
-    /// The row reads it for every resolved number (the inherited hold, the ×2, this
-    /// row's clock) and writes its own set back through it, which is why one binding
-    /// replaced the pair this used to take.
-    ///
-    /// The shape is load-bearing, not a tidy-up. Measured on the pinned sim
-    /// (2026-08-18): a single keypress into any number field in the builder costs THREE
-    /// complete update passes over the presented subtree, and `_printChanges()` named
-    /// `SetRowView: _set changed` in every one of the eighteen row bodies they cost —
-    /// on a routine where nothing about any set had moved. A binding derived through a
-    /// SUBSCRIPT (`$draft.plan.sets[index]`) is rebuilt from scratch each time it is
-    /// formed, so SwiftUI can never prove it unchanged; a plain keypath projection
-    /// (`$draft.plan`) can be, and was — the probe that established this passed `$draft`
-    /// and `$draft.plan` alongside the subscript binding and only the subscript was ever
-    /// reported as changed. All six callbacks compared equal throughout, so the closures
-    /// were never the problem the house rule would have predicted.
-    @Binding var plan: SessionPlan
-    /// Which set this row draws — an ID, never an index, so a reorder cannot point a row
-    /// at its neighbour.
-    let setID: UUID
-    var isExpanded: Bool
+    /// This row's set, as a value. The builder's `ForEach` keys the row on `set.id`, so
+    /// a reorder cannot point a row at its neighbour.
+    let set: SetPlan
+    /// `plan.routineLevel` — the plan-level numbers this set inherits (hold, rest, hands,
+    /// lead-in, the routine's band), drawn from here and compared on `setRowKey`. See
+    /// `BuilderInputs`.
+    let defaults: SessionPlan
+    let isExpanded: Bool
+    let canMoveUp: Bool
+    let canMoveDown: Bool
     /// Every max on file, by grip and hand. Passed in as a value so the row stays
     /// previewable and never touches the store.
-    var maxes: MaxTable
+    let maxes: MaxTable
     /// Folded once by the builder that owns the whole plan. Computing this in every row
     /// made both the visible and spoken summaries scan every set again.
-    var percentBandsVary: Bool
+    let percentBandsVary: Bool
+
+    /// The write path, and nothing else: writes the set back by id, and reads only what
+    /// this row was drawn with plus what it has written since — never the draft. Nothing
+    /// is drawn from it, and `==` does not look at it. See `DraftAccess`.
+    let live: SetAccess
 
     var onTap: () -> Void
     /// Asks the BUILDER to open the island panel for this set's grip.
@@ -46,6 +54,18 @@ struct SetRowView: View {
     var onMoveDown: () -> Void
     var onDuplicate: () -> Void
     var onRemove: () -> Void
+
+    /// Everything the row draws, and nothing it only writes — `SessionPlan.setRowKey`
+    /// lists the plan-level fields.
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        a.set == b.set
+            && a.isExpanded == b.isExpanded
+            && a.canMoveUp == b.canMoveUp
+            && a.canMoveDown == b.canMoveDown
+            && a.percentBandsVary == b.percentBandsVary
+            && a.maxes == b.maxes
+            && a.defaults.setRowKey == b.defaults.setRowKey
+    }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -74,7 +94,7 @@ struct SetRowView: View {
                     Button("Duplicate", systemImage: "plus.square.on.square", action: onDuplicate)
                     Button("Remove", systemImage: "trash", role: .destructive, action: onRemove)
                 } preview: {
-                    SetRowPreview(set: set, plan: plan)
+                    SetRowPreview(set: set, plan: defaults)
                 }
 
             if isExpanded {
@@ -84,30 +104,19 @@ struct SetRowView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial,
-                    in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        // Flat, not material: the row is animated open and shut with five siblings
+        // under it, and a blur per row per frame is what a 13 mini could not afford.
+        // See `CardSurface`.
+        .cardSurface(.flat,
+                     in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .animation(Motion.state(reduceMotion),
                    value: isExpanded)
     }
 
     // MARK: - This row's set
-    //
-    // Derived rather than stored, so the only binding the row holds is the plan's.
 
-    /// This row's set. A row whose set has just been removed keeps drawing an empty one
-    /// for the frame before the `ForEach` drops it, rather than trapping on a stale
-    /// index.
-    private var set: SetPlan { plan.sets.first { $0.id == setID } ?? SetPlan() }
-
-    /// Writes back BY ID, so an edit in flight while the list reorders lands on the set
-    /// it came from.
-    private var setBinding: Binding<SetPlan> {
-        Binding(get: { set },
-                set: { updated in
-                    guard let index else { return }
-                    plan.sets[index] = updated
-                })
-    }
+    /// Shared with every control in the editor — see `SetAccess`.
+    private var setBinding: Binding<SetPlan> { live.binding }
 
     // MARK: - Collapsed
 
@@ -133,7 +142,7 @@ struct SetRowView: View {
 
             Spacer(minLength: 8)
 
-            Text(PlanMath.clockText(PlanMath.setSeconds(set, in: plan)))
+            Text(PlanMath.clockText(PlanMath.setSeconds(set, in: defaults)))
                 .font(.system(.subheadline, weight: .medium))
                 .monospacedDigit()
                 .contentTransition(.numericText())
@@ -243,7 +252,7 @@ struct SetRowView: View {
             // The full band row — presets, the trimmer for custom ranges, percent or
             // kilograms. It replaced a kg-only toggle that could not even SHOW a
             // per-set percent band, which the Max day preset's ramp is made of.
-            TargetBandRow(set: setBinding, maxes: maxes, handMode: plan.handMode)
+            TargetBandRow(set: setBinding, maxes: maxes, handMode: defaults.handMode)
 
             // With no band of its own, the set follows the routine's — said in the
             // same sentence as before, underneath the row that could override it.
@@ -257,20 +266,20 @@ struct SetRowView: View {
     }
 
     /// Whether the ROUTINE sets a percentage this row would otherwise follow.
-    private var inheritsTarget: Bool { plan.targetPercentBand != nil }
+    private var inheritsTarget: Bool { defaults.targetPercentBand != nil }
 
     /// What the inherited percentage actually means for THIS grip — the number that
     /// makes a percentage trustworthy. Without a max the row must say so rather than
     /// showing a percentage that resolves to nothing at session time.
     private var inheritedTargetText: String {
-        guard let percent = plan.targetPercentBand else { return "" }
+        guard let percent = defaults.targetPercentBand else { return "" }
         let range = "\(percentText(percent.lowerBound))–\(percentText(percent.upperBound)) %"
         // PER HAND, through the same formatter the deck and the review use — the
         // document and the deck must never quote different loads for one routine.
-        guard let load = weightUnit.targetText(set, in: plan, maxes: maxes) else {
+        guard let load = weightUnit.targetText(set, in: defaults, maxes: maxes) else {
             return String(localized: "Following the routine — \(range) of your max, but there is no max on file for this grip yet, so this set will show no target.")
         }
-        let perHand = PlanMath.targetDiffersByHand(set, in: plan, maxes: maxes)
+        let perHand = PlanMath.targetDiffersByHand(set, in: defaults, maxes: maxes)
         return String(localized: "Following the routine — \(range), which is \(load) on your \(perHand ? String(localized: "maxes for this grip.") : String(localized: "max for this grip."))")
     }
 
@@ -337,17 +346,19 @@ struct SetRowView: View {
     // and WRITES this set's own override.
 
     private var holdBinding: Binding<Int> {
-        Binding { PlanMath.hold(set, in: plan) } set: { setBinding.wrappedValue.holdSeconds = $0 }
+        Binding { PlanMath.hold(setBinding.wrappedValue, in: defaults) }
+            set: { setBinding.wrappedValue.holdSeconds = $0 }
     }
 
     private var restBinding: Binding<Int> {
-        Binding { PlanMath.rest(set, in: plan) } set: { setBinding.wrappedValue.restSeconds = $0 }
+        Binding { PlanMath.rest(setBinding.wrappedValue, in: defaults) }
+            set: { setBinding.wrappedValue.restSeconds = $0 }
     }
 
     // MARK: - Derived copy
 
     private var repsText: String {
-        guard plan.handMode.sideCount > 1 else {
+        guard defaults.handMode.sideCount > 1 else {
             // One-sided modes have no side to divide by, so the copy drops "per side"
             // rather than halving a number that was never doubled.
             return String(localized: "\(set.repsPerSide) \(set.repsPerSide == 1 ? String(localized: "pull") : String(localized: "pulls"))")
@@ -356,11 +367,11 @@ struct SetRowView: View {
     }
 
     private var tensionText: String {
-        if let perSide = PlanMath.tensionSecondsPerSide(set, in: plan) {
+        if let perSide = PlanMath.tensionSecondsPerSide(set, in: defaults) {
             return String(localized: "\(PlanMath.clockText(perSide)) under tension per side")
         }
-        let reps = PlanMath.repCount(set, mode: plan.handMode)
-        return String(localized: "\(PlanMath.clockText(reps * PlanMath.hold(set, in: plan))) under tension")
+        let reps = PlanMath.repCount(set, mode: defaults.handMode)
+        return String(localized: "\(PlanMath.clockText(reps * PlanMath.hold(set, in: defaults))) under tension")
     }
 
     /// Every override this set carries, in the order they appear in the editor. Both are
@@ -402,23 +413,10 @@ struct SetRowView: View {
     }
 
     private var spokenRow: String {
-        let duration = PlanMath.durationText(PlanMath.setSeconds(set, in: plan))
+        let duration = PlanMath.durationText(PlanMath.setSeconds(set, in: defaults))
         return String(localized: "\(set.grip.spoken). \(repsText), \(tensionText)\(spokenOverride). \(duration).")
     }
 
-    // MARK: - Position in the routine
-
-    private var index: Int? { plan.sets.firstIndex(where: { $0.id == setID }) }
-
-    private var canMoveUp: Bool {
-        guard let index else { return false }
-        return index > 0
-    }
-
-    private var canMoveDown: Bool {
-        guard let index else { return false }
-        return index < plan.sets.count - 1
-    }
 }
 
 // MARK: - Context-menu preview

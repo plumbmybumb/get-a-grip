@@ -32,7 +32,7 @@ struct CoachCard: View {
     }
 
     var body: some View {
-        MaterialCard(radius: Metrics.radiusInner) {
+        MaterialCard(radius: Metrics.radiusInner, surface: .flat) {
             VStack(alignment: .leading, spacing: 10) {
                 VStack(alignment: .leading, spacing: 6) {
                     CapsLabel(String(localized: "STEP \(step) OF \(total)"))
@@ -82,7 +82,7 @@ struct CoachCard: View {
 /// competing to be the end of the same sentence.
 struct CoachClosingCard: View {
     var body: some View {
-        MaterialCard(radius: Metrics.radiusInner) {
+        MaterialCard(radius: Metrics.radiusInner, surface: .flat) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("That's the whole routine.")
                     .font(.system(.headline, weight: .semibold))

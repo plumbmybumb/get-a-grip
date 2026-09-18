@@ -10,9 +10,17 @@ import SwiftUI
 /// discipline, which hides the WORDS rather than the fact that there is a setting. That
 /// is why the row keeps a title and a summary line on its face instead of being a bare
 /// chevron — someone who has never opened it still knows what is in there.
-struct FineTuningSection: View {
+struct FineTuningSection: View, Equatable {
     @Environment(\.weightUnit) private var weightUnit
-    @Binding var draft: RoutineDraft
+    /// The write path. Everything drawn comes from `defaults` — see `BuilderInputs`.
+    let access: DraftAccess
+    /// `plan.routineLevel`, as a value, so the card compares itself on what it shows
+    /// (`fineTuningKey`). This is the one card that shows the pull threshold.
+    let defaults: SessionPlan
+
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        a.defaults.fineTuningKey == b.defaults.fineTuningKey
+    }
 
     /// View-local and unpersisted BY CONSTRUCTION — the sheet builds a fresh section
     /// every time it opens, so "collapsed on every open" needs no resetting logic.
@@ -20,7 +28,7 @@ struct FineTuningSection: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 18) {
                 header
 
@@ -90,7 +98,7 @@ struct FineTuningSection: View {
 
             ValueRow(title: String(localized: "A pull counts above"),
                      unit: weightUnit.symbol,
-                     value: weightUnit.binding($draft.plan.thresholdKg),
+                     value: weightUnit.binding(access.binding(\.plan.thresholdKg, current: defaults.thresholdKg)),
                      range: weightUnit.sliderRangeFromKg(0.5...10), limit: weightUnit.rangeFromKg(0.5...SessionPlan.thresholdRange.upperBound),
                      step: 0.5,
                      presets: weightUnit == .kg ? [1, 2, 3, 5] : [2, 5, 7, 10],
@@ -101,7 +109,7 @@ struct FineTuningSection: View {
                 .foregroundStyle(Ink.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            ThresholdGaugeStrip(thresholdKg: draft.plan.thresholdKg)
+            ThresholdGaugeStrip(thresholdKg: defaults.thresholdKg)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "A pull counts above"))
@@ -119,12 +127,12 @@ struct FineTuningSection: View {
     private var bandGateBlock: some View {
         VStack(alignment: .leading, spacing: 6) {
             Toggle("Pause when I'm out of range",
-                   isOn: $draft.plan.pausesOutsideTargetBand)
+                   isOn: access.binding(\.plan.pausesOutsideTargetBand, current: defaults.pausesOutsideTargetBand))
                 .font(.system(.subheadline, weight: .medium))
                 .foregroundStyle(Ink.primary)
                 .tint(Accent.graphite)
 
-            Text(draft.plan.pausesOutsideTargetBand
+            Text(defaults.pausesOutsideTargetBand
                  ? "The clock only runs while you are inside the target range."
                  : "The clock runs whenever you are on the edge, whatever the load — the range is still drawn, it just stops judging. Letting go still stops the rep.")
                 .font(.system(.caption, weight: .medium))
@@ -144,7 +152,7 @@ struct FineTuningSection: View {
 
             IntValueRow(title: String(localized: "Lead-in before each set"),
                         unit: String(localized: "s"),
-                        value: $draft.plan.leadInSeconds,
+                        value: access.binding(\.plan.leadInSeconds, current: defaults.leadInSeconds),
                         range: 0...20, limit: 0...60,
                         step: 5,
                         presets: [0, 3, 5, 10])

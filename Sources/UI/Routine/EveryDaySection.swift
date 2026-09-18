@@ -12,8 +12,15 @@ import UserNotifications
 /// reminder rows underneath it: "twice a day" is expressed inline, in the document you
 /// are already editing, rather than behind a scheduling screen you have to go and find.
 /// There is deliberately no second surface where reminder times live.
-struct EveryDaySection: View {
-    @Binding var draft: RoutineDraft
+struct EveryDaySection: View, Equatable {
+    /// The write path. Everything drawn comes from `schedule` — see `BuilderInputs`.
+    let access: DraftAccess
+    /// `draft.schedule` — the draft with its plan blanked — as a value, so this card
+    /// compares itself on the every-day fields alone and never re-runs its date pickers
+    /// for an edit inside a set.
+    let schedule: RoutineDraft
+
+    nonisolated static func == (a: Self, b: Self) -> Bool { a.schedule == b.schedule }
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -35,10 +42,10 @@ struct EveryDaySection: View {
             CapsLabel(String(localized: "HOW OFTEN"))
                 .padding(.leading, 6)
 
-            MaterialCard {
+            MaterialCard(surface: .flat) {
                 VStack(alignment: .leading, spacing: 18) {
                     kindBlock
-                    if draft.isOnDemand {
+                    if schedule.isOnDemand {
                         // The whole scheduling story, declined in one sentence. The
                         // times are KEPT in the draft — flipping back to a ritual
                         // restores them — so nothing here is destroyed, only quiet.
@@ -53,14 +60,14 @@ struct EveryDaySection: View {
                 }
             }
         }
-        .animation(revealAnimation, value: draft.isOnDemand)
+        .animation(revealAnimation, value: schedule.isOnDemand)
         .onAppear {
             // Repair, not normalization: a draft whose reminder list and session count
             // disagree (an older stash, a merge from another device) would otherwise
             // draw fewer rows than the count on its face promises. The guard keeps the
             // common path from marking an untouched document dirty.
-            if draft.reminders.count != draft.sessionsPerDay {
-                draft.setSessionsPerDay(draft.sessionsPerDay)
+            if schedule.reminders.count != schedule.sessionsPerDay {
+                access.mutate { $0.setSessionsPerDay($0.sessionsPerDay) }
             }
         }
         .task { await refreshAuthorization() }
@@ -77,15 +84,15 @@ struct EveryDaySection: View {
     private var kindBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
             ChipGrid(base: 2) {
-                Chip(title: String(localized: "Daily ritual"), isSelected: !draft.isOnDemand) {
-                    draft.isOnDemand = false
+                Chip(title: String(localized: "Daily ritual"), isSelected: !schedule.isOnDemand) {
+                    access.mutate { $0.isOnDemand = false }
                 }
-                Chip(title: String(localized: "Whenever"), isSelected: draft.isOnDemand) {
-                    draft.isOnDemand = true
+                Chip(title: String(localized: "Whenever"), isSelected: schedule.isOnDemand) {
+                    access.mutate { $0.isOnDemand = true }
                 }
             }
         }
-        .sensoryFeedback(.selection, trigger: draft.isOnDemand)
+        .sensoryFeedback(.selection, trigger: schedule.isOnDemand)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "How often"))
     }
@@ -110,15 +117,15 @@ struct EveryDaySection: View {
     /// lower count removes, so going 2 → 1 → 2 restores the user's own 19:15 instead of
     /// resetting it to the 19:00 default.
     private var sessionsBinding: Binding<Int> {
-        Binding(get: { draft.sessionsPerDay },
-                set: { draft.setSessionsPerDay($0) })
+        Binding(get: { schedule.sessionsPerDay },
+                set: { new in access.mutate { $0.setSessionsPerDay(new) } })
     }
 
     // MARK: - Reminders
 
     private var reminderBlock: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Toggle("Remind me", isOn: $draft.remindersEnabled)
+            Toggle("Remind me", isOn: access.binding(\.remindersEnabled, current: schedule.remindersEnabled))
                 .font(.system(.subheadline, weight: .semibold))
                 .foregroundStyle(Ink.primary)
                 .tint(Accent.graphite)
@@ -126,7 +133,7 @@ struct EveryDaySection: View {
             // The times are what the toggle is about, so they follow it rather than
             // sitting there inert while it is off. The values themselves are kept in
             // the draft either way — turning reminders back on restores the schedule.
-            if draft.remindersEnabled {
+            if schedule.remindersEnabled {
                 ForEach(0..<rowCount, id: \.self) { index in
                     reminderRow(index)
                 }
@@ -136,14 +143,14 @@ struct EveryDaySection: View {
                 }
             }
         }
-        .animation(revealAnimation, value: draft.remindersEnabled)
+        .animation(revealAnimation, value: schedule.remindersEnabled)
         .animation(revealAnimation, value: rowCount)
     }
 
     /// Bounded by the list itself, never by the count alone: a mismatched draft must
     /// degrade to one row fewer, never to an index crash.
     private var rowCount: Int {
-        min(draft.sessionsPerDay, draft.reminders.count)
+        min(schedule.sessionsPerDay, schedule.reminders.count)
     }
 
     private func reminderRow(_ index: Int) -> some View {
@@ -181,16 +188,19 @@ struct EveryDaySection: View {
     private func timeBinding(_ index: Int) -> Binding<Date> {
         Binding(
             get: {
-                guard index < draft.reminders.count else { return date(for: ReminderTime(hour: 8, minute: 0)) }
-                return date(for: draft.reminders[index])
+                let reminders = schedule.reminders
+                guard index < reminders.count else { return date(for: ReminderTime(hour: 8, minute: 0)) }
+                return date(for: reminders[index])
             },
             set: { newDate in
-                guard index < draft.reminders.count else { return }
                 let parts = Calendar.current.dateComponents([.hour, .minute], from: newDate)
                 // Deliberately NOT sorted or deduped here: re-ordering the array under
                 // the finger would swap the row being edited with the one below it.
                 // `RoutineDraft.normalized` tidies on the way into the store.
-                draft.reminders[index] = ReminderTime(hour: parts.hour ?? 0, minute: parts.minute ?? 0)
+                access.mutate { draft in
+                    guard index < draft.reminders.count else { return }
+                    draft.reminders[index] = ReminderTime(hour: parts.hour ?? 0, minute: parts.minute ?? 0)
+                }
             })
     }
 

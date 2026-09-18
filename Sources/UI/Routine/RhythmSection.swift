@@ -13,18 +13,30 @@ import SwiftUI
 ///
 /// The label is a plain row, never a `Section` header — plain-style headers PIN, and
 /// content then scrolls illegibly behind a clear background.
-struct RhythmSection: View {
-    @Binding var draft: RoutineDraft
+struct RhythmSection: View, Equatable {
+    /// The write path — every control here writes through it. Nothing is DRAWN from it:
+    /// see `defaults` and `==`, and `BuilderInputs` for why it is closures.
+    let access: DraftAccess
+    /// `plan.routineLevel`, as a value, so the card compares itself on what it shows and
+    /// sits out every edit that is not its own.
+    let defaults: SessionPlan
+    /// The strip previews the first set's pulls — the one set-level number this card
+    /// reads, so it is the one set-level number it compares.
+    let firstSetReps: Int
+
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        a.defaults.rhythmKey == b.defaults.rhythmKey && a.firstSetReps == b.firstSetReps
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             CapsLabel(String(localized: "REST & HANDS"))
 
-            MaterialCard {
+            MaterialCard(surface: .flat) {
                 VStack(alignment: .leading, spacing: 12) {
                     IntValueRow(title: String(localized: "Break between sets"),
                                 unit: String(localized: "s"),
-                                value: $draft.plan.setBreakSeconds,
+                                value: access.binding(\.plan.setBreakSeconds, current: defaults.setBreakSeconds),
                                 range: 0...240, limit: SessionPlan.setBreakRange,
                                 control: .dial([0, 30, 60, 90, 120, 180]))
 
@@ -41,16 +53,16 @@ struct RhythmSection: View {
                     // "alternate each pull" actually does to a set.
                     CapsLabel(String(localized: "HANDS"))
                         .padding(.top, 2)
-                    HandModeChipRow(selection: $draft.plan.handMode)
-                    HandOrderStrip(mode: draft.plan.handMode,
-                                   startingHand: draft.plan.startingHand,
+                    HandModeChipRow(selection: access.binding(\.plan.handMode, current: defaults.handMode))
+                    HandOrderStrip(mode: defaults.handMode,
+                                   startingHand: defaults.startingHand,
                                    repsPerSide: firstSetReps)
-                    if draft.plan.handMode.sideCount > 1 {
+                    if defaults.handMode.sideCount > 1 {
                         // The strip is fill-vs-outline with no legend, so on its own it
                         // cannot say which hand it starts on (Nuri, 2026-09-18: "I can't
                         // tell what I'm swapping"). The sentence says it; the button swaps it.
                         HStack(alignment: .center, spacing: 12) {
-                            Text(draft.plan.startingHand == .right
+                            Text(defaults.startingHand == .right
                                  ? "Starts on the right hand"
                                  : "Starts on the left hand")
                                 .font(.system(.footnote, weight: .medium))
@@ -74,12 +86,13 @@ struct RhythmSection: View {
     /// metronome-style protocol wants.
     private var releaseToggle: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Toggle("Start the rest when I let go", isOn: $draft.plan.waitForReleaseBeforeRest)
+            Toggle("Start the rest when I let go",
+                   isOn: access.binding(\.plan.waitForReleaseBeforeRest, current: defaults.waitForReleaseBeforeRest))
                 .font(.system(.subheadline, weight: .medium))
                 .foregroundStyle(Ink.primary)
                 .tint(Accent.graphite)
 
-            Text(draft.plan.waitForReleaseBeforeRest
+            Text(defaults.waitForReleaseBeforeRest
                  ? "The hold ends on time; the rest waits until you are off the edge."
                  : "The rest starts the moment the hold ends, whether or not you have let go.")
                 .font(.system(.caption, weight: .medium))
@@ -94,10 +107,6 @@ struct RhythmSection: View {
 
     /// The strip draws the FIRST set's sequence, because that is the one the reader is
     /// about to do; `executable` so an emptied-out row cannot decide it.
-    private var firstSetReps: Int {
-        draft.plan.executable.sets.first?.repsPerSide ?? 6
-    }
-
     /// The one writer of `startingHand` (Nuri, 2026-09-18: "a lil swap button … so you
     /// can start with right hand instead of left"). It sits beside the sentence that
     /// names the current starting hand, under the strip that shows it: tap, and both
@@ -105,9 +114,9 @@ struct RhythmSection: View {
     /// label names the OUTCOME of the tap, which is what a toggle should tell a screen
     /// reader.
     private var swapHandsButton: some View {
-        let startsRight = draft.plan.startingHand == .right
+        let startsRight = defaults.startingHand == .right
         return Button {
-            draft.plan.startingHand = startsRight ? .left : .right
+            access.mutate { $0.plan.startingHand = startsRight ? .left : .right }
         } label: {
             Label(String(localized: "Swap"), systemImage: "arrow.left.arrow.right")
                 .font(.system(.footnote, weight: .medium))
@@ -121,6 +130,6 @@ struct RhythmSection: View {
         .accessibilityLabel(startsRight
                             ? String(localized: "Start with the left hand")
                             : String(localized: "Start with the right hand"))
-        .sensoryFeedback(.selection, trigger: draft.plan.startingHand)
+        .sensoryFeedback(.selection, trigger: defaults.startingHand)
     }
 }
