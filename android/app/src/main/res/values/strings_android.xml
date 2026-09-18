@@ -36,7 +36,6 @@
     <string name="a_your_routines_and_sessions_are_stored_on_this_device_the">Your routines and sessions are stored on this device. They don\'t sync between devices.</string>
     <string name="a_this_routine_asks_for_d_a_day">This routine asks for %d a day.</string>
     <string name="a_the_big_word_is_the_hand_that_goes_on_the_edge_your_fing">The big word is the hand that goes on the edge. Your fingers hang off the palm at the top of the screen, so the grip reads without a word.</string>
-    <string name="a_start_with_a_name_and_one_set_make_it_yours_then_come_ba">Start with a name and one set. Make it yours, then come back and pull.</string>
     <string name="a_allow_camera_access_in_settings_to_scan_a_routine_you_ca">Allow camera access in Settings to scan a routine. You can still open a shared routine link.</string>
     <string name="a_couldn_t_open_the_camera_try_opening_the_shared_routine">Couldn\'t open the camera. Try opening the shared routine link instead.</string>
     <string name="a_point_your_camera_at_a_get_a_grip_routine_qr_code">Point your camera at a Get a Grip routine QR code.</string>

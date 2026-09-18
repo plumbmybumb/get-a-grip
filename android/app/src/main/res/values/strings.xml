@@ -178,7 +178,6 @@
     <string name="s_a_compact_csv_for_your_ai_assistant_or_spreadsheet_summa">A compact CSV for your AI assistant or spreadsheet. Summary groups pulls by set and hand. Choose Every pull for individual measurements and timing.</string>
     <string name="s_a_daily_ritual_has_a_target_and_reminders_a_whenever_rou">A daily ritual has a target and reminders. A whenever routine just waits on Today until you feel like it.</string>
     <string name="s_a_fixed_load_the_same_on_both_hands_it_stays_put_when_yo">A fixed load, the same on both hands — it stays put when your max moves.</string>
-    <string name="s_a_low_intensity_no_hang_plan_is_ready_to_go_6_sets_36_pu">A low-intensity no-hang plan is ready to go — 6 sets, 36 pulls, about 21 minutes, twice a day. Change anything you like.</string>
     <string name="s_a_max_is_either_measured_on_the_gauge_or_set_by_you_the">A max is either measured on the gauge or set by you — the measured ones say so. The percentages elsewhere in the app are worked out from these.</string>
     <string name="s_a_max_is_the_hardest_you_can_pull_on_one_grip">A max is the hardest you can pull on one grip.</string>
     <string name="s_a_max_records_your_hardest_measured_pull_on_a_grip">A max records your hardest measured pull on a grip.</string>
@@ -796,6 +795,7 @@
     <string name="s_start_session_lld">Start session %d</string>
     <string name="s_start_the_rest_when_i_let_go">Start the rest when I let go</string>
     <string name="s_start_third_session">Start third session</string>
+    <string name="s_start_with_a_name_and_one_set_make_it_yours_then_come_ba">Start with a name and one set. Make it yours, then come back and pull.</string>
     <string name="s_start_without_a_gauge">Start without a gauge</string>
     <string name="s_status">Status</string>
     <string name="s_stop">Stop</string>

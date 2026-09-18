@@ -435,10 +435,12 @@ struct TodayView: View {
         .matchedTransitionSource(id: routine.id.uuidString, in: zoom)
     }
 
-    /// Exactly ONE button. No "start from a preset" second door — the prefill is the
-    /// document's initial state INSIDE the sheet, where it can be edited in place, and
-    /// rendering six read-only set rows here would duplicate the document you are one
-    /// tap from while pushing the button a screen and a half down at accessibility3.
+    /// Exactly ONE button. No "start from a preset" second door: the builder opens BLANK
+    /// (Nuri, 2026-08-10 and 2026-08-19), so the line under the heading promises exactly
+    /// that and nothing more. It once described the six-set prefill the builder used to
+    /// open with, and it kept saying so for a month after the prefill left — through the
+    /// 1.0.3 App Store build (Nuri, 2026-09-18: "nothing is ready to go, it's blank").
+    /// Copy that describes a mechanism has to move with the mechanism.
     private var emptyCard: some View {
         MaterialCard {
             VStack(alignment: .leading, spacing: 12) {
@@ -453,7 +455,7 @@ struct TodayView: View {
                     .foregroundStyle(Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("A low-intensity no-hang plan is ready to go — 6 sets, 36 pulls, about 21 minutes, twice a day. Change anything you like.")
+                Text("Start with a name and one set. Make it yours, then come back and pull.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)

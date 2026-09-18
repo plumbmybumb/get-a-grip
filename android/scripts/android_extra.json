@@ -148,11 +148,6 @@
       "//": "The tour's runner-hand step. The iOS twin names the Dynamic Island, which is an iPhone fact this app cannot state — Android draws its own palm on every phone (PalmHand), so this sentence has no iOS twin."
     },
     {
-      "en": "Start with a name and one set. Make it yours, then come back and pull.",
-      "fr": "Commence par un nom et une série. Adapte la routine à tes envies, puis reviens tirer.",
-      "//": "Android-only empty-state revision. iOS is intentionally unchanged."
-    },
-    {
       "en": "Allow camera access in Settings to scan a routine. You can still open a shared routine link.",
       "fr": "Autorise l’accès à la caméra dans les réglages pour scanner une routine. Tu peux toujours ouvrir un lien de routine partagé."
     },

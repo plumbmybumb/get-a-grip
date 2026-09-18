@@ -1604,16 +1604,6 @@
         }
       }
     },
-    "A low-intensity no-hang plan is ready to go — 6 sets, 36 pulls, about 21 minutes, twice a day. Change anything you like." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un plan no-hang à basse intensité est prêt — 6 séries, 36 tirages, environ 21 minutes, deux fois par jour. Change ce que tu veux."
-          }
-        }
-      }
-    },
     "A max is either measured on the gauge or set by you — the measured ones say so. The percentages elsewhere in the app are worked out from these." : {
       "localizations" : {
         "fr" : {
@@ -7220,6 +7210,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Commencer la troisième séance"
+          }
+        }
+      }
+    },
+    "Start with a name and one set. Make it yours, then come back and pull." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commence par un nom et une série. Adapte la routine à tes envies, puis reviens tirer."
           }
         }
       }

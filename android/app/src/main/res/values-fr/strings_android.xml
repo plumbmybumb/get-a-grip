@@ -35,7 +35,6 @@
     <string name="a_your_routines_and_sessions_are_stored_on_this_device_the">Tes routines et tes séances sont stockées sur cet appareil. Elles ne se synchronisent pas entre appareils.</string>
     <string name="a_this_routine_asks_for_d_a_day">Cette routine en demande %d par jour.</string>
     <string name="a_the_big_word_is_the_hand_that_goes_on_the_edge_your_fing">Le mot en gros, c\'est la main qui va sur la réglette. Tes doigts pendent sous la paume en haut de l\'écran, donc la préhension se lit sans un mot.</string>
-    <string name="a_start_with_a_name_and_one_set_make_it_yours_then_come_ba">Commence par un nom et une série. Adapte la routine à tes envies, puis reviens tirer.</string>
     <string name="a_allow_camera_access_in_settings_to_scan_a_routine_you_ca">Autorise l’accès à la caméra dans les réglages pour scanner une routine. Tu peux toujours ouvrir un lien de routine partagé.</string>
     <string name="a_couldn_t_open_the_camera_try_opening_the_shared_routine">Impossible d’ouvrir la caméra. Essaie plutôt d’ouvrir le lien de routine partagé.</string>
     <string name="a_point_your_camera_at_a_get_a_grip_routine_qr_code">Vise le QR code d’une routine Get a Grip avec ta caméra.</string>
