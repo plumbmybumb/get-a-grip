@@ -31,6 +31,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>FrezAccessKey</key>
+	<string>$(FREZ_ACCESS_KEY)</string>
 	<key>GetAGripAppGroup</key>
 	<string>$(GETAGRIP_APP_GROUP)</string>
 	<key>GetAGripCloudContainer</key>

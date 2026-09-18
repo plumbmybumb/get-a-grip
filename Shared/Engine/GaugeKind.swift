@@ -8,11 +8,11 @@ import Foundation
 /// One decoded force reading from any supported gauge, before it becomes a
 /// `ForceSample`.
 ///
-/// `deviceMicros` is nil for every device except the Progressor: the ported scales
-/// and boards carry no sample clock of their own, so the BLE client stamps each
-/// reading with `SyntheticSampleClock` at ingestion instead. Downstream nothing
-/// changes — the synthetic stamp wraps at the same 2^32 µs the Tindeq's does, and
-/// every consumer already subtracts with `&-`.
+/// `deviceMicros` is nil for every device except the Progressor and the Frez Dyno:
+/// the ported scales and boards carry no sample clock of their own, so the BLE client
+/// stamps each reading with `SyntheticSampleClock` at ingestion instead. Downstream
+/// nothing changes — the synthetic stamp wraps at the same 2^32 µs the Tindeq's does,
+/// and every consumer already subtracts with `&-`.
 struct GaugeReading: Sendable, Equatable {
     var kg: Double
     var deviceMicros: UInt32?
@@ -111,6 +111,16 @@ enum GaugeKind: String, CaseIterable, Codable, Sendable {
     case motherboard
     case cts500
     case pb700bt
+    case frezdyno
+}
+
+/// Where the knowledge of a gauge's protocol came from — which is a different fact
+/// from whether this project has watched it work.
+enum GaugeProtocolSource: Sendable, Equatable {
+    /// Published by the maker (Tindeq's Progressor notes, Frez's Dyno API).
+    case vendorDocumented
+    /// Ported from hangtime-grip-connect's implementation, with no first-hand witness.
+    case ported
 }
 
 /// What a given gauge can and cannot do. UI and runner behaviour gate on THESE
@@ -136,10 +146,17 @@ struct GaugeCapabilities: Sendable, Equatable {
     /// Approximate samples per second — for UI copy and debounce sanity checks,
     /// never for timing.
     var nominalSampleRate: Double
-    /// Verified against real hardware by THIS project. Everything false here is a
-    /// port of hangtime-grip-connect's documented protocol and Settings says so —
-    /// the same honesty rule as the codec's inferred RFD layout.
+    /// Verified against real hardware by THIS project. Settings says so for every
+    /// gauge where this is false — the same honesty rule as the codec's inferred RFD
+    /// layout — and `protocolSource` says whether the unverified protocol is at least
+    /// the maker's own word or a port of somebody else's.
     var hardwareVerified: Bool
+    /// The stream is raw sensor counts, and kilograms need a per-device slope fetched
+    /// from the maker's API by serial — once per device, then cached. Until it is in
+    /// hand the client mints no decoder and the app says why there is no force to show,
+    /// rather than guessing at a number (Frez Dyno).
+    var requiresRemoteCalibration: Bool = false
+    var protocolSource: GaugeProtocolSource = .ported
 }
 
 extension GaugeKind {
@@ -153,6 +170,7 @@ extension GaugeKind {
         case .motherboard: String(localized: "Griptonite Motherboard")
         case .cts500: String(localized: "Jlyscales CTS500")
         case .pb700bt: String(localized: "NSD PB-700BT")
+        case .frezdyno: String(localized: "Frez Dyno")
         }
     }
 
@@ -166,6 +184,7 @@ extension GaugeKind {
         case .motherboard: String(localized: "Griptonite")
         case .cts500: String(localized: "Jlyscales")
         case .pb700bt: String(localized: "NSD")
+        case .frezdyno: String(localized: "Frez")
         }
     }
 
@@ -175,7 +194,8 @@ extension GaugeKind {
             GaugeCapabilities(hasDeviceClock: true, hasHardwareTare: true,
                               isBroadcast: false, hasStandardBattery: false,
                               sustainsBackgroundStreaming: true,
-                              nominalSampleRate: 80, hardwareVerified: true)
+                              nominalSampleRate: 80, hardwareVerified: true,
+                              protocolSource: .vendorDocumented)
         case .whc06:
             GaugeCapabilities(hasDeviceClock: false, hasHardwareTare: false,
                               isBroadcast: true, hasStandardBattery: false,
@@ -221,6 +241,19 @@ extension GaugeKind {
                               isBroadcast: false, hasStandardBattery: true,
                               sustainsBackgroundStreaming: true,
                               nominalSampleRate: 10, hardwareVerified: false)
+        case .frezdyno:
+            // Every record carries the device's elapsed milliseconds since Start, so
+            // this is the second gauge with a real clock. No hardware tare: the zero is
+            // the average of the first hundred unloaded counts, taken in the codec. The
+            // coefficient that turns counts into kilograms is per device and comes from
+            // Frez's API, which is the one thing no other gauge needs.
+            GaugeCapabilities(hasDeviceClock: true, hasHardwareTare: false,
+                              isBroadcast: false, hasStandardBattery: true,
+                              sustainsBackgroundStreaming: true,
+                              nominalSampleRate: FrezDynoCodec.nominalSampleRate,
+                              hardwareVerified: false,
+                              requiresRemoteCalibration: true,
+                              protocolSource: .vendorDocumented)
         }
     }
 
@@ -236,13 +269,16 @@ extension GaugeKind {
         case .motherboard: MotherboardCodec.profile
         case .cts500: CTS500Codec.profile
         case .pb700bt: PB700BTCodec.profile
+        case .frezdyno: FrezDynoCodec.profile
         }
     }
 
-    /// Nil for the same two kinds, for the same reasons.
+    /// Nil for the same two kinds, for the same reasons — and for the Frez Dyno,
+    /// whose decoder cannot exist without a coefficient: see
+    /// `makeCalibratedFrameDecoder(coefficient:)`.
     func makeFrameDecoder() -> (any GaugeFrameDecoder)? {
         switch self {
-        case .progressor, .whc06: nil
+        case .progressor, .whc06, .frezdyno: nil
         case .entralpi: EntralpiCodec.Decoder()
         case .forceboard: ForceBoardCodec.Decoder()
         case .climbro: ClimbroCodec.Decoder()
@@ -252,8 +288,18 @@ extension GaugeKind {
         }
     }
 
-    /// Picker order: the two devices this project has in hand first, then the
-    /// ports alphabetically by maker.
+    /// The decoder for a gauge whose counts need a per-device slope
+    /// (`requiresRemoteCalibration`). Nil for everything else: handing a coefficient to
+    /// a gauge that reports kilograms would be a mistake with a name.
+    func makeCalibratedFrameDecoder(coefficient: Double) -> (any GaugeFrameDecoder)? {
+        switch self {
+        case .frezdyno: FrezDynoCodec.Decoder(coefficient: coefficient)
+        default: nil
+        }
+    }
+
+    /// Picker order: the two devices this project has in hand first, then the Dyno,
+    /// whose protocol is its maker's own, then the ports alphabetically by maker.
     ///
     /// **`.pb700bt` is deliberately absent.** The NSD PB-700BT turned out to be a
     /// gyroscopic hand exerciser whose stream is REVOLUTIONS PER MINUTE — the
@@ -264,6 +310,6 @@ extension GaugeKind {
     /// mode is an addition, not a refactor — the same reason the Tindeq codec
     /// decodes RFD tags nothing consumes yet.
     static var selectable: [GaugeKind] {
-        [.progressor, .whc06, .climbro, .entralpi, .motherboard, .cts500, .forceboard]
+        [.progressor, .whc06, .frezdyno, .climbro, .entralpi, .motherboard, .cts500, .forceboard]
     }
 }

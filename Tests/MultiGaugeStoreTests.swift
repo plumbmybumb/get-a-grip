@@ -73,6 +73,7 @@ final class MultiGaugeStoreTests: XCTestCase {
         XCTAssertEqual(GaugeKind.motherboard.rawValue, "motherboard")
         XCTAssertEqual(GaugeKind.cts500.rawValue, "cts500")
         XCTAssertEqual(GaugeKind.pb700bt.rawValue, "pb700bt")
+        XCTAssertEqual(GaugeKind.frezdyno.rawValue, "frezdyno")
     }
 
     // MARK: - Persistence

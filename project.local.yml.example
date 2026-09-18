@@ -7,6 +7,10 @@ settings:
     DEVELOPMENT_TEAM: YOURTEAMID
     GETAGRIP_APP_GROUP: group.com.example.getagrip
     GETAGRIP_CLOUD_CONTAINER: iCloud.com.example.getagrip
+    # Optional. Your own Frez Developer Program access key, for Frez Dyno calibration
+    # lookups. Leave it out and a Dyno connects but reports that it cannot fetch its
+    # calibration. Never commit a real key.
+    FREZ_ACCESS_KEY: ""
 targets:
   Doigt:
     settings:

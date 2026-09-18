@@ -1019,15 +1019,27 @@ struct RunnerView: View {
             Text(device.state.isConnected ? "Waiting for the gauge" : "Gauge not connected")
                 .font(.system(.headline, weight: .semibold))
                 .foregroundStyle(Ink.secondary)
-            Text(device.state.isConnected
-                 ? String(localized: "Connected, but no readings yet. Tap Wake to restart it.")
-                 : connectHint)
+            Text(device.state.isConnected ? connectedButSilentHint : connectHint)
                 .font(.system(.footnote))
                 .foregroundStyle(Ink.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// A connected gauge with nothing to show is usually a stalled stream — unless it is
+    /// a Dyno still waiting on its calibration, in which case Wake would not help and the
+    /// honest line is the one the calibration status carries.
+    private var connectedButSilentHint: String {
+        switch device.calibrationStatus {
+        case .waitingForSerial, .resolving:
+            String(localized: "Looking up this Dyno's calibration…")
+        case .failed(_, let failure):
+            failure.label
+        case .notRequired, .ready:
+            String(localized: "Connected, but no readings yet. Tap Wake to restart it.")
+        }
     }
 
     /// **Names the gauge that is actually selected, and does not promise a pairing that

@@ -73,10 +73,19 @@ The first build downloads the open-source build tools and libraries.
 
 ## Devices and privacy
 
-The app includes Tindeq Progressor support and ported protocols for WH-C06,
-Entralpi, Climbro, Motherboard, ForceBoard, and CTS500. Hardware verification varies;
-the device registry and Settings distinguish verified support from unverified ports.
-PB-700BT is deliberately not selectable: its measurements are RPM, not force.
+The app includes Tindeq Progressor support, the Frez Dyno protocol as published by
+Frez, and ported protocols for WH-C06, Entralpi, Climbro, Motherboard, ForceBoard, and
+CTS500. Hardware verification varies; the device registry and Settings distinguish
+verified support from unverified ports and from maker-documented protocols not yet
+tried here. PB-700BT is deliberately not selectable: its measurements are RPM, not
+force.
+
+The Frez Dyno streams raw sensor counts, so the first time a unit connects the app
+asks Frez's coefficient API for that unit's calibration, by serial number, using a
+Frez Developer Program access key that is never committed (see
+[BUILDING.md](BUILDING.md)). The answer is cached on the device and the request is
+never repeated for that unit. It is the only network request the apps make to a
+server other than Apple's; no other gauge involves one.
 
 Android stores training locally. iOS supports local storage and private CloudKit
 sync. Apple frameworks, iOS, and CloudKit are proprietary platform dependencies;

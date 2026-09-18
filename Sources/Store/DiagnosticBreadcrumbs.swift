@@ -24,6 +24,9 @@ enum DiagnosticBreadcrumb: Equatable, Sendable {
     case streamStopped(StreamStopCause)
     case backgroundDisconnectScheduled
     case backgroundDisconnectCancelled
+    /// A remotely calibrated gauge's progress from "connected" to "produces force". The
+    /// string is a fixed phase description — never the serial, per the rule above.
+    case calibration(String)
 
     var text: String {
         switch self {
@@ -53,6 +56,8 @@ enum DiagnosticBreadcrumb: Equatable, Sendable {
             "Backgrounded — holding the link, disconnect scheduled"
         case .backgroundDisconnectCancelled:
             "Back in time — link kept, disconnect cancelled"
+        case .calibration(let phase):
+            "Calibration: " + phase
         }
     }
 }
