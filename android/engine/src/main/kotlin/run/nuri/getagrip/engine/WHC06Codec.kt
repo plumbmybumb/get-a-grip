@@ -77,9 +77,9 @@ object WHC06Codec {
     /// first advertiser remain the filter.
     const val minimumFrameLength = 14
 
-    /// Rated capacity of the scale (300 kg). The raw field is an unsigned 16-bit
-    /// hundredth-kilogram count, so it can express 655.35 kg — a value the load cell
-    /// cannot produce. Rejecting the impossible range is a free extra shape filter at
+    /// Rated capacity of the scale (300 kg). The raw field is an unsigned 16-bit count
+    /// of hundredths of the display unit, so in kilograms it can express 655.35 kg — a
+    /// value the load cell cannot produce. Rejecting the impossible range is a free extra shape filter at
     /// the choke point, the same reasoning as the Progressor codec's −10…165 kg
     /// window: garbage must never reach the runner, the trace, or a recorded max.
     const val capacityKg: Double = 300.0
@@ -91,6 +91,35 @@ object WHC06Codec {
     /// pair is a small value type with the same two member names.
     data class Status(val stability: Int, val unit: Int)
 
+    /// The unit the scale is SET TO, from the low nibble of the status byte. The weight
+    /// field is hundredths of whatever the display shows, not of a kilogram.
+    ///
+    /// Two firmwares are known, and they agree on kilograms. The maker's own reference
+    /// (Weiheng's `ScaleWatcher.java`, shipped with the scale's SDK and carried in
+    /// sebws/Crane) declares "重量单位 1：kg, 2：LB, 3：ST, 4：斤" — kilograms, pounds,
+    /// stone, jin (the Chinese catty, half a kilogram). TheLastKiwi/Dyna, written against
+    /// a US unit, recorded the byte as 1 in kilograms and **0 in pounds**. So 1 is
+    /// kilograms, 0 and 2 are pounds, 3 stone, 4 jin, and nothing else is known. The
+    /// hangtime reference this codec was ported from names the nibble and leaves it
+    /// unread, which is why every reading was kilograms until a field report (2026-09-18,
+    /// a Pixel 8 and a scale switched to pounds) saw every number arrive 2.2× too large.
+    enum class Unit(val kilogramsPerUnit: Double) {
+        kilograms(1.0),
+        pounds(0.45359237),
+        stone(6.35029318),
+        jin(0.5);
+
+        companion object {
+            fun fromCode(code: Int): Unit? = when (code) {
+                1 -> kilograms
+                0, 2 -> pounds
+                3 -> stone
+                4 -> jin
+                else -> null
+            }
+        }
+    }
+
     /// Kilograms from one advertisement, or nil when this is not a WH-C06 frame.
     ///
     /// `data` is CoreBluetooth's `CBAdvertisementDataManufacturerDataKey` value,
@@ -99,6 +128,12 @@ object WHC06Codec {
     /// scale's capacity. Zero IS a reading — an unloaded scale reports 0.00 kg, and
     /// conflating that with "no frame" would make the client treat a hanging idle
     /// scale as disconnected.
+    ///
+    /// The raw field is converted by the scale's own unit (`Unit`). **A unit this codec
+    /// does not know — the nibble absent on a short frame, or a code neither firmware
+    /// uses — reads as kilograms**, which is what every frame read as before the nibble
+    /// was decoded, and the client's diagnostics name the code and the raw count so a
+    /// new one can be added rather than guessed at.
     ///
     /// No tare is applied here. The scale has no tare command of its own, so the
     /// client subtracts a captured baseline app-side; a codec that also subtracted
@@ -110,26 +145,33 @@ object WHC06Codec {
         if (data.size < minimumFrameLength) return null
         if ((data[0].toInt() and 0xFF) or ((data[1].toInt() and 0xFF) shl 8) != companyID) return null
 
-        val raw = ((data[weightOffset].toInt() and 0xFF) shl 8) or
-            (data[weightOffset + 1].toInt() and 0xFF)
-        val kg = raw.toDouble() / 100
+        val raw = rawCountFromManufacturerData(data) ?: return null
+        val factor = unitFromManufacturerData(data)?.kilogramsPerUnit ?: 1.0
+        val kg = raw.toDouble() / 100 * factor
         if (kg > capacityKg) return null
         return kg
     }
 
+    /// The raw 16-bit count the weight is converted from — hundredths of the display unit
+    /// — or null when this is not a WH-C06 frame. For diagnostics: the one number that says
+    /// what the scale sent, beside the unit it said it was in.
+    fun rawCountFromManufacturerData(data: ByteArray): Int? {
+        if (data.size < minimumFrameLength) return null
+        if ((data[0].toInt() and 0xFF) or ((data[1].toInt() and 0xFF) shl 8) != companyID) return null
+        return ((data[weightOffset].toInt() and 0xFF) shl 8) or (data[weightOffset + 1].toInt() and 0xFF)
+    }
+
+    /// The scale's display unit, or null when the frame stops short of the status byte or
+    /// carries a code outside the maker's table. Null means "read as kilograms" — see
+    /// `kilogramsFromManufacturerData`.
+    fun unitFromManufacturerData(data: ByteArray): Unit? =
+        statusFromManufacturerData(data)?.let { Unit.fromCode(it.unit) }
+
     /// The stability/unit byte, split into its two nibbles: high = a stability code,
-    /// low = a unit code. **Read OPPORTUNISTICALLY: nil when the frame stops short of it**,
-    /// which is not a reason to refuse the weight — see `minimumFrameLength`.
-    ///
-    /// The reference identifies this byte and its offset but leaves the read
-    /// COMMENTED OUT, with no table for either nibble's values — so neither meaning
-    /// is established, and nothing in Doigt gates on them. It is parsed here because
-    /// the unit nibble is the open question that matters: `kilogramsFromManufacturerData`
-    /// divides by 100 unconditionally and treats the result as kilograms, which is right
-    /// only while the scale is set to kg. **OPEN hardware check:** switch the scale to
-    /// pounds and log this nibble, then either convert in `kilogramsFromManufacturerData`
-    /// or refuse the frame. Guessing the code now would ship arithmetic pointed at
-    /// somebody's fingers on the strength of a commented-out line.
+    /// low = a unit code (`Unit`). **Read OPPORTUNISTICALLY: nil when the frame stops
+    /// short of it**, which is not a reason to refuse the weight — see
+    /// `minimumFrameLength`. The stability nibble has no table anywhere and nothing in
+    /// the app gates on it.
     fun statusFromManufacturerData(data: ByteArray): Status? {
         if (data.size <= statusOffset) return null
         if ((data[0].toInt() and 0xFF) or ((data[1].toInt() and 0xFF) shl 8) != companyID) return null

@@ -21,7 +21,7 @@ final class SimpleGaugeCodecTests: XCTestCase {
     /// A full-shape advertisement, company-ID prefix included, exactly as
     /// CoreBluetooth hands it over.
     private func whc06Advertisement(weightRaw: UInt16,
-                                    status: UInt8 = 0x00,
+                                    status: UInt8 = 0x01,       // the kilogram code both firmwares use
                                     companyID: UInt16 = 0x0100,
                                     extraTrailingBytes: Int = 0) -> Data {
         var bytes = [UInt8](repeating: 0, count: 17 + extraTrailingBytes)
@@ -40,7 +40,7 @@ final class SimpleGaugeCodecTests: XCTestCase {
                           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                           0x0A, 0x28,                                     // weight 2600
                           0x00, 0x00,
-                          0x00])                                          // status
+                          0x01])                                          // status: kilograms
         XCTAssertEqual(WHC06Codec.kilograms(fromManufacturerData: frame), 26.00)
     }
 
@@ -68,7 +68,7 @@ final class SimpleGaugeCodecTests: XCTestCase {
     /// would have been refused, reaching the user as a scale that never connects. That is
     /// the undiagnosable silence the codec's own rule forbids.
     func testWHC06RequiresOnlyTheBytesItActuallyReads() {
-        let whole = whc06Advertisement(weightRaw: 2600, status: 0xA3)
+        let whole = whc06Advertisement(weightRaw: 2600, status: 0xA1)
         for length in 0..<WHC06Codec.minimumFrameLength {
             XCTAssertNil(WHC06Codec.kilograms(fromManufacturerData: whole.prefix(length)),
                          "a \(length)-byte advertisement stops short of the weight field")
@@ -82,7 +82,7 @@ final class SimpleGaugeCodecTests: XCTestCase {
     /// The status byte is read opportunistically, so a frame that ends before it yields a
     /// weight and no status — rather than nothing at all.
     func testWHC06StatusIsAbsentRatherThanFatalOnAShortFrame() {
-        let short = whc06Advertisement(weightRaw: 2600, status: 0xA3).prefix(14)
+        let short = whc06Advertisement(weightRaw: 2600, status: 0xA1).prefix(14)
         XCTAssertEqual(WHC06Codec.kilograms(fromManufacturerData: short), 26.00)
         XCTAssertNil(WHC06Codec.status(fromManufacturerData: short))
     }
@@ -113,13 +113,72 @@ final class SimpleGaugeCodecTests: XCTestCase {
             whc06Advertisement(weightRaw: 0)), 0.0)
     }
 
-    /// High nibble stability, low nibble unit — parsed, unused, and mapped to nothing
-    /// because the reference leaves this read commented out with no table for either.
+    /// High nibble stability, low nibble unit.
     func testWHC06StatusByteSplitsIntoStabilityAndUnitNibbles() {
         let frame = whc06Advertisement(weightRaw: 2600, status: 0xA3)
         let status = WHC06Codec.status(fromManufacturerData: frame)
         XCTAssertEqual(status?.stability, 0x0A)
         XCTAssertEqual(status?.unit, 0x03)
+        XCTAssertEqual(WHC06Codec.unit(fromManufacturerData: frame), .stone)
+    }
+
+    // MARK: WH-C06 units
+
+    /// The weight field is hundredths of the DISPLAY unit, and the maker's table names
+    /// the codes: 1 kg, 2 lb, 3 st, 4 jin. The field report that found this saw a scale
+    /// set to pounds arrive 2.2× too heavy — 26.00 on its display is 11.79 kg.
+    func testWHC06ConvertsTheScalesOwnUnitToKilograms() throws {
+        let raw: UInt16 = 2600
+        XCTAssertEqual(try XCTUnwrap(WHC06Codec.kilograms(fromManufacturerData:
+            whc06Advertisement(weightRaw: raw, status: 0x01))), 26.00)
+        XCTAssertEqual(try XCTUnwrap(WHC06Codec.kilograms(fromManufacturerData:
+            whc06Advertisement(weightRaw: raw, status: 0x02))), 26 * 0.45359237, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(WHC06Codec.kilograms(fromManufacturerData:
+            whc06Advertisement(weightRaw: raw, status: 0x03))), 26 * 6.35029318, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(WHC06Codec.kilograms(fromManufacturerData:
+            whc06Advertisement(weightRaw: raw, status: 0x04))), 13.00)
+        // The stability nibble rides along and changes nothing.
+        XCTAssertEqual(try XCTUnwrap(WHC06Codec.kilograms(fromManufacturerData:
+            whc06Advertisement(weightRaw: raw, status: 0xF2))), 26 * 0.45359237, accuracy: 1e-9)
+        XCTAssertEqual(WHC06Codec.unit(fromManufacturerData:
+            whc06Advertisement(weightRaw: raw, status: 0xF2)), .pounds)
+    }
+
+    /// The other known firmware (TheLastKiwi/Dyna's unit) says 0 for pounds and 1 for
+    /// kilograms, so a zero nibble is pounds — not "no unit".
+    func testWHC06ReadsAZeroUnitNibbleAsPounds() throws {
+        for status: UInt8 in [0x00, 0xA0] {
+            let frame = whc06Advertisement(weightRaw: 2600, status: status)
+            XCTAssertEqual(WHC06Codec.unit(fromManufacturerData: frame), .pounds, "status \(status)")
+            XCTAssertEqual(try XCTUnwrap(WHC06Codec.kilograms(fromManufacturerData: frame)),
+                           26 * 0.45359237, accuracy: 1e-9, "status \(status)")
+        }
+    }
+
+    /// Anything neither firmware uses reads as kilograms — a code from a newer firmware,
+    /// or a frame too short to carry the byte at all. That is exactly what every frame
+    /// read as before the nibble was decoded; the client's diagnostics name the code.
+    func testWHC06ReadsAnUnknownOrAbsentUnitAsKilograms() {
+        for status: UInt8 in [0x05, 0x09, 0x0F, 0xA5] {
+            let frame = whc06Advertisement(weightRaw: 2600, status: status)
+            XCTAssertEqual(WHC06Codec.kilograms(fromManufacturerData: frame), 26.00, "status \(status)")
+            XCTAssertNil(WHC06Codec.unit(fromManufacturerData: frame), "status \(status)")
+        }
+        let short = whc06Advertisement(weightRaw: 2600, status: 0x02).prefix(14)
+        XCTAssertEqual(WHC06Codec.kilograms(fromManufacturerData: short), 26.00)
+        XCTAssertNil(WHC06Codec.unit(fromManufacturerData: short))
+    }
+
+    /// The capacity window is applied to the KILOGRAMS, after conversion: 655.35 lb is
+    /// 297 kg and a reading a 300 kg cell can produce, while 655.35 kg is not.
+    func testWHC06AppliesTheCapacityWindowAfterConversion() throws {
+        XCTAssertNil(WHC06Codec.kilograms(fromManufacturerData:
+            whc06Advertisement(weightRaw: .max, status: 0x01)))
+        XCTAssertEqual(try XCTUnwrap(WHC06Codec.kilograms(fromManufacturerData:
+            whc06Advertisement(weightRaw: .max, status: 0x02))), 655.35 * 0.45359237, accuracy: 1e-9)
+        // 47.3 st is 300.4 kg — over the cell's rating, refused like any other impossible load.
+        XCTAssertNil(WHC06Codec.kilograms(fromManufacturerData:
+            whc06Advertisement(weightRaw: 4730, status: 0x03)))
     }
 
     func testWHC06ConstantsMatchTheReference() {

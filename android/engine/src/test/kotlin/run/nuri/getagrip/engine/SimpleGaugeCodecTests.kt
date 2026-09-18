@@ -33,7 +33,7 @@ class SimpleGaugeCodecTests {
     /// CoreBluetooth hands it over.
     private fun whc06Advertisement(
         weightRaw: Int,
-        status: Int = 0x00,
+        status: Int = 0x01,       // the kilogram code both firmwares use
         companyID: Int = 0x0100,
         extraTrailingBytes: Int = 0,
     ): ByteArray {
@@ -55,7 +55,7 @@ class SimpleGaugeCodecTests {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x0A, 0x28,                                     // weight 2600
             0x00, 0x00,
-            0x00,                                           // status
+            0x01,                                           // status: kilograms
         )
         assertEquals(26.00, WHC06Codec.kilogramsFromManufacturerData(frame))
     }
@@ -87,7 +87,7 @@ class SimpleGaugeCodecTests {
     /// the undiagnosable silence the codec's own rule forbids.
     @Test
     fun whc06RequiresOnlyTheBytesItActuallyReads() {
-        val whole = whc06Advertisement(weightRaw = 2600, status = 0xA3)
+        val whole = whc06Advertisement(weightRaw = 2600, status = 0xA1)
         for (length in 0 until WHC06Codec.minimumFrameLength) {
             assertNull(
                 WHC06Codec.kilogramsFromManufacturerData(whole.copyOfRange(0, length)),
@@ -107,7 +107,7 @@ class SimpleGaugeCodecTests {
     /// weight and no status — rather than nothing at all.
     @Test
     fun whc06StatusIsAbsentRatherThanFatalOnAShortFrame() {
-        val short = whc06Advertisement(weightRaw = 2600, status = 0xA3).copyOfRange(0, 14)
+        val short = whc06Advertisement(weightRaw = 2600, status = 0xA1).copyOfRange(0, 14)
         assertEquals(26.00, WHC06Codec.kilogramsFromManufacturerData(short))
         assertNull(WHC06Codec.statusFromManufacturerData(short))
     }
@@ -143,14 +143,81 @@ class SimpleGaugeCodecTests {
         )
     }
 
-    /// High nibble stability, low nibble unit — parsed, unused, and mapped to nothing
-    /// because the reference leaves this read commented out with no table for either.
+    /// High nibble stability, low nibble unit.
     @Test
     fun whc06StatusByteSplitsIntoStabilityAndUnitNibbles() {
         val frame = whc06Advertisement(weightRaw = 2600, status = 0xA3)
         val status = WHC06Codec.statusFromManufacturerData(frame)
         assertEquals(0x0A, status?.stability)
         assertEquals(0x03, status?.unit)
+        assertEquals(WHC06Codec.Unit.stone, WHC06Codec.unitFromManufacturerData(frame))
+    }
+
+    // MARK: WH-C06 units
+
+    /// The weight field is hundredths of the DISPLAY unit, and the maker's table names
+    /// the codes: 1 kg, 2 lb, 3 st, 4 jin. The field report that found this saw a scale
+    /// set to pounds arrive 2.2× too heavy — 26.00 on its display is 11.79 kg.
+    @Test
+    fun whc06ConvertsTheScalesOwnUnitToKilograms() {
+        fun kg(status: Int) = assertNotNull(
+            WHC06Codec.kilogramsFromManufacturerData(whc06Advertisement(weightRaw = 2600, status = status)),
+        )
+        assertEquals(26.00, kg(0x01))
+        assertEquals(26 * 0.45359237, kg(0x02), 1e-9)
+        assertEquals(26 * 6.35029318, kg(0x03), 1e-9)
+        assertEquals(13.00, kg(0x04))
+        // The stability nibble rides along and changes nothing.
+        assertEquals(26 * 0.45359237, kg(0xF2), 1e-9)
+        assertEquals(
+            WHC06Codec.Unit.pounds,
+            WHC06Codec.unitFromManufacturerData(whc06Advertisement(weightRaw = 2600, status = 0xF2)),
+        )
+    }
+
+    /// The other known firmware (TheLastKiwi/Dyna's unit) says 0 for pounds and 1 for
+    /// kilograms, so a zero nibble is pounds — not "no unit".
+    @Test
+    fun whc06ReadsAZeroUnitNibbleAsPounds() {
+        for (status in listOf(0x00, 0xA0)) {
+            val frame = whc06Advertisement(weightRaw = 2600, status = status)
+            assertEquals(WHC06Codec.Unit.pounds, WHC06Codec.unitFromManufacturerData(frame), "status $status")
+            assertEquals(
+                26 * 0.45359237,
+                assertNotNull(WHC06Codec.kilogramsFromManufacturerData(frame)),
+                1e-9,
+                "status $status",
+            )
+        }
+    }
+
+    /// Anything neither firmware uses reads as kilograms — a code from a newer firmware,
+    /// or a frame too short to carry the byte at all. That is exactly what every frame
+    /// read as before the nibble was decoded; the client's diagnostics name the code.
+    @Test
+    fun whc06ReadsAnUnknownOrAbsentUnitAsKilograms() {
+        for (status in listOf(0x05, 0x09, 0x0F, 0xA5)) {
+            val frame = whc06Advertisement(weightRaw = 2600, status = status)
+            assertEquals(26.00, WHC06Codec.kilogramsFromManufacturerData(frame), "status $status")
+            assertNull(WHC06Codec.unitFromManufacturerData(frame), "status $status")
+        }
+        val short = whc06Advertisement(weightRaw = 2600, status = 0x02).copyOfRange(0, 14)
+        assertEquals(26.00, WHC06Codec.kilogramsFromManufacturerData(short))
+        assertNull(WHC06Codec.unitFromManufacturerData(short))
+    }
+
+    /// The capacity window is applied to the KILOGRAMS, after conversion: 655.35 lb is
+    /// 297 kg and a reading a 300 kg cell can produce, while 655.35 kg is not.
+    @Test
+    fun whc06AppliesTheCapacityWindowAfterConversion() {
+        assertNull(WHC06Codec.kilogramsFromManufacturerData(whc06Advertisement(weightRaw = 0xFFFF, status = 0x01)))
+        assertEquals(
+            655.35 * 0.45359237,
+            assertNotNull(WHC06Codec.kilogramsFromManufacturerData(whc06Advertisement(weightRaw = 0xFFFF, status = 0x02))),
+            1e-9,
+        )
+        // 47.3 st is 300.4 kg — over the cell's rating, refused like any other impossible load.
+        assertNull(WHC06Codec.kilogramsFromManufacturerData(whc06Advertisement(weightRaw = 4730, status = 0x03)))
     }
 
     @Test

@@ -69,12 +69,47 @@ enum WHC06Codec {
     /// first advertiser remain the filter.
     static let minimumFrameLength = 14
 
-    /// Rated capacity of the scale (300 kg). The raw field is an unsigned 16-bit
-    /// hundredth-kilogram count, so it can express 655.35 kg — a value the load cell
-    /// cannot produce. Rejecting the impossible range is a free extra shape filter at
+    /// Rated capacity of the scale (300 kg). The raw field is an unsigned 16-bit count
+    /// of hundredths of the display unit, so in kilograms it can express 655.35 kg — a
+    /// value the load cell cannot produce. Rejecting the impossible range is a free extra shape filter at
     /// the choke point, the same reasoning as the Progressor codec's −10…165 kg
     /// window: garbage must never reach the runner, the trace, or a recorded max.
     static let capacityKg: Double = 300
+
+    /// The unit the scale is SET TO, from the low nibble of the status byte. The weight
+    /// field is hundredths of whatever the display shows, not of a kilogram.
+    ///
+    /// Two firmwares are known, and they agree on kilograms. The maker's own reference
+    /// (Weiheng's `ScaleWatcher.java`, shipped with the scale's SDK and carried in
+    /// sebws/Crane) declares "重量单位 1：kg, 2：LB, 3：ST, 4：斤" — kilograms, pounds,
+    /// stone, jin (the Chinese catty, half a kilogram). TheLastKiwi/Dyna, written against
+    /// a US unit, recorded the byte as 1 in kilograms and **0 in pounds**. So 1 is
+    /// kilograms, 0 and 2 are pounds, 3 stone, 4 jin, and nothing else is known. The
+    /// hangtime reference this codec was ported from names the nibble and leaves it
+    /// unread, which is why every reading was kilograms until a field report (2026-09-18,
+    /// a Pixel 8 and a scale switched to pounds) saw every number arrive 2.2× too large.
+    enum Unit: CaseIterable, Sendable {
+        case kilograms, pounds, stone, jin
+
+        init?(code: UInt8) {
+            switch code {
+            case 1:    self = .kilograms
+            case 0, 2: self = .pounds
+            case 3:    self = .stone
+            case 4:    self = .jin
+            default:   return nil
+            }
+        }
+
+        var kilogramsPerUnit: Double {
+            switch self {
+            case .kilograms: 1
+            case .pounds:    0.45359237
+            case .stone:     6.35029318
+            case .jin:       0.5
+            }
+        }
+    }
 
     /// Kilograms from one advertisement, or nil when this is not a WH-C06 frame.
     ///
@@ -85,6 +120,12 @@ enum WHC06Codec {
     /// conflating that with "no frame" would make the client treat a hanging idle
     /// scale as disconnected.
     ///
+    /// The raw field is converted by the scale's own unit (`Unit`). **A unit this codec
+    /// does not know — the nibble absent on a short frame, or a code neither firmware
+    /// uses — reads as kilograms**, which is what every frame read as before the nibble
+    /// was decoded, and the client's diagnostics name the code and the raw count so a
+    /// new one can be added rather than guessed at.
+    ///
     /// No tare is applied here. The scale has no tare command of its own, so the
     /// client subtracts a captured baseline app-side; a codec that also subtracted
     /// would double-count it.
@@ -94,25 +135,35 @@ enum WHC06Codec {
         guard bytes.count >= minimumFrameLength else { return nil }
         guard UInt16(bytes[0]) | UInt16(bytes[1]) << 8 == companyID else { return nil }
 
-        let raw = UInt16(bytes[weightOffset]) << 8 | UInt16(bytes[weightOffset + 1])
-        let kg = Double(raw) / 100
+        guard let raw = rawCount(fromManufacturerData: data) else { return nil }
+        let factor = unit(fromManufacturerData: data)?.kilogramsPerUnit ?? 1
+        let kg = Double(raw) / 100 * factor
         guard kg <= capacityKg else { return nil }
         return kg
     }
 
+    /// The raw 16-bit count the weight is converted from — hundredths of the display unit
+    /// — or nil when this is not a WH-C06 frame. For diagnostics: the one number that says
+    /// what the scale sent, beside the unit it said it was in.
+    static func rawCount(fromManufacturerData data: Data) -> UInt16? {
+        let bytes = [UInt8](data)
+        guard bytes.count >= minimumFrameLength else { return nil }
+        guard UInt16(bytes[0]) | UInt16(bytes[1]) << 8 == companyID else { return nil }
+        return UInt16(bytes[weightOffset]) << 8 | UInt16(bytes[weightOffset + 1])
+    }
+
+    /// The scale's display unit, or nil when the frame stops short of the status byte or
+    /// carries a code outside the maker's table. Nil means "read as kilograms" — see
+    /// `kilograms(fromManufacturerData:)`.
+    static func unit(fromManufacturerData data: Data) -> Unit? {
+        status(fromManufacturerData: data).flatMap { Unit(code: $0.unit) }
+    }
+
     /// The stability/unit byte, split into its two nibbles: high = a stability code,
-    /// low = a unit code. **Read OPPORTUNISTICALLY: nil when the frame stops short of it**,
-    /// which is not a reason to refuse the weight — see `minimumFrameLength`.
-    ///
-    /// The reference identifies this byte and its offset but leaves the read
-    /// COMMENTED OUT, with no table for either nibble's values — so neither meaning
-    /// is established, and nothing in Doigt gates on them. It is parsed here because
-    /// the unit nibble is the open question that matters: `kilograms(...)` divides by
-    /// 100 unconditionally and treats the result as kilograms, which is right only
-    /// while the scale is set to kg. **OPEN hardware check:** switch the scale to
-    /// pounds and log this nibble, then either convert in `kilograms(...)` or refuse
-    /// the frame. Guessing the code now would ship arithmetic pointed at somebody's
-    /// fingers on the strength of a commented-out line.
+    /// low = a unit code (`Unit`). **Read OPPORTUNISTICALLY: nil when the frame stops
+    /// short of it**, which is not a reason to refuse the weight — see
+    /// `minimumFrameLength`. The stability nibble has no table anywhere and nothing in
+    /// the app gates on it.
     static func status(fromManufacturerData data: Data) -> (stability: UInt8, unit: UInt8)? {
         let bytes = [UInt8](data)
         guard bytes.count > statusOffset else { return nil }

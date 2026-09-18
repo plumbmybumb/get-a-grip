@@ -180,6 +180,7 @@ final class BroadcastGaugeClient: ProgressorClient {
             diagnostic("scale advertisements received")
             state = .connected
         }
+        reportUnitIfChanged(in: advertisement.manufacturerData)
         guard ownsScan(generation) else { return }
         armSilenceTimer(generation: generation)
 
@@ -249,6 +250,34 @@ final class BroadcastGaugeClient: ProgressorClient {
         softwareTare.reset()
         deviceName = nil
         lastFrameUptime = nil
+        lastUnitReport = nil
+    }
+
+    /// The scale's display unit, as a diagnostic fact — named once per link and again
+    /// only when it changes, so a report from a scale set to pounds says so, and a unit
+    /// code the codec does not know is visible without a single payload byte in the
+    /// report. `WHC06Codec` converts the known units; the unknown ones read as kilograms.
+    private var lastUnitReport: String?
+
+    private func reportUnitIfChanged(in data: Data) {
+        let report: String
+        if let unit = WHC06Codec.unit(fromManufacturerData: data) {
+            report = "scale unit: \(unit)"
+        } else if let status = WHC06Codec.status(fromManufacturerData: data) {
+            report = "scale unit code \(status.unit) unknown, read as kilograms"
+        } else {
+            report = "scale unit byte absent, read as kilograms"
+        }
+        guard report != lastUnitReport else { return }
+        lastUnitReport = report
+        // The raw count the unit was read beside: one number, once per link and per unit
+        // change, so a report says what the scale sent in that mode without carrying
+        // payload bytes. It is what settles "is the count in display units or kilograms".
+        if let raw = WHC06Codec.rawCount(fromManufacturerData: data) {
+            diagnostic("\(report) (raw count \(raw))")
+        } else {
+            diagnostic(report)
+        }
     }
 
     private func cancelRetry() {

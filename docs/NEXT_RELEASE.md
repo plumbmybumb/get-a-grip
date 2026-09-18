@@ -85,3 +85,27 @@ The countdown fixture update changes one expected rest tick at
 `4.400000000000001` seconds. Inputs, timestamps, recorded reps and final state are
 unchanged. The Swift oracle verifies all 39 scenarios / 4,130 steps, plus 70 routine
 share URLs and 18 export scenarios. Bluetooth transport code is unchanged.
+
+
+## WH-C06 set to pounds read 2.2× too heavy — iOS and Android
+
+Status: fixed, unreleased. Field report 2026-09-18 (Android 1.0.1 (9), Pixel 8): every
+reading from a WH-C06 crane scale arrived "doubled".
+
+- The scale broadcasts hundredths of whatever unit its display is set to, and the low
+  nibble of its status byte names that unit. Both codecs divided by 100 and called the
+  result kilograms, so a scale switched to pounds was read as kilograms — 2.2× too
+  heavy, and 2.2× again on a phone showing pounds.
+- Two firmwares are known and agree on kilograms. The maker's own reference
+  (`ScaleWatcher.java`, Weiheng's SDK): 1 kg, 2 lb, 3 st, 4 jin. TheLastKiwi/Dyna,
+  written against a US unit: 1 in kilograms, **0 in pounds**. `WHC06Codec` now reads
+  1 as kilograms, 0 and 2 as pounds, 3 as stone, 4 as jin, and anything else — a code
+  neither firmware uses, or a frame too short to carry the byte — as kilograms, exactly
+  as before. The capacity window applies after conversion.
+- Both broadcast clients name the unit and the raw count in Diagnostics once per link
+  and on unit change ("scale unit: pounds (raw count 3500)"), with no payload bytes in
+  the report. A second number from the same reporter — 7.2 lb shown for a 35 lb
+  dumbbell with the scale in kg — is not explained by any code path in the build he
+  runs; that diagnostic line is what will explain it.
+- The cross-platform codec fixture gains the pounds, stone, jin, unknown-code and
+  capacity cases; unit tests on both platforms pin the same table.

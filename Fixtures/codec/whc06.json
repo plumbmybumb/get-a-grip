@@ -4,7 +4,7 @@
     {
       "name": "weight is big-endian hundredths at the prefixed offset",
       "frames": [
-        "0001000000000000000000000A28000000"
+        "0001000000000000000000000A28000001"
       ],
       "expect": {
         "kg": 26.0
@@ -13,7 +13,7 @@
     {
       "name": "the same two bytes reversed are a different plausible load",
       "frames": [
-        "000100000000000000000000280A000000"
+        "000100000000000000000000280A000001"
       ],
       "expect": {
         "kg": 102.5
@@ -164,9 +164,9 @@
       }
     },
     {
-      "name": "the whole documented shape reads the same weight",
+      "name": "the whole documented shape, unit code 1, reads the same weight in kilograms",
       "frames": [
-        "0001000000000000000000000A280000A3"
+        "0001000000000000000000000A280000A1"
       ],
       "expect": {
         "kg": 26.0
@@ -175,7 +175,7 @@
     {
       "name": "trailing padding is not a reason to refuse a frame",
       "frames": [
-        "0001000000000000000000000A28000000000000000000"
+        "0001000000000000000000000A28000001000000000000"
       ],
       "expect": {
         "kg": 26.0
@@ -184,7 +184,7 @@
     {
       "name": "the rated capacity itself is accepted",
       "frames": [
-        "0001000000000000000000007530000000"
+        "0001000000000000000000007530000001"
       ],
       "expect": {
         "kg": 300.0
@@ -193,7 +193,7 @@
     {
       "name": "one hundredth past the rated capacity is refused",
       "frames": [
-        "0001000000000000000000007531000000"
+        "0001000000000000000000007531000001"
       ],
       "expect": {
         "kg": null
@@ -202,7 +202,7 @@
     {
       "name": "the largest value the field can express is refused",
       "frames": [
-        "000100000000000000000000FFFF000000"
+        "000100000000000000000000FFFF000001"
       ],
       "expect": {
         "kg": null
@@ -211,10 +211,82 @@
     {
       "name": "zero is a reading, not an absent frame",
       "frames": [
-        "0001000000000000000000000000000000"
+        "0001000000000000000000000000000001"
       ],
       "expect": {
         "kg": 0.0
+      }
+    },
+    {
+      "name": "unit code 2 is pounds: 26.00 lb on the display is 11.79 kg",
+      "frames": [
+        "0001000000000000000000000A280000A2"
+      ],
+      "expect": {
+        "kg": 11.79340162
+      }
+    },
+    {
+      "name": "unit code 3 is stone: 26.00 st is 165.11 kg",
+      "frames": [
+        "0001000000000000000000000A280000A3"
+      ],
+      "expect": {
+        "kg": 165.10762268
+      }
+    },
+    {
+      "name": "unit code 4 is jin, half a kilogram: 26.00 jin is 13 kg",
+      "frames": [
+        "0001000000000000000000000A280000A4"
+      ],
+      "expect": {
+        "kg": 13.0
+      }
+    },
+    {
+      "name": "a unit code outside the maker's table reads as kilograms",
+      "frames": [
+        "0001000000000000000000000A280000A9"
+      ],
+      "expect": {
+        "kg": 26.0
+      }
+    },
+    {
+      "name": "a zero unit nibble is pounds — the code TheLastKiwi/Dyna's unit sends",
+      "frames": [
+        "0001000000000000000000000A280000A0"
+      ],
+      "expect": {
+        "kg": 11.79340162
+      }
+    },
+    {
+      "name": "the stability nibble changes nothing",
+      "frames": [
+        "0001000000000000000000000A280000F2"
+      ],
+      "expect": {
+        "kg": 11.79340162
+      }
+    },
+    {
+      "name": "the capacity window is applied after conversion: 655.35 lb is a load the cell can carry",
+      "frames": [
+        "000100000000000000000000FFFF0000A2"
+      ],
+      "expect": {
+        "kg": 297.2617596795
+      }
+    },
+    {
+      "name": "47.30 st is over the cell's rating and refused",
+      "frames": [
+        "000100000000000000000000127A0000A3"
+      ],
+      "expect": {
+        "kg": null
       }
     }
   ]
