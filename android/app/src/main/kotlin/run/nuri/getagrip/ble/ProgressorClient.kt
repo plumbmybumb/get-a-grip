@@ -121,6 +121,10 @@ sealed interface ProgressorClientDiagnostic {
     data object QuarantineReleased : ProgressorClientDiagnostic
     data class StreamStartDeferred(val cause: StreamStartCause) : ProgressorClientDiagnostic
     data class StreamStartWritten(val cause: StreamStartCause) : ProgressorClientDiagnostic
+
+    /// Where a remotely calibrated gauge stands between "connected" and "produces
+    /// force". Only ever sent by a client whose kind `requiresRemoteCalibration`.
+    data class Calibration(val status: GaugeCalibrationStatus) : ProgressorClientDiagnostic
 }
 
 /// The seam between the app and the gauge.

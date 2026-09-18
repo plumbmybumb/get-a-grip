@@ -69,6 +69,13 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     /// service table in the reference lists it, so Settings' Firmware row can be filled
     /// for free — one read, one event, and nothing depends on it arriving.
     private static let firmwareRevisionUUID = CBUUID(string: "2A26")
+    /// Software Revision String, the other Device Information slot a version can live in.
+    /// Read only when a device has no Firmware Revision to offer — Frez publishes the
+    /// Dyno's firmware/API version here.
+    private static let softwareRevisionUUID = CBUUID(string: "2A28")
+    /// Serial Number String. Wanted by exactly one kind of gauge, the one whose counts need
+    /// a per-device coefficient that the serial is the key to; never read otherwise.
+    private static let serialNumberUUID = CBUUID(string: "2A25")
     private static let attemptLimit = 5
 
     /// **A `.withResponse` write that is never acknowledged must not wedge the queue for the
@@ -115,6 +122,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         // The reference accepts both, and the two model lines share this protocol.
         case .cts500: ["CTS500", "CTS-300"]
         case .pb700bt: ["NSD Workout"]
+        // Frez's own rule: "a device whose advertised name starts with FrezDyno-".
+        case .frezdyno: [FrezDynoCodec.advertisedNamePrefix]
         // Not driven by this client: the Progressor has its own, and the WH-C06 is
         // matched on manufacturer data by `BroadcastGaugeClient`.
         case .progressor, .whc06: []
@@ -139,6 +148,16 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     private var tareCharacteristic: CBCharacteristic?
     private var batteryCharacteristic: CBCharacteristic?
     private var firmwareCharacteristic: CBCharacteristic?
+    private var softwareRevisionCharacteristic: CBCharacteristic?
+    private var serialCharacteristic: CBCharacteristic?
+
+    /// Answers the coefficient question for a gauge that `requiresRemoteCalibration`;
+    /// nil for every other kind, which never asks. See `FrezCalibration.swift` for the
+    /// rules that keep this the app's only non-Apple network call.
+    private let calibration: (any GaugeCalibrationResolver)?
+    /// The lookup in flight for THIS link. Cancelled with the link: a coefficient that
+    /// arrives for a connection that has since gone must not mint a decoder for the next.
+    private var calibrationTask: Task<Void, Never>?
 
     /// Alternate notify characteristics found anywhere in the table, and the subscription
     /// bookkeeping for the whole set.
@@ -212,10 +231,12 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     /// A paced start sequence in flight. See `beginStartSequence`.
     private var startSequenceTask: Task<Void, Never>?
 
-    init(kind: GaugeKind, profile: GaugeGattProfile) {
+    init(kind: GaugeKind, profile: GaugeGattProfile,
+         calibration: (any GaugeCalibrationResolver)? = nil) {
         self.kind = kind
         self.profile = profile
         self.capabilities = kind.capabilities
+        self.calibration = calibration
         self.serviceUUID = CBUUID(string: profile.serviceUUID)
         self.notifyUUID = CBUUID(string: profile.notifyCharacteristicUUID)
         self.alternateNotifyUUIDs = profile.alternateNotifyCharacteristicUUIDs
@@ -231,6 +252,7 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         backoffTask?.cancel()
         inFlightWriteDeadlineTask?.cancel()
         startSequenceTask?.cancel()
+        calibrationTask?.cancel()
     }
 
     // MARK: - ProgressorClient
@@ -713,6 +735,11 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         tareCharacteristic = nil
         batteryCharacteristic = nil
         firmwareCharacteristic = nil
+        softwareRevisionCharacteristic = nil
+        serialCharacteristic = nil
+        // A coefficient still in flight belongs to the link that asked for it.
+        calibrationTask?.cancel()
+        calibrationTask = nil
         pendingServiceDiscoveries = 0
         discoveryFinished = false
         writeQueue.removeAll()
@@ -1007,6 +1034,13 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
             if uuid == Self.firmwareRevisionUUID, firmwareCharacteristic == nil {
                 firmwareCharacteristic = characteristic
             }
+            if uuid == Self.softwareRevisionUUID, softwareRevisionCharacteristic == nil {
+                softwareRevisionCharacteristic = characteristic
+            }
+            if capabilities.requiresRemoteCalibration, uuid == Self.serialNumberUUID,
+               serialCharacteristic == nil {
+                serialCharacteristic = characteristic
+            }
         }
 
         pendingServiceDiscoveries = max(0, pendingServiceDiscoveries - 1)
@@ -1043,8 +1077,12 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
             failAttempt(reason: String(localized: "Missing control characteristic"), cancelling: peripheral)
             return
         }
-        // The decoder is minted HERE, one per link, and dropped by `clearLinkState`.
-        decoder = kind.makeFrameDecoder()
+        // The decoder is minted HERE, one per link, and dropped by `clearLinkState` —
+        // except for a gauge whose counts need a coefficient. That one gets its decoder
+        // the moment the coefficient is in hand (`resolveCalibration`) and none before:
+        // a decoder without a slope could only invent numbers, and Frez's rule is that no
+        // calibrated force is shown until the lookup has succeeded.
+        decoder = capabilities.requiresRemoteCalibration ? nil : kind.makeFrameDecoder()
         streamCharacteristics = candidates
         pendingSubscriptions = candidates.count
         for candidate in candidates { peripheral.setNotifyValue(true, for: candidate) }
@@ -1090,8 +1128,60 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
         // outstanding reads cannot cross-pair the way a version reply once parsed as
         // battery millivolts.
         if batteryCharacteristic != nil { readBatteryLevel() }
-        if let firmwareCharacteristic { peripheral.readValue(for: firmwareCharacteristic) }
+        if let firmwareCharacteristic {
+            peripheral.readValue(for: firmwareCharacteristic)
+        } else if let softwareRevisionCharacteristic {
+            peripheral.readValue(for: softwareRevisionCharacteristic)
+        }
+        beginCalibrationIfNeeded(on: peripheral)
         drainWriteQueue()
+    }
+
+    // MARK: - Remote calibration
+
+    /// Frez's connection order, honoured exactly: subscribe, read the serial, fetch the
+    /// coefficient, and only then let counts become kilograms. The start payload may
+    /// already be queued — nothing gates the start, per the house rule — and until the
+    /// decoder exists the notifications it produces are dropped at `ingest`, which is the
+    /// fail-closed answer Frez asks for: no calibrated force without a coefficient.
+    private func beginCalibrationIfNeeded(on peripheral: CBPeripheral) {
+        guard capabilities.requiresRemoteCalibration else { return }
+        guard let serialCharacteristic else {
+            onDiagnostic?(.calibration(.failed(serial: nil, failure: .missingSerial)))
+            return
+        }
+        onDiagnostic?(.calibration(.waitingForSerial))
+        peripheral.readValue(for: serialCharacteristic)
+    }
+
+    /// The serial arrived (or failed to). One lookup per link, tied to the generation that
+    /// asked, so an answer for a connection that has since gone mints nothing.
+    private func resolveCalibration(serial rawSerial: String?) {
+        let serial = rawSerial?.trimmingCharacters(in: .whitespacesAndNewlines.union(["\0"])) ?? ""
+        guard !serial.isEmpty else {
+            onDiagnostic?(.calibration(.failed(serial: nil, failure: .missingSerial)))
+            return
+        }
+        guard let calibration else {
+            onDiagnostic?(.calibration(.failed(serial: serial, failure: .noAccessKey)))
+            return
+        }
+        onDiagnostic?(.calibration(.resolving(serial: serial)))
+        let generation = self.generation
+        calibrationTask?.cancel()
+        calibrationTask = Task { [weak self] in
+            let result = await calibration.calibration(forSerial: serial)
+            guard !Task.isCancelled, let self,
+                  self.generation == generation, self.state.isConnected else { return }
+            self.calibrationTask = nil
+            switch result {
+            case .success(let answer):
+                self.decoder = self.kind.makeCalibratedFrameDecoder(coefficient: answer.coefficient)
+                self.onDiagnostic?(.calibration(.ready(serial: serial, calibration: answer)))
+            case .failure(let failure):
+                self.onDiagnostic?(.calibration(.failed(serial: serial, failure: failure)))
+            }
+        }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic,
@@ -1113,7 +1203,15 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral,
                     didUpdateValueFor characteristic: CBCharacteristic,
                     error: Error?) {
-        guard isCurrent(peripheral), error == nil, let data = characteristic.value else { return }
+        guard isCurrent(peripheral) else { return }
+        // The serial is the one read whose FAILURE has to be reported: a calibrated gauge
+        // left waiting on it would sit at "connected" with no force and no explanation.
+        if let serialCharacteristic, characteristic === serialCharacteristic {
+            let text = error == nil ? characteristic.value.map { String(decoding: $0, as: UTF8.self) } : nil
+            resolveCalibration(serial: text)
+            return
+        }
+        guard error == nil, let data = characteristic.value else { return }
 
         // Identity first: the stream is a characteristic we subscribed to, not merely one
         // carrying its UUID. Any of them may be the one that speaks — the same decoder
@@ -1131,7 +1229,8 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
             onEvent?(.batteryFraction(fraction))
             return
         }
-        if characteristic.uuid == Self.firmwareRevisionUUID {
+        if characteristic.uuid == Self.firmwareRevisionUUID
+            || characteristic.uuid == Self.softwareRevisionUUID {
             guard let text = String(data: data, encoding: .utf8), !text.isEmpty else { return }
             onEvent?(.appVersion(text))
         }

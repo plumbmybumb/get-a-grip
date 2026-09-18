@@ -109,3 +109,22 @@ reading from a WH-C06 crane scale arrived "doubled".
   runs; that diagnostic line is what will explain it.
 - The cross-platform codec fixture gains the pounds, stone, jin, unknown-code and
   capacity cases; unit tests on both platforms pin the same table.
+
+## Start an alternating routine on the right hand — iOS and Android
+
+Status: implemented on the Frez Dyno branch, unreleased.
+
+- [x] A routine-level **starting hand** (`SessionPlan.startingHand`, left by default)
+  mirrors both alternating modes: L R L R becomes R L R L, and L L L R R R becomes
+  R R R L L L. Alternation still resets at every set boundary, to that hand. Both
+  hands ignore it.
+- [x] One control writes it: a small **Swap** button on the hand-order strip in the
+  builder's REST & HANDS card, hidden under Both hands. The strip and its spoken
+  sentence flip with it, and the routine overview says which hand leads.
+- [x] Persisted as a raw column beside the hand mode (`startingHandRaw`; Room schema
+  version 2 by auto-migration), carried by the undo snapshot, the share link and the
+  workout log's frozen plan. Every blob written before the field reads as left; `both`
+  and unknown raws read as left too, never as a failure.
+- [x] Cross-engine fixtures: the blob, sequence and share fixtures carry the field,
+  and a right-first runner trace (`hands-alternate-right-first`) is recorded by the
+  Kotlin engine and replayed by the Swift oracle.

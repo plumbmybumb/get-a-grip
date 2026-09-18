@@ -134,6 +134,7 @@ class SettingsStore(
         val lastStartedDayRawKey = intPreferencesKey("lastStartedDayRaw")
         val draftStashKey = stringPreferencesKey("draftStash")
         val shareCardStyleKey = stringPreferencesKey("shareCardStyle")
+        val frezIntroSeenKey = booleanPreferencesKey("frezIntroSeen")
         val scheduledRemindersKey = stringPreferencesKey("reminders.scheduled")
 
         /// `tour.seen.<act>` — one key per act, holding a VERSION rather than a Bool.
@@ -174,6 +175,7 @@ class SettingsStore(
     private var dayRaw: Int by mutableStateOf(loaded[lastStartedDayRawKey] ?: 0)
     private var stash: String? by mutableStateOf(loaded[draftStashKey])
     private var cardStyle: String by mutableStateOf(loaded[shareCardStyleKey] ?: "white")
+    private var frezIntro: Boolean by mutableStateOf(loaded[frezIntroSeenKey] ?: false)
     private var scheduled: Set<String> by mutableStateOf(
         loaded[scheduledRemindersKey]?.split('\n')?.filter { it.isNotEmpty() }?.toSet()
             ?: emptySet()
@@ -218,6 +220,11 @@ class SettingsStore(
 
     /// Which card the calendar share sheet draws — white, dark or frosted.
     val shareCardStyle: String get() = cardStyle
+
+    /// One-shot, like the notification ask: the note Frez asks to be shown the first time
+    /// the Dyno is selected has been read on this device. Never shown again after Next,
+    /// and never shown at all for any other gauge.
+    val frezIntroSeen: Boolean get() = frezIntro
 
     /// The reminder identifiers this app believes it has scheduled.
     ///
@@ -269,6 +276,11 @@ class SettingsStore(
     override fun setDraftStash(value: String?) {
         stash = value
         write { if (value == null) it.remove(draftStashKey) else it[draftStashKey] = value }
+    }
+
+    fun setFrezIntroSeen(value: Boolean) {
+        frezIntro = value
+        write { it[frezIntroSeenKey] = value }
     }
 
     fun setShareCardStyle(value: String) {

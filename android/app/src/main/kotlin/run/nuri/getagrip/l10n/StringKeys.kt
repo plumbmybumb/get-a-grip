@@ -12,7 +12,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1143) {
+val STRING_KEYS: Map<String, Int> = buildMap(1181) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -191,6 +191,8 @@ private fun string_keysChunk1(into: MutableMap<String, Int>) {
     into["%s of each hand's max · %s kg"] = R.string.s_of_each_hand_s_max_kg
     into["%s of your max on this grip"] = R.string.s_of_your_max_on_this_grip
     into["%s rest"] = R.string.s_rest_1bd51a
+    into["%s sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server."] = R.string.s_sends_raw_sensor_counts_so_the_first_time_a_unit_connect
+    into["%s speaks a protocol its maker published, but no unit has been tried on this app yet."] = R.string.s_speaks_a_protocol_its_maker_published_but_no_unit_has_be
     into["%s under tension"] = R.string.s_under_tension_cf82bb
     into["%s under tension per side"] = R.string.s_under_tension_per_side
     into["%s · %s"] = R.string.s_x_6c2c70
@@ -257,6 +259,7 @@ private fun string_keysChunk1(into: MutableMap<String, Int>) {
     into["A max is the hardest you can pull on one grip."] = R.string.s_a_max_is_the_hardest_you_can_pull_on_one_grip
     into["A max records your hardest measured pull on a grip."] = R.string.s_a_max_records_your_hardest_measured_pull_on_a_grip
     into["A max-testing day — new ceilings on the gauge."] = R.string.s_a_max_testing_day_new_ceilings_on_the_gauge
+    into["A note from Frez"] = R.string.s_a_note_from_frez
     into["A number you entered. Check its value and units before using it for targets."] = R.string.s_a_number_you_entered_check_its_value_and_units_before_us
     into["A number you set yourself. Measure it on the gauge if you'd rather not guess."] = R.string.s_a_number_you_set_yourself_measure_it_on_the_gauge_if_you
     into["A pinch always includes the thumb"] = R.string.s_a_pinch_always_includes_the_thumb_c3d051
@@ -277,7 +280,9 @@ private fun string_keysChunk1(into: MutableMap<String, Int>) {
     into["Adjust values"] = R.string.s_adjust_values
     into["Adjusted values are saved as manual entries. Your recorded trace stays unchanged."] = R.string.s_adjusted_values_are_saved_as_manual_entries_your_recorde
     into["All %1\$d on the left, then all %2\$d on the right"] = R.string.s_all_lld_on_the_left_then_all_lld_on_the_right
+    into["All %1\$d on the right, then all %2\$d on the left"] = R.string.s_all_lld_on_the_right_then_all_lld_on_the_left
     into["All %d on the left, then all %d on the right"] = R.string.s_all_lld_on_the_left_then_all_lld_on_the_right
+    into["All %d on the right, then all %d on the left"] = R.string.s_all_lld_on_the_right_then_all_lld_on_the_left
     into["All I had"] = R.string.s_all_i_had
     into["All history"] = R.string.s_all_history
     into["All six on the left, then all six on the right, inside one set."] = R.string.s_all_six_on_the_left_then_all_six_on_the_right_inside_one
@@ -322,14 +327,14 @@ private fun string_keysChunk1(into: MutableMap<String, Int>) {
     into["Both open an email. Your app version, iOS version, device and selected gauge are added at the end of the message, so a report arrives with the context to act on it."] = R.string.s_both_open_an_email_your_app_version_ios_version_device_a
     into["Both sessions done today"] = R.string.s_both_sessions_done_today
     into["Break between sets"] = R.string.s_break_between_sets
+}
+
+private fun string_keysChunk2(into: MutableMap<String, Int>) {
     into["Build force gradually and stop if it hurts. This measures a peak, not a safe training limit."] = R.string.s_build_force_gradually_and_stop_if_it_hurts_this_measures
     into["Build my routine"] = R.string.s_build_my_routine
     into["Build one now"] = R.string.s_build_one_now
     into["Builder hints reset"] = R.string.s_builder_hints_reset
     into["CONNECTING"] = R.string.s_connecting_48b998
-}
-
-private fun string_keysChunk2(into: MutableMap<String, Int>) {
     into["CSV · %s"] = R.string.s_csv
     into["CURL"] = R.string.s_curl
     into["Camera access is off"] = R.string.s_camera_access_is_off
@@ -428,6 +433,7 @@ private fun string_keysChunk2(into: MutableMap<String, Int>) {
     into["Done"] = R.string.s_done_e9b450
     into["Done %d times today"] = R.string.s_done_lld_times_today
     into["Done today"] = R.string.s_done_today
+    into["Donghyun Kim"] = R.string.s_donghyun_kim
     into["Down %1\$s %2\$s across %3\$d sessions."] = R.string.s_down_across_lld_sessions
     into["Down %1\$s kg across %2\$d sessions."] = R.string.s_down_kg_across_lld_sessions
     into["Down %s %s across %d sessions."] = R.string.s_down_across_lld_sessions
@@ -474,18 +480,29 @@ private fun string_keysChunk2(into: MutableMap<String, Int>) {
     into["Finger curl"] = R.string.s_finger_curl
     into["Fingers %s"] = R.string.s_fingers_c8a2d1
     into["Fingers on the edge"] = R.string.s_fingers_on_the_edge
+}
+
+private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Finish"] = R.string.s_finish
     into["Finish a session and it lands here — what you did, how hard it felt, and how your load is moving per grip."] = R.string.s_finish_a_session_and_it_lands_here_what_you_did_how_hard
     into["Firmware"] = R.string.s_firmware
     into["Flat battery, or you left it at home. The same routine runs on the clock and the day still counts. Nothing is measured."] = R.string.s_flat_battery_or_you_left_it_at_home_the_same_routine_run
     into["Following the routine — %1\$s, which is %2\$s on your %3\$s"] = R.string.s_following_the_routine_which_is_on_your
     into["Following the routine — %s of your max, but there is no max on file for this grip yet, so this set will show no target."] = R.string.s_following_the_routine_of_your_max_but_there_is_no_max_on
-}
-
-private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Following the routine — %s, which is %s on your %s"] = R.string.s_following_the_routine_which_is_on_your
     into["For both hands"] = R.string.s_for_both_hands
     into["For the %s hand only"] = R.string.s_for_the_hand_only
+    into["Frez"] = R.string.s_frez
+    into["Frez Dyno"] = R.string.s_frez_dyno
+    into["Frez Pro helps us develop new features and provide reliable devices."] = R.string.s_frez_pro_helps_us_develop_new_features_and_provide_relia
+    into["Frez could not produce a calibration for this Dyno."] = R.string.s_frez_could_not_produce_a_calibration_for_this_dyno
+    into["Frez did not accept this app's access key."] = R.string.s_frez_did_not_accept_this_app_s_access_key
+    into["Frez has no calibration on file for this Dyno."] = R.string.s_frez_has_no_calibration_on_file_for_this_dyno
+    into["Frez has reached the number of Dynos this app may register."] = R.string.s_frez_has_reached_the_number_of_dynos_this_app_may_regist
+    into["Frez is busy. Try again in a minute."] = R.string.s_frez_is_busy_try_again_in_a_minute
+    into["Frez is reviewing this Dyno's ownership before it can be registered."] = R.string.s_frez_is_reviewing_this_dyno_s_ownership_before_it_can_be
+    into["Frez rejected the calibration request."] = R.string.s_frez_rejected_the_calibration_request
+    into["Frez sent an answer this app could not read."] = R.string.s_frez_sent_an_answer_this_app_could_not_read
     into["Front 2"] = R.string.s_front_2
     into["Front 3"] = R.string.s_front_3
     into["Frosted"] = R.string.s_frosted
@@ -534,6 +551,7 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Hard"] = R.string.s_hard
     into["Hard bouldering or projecting — a maximal pull on your fingers."] = R.string.s_hard_bouldering_or_projecting_a_maximal_pull_on_your_fin
     into["Harder than your max"] = R.string.s_harder_than_your_max
+    into["Hello,"] = R.string.s_hello
     into["Hints reset — open a routine to see them"] = R.string.s_hints_reset_open_a_routine_to_see_them
     into["History"] = R.string.s_history
     into["Hold"] = R.string.s_hold_3bd328
@@ -550,7 +568,10 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["How long the session was"] = R.string.s_how_long_the_session_was
     into["How much on each side"] = R.string.s_how_much_on_each_side
     into["How often"] = R.string.s_how_often_bd8848
+    into["I hope Frez will be with you for many years to come."] = R.string.s_i_hope_frez_will_be_with_you_for_many_years_to_come
     into["Idle"] = R.string.s_idle
+    into["If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro."] = R.string.s_if_you_enjoy_using_frez_dyno_and_would_like_to_support_t
+    into["In fact, Frez Dyno was made possible by our early Pro subscribers."] = R.string.s_in_fact_frez_dyno_was_made_possible_by_our_early_pro_sub
     into["In your routine — never tested"] = R.string.s_in_your_routine_never_tested
     into["Include gauge diagnostics"] = R.string.s_include_gauge_diagnostics_4522a0
     into["Include gauge diagnostics?"] = R.string.s_include_gauge_diagnostics_9ac65b
@@ -561,6 +582,7 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["It counts you in, times every pull, and reads your force gauge so you know what you actually held. Start by making a routine — a name and one set is enough."] = R.string.s_it_counts_you_in_times_every_pull_and_reads_your_force_g
     into["It counts your hold down and stops if you come off the edge. Coming off never ends a pull, however long you take."] = R.string.s_it_counts_your_hold_down_and_stops_if_you_come_off_the_e
     into["It is the number your training loads come from. The light sets in your routine sit at roughly a fifth to a third of it, so without a max a set can only tell you kilograms — not what those kilograms mean for your fingers."] = R.string.s_it_is_the_number_your_training_loads_come_from_the_light
+    into["I’m Donghyun Kim, founder of Frez."] = R.string.s_i_m_donghyun_kim_founder_of_frez
     into["Jlyscales"] = R.string.s_jlyscales
     into["Jlyscales CTS500"] = R.string.s_jlyscales_cts500
     into["Keep editing"] = R.string.s_keep_editing
@@ -604,12 +626,16 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Load per grip"] = R.string.s_load_per_grip
     into["Log a session"] = R.string.s_log_a_session
     into["Log a session you did elsewhere — climbing, or hangs off the gauge"] = R.string.s_log_a_session_you_did_elsewhere_climbing_or_hangs_off_th
+    into["Looking up this Dyno's calibration…"] = R.string.s_looking_up_this_dyno_s_calibration
     into["Lower bound"] = R.string.s_lower_bound
     into["MPL 2.0"] = R.string.s_mpl_2_0
     into["Make this the one Today opens on"] = R.string.s_make_this_the_one_today_opens_on
     into["Manage"] = R.string.s_manage
     into["Manage maxes"] = R.string.s_manage_maxes
     into["Max"] = R.string.s_max_a95e85
+}
+
+private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Max day"] = R.string.s_max_day
     into["Max on this grip"] = R.string.s_max_on_this_grip
     into["Max testing"] = R.string.s_max_testing
@@ -633,9 +659,6 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Measure your left and right hands in one visit, or enter the values you already know."] = R.string.s_measure_your_left_and_right_hands_in_one_visit_or_enter
     into["Measured"] = R.string.s_measured_955037
     into["Measured on the gauge — your hardest pull on this grip."] = R.string.s_measured_on_the_gauge_your_hardest_pull_on_this_grip
-}
-
-private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Measured: %s"] = R.string.s_measured_225ed4
     into["Middle"] = R.string.s_middle
     into["Middle 2"] = R.string.s_middle_2
@@ -763,6 +786,9 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Percentage targets use your saved maxes. These may no longer reflect your current strength."] = R.string.s_percentage_targets_use_your_saved_maxes_these_may_no_lon
     into["Photos access is off for Get a Grip — Settings > Privacy > Photos."] = R.string.s_photos_access_is_off_for_get_a_grip_settings_privacy_pho
     into["Pinch"] = R.string.s_pinch
+}
+
+private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["PitchSix"] = R.string.s_pitchsix
     into["PitchSix Force Board"] = R.string.s_pitchsix_force_board
     into["Point your camera at a Get a Grip routine QR code."] = R.string.a_point_your_camera_at_a_get_a_grip_routine_qr_code
@@ -786,9 +812,6 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Pull now"] = R.string.s_pull_now
     into["Pull — anything above the line counts."] = R.string.s_pull_anything_above_the_line_counts
     into["Pulling"] = R.string.s_pulling
-}
-
-private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Pulls"] = R.string.s_pulls_4ce481
     into["Pulls per side"] = R.string.s_pulls_per_side
     into["Pull…"] = R.string.s_pull_9effc2
@@ -819,7 +842,10 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Resume"] = R.string.s_resume
     into["Right"] = R.string.s_right_954daa
     into["Right hand"] = R.string.s_right_hand
+    into["Right hand first, then left, within each set."] = R.string.s_right_hand_first_then_left_within_each_set
     into["Right hand next"] = R.string.s_right_hand_next_861ec2
+    into["Right, left, right, left — %s"] = R.string.s_right_left_right_left
+    into["Right, left, right, left — swapping hands every pull."] = R.string.s_right_left_right_left_swapping_hands_every_pull
     into["Ring"] = R.string.s_ring
     into["Ritual or whenever"] = R.string.s_ritual_or_whenever
     into["Routine deleted"] = R.string.s_routine_deleted
@@ -901,6 +927,7 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Sharing a file isn't available on this build — use Copy, and paste the document where you need it."] = R.string.a_sharing_a_file_isn_t_available_on_this_build_use_copy_an
     into["Sharing an image isn't available on this build."] = R.string.a_sharing_an_image_isn_t_available_on_this_build
     into["Show the builder's hints again"] = R.string.s_show_the_builder_s_hints_again
+    into["Shown once, the first time you pick the Dyno."] = R.string.s_shown_once_the_first_time_you_pick_the_dyno
     into["Shows the earlier maxes for this grip"] = R.string.s_shows_the_earlier_maxes_for_this_grip
     into["Skip"] = R.string.s_skip
     into["Skip is unavailable while connecting."] = R.string.s_skip_is_unavailable_while_connecting
@@ -912,6 +939,9 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Some fixed weight targets moved"] = R.string.s_some_fixed_weight_targets_moved
     into["Some fixed weight targets were set by the sender. Review them for your own training."] = R.string.s_some_fixed_weight_targets_were_set_by_the_sender_review
     into["Some kilogram targets were set by the sender. Review them for your own training."] = R.string.s_some_kilogram_targets_were_set_by_the_sender_review_them
+}
+
+private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Some percentage targets have no saved max, so they will show no target."] = R.string.s_some_percentage_targets_have_no_saved_max_so_they_will_s
     into["Some sets carry kilogram targets typed by whoever shared this."] = R.string.s_some_sets_carry_kilogram_targets_typed_by_whoever_shared
     into["Source"] = R.string.s_source
@@ -929,19 +959,21 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Start the rest when I let go"] = R.string.s_start_the_rest_when_i_let_go
     into["Start third session"] = R.string.s_start_third_session
     into["Start with a name and one set. Make it yours, then come back and pull."] = R.string.s_start_with_a_name_and_one_set_make_it_yours_then_come_ba
+    into["Start with the left hand"] = R.string.s_start_with_the_left_hand
+    into["Start with the right hand"] = R.string.s_start_with_the_right_hand
     into["Start without a gauge"] = R.string.s_start_without_a_gauge
+    into["Starts on the left hand"] = R.string.s_starts_on_the_left_hand
+    into["Starts on the right hand"] = R.string.s_starts_on_the_right_hand
     into["Status"] = R.string.s_status
     into["Stop"] = R.string.s_stop
     into["Stopped"] = R.string.s_stopped
     into["Summary"] = R.string.s_summary
     into["Support"] = R.string.s_support
+    into["Swap"] = R.string.s_swap
     into["TARGETS THAT FOLLOWED"] = R.string.s_targets_that_followed
     into["THIS MAX IS FOR"] = R.string.s_this_max_is_for
     into["TYPED KILOGRAMS"] = R.string.s_typed_kilograms
     into["Take the spotlight tour again"] = R.string.s_take_the_spotlight_tour_again
-}
-
-private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Tap Connect to pair with your %s."] = R.string.s_tap_connect_to_pair_with_your
     into["Tap Connect to start listening for your %s."] = R.string.s_tap_connect_to_start_listening_for_your
     into["Tap a set for its grip, its pulls, its own hold and rest, and its target. Add a set copies the last one, so a uniform routine is quick."] = R.string.s_tap_a_set_for_its_grip_its_pulls_its_own_hold_and_rest_a
@@ -960,6 +992,7 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Terms of use"] = R.string.a_terms_of_use
     into["Tested %s"] = R.string.s_tested
     into["Tested your maxes"] = R.string.s_tested_your_maxes_c47639
+    into["Thank you,"] = R.string.s_thank_you
     into["That change couldn't be saved — %s"] = R.string.s_that_change_couldn_t_be_saved
     into["That change couldn't be saved — the routine is still here. Try again."] = R.string.s_that_change_couldn_t_be_saved_the_routine_is_still_here
     into["That completes %s — no reminders, and a full day on your calendar. You can still do a hang session if you want one."] = R.string.s_that_completes_no_reminders_and_a_full_day_on_your_calen
@@ -974,6 +1007,7 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["The big word is the hand that goes on the edge. Your fingers hang off the palm at the top of the screen, so the grip reads without a word."] = R.string.a_the_big_word_is_the_hand_that_goes_on_the_edge_your_fing
     into["The break between sets, how the hands split the work, and whether a rest waits for you to let go. Everything else lives on each set."] = R.string.s_the_break_between_sets_how_the_hands_split_the_work_and
     into["The break between sets, how your hands split the work, and whether a rest waits for you to let go. Everything else lives on each set."] = R.string.s_the_break_between_sets_how_your_hands_split_the_work_and
+    into["The calibration lookup needs an internet connection the first time a Dyno is used."] = R.string.s_the_calibration_lookup_needs_an_internet_connection_the
     into["The camera scanner isn't available right now. Try again when the camera is available, or open the routine link directly."] = R.string.s_the_camera_scanner_isn_t_available_right_now_try_again_w
     into["The clock"] = R.string.s_the_clock
     into["The clock only runs while you are inside the target range."] = R.string.s_the_clock_only_runs_while_you_are_inside_the_target_rang
@@ -995,7 +1029,9 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["There's %s kg on the gauge. Zero it?"] = R.string.s_there_s_kg_on_the_gauge_zero_it
     into["These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets."] = R.string.s_these_are_workout_peaks_not_necessarily_maximum_efforts
     into["These were typed by hand, so they never move on their own. Scale them with the new max, or leave them."] = R.string.s_these_were_typed_by_hand_so_they_never_move_on_their_own
+    into["This Dyno did not report a serial number, so its calibration cannot be looked up."] = R.string.s_this_dyno_did_not_report_a_serial_number_so_its_calibrat
     into["This build can't reach its shared storage, so routines saved earlier may not appear here."] = R.string.s_this_build_can_t_reach_its_shared_storage_so_routines_sa
+    into["This build has no Frez access key, so the Dyno's calibration cannot be fetched."] = R.string.s_this_build_has_no_frez_access_key_so_the_dyno_s_calibrat
     into["This code contains a routine with no pulls in it."] = R.string.s_this_code_contains_a_routine_with_no_pulls_in_it
     into["This code couldn't be drawn."] = R.string.s_this_code_couldn_t_be_drawn
     into["This code couldn't be drawn. The link below still works."] = R.string.a_this_code_couldn_t_be_drawn_the_link_below_still_works
@@ -1054,7 +1090,11 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["WHEN"] = R.string.s_when
     into["Waiting for the gauge"] = R.string.s_waiting_for_the_gauge
     into["Wake"] = R.string.s_wake
+    into["We keep our hardware margins low because we believe everyone should have access to their own data."] = R.string.s_we_keep_our_hardware_margins_low_because_we_believe_ever
     into["Weight targets"] = R.string.s_weight_targets
+}
+
+private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["Weight targets updated"] = R.string.s_weight_targets_updated
     into["Weight units"] = R.string.s_weight_units
     into["Weighted hangs"] = R.string.s_weighted_hangs
@@ -1092,9 +1132,6 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Your percent targets follow whatever you save here."] = R.string.s_your_percent_targets_follow_whatever_you_save_here
     into["Your routine"] = R.string.s_your_routine_5e7844
     into["Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing."] = R.string.s_your_routines_and_sessions_are_stored_on_this_device_pri
-}
-
-private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["Your routines and sessions are stored on this device. They don't sync between devices."] = R.string.a_your_routines_and_sessions_are_stored_on_this_device_the
     into["Your routines and sessions stay on this device and in your private iCloud. Nobody else can read them — not even us."] = R.string.s_your_routines_and_sessions_stay_on_this_device_and_in_yo
     into["Your sessions will show up here."] = R.string.s_your_sessions_will_show_up_here
@@ -1150,6 +1187,7 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["now"] = R.string.s_now_c9bc84
     into["of %d"] = R.string.s_of_lld
     into["of %d today"] = R.string.s_of_lld_today
+    into["official protocol, untested here"] = R.string.s_official_protocol_untested_here
     into["over a year ago"] = R.string.a_over_a_year_ago
     into["peak %1\$s %2\$s"] = R.string.s_peak_194d5b
     into["peak %s %s"] = R.string.s_peak_194d5b

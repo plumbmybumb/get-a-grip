@@ -511,6 +511,25 @@ class TemplateStoreTests {
         )
     }
 
+    /// The starting hand is a column, like the mode, so the swap survives the save and
+    /// rides the undo — the trap `pausesOutsideTargetBand` fell into on iOS, twice.
+    @Test
+    fun theStartingHandSurvivesTheSaveAndTheUndo() = runTest {
+        val w = makeWorld()
+        val d = RoutineDraft.starter
+        val draft = d.copy(plan = d.plan.copy(startingHand = Side.right))
+
+        val saved = assertNotNull(w.store.create(draft))
+        assertEquals("right", saved.startingHandRaw)
+        assertEquals(Side.right, saved.plan.startingHand, "the runner reads the plan")
+        assertEquals(Side.right, saved.draft.plan.startingHand, "the editor reads the draft")
+
+        assertTrue(w.store.delete(saved))
+        w.store.undoDelete()
+        val restored = assertNotNull(routines(w).firstOrNull { it.name == "Daily no-hangs" })
+        assertEquals(Side.right, restored.plan.startingHand, "the column rides the snapshot")
+    }
+
     @Test
     fun anImportedRoutineAppendsAtTheEndAndNeverBecomesPrimary() = runTest {
         val w = makeWorld()

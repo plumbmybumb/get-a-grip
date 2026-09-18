@@ -126,6 +126,7 @@ class RoutineShareCodecTests {
                     thresholdKg = 3.5,
                     waitForReleaseBeforeRest = false,
                     pausesOutsideTargetBand = false,
+                    startingHand = Side.right,
                 ),
                 sessionsPerDay = 3,
                 isOnDemand = true,

@@ -197,7 +197,7 @@ class PlanMathTests {
             assertEquals(6, PlanMath.totalReps(plan), "$mode")
             assertNull(PlanMath.repsPerSide(plan), "$mode")
             assertEquals(
-                List(6) { mode.startSide },
+                List(6) { mode.startSide(Side.left) },
                 PlanMath.sequence(plan).map { it.side },
                 "$mode",
             )
@@ -242,7 +242,7 @@ class PlanMathTests {
                 assertEquals(true, first?.isFirstOfSet)
             }
             assertEquals(Side.left, PlanMath.side(forRep = 0, mode = mode, repsPerSide = 3))
-            assertEquals(Side.left, mode.startSide)
+            assertEquals(Side.left, mode.startSide(Side.left))
         }
     }
 
@@ -259,6 +259,64 @@ class PlanMathTests {
                 assertEquals(repsPerSide, sides.count { it == Side.right }, "$mode $repsPerSide")
             }
         }
+    }
+
+    // MARK: - The starting hand
+
+    /// Nuri's swap (2026-09-18): the same two rows, mirrored. Alternation still resets at
+    /// every set boundary — to the RIGHT now — and the per-set balance is untouched.
+    @Test
+    fun aStartingHandOfRightMirrorsBothAlternatingModes() {
+        val sets = listOf(1, 3).map { SetPlan(grip = GripSpec(), repsPerSide = it) }
+
+        val eachRep = SessionPlan(handMode = HandMode.alternateEachRep, startingHand = Side.right, sets = sets)
+        assertEquals(
+            listOf(Side.right, Side.left, Side.right, Side.left, Side.right, Side.left),
+            PlanMath.handSequence(sets[1], eachRep),
+        )
+        assertEquals(
+            listOf(Side.right, Side.left, Side.right, Side.left, Side.right, Side.left, Side.right, Side.left),
+            PlanMath.sequence(eachRep).map { it.side },
+        )
+
+        val eachSet = eachRep.copy(handMode = HandMode.alternateEachSet)
+        assertEquals(
+            listOf(Side.right, Side.right, Side.right, Side.left, Side.left, Side.left),
+            PlanMath.handSequence(sets[1], eachSet),
+        )
+        assertEquals(
+            listOf(Side.right, Side.left, Side.right, Side.right, Side.right, Side.left, Side.left, Side.left),
+            PlanMath.sequence(eachSet).map { it.side },
+        )
+    }
+
+    /// Both hands on the edge is one event with no first hand; the field is inert there
+    /// rather than an error, so flipping modes in the builder never loses the choice.
+    @Test
+    fun theStartingHandIsInertUnderBothHands() {
+        val plan = SessionPlan(
+            handMode = HandMode.bothHands,
+            startingHand = Side.right,
+            sets = listOf(SetPlan(grip = GripSpec(), repsPerSide = 2)),
+        )
+        assertEquals(listOf(Side.both, Side.both), PlanMath.handSequence(plan.sets[0], plan))
+        assertEquals(Side.both, HandMode.bothHands.startSide(Side.right))
+    }
+
+    /// `both` is not a hand to start on, and neither is a raw this build has never heard
+    /// of: each reads as left, the hand every routine started on before the field existed.
+    @Test
+    fun onlyLeftAndRightAreStartingHands() {
+        assertEquals(Side.right, Side.startingHandOrNull("right"))
+        assertEquals(Side.left, Side.startingHandOrNull("left"))
+        assertNull(Side.startingHandOrNull("both"))
+        assertNull(Side.startingHandOrNull("dominant"))
+        assertEquals(Side.left, Side.startingHandFallback("both"))
+        assertEquals(Side.left, HandMode.alternateEachRep.startSide(Side.both))
+        assertEquals(
+            Side.left,
+            PlanMath.side(forRep = 0, mode = HandMode.alternateEachSet, repsPerSide = 2, startingHand = Side.both),
+        )
     }
 
     // MARK: - Rests, breaks and lead-ins

@@ -106,6 +106,7 @@ final class TemplateStore {
         let id: UUID
         let name: String
         let handModeRaw: String
+        let startingHandRaw: String
         let holdSeconds: Int
         let restSeconds: Int
         let setBreakSeconds: Int
@@ -783,6 +784,7 @@ final class TemplateStore {
             id: template.id,
             name: template.name,
             handModeRaw: template.handModeRaw,
+            startingHandRaw: template.startingHandRaw,
             holdSeconds: template.holdSeconds,
             restSeconds: template.restSeconds,
             setBreakSeconds: template.setBreakSeconds,
@@ -838,6 +840,7 @@ final class TemplateStore {
         template.id = restorable.id
         template.name = restorable.name
         template.handModeRaw = restorable.handModeRaw
+        template.startingHandRaw = restorable.startingHandRaw
         template.holdSeconds = restorable.holdSeconds
         template.restSeconds = restorable.restSeconds
         template.setBreakSeconds = restorable.setBreakSeconds

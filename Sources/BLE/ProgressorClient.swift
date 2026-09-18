@@ -109,6 +109,9 @@ enum ProgressorClientDiagnostic: Sendable {
     case quarantineReleased
     case streamStartDeferred(StreamStartCause)
     case streamStartWritten(StreamStartCause)
+    /// Where a remotely calibrated gauge stands between "connected" and "produces
+    /// force". Only ever sent by a client whose kind `requiresRemoteCalibration`.
+    case calibration(GaugeCalibrationStatus)
 }
 
 /// The seam between the app and the gauge.

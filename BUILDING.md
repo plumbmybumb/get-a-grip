@@ -14,6 +14,15 @@ and give the app and Live Activity extension the same App Group. Simulator build
 can run without these capabilities. Real CloudKit sync needs a signed device build;
 deploy its schema to your own Production environment before distributing it.
 
+Frez Dyno calibration lookups authenticate with a Frez Developer Program access key.
+It is private and never committed: the checked-in `project.yml` sets
+`FREZ_ACCESS_KEY` to an empty string, so source, CI and forks build an app in which
+a Dyno connects and reports that its calibration cannot be fetched. The official
+build sets `FREZ_ACCESS_KEY` in the ignored `project.local.yml` (see the example) and
+generates with `XCODEGEN_SPEC=project.local.yml`. The value ends up in the app's
+Info.plist, so treat it as a usage credential with device and rate limits that can be
+extracted from a shipped binary, not as a secret that protects anyone's data.
+
 Use `DEVELOPER_DIR` to select an Xcode installation and `SIM_UDID` to choose an
 installed iOS 26+ iPhone simulator. Tests launch a simulator; close it when finished.
 Do not pass `-mockDevice` for real gauge verification. The in-app demo remains
@@ -41,6 +50,11 @@ getagrip.keyAlias=your-alias
 getagrip.storePassword=your-private-password
 getagrip.keyPassword=your-private-password
 ```
+
+For Frez Dyno calibration lookups, add `getagrip.frezAccessKey=…` to the same
+private `~/.gradle/gradle.properties`; it becomes `BuildConfig.FREZ_ACCESS_KEY`.
+Leave it unset for a build in which a Dyno connects but cannot fetch its calibration.
+The `INTERNET` permission exists for that one-off lookup and nothing else.
 
 Use `./android/build.sh :app:bundleRelease` for an app bundle after configuring your
 own upload key. A fork must also choose its own `applicationId` before distribution.

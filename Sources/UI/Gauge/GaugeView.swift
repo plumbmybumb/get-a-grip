@@ -66,6 +66,18 @@ struct GaugeView: View {
     private var controls: some View {
         if device.state.isConnected {
             VStack(spacing: 12) {
+                // A remotely calibrated gauge can be connected and still have no force to
+                // show. Frez's rule is to say why rather than display a guess, and this is
+                // the one line that does so — only for the gauge that has a why.
+                if let calibrationNote {
+                    Text(calibrationNote)
+                        .font(.system(.footnote))
+                        .foregroundStyle(device.calibrationStatus.isReady ? Ink.tertiary : StatusTint.armed)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("gauge.calibration")
+                }
                 HStack(spacing: 12) {
                     SecondaryGlassButton(title: device.isReadingLive ? String(localized: "Tare") : String(localized: "Wake"),
                                          systemImage: "arrow.counterclockwise") { requestTare() }
@@ -112,6 +124,19 @@ struct GaugeView: View {
                         .multilineTextAlignment(.center)
                 }
             }
+        }
+    }
+
+    /// Nil for every gauge that reports kilograms itself, and for a calibrated one once
+    /// its coefficient is in hand — the readout is the answer then.
+    private var calibrationNote: String? {
+        switch device.calibrationStatus {
+        case .notRequired, .ready:
+            nil
+        case .waitingForSerial, .resolving:
+            String(localized: "Looking up this Dyno's calibration…")
+        case .failed(_, let failure):
+            failure.label
         }
     }
 

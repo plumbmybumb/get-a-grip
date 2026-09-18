@@ -3,13 +3,15 @@
 
 import SwiftUI
 
-/// The real L R L R sequence the Hands choice produces for the first set.
+/// The real L R L R sequence the Hands choice produces for the first set — or R L R L,
+/// once the routine starts on the right.
 ///
 /// Fill-vs-outline, never two hues: it has to survive Reduce Transparency and
 /// colourblindness, and a legend explaining which colour is which hand would be a
 /// legend for a control that exists to remove one.
 struct HandOrderStrip: View {
     let mode: HandMode
+    var startingHand: Side = .left
     let repsPerSide: Int
 
     @ScaledMetric(relativeTo: .caption) private var capsuleWidth: CGFloat = 9
@@ -85,16 +87,22 @@ struct HandOrderStrip: View {
     private var sequence: [Side] {
         var plan = SessionPlan()
         plan.handMode = mode
+        plan.startingHand = startingHand
         return PlanMath.handSequence(SetPlan(repsPerSide: max(0, repsPerSide)), in: plan)
     }
 
     private var sentence: String {
         let perSide = max(0, repsPerSide)
+        let startsRight = startingHand == .right
         switch mode {
         case .alternateEachRep:
-            return String(localized: "Left, right, left, right — \(pulls(totalPulls))")
+            return startsRight
+                ? String(localized: "Right, left, right, left — \(pulls(totalPulls))")
+                : String(localized: "Left, right, left, right — \(pulls(totalPulls))")
         case .alternateEachSet:
-            return String(localized: "All \(perSide) on the left, then all \(perSide) on the right")
+            return startsRight
+                ? String(localized: "All \(perSide) on the right, then all \(perSide) on the left")
+                : String(localized: "All \(perSide) on the left, then all \(perSide) on the right")
         case .bothHands:
             return String(localized: "One pull, both hands — \(pulls(totalPulls))")
         }

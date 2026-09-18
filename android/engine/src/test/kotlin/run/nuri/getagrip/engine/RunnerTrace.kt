@@ -271,10 +271,12 @@ object RunnerScenarios {
         leadIn: Int = 0,
         threshold: Double = 2.0,
         mode: HandMode = HandMode.bothHands,
+        startingHand: Side = Side.left,
     ): SessionPlan = SessionPlan(
         name = "Test",
         sets = (0 until sets).map { SetPlan(id = setID(it), grip = fourFinger, repsPerSide = reps) },
         handMode = mode,
+        startingHand = startingHand,
         holdSeconds = hold,
         restSeconds = rest,
         setBreakSeconds = setBreak,
@@ -323,6 +325,7 @@ object RunnerScenarios {
         finalPullNeverWaits(),
         leadInOnlyBeforeASetsFirstRep(),
         handsAlternate(),
+        handsAlternateRightFirst(),
         emptyPlan(),
         syntheticGapCap(),
         coalescedAdvertisement(),
@@ -665,6 +668,24 @@ object RunnerScenarios {
     private fun handsAlternate() = RunnerTrace(
         "hands-alternate",
         plan(reps = 1, sets = 2, hold = 3, rest = 2, setBreak = 2, mode = HandMode.alternateEachRep),
+    ).apply {
+        start()
+        repeat(4) {
+            hold(pulling, 3.4)
+            letGo()
+            wait(2.2)
+        }
+    }
+
+    /// The same session started on the RIGHT (Nuri's swap, 2026-09-18): every armed cue
+    /// and every logged rep names the mirrored hand, and the reset at the set boundary is
+    /// to the right as well.
+    private fun handsAlternateRightFirst() = RunnerTrace(
+        "hands-alternate-right-first",
+        plan(
+            reps = 1, sets = 2, hold = 3, rest = 2, setBreak = 2,
+            mode = HandMode.alternateEachRep, startingHand = Side.right,
+        ),
     ).apply {
         start()
         repeat(4) {

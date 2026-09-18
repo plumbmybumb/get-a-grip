@@ -14,6 +14,7 @@ the release or audit they describe has shipped.
 | [ANDROID_STABILITY.md](ANDROID_STABILITY.md) | Audio ownership and measured progress on Android |
 | [ANDROID_SWIPE_ACTIONS.md](ANDROID_SWIPE_ACTIONS.md) | Swipe actions and visible undo on Android |
 | [IOS_WH_C06_RECOVERY.md](IOS_WH_C06_RECOVERY.md) | WH-C06 scan recovery on iOS |
+| [FREZ_DYNO.md](FREZ_DYNO.md) | The Frez Dyno: raw-count protocol, one-off calibration lookup, what is still owed on hardware |
 | [CSV_EXPORT.md](CSV_EXPORT.md) | The training export format |
 | [GRIP_CHANGE_CUES.md](GRIP_CHANGE_CUES.md) | How both runners announce a grip change |
 | [TRAINING_SAFEGUARDS.md](TRAINING_SAFEGUARDS.md) | Pull limits, agreements and other training safeguards |

@@ -4,6 +4,7 @@
 package run.nuri.getagrip.data
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Insert
@@ -116,17 +117,21 @@ interface MaxRecordDao {
 /// also named in `res/xml/data_extraction_rules.xml`, so the two must move together or
 /// Auto Backup silently starts backing up nothing.
 ///
-/// `exportSchema = true` writes `app/schemas/…/1.json`, which is what a future migration
+/// `exportSchema = true` writes `app/schemas/…/<version>.json`, which is what a migration
 /// gets diffed against. Version 1 is the first shipped schema; every change after it is
-/// ADDITIVE — a new column with a default, never a rename, never a drop.
+/// ADDITIVE — a new column with a default, never a rename, never a drop — which is
+/// exactly what Room's auto-migrations can write on their own from those two files.
+///
+/// Version 2 (2026-09-18): `SessionTemplate.startingHandRaw`, defaulted `left`.
 @Database(
     entities = [
         SessionTemplateEntity::class,
         WorkoutLogEntity::class,
         MaxRecordEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 @TypeConverters(Converters::class)
 abstract class GetAGripDatabase : RoomDatabase() {

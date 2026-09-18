@@ -8,11 +8,11 @@ package run.nuri.getagrip.engine
 /// One decoded force reading from any supported gauge, before it becomes a
 /// `ForceSample`.
 ///
-/// `deviceMicros` is nil for every device except the Progressor: the ported scales
-/// and boards carry no sample clock of their own, so the BLE client stamps each
-/// reading with `SyntheticSampleClock` at ingestion instead. Downstream nothing
-/// changes — the synthetic stamp wraps at the same 2^32 µs the Tindeq's does, and
-/// every consumer already subtracts with `&-`.
+/// `deviceMicros` is nil for every device except the Progressor and the Frez Dyno:
+/// the ported scales and boards carry no sample clock of their own, so the BLE client
+/// stamps each reading with `SyntheticSampleClock` at ingestion instead. Downstream
+/// nothing changes — the synthetic stamp wraps at the same 2^32 µs the Tindeq's does,
+/// and every consumer already subtracts with `&-`.
 ///
 /// TRANSLATION NOTE: Swift's `UInt32` is Kotlin's `UInt`, and Kotlin's unsigned
 /// subtraction wraps natively — so `a - b` on `UInt` IS Swift's `a &- b`.
@@ -161,7 +161,8 @@ enum class GaugeKind(val rawValue: String) {
     climbro("climbro"),
     motherboard("motherboard"),
     cts500("cts500"),
-    pb700bt("pb700bt");
+    pb700bt("pb700bt"),
+    frezdyno("frezdyno");
 
     val displayName: String
         get() = when (this) {
@@ -173,6 +174,7 @@ enum class GaugeKind(val rawValue: String) {
             motherboard -> L10n.tr("Griptonite Motherboard")
             cts500 -> L10n.tr("Jlyscales CTS500")
             pb700bt -> L10n.tr("NSD PB-700BT")
+            frezdyno -> L10n.tr("Frez Dyno")
         }
 
     val maker: String
@@ -185,6 +187,7 @@ enum class GaugeKind(val rawValue: String) {
             motherboard -> L10n.tr("Griptonite")
             cts500 -> L10n.tr("Jlyscales")
             pb700bt -> L10n.tr("NSD")
+            frezdyno -> L10n.tr("Frez")
         }
 
     val capabilities: GaugeCapabilities
@@ -195,6 +198,7 @@ enum class GaugeKind(val rawValue: String) {
                     isBroadcast = false, hasStandardBattery = false,
                     sustainsBackgroundStreaming = true,
                     nominalSampleRate = 80.0, hardwareVerified = true,
+                    protocolSource = GaugeProtocolSource.vendorDocumented,
                 )
             whc06 ->
                 GaugeCapabilities(
@@ -255,6 +259,21 @@ enum class GaugeKind(val rawValue: String) {
                     sustainsBackgroundStreaming = true,
                     nominalSampleRate = 10.0, hardwareVerified = false,
                 )
+            frezdyno ->
+                // Every record carries the device's elapsed milliseconds since Start, so
+                // this is the second gauge with a real clock. No hardware tare: the zero is
+                // the average of the first hundred unloaded counts, taken in the codec. The
+                // coefficient that turns counts into kilograms is per device and comes from
+                // Frez's API, which is the one thing no other gauge needs.
+                GaugeCapabilities(
+                    hasDeviceClock = true, hasHardwareTare = false,
+                    isBroadcast = false, hasStandardBattery = true,
+                    sustainsBackgroundStreaming = true,
+                    nominalSampleRate = FrezDynoCodec.nominalSampleRate,
+                    hardwareVerified = false,
+                    requiresRemoteCalibration = true,
+                    protocolSource = GaugeProtocolSource.vendorDocumented,
+                )
         }
 
     /// GATT wiring, nil for the two kinds that don't use the generic connected
@@ -269,11 +288,14 @@ enum class GaugeKind(val rawValue: String) {
             motherboard -> MotherboardCodec.profile
             cts500 -> CTS500Codec.profile
             pb700bt -> PB700BTCodec.profile
+            frezdyno -> FrezDynoCodec.profile
         }
 
-    /// Nil for the same two kinds, for the same reasons.
+    /// Nil for the same two kinds, for the same reasons — and for the Frez Dyno,
+    /// whose decoder cannot exist without a coefficient: see
+    /// `makeCalibratedFrameDecoder(coefficient)`.
     fun makeFrameDecoder(): GaugeFrameDecoder? = when (this) {
-        progressor, whc06 -> null
+        progressor, whc06, frezdyno -> null
         entralpi -> EntralpiCodec.Decoder()
         forceboard -> ForceBoardCodec.Decoder()
         climbro -> ClimbroCodec.Decoder()
@@ -282,11 +304,27 @@ enum class GaugeKind(val rawValue: String) {
         pb700bt -> PB700BTCodec.Decoder()
     }
 
+    /// The decoder for a gauge whose counts need a per-device slope
+    /// (`requiresRemoteCalibration`). Nil for everything else: handing a coefficient to
+    /// a gauge that reports kilograms would be a mistake with a name.
+    ///
+    /// TRANSLATION NOTE: the tare count is a defaulted parameter here where Swift leaves
+    /// it to `Decoder`'s own default. Same value, one extra door — the shared codec
+    /// fixtures tare on nine samples rather than a hundred so a case is two frames long,
+    /// and they reach the decoder through this factory on both platforms.
+    fun makeCalibratedFrameDecoder(
+        coefficient: Double,
+        tareSampleCount: Int = FrezDynoCodec.defaultTareSampleCount,
+    ): GaugeFrameDecoder? = when (this) {
+        frezdyno -> FrezDynoCodec.Decoder(coefficient, tareSampleCount)
+        else -> null
+    }
+
     companion object {
         fun fromRaw(raw: String): GaugeKind? = entries.firstOrNull { it.rawValue == raw }
 
-        /// Picker order: the two devices this project has in hand first, then the
-        /// ports alphabetically by maker.
+        /// Picker order: the two devices this project has in hand first, then the Dyno,
+        /// whose protocol is its maker's own, then the ports alphabetically by maker.
         ///
         /// **`.pb700bt` is deliberately absent.** The NSD PB-700BT turned out to be a
         /// gyroscopic hand exerciser whose stream is REVOLUTIONS PER MINUTE — the
@@ -297,7 +335,7 @@ enum class GaugeKind(val rawValue: String) {
         /// mode is an addition, not a refactor — the same reason the Tindeq codec
         /// decodes RFD tags nothing consumes yet.
         val selectable: List<GaugeKind> =
-            listOf(progressor, whc06, climbro, entralpi, motherboard, cts500, forceboard)
+            listOf(progressor, whc06, frezdyno, climbro, entralpi, motherboard, cts500, forceboard)
     }
 }
 
@@ -324,8 +362,25 @@ data class GaugeCapabilities(
     /// Approximate samples per second — for UI copy and debounce sanity checks,
     /// never for timing.
     val nominalSampleRate: Double,
-    /// Verified against real hardware by THIS project. Everything false here is a
-    /// port of hangtime-grip-connect's documented protocol and Settings says so —
-    /// the same honesty rule as the codec's inferred RFD layout.
+    /// Verified against real hardware by THIS project. Settings says so for every
+    /// gauge where this is false — the same honesty rule as the codec's inferred RFD
+    /// layout — and `protocolSource` says whether the unverified protocol is at least
+    /// the maker's own word or a port of somebody else's.
     val hardwareVerified: Boolean,
+    /// The stream is raw sensor counts, and kilograms need a per-device slope fetched
+    /// from the maker's API by serial — once per device, then cached. Until it is in
+    /// hand the client mints no decoder and the app says why there is no force to show,
+    /// rather than guessing at a number (Frez Dyno).
+    val requiresRemoteCalibration: Boolean = false,
+    val protocolSource: GaugeProtocolSource = GaugeProtocolSource.ported,
 )
+
+/// Where the knowledge of a gauge's protocol came from — which is a different fact
+/// from whether this project has watched it work.
+enum class GaugeProtocolSource {
+    /// Published by the maker (Tindeq's Progressor notes, Frez's Dyno API).
+    vendorDocumented,
+
+    /// Ported from hangtime-grip-connect's implementation, with no first-hand witness.
+    ported,
+}

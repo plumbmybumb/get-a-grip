@@ -70,6 +70,13 @@ final class SettingsStore {
         didSet { store.set(weightUnit.rawValue, forKey: "weightUnit") }
     }
 
+    /// One-shot, like the notification ask: the note Frez asks to be shown the first time
+    /// the Dyno is selected has been read on this device. Never shown again after Next,
+    /// and never shown at all for any other gauge.
+    var frezIntroSeen: Bool {
+        didSet { store.set(frezIntroSeen, forKey: "frezIntroSeen") }
+    }
+
     init(defaults: UserDefaults? = nil) {
         let s = defaults ?? AppGroup.defaults ?? .standard
         self.store = s
@@ -84,5 +91,6 @@ final class SettingsStore {
         lastStartedRoutineID = s.string(forKey: "lastStartedRoutineID").flatMap(UUID.init(uuidString:))
         lastStartedDayRaw = s.object(forKey: "lastStartedDayRaw") as? Int ?? 0
         draftStash = s.data(forKey: "draftStash")
+        frezIntroSeen = s.bool(forKey: "frezIntroSeen")
     }
 }

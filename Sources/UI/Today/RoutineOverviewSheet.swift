@@ -206,10 +206,18 @@ struct RoutineOverviewSheet: View {
     }
 
     private var handExplanation: String {
+        let startsRight = plan.startingHand == .right
         switch plan.handMode {
-        case .alternateEachRep: String(localized: "Left, right, left, right — swapping hands every pull.")
-        case .alternateEachSet: String(localized: "Left hand first, then right, within each set.")
-        case .bothHands: String(localized: "One pull with both hands on the edge.")
+        case .alternateEachRep:
+            return startsRight
+                ? String(localized: "Right, left, right, left — swapping hands every pull.")
+                : String(localized: "Left, right, left, right — swapping hands every pull.")
+        case .alternateEachSet:
+            return startsRight
+                ? String(localized: "Right hand first, then left, within each set.")
+                : String(localized: "Left hand first, then right, within each set.")
+        case .bothHands:
+            return String(localized: "One pull with both hands on the edge.")
         }
     }
 

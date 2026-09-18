@@ -15,6 +15,13 @@ plugins {
 }
 
 // Upload credentials live in private Gradle properties, never in source control.
+//
+// So does the Frez Dyno's calibration key, for the same reason and with one difference:
+// it is a USAGE credential with device and rate limits, extractable from any shipped
+// binary, not a secret that protects anybody's data. Absent it is "", and `""` means
+// "this build has no key" — source, CI and forks then build an app in which a Dyno
+// connects and says its calibration cannot be fetched. See BUILDING.md.
+val frezAccessKey = providers.gradleProperty("getagrip.frezAccessKey").orNull ?: ""
 val uploadKeys = listOf("keystore", "keyAlias", "storePassword", "keyPassword")
 val uploadValues = uploadKeys.associateWith { providers.gradleProperty("getagrip.$it").orNull }
 require(uploadValues.values.all { it == null } || uploadValues.values.all { !it.isNullOrBlank() }) {
@@ -52,6 +59,14 @@ android {
         // One place, one line, and CI can override it with `-Pgetagrip.versionCode=…`.
         versionCode = (project.findProperty("getagrip.versionCode") as String?)?.toInt() ?: 1
         versionName = project.findProperty("getagrip.versionName") as String? ?: "1.0"
+
+        // Read by `FrezCoefficientResolver`. Escaped into a Kotlin string literal, because
+        // that is literally what `buildConfigField` pastes into the generated source.
+        buildConfigField(
+            "String",
+            "FREZ_ACCESS_KEY",
+            "\"" + frezAccessKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"",
+        )
     }
 
     buildFeatures {

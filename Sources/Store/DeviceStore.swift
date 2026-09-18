@@ -21,6 +21,10 @@ final class DeviceStore {
     private(set) var deviceName: String?
     private(set) var firmwareVersion: String?
     private(set) var batteryFraction: Double?
+    /// Where a remotely calibrated gauge (Frez Dyno) stands between "connected" and
+    /// "produces force". `.notRequired` for every other gauge. The screens read this to
+    /// say WHY a connected Dyno shows no force instead of showing a silent zero.
+    private(set) var calibrationStatus: GaugeCalibrationStatus = .notRequired
     private(set) var isStreaming = false {
         didSet {
             guard isStreaming != oldValue else { return }
@@ -231,9 +235,15 @@ final class DeviceStore {
     }
     @ObservationIgnored private var diagnosticRing = DiagnosticBreadcrumbRing()
 
-    /// ~6 seconds of history at 80 Hz — enough to see the shape of a pull without
-    /// the trace becoming an unreadable smear.
-    private static let traceCapacity = 480
+    /// ~6 seconds of history — enough to see the shape of a pull without the trace
+    /// becoming an unreadable smear. Sized from the gauge's own rate: 480 points was
+    /// exactly six seconds of the Progressor's 80 Hz, and at the Dyno's 250 Hz the same
+    /// buffer would hold under two seconds, so the graph would end mid-pull.
+    private static let traceSeconds: Double = 6
+    private static let minimumTraceCapacity = 480
+    private var traceCapacity: Int {
+        max(Self.minimumTraceCapacity, Int(Self.traceSeconds * gaugeCapabilities.nominalSampleRate))
+    }
 
     private var client: any ProgressorClient
 
@@ -310,7 +320,13 @@ final class DeviceStore {
     /// hardware failure of that protocol, and copying them into a client for devices this
     /// project has never held would be borrowed confidence.
     static func makeClient(for kind: GaugeKind) -> any ProgressorClient {
-        if let profile = kind.gatt { return GattGaugeClient(kind: kind, profile: profile) }
+        if let profile = kind.gatt {
+            // The resolver exists only for a gauge that needs one. Every other kind gets
+            // nil and never constructs a byte of networking — see FrezCalibration.swift.
+            let calibration: (any GaugeCalibrationResolver)? =
+                kind.capabilities.requiresRemoteCalibration ? FrezCoefficientResolver() : nil
+            return GattGaugeClient(kind: kind, profile: profile, calibration: calibration)
+        }
         if kind.capabilities.isBroadcast { return BroadcastGaugeClient() }
         return LiveProgressorClient()
     }
@@ -665,6 +681,8 @@ final class DeviceStore {
                 self.setSignalFresh(false)
                 self.freshnessStartedAt = nil
                 self.lastSignalAt = nil
+                // A coefficient belongs to a link; the client re-resolves on the next one.
+                self.calibrationStatus = .notRequired
             }
         }
         client.onDiagnostic = { [weak self] diagnostic in
@@ -680,6 +698,9 @@ final class DeviceStore {
                 self.record(.streamStartDeferred(cause))
             case .streamStartWritten(let cause):
                 self.record(.streamStartWritten(cause))
+            case .calibration(let status):
+                self.calibrationStatus = status
+                self.record(.calibration(Self.calibrationPhase(status)))
             }
         }
         client.onEvent = { [weak self] event in self?.handle(event) }
@@ -691,6 +712,7 @@ final class DeviceStore {
         deviceName = nil
         firmwareVersion = nil
         batteryFraction = nil
+        calibrationStatus = .notRequired
         isStreaming = false
         setSignalFresh(false)
         isReadingLive = false
@@ -699,6 +721,31 @@ final class DeviceStore {
         currentKg = 0
         lastSample = nil
         resetPeak()
+    }
+
+    /// Fixed English for the breadcrumb ring — a phase, never the serial the status
+    /// carries, because the ring travels in support mail.
+    private static func calibrationPhase(_ status: GaugeCalibrationStatus) -> String {
+        switch status {
+        case .notRequired: "not required"
+        case .waitingForSerial: "waiting for serial"
+        case .resolving: "looking up coefficient"
+        case .ready(_, let calibration): calibration.cached ? "ready (cached)" : "ready (fetched)"
+        case .failed(_, let failure):
+            switch failure {
+            case .missingSerial: "failed (no serial)"
+            case .noAccessKey: "failed (no access key)"
+            case .invalidRequest: "failed (400)"
+            case .invalidAccessKey: "failed (401)"
+            case .deviceLimitReached: "failed (403)"
+            case .deviceNotFound: "failed (404)"
+            case .ownershipReview: "failed (409)"
+            case .calibrationUnavailable: "failed (422)"
+            case .rateLimited: "failed (429)"
+            case .badResponse: "failed (bad response)"
+            case .network: "failed (network)"
+            }
+        }
     }
 
     private func handle(_ event: ProgressorEvent) {
@@ -752,8 +799,8 @@ final class DeviceStore {
             onTracePoint?(point)
             traceStorage.append(point)
             sampleStateChanged()
-            if traceStorage.count > Self.traceCapacity {
-                traceStorage.removeFirst(traceStorage.count - Self.traceCapacity)
+            if traceStorage.count > traceCapacity {
+                traceStorage.removeFirst(traceStorage.count - traceCapacity)
             }
         case .battery(let mv):
             batteryFraction = ProgressorCodec.batteryFraction(millivolts: mv)

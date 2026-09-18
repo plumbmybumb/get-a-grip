@@ -139,6 +139,7 @@ private func everyFieldOffDefault() -> RoutineDraft {
     source.plan.thresholdKg = 3.5
     source.plan.waitForReleaseBeforeRest = false
     source.plan.pausesOutsideTargetBand = false
+    source.plan.startingHand = .right
     var heavy = SetPlan(grip: GripSpec(edgeMM: 15, fingers: .frontTwo, position: .fullCrimp),
                         repsPerSide: 3)
     heavy.holdSeconds = 5

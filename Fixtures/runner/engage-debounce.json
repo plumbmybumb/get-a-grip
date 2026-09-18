@@ -2,7 +2,7 @@
   "final": {"completedRepCount":0,"phase":"working:0","results":[]},
   "maxes": [],
   "name": "engage-debounce",
-  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":3,\"leadInSeconds\":0,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":1}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":3,\"leadInSeconds\":0,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":1}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
   "steps": [
     {"cues":[{"side":"both","type":"armed"}],"event":{"type":"start"},"t":0},
     {"cues":[],"event":{"batchStart":true,"kg":20,"micros":40000,"type":"sample"},"t":0.04},

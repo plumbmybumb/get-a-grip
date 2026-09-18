@@ -446,6 +446,24 @@ final class TemplateStoreTests: XCTestCase {
                        "both late columns ride the snapshot now")
     }
 
+    /// The starting hand is a column, like the mode, so the swap survives the save and
+    /// rides the undo snapshot — the trap `pausesOutsideTargetBand` fell into, twice.
+    func testTheStartingHandSurvivesTheSaveAndTheUndo() throws {
+        let w = try makeWorld()
+        var draft = RoutineDraft.starter
+        draft.plan.startingHand = .right
+
+        let saved = try XCTUnwrap(w.store.create(draft))
+        XCTAssertEqual(saved.startingHandRaw, "right")
+        XCTAssertEqual(saved.plan.startingHand, .right, "the runner reads the plan")
+        XCTAssertEqual(saved.draft.plan.startingHand, .right, "the editor reads the draft")
+
+        XCTAssertTrue(w.store.delete(saved))
+        w.store.undoDelete()
+        let restored = try XCTUnwrap(routines(w).first { $0.name == "Daily no-hangs" })
+        XCTAssertEqual(restored.plan.startingHand, .right, "the column rides the snapshot")
+    }
+
     func testAnImportedRoutineAppendsAtTheEndAndNeverBecomesPrimary() throws {
         let w = try makeWorld()
         let mine = try XCTUnwrap(w.store.create(.blank(named: "Mine")))

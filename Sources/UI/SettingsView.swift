@@ -704,7 +704,13 @@ private struct SupportCard: View {
 /// Connect tap, because constructing a client is what raises the Bluetooth prompt.
 private struct GaugePickerView: View {
     @Environment(DeviceStore.self) private var device
+    @Environment(SettingsStore.self) private var settings
     @Environment(\.dismiss) private var dismiss
+
+    /// The kind whose first selection is waiting on its maker's note being read. Only
+    /// the Frez Dyno carries one, and only once: after Next the flag is persisted and
+    /// the row selects like any other, on this device forever.
+    @State private var kindAwaitingIntro: GaugeKind?
 
     var body: some View {
         ScrollView {
@@ -731,6 +737,16 @@ private struct GaugePickerView: View {
         .navigationTitle("Gauge")
         .navigationBarTitleDisplayMode(.inline)
         .sensoryFeedback(.selection, trigger: device.gaugeKind)
+        .sheet(item: $kindAwaitingIntro) { kind in
+            // Next is the only way through, and it completes the selection the tap
+            // started — the note is read once, on the way in, never again.
+            FrezIntroSheet {
+                settings.frezIntroSeen = true
+                kindAwaitingIntro = nil
+                device.selectGaugeKind(kind)
+                dismiss()
+            }
+        }
     }
 
     private func row(for kind: GaugeKind) -> some View {
@@ -738,6 +754,10 @@ private struct GaugePickerView: View {
         // and tapping the gauge you already had selected is how you leave it.
         let isSelected = device.gaugeKind == kind && !device.isMock
         return Button {
+            if kind.capabilities.requiresRemoteCalibration, !settings.frezIntroSeen {
+                kindAwaitingIntro = kind
+                return
+            }
             device.selectGaugeKind(kind)
             dismiss()
         } label: {
@@ -772,10 +792,15 @@ private struct GaugePickerView: View {
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
-    /// Maker, plus the one fact that changes how much to trust the numbers.
+    /// Maker, plus the one fact that changes how much to trust the numbers — and, for a
+    /// protocol its maker published, that the caveat is about testing, not provenance.
     private func detail(for kind: GaugeKind) -> String {
         var parts = [kind.maker]
-        if !kind.capabilities.hardwareVerified { parts.append(String(localized: "ported protocol")) }
+        if !kind.capabilities.hardwareVerified {
+            parts.append(kind.capabilities.protocolSource == .ported
+                         ? String(localized: "ported protocol")
+                         : String(localized: "official protocol, untested here"))
+        }
         return parts.joined(separator: " · ")
     }
 
@@ -786,6 +811,12 @@ private struct GaugePickerView: View {
     private var footnotes: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(verificationNote)
+            if let officialNote {
+                Text(officialNote)
+            }
+            if let calibrationNote {
+                Text(calibrationNote)
+            }
             if let broadcastNote {
                 Text(broadcastNote)
             }
@@ -813,5 +844,25 @@ private struct GaugePickerView: View {
             .map(\.displayName)
         guard !names.isEmpty else { return nil }
         return String(localized: "\(names.formatted(.list(type: .and))) broadcasts its weight instead of connecting, so there is nothing to pair and nothing to zero on the device — Tare subtracts what is hanging on it. iOS stops delivering broadcasts while Get a Grip is in the background, so a session on one pauses when you leave the app.")
+    }
+
+    /// A protocol the maker published is a different kind of unknown from a port: the
+    /// bytes are documented, only the device has not been in hand.
+    private var officialNote: String? {
+        let names = GaugeKind.selectable
+            .filter { $0.capabilities.protocolSource == .vendorDocumented && !$0.capabilities.hardwareVerified }
+            .map(\.displayName)
+        guard !names.isEmpty else { return nil }
+        return String(localized: "\(names.formatted(.list(type: .and))) speaks a protocol its maker published, but no unit has been tried on this app yet.")
+    }
+
+    /// The one gauge that needs a lookup, and the only time the app talks to a server
+    /// other than Apple's — said here, once, in the place the choice is made.
+    private var calibrationNote: String? {
+        let names = GaugeKind.selectable
+            .filter { $0.capabilities.requiresRemoteCalibration }
+            .map(\.displayName)
+        guard !names.isEmpty else { return nil }
+        return String(localized: "\(names.formatted(.list(type: .and))) sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server.")
     }
 }

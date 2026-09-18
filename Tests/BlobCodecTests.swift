@@ -109,6 +109,26 @@ final class BlobCodecTests: XCTestCase {
         XCTAssertEqual(clamped.targetPercentBand, SetPlan.percentRange)
     }
 
+    /// The starting hand is ADDITIVE: absent on every blob written before it existed and
+    /// read as left; `both` and a raw from a newer build read as left too, never as a
+    /// decode failure; right survives the round trip.
+    func testTheStartingHandDecodesLeniently() throws {
+        let old = Data(#"{"name":"x","sets":[]}"#.utf8)
+        XCTAssertEqual(try XCTUnwrap(BlobCodec.decode(SessionPlan.self, from: old)).startingHand, .left)
+
+        let both = Data(#"{"name":"x","sets":[],"startingHand":"both"}"#.utf8)
+        XCTAssertEqual(try XCTUnwrap(BlobCodec.decode(SessionPlan.self, from: both)).startingHand, .left)
+
+        let future = Data(#"{"name":"x","sets":[],"startingHand":"dominant"}"#.utf8)
+        XCTAssertEqual(try XCTUnwrap(BlobCodec.decode(SessionPlan.self, from: future)).startingHand, .left)
+
+        var plan = SessionPlan()
+        plan.startingHand = .right
+        let data = try XCTUnwrap(BlobCodec.encode(plan))
+        XCTAssertTrue(String(decoding: data, as: UTF8.self).contains(#""startingHand":"right""#))
+        XCTAssertEqual(try XCTUnwrap(BlobCodec.decode(SessionPlan.self, from: data)).startingHand, .right)
+    }
+
     /// `try?` in `KeyedDecodingContainer.value(_:or:)`, not `try`: a field a newer build
     /// retyped costs that one field, never the whole routine.
     func testFieldWithAWrongTypeFallsBackInsteadOfKillingTheSet() throws {

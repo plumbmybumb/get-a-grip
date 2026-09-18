@@ -40,6 +40,21 @@ enum Side: String, Codable, Hashable, Sendable, CaseIterable {
         case .both:  String(localized: "BOTH")
         }
     }
+
+    /// The hand a routine STARTS on, read from a raw. `both` is not a hand to start on
+    /// and an unknown raw is a newer build's idea, so both read as nil — "no readable
+    /// choice" — and `startingHand(fallback:)` turns that into the default, left.
+    static func startingHand(from raw: String) -> Side? {
+        switch Side(rawValue: raw) {
+        case .left?:  .left
+        case .right?: .right
+        default:      nil
+        }
+    }
+
+    static func startingHand(fallback raw: String) -> Side {
+        startingHand(from: raw) ?? .left
+    }
 }
 
 /// How a set is shared between hands.
@@ -58,10 +73,13 @@ enum HandMode: String, Codable, Hashable, Sendable, CaseIterable {
     }
 
     /// Every set starts here — alternation RESETS at each set boundary, so no set ever
-    /// begins on the "wrong" hand because the set before it had an odd rep count.
-    var startSide: Side {
+    /// begins on the "wrong" hand because the set before it had an odd rep count. WHICH
+    /// hand that is belongs to the routine (`SessionPlan.startingHand`); the mode only
+    /// says whether there is a first hand at all. A `.both` handed in as a starting hand
+    /// is not one, and reads as the default, left.
+    func startSide(startingHand: Side) -> Side {
         switch self {
-        case .alternateEachRep, .alternateEachSet: .left
+        case .alternateEachRep, .alternateEachSet: startingHand == .right ? .right : .left
         case .bothHands: .both
         }
     }
@@ -192,6 +210,12 @@ struct SessionPlan: Hashable, Sendable, Codable {
     var name: String = String(localized: "Daily no-hangs")
     var sets: [SetPlan] = []
     var handMode: HandMode = .alternateEachRep
+    /// Which hand the first pull of every set is on, under either alternating mode
+    /// (Nuri, 2026-09-18: "start with right hand instead of left"). Left, as every
+    /// routine before this field was; the builder's swap button is its only writer.
+    /// `.bothHands` ignores it, and it is never `.both` itself — the decoder reads that,
+    /// and any raw it does not know, as left.
+    var startingHand: Side = .left
     /// RHYTHM — the routine-level defaults every set inherits unless it overrides.
     var holdSeconds: Int = 10
     var restSeconds: Int = 20
@@ -262,6 +286,7 @@ struct SessionPlan: Hashable, Sendable, Codable {
         case waitForReleaseBeforeRest
         case targetLoPercent, targetHiPercent
         case pausesOutsideTargetBand
+        case startingHand
     }
 }
 
@@ -275,6 +300,9 @@ extension SessionPlan {
         // its mode in SessionTemplate.handModeRaw verbatim, so a mode from a newer
         // build is never rewritten by this build reading it.
         self.handMode = HandMode(fallback: c.value(.handMode, or: HandMode.alternateEachRep.rawValue))
+        // Left for every blob written before the field existed, and for a raw this build
+        // does not know — `both` included, which is not a hand to start on.
+        self.startingHand = Side.startingHand(fallback: c.value(.startingHand, or: Side.left.rawValue))
         self.holdSeconds = SetPlan.holdRange.clamping(c.value(.holdSeconds, or: 10))
         self.restSeconds = SetPlan.restRange.clamping(c.value(.restSeconds, or: 20))
         self.setBreakSeconds = Self.setBreakRange.clamping(c.value(.setBreakSeconds, or: 60))

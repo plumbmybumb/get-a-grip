@@ -55,7 +55,7 @@ class CodecFixtureTests {
                 when (gauge) {
                     "progressor" -> checkProgressor(case, frames, expect, where)
                     "whc06" -> checkBroadcast(frames, expect, where)
-                    else -> checkFramed(gauge, frames, expect, where)
+                    else -> checkFramed(gauge, case, frames, expect, where)
                 }
             }
         }
@@ -144,12 +144,13 @@ class CodecFixtureTests {
     /// buffers and the Motherboard's calibration table are the point of the fixture.
     private fun checkFramed(
         gauge: String,
+        case: JsonObject,
         frames: List<ByteArray>,
         expect: JsonObject,
         where: String,
     ) {
         val kind = GaugeKind.fromRaw(gauge) ?: fail("$where: unknown gauge")
-        val decoder = kind.makeFrameDecoder() ?: fail("$where: gauge has no frame decoder")
+        val decoder = kind.makeFrameDecoder() ?: calibratedDecoder(kind, case, where)
 
         val actual = frames.flatMap { decoder.ingest(it) }
         val expected = expect.getValue("readings").jsonArray.map { it.jsonObject }
@@ -176,6 +177,28 @@ class CodecFixtureTests {
                 tolerance, "$where: battery",
             )
         }
+    }
+
+    /// A gauge whose stream is RAW COUNTS has no decoder until a per-device coefficient
+    /// is in hand (`requiresRemoteCalibration`), so its cases carry the two numbers that
+    /// build one: `decoder: {coefficient, tareSamples}`. `tareSamples` is optional and
+    /// exists so a case can establish its zero in one 9-record frame instead of the
+    /// hundred samples a real Dyno takes.
+    private fun calibratedDecoder(
+        kind: GaugeKind,
+        case: JsonObject,
+        where: String,
+    ): GaugeFrameDecoder {
+        val spec = case["decoder"]?.jsonObject
+            ?: fail("$where: no frame decoder, and the case carries no 'decoder' object")
+        val coefficient = spec.getValue("coefficient").jsonPrimitive.double
+        val tareSamples = spec["tareSamples"]?.jsonPrimitive?.int
+        val built = if (tareSamples == null) {
+            kind.makeCalibratedFrameDecoder(coefficient)
+        } else {
+            kind.makeCalibratedFrameDecoder(coefficient, tareSamples)
+        }
+        return built ?: fail("$where: this gauge takes no coefficient")
     }
 
     /// The WH-C06 has no decoder at all: each frame is a manufacturer-data blob and

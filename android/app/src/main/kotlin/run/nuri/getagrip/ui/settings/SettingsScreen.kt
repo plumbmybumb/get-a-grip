@@ -84,6 +84,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import java.util.Locale
 import run.nuri.getagrip.engine.GaugeKind
+import run.nuri.getagrip.engine.GaugeProtocolSource
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.store.LocalSettingsStore
@@ -248,8 +249,14 @@ private fun SettingsRoot(
 @Composable
 fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
     val device = LocalDeviceStore.current
+    val settings = LocalSettingsStore.current
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
+
+    /// The kind whose first selection is waiting on its maker's note being read. Only the
+    /// Frez Dyno carries one, and only once: after Next the flag is persisted and the row
+    /// selects like any other, on this device forever.
+    var kindAwaitingIntro by remember { mutableStateOf<GaugeKind?>(null) }
 
     Column(
         modifier
@@ -287,6 +294,12 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
                             // choice rather than as an adjective on a button.
                             role = Role.RadioButton,
                         ) {
+                            if (kind.capabilities.requiresRemoteCalibration && !settings.frezIntroSeen) {
+                                // Nothing is selected yet, so nothing has happened to tick
+                                // about: the note is the first half of this tap.
+                                kindAwaitingIntro = kind
+                                return@clickable
+                            }
                             device.selectGaugeKind(kind)
                             // Feedback names its cause: the tick is the SELECTION, fired on
                             // the tap rather than on the value settling.
@@ -329,12 +342,33 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
         }
         Footnotes()
     }
+
+    // Next is the only way through, and it completes the selection the tap started — the
+    // note is read once, on the way in, never again.
+    kindAwaitingIntro?.let { kind ->
+        FrezIntroSheet {
+            settings.setFrezIntroSeen(true)
+            kindAwaitingIntro = null
+            device.selectGaugeKind(kind)
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onSelected()
+        }
+    }
 }
 
-/// Maker, plus the one fact that changes how much to trust the numbers.
+/// Maker, plus the one fact that changes how much to trust the numbers — and, for a
+/// protocol its maker published, that the caveat is about testing, not provenance.
 private fun detail(kind: GaugeKind): String {
     val parts = mutableListOf(kind.maker)
-    if (!kind.capabilities.hardwareVerified) parts.add(L10n.tr("ported protocol"))
+    if (!kind.capabilities.hardwareVerified) {
+        parts.add(
+            if (kind.capabilities.protocolSource == GaugeProtocolSource.ported) {
+                L10n.tr("ported protocol")
+            } else {
+                L10n.tr("official protocol, untested here")
+            },
+        )
+    }
     return parts.joinToString(" · ")
 }
 
@@ -346,6 +380,19 @@ private fun Footnotes() {
     val palette = LocalGripPalette.current
     val verified = GaugeKind.selectable.filter { it.capabilities.hardwareVerified }.map { it.displayName }
     val broadcast = GaugeKind.selectable.filter { it.capabilities.isBroadcast }.map { it.displayName }
+    // A protocol the maker published is a different kind of unknown from a port: the bytes
+    // are documented, only the device has not been in hand.
+    val official = GaugeKind.selectable
+        .filter {
+            it.capabilities.protocolSource == GaugeProtocolSource.vendorDocumented &&
+                !it.capabilities.hardwareVerified
+        }
+        .map { it.displayName }
+    // The one gauge that needs a lookup, and the only time the app talks to a server other
+    // than the platform's own — said here, once, in the place the choice is made.
+    val calibrated = GaugeKind.selectable
+        .filter { it.capabilities.requiresRemoteCalibration }
+        .map { it.displayName }
     val ported = tr("Anything marked as a ported protocol speaks a protocol taken from the open-source hangtime-grip-connect project and has never been tested against that hardware here. Check the first pull on one against a number you already trust.")
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -358,6 +405,26 @@ private fun Footnotes() {
             style = MaterialTheme.typography.bodySmall,
             color = palette.inkTertiary,
         )
+        if (official.isNotEmpty()) {
+            Text(
+                tr(
+                    "%s speaks a protocol its maker published, but no unit has been tried on this app yet.",
+                    andList(official),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = palette.inkTertiary,
+            )
+        }
+        if (calibrated.isNotEmpty()) {
+            Text(
+                tr(
+                    "%s sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server.",
+                    andList(calibrated),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = palette.inkTertiary,
+            )
+        }
         if (broadcast.isNotEmpty()) {
             // Broadcast gauges are a different shape of device, not a worse one, and the
             // two consequences a climber actually meets are worth one sentence.

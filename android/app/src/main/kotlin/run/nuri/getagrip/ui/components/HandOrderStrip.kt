@@ -31,7 +31,8 @@ import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 
-/// The real L R L R sequence the Hands choice produces for the first set.
+/// The real L R L R sequence the Hands choice produces for the first set — or R L R L,
+/// once the routine starts on the right.
 ///
 /// Fill-vs-outline, never two hues: it has to survive Reduce Transparency and
 /// colourblindness, and a legend explaining which colour is which hand would be a legend
@@ -41,6 +42,7 @@ fun HandOrderStrip(
     mode: HandMode,
     repsPerSide: Int,
     modifier: Modifier = Modifier,
+    startingHand: Side = Side.left,
 ) {
     val palette = LocalGripPalette.current
 
@@ -48,8 +50,12 @@ fun HandOrderStrip(
     val totalPulls = PlanMath.repCount(set, mode)
     // Large sets use a sentence. Do not allocate a hand marker for every pull just
     // to discover that the diagram would be too dense to display.
-    val sides = if (totalPulls in 1..12) PlanMath.handSequence(set, SessionPlan(handMode = mode)) else emptyList()
-    val sentence = sentence(mode, totalPulls, maxOf(0, repsPerSide))
+    val sides = if (totalPulls in 1..12) {
+        PlanMath.handSequence(set, SessionPlan(handMode = mode, startingHand = startingHand))
+    } else {
+        emptyList()
+    }
+    val sentence = sentence(mode, startingHand, totalPulls, maxOf(0, repsPerSide))
 
     // ONE element with one spoken sentence: twelve focusable capsules is twelve swipes to
     // learn something a sentence says once.
@@ -111,11 +117,17 @@ private val GAP = 5.dp
 /// a right side by side — which would read as two pulls.
 private fun width(side: Side) = if (side == Side.both) CAPSULE * 2.2f else CAPSULE
 
-private fun sentence(mode: HandMode, count: Int, perSide: Int): String = when (mode) {
-    HandMode.alternateEachRep -> L10n.tr("Left, right, left, right — %s", pulls(count))
-    HandMode.alternateEachSet ->
-        L10n.tr("All %d on the left, then all %d on the right", perSide, perSide)
-    HandMode.bothHands -> L10n.tr("One pull, both hands — %s", pulls(count))
+private fun sentence(mode: HandMode, startingHand: Side, count: Int, perSide: Int): String {
+    val startsRight = startingHand == Side.right
+    return when (mode) {
+        HandMode.alternateEachRep ->
+            if (startsRight) L10n.tr("Right, left, right, left — %s", pulls(count))
+            else L10n.tr("Left, right, left, right — %s", pulls(count))
+        HandMode.alternateEachSet ->
+            if (startsRight) L10n.tr("All %d on the right, then all %d on the left", perSide, perSide)
+            else L10n.tr("All %d on the left, then all %d on the right", perSide, perSide)
+        HandMode.bothHands -> L10n.tr("One pull, both hands — %s", pulls(count))
+    }
 }
 
 /// A one-pull set would otherwise be spoken "1 pulls" in the one mode where that count can
@@ -131,6 +143,7 @@ private fun HandOrderStripPreview() {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             HandOrderStrip(HandMode.alternateEachRep, 6)
+            HandOrderStrip(HandMode.alternateEachRep, 6, startingHand = Side.right)
             HandOrderStrip(HandMode.alternateEachSet, 6)
             HandOrderStrip(HandMode.bothHands, 4)
         }

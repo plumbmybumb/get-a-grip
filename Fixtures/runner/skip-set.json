@@ -10,7 +10,7 @@
   },
   "maxes": [],
   "name": "skip-set",
-  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":5,\"leadInSeconds\":0,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":3},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000001\",\"note\":\"\",\"repsPerSide\":3}],\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":5,\"leadInSeconds\":0,\"name\":\"Test\",\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":3},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000001\",\"note\":\"\",\"repsPerSide\":3}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
   "steps": [
     {"cues":[{"side":"both","type":"armed"}],"event":{"type":"start"},"t":0},
     {

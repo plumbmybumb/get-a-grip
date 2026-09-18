@@ -26,6 +26,11 @@ settings:
     DEVELOPMENT_TEAM: ""
     GETAGRIP_APP_GROUP: group.run.nuri.doigt
     GETAGRIP_CLOUD_CONTAINER: iCloud.run.nuri.doigt
+    # Frez Dyno calibration lookups need a Frez Developer Program access key. It is
+    # PRIVATE and never committed: the official build supplies it from the ignored
+    # project.local.yml (see BUILDING.md). Empty here, so source, CI and forks build a
+    # Dyno that connects and says it cannot fetch its calibration.
+    FREZ_ACCESS_KEY: ""
     CODE_SIGN_STYLE: Automatic
 
 targets:
@@ -46,6 +51,8 @@ targets:
         # container, App Group, store name, target names — none of which a user sees.
         GetAGripAppGroup: "$(GETAGRIP_APP_GROUP)"
         GetAGripCloudContainer: "$(GETAGRIP_CLOUD_CONTAINER)"
+        # Read by FrezCoefficientResolver; "" means "this build has no key".
+        FrezAccessKey: "$(FREZ_ACCESS_KEY)"
         CFBundleDisplayName: "Get a Grip"
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
