@@ -28,11 +28,6 @@ struct AnalysisExportSheet: View {
     @State private var scope = AnalysisExport.CSVScope.recent
     @State private var detail = AnalysisExport.CSVDetail.summary
     @State private var preparedDocument: (key: String, value: AnalysisExport.CSVDocument)?
-    @State private var copiedTick = 0
-    /// Reverts after two seconds, like the diagnostics Copy button: the document is worth
-    /// re-copying, and a label stuck on "Copied" forever acknowledges nothing.
-    @State private var justCopied = false
-    @State private var copyResetTask: Task<Void, Never>?
 
     private var selectionKey: String {
         request.id.uuidString + scope.rawValue + detail.rawValue
@@ -110,14 +105,12 @@ struct AnalysisExportSheet: View {
         .task(id: selectionKey) {
             let requestedKey = selectionKey
             preparedDocument = nil
-            justCopied = false
             let selectedDetail = detail
             let selected = request.isWorkout ? AnalysisExport.CSVScope.workout : scope
             let result = try? await request.worker.document(scope: selected, detail: selectedDetail)
             guard !Task.isCancelled else { return }
             if let result { preparedDocument = (requestedKey, result) }
         }
-        .onDisappear { copyResetTask?.cancel() }
     }
 
     /// Nothing at all when there is nothing to export — a disabled Share button on an
@@ -138,25 +131,14 @@ struct AnalysisExportSheet: View {
                 .buttonStyle(.glassProminent)
                 .tint(Accent.graphite)
 
-                Button {
-                    UIPasteboard.general.string = document.text
-                    copiedTick += 1
-                    justCopied = true
-                    copyResetTask?.cancel()
-                    copyResetTask = Task {
-                        try? await Task.sleep(for: .seconds(2))
-                        guard !Task.isCancelled else { return }
-                        justCopied = false
-                    }
-                } label: {
-                    actionLabel(justCopied ? String(localized: "Copied") : String(localized: "Copy"),
-                                systemImage: justCopied ? "checkmark" : "doc.on.doc",
+                CopyButton(text: { document.text },
+                           accessibilityLabel: "Copy the whole document to the clipboard") { copied in
+                    actionLabel(copied ? String(localized: "Copied") : String(localized: "Copy"),
+                                systemImage: copied ? "checkmark" : "doc.on.doc",
                                 prominent: false)
                 }
                 .buttonStyle(.glass)
                 .tint(Accent.graphite)
-                .accessibilityLabel("Copy the whole document to the clipboard")
-                .sensoryFeedback(.success, trigger: copiedTick)
             }
             .padding(.horizontal, Metrics.hPadding)
             .padding(.bottom, 4)

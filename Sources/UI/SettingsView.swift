@@ -45,12 +45,6 @@ struct SettingsView: View {
     /// deliberately not persisted, so reopening Settings offers the reset again.
     @State private var guideReset = false
     @State private var tourReset = false
-    @State private var copiedTick = 0
-    /// Shows "Copied" for a couple of seconds after each tap, then reverts — the ring is
-    /// meant to be re-copied as breadcrumbs accrue, and a label stuck on "Copied" from
-    /// the first tap gave the second and third tap no visual acknowledgement at all.
-    @State private var justCopied = false
-    @State private var copyResetTask: Task<Void, Never>?
 
     var body: some View {
         ScreenScaffold(title: String(localized: "Settings")) {
@@ -315,33 +309,11 @@ struct SettingsView: View {
                                 // drop; a 240 pt scroll view you can only read means retyping
                                 // timestamps by hand, which nobody does. Read-only evidence that
                                 // cannot leave the device is not evidence.
-                                Button {
-                                    UIPasteboard.general.string = diagnosticReport
-                                    copiedTick += 1
-                                    justCopied = true
-                                    copyResetTask?.cancel()
-                                    copyResetTask = Task {
-                                        try? await Task.sleep(for: .seconds(2))
-                                        guard !Task.isCancelled else { return }
-                                        justCopied = false
-                                    }
-                                } label: {
-                                    Text(justCopied ? "Copied" : "Copy")
-                                        .font(.system(.footnote, weight: .semibold))
-                                        .foregroundStyle(Accent.graphite)
-                                        .actionLabelLayout(minHeight: 44)
-                                        .accessibleGlass(nil, in: .capsule)
-                                        .contentShape(.capsule)
+                                CopyButton(text: { diagnosticReport },
+                                           accessibilityLabel: "Copy the diagnostics to the clipboard") {
+                                    CompactCopyLabel(copied: $0)
                                 }
                                 .buttonStyle(PressFeedbackButtonStyle())
-                                .accessibilityLabel("Copy the diagnostics to the clipboard")
-                                .accessibilityValue(justCopied ? String(localized: "Copied") : "")
-                                // The identical tick-as-confirmation shape is wired to this
-                                // everywhere else it appears (UndoBar, MaxesView's save) — this
-                                // was the dropped wire-up, and the label alone (which used to
-                                // flip once and stay "Copied" forever) gave repeated copies no
-                                // acknowledgement at all.
-                                .sensoryFeedback(.success, trigger: copiedTick)
                             }
                             Text("Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit.")
                                 .font(.system(.caption))
@@ -513,11 +485,6 @@ private struct SupportCard: View {
     @State private var askingDiagnostics = false
     /// Revealed only when the mail route genuinely failed — see `revealAddress()`.
     @State private var showsAddress = false
-    @State private var copiedTick = 0
-    /// Same two-second revert as the diagnostics Copy button: an address worth copying
-    /// once is worth copying twice, and a label stuck on "Copied" acknowledges neither.
-    @State private var justCopied = false
-    @State private var copyResetTask: Task<Void, Never>?
 
     private static let address = "support@nuri.run"
     private static let featureSubject = String(localized: "Get a Grip — Feature request")
@@ -613,29 +580,11 @@ private struct SupportCard: View {
     }
 
     private var copyAddressButton: some View {
-        Button {
-            UIPasteboard.general.string = Self.address
-            copiedTick += 1
-            justCopied = true
-            copyResetTask?.cancel()
-            copyResetTask = Task {
-                try? await Task.sleep(for: .seconds(2))
-                guard !Task.isCancelled else { return }
-                justCopied = false
-            }
-        } label: {
-            Text(justCopied ? "Copied" : "Copy")
-                .font(.system(.footnote, weight: .semibold))
-                .foregroundStyle(Accent.graphite)
-                .actionLabelLayout(minHeight: 44)
-                .accessibleGlass(nil, in: .capsule)
-                .contentShape(.capsule)
+        CopyButton(text: { Self.address },
+                   accessibilityLabel: "Copy the support address to the clipboard") {
+            CompactCopyLabel(copied: $0)
         }
         .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityLabel("Copy the support address to the clipboard")
-        // The identical tick-as-confirmation wiring the diagnostics Copy button uses,
-        // and for the same reason: the label alone acknowledges only the first tap.
-        .sensoryFeedback(.success, trigger: copiedTick)
     }
 
     // MARK: Routing
