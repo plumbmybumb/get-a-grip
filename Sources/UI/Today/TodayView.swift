@@ -43,6 +43,17 @@ struct TodayView: View {
     /// old rail's semantics intact: a day change still re-asserts the primary without
     /// the sync itself counting as "an explicit tap made today".
     @State private var deckPosition: UUID?
+    /// The field's colour under the deck — see `DeckGlow`.
+    @State private var glow = DeckGlow()
+    #if DEBUG
+    /// `-deckPage N` parks the deck on card N at launch, for screenshots of the glow under
+    /// each routine without a gesture (the simulator cannot swipe).
+    private static let debugDeckPage: Int? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard let flag = args.firstIndex(of: "-deckPage"), args.indices.contains(flag + 1) else { return nil }
+        return Int(args[flag + 1])
+    }()
+    #endif
     /// The trailing "New routine" card's scroll identity. Static so the id survives the
     /// view struct being recreated — an id that changed per render would drop the scroll
     /// target out from under anyone parked on the card.
@@ -132,7 +143,7 @@ struct TodayView: View {
         // four blocks and the gaps between them were the easiest twelve points to find
         // when the page had to fit under a large title without scrolling.
         ScreenScaffold(title: String(localized: "Today"), subtitle: dateLine, spacing: 12,
-                       fitsOnePage: true, gridsOnWideScreens: true) {
+                       fitsOnePage: true, gridsOnWideScreens: true, glow: glow) {
             header
                 .staggerIn(0)
 
@@ -363,7 +374,12 @@ struct TodayView: View {
     /// two-or-three routines this app is built around, the peek plus each card's own
     /// done-dots carry what the rail carried.
     private var routineDeck: some View {
-        ScrollView(.horizontal) {
+        // The cards' own effort colours, in deck order, ending with the ghost's nil.
+        // Computed here, once per body, so the per-frame scroll callback only blends.
+        let tints: [Color?] = ordered.map {
+            PlanMath.IntensityBand.band(for: templates.summary(for: $0).peakIntensity).tint
+        } + [nil]
+        return ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: 8) {
                 ForEach(ordered) { routine in
                     // The border only exists where there are siblings to distinguish —
@@ -401,6 +417,16 @@ struct TodayView: View {
         // tallest card, so there is nothing to spill vertically.
         .scrollClipDisabled()
         .scrollPosition(id: $deckPosition)
+        // The glow follows the deck 1:1 — see `DeckGlow`. The fractional card index:
+        // each card is the container less the content margins, the pitch adds the deck's
+        // 8 pt gap, and the offset is measured from the leading margin so card 0 reads 0.
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            let insets = geometry.contentInsets
+            let pitch = geometry.containerSize.width - insets.leading - insets.trailing + 8
+            return pitch > 0 ? (geometry.contentOffset.x + insets.leading) / pitch : 0
+        } action: { _, page in
+            glow.tint = DeckGlow.blend(page: page, tints: tints)
+        }
         .scrollIndicators(.hidden)
         // Full-bleed: the deck escapes the column's padding so the neighbour peeks at
         // the SCREEN edge (the Music carousel move), then the content margins put a
@@ -414,7 +440,15 @@ struct TodayView: View {
         .contentMargins(.trailing, Metrics.hPadding + 8, for: .scrollContent)
         // Placed, never animated, on first layout — the deck must simply BE on the
         // day's routine, not visibly travel there.
-        .onAppear { deckPosition = selected?.id }
+        .onAppear {
+            #if DEBUG
+            if let page = Self.debugDeckPage, ordered.indices.contains(page) {
+                deckPosition = ordered[page].id
+                return
+            }
+            #endif
+            deckPosition = selected?.id
+        }
         // Programmatic re-selection: the day rolling over, a save landing, a CloudKit
         // merge deleting the card under you. The swipe direction never loops through
         // here — a settle on `selected` itself is filtered below, and pinning writes

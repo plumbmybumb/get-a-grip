@@ -79,6 +79,8 @@ struct RoutineCard: View {
         MaterialCard(surface: .flat) {
             cardContent
         }
+        // The glass vocabulary without the glass — see `glassRim`.
+        .glassRim(in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         // Graphite, not bleu: bleu is the live-force signal, and "your next ritual"
         // is ink-family information like the done-dots. 1.5 pt at half strength sits
         // one clear step above the ghost card's hairline (0.35 tertiary) — the ghost

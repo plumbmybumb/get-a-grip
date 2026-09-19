@@ -76,6 +76,35 @@ extension View {
 }
 
 extension View {
+    /// **A lit rim** — the glass vocabulary on a surface that cannot be glass. The
+    /// routine card stays a flat fill (Liquid Glass breaks the context-menu lift — see
+    /// `RoutineCard`), so it borrows glass's edge instead: a hairline that catches the
+    /// light at the top-leading corner and fades toward the bottom-trailing one. Ink in
+    /// light mode, where a white rim on a near-white card would vanish; light in dark.
+    func glassRim(in shape: some InsettableShape) -> some View {
+        modifier(GlassRim(shape: shape))
+    }
+}
+
+private struct GlassRim<S: InsettableShape>: ViewModifier {
+    var shape: S
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            shape.strokeBorder(
+                LinearGradient(colors: scheme == .dark
+                                   ? [Color.white.opacity(0.32), Color.white.opacity(0.04)]
+                                   : [Ink.primary.opacity(0.16), Ink.primary.opacity(0.03)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing),
+                lineWidth: 1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+extension View {
     /// Glass capsule field chrome: wrap a field's content (icon + TextField, a value
     /// label, …). Content supplies its own font/ink; this owns padding, the house
     /// field height, and the capsule.
