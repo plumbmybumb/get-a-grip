@@ -131,7 +131,8 @@ struct TodayView: View {
         // 12 rather than the house 22, and rather than the 16 it carried before: Today has
         // four blocks and the gaps between them were the easiest twelve points to find
         // when the page had to fit under a large title without scrolling.
-        ScreenScaffold(title: String(localized: "Today"), subtitle: dateLine, spacing: 12, fitsOnePage: true) {
+        ScreenScaffold(title: String(localized: "Today"), subtitle: dateLine, spacing: 12,
+                       fitsOnePage: true, gridsOnWideScreens: true) {
             header
                 .staggerIn(0)
 
@@ -143,6 +144,11 @@ struct TodayView: View {
             Group {
                 if ordered.isEmpty {
                     emptyCard
+                } else if sizeClass == .regular {
+                    // A wide window shows the routines SIDE BY SIDE instead of paging:
+                    // the peek was the deck's answer to a screen that fits one card, and
+                    // a tablet fits two, so every card is simply there.
+                    routineGrid
                 } else {
                     routineDeck
                 }
@@ -318,6 +324,24 @@ struct TodayView: View {
     }
 
     // MARK: - The deck
+
+    /// Size CLASS, never the idiom: an iPad in Slide Over is a phone and keeps the deck.
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    /// The regular-width layout: the same cards, the same ghost at the end, in a grid
+    /// two wide where the window allows. No pin and no settle — with every routine on
+    /// screen there is nothing to choose, and the up-next border still says which one
+    /// Today opens on.
+    private var routineGrid: some View {
+        CardGrid {
+            ForEach(ordered) { routine in
+                routineCard(routine,
+                            isUpNext: ordered.count > 1 && routine.id == upNext?.id)
+            }
+            newRoutineGhost
+                .id(Self.ghostID)
+        }
+    }
 
     /// The routines as a PAGED DECK — Music's Top Picks, not a browse feed. The card
     /// that used to sit under a rail of name-chips IS the chooser now: the next

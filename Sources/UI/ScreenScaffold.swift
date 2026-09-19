@@ -37,6 +37,9 @@ struct ScreenScaffold<Content: View>: View {
     /// instead, starting with the bottom margin: 22 is the gutter content scrolls off
     /// into, and nothing scrolls off a page that fits.
     var fitsOnePage: Bool = false
+    /// The screen lays its cards out in a `CardGrid` on a wide window, so the column
+    /// opens up to two cards' width instead of the single regular-width column.
+    var gridsOnWideScreens: Bool = false
     @ViewBuilder var content: Content
 
     /// Size CLASS, never the idiom: a Slide Over iPad column is compact and gets the
@@ -69,8 +72,9 @@ struct ScreenScaffold<Content: View>: View {
         // 22 is the gutter content scrolls off into. Nothing scrolls off a page that
         // cannot scroll, so it is the cheapest 16 pt on the screen.
         .padding(.bottom, fitsOnePage ? 6 : Metrics.spacing)
-        .frame(maxWidth: sizeClass == .regular ? Metrics.maxContentWidthRegular
-                                               : Metrics.maxContentWidth)
+        .frame(maxWidth: sizeClass == .regular
+               ? (gridsOnWideScreens ? Metrics.maxContentWidthGrid : Metrics.maxContentWidthRegular)
+               : Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
     }
 }

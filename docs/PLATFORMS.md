@@ -27,6 +27,13 @@ history syncs through CloudKit; a live session never moves between devices.
 - Layouts switch on **size class and aspect, never on the idiom**, which is also
   Apple's rule for the foldable. The regular-width column is 560 pt
   (`Metrics.maxContentWidthRegular`); sheets keep 440.
+- **Cards go in a grid on a wide window** (`CardGrid`: as many phone-width columns as
+  fit, two on an iPad, top-aligned). Today lays its routines out side by side with the
+  consistency strip spanning both, and Maxes is two cards to a row; the column those
+  screens open up to is `Metrics.maxContentWidthGrid`. A single 560 column on a
+  13-inch iPad was a phone in a frame (Nuri, 2026-09-19). History's wide pane stacks
+  the trend cards and stops the month deck peeking, because a sliver of card cut by a
+  pane edge reads as a glitch.
 - The runner has two forms: the phone's stack, and a two-column layout when the window
   is regular-width and wider than tall — the numbers and controls on the left at the
   phone's own column width, the graph (or the timer dial) taking the height on the

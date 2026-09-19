@@ -178,6 +178,13 @@ enum Metrics {
     /// frame. 560 keeps the cards readable at arm's length without stretching a set row
     /// into a form. Sheets keep 440 — a form sheet is already narrow.
     static let maxContentWidthRegular: CGFloat = 560
+    /// A GRID of cards on a wide screen: two phone-width cards and the gap between them.
+    /// Today's routines and the Maxes cards lay out this way once the window has room
+    /// for two — a single 560 column on a 13-inch iPad was a phone in a frame.
+    static let maxContentWidthGrid: CGFloat = 1080
+    /// The narrowest a card in that grid may go: the phone column, where every card was
+    /// measured.
+    static let cardMinWidth: CGFloat = 440
     static let fieldHeight: CGFloat = 54
     static let buttonHeight: CGFloat = 56
     static let buttonHorizontalPadding: CGFloat = 16

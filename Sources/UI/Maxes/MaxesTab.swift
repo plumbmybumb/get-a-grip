@@ -35,32 +35,25 @@ struct MaxesTab: View {
     @State private var editing: MeasureTarget?
     @State private var adding = false
 
+    /// Size CLASS, never the idiom — see `CardGrid`.
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
         let gripGroups = groups
         let untestedInvitations = invitations
-        ScreenScaffold(title: String(localized: "Maxes"), subtitle: subtitle) {
+        ScreenScaffold(title: String(localized: "Maxes"), subtitle: subtitle,
+                       gridsOnWideScreens: true) {
             VStack(alignment: .leading, spacing: Metrics.spacing) {
                 if gripGroups.isEmpty && untestedInvitations.isEmpty {
                     // The tour anchors the empty card too — a first-run tour arrives here
                     // with no maxes, and a spotlight with nothing to light is a black scrim.
                     emptyCard.tourAnchor(.maxesCurves).staggerIn(0)
+                } else if sizeClass == .regular {
+                    // Two grips to a row on a wide window: a max card is a chart and two
+                    // numbers, and one of them alone across a 13-inch screen was a banner.
+                    CardGrid { cards(gripGroups, untestedInvitations) }
                 } else {
-                    ForEach(Array(gripGroups.enumerated()), id: \.element.id) { index, group in
-                        if index == 0 {
-                            gripCard(group).tourAnchor(.maxesCurves).staggerIn(index)
-                        } else {
-                            gripCard(group).staggerIn(index)
-                        }
-                    }
-                    ForEach(Array(untestedInvitations.enumerated()), id: \.element.key) { index, grip in
-                        // First-run tours land here with routines but no maxes — the
-                        // leading invitation is the spotlight's home then.
-                        if gripGroups.isEmpty, index == 0 {
-                            invitationCard(grip).tourAnchor(.maxesCurves).staggerIn(0)
-                        } else {
-                            invitationCard(grip).staggerIn(gripGroups.count)
-                        }
-                    }
+                    cards(gripGroups, untestedInvitations)
                 }
                 footnote
             }
@@ -85,6 +78,28 @@ struct MaxesTab: View {
         }
         .sheet(isPresented: $adding) {
             NewMaxSheet(seed: templates.recentGrips.first ?? GripSpec()) { adding = false }
+        }
+    }
+
+    /// One card per tested grip, then one invitation per untested one — the same rows in
+    /// the phone's stack and the wide grid, so the two layouts cannot drift.
+    @ViewBuilder
+    private func cards(_ gripGroups: [GripGroup], _ untestedInvitations: [GripSpec]) -> some View {
+        ForEach(Array(gripGroups.enumerated()), id: \.element.id) { index, group in
+            if index == 0 {
+                gripCard(group).tourAnchor(.maxesCurves).staggerIn(index)
+            } else {
+                gripCard(group).staggerIn(index)
+            }
+        }
+        ForEach(Array(untestedInvitations.enumerated()), id: \.element.key) { index, grip in
+            // First-run tours land here with routines but no maxes — the leading
+            // invitation is the spotlight's home then.
+            if gripGroups.isEmpty, index == 0 {
+                invitationCard(grip).tourAnchor(.maxesCurves).staggerIn(0)
+            } else {
+                invitationCard(grip).staggerIn(gripGroups.count)
+            }
         }
     }
 

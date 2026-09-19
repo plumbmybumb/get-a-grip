@@ -202,7 +202,7 @@ struct HistoryView: View {
                 // rhythm the `List` rows have today.
                 VStack(spacing: 12) {
                     summaryBlocks(ledger: ledger, routines: routines,
-                                  logsByRoutine: logsByRoutine)
+                                  logsByRoutine: logsByRoutine, wide: true)
                 }
                 .padding(.top, 12)
                 .padding(.bottom, 24)
@@ -245,10 +245,14 @@ struct HistoryView: View {
     /// container's edge — the screen in one column, the left pane in two — and the lone
     /// card sits on the house grid either way.
     @ViewBuilder
-    private func monthBlock(_ ledger: DayLedger) -> some View {
+    private func monthBlock(_ ledger: DayLedger, wide: Bool = false) -> some View {
         Group {
             if monthPageCount(ledger) > 1 {
-                monthDeck(ledger)
+                // In the wide pane the neighbour must not peek: cut off by the pane's
+                // edge rather than the screen's, a sliver of card reads as a glitch
+                // (Nuri's scribble, 2026-09-19). The deck still pages; the indicator
+                // says so instead.
+                monthDeck(ledger, peeks: !wide)
             } else {
                 monthCard(0, ledger).padding(.horizontal, Metrics.hPadding)
             }
@@ -266,9 +270,19 @@ struct HistoryView: View {
     /// of "more" on a screen with one routine would say there is more when there isn't.
     @ViewBuilder
     private func trendBlock(_ routines: [RoutineOption],
-                            logsByRoutine: [String: [WorkoutLog]]) -> some View {
+                            logsByRoutine: [String: [WorkoutLog]],
+                            wide: Bool = false) -> some View {
         Group {
-            if routines.count > 1 {
+            if routines.count > 1, wide {
+                // The wide pane is tall and scrolls: every routine's trend simply
+                // stands under the last, and nothing peeks or pages.
+                VStack(spacing: 12) {
+                    ForEach(routines, id: \.key) { option in
+                        trendCard(option, logs: logsByRoutine[option.key, default: []])
+                    }
+                }
+                .padding(.horizontal, Metrics.hPadding)
+            } else if routines.count > 1 {
                 trendDeck(routines, logsByRoutine: logsByRoutine)
             } else if let only = routines.first {
                 trendCard(only, logs: logsByRoutine[only.key, default: []])
@@ -286,9 +300,10 @@ struct HistoryView: View {
     @ViewBuilder
     private func summaryBlocks(ledger: DayLedger,
                                routines: [RoutineOption],
-                               logsByRoutine: [String: [WorkoutLog]]) -> some View {
-        monthBlock(ledger)
-        trendBlock(routines, logsByRoutine: logsByRoutine)
+                               logsByRoutine: [String: [WorkoutLog]],
+                               wide: Bool = false) -> some View {
+        monthBlock(ledger, wide: wide)
+        trendBlock(routines, logsByRoutine: logsByRoutine, wide: wide)
     }
 
     /// The log itself: the label, the sessions, the door to the rest, the footnote.
@@ -527,7 +542,10 @@ struct HistoryView: View {
     /// the same deck geometry and one-page-per-swipe physics as Today and the trend.
     /// LAZY, unlike the other decks: the page count grows with the training history
     /// and a two-year habit must not build seventy hidden grids at once.
-    private func monthDeck(_ ledger: DayLedger) -> some View {
+    /// `peeks` is the phone's 20 pt of neighbour at the screen edge; off in the wide
+    /// pane, where the edge is a seam rather than the screen and a page indicator
+    /// carries the "there is more" instead.
+    private func monthDeck(_ ledger: DayLedger, peeks: Bool = true) -> some View {
         ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 8) {
                 ForEach(0..<monthPageCount(ledger), id: \.self) { window in
@@ -538,9 +556,9 @@ struct HistoryView: View {
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
-        .scrollIndicators(.hidden)
+        .scrollIndicators(peeks ? .hidden : .automatic)
         .contentMargins(.leading, Metrics.hPadding, for: .scrollContent)
-        .contentMargins(.trailing, Metrics.hPadding + 8, for: .scrollContent)
+        .contentMargins(.trailing, Metrics.hPadding + (peeks ? 8 : 0), for: .scrollContent)
     }
 
     /// How many windows have anything to show: from today back to the first day on
