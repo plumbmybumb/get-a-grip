@@ -5,6 +5,11 @@ import SwiftUI
 
 /// Rest changes the information above the trace, never the trace itself. The
 /// coarse snapshot already points to the next hand, grip and target during rest.
+///
+/// **The countdown is not here.** It is the ambient numeral in the open graph
+/// (`RunnerView.ambientCountdown`), readable from the wall; carrying it a second
+/// time in the panel said the same number twice a hand's width apart (Nuri,
+/// 2026-09-19). The room it took goes to the grip you are about to pull.
 struct RunnerRestFocusSummary: View {
     let snapshot: RunnerSnapshot
     let showsGlyph: Bool
@@ -13,22 +18,16 @@ struct RunnerRestFocusSummary: View {
     @Environment(\.weightUnit) private var weightUnit
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Reduce Motion and Low Power Mode both take the roll away — see `NumeralRoll`.
-    private var rolls: Bool {
-        !reduceMotion && NumeralRoll.rolls(luminanceReduced: false,
-                                           lowPower: PowerState.shared.isLowPowerModeEnabled)
-    }
-    @ScaledMetric(relativeTo: .largeTitle) private var numeralSize: CGFloat = 80
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 10 * scale) {
             if showsGlyph, let grip = snapshot.grip {
                 RunnerGripGlyph(grip: grip, emphasized: snapshot.gripChangesNext)
                     .scaleEffect(snapshot.gripChangesNext && !reduceMotion ? 1 : 1.2)
                     .padding(.vertical, 3)
                     .accessibilityHidden(true)
             }
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Text(nextHand)
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Ink.secondary)
@@ -37,7 +36,7 @@ struct RunnerRestFocusSummary: View {
                     .accessibilityIdentifier("runner.restFocus.hand")
                 if let grip = snapshot.grip {
                     Text(grip.line)
-                        .font(.headline)
+                        .font(.title3.weight(.semibold))
                         // Use the existing readable orange text tone; the brighter
                         // signal orange remains on the larger glyph and graph outline.
                         .foregroundStyle(snapshot.gripChangesNext ? GlassTint.armed.text : Ink.secondary)
@@ -51,33 +50,22 @@ struct RunnerRestFocusSummary: View {
                     let lower = weightUnit.number(band.lowerBound)
                     let upper = weightUnit.number(band.upperBound)
                     Text(String(localized: "Next target: \(lower)–\(upper) \(weightUnit.symbol)"))
-                        .font(.subheadline)
+                        .font(.body)
                         .foregroundStyle(Ink.secondary)
                         .monospacedDigit()
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("runner.restFocus.target")
                 }
             }
-            // The current instruction owns the countdown. Give it the whole row,
-            // so a translated set-break label never competes for the timer's width.
-            VStack(spacing: 0) {
+            VStack(spacing: 4) {
                 Text(phaseLabel)
                     .font(.title.weight(.semibold))
                     .foregroundStyle(snapshot.phase.isPaused ? StatusTint.armed : Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("runner.restFocus.phase")
-                if typeSize.isAccessibilitySize {
-                    countdown
-                    HStack(alignment: .top, spacing: 16) {
-                        setCount
-                        pullCount
-                    }
-                } else {
-                    HStack(alignment: .center, spacing: 8) {
-                        setCount
-                        countdown.layoutPriority(1)
-                        pullCount
-                    }
+                HStack(alignment: .top, spacing: 16) {
+                    setCount
+                    pullCount
                 }
             }
         }
@@ -86,24 +74,6 @@ struct RunnerRestFocusSummary: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("runner.restFocus")
         .allowsHitTesting(false)
-    }
-
-    private var countdown: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 3) {
-            Text("\(snapshot.secondsShown)")
-                .font(.system(size: numeralSize * scale, weight: .thin))
-                .displayTracking(numeralSize)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.65)
-                .contentTransition(rolls ? .numericText(countsDown: true) : .identity)
-                .animation(rolls ? Motion.live : nil, value: snapshot.secondsShown)
-                .accessibilityIdentifier("runner.restFocus.countdown")
-            Text("s")
-                .font(.title3)
-                .foregroundStyle(Ink.tertiary)
-        }
-        .foregroundStyle(Ink.primary)
     }
 
     private var setCount: some View {

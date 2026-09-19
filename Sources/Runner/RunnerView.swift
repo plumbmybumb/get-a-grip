@@ -38,13 +38,14 @@ struct RunnerView: View {
     /// Size CLASS, never the idiom — see `live(_:)`.
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    /// The wide layout's ceiling: the graph runs the full width underneath the numbers,
-    /// so it can use nearly all of a 13-inch screen; past this the far end of the
-    /// trace is a long way from the readout it explains.
-    private static let wideWidth: CGFloat = 1180
+    /// The wide layout's glass column — panel, NEXT card and dock stacked at the
+    /// phone's measured width on one side of the screen, the graph filling the rest
+    /// (Nuri, 2026-09-19: *"offset the squares to one side, still big enough to see"*).
+    private static let wideColumnWidth: CGFloat = 440
     /// How much larger the identity block draws in the wide layout — the numbers,
-    /// the hand word and the grip picture, read from a bench.
-    private static let wideScale: CGFloat = 1.6
+    /// the hand word and the grip picture, read from a bench. 1.4 is what a 440 pt
+    /// column holds with the two numerals side by side.
+    private static let wideScale: CGFloat = 1.4
 
     @State private var session: RunnerSession?
     /// Whether the grip hangs off the Dynamic Island — which is a fact about the DEVICE,
@@ -277,7 +278,7 @@ struct RunnerView: View {
                 // below it, so the top content cannot slide through the fingers.
                 .padding(.top, hasIsland ? 46 + handPush : 0)
                 .background {
-                    backgroundTrace(session, bottomInset: geometry.safeAreaInsets.bottom)
+                    backgroundTrace(session, bottomInset: geometry.safeAreaInsets.bottom, wide: false)
                 }
             }
         } else {
@@ -289,13 +290,9 @@ struct RunnerView: View {
                 let wide = sizeClass == .regular && geometry.size.width > geometry.size.height
                 liveContent(session, wide: wide)
                     .frame(width: geometry.size.width, height: geometry.size.height)
-                    // The stacked layout's graph is the SCREEN — see `backgroundTrace`.
-                    // The wide layout keeps its card: two columns over one full-width
-                    // curve would put the numbers on top of the load they explain.
+                    // The graph is the SCREEN in both layouts — see `backgroundTrace`.
                     .background {
-                        if !wide {
-                            backgroundTrace(session, bottomInset: geometry.safeAreaInsets.bottom)
-                        }
+                        backgroundTrace(session, bottomInset: geometry.safeAreaInsets.bottom, wide: wide)
                     }
             }
         }
@@ -317,8 +314,8 @@ struct RunnerView: View {
         // The stacked column keeps the PHONE's width even on a regular-width screen: the
         // hero numeral, the ring and the button rows were all measured at 440, and an
         // iPad in portrait shows that same picture with wider margins. The wide layout
-        // earns more because it is two columns.
-        .frame(maxWidth: wide ? Self.wideWidth : Metrics.maxContentWidth)
+        // spans the room: its column is fixed and the graph takes whatever is left.
+        .frame(maxWidth: wide ? .infinity : Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
     }
 
@@ -356,34 +353,36 @@ struct RunnerView: View {
         }
     }
 
-    /// The wide window, laid out the way Nuri sketched it on the iPad (2026-09-19): the
-    /// grip, the hand word and the two numbers LARGE at the top left, a card at the top
-    /// right saying what comes next, the graph — or the timer dial — across the whole
-    /// width underneath, and one row of controls under that. The same views as the
-    /// phone's, scaled for the room; only the NEXT card is new, because only here is
-    /// there room to say what follows the pull you are on. This is also the "opened
-    /// flat" layout a foldable gets for free.
+    /// The wide window (an iPad in landscape, a foldable opened flat): the graph fills
+    /// the whole screen and ONE glass column sits on the left — the panel, the NEXT
+    /// card and the dock, at the phone's measured width — so the curve's history slides
+    /// under the glass and its newest seconds run in the clear on the right (Nuri,
+    /// 2026-09-19: *"the back being just the graph that fills the whole screen, then
+    /// offset the squares to one side, still big enough to see"*). The same views as
+    /// the phone's, scaled for the room; only the NEXT card is new, because only here
+    /// is there room to say what follows the pull you are on.
     private func wideContent(_ session: RunnerSession) -> some View {
-        VStack(spacing: 16) {
+        GlassEffectContainer(spacing: 24) {
             HStack(alignment: .top, spacing: Metrics.spacing) {
-                VStack(spacing: 14) {
+                VStack(spacing: 16) {
                     if timerOnly {
-                        timerOnlyIdentity(session, scale: Self.wideScale)
-                        timerPositionLine(session)
+                        VStack(spacing: 14) {
+                            timerOnlyIdentity(session, scale: Self.wideScale)
+                            timerPositionLine(session)
+                        }
                     } else {
-                        measuredTop(session, scale: Self.wideScale)
+                        infoPanel(session, scale: Self.wideScale)
                     }
+                    nextCard(session)
+                    controls(session)
                 }
-                .frame(maxWidth: .infinity)
-                nextCard(session)
-                    .frame(width: 320)
+                .frame(width: Self.wideColumnWidth)
+                if timerOnly {
+                    timerDial(session)
+                } else {
+                    graphRegion(session)
+                }
             }
-            if timerOnly {
-                timerDial(session)
-            } else {
-                traceCard(session)
-            }
-            wideControls(session)
         }
     }
 
@@ -444,38 +443,10 @@ struct RunnerView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial,
-                    in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        .accessibleGlass(nil, in: Self.panelShape)
         .animation(Motion.state(reduceMotion), value: session.snapshot.phase.slotIndex)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("runner.next")
-    }
-
-    /// The graph as a CARD — the wide layout's home for it, under the identity block
-    /// and the NEXT card. Everything that sits on the graph is shared with the stacked
-    /// layout's open region (`graphRegion`) so the two cannot drift.
-    private func traceCard(_ session: RunnerSession) -> some View {
-        ZStack {
-            LiveTrace(thresholdKg: session.plan.thresholdKg,
-                      targetBand: liveTargetBand(session),
-                      tint: tint(session))
-            signalNotice(session)
-        }
-        .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil,
-               maxHeight: .infinity)
-        .background(.regularMaterial,
-                    in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
-                .strokeBorder(StatusTint.armed, lineWidth: 3)
-                .opacity(session.snapshot.hasSignal ? gripBorderOpacity : 0)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
-        .overlay(alignment: .topLeading) { newGripChip(session) }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("runner.graph")
-        .tourAnchor(.runnerTrace)
     }
 
     /// Only while the rep is actually live. A lane drawn during the rest would ask you
@@ -505,8 +476,9 @@ struct RunnerView: View {
     /// happening — the count-in, a rest, a paused rest — the open graph is four
     /// hundred points of nothing, so the seconds go there, huge and thin, and fade the
     /// moment the trace has something to show (Nuri, 2026-09-19: *"clear understanding
-    /// of the app from a distance"*). The panel keeps the precise figure with its unit
-    /// and stays the accessible one; this is the ambient echo, hidden from VoiceOver.
+    /// of the app from a distance"*). It is THE rest countdown: the panel no longer
+    /// repeats it (see `RunnerRestFocusSummary`), so this numeral carries the
+    /// `runner.restFocus.countdown` identity and stays accessible.
     private func showsAmbientCountdown(_ session: RunnerSession) -> Bool {
         switch session.snapshot.phase {
         case .resting, .leadIn: true
@@ -526,44 +498,17 @@ struct RunnerView: View {
             .monospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(0.35)
-            // A clock rolls; measured at 0.75 the secondary ink clears 3:1 on the light
+            // A clock rolls — unless Reduce Motion or Low Power Mode says otherwise
+            // (`clockRolls`). Measured at 0.75 the secondary ink clears 3:1 on the light
             // field for a numeral this size.
-            .contentTransition(reduceMotion ? .identity : .numericText(countsDown: true))
-            .animation(reduceMotion ? nil : Motion.live, value: session.snapshot.secondsShown)
+            .contentTransition(clockRolls && !reduceMotion ? .numericText(countsDown: true) : .identity)
+            .animation(clockRolls && !reduceMotion ? Motion.live : nil,
+                       value: session.snapshot.secondsShown)
             .foregroundStyle(Ink.secondary.opacity(0.75))
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .allowsHitTesting(false)
-            .accessibilityHidden(true)
-    }
-
-    /// The brief grip-change chip. An overlay never participates in the graph's
-    /// layout. Keep the newest readings at the right edge clear, and let signal
-    /// warnings take priority over the brief grip cue.
-    @ViewBuilder
-    private func newGripChip(_ session: RunnerSession) -> some View {
-        if gripEmphasis, session.snapshot.hasSignal, !showsRestFocus(session),
-           let grip = session.snapshot.grip {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("New grip")
-                    .font(.headline)
-                    .foregroundStyle(Color(hex: "1B1F25"))
-                Text(grip.shortName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color(hex: "1B1F25"))
-                    .lineLimit(2)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(StatusTint.armed,
-                        in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
-            .padding(12)
-            .padding(.trailing, 64)
-            .transition(.opacity)
-            .allowsHitTesting(false)
-            // The existing grip-change announcement already speaks this.
-            .accessibilityHidden(true)
-        }
+            .accessibilityIdentifier("runner.restFocus.countdown")
     }
 
     // MARK: - The stacked layout: the graph is the screen, the numbers are glass
@@ -579,8 +524,8 @@ struct RunnerView: View {
     /// becomes an opaque card, which is the only way the numbers stay legible over a
     /// live curve. The grip-change outline moves here from the graph's card — the panel
     /// is where the changed grip is NAMED, and the open graph has no edge to draw it on.
-    private func infoPanel(_ session: RunnerSession) -> some View {
-        measuredTop(session)
+    private func infoPanel(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
+        measuredTop(session, scale: scale)
             .padding(.horizontal, 16)
             .padding(.top, 14)
             .padding(.bottom, 12)
@@ -620,16 +565,21 @@ struct RunnerView: View {
     /// for no new information (measured 2026-09-19). The wide layout's card keeps it.
     private func graphRegion(_ session: RunnerSession) -> some View {
         let notice = showsSignalNotice(session)
-        let ambient = !notice && showsAmbientCountdown(session)
+        let ambient = showsAmbientCountdown(session)
         return ZStack {
             Color.clear
-            if ambient {
-                ambientCountdown(session)
-                    .transition(.opacity)
-            }
-            if notice {
-                noSignalNotice(session)
-                    .accessibilityIdentifier("runner.signalWarning")
+            // Both at once when the gauge goes quiet mid-rest: the countdown is the
+            // rest's own clock and does not depend on the gauge, so losing the link
+            // must not hide it — it moves up and the notice takes the room below.
+            VStack(spacing: 8) {
+                if ambient {
+                    ambientCountdown(session)
+                        .transition(.opacity)
+                }
+                if notice {
+                    noSignalNotice(session)
+                        .accessibilityIdentifier("runner.signalWarning")
+                }
             }
         }
         .animation(Motion.state(reduceMotion), value: ambient)
@@ -652,14 +602,19 @@ struct RunnerView: View {
     /// down so a sample invalidates nothing but the canvas. Nothing force-shaped in a
     /// gauge-free session, exactly as before.
     @ViewBuilder
-    private func backgroundTrace(_ session: RunnerSession, bottomInset: CGFloat) -> some View {
+    private func backgroundTrace(_ session: RunnerSession, bottomInset: CGFloat,
+                                 wide: Bool) -> some View {
         if !timerOnly {
-            ZStack(alignment: .top) {
-                PhaseWash(tint: tint(session), height: traceGeometry.regionTopInCanvas)
+            ZStack(alignment: .topLeading) {
+                // Under the panel on the phone; under the column on the iPad.
+                PhaseWash(tint: tint(session),
+                          edge: wide ? .leading : .top,
+                          length: wide ? traceGeometry.regionLeadingInCanvas
+                                       : traceGeometry.regionTopInCanvas)
                 LiveTrace(thresholdKg: session.plan.thresholdKg,
                           targetBand: liveTargetBand(session),
                           tint: tint(session),
-                          plot: traceGeometry.plot(bottomSafeInset: bottomInset),
+                          plot: traceGeometry.plot(bottomSafeInset: bottomInset, wide: wide),
                           lit: true)
             }
             // Measured INSIDE `ignoresSafeArea`: outside it the reported frame is the
@@ -1445,22 +1400,6 @@ struct RunnerView: View {
         RoundedRectangle(cornerRadius: Metrics.radiusSheet, style: .continuous)
     }
 
-    /// The wide layout's single row under the graph: the same five controls at one
-    /// width, in the same order the phone stacks them.
-    private func wideControls(_ session: RunnerSession) -> some View {
-        HStack(spacing: 10) {
-            pauseButton(session)
-            gaugeButton(session)
-            skipButtons(session)
-            endButton(session)
-        }
-        // PINNED to the house button height. The labels fill their row's height so
-        // the phone's two rows come out even, and with the graph above them flexible
-        // that "row" was a third of the screen — five lozenges the size of the
-        // numerals (measured on the 13-inch sim, 2026-09-19).
-        .frame(height: Metrics.buttonHeight)
-    }
-
     /// The buttons KEEP their identity while disabled: the visible reason the house
     /// rule demands is the prompt above them, which says PAUSED / CONNECTING at
     /// large-title weight — swapping the labels spent the two Skips' names on the same
@@ -1707,20 +1646,27 @@ private struct LiveTrace: View {
 /// under a fixed mask, so the colour change between phases animates as a fill does;
 /// the field itself stays static, which is what every glass surface needs to sample.
 private struct PhaseWash: View {
+    enum Edge { case top, leading }
     var tint: Color
-    var height: CGFloat
+    /// The edge the wash hangs from: the top under the phone's panel, the leading
+    /// edge under the iPad's column.
+    var edge: Edge = .top
+    /// How far it reaches from that edge before it has faded out.
+    var length: CGFloat
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Rectangle()
             .fill(tint)
-            .mask(alignment: .top) {
+            .mask(alignment: edge == .top ? .top : .leading) {
                 LinearGradient(stops: [.init(color: .black.opacity(0.30), location: 0),
                                        .init(color: .clear, location: 1)],
-                               startPoint: .top, endPoint: .bottom)
+                               startPoint: edge == .top ? .top : .leading,
+                               endPoint: edge == .top ? .bottom : .trailing)
             }
-            .frame(height: max(0, height))
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .frame(width: edge == .leading ? max(0, length) : nil,
+                   height: edge == .top ? max(0, length) : nil)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .animation(Motion.state(reduceMotion), value: tint)
             .accessibilityHidden(true)
     }
@@ -1777,8 +1723,28 @@ private struct BackgroundTraceGeometry {
         return max(0, region.minY - canvas.minY)
     }
 
-    func plot(bottomSafeInset: CGFloat) -> ForceTraceView.PlotInsets {
+    /// The open region's leading edge — in the wide layout, where the glass column
+    /// ends and the wash under it fades out.
+    var regionLeadingInCanvas: CGFloat {
+        guard canvas.width > 0, region.width > 0 else { return 0 }
+        return max(0, region.minX - canvas.minX)
+    }
+
+    /// Clearance between the wide layout's plot and the screen's top and bottom edges,
+    /// so the curve does not kiss the bezel.
+    private static let wideEdgeInset: CGFloat = 24
+
+    func plot(bottomSafeInset: CGFloat, wide: Bool = false) -> ForceTraceView.PlotInsets {
         guard canvas.height > 0, region.height > 0 else { return .card }
+        if wide {
+            // Nothing sits above or below the open region on a wide screen — the
+            // column is beside it — so the plot simply spans the region's height,
+            // and the curve's history slides under the column on its way out.
+            return ForceTraceView.PlotInsets(
+                top: max(0, region.minY - canvas.minY) + Self.wideEdgeInset,
+                bottom: max(0, canvas.maxY - region.maxY) + Self.wideEdgeInset,
+                trailing: 8)
+        }
         let headroom = 1 - 1 / TraceAxis.ceilingHeadroom
         let regionTop = region.minY - canvas.minY
         let bottom = Self.floorAtEdge ? bottomSafeInset : max(0, canvas.maxY - region.maxY)

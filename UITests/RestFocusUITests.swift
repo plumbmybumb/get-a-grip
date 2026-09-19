@@ -280,7 +280,7 @@ final class RestFocusUITests: XCTestCase {
         let graphFrame = graph.frame
         XCTAssertGreaterThan(graphFrame.height, 0, file: file, line: line)
         let identifiers = ["runner.restFocus", "runner.restFocus.hand", "runner.restFocus.grip",
-                           "runner.restFocus.phase", "runner.restFocus.countdown",
+                           "runner.restFocus.phase",
                            "runner.restFocus.setCount", "runner.restFocus.pullCount"]
         for identifier in identifiers {
             let content = element(identifier, in: app)
@@ -294,6 +294,11 @@ final class RestFocusUITests: XCTestCase {
             XCTAssertLessThanOrEqual(target.frame.maxY, graphFrame.minY,
                                     "The upcoming target must not cover the graph", file: file, line: line)
         }
+        // The countdown is the ambient numeral IN the open graph, not a panel row.
+        let countdown = element("runner.restFocus.countdown", in: app)
+        XCTAssertTrue(countdown.exists, "runner.restFocus.countdown", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(countdown.frame.minY, graphFrame.minY,
+                                    "The rest countdown lives in the open graph", file: file, line: line)
     }
 
     private func assertControlsVisible(in app: XCUIApplication, allowsScrolling: Bool = false,

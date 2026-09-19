@@ -1,0 +1,5 @@
+L'écran de séance est nouveau. La courbe de force occupe désormais tout l'écran, et les chiffres reposent sur un seul panneau Liquid Glass qui prend la couleur du moment : bleu quand le chrono tourne, ambre quand il vous attend. Pendant le repos, le compte à rebours remplit l'écran, assez grand pour être lu depuis le mur.
+• iPad : en paysage, le graphique occupe tout l'écran, avec votre prise, la prochaine traction et les commandes dans une colonne à côté.
+• Apple Watch : tout le cadran prend la couleur de l'état — bleu pour tirer, vert quand le chrono tourne, rouge pour reprendre la prise, orange avant une prise différente.
+• Le mode Économie d'énergie, sur l'un ou l'autre appareil, arrête le défilement des chiffres.
+• Une balance qui envoie ses mesures par rafales ne vide plus le graphique.
