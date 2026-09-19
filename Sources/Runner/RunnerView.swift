@@ -28,6 +28,12 @@ struct RunnerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The clocks roll — and stop rolling in Low Power Mode, where the phone has capped its
+    /// refresh rate and said it wants fewer frames. See `NumeralRoll`; the force readout
+    /// never rolled to begin with.
+    private var clockRolls: Bool {
+        NumeralRoll.rolls(luminanceReduced: false, lowPower: PowerState.shared.isLowPowerModeEnabled)
+    }
     @Environment(\.dynamicTypeSize) private var typeSize
     /// Size CLASS, never the idiom — see `live(_:)`.
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -905,7 +911,7 @@ struct RunnerView: View {
                 readout(value: "\(session.snapshot.secondsShown)",
                         unit: String(localized: "s"),
                         tint: isStalled(session) ? StatusTint.armed : Ink.primary,
-                        rolls: true,
+                        rolls: clockRolls,
                         caption: nil,
                         scale: scale)
                     .tourAnchor(.runnerClock)
@@ -1095,12 +1101,12 @@ struct RunnerView: View {
                     .monospacedDigit()
                     .minimumScaleFactor(0.55)
                     .lineLimit(1)
-                    .contentTransition(.numericText())
+                    .contentTransition(clockRolls ? .numericText() : .identity)
                     // `.numericText()` needs an animation OBSERVING the value or it does
                     // nothing — the digits just cut. The outer animation watches `phase`,
                     // which changes once per phase, not once per second, so without this
                     // the hero numeral of a timer snapped instead of rolling.
-                    .animation(Motion.live, value: session.snapshot.secondsShown)
+                    .animation(clockRolls ? Motion.live : nil, value: session.snapshot.secondsShown)
                     .foregroundStyle(Ink.primary)
                 CapsLabel(promptText(session), tint: tint(session))
                     .lineLimit(1)

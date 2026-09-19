@@ -12,6 +12,13 @@ import WatchKit
 /// nothing, and the kilogram readout under the hand is enough to confirm the gauge is
 /// alive.
 ///
+/// **The whole face is the colour of the state** (`WatchFaceMood`): blue to pull, green
+/// while the clock runs, red to re-grip, gray to rest, orange when the next grip is a
+/// different one, amber for less. A fill is the one instrument that survives Always On —
+/// one redraw a second and reduced luminance — where a rolling digit turns into a smear,
+/// so under reduced luminance the fill goes to its dimmed shade, every ink goes white,
+/// and the clock numeral cuts instead of rolling.
+///
 /// It owns no timing logic — the same `RunnerSession` the phone runs holds the state
 /// machine, the stream watchdog and the tare rules, and this only draws what it says.
 struct WatchRunnerView: View {
@@ -33,16 +40,36 @@ struct WatchRunnerView: View {
     /// Always On: with the wrist out of the raise pose — palm down on a block counts —
     /// watchOS dims the display and redraws it once a second, and no app can hold full
     /// brightness (Apple's own Workout app dims the same way). What an app CAN do is
-    /// stay legible dimmed: the two numbers and the hand word in full white, the small
-    /// print gone.
-    @Environment(\.isLuminanceReduced) private var dimmed
+    /// stay legible dimmed: the fill drops to its dimmed shade, the numbers and the hand
+    /// word go white, the small print goes, and nothing animates.
+    @Environment(\.isLuminanceReduced) private var luminanceReduced
+    private var dimmed: Bool {
+        #if DEBUG
+        // Headless verification: the watch simulator has no wrist to lower, so
+        // `-previewDimmed` stands in for reduced luminance. Read HERE rather than
+        // overridden at the app root: a `transformEnvironment` on the root view never
+        // reached this pushed destination (measured 2026-09-19 — the system writes the
+        // value below it). Never in a release build.
+        if ProcessInfo.processInfo.arguments.contains("-previewDimmed") { return true }
+        #endif
+        return luminanceReduced
+    }
     /// The face turns upside down on the watch hand's pulls — see `FaceFlipPolicy`. Off
     /// for anyone whose block posture is different; device-local, like every preference.
     @AppStorage("watch.flipForWatchHand") private var flipsForWatchHand = true
+    /// The mood the face is fading FROM — see `fillLayer`. The only state this view
+    /// holds about its colour, and it models nothing but the last change.
+    @State private var outgoingMood: WatchFaceMood = .rest
 
     /// Which wrist this watch is on, as the wearer told watchOS. `.both` is never a wrist.
     private var wrist: Side {
         WKInterfaceDevice.current().wristLocation == .right ? .right : .left
+    }
+
+    /// Low Power Mode takes the roll away from the clock too — see `NumeralRoll`.
+    private var clockRolls: Bool {
+        NumeralRoll.rolls(luminanceReduced: dimmed,
+                          lowPower: PowerState.shared.isLowPowerModeEnabled)
     }
 
     var body: some View {
@@ -103,28 +130,37 @@ struct WatchRunnerView: View {
     /// screen's height as its width), then rotated, so nothing is clipped or centred in
     /// the wrong frame. The turn SNAPS: animating a quarter-turn of the whole face
     /// stuttered on the wrist, and the haptic already marks the beat.
+    ///
+    /// The fill is a full-bleed background behind the content — it reaches the top edge
+    /// under the clock and the bottom under the page dots, measured — and it is not
+    /// turned with the face: a colour has no up. NOTHING ELSE on the face animates on a
+    /// state change: the word, the hand and the counters cut on the beat, and an
+    /// animation on the whole face cross-dissolved the prompt word into the next one.
     private func face(_ session: RunnerSession) -> some View {
         let snapshot = session.snapshot
+        let mood = mood(session)
         let turned = FaceFlipPolicy.shouldFlip(phase: snapshot.phase, side: snapshot.side,
                                                wrist: wrist, enabled: flipsForWatchHand)
         return GeometryReader { geo in
-            faceContent(session)
+            faceContent(session, mood: mood)
                 .frame(width: turned ? geo.size.height : geo.size.width,
                        height: turned ? geo.size.width : geo.size.height)
                 .rotationEffect(.degrees(turned ? FaceFlipPolicy.rotationDegrees(wrist: wrist) : 0))
                 .frame(width: geo.size.width, height: geo.size.height)
         }
+        .background { fillLayer(mood) }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("watch.face")
     }
 
-    private func faceContent(_ session: RunnerSession) -> some View {
+    private func faceContent(_ session: RunnerSession, mood: WatchFaceMood) -> some View {
         let snapshot = session.snapshot
-        let tint = tint(session)
+        let ink = ink(mood)
+        let quiet = ink.opacity(0.72)
         return VStack(spacing: 4) {
             Text(promptText(session))
                 .font(.title3.weight(.heavy))
-                .foregroundStyle(dimmed ? Color.white : tint)
+                .foregroundStyle(ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             // BOTH numbers, like the phone's hero: what you are pulling and how much
@@ -133,22 +169,19 @@ struct WatchRunnerView: View {
             HStack(alignment: .lastTextBaseline, spacing: 10) {
                 if !timerOnly {
                     hero(WeightUnit.kg.number(readout.kg), unit: WeightUnit.kg.symbol,
-                         tint: dimmed ? Color.white
-                              : (snapshot.hasSignal ? forceTint(session) : Color.secondary),
-                         rolls: false)
+                         ink: snapshot.hasSignal ? ink : quiet, quiet: quiet, rolls: false)
                 }
                 hero("\(snapshot.secondsShown)", unit: String(localized: "s"),
-                     tint: dimmed ? Color.white : Color.primary, rolls: true)
+                     ink: ink, quiet: quiet, rolls: clockRolls)
             }
             if let grip = snapshot.grip {
                 HStack(spacing: 8) {
                     HandMark(fingers: grip.fingers, position: grip.position,
-                             side: snapshot.side ?? .both, barWidth: 8,
-                             tint: dimmed ? Color.white : tint)
+                             side: snapshot.side ?? .both, barWidth: 8, tint: ink)
                     if !dimmed {
                         Text(grip.shortName)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(quiet)
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                     }
@@ -157,20 +190,20 @@ struct WatchRunnerView: View {
             if !dimmed {
                 Text(positionLine(session))
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(quiet)
                     .monospacedDigit()
             }
             if !timerOnly, !snapshot.hasSignal {
                 Text("waiting for the gauge")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(quiet)
             }
             if keeper.state == .denied || keeper.state == .unavailable {
                 // Said plainly: without a workout session the app sleeps with the
                 // wrist, and a rep would stall in silence.
                 Text("Keep the screen on — Health didn't allow a workout.")
                     .font(.caption2)
-                    .foregroundStyle(StatusTint.armed)
+                    .foregroundStyle(ink)
                     .multilineTextAlignment(.center)
             }
         }
@@ -178,8 +211,9 @@ struct WatchRunnerView: View {
     }
 
     /// A numeral and its unit. `rolls` is the difference between a CLOCK and a
-    /// MEASUREMENT, the phone's rule: the countdown rolls, the load snaps.
-    private func hero(_ value: String, unit: String, tint: Color, rolls: Bool) -> some View {
+    /// MEASUREMENT, the phone's rule: the countdown rolls, the load snaps — and a clock
+    /// stops rolling too once the face is dimmed or the battery rationed (`NumeralRoll`).
+    private func hero(_ value: String, unit: String, ink: Color, quiet: Color, rolls: Bool) -> some View {
         HStack(alignment: .lastTextBaseline, spacing: 2) {
             Text(value)
                 .font(.system(size: heroSize, weight: .medium, design: .rounded))
@@ -188,10 +222,10 @@ struct WatchRunnerView: View {
                 .minimumScaleFactor(0.5)
                 .contentTransition(rolls ? .numericText() : .identity)
                 .animation(rolls ? Motion.live : nil, value: value)
-                .foregroundStyle(tint)
+                .foregroundStyle(ink)
             Text(unit)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(quiet)
         }
     }
 
@@ -222,26 +256,55 @@ struct WatchRunnerView: View {
         return String(localized: "Set \(set) of \(snapshot.setCount) · Pull \(position) of \(planned)")
     }
 
-    /// The phone's ladder: blue while the clock runs, amber while it waits on you, red
-    /// when something needs attention, steel while resting.
-    private func tint(_ session: RunnerSession) -> Color {
-        if !timerOnly, !device.state.isConnected || session.snapshot.linkIsDown {
-            return StatusTint.alarm
-        }
-        switch session.snapshot.phase {
-        case .working: return isStalled(session) ? StatusTint.armed : StatusTint.engaged
-        case .armed, .releasing, .paused: return StatusTint.armed
-        case .resting, .leadIn, .idle, .finished: return StatusTint.calm
-        }
+    // MARK: - Colour
+
+    /// `WatchFaceMood` decides; this only gathers what it asks. A gauge-free session is
+    /// never "disconnected": there is nothing to be connected to, and painting REST red
+    /// because of a device nobody asked for is the app raising an alarm about its own
+    /// choice — the phone's rule.
+    private func mood(_ session: RunnerSession) -> WatchFaceMood {
+        let snapshot = session.snapshot
+        let linkIsDown = !timerOnly && (!device.state.isConnected || snapshot.linkIsDown)
+        return WatchFaceMood.resolve(phase: snapshot.phase,
+                                     isDropped: snapshot.isDropped,
+                                     isOverTarget: snapshot.isOverTarget,
+                                     linkIsDown: linkIsDown,
+                                     gripChangesNext: snapshot.gripChangesNext,
+                                     newGrip: snapshot.newGripID != nil)
     }
 
-    private func forceTint(_ session: RunnerSession) -> Color {
-        guard case .working = session.snapshot.phase else { return .primary }
-        return isStalled(session) ? StatusTint.armed : StatusTint.engaged
+    private func fill(_ mood: WatchFaceMood) -> Color {
+        Color(hex: WatchFacePalette.colours(for: mood, dimmed: dimmed).fillHex)
     }
 
-    private func isStalled(_ session: RunnerSession) -> Bool {
-        session.snapshot.isDropped || session.snapshot.isOverTarget
+    /// The fill, changing with the house state curve while the wrist is up and CUTTING
+    /// when dimmed: at one redraw a second a 0.3 s fade is one frame of the wrong colour,
+    /// and the whole point of the fill is that it is right at a glance.
+    ///
+    /// An explicit cross-fade rather than an animated colour, because a `Color` view does
+    /// not interpolate here (measured on the watch simulator, 2026-09-19: the fill cut in
+    /// one frame while an animated transaction was plainly running around it). Each
+    /// mood's fill is its own view, so a change fades the new one in and the old one
+    /// out — over a BASE painted the outgoing colour. The base is what makes the blend
+    /// right: SwiftUI does not promise which of the two crossing layers is on top (the
+    /// first try faded one change in three), and a symmetric fade over black would dip
+    /// dark halfway. Over an opaque base of the old colour, either order blends
+    /// monotonically from old to new.
+    private func fillLayer(_ mood: WatchFaceMood) -> some View {
+        ZStack {
+            fill(outgoingMood)
+                .ignoresSafeArea()
+            fill(mood)
+                .ignoresSafeArea()
+                .id(mood)
+                .transition(.opacity)
+        }
+        .animation(dimmed ? nil : Motion.state(reduceMotion), value: mood)
+        .onChange(of: mood) { old, _ in outgoingMood = old }
+    }
+
+    private func ink(_ mood: WatchFaceMood) -> Color {
+        WatchFacePalette.colours(for: mood, dimmed: dimmed).inkIsWhite ? .white : .black
     }
 
     // MARK: - Controls

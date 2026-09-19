@@ -276,7 +276,8 @@ final class DeviceStore {
         // The stored choice is untouched and comes back the moment demo mode ends.
         let kind: GaugeKind = useMock ? .progressor : DeviceStore.persistedGaugeKind()
         gaugeKind = kind
-        client = useMock ? MockProgressorClient() : DeviceStore.makeClient(for: kind)
+        client = useMock ? MockProgressorClient(profile: DeviceStore.mockProfileRequestedAtLaunch)
+                         : DeviceStore.makeClient(for: kind)
         wire()
     }
 
@@ -304,6 +305,20 @@ final class DeviceStore {
     /// reach real hardware.
     static var mockRequestedAtLaunch: Bool {
         ProcessInfo.processInfo.arguments.contains("-mockDevice")
+    }
+
+    /// `-mockProfile shaky` (or `weak`, `idle`) scripts the demo gauge for a headless
+    /// run — the way to put RE-GRIP on a screenshot, since `clean` never drops. DEBUG
+    /// only; a release build's demo mode is always the textbook pull.
+    static var mockProfileRequestedAtLaunch: MockForceProfile {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if let flag = arguments.firstIndex(of: "-mockProfile"), flag + 1 < arguments.count,
+           let profile = MockForceProfile(rawValue: arguments[flag + 1]) {
+            return profile
+        }
+        #endif
+        return .clean
     }
 
     // MARK: - Which gauge

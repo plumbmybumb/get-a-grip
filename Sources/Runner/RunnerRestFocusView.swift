@@ -13,6 +13,11 @@ struct RunnerRestFocusSummary: View {
     @Environment(\.weightUnit) private var weightUnit
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Reduce Motion and Low Power Mode both take the roll away — see `NumeralRoll`.
+    private var rolls: Bool {
+        !reduceMotion && NumeralRoll.rolls(luminanceReduced: false,
+                                           lowPower: PowerState.shared.isLowPowerModeEnabled)
+    }
     @ScaledMetric(relativeTo: .largeTitle) private var numeralSize: CGFloat = 80
 
     var body: some View {
@@ -91,8 +96,8 @@ struct RunnerRestFocusSummary: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
-                .contentTransition(reduceMotion ? .identity : .numericText(countsDown: true))
-                .animation(reduceMotion ? nil : Motion.live, value: snapshot.secondsShown)
+                .contentTransition(rolls ? .numericText(countsDown: true) : .identity)
+                .animation(rolls ? Motion.live : nil, value: snapshot.secondsShown)
                 .accessibilityIdentifier("runner.restFocus.countdown")
             Text("s")
                 .font(.title3)
