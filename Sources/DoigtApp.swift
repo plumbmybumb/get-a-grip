@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
 
-import OSLog
 import SwiftData
 import SwiftUI
 import UIKit
@@ -76,19 +75,25 @@ struct DoigtApp: App {
                 // Documents/diagnostics.txt`. That is how the iPad's Bluetooth delivery
                 // pattern is read without asking for a paste (2026-09-19).
                 .task {
+                    // Rewrites the report Settings › About › Diagnostics copies to
+                    // Documents/diagnostics.txt every two seconds, so an on-device issue
+                    // can be read without a hand on the screen or a paste: a simulator's
+                    // container, or a device via `xcrun devicectl device copy from
+                    // --device <udid> --domain-type appDataContainer --domain-identifier
+                    // run.nuri.doigt --source Documents/diagnostics.txt --destination
+                    // <file>`. The trace's own last-draw decision rides along — that line
+                    // is what pinned the iPad's blank graph to a render clock that had
+                    // fallen behind the sample clock (2026-09-19). DEBUG only.
                     guard let docs = FileManager.default.urls(for: .documentDirectory,
                                                               in: .userDomainMask).first
                     else { return }
                     while !Task.isCancelled {
                         let report = DiagnosticReport.text(from: device.diagnosticEntries)
+                            + "\n\nLast trace draw: " + TraceDrawProbe.shared.line
                             + "\n\n" + device.pipelineDiagnostics.report
                         try? report.write(to: docs.appendingPathComponent("diagnostics.txt"),
                                           atomically: true, encoding: .utf8)
-                        // Also to the unified log, for a run whose container is out of
-                        // reach: `log show --predicate 'subsystem == "run.nuri.doigt"'`.
-                        Logger(subsystem: "run.nuri.doigt", category: "diagnostics")
-                            .info("\(report, privacy: .public)")
-                        try? await Task.sleep(for: .seconds(5))
+                        try? await Task.sleep(for: .seconds(2))
                     }
                 }
                 #endif

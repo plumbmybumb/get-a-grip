@@ -14,6 +14,21 @@ private enum TraceInset {
     static let bottom: CGFloat = 10
 }
 
+#if DEBUG
+/// A one-line record of the trace's LAST draw, readable from any actor. The draw runs in
+/// a nonisolated `Canvas` closure, so a healthy buffer that still shows no line can only
+/// be explained from inside `draw` — this carries out what it decided. Read by the DEBUG
+/// diagnostics dumper.
+final class TraceDrawProbe: @unchecked Sendable {
+    static let shared = TraceDrawProbe()
+    private let lock = NSLock()
+    private var _line = "no draw yet"
+    private var _count = 0
+    func set(_ s: String) { lock.lock(); _count += 1; _line = "#\(_count) " + s; lock.unlock() }
+    var line: String { lock.lock(); defer { lock.unlock() }; return _line }
+}
+#endif
+
 /// The live force trace: a rolling window of the gauge's readings, scrolling smoothly.
 ///
 /// Time-based, not index-based: the Progressor delivers ~80 Hz samples in batches of
@@ -158,7 +173,20 @@ struct ForceTraceView: View {
         // for less motion should not be given a continuously sliding graph.
         TimelineView(.animation(paused: paused)) { timeline in
             let _ = diagnostics?.drawing(now: ProcessInfo.processInfo.systemUptime)
-            let now = frozenAt ?? timeline.date.timeIntervalSinceReferenceDate
+            // **`now` is the WALL clock, not `timeline.date`.** The schedule's date rides
+            // the animation clock, which stops while the device is asleep or the app is
+            // suspended; the sample timestamps in `t` are built from `Date()`, which does
+            // not. After a lock or a background spell the two diverge by the whole gap —
+            // an iPad 25 s behind — and since the draw positions every point by (now − t),
+            // a mismatched `now` put the entire buffer in the "future" and the due-only
+            // renderer drew nothing at all, while the phone (never suspended mid-session)
+            // was fine (Nuri's iPad, 2026-09-19; found by a draw-time probe reading
+            // `newestAhead=25166ms` against a buffer the store showed at −6 ms). Reading
+            // `Date()` here — the SAME clock the store stamps `t` with — is what keeps the
+            // renderer's clock and the data's clock identical. `timeline.date` now serves
+            // only its real purpose: waking the body every frame.
+            let _ = timeline.date
+            let now = frozenAt ?? Date().timeIntervalSinceReferenceDate
             // Computed HERE, not in the Canvas closure: the axis memory is
             // MainActor-bound view state, and the draw closure only needs the number.
             let ceiling = axisCeiling(now: now)
@@ -244,6 +272,11 @@ struct ForceTraceView: View {
     private func draw(in context: GraphicsContext, size: CGSize, now: TimeInterval,
                       ceiling: Double) {
         let plotHeight = max(1, size.height - TraceInset.top - TraceInset.bottom)
+        #if DEBUG
+        TraceDrawProbe.shared.set(String(format: "size=%.0fx%.0f count=%d ceiling=%.1f tintOpacity=%.2f — running",
+                                         size.width, size.height, samples.count, ceiling,
+                                         reduceMotion ? 0.85 : 1.0))
+        #endif
 
         func y(_ kg: Double) -> CGFloat {
             let fraction = min(max(kg, 0), ceiling) / ceiling
@@ -275,7 +308,12 @@ struct ForceTraceView: View {
                            style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
         }
 
-        guard samples.count > 1, let newest = samples.last else { return }
+        guard samples.count > 1, let newest = samples.last else {
+            #if DEBUG
+            TraceDrawProbe.shared.set("early: count<=1 (count=\(samples.count))")
+            #endif
+            return
+        }
 
         // How far the window's right edge has slid past the newest point. Wall-clock,
         // so it grows every frame; `t` is the store's slewed playback time, so radio
@@ -357,7 +395,13 @@ struct ForceTraceView: View {
         // and the head is where the line crosses the right edge on its way to them.
         var lastDue = samples.count - 1
         while lastDue > anchorIndex, samples[lastDue].t > now { lastDue -= 1 }
-        guard samples[lastDue].t <= now else { return }
+        guard samples[lastDue].t <= now else {
+            #if DEBUG
+            TraceDrawProbe.shared.set(String(format: "early: allFuture anchor=%d lastDue=%d newestAhead=%.0fms",
+                                             anchorIndex, lastDue, (samples[lastDue].t - now) * 1000))
+            #endif
+            return
+        }
 
         var line = Path()
         var firstDrawn: CGPoint?
@@ -370,7 +414,12 @@ struct ForceTraceView: View {
                 line.addLine(to: point)
             }
         }
-        guard let firstDrawn else { return }
+        guard let firstDrawn else {
+            #if DEBUG
+            TraceDrawProbe.shared.set("early: noFirstDrawn anchor=\(anchorIndex) lastDue=\(lastDue)")
+            #endif
+            return
+        }
 
         // WHILE DATA IS FLOWING, the head rides the right edge. The newest sample is
         // always one BLE batch (~100 ms) old, so placing the head at its timestamp left
@@ -462,6 +511,12 @@ struct ForceTraceView: View {
 
         context.fill(Path(ellipseIn: CGRect(x: head.x - 4, y: head.y - 4, width: 8, height: 8)),
                      with: .color(tint))
+        #if DEBUG
+        TraceDrawProbe.shared.set(String(format:
+            "STROKED size=%.0fx%.0f anchor=%d lastDue=%d/%d firstX=%.0f headX=%.0f firstY=%.0f headY=%.0f opacity=%.2f",
+            size.width, size.height, anchorIndex, lastDue, samples.count - 1,
+            firstDrawn.x, head.x, firstDrawn.y, head.y, context.opacity))
+        #endif
     }
 
 }
