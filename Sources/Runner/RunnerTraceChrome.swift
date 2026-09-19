@@ -72,20 +72,11 @@ struct PhaseWash: View {
     }
 }
 
-/// Where the stacked layout's full-bleed plot goes, measured from the layout on top
-/// of it.
-///
-/// `ForceTraceView` keeps `TraceAxis.ceilingHeadroom` above the highest load it has
-/// seen, so a pull's peak lands at 80 % of the plot's height. Solving for the plot top
-/// that puts that 80 % line exactly on the open region's upper edge keeps the curve
-/// the climber actually reaches in the clear and puts only the HEADROOM under the
-/// panel: a new peak crosses under the glass while the axis glides to make room for
-/// it — which is also the one moment the panel is unmistakably glass. The FLOOR sits
-/// on the region's lower edge, just above the controls: with it at the screen's bottom
-/// edge instead, the 0 kg line and the threshold rule ran underneath the buttons, and a
-/// dashed rule crossing the gap between two rows of capsules read as a stray line
-/// (measured on the iOS 27 sim, 2026-09-19). The canvas still runs under the controls
-/// — the fill's wash is what the capsules refract — but nothing the plot LABELS does.
+/// Where the open region lies in the window, measured, so the phase wash can hang
+/// from the top of the screen down to the region's upper edge on the phone, or from
+/// the leading edge across to its left edge on the iPad. It used to place a full-bleed
+/// plot as well; the trace now draws inside the region itself (see `graphRegion` and
+/// `backgroundTrace` for the measured reason), so only the wash is positioned here.
 struct BackgroundTraceGeometry {
     /// The open region between the panel and the controls, in window coordinates.
     var region: CGRect = .zero
@@ -106,26 +97,4 @@ struct BackgroundTraceGeometry {
         return max(0, region.minX - canvas.minX)
     }
 
-    /// Clearance between the wide layout's plot and the screen's top and bottom edges,
-    /// so the curve does not kiss the bezel.
-    private static let wideEdgeInset: CGFloat = 24
-
-    func plot(wide: Bool = false) -> ForceTraceView.PlotInsets {
-        guard canvas.height > 0, region.height > 0 else { return .card }
-        if wide {
-            // Nothing sits above or below the open region on a wide screen — the
-            // column is beside it — so the plot simply spans the region's height,
-            // and the curve's history slides under the column on its way out.
-            return ForceTraceView.PlotInsets(
-                top: max(0, region.minY - canvas.minY) + Self.wideEdgeInset,
-                bottom: max(0, canvas.maxY - region.maxY) + Self.wideEdgeInset,
-                trailing: 8)
-        }
-        let headroom = 1 - 1 / TraceAxis.ceilingHeadroom
-        let regionTop = region.minY - canvas.minY
-        let bottom = max(0, canvas.maxY - region.maxY)
-        // top = regionTop − headroom · (height − bottom − top), solved for top.
-        let top = (regionTop - headroom * (canvas.height - bottom)) / (1 - headroom)
-        return ForceTraceView.PlotInsets(top: max(0, top), bottom: bottom, trailing: 8)
-    }
 }

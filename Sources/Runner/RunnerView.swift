@@ -393,7 +393,7 @@ struct RunnerView: View {
                 if timerOnly {
                     timerDial(session)
                 } else {
-                    graphRegion(session)
+                    graphRegion(session, wide: true)
                 }
             }
         }
@@ -500,7 +500,7 @@ struct RunnerView: View {
     /// it floated loose thirty points under the panel, saying what the panel's amber
     /// rim, its NEW GRIP badge and the orange hand already say — a stray box over the
     /// trace for no new information (measured 2026-09-19). Neither layout draws it now.
-    private func graphRegion(_ session: RunnerSession) -> some View {
+    private func graphRegion(_ session: RunnerSession, wide: Bool = false) -> some View {
         let notice = showsSignalNotice(session)
         let ambient = showsAmbientCountdown(session)
         return ZStack {
@@ -526,6 +526,39 @@ struct RunnerView: View {
         .animation(Motion.state(reduceMotion), value: ambient)
         .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil,
                maxHeight: .infinity)
+        // The trace is the region's own background, stretched sideways to the screen
+        // edges (the column's margins) so it still reads as the screen's graph, but
+        // never extended under the panel or the dock — see `backgroundTrace` for the
+        // measured reason. The plot keeps the card's small edge clearances; on a wide
+        // screen it keeps clear of the bezel.
+        .background {
+            if !timerOnly {
+                LiveTrace(thresholdKg: session.plan.thresholdKg,
+                          targetBand: liveTargetBand(session),
+                          tint: tint(session),
+                          plot: ForceTraceView.PlotInsets(top: wide ? 24 : 12,
+                                                          bottom: wide ? 24 : 6,
+                                                          trailing: 8),
+                          lit: true)
+                    .padding(.leading, wide ? 0 : -Metrics.hPadding)
+                    .padding(.trailing, -Metrics.hPadding)
+                    // The wash already cross-fades between phases; the trace snapped,
+                    // and on an object this size a hard cut of colour is a jolt. The
+                    // blend runs on the same house curve, so the two move as one thing.
+                    .modifier(BlendedTint(fraction: traceTintFraction,
+                                          from: traceTintFrom, to: traceTintTo))
+                    .onAppear {
+                        traceTintFrom = tint(session)
+                        traceTintTo = tint(session)
+                    }
+                    .onChange(of: tint(session)) { old, new in
+                        traceTintFrom = old
+                        traceTintTo = new
+                        traceTintFraction = 0
+                        withAnimation(Motion.state(reduceMotion)) { traceTintFraction = 1 }
+                    }
+            }
+        }
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
             traceGeometry.region = $0
         }
@@ -545,37 +578,23 @@ struct RunnerView: View {
     @ViewBuilder
     private func backgroundTrace(_ session: RunnerSession, wide: Bool) -> some View {
         if !timerOnly {
-            ZStack(alignment: .topLeading) {
-                // Under the panel on the phone; under the column on the iPad.
-                PhaseWash(tint: tint(session),
-                          edge: wide ? .leading : .top,
-                          length: wide ? traceGeometry.regionLeadingInCanvas
-                                       : traceGeometry.regionTopInCanvas)
-                LiveTrace(thresholdKg: session.plan.thresholdKg,
-                          targetBand: liveTargetBand(session),
-                          tint: tint(session),
-                          plot: traceGeometry.plot(wide: wide),
-                          lit: true)
-            }
+            // ONLY the wash lives under the glass. The live canvas used to run under
+            // the panel and the dock too, and iOS re-blurs a glass backdrop every frame
+            // the layer beneath it changes — so the trace was being rendered and then
+            // blurred twice over, at 120 Hz, and the line's own motion went uneven on
+            // Nuri's phone (his recording, 2026-09-19 evening: "jittery, different from
+            // the old line"). The wash is a fill that changes once per phase, which is
+            // exactly what a glass surface can sit on for free; the trace now draws in
+            // the open region alone (`graphRegion`), edge to edge sideways but never
+            // beneath glass.
+            PhaseWash(tint: tint(session),
+                      edge: wide ? .leading : .top,
+                      length: wide ? traceGeometry.regionLeadingInCanvas
+                                   : traceGeometry.regionTopInCanvas)
             // Measured INSIDE `ignoresSafeArea`: outside it the reported frame is the
-            // safe-area frame the parent proposed, not the full-bleed one the canvas
-            // actually draws in, and the plot landed 45 pt high.
+            // safe-area frame the parent proposed, not the full-bleed one.
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
                 traceGeometry.canvas = $0
-            }
-            // The wash already cross-fades between phases; the trace snapped, and on
-            // an object the size of the screen a hard cut of colour is a jolt. The
-            // blend runs on the same house curve, so the two move as one thing.
-            .modifier(BlendedTint(fraction: traceTintFraction, from: traceTintFrom, to: traceTintTo))
-            .onAppear {
-                traceTintFrom = tint(session)
-                traceTintTo = tint(session)
-            }
-            .onChange(of: tint(session)) { old, new in
-                traceTintFrom = old
-                traceTintTo = new
-                traceTintFraction = 0
-                withAnimation(Motion.state(reduceMotion)) { traceTintFraction = 1 }
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)
