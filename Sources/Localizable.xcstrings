@@ -1,182 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Measured" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Measured"}}, "fr": {"stringUnit": {"state": "translated", "value": "Mesuré"}}}},
-    "Record another test" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Record another test"}}, "fr": {"stringUnit": {"state": "translated", "value": "Enregistrer un nouveau test"}}}},
-    "Measured: %@" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Measured: %@"}}, "fr": {"stringUnit": {"state": "translated", "value": "Mesuré : %@"}}}},
-    "Adjusted values are saved as manual entries. Your recorded trace stays unchanged." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Adjusted values are saved as manual entries. Your recorded trace stays unchanged."}}, "fr": {"stringUnit": {"state": "translated", "value": "Les valeurs ajustées sont enregistrées comme saisies manuelles. Le tracé mesuré reste inchangé."}}}},
-    "Adjust values" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Adjust values"}}, "fr": {"stringUnit": {"state": "translated", "value": "Ajuster les valeurs"}}}},
-    "Apply" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Apply"}}, "fr": {"stringUnit": {"state": "translated", "value": "Appliquer"}}}},
-    "Weight targets updated" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Weight targets updated"}}, "fr": {"stringUnit": {"state": "translated", "value": "Cibles de poids mises à jour"}}}},
-    "Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are."}}, "fr": {"stringUnit": {"state": "translated", "value": "Impossible de mettre à jour les cibles de poids. Tes max sont enregistrés. Réessaie ou conserve les cibles actuelles."}}}},
-    "No new pull recorded. Your previous measurement is still ready to save." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "No new pull recorded. Your previous measurement is still ready to save."}}, "fr": {"stringUnit": {"state": "translated", "value": "Aucun nouveau tirage enregistré. Ta mesure précédente est toujours prête à être enregistrée."}}}},
-    "READY TO SAVE" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "READY TO SAVE"}}, "fr": {"stringUnit": {"state": "translated", "value": "PRÊT À ENREGISTRER"}}}},
-    "Both hands together" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Both hands together"}}, "fr": {"stringUnit": {"state": "translated", "value": "Les deux mains ensemble"}}}},
-    "One combined measurement" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "One combined measurement"}}, "fr": {"stringUnit": {"state": "translated", "value": "Une mesure avec les deux mains"}}}},
-    "%@ %@, ready to save" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "%@ %@, ready to save"}}, "fr": {"stringUnit": {"state": "translated", "value": "%1$@ %2$@, prêt à enregistrer"}}}},
-    "Not measured" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Not measured"}}, "fr": {"stringUnit": {"state": "translated", "value": "Pas encore mesuré"}}}},
-    "Connect your gauge to measure." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Connect your gauge to measure."}}, "fr": {"stringUnit": {"state": "translated", "value": "Connecte ton capteur pour mesurer."}}}},
-    "Save max" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Save max"}}, "fr": {"stringUnit": {"state": "translated", "value": "Enregistrer le max"}}}},
-    "Save maxes" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Save maxes"}}, "fr": {"stringUnit": {"state": "translated", "value": "Enregistrer les max"}}}},
-    "Saved maxes update percentage targets. Weight targets stay as entered." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Saved maxes update percentage targets. Weight targets stay as entered."}}, "fr": {"stringUnit": {"state": "translated", "value": "Les max enregistrés mettent à jour les cibles en pourcentage. Les cibles de poids restent inchangées."}}}},
-    "Couldn’t save. Your measurements are still here — try again." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Couldn’t save. Your measurements are still here — try again."}}, "fr": {"stringUnit": {"state": "translated", "value": "Impossible d’enregistrer. Tes mesures sont toujours là — réessaie."}}}},
-    "Measure right hand" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Measure right hand"}}, "fr": {"stringUnit": {"state": "translated", "value": "Mesurer la main droite"}}}},
-    "Measure left hand" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Measure left hand"}}, "fr": {"stringUnit": {"state": "translated", "value": "Mesurer la main gauche"}}}},
-    "Save this combined max, or try again." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Save this combined max, or try again."}}, "fr": {"stringUnit": {"state": "translated", "value": "Enregistre ce max à deux mains, ou réessaie."}}}},
-    "Both hands are ready to save." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Both hands are ready to save."}}, "fr": {"stringUnit": {"state": "translated", "value": "Les deux max sont prêts à être enregistrés."}}}},
-    "Save this max, or measure your other hand." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Save this max, or measure your other hand."}}, "fr": {"stringUnit": {"state": "translated", "value": "Enregistre ce max, ou mesure l’autre main."}}}},
-    "Edit maxes" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Edit maxes"}}, "fr": {"stringUnit": {"state": "translated", "value": "Modifier les max"}}}},
-    "Percentage targets follow the values you save. Earlier records stay in your history." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Percentage targets follow the values you save. Earlier records stay in your history."}}, "fr": {"stringUnit": {"state": "translated", "value": "Les cibles en pourcentage suivent les valeurs enregistrées. Les anciens max restent dans l’historique."}}}},
-    "Enter a max above zero. To remove a record, open Earlier records." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Enter a max above zero. To remove a record, open Earlier records."}}, "fr": {"stringUnit": {"state": "translated", "value": "Saisis un max supérieur à zéro. Pour supprimer une valeur, ouvre l’historique des max."}}}},
-    "Couldn’t save your maxes. Your changes are still here—please try again." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Couldn’t save your maxes. Your changes are still here—please try again."}}, "fr": {"stringUnit": {"state": "translated", "value": "Impossible d’enregistrer tes max. Tes modifications sont toujours là — réessaie."}}}},
-    "Not set. Enter a value to save a max for this hand." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Not set. Enter a value to save a max for this hand."}}, "fr": {"stringUnit": {"state": "translated", "value": "Non défini. Saisis une valeur pour cette main."}}}},
-    "Used when a hand has no max of its own, and for two-handed pulls." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Used when a hand has no max of its own, and for two-handed pulls."}}, "fr": {"stringUnit": {"state": "translated", "value": "Utilisé lorsqu’une main n’a pas de max individuel, et pour les tirages à deux mains."}}}},
-    "Shared max" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Shared max"}}, "fr": {"stringUnit": {"state": "translated", "value": "Max commun"}}}},
-    "Edit shared max" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Edit shared max"}}, "fr": {"stringUnit": {"state": "translated", "value": "Modifier le max commun"}}}},
-    "Earlier records" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Earlier records"}}, "fr": {"stringUnit": {"state": "translated", "value": "Historique des max"}}}},
-    "Enter by hand" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Enter by hand"}}, "fr": {"stringUnit": {"state": "translated", "value": "Saisir les valeurs"}}}},
-    "Measure your left and right hands in one visit, or enter the values you already know." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Measure your left and right hands in one visit, or enter the values you already know."}}, "fr": {"stringUnit": {"state": "translated", "value": "Mesure tes deux mains à la suite, ou saisis les valeurs que tu connais déjà."}}}},
-    "More max options" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "More max options"}}, "fr": {"stringUnit": {"state": "translated", "value": "Autres options de max"}}}},
-    "Measure both hands together" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Measure both hands together"}}, "fr": {"stringUnit": {"state": "translated", "value": "Mesurer les deux mains ensemble"}}}},
-    "One value for both hands" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "One value for both hands"}}, "fr": {"stringUnit": {"state": "translated", "value": "Une valeur pour les deux mains"}}}},
-    "Edit maxes for %@" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Edit maxes for %@"}}, "fr": {"stringUnit": {"state": "translated", "value": "Modifier les max pour %@"}}}},
-    "Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged."}}, "fr": {"stringUnit": {"state": "translated", "value": "Utilisé lorsqu’une main n’a pas de max individuel, et pour les tirages à deux mains. Les max individuels de gauche et de droite restent inchangés."}}}},
-    "Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom."}}, "fr": {"stringUnit": {"state": "translated", "value": "Mesurer à nouveau ouvre le capteur pour cette prise. Modifier permet d’ajuster les valeurs de chaque main et de consulter l’historique. Ajouter un max se trouve en bas."}}}},
-    "—" : {"shouldTranslate": false},
-    "Pull" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Tirage"}}}},
-    "Left hand next" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Main gauche ensuite"}}}},
-    "Right hand next" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Main droite ensuite"}}}},
-    "Both hands next" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Deux mains ensuite"}}}},
-    "Next grip" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Prise suivante"}}}},
-    "Next target: %@–%@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Prochaine cible : %1$@–%2$@ %3$@"}}}},
-    "Set %lld" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Série %lld"}}}},
-    "%@ %% of max" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%@ %% du max"}}}},
-    "%@–%@ %% of max" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%@–%@ %% du max"}}}},
-    "1 pull total" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "1 tirage au total"}}}},
-    "Routine overview" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Aperçu de la routine"}}}},
-    "Estimated duration" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Durée estimée"}}}},
-    "Edit" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Modifier"}}}},
-    "%lld pulls total" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%lld tirages au total"}}}},
-    "%lld per side · %lld pulls total" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%lld par côté · %lld tirages au total"}}}},
-    "Left hand first, then right, within each set." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "La main gauche, puis la droite, dans chaque série."}}}},
-    "One pull with both hands on the edge." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Un tirage avec les deux mains sur la prise."}}}},
-    "Target: %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Cible : %@"}}}},
-    "Opens History." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Ouvre l’historique."}}}},
-    "Tap the plan to see your grips, timing and hand order. You can edit the routine from its overview." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Touche le programme pour voir les prises, les durées et l’ordre des mains. Tu peux modifier la routine depuis son aperçu."}}}},
-    "Tap the days to open History. Use Log a session to add climbing or hangs done away from the gauge." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Touche les jours pour ouvrir l’historique. Utilise Ajouter une séance pour noter de l’escalade ou des suspensions sans capteur."}}}},
-    "Open source & community" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Open source et communauté"}}}},
-    "Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause)." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Protocoles des capteurs par Stevie-Ray Hartog (© 2024, BSD-2-Clause)."}}}},
-    "Open-source force sensor. Thanks to its creator for testing Get a Grip." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Capteur de force open source. Merci à son créateur d’avoir testé Get a Grip."}}}},
-    "Grip Connect" : {"shouldTranslate": false},
-    "Crimpdeq" : {"shouldTranslate": false},
-    ", one-second average %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": ", moyenne sur une seconde %1$@ %2$@"}}}},
-    "20–30 %% of that is %@–%@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "20–30 %% de cela représente %1$@–%2$@ %3$@"}}}},
-    "%@–%@ %@ target" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "cible %1$@–%2$@ %3$@"}}}},
-    "There's %@ %@ on the gauge. Zero it?" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Il y a %1$@ %2$@ sur le capteur. Le mettre à zéro ?"}}}},
-    "BEST PULL %@ %@ · %@%@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "MEILLEUR TIRAGE %1$@ %2$@ · %3$@%4$@"}}}},
-    "Earlier max for %@. %@ %@, recorded %@." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Max antérieur pour %1$@. %2$@ %3$@, enregistré %4$@."}}}},
-    "%@%@. Max %@ %@, %@%@." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%1$@%2$@. Max %3$@ %4$@, %5$@%6$@."}}}},
-    "%@ %@  →  %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%1$@ %2$@  →  %3$@ %4$@"}}}},
-    "%@ · now %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%1$@ · maintenant %2$@ %3$@"}}}},
-    "Your current max on this grip%@ is %@ %@, recorded %@. Saving adds a new one and keeps the old as history." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Ton max actuel sur cette prise%1$@ est de %2$@ %3$@, enregistré %4$@. Enregistrer en ajoute un nouveau et garde l'ancien dans l'historique."}}}},
-    "%@ %@, your hardest pull" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%1$@ %2$@, ton tirage le plus fort"}}}},
-    "Holding steady around %@ %@." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Stable autour de %1$@ %2$@."}}}},
-    "Up %@ %@ across %lld sessions." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "En hausse de %1$@ %2$@ sur %3$lld séances."}}}},
-    "Down %@ %@ across %lld sessions." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "En baisse de %1$@ %2$@ sur %3$lld séances."}}}},
-    "peak %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "pic à %1$@ %2$@"}}}},
-    "Best %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Record %1$@ %2$@"}}}},
-    "%@ %@ %@ since %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%1$@ de %2$@ %3$@ depuis %4$@"}}}},
-    "%@–%@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%1$@–%2$@ %3$@"}}}},
-    "target %@ to %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "cible de %1$@ à %2$@ %3$@"}}}},
-    "%@ of each hand's max · %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%1$@ du max de chaque main · %2$@ %3$@"}}}},
-    "New grip next: %@, target %@ to %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Nouvelle prise ensuite : %1$@, cible de %2$@ à %3$@ %4$@"}}}},
-    "Next: %@, target %@ to %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Ensuite : %1$@, cible de %2$@ à %3$@ %4$@"}}}},
-    "%@, target %@ to %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%1$@, cible de %2$@ à %3$@ %4$@"}}}},
-    "Previous: %@ %@" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Previous: %1$@ %2$@"}}, "fr": {"stringUnit": {"state": "translated", "value": "Précédent : %1$@ %2$@"}}}},
-    "%@ · %@ · %@ %@" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "%1$@ · %2$@ · %3$@ %4$@"}}}},
-    "Some fixed weight targets were set by the sender. Review them for your own training." : { "localizations" : { "fr" : { "stringUnit" : { "state" : "translated", "value" : "Certaines cibles de poids fixes ont été définies par l’expéditeur. Vérifiez-les pour votre entraînement." } } } },
-    "Weight units" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Unité de poids"}}}},
-    "Pounds" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Livres"}}}},
-    "pounds" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "livres"}}}},
-    "lb" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "lb"}}}},
-    "Changes how weights are shown and entered. Your scale’s own unit setting is separate." : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Change l’affichage et la saisie des poids. Le réglage de l’unité sur la balance reste indépendant."}}}},
-    "Weight targets" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Cibles de poids"}}}},
-    "Some fixed weight targets moved" : {"localizations": {"fr": {"stringUnit": {"state": "translated", "value": "Certaines cibles de poids fixes ont changé"}}}},
-    "LEFT HAND NEXT" : {
-      "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "MAIN GAUCHE ENSUITE" } }
-      }
-    },
-    "RIGHT HAND NEXT" : {
-      "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "MAIN DROITE ENSUITE" } }
-      }
-    },
-    "BOTH HANDS NEXT" : {
-      "localizations" : {
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "DEUX MAINS ENSUITE" } }
-      }
-    },
-    "Leave demo mode": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quitter le mode démo"
-          }
-        }
-      }
-    },
-    "Gauge did not acknowledge the command. Reconnect and try again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La jauge n’a pas confirmé la commande. Reconnectez-la et réessayez."
-          }
-        }
-      }
-    },
-    "%lld/%lld pulls · %@": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld/%2$lld tractions · %3$@"
-          }
-        }
-      }
-    },
-    "Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vos routines et séances sont enregistrées sur cet appareil. La synchronisation iCloud privée est activée lorsque vous êtes connecté et qu’iCloud est disponible ; l’app ne peut pas confirmer que toutes les modifications ont été synchronisées."
-          }
-        }
-      }
-    },
-    "Couldn't delete this max. Please try again.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossible de supprimer ce maximum. Réessayez."
-          }
-        }
-      }
-    },
-    "Choose a different time for each daily reminder.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choisissez une heure différente pour chaque rappel quotidien."
-          }
-        }
-      }
-    },
     "" : {
       "localizations" : {
         "fr" : {
@@ -277,6 +101,9 @@
         }
       }
     },
+    "—" : {
+      "shouldTranslate" : false
+    },
     ", %@ hand" : {
       "localizations" : {
         "fr" : {
@@ -287,7 +114,18 @@
         }
       }
     },
+    ", one-second average %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", moyenne sur une seconde %1$@ %2$@"
+          }
+        }
+      }
+    },
     ", one-second average %@ kilograms" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -417,6 +255,16 @@
         }
       }
     },
+    "%@ · %@ · %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@ · %3$@ %4$@"
+          }
+        }
+      }
+    },
     "%@ · %@ · %@ in total" : {
       "localizations" : {
         "fr" : {
@@ -428,6 +276,7 @@
       }
     },
     "%@ · %@ · %@ kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -438,6 +287,7 @@
       }
     },
     "%@ · %@ kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -457,12 +307,35 @@
         }
       }
     },
+    "%@ · now %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · maintenant %2$@ %3$@"
+          }
+        }
+      }
+    },
     "%@ · now %@ kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · maintenant %@ kg"
+          }
+        }
+      }
+    },
+    "%@ (%@)" : {
+      "comment" : "A radio button for a weight unit. The first argument is the name of the unit. The second argument is the symbol of the unit.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (%2$@)"
           }
         }
       }
@@ -477,12 +350,59 @@
         }
       }
     },
+    "%@ %@  →  %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@  →  %3$@ %4$@"
+          }
+        }
+      }
+    },
+    "%@ %@ %@ since %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ de %2$@ %3$@ depuis %4$@"
+          }
+        }
+      }
+    },
     "%@ %@ kg since %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ de %@ kg depuis %@"
+          }
+        }
+      }
+    },
+    "%@ %@, ready to save" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ %@, ready to save"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@, prêt à enregistrer"
+          }
+        }
+      }
+    },
+    "%@ %@, your hardest pull" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@, ton tirage le plus fort"
           }
         }
       }
@@ -493,6 +413,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ %%"
+          }
+        }
+      }
+    },
+    "%@ %% of max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ %% du max"
           }
         }
       }
@@ -608,6 +538,7 @@
       }
     },
     "%@ kg  →  %@ kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -618,6 +549,7 @@
       }
     },
     "%@ kilograms, your hardest pull" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -627,7 +559,18 @@
         }
       }
     },
+    "%@ of each hand's max · %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ du max de chaque main · %2$@ %3$@"
+          }
+        }
+      }
+    },
     "%@ of each hand's max · %@ kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -653,6 +596,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ de repos"
+          }
+        }
+      }
+    },
+    "%@ sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ envoie des valeurs brutes de capteur : la première fois qu'un exemplaire se connecte, l'app demande une seule fois son étalonnage à son fabricant, par numéro de série. La réponse reste sur ce téléphone et n'est plus jamais redemandée ; aucun autre capteur ne passe par un serveur."
+          }
+        }
+      }
+    },
+    "%@ speaks a protocol its maker published, but no unit has been tried on this app yet." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ speaks a protocol its maker published, but no unit has been tried on this app yet."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ parle un protocole publié par son fabricant, mais aucun exemplaire n'a encore été essayé avec cette app."
           }
         }
       }
@@ -687,12 +662,42 @@
         }
       }
     },
+    "%@–%@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@–%2$@ %3$@"
+          }
+        }
+      }
+    },
+    "%@–%@ %@ target" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cible %1$@–%2$@ %3$@"
+          }
+        }
+      }
+    },
     "%@–%@ %%" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@–%@ %%"
+          }
+        }
+      }
+    },
+    "%@–%@ %% of max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@–%@ %% du max"
           }
         }
       }
@@ -708,6 +713,7 @@
       }
     },
     "%@–%@ kg target" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -747,7 +753,18 @@
         }
       }
     },
+    "%@, target %@ to %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, cible de %2$@ à %3$@ %4$@"
+          }
+        }
+      }
+    },
     "%@, target %@ to %@ kilograms" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -763,6 +780,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ : %@"
+          }
+        }
+      }
+    },
+    "%@: %@\n%@: %@\n%@: %@\n%@: %@" : {
+      "comment" : "A section of the receipt showing the version, language, date, and app version of a given record. The first argument is the language of the record. The second argument is the version of the record. The third argument is the date the record was accepted. The fourth argument is the app version of the record.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@\n%3$@: %4$@\n%5$@: %6$@\n%7$@: %8$@"
           }
         }
       }
@@ -837,7 +866,18 @@
         }
       }
     },
+    "%@%@. Max %@ %@, %@%@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@%2$@. Max %3$@ %4$@, %5$@%6$@."
+          }
+        }
+      }
+    },
     "%@%@. Max %@ kilograms, %@%@." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -888,6 +928,7 @@
       }
     },
     "%lld %@ no max on file, so %@ no target." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -896,6 +937,10 @@
           }
         }
       }
+    },
+    "%lld %%" : {
+      "comment" : "A label displaying the battery level of a device. The argument is the battery level.",
+      "isCommentAutoGenerated" : true
     },
     "%lld %% of max" : {
       "localizations" : {
@@ -1103,7 +1148,20 @@
         }
       }
     },
+    "%lld of %lld pulls completed, %lld seconds under tension, peak %@ %@" : {
+      "comment" : "A sentence that describes the session, including the number of completed pulls, the time under tension, and the peak weight.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld pulls completed, %3$lld seconds under tension, peak %4$@ %5$@"
+          }
+        }
+      }
+    },
     "%lld of %lld pulls completed, %lld seconds under tension, peak %@ kilograms" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1185,6 +1243,16 @@
         }
       }
     },
+    "%lld per side · %lld pulls total" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld par côté · %lld tirages au total"
+          }
+        }
+      }
+    },
     "%lld per side · %lld s hold · %lld s rest" : {
       "localizations" : {
         "fr" : {
@@ -1201,6 +1269,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld tirages par côté · %@ sous tension par côté"
+          }
+        }
+      }
+    },
+    "%lld pulls total" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tirages au total"
           }
         }
       }
@@ -1373,7 +1451,18 @@
         }
       }
     },
+    "%lld/%lld pulls · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld/%2$lld tractions · %3$@"
+          }
+        }
+      }
+    },
     "%lld/%lld pulls · %@ · %@ kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1394,6 +1483,7 @@
       }
     },
     "%lld× a day · %@ each" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1459,6 +1549,20 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "≈%lld min"
+          }
+        }
+      }
+    },
+    "0" : {
+      "comment" : "A placeholder for a number that is not yet set.",
+      "isCommentAutoGenerated" : true
+    },
+    "1 pull total" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 tirage au total"
           }
         }
       }
@@ -1533,7 +1637,18 @@
         }
       }
     },
+    "20–30 %% of that is %@–%@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "20–30 %% de cela représente %1$@–%2$@ %3$@"
+          }
+        }
+      }
+    },
     "20–30 %% of that is %@–%@ kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1615,11 +1730,23 @@
       }
     },
     "A max is the hardest you can pull on one grip." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un max, c'est le plus fort que tu peux tirer sur une prise."
+          }
+        }
+      }
+    },
+    "A max records your hardest measured pull on a grip." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un max correspond à votre traction mesurée la plus forte sur une prise."
           }
         }
       }
@@ -1634,7 +1761,35 @@
         }
       }
     },
+    "A note from Frez" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A note from Frez"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un mot de Frez"
+          }
+        }
+      }
+    },
+    "A number you entered. Check its value and units before using it for targets." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une valeur saisie par vous. Vérifiez sa valeur et son unité avant de l’utiliser pour vos cibles."
+          }
+        }
+      }
+    },
     "A number you set yourself. Measure it on the gauge if you'd rather not guess." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -1724,12 +1879,45 @@
         }
       }
     },
+    "About session types" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About session types"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos des types de séance"
+          }
+        }
+      }
+    },
     "Add a max" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajouter un max"
+          }
+        }
+      }
+    },
+    "Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez un max, consultez les anciens relevés ou supprimez une entrée incorrecte ici. Ces mêmes valeurs sont utilisées par vos graphiques et vos cibles en pourcentage."
           }
         }
       }
@@ -1774,12 +1962,60 @@
         }
       }
     },
+    "Adjust values" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adjust values"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuster les valeurs"
+          }
+        }
+      }
+    },
+    "Adjusted values are saved as manual entries. Your recorded trace stays unchanged." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adjusted values are saved as manual entries. Your recorded trace stays unchanged."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les valeurs ajustées sont enregistrées comme saisies manuelles. Le tracé mesuré reste inchangé."
+          }
+        }
+      }
+    },
     "All %lld on the left, then all %lld on the right" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Les %lld à gauche, puis les %lld à droite"
+          }
+        }
+      }
+    },
+    "All %lld on the right, then all %lld on the left" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All %lld on the right, then all %lld on the left"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les %lld à droite, puis les %lld à gauche"
           }
         }
       }
@@ -1860,6 +2096,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tout ce qui est marqué protocole porté parle un protocole repris du projet open source hangtime-grip-connect et n'a jamais été testé ici sur ce matériel. Compare le premier tirage à un chiffre auquel tu fais déjà confiance."
+          }
+        }
+      }
+    },
+    "Apply" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appliquer"
           }
         }
       }
@@ -1975,6 +2227,7 @@
       }
     },
     "Back to the usual values" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2005,6 +2258,7 @@
       }
     },
     "beats your %@ kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2034,7 +2288,18 @@
         }
       }
     },
+    "Best %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record %1$@ %2$@"
+          }
+        }
+      }
+    },
     "Best %@ kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2044,7 +2309,18 @@
         }
       }
     },
+    "BEST PULL %@ %@ · %@%@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MEILLEUR TIRAGE %1$@ %2$@ · %3$@%4$@"
+          }
+        }
+      }
+    },
     "BEST PULL %@ KG · %@%@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2124,7 +2400,60 @@
         }
       }
     },
+    "Both hands are ready to save." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Both hands are ready to save."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les deux max sont prêts à être enregistrés."
+          }
+        }
+      }
+    },
+    "Both hands next" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deux mains ensuite"
+          }
+        }
+      }
+    },
+    "BOTH HANDS NEXT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DEUX MAINS ENSUITE"
+          }
+        }
+      }
+    },
+    "Both hands together" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Both hands together"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les deux mains ensemble"
+          }
+        }
+      }
+    },
     "Both open an email. Your app version, iOS version, device and selected gauge are added at the end of the message, so a report arrives with the context to act on it." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2150,6 +2479,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pause entre séries"
+          }
+        }
+      }
+    },
+    "Build force gradually and stop if it hurts. This measures a peak, not a safe training limit." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Augmentez la force progressivement et arrêtez en cas de douleur. Ce test mesure un pic, pas une limite d’entraînement sans risque."
           }
         }
       }
@@ -2224,6 +2564,16 @@
         }
       }
     },
+    "Changes how weights are shown and entered. Your scale’s own unit setting is separate." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change l’affichage et la saisie des poids. Le réglage de l’unité sur la balance reste indépendant."
+          }
+        }
+      }
+    },
     "Characteristic discovery failed: %@" : {
       "localizations" : {
         "fr" : {
@@ -2244,6 +2594,16 @@
         }
       }
     },
+    "Choose a different time for each daily reminder." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez une heure différente pour chaque rappel quotidien."
+          }
+        }
+      }
+    },
     "Choose a session kind first" : {
       "localizations" : {
         "fr" : {
@@ -2260,6 +2620,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choisis un type de séance pour voir comment elle compte."
+          }
+        }
+      }
+    },
+    "Clear" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer"
+          }
+        }
+      }
+    },
+    "Clear rating" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear rating"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer l’évaluation"
           }
         }
       }
@@ -2334,6 +2727,23 @@
         }
       }
     },
+    "Collapsed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapsed"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réduit"
+          }
+        }
+      }
+    },
     "Column names and the data guide stay in English. Your notes stay as written." : {
       "localizations" : {
         "fr" : {
@@ -2384,7 +2794,24 @@
         }
       }
     },
+    "Connect your gauge to measure." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect your gauge to measure."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecte ton capteur pour mesurer."
+          }
+        }
+      }
+    },
     "Connect your gauge to measure. You can always type a max in instead." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2465,6 +2892,7 @@
       }
     },
     "Control point is not writable" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2554,6 +2982,16 @@
         }
       }
     },
+    "Couldn't delete this max. Please try again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de supprimer ce maximum. Réessayez."
+          }
+        }
+      }
+    },
     "Couldn't import" : {
       "localizations" : {
         "fr" : {
@@ -2594,12 +3032,77 @@
         }
       }
     },
+    "Couldn't save this workout. Please try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save this workout. Please try again."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’enregistrer cette séance. Veuillez réessayer."
+          }
+        }
+      }
+    },
+    "Couldn’t save your maxes. Your changes are still here—please try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t save your maxes. Your changes are still here—please try again."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’enregistrer tes max. Tes modifications sont toujours là — réessaie."
+          }
+        }
+      }
+    },
+    "Couldn’t save. Your measurements are still here — try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t save. Your measurements are still here — try again."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’enregistrer. Tes mesures sont toujours là — réessaie."
+          }
+        }
+      }
+    },
     "Couldn't share" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Partage impossible"
+          }
+        }
+      }
+    },
+    "Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de mettre à jour les cibles de poids. Tes max sont enregistrés. Réessaie ou conserve les cibles actuelles."
           }
         }
       }
@@ -2634,7 +3137,20 @@
         }
       }
     },
+    "Current %@ %@, peak %@ %@%@" : {
+      "comment" : "A sentence that describes the current weight, the peak weight, and the one-second average weight. The first argument is the current weight. The second argument is the peak weight. The third argument is the one-second average weight.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Current %1$@ %2$@, peak %3$@ %4$@%5$@"
+          }
+        }
+      }
+    },
     "Current %@ kilograms, peak %@ kilograms%@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2935,6 +3451,7 @@
       }
     },
     "DOIGT" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -2984,6 +3501,22 @@
         }
       }
     },
+    "Donghyun Kim" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Donghyun Kim"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Donghyun Kim"
+          }
+        }
+      }
+    },
     "down" : {
       "localizations" : {
         "fr" : {
@@ -2994,7 +3527,18 @@
         }
       }
     },
+    "Down %@ %@ across %lld sessions." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En baisse de %1$@ %2$@ sur %3$lld séances."
+          }
+        }
+      }
+    },
     "Down %@ kg across %lld sessions." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3054,12 +3598,39 @@
         }
       }
     },
+    "Earlier max for %@. %@ %@, recorded %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max antérieur pour %1$@. %2$@ %3$@, enregistré %4$@."
+          }
+        }
+      }
+    },
     "Earlier max for %@. %@ kilograms, recorded %@." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Max antérieur pour %@. %@ kilogrammes, enregistré %@."
+          }
+        }
+      }
+    },
+    "Earlier records" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Earlier records"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historique des max"
           }
         }
       }
@@ -3094,12 +3665,70 @@
         }
       }
     },
+    "Edit" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier"
+          }
+        }
+      }
+    },
+    "Edit maxes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit maxes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier les max"
+          }
+        }
+      }
+    },
+    "Edit maxes for %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit maxes for %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier les max pour %@"
+          }
+        }
+      }
+    },
     "Edit routine" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modifier la routine"
+          }
+        }
+      }
+    },
+    "Edit shared max" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit shared max"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier le max commun"
           }
         }
       }
@@ -3115,6 +3744,7 @@
       }
     },
     "Email details" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3140,6 +3770,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Saisis un max supérieur à zéro pour l'enregistrer."
+          }
+        }
+      }
+    },
+    "Enter a max above zero. To remove a record, open Earlier records." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a max above zero. To remove a record, open Earlier records."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisis un max supérieur à zéro. Pour supprimer une valeur, ouvre l’historique des max."
+          }
+        }
+      }
+    },
+    "Enter by hand" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter by hand"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisir les valeurs"
           }
         }
       }
@@ -3184,6 +3846,16 @@
         }
       }
     },
+    "Estimated duration" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durée estimée"
+          }
+        }
+      }
+    },
     "EVERY DAY" : {
       "localizations" : {
         "fr" : {
@@ -3195,6 +3867,7 @@
       }
     },
     "Every grip's ceiling, drawn over time. Measure one from here — a measured max marks the day as a benchmark, and your percent targets follow the newest number on their own." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3241,6 +3914,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Déplier"
+          }
+        }
+      }
+    },
+    "Expanded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expanded"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Développé"
           }
         }
       }
@@ -3376,6 +4066,7 @@
       }
     },
     "first max on this grip" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3445,6 +4136,182 @@
         }
       }
     },
+    "Frez" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez"
+          }
+        }
+      }
+    },
+    "Frez could not produce a calibration for this Dyno." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez could not produce a calibration for this Dyno."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez n'a pas pu produire d'étalonnage pour ce Dyno."
+          }
+        }
+      }
+    },
+    "Frez did not accept this app's access key." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez did not accept this app's access key."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez n'a pas accepté la clé d'accès de cette app."
+          }
+        }
+      }
+    },
+    "Frez Dyno" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez Dyno"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez Dyno"
+          }
+        }
+      }
+    },
+    "Frez has no calibration on file for this Dyno." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez has no calibration on file for this Dyno."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez n'a aucun étalonnage enregistré pour ce Dyno."
+          }
+        }
+      }
+    },
+    "Frez has reached the number of Dynos this app may register." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez has reached the number of Dynos this app may register."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez a atteint le nombre de Dynos que cette app peut enregistrer."
+          }
+        }
+      }
+    },
+    "Frez is busy. Try again in a minute." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez is busy. Try again in a minute."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez est occupé. Réessaie dans une minute."
+          }
+        }
+      }
+    },
+    "Frez is reviewing this Dyno's ownership before it can be registered." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez is reviewing this Dyno's ownership before it can be registered."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez vérifie la propriété de ce Dyno avant de pouvoir l'enregistrer."
+          }
+        }
+      }
+    },
+    "Frez Pro helps us develop new features and provide reliable devices." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez Pro helps us develop new features and provide reliable devices."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez Pro helps us develop new features and provide reliable devices."
+          }
+        }
+      }
+    },
+    "Frez rejected the calibration request." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez rejected the calibration request."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez a refusé la demande d'étalonnage."
+          }
+        }
+      }
+    },
+    "Frez sent an answer this app could not read." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez sent an answer this app could not read."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez a envoyé une réponse que cette app n'a pas pu lire."
+          }
+        }
+      }
+    },
     "Front 2" : {
       "localizations" : {
         "fr" : {
@@ -3496,6 +4363,7 @@
       }
     },
     "gauge" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3535,12 +4403,32 @@
         }
       }
     },
+    "Gauge did not acknowledge the command. Reconnect and try again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La jauge n’a pas confirmé la commande. Reconnectez-la et réessayez."
+          }
+        }
+      }
+    },
     "Gauge not connected" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Capteur non connecté"
+          }
+        }
+      }
+    },
+    "Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause)." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Protocoles des capteurs par Stevie-Ray Hartog (© 2024, BSD-2-Clause)."
           }
         }
       }
@@ -3616,6 +4504,7 @@
       }
     },
     "Get a Grip connects and tares your gauge for you, so you can tap this before you chalk up. If the gauge is still asleep it waits." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3626,6 +4515,7 @@
       }
     },
     "Get a Grip connects and tares your gauge for you." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3641,6 +4531,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Get a Grip est construit autour d'une seule routine à laquelle tu t'engages vraiment."
+          }
+        }
+      }
+    },
+    "Get a Grip is free and open source. A rating helps other climbers find it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get a Grip is free and open source. A rating helps other climbers find it."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get a Grip est gratuit et open source. Une note aide d'autres grimpeurs à le trouver."
           }
         }
       }
@@ -3716,6 +4622,7 @@
       }
     },
     "grip has" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3736,6 +4643,7 @@
       }
     },
     "grips have" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3846,6 +4754,7 @@
       }
     },
     "Harder than your max" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3881,6 +4790,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "tenu depuis %@"
+          }
+        }
+      }
+    },
+    "Hello," : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hello,"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hello,"
           }
         }
       }
@@ -3945,7 +4870,18 @@
         }
       }
     },
+    "Holding steady around %@ %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stable autour de %1$@ %2$@."
+          }
+        }
+      }
+    },
     "Holding steady around %@ kg." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3975,7 +4911,24 @@
         }
       }
     },
+    "How hard did it feel?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How hard did it feel?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quel effort avez-vous ressenti ?"
+          }
+        }
+      }
+    },
     "How hard it was on your fingers" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3986,6 +4939,7 @@
       }
     },
     "HOW HARD OVERALL" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -3996,6 +4950,7 @@
       }
     },
     "How hard the session was overall" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4006,6 +4961,7 @@
       }
     },
     "How hard was that?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4065,6 +5021,38 @@
         }
       }
     },
+    "I hope Frez will be with you for many years to come." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I hope Frez will be with you for many years to come."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I hope Frez will be with you for many years to come."
+          }
+        }
+      }
+    },
+    "I’m Donghyun Kim, founder of Frez." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I’m Donghyun Kim, founder of Frez."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I’m Donghyun Kim, founder of Frez."
+          }
+        }
+      }
+    },
     "iCloud isn't available, so your routines and sessions are stored only on this device. They won't sync or restore." : {
       "localizations" : {
         "fr" : {
@@ -4081,6 +5069,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Au repos"
+          }
+        }
+      }
+    },
+    "If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro."
+          }
+        }
+      }
+    },
+    "In fact, Frez Dyno was made possible by our early Pro subscribers." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In fact, Frez Dyno was made possible by our early Pro subscribers."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In fact, Frez Dyno was made possible by our early Pro subscribers."
           }
         }
       }
@@ -4186,6 +5206,7 @@
       }
     },
     "It is the number your training loads come from. The light sets in your routine sit at roughly a fifth to a third of it, so without a max a set can only tell you kilograms — not what those kilograms mean for your fingers." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4196,6 +5217,7 @@
       }
     },
     "it shows" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4246,6 +5268,7 @@
       }
     },
     "Keep pulling to beat it, or let go to finish." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4255,7 +5278,30 @@
         }
       }
     },
+    "Keep the gauge unloaded while Get a Grip connects and tares it. If the gauge is asleep, the app waits." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laissez le capteur déchargé pendant la connexion et la tare. Si le capteur est en veille, l’application attend."
+          }
+        }
+      }
+    },
+    "Keep the gauge unloaded while it connects and tares." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laissez le capteur déchargé pendant la connexion et la tare."
+          }
+        }
+      }
+    },
     "kg" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4266,6 +5312,7 @@
       }
     },
     "kg · %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4296,6 +5343,7 @@
       }
     },
     "L" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4365,12 +5413,33 @@
         }
       }
     },
+    "lb" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "lb"
+          }
+        }
+      }
+    },
     "Lead-in before each set" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Décompte avant chaque série"
+          }
+        }
+      }
+    },
+    "Leave demo mode" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter le mode démo"
           }
         }
       }
@@ -4415,6 +5484,36 @@
         }
       }
     },
+    "Left hand first, then right, within each set." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La main gauche, puis la droite, dans chaque série."
+          }
+        }
+      }
+    },
+    "Left hand next" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main gauche ensuite"
+          }
+        }
+      }
+    },
+    "LEFT HAND NEXT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MAIN GAUCHE ENSUITE"
+          }
+        }
+      }
+    },
     "Left, right, left, right — %@" : {
       "localizations" : {
         "fr" : {
@@ -4451,6 +5550,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "RELÂCHE"
+          }
+        }
+      }
+    },
+    "Let go when you are ready to finish." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relâchez lorsque vous souhaitez terminer."
           }
         }
       }
@@ -4575,6 +5685,22 @@
         }
       }
     },
+    "Looking up this Dyno's calibration…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looking up this Dyno's calibration…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche de l'étalonnage de ce Dyno…"
+          }
+        }
+      }
+    },
     "Lower bound" : {
       "localizations" : {
         "fr" : {
@@ -4591,6 +5717,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En faire celle qu'Aujourd'hui ouvre"
+          }
+        }
+      }
+    },
+    "Manage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gérer"
+          }
+        }
+      }
+    },
+    "Manage maxes" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage maxes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gérer les max"
           }
         }
       }
@@ -4726,6 +5886,7 @@
       }
     },
     "Maxes. What you can pull on each grip." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4755,6 +5916,17 @@
         }
       }
     },
+    "Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesurez un pic avec votre capteur ou saisissez une mesure précédente. Vous pouvez le mettre à jour à tout moment."
+          }
+        }
+      }
+    },
     "Measure again" : {
       "localizations" : {
         "fr" : {
@@ -4765,12 +5937,61 @@
         }
       }
     },
+    "Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesurer à nouveau ouvre le capteur pour cette prise. Modifier permet d’ajuster les valeurs de chaque main et de consulter l’historique. Ajouter un max se trouve en bas."
+          }
+        }
+      }
+    },
+    "Measure both hands together" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Measure both hands together"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesurer les deux mains ensemble"
+          }
+        }
+      }
+    },
     "Measure it on the gauge, or pull as hard as you can and set the number yourself. It doesn't have to be exact, and you can add a newer one whenever it changes." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mesure-le au capteur, ou tire aussi fort que possible et saisis le chiffre toi-même. Il n'a pas besoin d'être exact, et tu peux en ajouter un plus récent dès qu'il change."
+          }
+        }
+      }
+    },
+    "Measure left hand" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Measure left hand"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesurer la main gauche"
           }
         }
       }
@@ -4785,6 +6006,22 @@
         }
       }
     },
+    "Measure right hand" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Measure right hand"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesurer la main droite"
+          }
+        }
+      }
+    },
     "Measure the most a grip can hold and it lands here — every later test draws the curve of you getting stronger." : {
       "localizations" : {
         "fr" : {
@@ -4795,12 +6032,44 @@
         }
       }
     },
+    "Measure your left and right hands in one visit, or enter the values you already know." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Measure your left and right hands in one visit, or enter the values you already know."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesure tes deux mains à la suite, ou saisis les valeurs que tu connais déjà."
+          }
+        }
+      }
+    },
     "measured" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "mesuré"
+          }
+        }
+      }
+    },
+    "Measured" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Measured"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesuré"
           }
         }
       }
@@ -4816,11 +6085,28 @@
       }
     },
     "Measured on the gauge — your hardest pull on this grip." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mesuré au capteur — ton tirage le plus fort sur cette prise."
+          }
+        }
+      }
+    },
+    "Measured: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Measured: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesuré : %@"
           }
         }
       }
@@ -4881,6 +6167,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "mm"
+          }
+        }
+      }
+    },
+    "More max options" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More max options"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autres options de max"
           }
         }
       }
@@ -4959,7 +6261,18 @@
         }
       }
     },
+    "New grip next: %@, target %@ to %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouvelle prise ensuite : %1$@, cible de %2$@ à %3$@ %4$@"
+          }
+        }
+      }
+    },
     "New grip next: %@, target %@ to %@ kilograms" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -4990,11 +6303,29 @@
       }
     },
     "New maxes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nouveaux max"
+          }
+        }
+      }
+    },
+    "New peaks to review" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New peaks to review"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveaux pics à examiner"
           }
         }
       }
@@ -5029,6 +6360,16 @@
         }
       }
     },
+    "Next grip" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prise suivante"
+          }
+        }
+      }
+    },
     "Next grip: %@" : {
       "localizations" : {
         "fr" : {
@@ -5049,6 +6390,16 @@
         }
       }
     },
+    "Next target: %@–%@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prochaine cible : %1$@–%2$@ %3$@"
+          }
+        }
+      }
+    },
     "Next: %@" : {
       "localizations" : {
         "fr" : {
@@ -5059,7 +6410,18 @@
         }
       }
     },
+    "Next: %@, target %@ to %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ensuite : %1$@, cible de %2$@ à %3$@ %4$@"
+          }
+        }
+      }
+    },
     "Next: %@, target %@ to %@ kilograms" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5115,6 +6477,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun capteur trouvé"
+          }
+        }
+      }
+    },
+    "No live reading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune mesure en direct"
           }
         }
       }
@@ -5179,12 +6552,56 @@
         }
       }
     },
+    "No new pull recorded. Your previous measurement is still ready to save." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No new pull recorded. Your previous measurement is still ready to save."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun nouveau tirage enregistré. Ta mesure précédente est toujours prête à être enregistrée."
+          }
+        }
+      }
+    },
+    "No pull was recorded. You can close this or try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune traction enregistrée. Vous pouvez fermer cet écran ou réessayer."
+          }
+        }
+      }
+    },
     "No pull yet" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun tirage pour l'instant"
+          }
+        }
+      }
+    },
+    "no saved max for this grip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no saved max for this grip"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucun max enregistré pour cette prise"
           }
         }
       }
@@ -5301,6 +6718,22 @@
         }
       }
     },
+    "Not measured" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not measured"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore mesuré"
+          }
+        }
+      }
+    },
     "Not now" : {
       "localizations" : {
         "fr" : {
@@ -5311,12 +6744,44 @@
         }
       }
     },
+    "Not rated" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not rated"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non évalué"
+          }
+        }
+      }
+    },
     "Not set" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Non défini"
+          }
+        }
+      }
+    },
+    "Not set. Enter a value to save a max for this hand." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not set. Enter a value to save a max for this hand."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non défini. Saisis une valeur pour cette main."
           }
         }
       }
@@ -5342,6 +6807,7 @@
       }
     },
     "Nothing is saved. The session is gone." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5461,6 +6927,22 @@
         }
       }
     },
+    "official protocol, untested here" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "official protocol, untested here"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "protocole officiel, non testé ici"
+          }
+        }
+      }
+    },
     "OH" : {
       "localizations" : {
         "fr" : {
@@ -5481,7 +6963,24 @@
         }
       }
     },
+    "On your fingers" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On your fingers"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pour vos doigts"
+          }
+        }
+      }
+    },
     "ON YOUR FINGERS" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5502,6 +7001,7 @@
       }
     },
     "Once a day · %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5521,6 +7021,22 @@
         }
       }
     },
+    "One combined measurement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One combined measurement"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une mesure avec les deux mains"
+          }
+        }
+      }
+    },
     "One hand at a time" : {
       "localizations" : {
         "fr" : {
@@ -5532,11 +7048,22 @@
       }
     },
     "One mark a day. A session at the climbing gym, or hangs done away from the gauge, count too: log them here and they join the day." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Une marque par jour. Une séance à la salle, ou des suspensions faites loin du capteur, comptent aussi : enregistre-les ici et elles rejoignent la journée."
+          }
+        }
+      }
+    },
+    "One pull with both hands on the edge." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un tirage avec les deux mains sur la prise."
           }
         }
       }
@@ -5571,7 +7098,24 @@
         }
       }
     },
+    "One value for both hands" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One value for both hands"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une valeur pour les deux mains"
+          }
+        }
+      }
+    },
     "Only your %@ hand. Its targets come from this number; your other hand needs its own." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5602,11 +7146,32 @@
       }
     },
     "Open source" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Code source ouvert"
+          }
+        }
+      }
+    },
+    "Open source & community" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open source et communauté"
+          }
+        }
+      }
+    },
+    "Open-source force sensor. Thanks to its creator for testing Get a Grip." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capteur de force open source. Merci à son créateur d’avoir testé Get a Grip."
           }
         }
       }
@@ -5623,6 +7188,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Licences open source"
+          }
+        }
+      }
+    },
+    "Opens History." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre l’historique."
           }
         }
       }
@@ -5668,6 +7243,7 @@
       }
     },
     "Optional. It's what tells you later whether to add load." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5678,6 +7254,7 @@
       }
     },
     "Other…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5757,7 +7334,18 @@
         }
       }
     },
+    "peak %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pic à %1$@ %2$@"
+          }
+        }
+      }
+    },
     "peak %@ kilograms" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5793,6 +7381,44 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Les cibles en pourcentage suivent toujours ton max le plus récent — rien à faire."
+          }
+        }
+      }
+    },
+    "Percentage targets follow the values you save. Earlier records stay in your history." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Percentage targets follow the values you save. Earlier records stay in your history."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les cibles en pourcentage suivent les valeurs enregistrées. Les anciens max restent dans l’historique."
+          }
+        }
+      }
+    },
+    "Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les cibles en pourcentage utilisent le max enregistré pour cette prise et cette main. Un max est une référence, pas une limite de charge sans risque."
+          }
+        }
+      }
+    },
+    "Percentage targets use your saved maxes. These may no longer reflect your current strength." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les cibles en pourcentage utilisent vos max enregistrés, qui peuvent ne plus refléter votre force actuelle."
           }
         }
       }
@@ -5868,6 +7494,26 @@
         }
       }
     },
+    "pounds" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "livres"
+          }
+        }
+      }
+    },
+    "Pounds" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Livres"
+          }
+        }
+      }
+    },
     "Preparing export…" : {
       "localizations" : {
         "fr" : {
@@ -5908,7 +7554,41 @@
         }
       }
     },
+    "Previous: %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous: %1$@ %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Précédent : %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "Previous: %@ kg" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous: %@ kg"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Précédent : %@ kg"
+          }
+        }
+      }
+    },
     "Privacy policy" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5919,6 +7599,7 @@
       }
     },
     "Privacy policy. Opens in your browser." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5929,6 +7610,7 @@
       }
     },
     "Protocol support for every gauge other than the Tindeq Progressor is ported from hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray Hartog)." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5944,6 +7626,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "tirage"
+          }
+        }
+      }
+    },
+    "Pull" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tirage"
           }
         }
       }
@@ -5979,6 +7671,7 @@
       }
     },
     "Pull as hard as you can — Get a Grip keeps the hardest the gauge sees. Or set it by hand below." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -5989,6 +7682,7 @@
       }
     },
     "Pull as hard as you can. Get a Grip keeps the hardest the gauge sees." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6069,6 +7763,7 @@
       }
     },
     "R" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6088,12 +7783,61 @@
         }
       }
     },
+    "Rate on the App Store" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rate on the App Store"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noter sur l'App Store"
+          }
+        }
+      }
+    },
+    "Rate on the App Store. Opens the App Store." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rate on the App Store. Opens the App Store."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noter sur l'App Store. Ouvre l'App Store."
+          }
+        }
+      }
+    },
     "RE-GRIP" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "REPRISE"
+          }
+        }
+      }
+    },
+    "READY TO SAVE" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "READY TO SAVE"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PRÊT À ENREGISTRER"
           }
         }
       }
@@ -6108,7 +7852,24 @@
         }
       }
     },
+    "Record another test" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record another test"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer un nouveau test"
+          }
+        }
+      }
+    },
     "Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -6298,6 +8059,74 @@
         }
       }
     },
+    "Right hand first, then left, within each set." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right hand first, then left, within each set."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La main droite, puis la gauche, dans chaque série."
+          }
+        }
+      }
+    },
+    "Right hand next" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Main droite ensuite"
+          }
+        }
+      }
+    },
+    "RIGHT HAND NEXT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MAIN DROITE ENSUITE"
+          }
+        }
+      }
+    },
+    "Right, left, right, left — %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right, left, right, left — %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Droite, gauche, droite, gauche — %@"
+          }
+        }
+      }
+    },
+    "Right, left, right, left — swapping hands every pull." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right, left, right, left — swapping hands every pull."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Droite, gauche, droite, gauche — on change de main à chaque tirage."
+          }
+        }
+      }
+    },
     "Ring" : {
       "localizations" : {
         "fr" : {
@@ -6344,6 +8173,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Options de la routine"
+          }
+        }
+      }
+    },
+    "Routine overview" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu de la routine"
           }
         }
       }
@@ -6405,11 +8244,44 @@
       }
     },
     "Save as max" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enregistrer comme max"
+          }
+        }
+      }
+    },
+    "Save max" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save max"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer le max"
+          }
+        }
+      }
+    },
+    "Save maxes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save maxes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer les max"
           }
         }
       }
@@ -6425,11 +8297,44 @@
       }
     },
     "Save this as your max on this grip, or try again." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enregistre-le comme ton max sur cette prise, ou recommence."
+          }
+        }
+      }
+    },
+    "Save this combined max, or try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save this combined max, or try again."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistre ce max à deux mains, ou réessaie."
+          }
+        }
+      }
+    },
+    "Save this max, or measure your other hand." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save this max, or measure your other hand."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistre ce max, ou mesure l’autre main."
           }
         }
       }
@@ -6470,6 +8375,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ENREGISTRÉ"
+          }
+        }
+      }
+    },
+    "Saved maxes update percentage targets. Weight targets stay as entered." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved maxes update percentage targets. Weight targets stay as entered."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les max enregistrés mettent à jour les cibles en pourcentage. Les cibles de poids restent inchangées."
           }
         }
       }
@@ -6550,6 +8471,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recherche…"
+          }
+        }
+      }
+    },
+    "Select maximum efforts to use for future targets. Saved with this workout." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select maximum efforts to use for future targets. Saved with this workout."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionnez les efforts maximaux à utiliser pour vos futures cibles. Enregistrés avec cette séance."
+          }
+        }
+      }
+    },
+    "Selected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionné"
+          }
+        }
+      }
+    },
+    "Selected peaks are saved as maxes when you save this workout." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected peaks are saved as maxes when you save this workout."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les pics sélectionnés sont enregistrés comme max lorsque vous enregistrez cette séance."
           }
         }
       }
@@ -6735,6 +8706,16 @@
         }
       }
     },
+    "Set %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Série %lld"
+          }
+        }
+      }
+    },
     "Set %lld of %lld" : {
       "localizations" : {
         "fr" : {
@@ -6855,6 +8836,16 @@
         }
       }
     },
+    "Share or save this PNG. Other apps may flatten its transparent background." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partage ou enregistre ce PNG. D’autres apps peuvent aplatir son fond transparent."
+          }
+        }
+      }
+    },
     "Share routine" : {
       "localizations" : {
         "fr" : {
@@ -6906,6 +8897,22 @@
         }
       }
     },
+    "Shared max" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shared max"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max commun"
+          }
+        }
+      }
+    },
     "Shared routine" : {
       "localizations" : {
         "fr" : {
@@ -6944,6 +8951,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réafficher les conseils du créateur"
+          }
+        }
+      }
+    },
+    "Shown once, the first time you pick the Dyno." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shown once, the first time you pick the Dyno."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affiché une seule fois, la première fois que vous choisissez le Dyno."
           }
         }
       }
@@ -7038,7 +9061,51 @@
         }
       }
     },
+    "Some fixed weight targets moved" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certaines cibles de poids fixes ont changé"
+          }
+        }
+      }
+    },
+    "Some fixed weight targets were set by the sender. Review them for your own training." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certaines cibles de poids fixes ont été définies par l’expéditeur. Vérifiez-les pour votre entraînement."
+          }
+        }
+      }
+    },
+    "Some kilogram targets were set by the sender. Review them for your own training." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certaines cibles en kilogrammes viennent de l’expéditeur. Vérifiez qu’elles conviennent à votre entraînement."
+          }
+        }
+      }
+    },
+    "Some percentage targets have no saved max, so they will show no target." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certaines cibles en pourcentage n’ont pas de max enregistré et ne seront donc pas affichées."
+          }
+        }
+      }
+    },
     "Some sets carry kilogram targets typed by whoever shared this." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7224,12 +9291,76 @@
         }
       }
     },
+    "Start with the left hand" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start with the left hand"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commencer par la main gauche"
+          }
+        }
+      }
+    },
+    "Start with the right hand" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start with the right hand"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commencer par la main droite"
+          }
+        }
+      }
+    },
     "Start without a gauge" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Commencer sans capteur"
+          }
+        }
+      }
+    },
+    "Starts on the left hand" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts on the left hand"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commence par la main gauche"
+          }
+        }
+      }
+    },
+    "Starts on the right hand" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts on the right hand"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commence par la main droite"
           }
         }
       }
@@ -7304,6 +9435,22 @@
         }
       }
     },
+    "Swap" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swap"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inverser"
+          }
+        }
+      }
+    },
     "Take the spotlight tour again" : {
       "localizations" : {
         "fr" : {
@@ -7354,6 +9501,26 @@
         }
       }
     },
+    "Tap the days to open History. Use Log a session to add climbing or hangs done away from the gauge." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touche les jours pour ouvrir l’historique. Utilise Ajouter une séance pour noter de l’escalade ou des suspensions sans capteur."
+          }
+        }
+      }
+    },
+    "Tap the plan to see your grips, timing and hand order. You can edit the routine from its overview." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touche le programme pour voir les prises, les durées et l’ordre des mains. Tu peux modifier la routine depuis son aperçu."
+          }
+        }
+      }
+    },
     "tare" : {
       "localizations" : {
         "fr" : {
@@ -7394,7 +9561,18 @@
         }
       }
     },
+    "target %@ to %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cible de %1$@ à %2$@ %3$@"
+          }
+        }
+      }
+    },
     "target %@ to %@ kilograms" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7435,6 +9613,7 @@
       }
     },
     "Target loads are percentages of your own maxes." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7450,6 +9629,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Plage cible"
+          }
+        }
+      }
+    },
+    "Target: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cible : %@"
           }
         }
       }
@@ -7500,6 +9689,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Max testés"
+          }
+        }
+      }
+    },
+    "Thank you," : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thank you,"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thank you,"
           }
         }
       }
@@ -7634,6 +9839,22 @@
         }
       }
     },
+    "The calibration lookup needs an internet connection the first time a Dyno is used." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The calibration lookup needs an internet connection the first time a Dyno is used."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La recherche de l'étalonnage a besoin d'une connexion internet la première fois qu'un Dyno est utilisé."
+          }
+        }
+      }
+    },
     "The camera scanner isn't available right now. Try again when the camera is available, or open the routine link directly." : {
       "localizations" : {
         "fr" : {
@@ -7686,6 +9907,7 @@
       }
     },
     "The gauge didn't see a pull. Have another go." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7736,6 +9958,7 @@
       }
     },
     "The plan in one line: edge, sets, pulls and how long it runs. Tap it to change any of that." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7796,12 +10019,40 @@
         }
       }
     },
+    "There's %@ %@ on the gauge. Zero it?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il y a %1$@ %2$@ sur le capteur. Le mettre à zéro ?"
+          }
+        }
+      }
+    },
     "There's %@ kg on the gauge. Zero it?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Il y a %@ kg sur le capteur. Le mettre à zéro ?"
+          }
+        }
+      }
+    },
+    "These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces pics de séance ne sont pas forcément des efforts maximaux. Choisissez uniquement ceux à utiliser pour vos prochains objectifs en pourcentage."
           }
         }
       }
@@ -7817,6 +10068,7 @@
       }
     },
     "they show" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -7832,6 +10084,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cette version n'atteint pas son stockage partagé, les routines enregistrées avant peuvent donc ne pas apparaître ici."
+          }
+        }
+      }
+    },
+    "This build has no Frez access key, so the Dyno's calibration cannot be fetched." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This build has no Frez access key, so the Dyno's calibration cannot be fetched."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette version de l'app n'a pas de clé d'accès Frez, l'étalonnage du Dyno ne peut donc pas être récupéré."
           }
         }
       }
@@ -7876,6 +10144,22 @@
         }
       }
     },
+    "This Dyno did not report a serial number, so its calibration cannot be looked up." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Dyno did not report a serial number, so its calibration cannot be looked up."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce Dyno n'a pas indiqué de numéro de série, son étalonnage ne peut donc pas être recherché."
+          }
+        }
+      }
+    },
     "This is what Today calls it. Everything else you build underneath, and nothing is saved until you tap Save." : {
       "localizations" : {
         "fr" : {
@@ -7907,6 +10191,7 @@
       }
     },
     "THIS MAX IS FOR" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8096,16 +10381,6 @@
         }
       }
     },
-    "Share or save this PNG. Other apps may flatten its transparent background." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Partage ou enregistre ce PNG. D’autres apps peuvent aplatir son fond transparent."
-          }
-        }
-      }
-    },
     "Try again" : {
       "localizations" : {
         "fr" : {
@@ -8137,6 +10412,7 @@
       }
     },
     "Twice a day · %@ each" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8147,6 +10423,7 @@
       }
     },
     "TYPED KILOGRAMS" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8206,7 +10483,18 @@
         }
       }
     },
+    "Up %@ %@ across %lld sessions." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En hausse de %1$@ %2$@ sur %3$lld séances."
+          }
+        }
+      }
+    },
     "Up %@ kg across %lld sessions." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8226,7 +10514,25 @@
         }
       }
     },
+    "Use as max" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use as max"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser comme max"
+          }
+        }
+      }
+    },
     "Use this max" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8237,11 +10543,44 @@
       }
     },
     "Used for both hands. Pick a hand if yours differ — most people's do." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Utilisé pour les deux mains. Choisis une main si les tiennes diffèrent — c'est le cas chez la plupart des gens."
+          }
+        }
+      }
+    },
+    "Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisé lorsqu’une main n’a pas de max individuel, et pour les tirages à deux mains. Les max individuels de gauche et de droite restent inchangés."
+          }
+        }
+      }
+    },
+    "Used when a hand has no max of its own, and for two-handed pulls." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Used when a hand has no max of its own, and for two-handed pulls."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisé lorsqu’une main n’a pas de max individuel, et pour les tirages à deux mains."
           }
         }
       }
@@ -8302,6 +10641,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réveiller"
+          }
+        }
+      }
+    },
+    "We keep our hardware margins low because we believe everyone should have access to their own data." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We keep our hardware margins low because we believe everyone should have access to their own data."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We keep our hardware margins low because we believe everyone should have access to their own data."
+          }
+        }
+      }
+    },
+    "Weight targets" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cibles de poids"
+          }
+        }
+      }
+    },
+    "Weight targets updated" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weight targets updated"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cibles de poids mises à jour"
+          }
+        }
+      }
+    },
+    "Weight units" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unité de poids"
           }
         }
       }
@@ -8387,6 +10778,7 @@
       }
     },
     "What you can pull on each grip" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8566,7 +10958,18 @@
         }
       }
     },
+    "Your current max on this grip%@ is %@ %@, recorded %@. Saving adds a new one and keeps the old as history." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ton max actuel sur cette prise%1$@ est de %2$@ %3$@, enregistré %4$@. Enregistrer en ajoute un nouveau et garde l'ancien dans l'historique."
+          }
+        }
+      }
+    },
     "Your current max on this grip%@ is %@ kg, recorded %@. Saving adds a new one and keeps the old as history." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8587,6 +10990,7 @@
       }
     },
     "Your max on each grip" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8597,6 +11001,7 @@
       }
     },
     "YOUR MAX ON THIS GRIP" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8617,6 +11022,7 @@
       }
     },
     "Your numbers" : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8627,6 +11033,7 @@
       }
     },
     "Your percent targets follow whatever you save here." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8656,7 +11063,18 @@
         }
       }
     },
+    "Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos routines et séances sont enregistrées sur cet appareil. La synchronisation iCloud privée est activée lorsque vous êtes connecté et qu’iCloud est disponible ; l’app ne peut pas confirmer que toutes les modifications ont été synchronisées."
+          }
+        }
+      }
+    },
     "Your routines and sessions stay on this device and in your private iCloud. Nobody else can read them — not even us." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -8735,519 +11153,7 @@
           }
         }
       }
-    },
-    "A max records your hardest measured pull on a grip." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un max correspond à votre traction mesurée la plus forte sur une prise."
-          }
-        }
-      }
-    },
-    "A number you entered. Check its value and units before using it for targets." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Une valeur saisie par vous. Vérifiez sa valeur et son unité avant de l’utiliser pour vos cibles."
-          }
-        }
-      }
-    },
-    "Build force gradually and stop if it hurts. This measures a peak, not a safe training limit." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Augmentez la force progressivement et arrêtez en cas de douleur. Ce test mesure un pic, pas une limite d’entraînement sans risque."
-          }
-        }
-      }
-    },
-    "Keep the gauge unloaded while Get a Grip connects and tares it. If the gauge is asleep, the app waits." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Laissez le capteur déchargé pendant la connexion et la tare. Si le capteur est en veille, l’application attend."
-          }
-        }
-      }
-    },
-    "Keep the gauge unloaded while it connects and tares." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Laissez le capteur déchargé pendant la connexion et la tare."
-          }
-        }
-      }
-    },
-    "Let go when you are ready to finish." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Relâchez lorsque vous souhaitez terminer."
-          }
-        }
-      }
-    },
-    "Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mesurez un pic avec votre capteur ou saisissez une mesure précédente. Vous pouvez le mettre à jour à tout moment."
-          }
-        }
-      }
-    },
-    "No live reading" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune mesure en direct"
-          }
-        }
-      }
-    },
-    "No pull was recorded. You can close this or try again." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune traction enregistrée. Vous pouvez fermer cet écran ou réessayer."
-          }
-        }
-      }
-    },
-    "Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les cibles en pourcentage utilisent le max enregistré pour cette prise et cette main. Un max est une référence, pas une limite de charge sans risque."
-          }
-        }
-      }
-    },
-    "Percentage targets use your saved maxes. These may no longer reflect your current strength." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les cibles en pourcentage utilisent vos max enregistrés, qui peuvent ne plus refléter votre force actuelle."
-          }
-        }
-      }
-    },
-    "Some kilogram targets were set by the sender. Review them for your own training." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Certaines cibles en kilogrammes viennent de l’expéditeur. Vérifiez qu’elles conviennent à votre entraînement."
-          }
-        }
-      }
-    },
-    "Some percentage targets have no saved max, so they will show no target." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Certaines cibles en pourcentage n’ont pas de max enregistré et ne seront donc pas affichées."
-          }
-        }
-      }
-    },
-    "New peaks to review" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "New peaks to review"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nouveaux pics à examiner"
-          }
-        }
-      }
-    },
-    "These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ces pics de séance ne sont pas forcément des efforts maximaux. Choisissez uniquement ceux à utiliser pour vos prochains objectifs en pourcentage."
-          }
-        }
-      }
-    },
-    "Selected peaks are saved as maxes when you save this workout." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selected peaks are saved as maxes when you save this workout."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les pics sélectionnés sont enregistrés comme max lorsque vous enregistrez cette séance."
-          }
-        }
-      }
-    },
-    "no saved max for this grip" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "no saved max for this grip"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "aucun max enregistré pour cette prise"
-          }
-        }
-      }
-    },
-    "Use as max" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use as max"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Utiliser comme max"
-          }
-        }
-      }
-    },
-    "Selected" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selected"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sélectionné"
-          }
-        }
-      }
-    },
-    "Expanded" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Expanded"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Développé"
-          }
-        }
-      }
-    },
-    "Collapsed" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Collapsed"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réduit"
-          }
-        }
-      }
-    },
-    "Couldn't save this workout. Please try again." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn't save this workout. Please try again."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossible d’enregistrer cette séance. Veuillez réessayer."
-          }
-        }
-      }
-    },
-    "Select maximum efforts to use for future targets. Saved with this workout." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Select maximum efforts to use for future targets. Saved with this workout."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sélectionnez les efforts maximaux à utiliser pour vos futures cibles. Enregistrés avec cette séance."
-          }
-        }
-      }
-    },
-    "Previous: %@ kg" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Previous: %@ kg"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Précédent : %@ kg"
-          }
-        }
-      }
-    },
-    "Not rated" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Not rated"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Non évalué"
-          }
-        }
-      }
-    },
-    "Clear" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Effacer"
-          }
-        }
-      }
-    },
-    "Clear rating" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear rating"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Effacer l’évaluation"
-          }
-        }
-      }
-    },
-    "How hard did it feel?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "How hard did it feel?"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quel effort avez-vous ressenti ?"
-          }
-        }
-      }
-    },
-    "On your fingers" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On your fingers"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pour vos doigts"
-          }
-        }
-      }
-    },
-    "About session types" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "About session types"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "À propos des types de séance"
-          }
-        }
-      }
-    },
-    "Manage" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manage"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gérer"
-          }
-        }
-      }
-    },
-    "Manage maxes" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manage maxes"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gérer les max"
-          }
-        }
-      }
-    },
-    "Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add a max, review earlier records, or delete an incorrect entry here. These are the same numbers used by your charts and percentage targets."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajoutez un max, consultez les anciens relevés ou supprimez une entrée incorrecte ici. Ces mêmes valeurs sont utilisées par vos graphiques et vos cibles en pourcentage."
-          }
-        }
-      }
-    },
-    "Frez Dyno" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez Dyno"}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez Dyno"}}}},
-    "Frez" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez"}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez"}}}},
-    "official protocol, untested here" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "official protocol, untested here"}}, "fr": {"stringUnit": {"state": "translated", "value": "protocole officiel, non testé ici"}}}},
-    "%@ speaks a protocol its maker published, but no unit has been tried on this app yet." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "%@ speaks a protocol its maker published, but no unit has been tried on this app yet."}}, "fr": {"stringUnit": {"state": "translated", "value": "%@ parle un protocole publié par son fabricant, mais aucun exemplaire n'a encore été essayé avec cette app."}}}},
-    "%@ sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "%@ sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server."}}, "fr": {"stringUnit": {"state": "translated", "value": "%@ envoie des valeurs brutes de capteur : la première fois qu'un exemplaire se connecte, l'app demande une seule fois son étalonnage à son fabricant, par numéro de série. La réponse reste sur ce téléphone et n'est plus jamais redemandée ; aucun autre capteur ne passe par un serveur."}}}},
-    "A note from Frez" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "A note from Frez"}}, "fr": {"stringUnit": {"state": "translated", "value": "Un mot de Frez"}}}},
-    "Hello," : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Hello,"}}, "fr": {"stringUnit": {"state": "translated", "value": "Hello,"}}}},
-    "I’m Donghyun Kim, founder of Frez." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "I’m Donghyun Kim, founder of Frez."}}, "fr": {"stringUnit": {"state": "translated", "value": "I’m Donghyun Kim, founder of Frez."}}}},
-    "We keep our hardware margins low because we believe everyone should have access to their own data." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "We keep our hardware margins low because we believe everyone should have access to their own data."}}, "fr": {"stringUnit": {"state": "translated", "value": "We keep our hardware margins low because we believe everyone should have access to their own data."}}}},
-    "Frez Pro helps us develop new features and provide reliable devices." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez Pro helps us develop new features and provide reliable devices."}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez Pro helps us develop new features and provide reliable devices."}}}},
-    "In fact, Frez Dyno was made possible by our early Pro subscribers." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "In fact, Frez Dyno was made possible by our early Pro subscribers."}}, "fr": {"stringUnit": {"state": "translated", "value": "In fact, Frez Dyno was made possible by our early Pro subscribers."}}}},
-    "If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro."}}, "fr": {"stringUnit": {"state": "translated", "value": "If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro."}}}},
-    "I hope Frez will be with you for many years to come." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "I hope Frez will be with you for many years to come."}}, "fr": {"stringUnit": {"state": "translated", "value": "I hope Frez will be with you for many years to come."}}}},
-    "Thank you," : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Thank you,"}}, "fr": {"stringUnit": {"state": "translated", "value": "Thank you,"}}}},
-    "Donghyun Kim" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Donghyun Kim"}}, "fr": {"stringUnit": {"state": "translated", "value": "Donghyun Kim"}}}},
-    "Shown once, the first time you pick the Dyno." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Shown once, the first time you pick the Dyno."}}, "fr": {"stringUnit": {"state": "translated", "value": "Affiché une seule fois, la première fois que vous choisissez le Dyno."}}}},
-    "Swap" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Swap"}}, "fr": {"stringUnit": {"state": "translated", "value": "Inverser"}}}},
-    "Start with the right hand" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Start with the right hand"}}, "fr": {"stringUnit": {"state": "translated", "value": "Commencer par la main droite"}}}},
-    "Start with the left hand" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Start with the left hand"}}, "fr": {"stringUnit": {"state": "translated", "value": "Commencer par la main gauche"}}}},
-    "Right, left, right, left — %@" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Right, left, right, left — %@"}}, "fr": {"stringUnit": {"state": "translated", "value": "Droite, gauche, droite, gauche — %@"}}}},
-    "All %lld on the right, then all %lld on the left" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "All %lld on the right, then all %lld on the left"}}, "fr": {"stringUnit": {"state": "translated", "value": "Les %lld à droite, puis les %lld à gauche"}}}},
-    "Right, left, right, left — swapping hands every pull." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Right, left, right, left — swapping hands every pull."}}, "fr": {"stringUnit": {"state": "translated", "value": "Droite, gauche, droite, gauche — on change de main à chaque tirage."}}}},
-    "Right hand first, then left, within each set." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Right hand first, then left, within each set."}}, "fr": {"stringUnit": {"state": "translated", "value": "La main droite, puis la gauche, dans chaque série."}}}},
-    "Starts on the left hand" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Starts on the left hand"}}, "fr": {"stringUnit": {"state": "translated", "value": "Commence par la main gauche"}}}},
-    "Starts on the right hand" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Starts on the right hand"}}, "fr": {"stringUnit": {"state": "translated", "value": "Commence par la main droite"}}}},
-    "Looking up this Dyno's calibration…" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Looking up this Dyno's calibration…"}}, "fr": {"stringUnit": {"state": "translated", "value": "Recherche de l'étalonnage de ce Dyno…"}}}},
-    "This Dyno did not report a serial number, so its calibration cannot be looked up." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "This Dyno did not report a serial number, so its calibration cannot be looked up."}}, "fr": {"stringUnit": {"state": "translated", "value": "Ce Dyno n'a pas indiqué de numéro de série, son étalonnage ne peut donc pas être recherché."}}}},
-    "This build has no Frez access key, so the Dyno's calibration cannot be fetched." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "This build has no Frez access key, so the Dyno's calibration cannot be fetched."}}, "fr": {"stringUnit": {"state": "translated", "value": "Cette version de l'app n'a pas de clé d'accès Frez, l'étalonnage du Dyno ne peut donc pas être récupéré."}}}},
-    "Frez rejected the calibration request." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez rejected the calibration request."}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez a refusé la demande d'étalonnage."}}}},
-    "Frez did not accept this app's access key." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez did not accept this app's access key."}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez n'a pas accepté la clé d'accès de cette app."}}}},
-    "Frez has reached the number of Dynos this app may register." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez has reached the number of Dynos this app may register."}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez a atteint le nombre de Dynos que cette app peut enregistrer."}}}},
-    "Frez has no calibration on file for this Dyno." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez has no calibration on file for this Dyno."}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez n'a aucun étalonnage enregistré pour ce Dyno."}}}},
-    "Frez is reviewing this Dyno's ownership before it can be registered." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez is reviewing this Dyno's ownership before it can be registered."}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez vérifie la propriété de ce Dyno avant de pouvoir l'enregistrer."}}}},
-    "Frez could not produce a calibration for this Dyno." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez could not produce a calibration for this Dyno."}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez n'a pas pu produire d'étalonnage pour ce Dyno."}}}},
-    "Frez is busy. Try again in a minute." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez is busy. Try again in a minute."}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez est occupé. Réessaie dans une minute."}}}},
-    "Frez sent an answer this app could not read." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Frez sent an answer this app could not read."}}, "fr": {"stringUnit": {"state": "translated", "value": "Frez a envoyé une réponse que cette app n'a pas pu lire."}}}},
-    "The calibration lookup needs an internet connection the first time a Dyno is used." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "The calibration lookup needs an internet connection the first time a Dyno is used."}}, "fr": {"stringUnit": {"state": "translated", "value": "La recherche de l'étalonnage a besoin d'une connexion internet la première fois qu'un Dyno est utilisé."}}}},
-    "Rate on the App Store" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Rate on the App Store"}}, "fr": {"stringUnit": {"state": "translated", "value": "Noter sur l'App Store"}}}},
-    "Rate on the App Store. Opens the App Store." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Rate on the App Store. Opens the App Store."}}, "fr": {"stringUnit": {"state": "translated", "value": "Noter sur l'App Store. Ouvre l'App Store."}}}},
-    "Get a Grip is free and open source. A rating helps other climbers find it." : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Get a Grip is free and open source. A rating helps other climbers find it."}}, "fr": {"stringUnit": {"state": "translated", "value": "Get a Grip est gratuit et open source. Une note aide d'autres grimpeurs à le trouver."}}}}
+    }
   },
   "version" : "1.1"
 }

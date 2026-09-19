@@ -31,6 +31,20 @@ final class MockProgressorClient: ProgressorClient {
     private static let sampleHz: Double = 80
     private static let batchSize = 8
     private static let microsPerSample: UInt32 = UInt32(1_000_000 / 80)
+    /// `-mockClumpMS N` (DEBUG only): hand batches over in CLUMPS N ms apart instead of
+    /// one every 100 ms — an iPad-style Bluetooth stack delivering notifications late and
+    /// together. The samples' device timestamps are untouched; only their arrival bunches,
+    /// which is exactly the shape that hid the trace on Nuri's iPad (2026-09-19).
+    private static let clumpMS: Int = {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if let flag = args.firstIndex(of: "-mockClumpMS"), flag + 1 < args.count,
+           let ms = Int(args[flag + 1]) {
+            return ms
+        }
+        #endif
+        return 0
+    }()
 
     private var connectTask: Task<Void, Never>?
     private var connectionGeneration: UInt64 = 0
@@ -132,11 +146,13 @@ final class MockProgressorClient: ProgressorClient {
         pump = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
-                self.emitBatch()
+                let batchMS = Int(1000 * Double(Self.batchSize) / Self.sampleHz)
+                // One batch per period by default; under `-mockClumpMS` the same batches
+                // arrive together after the whole clump's worth of time has passed.
+                let batchesPerClump = max(1, Self.clumpMS / batchMS)
+                for _ in 0..<batchesPerClump { self.emitBatch() }
                 do {
-                    try await Task.sleep(
-                        for: .milliseconds(Int(1000 * Double(Self.batchSize) / Self.sampleHz))
-                    )
+                    try await Task.sleep(for: .milliseconds(batchMS * batchesPerClump))
                 } catch {
                     return
                 }

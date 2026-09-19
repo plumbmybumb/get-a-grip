@@ -35,7 +35,10 @@ Bluetooth nor CloudKit, so `watch-run` always passes `-mockDevice`, and the DEBU
 seeding arguments (`-seedTwoRoutines`, `-seedHistory`) give it routines to show;
 `-previewWatchRunner` opens the first routine's session on launch, and
 `-noWorkoutSession` keeps the Health permission sheet — which the simulator cannot
-answer — out of the way. Its bundle id is
+answer — out of the way. `-previewDimmed` draws the face as Always On does (reduced
+luminance), `-previewLowPower` stands in for Low Power Mode on either simulator, and
+`-mockProfile shaky` (or `weak`, `idle`) scripts the demo gauge so a screenshot can
+catch RE-GRIP — all DEBUG-only. Its bundle id is
 `$(GETAGRIP_COMPANION_BUNDLE_ID).watchkitapp`; the watch and the companion both carry
 the HealthKit capability, which the workout session needs. Real Bluetooth, Health and
 CloudKit behaviour on the wrist needs a signed device build — see

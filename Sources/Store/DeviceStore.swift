@@ -105,6 +105,13 @@ final class DeviceStore {
         /// Seconds, `timeIntervalSinceReferenceDate` epoch, strictly monotone.
         var t: TimeInterval
     }
+    /// How far the playback clock may run from wall time, either way, before the
+    /// timeline is declared broken: contiguous data further BEHIND than this snaps
+    /// forward, and a buffer further AHEAD is dropped as a backlog. Bunched delivery
+    /// swings about half a clump either way around its average, so this tolerates
+    /// clumps of roughly twice its value — well past any radio stack's, far below a
+    /// suspended app's backlog.
+    static let lateDeliveryLimitSeconds: TimeInterval = 3.0
     @ObservationIgnored private var traceStorage: [TracePoint] = []
     var trace: [TracePoint] { _ = sampleRevision; return traceStorage }
     @ObservationIgnored private var lastTraceMicros: UInt32?
@@ -269,7 +276,8 @@ final class DeviceStore {
         // The stored choice is untouched and comes back the moment demo mode ends.
         let kind: GaugeKind = useMock ? .progressor : DeviceStore.persistedGaugeKind()
         gaugeKind = kind
-        client = useMock ? MockProgressorClient() : DeviceStore.makeClient(for: kind)
+        client = useMock ? MockProgressorClient(profile: DeviceStore.mockProfileRequestedAtLaunch)
+                         : DeviceStore.makeClient(for: kind)
         wire()
     }
 
@@ -297,6 +305,20 @@ final class DeviceStore {
     /// reach real hardware.
     static var mockRequestedAtLaunch: Bool {
         ProcessInfo.processInfo.arguments.contains("-mockDevice")
+    }
+
+    /// `-mockProfile shaky` (or `weak`, `idle`) scripts the demo gauge for a headless
+    /// run — the way to put RE-GRIP on a screenshot, since `clean` never drops. DEBUG
+    /// only; a release build's demo mode is always the textbook pull.
+    static var mockProfileRequestedAtLaunch: MockForceProfile {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if let flag = arguments.firstIndex(of: "-mockProfile"), flag + 1 < arguments.count,
+           let profile = MockForceProfile(rawValue: arguments[flag + 1]) {
+            return profile
+        }
+        #endif
+        return .clean
     }
 
     // MARK: - Which gauge
@@ -637,25 +659,36 @@ final class DeviceStore {
         // disconnect. Compressing those real gaps to one period was part of why the
         // sparse WH-C06 trace kept collapsing on hardware (2026-08-17).
         let maxTrustedMicros: UInt32 = gaugeCapabilities.hasDeviceClock ? 1_000_000 : 10_000_000
-        let delta = (deltaMicros > 0 && deltaMicros <= maxTrustedMicros)
+        let trusted = deltaMicros > 0 && deltaMicros <= maxTrustedMicros
+        let delta = trusted
             ? Double(deltaMicros) / 1_000_000
             : 1.0 / max(1, gaugeCapabilities.nominalSampleRate)
         let candidate = lastT + delta
         let error = wallNow - candidate
-        // BEHIND wall time by more than a second: a real stall, so jump forward and
-        // carry on. It was a quarter of a second, and that was measured against an
-        // iPhone's delivery — eight samples every 100 ms. An iPad's Bluetooth stack
-        // hands the same stream over in half-second CLUMPS, and every clump then
-        // snapped the clock forward, which the graph reads as a break in the line: the
-        // trace restarted at every clump and drew nothing at all (Nuri's iPad,
-        // 2026-09-19). Under a second the clock is allowed to lag instead — the line
-        // stays continuous and runs a clump behind reality, which is what the readout
-        // beside it already does.
-        if error > 1.0 { return wallNow }
-        // Running AHEAD of wall time is handled by the caller, which drops the buffer and
-        // starts again — see `handle(_:)`. Crawling toward wall time instead was tried and
-        // was worse: it converges over tens of seconds, and the whole trace sits squashed
-        // into a few pixels the entire time (Nuri's 13.9 kg screenshot, 2026-08-09).
+        // BEHIND wall time. Two different things look alike here and get different limits:
+        //
+        // - An UNTRUSTED delta (a counter reset, a gap over a second) means the timeline
+        //   itself broke and one period was substituted. More than a second behind after
+        //   that is a real stall — jump forward and carry on, which the graph draws as a
+        //   break.
+        // - A TRUSTED delta means the data is contiguous; it merely arrived late. That is
+        //   what an iPad's Bluetooth stack does: it hands the stream over in CLUMPS of a
+        //   second or more, so the first sample of each clump is a whole clump behind
+        //   wall time while its timestamps are perfect. Snapping there (at 0.25 s, then
+        //   at 1.0 s) restarted the trace at every clump, and the dropped buffer on the
+        //   way back down (below) finished the job: Nuri's iPad drew no line at all
+        //   (2026-09-19; reproduced in the simulator with `-mockClumpMS 1200`).
+        //   Contiguous data may lag `lateDeliveryLimitSeconds` instead: the line stays
+        //   whole and runs a clump behind reality, which is what the readout beside it
+        //   already does.
+        if error > (trusted ? Self.lateDeliveryLimitSeconds : 1.0) { return wallNow }
+        // Running AHEAD of wall time is the other half of a clump — its last samples land
+        // before their time. `ForceTraceView` now draws only what is due and lets the rest
+        // wait past its right edge, so being ahead by a clump is harmless; only a real
+        // backlog is dropped, by the caller — see `handle(_:)`. Crawling toward wall time
+        // instead was tried and was worse: it converges over tens of seconds, and the
+        // whole trace sits squashed into a few pixels the entire time (Nuri's 13.9 kg
+        // screenshot, 2026-08-09).
         return candidate + min(max(error, -0.0005), 0.0005)
     }
 
@@ -801,23 +834,22 @@ final class DeviceStore {
             // CoreBluetooth queues notifications while the app is suspended and hands the
             // lot over on wake. Each carries a device timestamp 12.5 ms after the last, so
             // ingesting a few hundred of them in one frame walks the playback clock
-            // seconds into the FUTURE — and a clock ahead of real time is the one thing
-            // this timeline cannot represent, because the view draws (now − t).
-            //
-            // Being ahead is therefore not drift to converge; it is proof that what just
-            // arrived did not happen now. So the buffer is dropped and the next sample
-            // starts a fresh run at wall time. During a long flush this simply keeps
-            // firing, which is correct: nothing is drawn until samples are arriving at
-            // real-time pace again, and then the trace grows in from the right edge and
-            // fades up like any other fresh run.
+            // seconds into the FUTURE. A little of that is ordinary — the tail of a
+            // delivery clump is ahead by half a clump, and the graph now holds those
+            // points past its right edge until they are due — but seconds of it is proof
+            // that what just arrived did not happen now. So past `lateDeliveryLimitSeconds`
+            // the buffer is dropped and the next sample starts a fresh run at wall time.
+            // During a long flush this simply keeps firing, which is correct: nothing is
+            // drawn until samples are arriving at real-time pace again, and then the trace
+            // grows in from the right edge and fades up like any other fresh run.
             //
             // Self-healing, and it needs no `scenePhase` hook: a stalled main thread or a
             // radio that buffers for its own reasons is the same fault and gets the same
             // repair. `dropStaleTrace()` on foreground stays as the fast path.
-            // 0.5 s, not 0.25: a normal BLE batch is ~8 samples (0.1 s of device time)
-            // and two arriving together is ordinary jitter. A real backlog is seconds.
+            // It was 0.5 s, sized against an iPhone's 100 ms batches — and it dropped the
+            // buffer at the tail of every iPad clump (Nuri's iPad, 2026-09-19).
             if let lastT = traceStorage.last?.t,
-               lastT > Date().timeIntervalSinceReferenceDate + 0.5 {
+               lastT > Date().timeIntervalSinceReferenceDate + Self.lateDeliveryLimitSeconds {
                 record(.traceFlush(count: 1))
                 traceStorage.removeAll(keepingCapacity: true)
                 sampleStateChanged()

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
 
+import OSLog
 import SwiftData
 import SwiftUI
 import UIKit
@@ -65,6 +66,32 @@ struct DoigtApp: App {
                 .environment(\.weightUnit, settings.weightUnit)
                 .environment(templates)
                 .environment(device)
+                #if DEBUG
+                .onAppear { DebugInteractionDump.scheduleIfRequested() }
+                // DEBUG builds keep the report Settings › About › Diagnostics copies in
+                // Documents/diagnostics.txt, rewritten every five seconds, so a headless
+                // run can be read without a hand on the screen: a simulator's container,
+                // or a device via `xcrun devicectl device copy from --domain-type
+                // appDataContainer --domain-identifier run.nuri.doigt --source
+                // Documents/diagnostics.txt`. That is how the iPad's Bluetooth delivery
+                // pattern is read without asking for a paste (2026-09-19).
+                .task {
+                    guard let docs = FileManager.default.urls(for: .documentDirectory,
+                                                              in: .userDomainMask).first
+                    else { return }
+                    while !Task.isCancelled {
+                        let report = DiagnosticReport.text(from: device.diagnosticEntries)
+                            + "\n\n" + device.pipelineDiagnostics.report
+                        try? report.write(to: docs.appendingPathComponent("diagnostics.txt"),
+                                          atomically: true, encoding: .utf8)
+                        // Also to the unified log, for a run whose container is out of
+                        // reach: `log show --predicate 'subsystem == "run.nuri.doigt"'`.
+                        Logger(subsystem: "run.nuri.doigt", category: "diagnostics")
+                            .info("\(report, privacy: .public)")
+                        try? await Task.sleep(for: .seconds(5))
+                    }
+                }
+                #endif
                 .onChange(of: scenePhase) { _, phase in
                     device.recordScenePhase(String(describing: phase))
                     switch phase {

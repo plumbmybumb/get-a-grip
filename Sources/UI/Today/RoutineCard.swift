@@ -68,13 +68,14 @@ struct RoutineCard: View {
     @ScaledMetric(relativeTo: .body) private var sessionDot: CGFloat = 16
 
     var body: some View {
-        // FLAT, not material, for the sake of the long press. The lift snapshots the
-        // card, and a backdrop blur is rendered in its own pass: for the first frames of
-        // the scale-up the material came out as its full bounds rectangle before the
-        // rounded mask caught up — a grey band poking past the corners (Nuri's phone,
-        // 2026-09-19). The flat fill is fitted to be indistinguishable from the material
-        // over this field (see `CardFill`), and a fill snapshots as exactly the shape it
-        // is drawn in.
+        // FLAT, not material. The long press lifts the card through a portal of its own
+        // layers, and a fill portals as exactly what it draws, where a backdrop blur is
+        // the one thing in a card that can come out differently in the copy. It is fitted
+        // to be indistinguishable from the material over this field (see `CardFill`), so
+        // the card gives up nothing for it. NOTE: the grey band poking past the corners
+        // during the lift (Nuri's phone, 2026-09-19) was NOT the material — it was the
+        // deck's scroll view clipping the scaled card and its shadow to the row. See
+        // `routineDeck`'s `.scrollClipDisabled()`; this line alone did not fix it.
         MaterialCard(surface: .flat) {
             cardContent
         }

@@ -219,6 +219,14 @@ struct TodayView: View {
                builder == nil, let first = ordered.first {
                 builder = .edit(first.id)
             }
+            // `-startFirstRoutine`: the "Connect and start" tap, for a headless run —
+            // with `-mockDevice` that is a whole measured session through the real
+            // store and runner, which is how the trace was checked under bunched
+            // delivery (`-mockClumpMS`) on the iPad simulator (2026-09-19).
+            if ProcessInfo.processInfo.arguments.contains("-startFirstRoutine"),
+               running == nil, let first = ordered.first {
+                start(first)
+            }
             #endif
         }
         // ALSO when a session closes. Saving your first routine with "Save and start
@@ -379,6 +387,19 @@ struct TodayView: View {
         // this deck is a CHOOSER where every settle is a deliberate pick (a pin and a
         // haptic), so it moves like the builder's pager — one card per swipe.
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+        // UNCLIPPED, for the long press. UIKit parents the context-menu lift — the card
+        // scaled up about 2.5 % with a soft shadow under it — inside the nearest scroll
+        // view, and this one is exactly one card tall. Clipped, the first half-second of
+        // every lift showed the card's corners sliced flat at the row's top and bottom
+        // and the shadow cut into a hard-edged band the width of the screen (Nuri's
+        // phone, 2026-09-19). Reproduced frame by frame on the pinned simulator with
+        // `LongPressLiftUITests` under `simctl io recordVideo`; the UIKit view dump
+        // behind `-dumpInteractions` showed the row's `HostingScrollView` as the only
+        // clipping view with the band's exact frame, and lifting the clip removed both
+        // the slice and the band in the next recording. Nothing else changes: the deck
+        // is full-bleed, so sideways there is no screen beyond it, and the row is the
+        // tallest card, so there is nothing to spill vertically.
+        .scrollClipDisabled()
         .scrollPosition(id: $deckPosition)
         .scrollIndicators(.hidden)
         // Full-bleed: the deck escapes the column's padding so the neighbour peeks at

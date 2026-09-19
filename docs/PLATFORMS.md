@@ -78,10 +78,42 @@ anywhere, which is why a session works with the phone in a bag.
   on the controls page turns it off for a different posture.
 - **Always On dims the face and no app can stop it.** Once the wrist leaves the
   raise-to-wake pose — palm down on a block counts — watchOS drops to reduced
-  luminance at one redraw a second; Apple's Workout app dims the same way. The face
-  stays legible dimmed (`isLuminanceReduced`: numbers and hand word in white, the small
-  print hidden). Wake Duration 70 s in the watch's Display settings keeps a tap lit
-  through a set.
+  luminance at one redraw a second; Apple's Workout app dims the same way, and there is
+  no API for full brightness or full refresh with the wrist down (checked against
+  Apple's Always On documentation, 2026-09-19: a workout session is what earns the
+  once-a-second redraw at all; without one it is once a minute). Wake Duration 70 s in
+  the watch's Display settings keeps a tap lit through a set. So the face is designed
+  for that state rather than against it — the two rules below.
+- **The whole face is the colour of the state** (`WatchFaceMood`, `WatchFacePalette` in
+  `Shared/Engine`, Nuri's ask 2026-09-19): blue to PULL, green while the clock runs,
+  red to RE-GRIP, gray to rest (and paused), orange when the next grip is a different
+  one (the rest and count-in before it), amber for LESS — EASE OFF above the band and
+  LET GO at the release gate are one instruction and the opposite of RE-GRIP's, so they
+  cannot share red. A lost link is red like re-grip; `.idle` is never red, because
+  CONNECTING on the first second is not an alarm. The fill is a full-bleed background
+  behind the face (measured to the top edge under the clock), not turned with the face,
+  and nothing else on the face animates on a state change — the word, the hand and the
+  counters cut on the beat (an animation on the whole face cross-dissolved the prompt
+  word). The colour itself takes the house state curve with the wrist up as an EXPLICIT
+  cross-fade over a base painted the outgoing colour: a `Color` view does not
+  interpolate on watchOS (it cut in one frame inside an animated transaction), and
+  SwiftUI does not promise which of two crossing layers is on top (the first try faded
+  one change in three), so the base is what makes either order blend monotonically.
+  Verified frame by frame from `simctl io recordVideo`: awake, ~10 in-between frames
+  per change; dimmed, none. Dimmed it CUTS — at one redraw a second a 0.3 s fade is one
+  frame of the wrong colour. Under reduced luminance the fill drops to a dimmed shade
+  of the same hue (Apple's rule for
+  large areas of colour in Always On, and the system sets its brightness from the ratio
+  of lit pixels), every ink goes white and the small print hides; every shade clears
+  4.5:1 against its ink, and `WatchFaceMoodTests` measures that rather than trusting an
+  eye. Two departures from the phone's ladder, both deliberate: ARMED is blue, not
+  amber, because the wrist's useful glance is "pull now" versus "it is counting"; and
+  green is a plain green rather than moss, because it means the clock is running, not
+  "easy on the fingers".
+- **The clock does not roll when the face is dimmed or the battery rationed**
+  (`NumeralRoll`, shared with the phone): a `.numericText()` roll caught at one redraw a
+  second is a smear, and Low Power Mode on either device cuts the digits the same way
+  (`PowerState` observes it). The load readout never rolled — measurements snap.
 - **The live load is throttled on the wrist** (`WatchForceReadout`, five updates a
   second, rounded to a tenth): a readout that followed every sample re-rendered the face
   eighty times a second and lagged. The engine still sees every sample.
@@ -108,7 +140,10 @@ anywhere, which is why a session works with the phone in a bag.
   -previewWatchRunner -noWorkoutSession` launches it on a watch simulator with the demo
   gauge straight into a session (DEBUG arguments: the watch simulator has no CloudKit
   and no Bluetooth, and it cannot answer the Health sheet a workout session raises, so
-  `-noWorkoutSession` leaves the session out for screenshots).
+  `-noWorkoutSession` leaves the session out for screenshots). The simulator has no
+  wrist to lower either, so `-previewDimmed` forces the Always On environment,
+  `-previewLowPower` stands in for Low Power Mode, and `-mockProfile shaky` scripts a
+  gauge that drops mid-hold so RE-GRIP can be screenshotted.
 
 ## Owed on hardware
 
@@ -125,6 +160,10 @@ Simulator builds cannot answer these; each needs a real watch and a real gauge:
    scanning is a battery question; the watch is scoped to connected gauges first.
 6. iPad: the grip panel and the keyboard shortcuts (space pauses, S skips) on a real
    keyboard case; Live Activities on the iPad lock screen.
+7. The coloured face under real Always On: the dimmed shades after the system's own
+   luminance reduction (the simulator has no wrist to lower, so `-previewDimmed` only
+   shows the shades before it), whether the hue still reads from a bench, and what a
+   fill costs the battery over a session against the old black face.
 
 ## Store
 

@@ -30,7 +30,9 @@ enum TraceAxis {
 /// about eight, so index spacing plus redraw-on-arrival stutters ten times a second.
 /// Points carry a PLAYBACK time (`DeviceStore.TracePoint.t` — monotone, built at
 /// ingestion, immune to the device's counter restarting on tare/reconnect/re-start),
-/// and the window's right edge advances with the wall clock in a `TimelineView`.
+/// and the window's right edge advances with the wall clock in a `TimelineView`. A point
+/// whose time has not come yet — the tail of a late, bunched delivery — waits beyond the
+/// right edge and slides in when it is due, so bunched arrival never bends the line.
 ///
 /// **This view is deliberately STATELESS about time.** Its first version kept anchor
 /// state (`@State` device-µs ↔ wall-clock pairs) and died on real hardware: a tare
@@ -315,17 +317,26 @@ struct ForceTraceView: View {
 
         // How far the window's right edge has slid past the newest point. Wall-clock,
         // so it grows every frame; `t` is the store's slewed playback time, so radio
-        // jitter doesn't move the trace.
-        let drift = max(0, now - newest.t)
+        // jitter doesn't move the trace. SIGNED: negative means the newest point is not
+        // due yet.
+        let drift = now - newest.t
 
         /// Smoothed inline rather than via a precomputed array. At 120 Hz the two
         /// 480-element arrays this replaces were ~1.4 MB/s of pure allocation churn for
         /// arithmetic that measures 0.03 % of a frame — the cost was never the maths,
         /// it was the garbage.
 
-
+        // TRUE age, so every point sits where its own time puts it — including PAST the
+        // right edge when the wall clock has not reached it. Bunched delivery (an iPad's
+        // radio stack hands the stream over in clumps of a second or more) puts the last
+        // points of each clump ahead of wall time; pinning the newest point to the edge
+        // instead, as this used to, lurched the whole line left by a clump each time one
+        // landed, and the store then dropped the buffer to keep its timeline sane — which
+        // is why Nuri's iPad drew no line at all (2026-09-19). Those points now wait beyond
+        // the edge and slide in on time, a jitter buffer, and the line stays continuous
+        // whatever the delivery looks like. `.clipped()` hides the waiting segment.
         func x(_ index: Int) -> CGFloat {
-            let age = (newest.t - samples[index].t) + drift
+            let age = now - samples[index].t
             return plotRight - CGFloat(age / Self.windowSeconds) * size.width
         }
 
@@ -380,9 +391,15 @@ struct ForceTraceView: View {
         var context = context
         context.opacity = frozenAt == nil ? min(1, (now - samples[runStart].t) / 0.5) : 1
 
+        // Only what is DUE is drawn. Points still ahead of the wall clock stay pending,
+        // and the head is where the line crosses the right edge on its way to them.
+        var lastDue = samples.count - 1
+        while lastDue > anchorIndex, samples[lastDue].t > now { lastDue -= 1 }
+        guard samples[lastDue].t <= now else { return }
+
         var line = Path()
         var firstDrawn: CGPoint?
-        for index in anchorIndex..<samples.count {
+        for index in anchorIndex...lastDue {
             let point = CGPoint(x: x(index), y: y(smoothed(index)))
             if firstDrawn == nil {
                 line.move(to: point)
@@ -403,7 +420,16 @@ struct ForceTraceView: View {
         // behaviour after stop/disconnect: no fresh data, no synthetic head, and the
         // trace slides away instead of pinning a stale flat line to the edge forever.
         let head: CGPoint
-        if drift < 0.5 {
+        if lastDue < samples.count - 1 {
+            // Points are waiting past the edge, so the head is exact: the line's crossing
+            // of x = width, interpolated between the last due point and the first pending
+            // one. No synthetic average is needed — the data for this instant exists.
+            let t0 = samples[lastDue].t, t1 = samples[lastDue + 1].t
+            let fraction = t1 > t0 ? (now - t0) / (t1 - t0) : 0
+            let kg0 = smoothed(lastDue), kg1 = smoothed(lastDue + 1)
+            head = CGPoint(x: plotRight, y: y(kg0 + (kg1 - kg0) * fraction))
+            line.addLine(to: head)
+        } else if drift < 0.5 {
             // 120 ms — roughly one BLE batch. Long enough to damp batch noise, short
             // enough that a fast pull's onset doesn't drag a laggy hook at the tip
             // (at 250 ms the averaged head visibly trailed the line during hard pulls).
