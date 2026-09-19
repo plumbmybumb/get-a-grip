@@ -219,6 +219,14 @@ struct TodayView: View {
                builder == nil, let first = ordered.first {
                 builder = .edit(first.id)
             }
+            // `-startFirstRoutine`: the "Connect and start" tap, for a headless run —
+            // with `-mockDevice` that is a whole measured session through the real
+            // store and runner, which is how the trace was checked under bunched
+            // delivery (`-mockClumpMS`) on the iPad simulator (2026-09-19).
+            if ProcessInfo.processInfo.arguments.contains("-startFirstRoutine"),
+               running == nil, let first = ordered.first {
+                start(first)
+            }
             #endif
         }
         // ALSO when a session closes. Saving your first routine with "Save and start
