@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Get a Grip</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>GetAGripCloudContainer</key>
+	<string>$(GETAGRIP_CLOUD_CONTAINER)</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Get a Grip connects to your force gauge over Bluetooth to measure the force you pull during a training session.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Get a Grip does not read your health data.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Get a Grip records each hangboard session as a workout so it counts toward your rings and keeps running while your wrist is down.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+	</array>
+	<key>WKApplication</key>
+	<true/>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>$(GETAGRIP_COMPANION_BUNDLE_ID)</string>
+</dict>
+</plist>

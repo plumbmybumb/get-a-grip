@@ -20,6 +20,8 @@ final class TemplateStore {
     private let context: ModelContext
     private let clock: DayClock
     private let settings: SettingsStore
+    /// The session write itself — one implementation, shared with the watch.
+    private let ledger: SessionLedger
 
     /// Where the routines actually live — Settings › About tells the truth about sync
     /// instead of asserting iCloud unconditionally.
@@ -197,6 +199,7 @@ final class TemplateStore {
         self.clock = clock
         self.settings = settings
         self.storageMode = storageMode
+        self.ledger = SessionLedger(context: context, clock: clock)
         self.syncedDay = clock.today
         observeExternalChanges()
         clock.onDayChanged = { [weak self] in self?.refreshIfDayChanged() }
@@ -289,7 +292,10 @@ final class TemplateStore {
         // finishing a session re-plans the day's remaining reminders in the same breath
         // that Today's "2 of 2" appears. `refreshIfDayChanged` runs this again at
         // midnight, which is what restores tomorrow's full set.
-        let inputs = routines.map { template in
+        // A device with reminders switched off contributes an EMPTY plan, which is the
+        // one path `ReminderPlanner.run` clears without asking for authorization — so
+        // flipping the switch off retires this device's pending reminders on the spot.
+        let inputs: [ReminderPlanner.RoutinePlanInput] = settings.remindsOnThisDevice ? routines.map { template in
             // `completed(_:)`, not the raw map: a hang logged by hand has to silence the
             // evening reminder too, and reading the map directly here is exactly how the
             // card and the reminder drift apart.
@@ -312,8 +318,15 @@ final class TemplateStore {
                 enabled: template.remindersEnabled && !template.isOnDemand,
                 outstandingToday: outstanding
             )
-        }
+        } : []
         Task { await ReminderPlanner.replan(inputs) }
+    }
+
+    /// Settings flipped `remindsOnThisDevice`: replan on the spot rather than at the
+    /// next write, because a switch that only takes effect after the next save reads as
+    /// a switch that does nothing.
+    func reminderDeviceSettingChanged() {
+        syncDerived(refoldingMaxes: false)
     }
 
     // MARK: - Fetches
@@ -384,14 +397,9 @@ final class TemplateStore {
     /// not fill a slot — it settles the whole day, which is a separate question asked by
     /// `climbToday`.
     private static func completions(in logs: [WorkoutLog], on day: DayStamp) -> [UUID: Int] {
-        var counts: [UUID: Int] = [:]
-        for log in logs where log.dayKey == day.raw && !log.kind.isClimb {
-            // A log whose routine was deleted still counts as a session trained, but it
-            // has no routine to attribute to — grouping is best-effort by design.
-            guard let id = log.templateID else { continue }
-            counts[id, default: 0] += 1
-        }
-        return counts
+        // The rule lives on `Collection where Element == WorkoutLog`, beside `climb(on:)`,
+        // so the watch's own fold of today's rows answers identically.
+        logs.hangCompletions(on: day)
     }
 
     /// `.hangManual` ONLY, deliberately — not every log with a nil `templateID`. A
@@ -399,7 +407,7 @@ final class TemplateStore {
     /// on purpose (see `completions`); crediting those here would retroactively change
     /// how old days score. A hand-logged hang never had a routine to begin with.
     private static func unattributedHangs(in logs: [WorkoutLog], on day: DayStamp) -> Int {
-        logs.filter { $0.dayKey == day.raw && $0.kind == .hangManual }.count
+        logs.unattributedHangs(on: day)
     }
 
     /// The climb logged today, if any. The rule lives on `Collection where Element ==
@@ -478,23 +486,15 @@ final class TemplateStore {
     /// recording a right-hand max would supersede the left-hand one you took a minute
     /// earlier, and one of your two hands would silently lose its number.
     private static func newestPerGrip(_ records: [MaxRecord]) -> [String: MaxRecord] {
-        var newest: [String: MaxRecord] = [:]
-        for record in records {
-            let key = record.maxKey
-            if let held = newest[key], held.recordedAt >= record.recordedAt { continue }
-            newest[key] = record
-        }
-        return newest
+        // On `Collection where Element == MaxRecord` so the watch's runner resolves
+        // loads against exactly the fold the phone's does.
+        records.newestPerGripAndHand()
     }
 
     /// Derived from `currentMaxes` in the same breath, so the two can never disagree
     /// about what your max is.
     private static func table(from newest: [String: MaxRecord]) -> MaxTable {
-        var table = MaxTable()
-        for record in newest.values {
-            table.record(record.kg, grip: record.gripKey, side: record.side)
-        }
-        return table
+        MaxTable.folding(newest)
     }
 
     // MARK: - Reads
@@ -972,26 +972,16 @@ final class TemplateStore {
                        startedAt: Date,
                        finishedAt: Date,
                        rpe: RPE?, newMaxes: [MaxRecord] = []) -> WorkoutLog? {
-        guard newMaxes.allSatisfy({ $0.kg.isFinite && $0.kg > 0 }) else {
-            saveError = String(localized: "Couldn't save this workout. Please try again.")
-            return nil
-        }
-        let log = WorkoutLog(
-            plan: plan,
-            templateID: template?.id,
-            // FROZEN at save: renaming a routine later must not retro-rename history.
-            templateName: template?.name ?? plan.name,
-            sessionsPerDayTarget: template?.sessionsPerDay ?? 1,
-            reps: reps,
-            startedAt: startedAt,
-            finishedAt: finishedAt,
-            day: clock.today
-        )
-        log.rpe = rpe?.rawValue
-        context.insert(log)
-        for max in newMaxes { context.insert(max) }
-        persistAndSync(maxesChanged: !newMaxes.isEmpty)
-        guard saveError == nil else { return nil }
+        // The write itself is `SessionLedger`'s — one implementation for the phone and
+        // the watch. What is the STORE's is everything that follows a write: the
+        // completion counts, the strip, the reminders and the review prompt's tally,
+        // recomputed in the same breath so a session never vanishes until relaunch.
+        let log = ledger.recordSession(plan: plan, template: template, reps: reps,
+                                       startedAt: startedAt, finishedAt: finishedAt,
+                                       rpe: rpe, newMaxes: newMaxes)
+        saveError = ledger.saveError
+        syncDerived(refoldingMaxes: !newMaxes.isEmpty)
+        guard let log else { return nil }
         sessionsSavedThisLaunch += 1
         return log
     }
@@ -1517,6 +1507,7 @@ final class TemplateStore {
     /// arrives with its reason already on the previous screen.
     private func askNotificationPermissionOnce(for draft: RoutineDraft) {
         guard draft.remindersEnabled, !draft.reminders.isEmpty,
+              settings.remindsOnThisDevice,
               !settings.didAskNotificationPermission else { return }
         Task { [weak self] in
             guard let self else { return }

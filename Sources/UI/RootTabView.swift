@@ -50,6 +50,9 @@ struct RootTabView: View {
         // Signature iOS 26: the bar collapses to a pill on scroll-down and returns on
         // scroll-up, handing the content the full screen while it's being read.
         .tabBarMinimizeBehavior(.onScrollDown)
+        // On iPad the four tabs become the top tab bar that can expand into a sidebar;
+        // on iPhone this is the ordinary bar. One declaration, both idioms.
+        .tabViewStyle(.sidebarAdaptable)
         // A rolled-back write is the one failure with nowhere else to surface. The
         // builder renders `saveError` inline beside its own Save, but delete, undo,
         // reorder and "make this the one Today opens on" all fire from a menu that is

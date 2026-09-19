@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
 
+#if !os(watchOS)
 import AVFoundation
 import CoreHaptics
 import Foundation
+
+extension CuePlayer: RunnerCuePlaying {}
 
 /// Plays what `SessionRunner` asks for — and nothing else.
 ///
@@ -460,3 +463,4 @@ private enum CueHaptic {
         ], relativeTime: time)
     }
 }
+#endif

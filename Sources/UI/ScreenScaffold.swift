@@ -39,6 +39,10 @@ struct ScreenScaffold<Content: View>: View {
     var fitsOnePage: Bool = false
     @ViewBuilder var content: Content
 
+    /// Size CLASS, never the idiom: a Slide Over iPad column is compact and gets the
+    /// phone width; the same iPad full-screen is regular and gets the wider one.
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
         NavigationStack {
             ScrollView { column }
@@ -65,7 +69,8 @@ struct ScreenScaffold<Content: View>: View {
         // 22 is the gutter content scrolls off into. Nothing scrolls off a page that
         // cannot scroll, so it is the cheapest 16 pt on the screen.
         .padding(.bottom, fitsOnePage ? 6 : Metrics.spacing)
-        .frame(maxWidth: Metrics.maxContentWidth)
+        .frame(maxWidth: sizeClass == .regular ? Metrics.maxContentWidthRegular
+                                               : Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
     }
 }

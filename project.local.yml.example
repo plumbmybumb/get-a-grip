@@ -7,6 +7,9 @@ settings:
     DEVELOPMENT_TEAM: YOURTEAMID
     GETAGRIP_APP_GROUP: group.com.example.getagrip
     GETAGRIP_CLOUD_CONTAINER: iCloud.com.example.getagrip
+    # The iOS app's id again: the watch app is `<this>.watchkitapp` and names it as
+    # its companion. Keep it identical to Doigt's PRODUCT_BUNDLE_IDENTIFIER below.
+    GETAGRIP_COMPANION_BUNDLE_ID: com.example.getagrip
     # Optional. Your own Frez Developer Program access key, for Frez Dyno calibration
     # lookups. Leave it out and a Dyno connects but reports that it cannot fetch its
     # calibration. Never commit a real key.

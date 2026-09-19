@@ -7,6 +7,7 @@ options:
   bundleIdPrefix: run.nuri
   deploymentTarget:
     iOS: "26.0"
+    watchOS: "26.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
@@ -26,6 +27,10 @@ settings:
     DEVELOPMENT_TEAM: ""
     GETAGRIP_APP_GROUP: group.run.nuri.doigt
     GETAGRIP_CLOUD_CONTAINER: iCloud.run.nuri.doigt
+    # The iOS app's bundle id, as the watch app needs it twice: as its companion and as
+    # the prefix of its own `<companion>.watchkitapp`. Forks set it beside their
+    # PRODUCT_BUNDLE_IDENTIFIER in project.local.yml.
+    GETAGRIP_COMPANION_BUNDLE_ID: run.nuri.doigt
     # Frez Dyno calibration lookups need a Frez Developer Program access key. It is
     # PRIVATE and never committed: the official build supplies it from the ignored
     # project.local.yml (see BUILDING.md). Empty here, so source, CI and forks build a
@@ -75,6 +80,13 @@ targets:
           Get a Grip saves your shareable images to your photo library.
         NSCameraUsageDescription: >-
           Get a Grip uses your camera to scan shared routine QR codes.
+        # Required of the COMPANION by the watch app's workout session — the phone
+        # itself never reads or writes Health data, and the strings say so.
+        NSHealthShareUsageDescription: >-
+          Get a Grip does not read your health data.
+        NSHealthUpdateUsageDescription: >-
+          The Apple Watch app records each hangboard session as a workout so it
+          counts toward your rings and keeps running while your wrist is down.
         # A routine shared as a QR code IS the routine — the whole plan rides in the
         # URL's fragment, so scanning one in the system Camera app opens Get a Grip with
         # everything it needs and no server anywhere. The scheme is the only half of
@@ -95,8 +107,18 @@ targets:
           - remote-notification
           - bluetooth-central
         NSSupportsLiveActivities: true
+        # iPhone stays PORTRAIT: the island hand's fixed rect and the one-page Today are
+        # both portrait facts. iPad must support every orientation — multitasking has
+        # required it since iOS 9 and iPadOS 26 is retiring the full-screen opt-out —
+        # so the layouts that need a landscape form (the runner, History) switch on size
+        # class and aspect, never on the idiom.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     entitlements:
       path: Sources/Doigt.entitlements
       properties:
@@ -108,13 +130,21 @@ targets:
         # painful to retrofit as the bundle id, and a workout widget is likely.
         com.apple.security.application-groups:
           - "$(GETAGRIP_APP_GROUP)"
+        # The watch app's workout session needs HealthKit, and Apple requires the
+        # capability on the companion as well. The phone never touches Health itself.
+        com.apple.developer.healthkit: true
         # Xcode resolves the signed environment from the provisioning profile.
         # Check the final distribution export for production; see BUILDING.md.
         aps-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt
-        TARGETED_DEVICE_FAMILY: "1" # iPhone only
+        TARGETED_DEVICE_FAMILY: "1,2" # iPhone + iPad (2026-09-19)
+        # OFF until someone has run it on a Mac with a gauge: Apple offers every iPad
+        # app on Apple silicon Macs by default, and CoreBluetooth there is untested by
+        # this project. Flip it deliberately, then re-check the App Store Connect
+        # availability box that mirrors it.
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         MARKETING_VERSION: "1.0.4"
         CURRENT_PROJECT_VERSION: "9"
         GENERATE_INFOPLIST_FILE: NO
@@ -122,6 +152,9 @@ targets:
     dependencies:
       # Embedded, so the Live Activity ships inside the app.
       - target: DoigtWidget
+        embed: true
+      # Embedded under Watch/, so the watch app installs with the phone's.
+      - target: DoigtWatch
         embed: true
 
   # The Live Activity renders in its own process, so it compiles `Shared/` verbatim —
@@ -153,10 +186,85 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt.widget
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         MARKETING_VERSION: "1.0.4"
         CURRENT_PROJECT_VERSION: "9"
         GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+
+  # The watch app: a STANDALONE GAUGE HOST — see `Watch/DoigtWatchApp.swift`. It compiles
+  # the engine, the models, the BLE clients and the runner session VERBATIM from the
+  # same files as the phone; the platform seams are `#if os(watchOS)` blocks inside
+  # them, so a rule fixed in one place is fixed on both. `TemplateStore` is deliberately
+  # NOT here — it is the phone's derived world (reminders, undo, the consistency strip);
+  # the watch writes through `SessionLedger` and reads with `@Query`.
+  DoigtWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Watch
+      - path: Shared
+      - path: Sources/Model
+      - path: Sources/BLE
+      - path: Sources/Store
+        includes:
+          - "DayClock.swift"
+          - "DebugSeeding.swift"
+          - "DeviceStore.swift"
+          - "DiagnosticBreadcrumbs.swift"
+          - "PipelineDiagnostics.swift"
+          - "SessionLedger.swift"
+          - "StorageMode.swift"
+      - path: Sources/Runner
+        includes:
+          - "IdleTimerLock.swift"
+          - "RestFocusPresentation.swift"
+          - "RunnerSession.swift"
+          - "RunnerTrainingGuidance.swift"
+          - "SessionActivityController.swift"
+          - "TarePolicy.swift"
+      - path: Sources/UI/Components/WeightUnits.swift
+    info:
+      path: Watch/Info.plist
+      properties:
+        CFBundleDisplayName: "Get a Grip"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        GetAGripCloudContainer: "$(GETAGRIP_CLOUD_CONTAINER)"
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: "$(GETAGRIP_COMPANION_BUNDLE_ID)"
+        # `workout-processing` is what keeps the app — and with it the Bluetooth stream
+        # — alive with the wrist down; `bluetooth-central` lets the link deliver while it
+        # does. Neither is a licence to scan in the background: the app connects only
+        # when a session starts.
+        WKBackgroundModes:
+          - workout-processing
+        UIBackgroundModes:
+          - bluetooth-central
+        NSBluetoothAlwaysUsageDescription: >-
+          Get a Grip connects to your force gauge over Bluetooth to measure the
+          force you pull during a training session.
+        NSHealthShareUsageDescription: >-
+          Get a Grip does not read your health data.
+        NSHealthUpdateUsageDescription: >-
+          Get a Grip records each hangboard session as a workout so it counts toward
+          your rings and keeps running while your wrist is down.
+    entitlements:
+      path: Watch/DoigtWatch.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.icloud-services:
+          - CloudKit
+        com.apple.developer.icloud-container-identifiers:
+          - "$(GETAGRIP_CLOUD_CONTAINER)"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: "$(GETAGRIP_COMPANION_BUNDLE_ID).watchkitapp"
+        MARKETING_VERSION: "1.0.4"
+        CURRENT_PROJECT_VERSION: "9"
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
         SKIP_INSTALL: YES
 
   DoigtTests:
@@ -173,7 +281,7 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt.tests
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Doigt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Doigt"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
@@ -189,9 +297,15 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt.uitests
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
 
 schemes:
+  DoigtWatch:
+    build:
+      targets:
+        DoigtWatch: all
+    run:
+      config: Debug
   LegalUI:
     build:
       targets:

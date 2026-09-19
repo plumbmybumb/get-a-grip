@@ -20,9 +20,15 @@ struct GripIslandPanel: View {
     private static let bottomRadius: CGFloat = 42
     /// Everything above this belongs to the hand.
     private static let handClearance: CGFloat = 148
+    /// On a regular-width screen the panel is a black TAB dropping from the top edge,
+    /// centred, with the hand centred on it — not a slab across a 13-inch display. Every
+    /// phone is narrower than this, so on a phone it is still the screen's own width,
+    /// flush with the island.
+    private static let widthCap: CGFloat = 520
 
     var body: some View {
         GeometryReader { geo in
+            let panelWidth = min(geo.size.width, Self.widthCap)
             ZStack(alignment: .top) {
                 // Darker than a normal scrim: the unselected fingers are BLACK, and they
                 // have to read against whatever routine is behind them.
@@ -39,8 +45,10 @@ struct GripIslandPanel: View {
                         card
                         IslandHandPicker(fingers: $grip.fingers,
                                          position: grip.position,
-                                         screenWidth: geo.size.width)
+                                         screenWidth: panelWidth)
                     }
+                    .frame(width: panelWidth)
+                    .frame(maxWidth: .infinity)
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }

@@ -32,6 +32,8 @@ struct HistoryView: View {
     @Environment(DayClock.self) private var clock
     @Environment(TemplateStore.self) private var templates
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Half of the wide-layout gate; the view's own aspect is the other half. See `body`.
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     /// Which grip's trend is on screen. nil means "the most-trained one". ONE selection
     /// shared across every card in the trend deck, deliberately: picking "20 mm 4F HC"
@@ -88,113 +90,17 @@ struct HistoryView: View {
 
     var body: some View {
         trendCache.prepare(logIDs: logs.map(\.id))
-        // A real `List` rather than `ScreenScaffold`'s ScrollView, for exactly the
-        // reason Maxes is one: swipe-to-delete, the row-slide physics and the full-swipe
-        // commit all come from UIKit, and a hand-rolled drag gesture never matches them.
-        // The two summary cards are just rows; nothing here needs `scrollTo`.
         return NavigationStack {
-            List {
-                if logs.isEmpty {
-                    emptyCard.houseListRow(top: 12, bottom: 10)
-                } else {
-                    // Stagger stops at the cards, which are the only rows guaranteed to
-                    // be on screen at load. A `List` is lazy, so a staggered session row
-                    // would fade and rise as it scrolled under your thumb — an entrance
-                    // animation replayed mid-scroll reads as the screen glitching.
-                    // One card per 5-WEEK WINDOW, swiped like every other deck (Nuri,
-                    // 2026-08-10: "swipable cards of previous windows") — and only a
-                    // deck once a second window exists to swipe to, the same honesty
-                    // rule as Today's.
-                    // Folded ONCE here and handed down, rather than each of the ~200
-                    // questions a card asks re-scanning the whole log array. See
-                    // `DayLedger`.
-                    let ledger = DayLedger(logs: logs, today: clock.today, trackingSince: templates.trackingSince)
-                    Group {
-                        if monthPageCount(ledger) > 1 {
-                            monthDeck(ledger)
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 12, leading: 0,
-                                                          bottom: 6, trailing: 0))
-                        } else {
-                            monthCard(0, ledger).houseListRow(top: 12, bottom: 6)
-                        }
-                    }
-                    .tourAnchor(.historyMonth)
-                    .staggerIn(0)
-
-                    // One trend card per routine with measured pulls, and the deck only
-                    // exists once a second routine has data to swipe to — the same rule
-                    // as Today's: a permanent sliver of "more" on a screen with one
-                    // routine would say there is more when there isn't.
-                    // Bound once: it walks every log, and reading it three times in one
-                    // body evaluation walked them three times.
-                    let routines = routineOptions
-                    // Indexed once for the deck. Each card then scans only its own
-                    // sessions for grip options and series instead of filtering the
-                    // entire history once per routine, per chip tap.
-                    let logsByRoutine = routineLogIndex
-                    Group {
-                        if routines.count > 1 {
-                            trendDeck(routines, logsByRoutine: logsByRoutine)
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                                // Zero horizontal insets: the deck manages its own
-                                // margins so the neighbour peeks at the SCREEN edge,
-                                // not at the row's inset.
-                                .listRowInsets(EdgeInsets(top: 6, leading: 0,
-                                                          bottom: 6, trailing: 0))
-                        } else if let only = routines.first {
-                            trendCard(only, logs: logsByRoutine[only.key, default: []])
-                                .houseListRow(top: 6, bottom: 6)
-                        } else {
-                            emptyTrendCard.houseListRow(top: 6, bottom: 6)
-                        }
-                    }
-                    .staggerIn(1)
-
-                    // A plain row, never a `Section` header: plain-style headers PIN, and
-                    // the content then scrolls illegibly behind a clear background.
-                    CapsLabel(String(localized: "Sessions")).houseListRow(top: 10, bottom: 2)
-
-                    // TEN, then a door (Nuri, 2026-08-10): the log grows forever, and a
-                    // habit app's history would soon be a hundred rows of scroll under
-                    // two cards. The recent ones are the ones you check; the rest are
-                    // one tap away, not gone.
-                    ForEach(visibleLogs) { log in
-                        SessionRow(log: log,
-                                   name: displayName(of: log),
-                                   leadingGrip: reps(for: log).first?.grip)
-                            .sessionListRow()
-                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                Button {
-                                    analysisExport = makeExportRequest(workout: log)
-                                } label: {
-                                    Label("Share", systemImage: "square.and.arrow.up")
-                                }
-                                .tint(Accent.graphite)
-                                .accessibilityLabel("Export workout")
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                deleteButton(log)
-                            }
-                    }
-
-                    if !showAllSessions, logs.count > Self.recentSessionLimit {
-                        showAllRow
-                    }
-
-                    footnote.houseListRow(top: 14, bottom: 24)
-                }
+            // TWO PANES when the window is regular-width AND wider than tall: an iPad in
+            // landscape, or a foldable opened sideways. Size class and aspect, never the
+            // idiom — an iPad in portrait keeps the single column, and a Slide Over column
+            // is a phone. Apple's own guidance for the foldable says the same, and
+            // `RunnerView.live(_:)` gates its wide layout on exactly this expression.
+            GeometryReader { geometry in
+                content(wide: sizeClass == .regular
+                            && geometry.size.width > geometry.size.height,
+                        width: geometry.size.width)
             }
-            .listStyle(.plain)
-            // The list draws its own cards on the slate field; the system's grouped fill
-            // would sit between them and the background they are meant to float on.
-            .scrollContentBackground(.hidden)
-            // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling it
-            // disturbs the safe-area layout and the title creeps under the status bar.
-            .background { AppBackground() }
-            .scrollEdgeEffectStyle(.soft, for: .bottom)
             .navigationTitle("History")
             .navigationSubtitle(subtitle)
             // The screen-level action belongs on the screen's own bar: the month card's
@@ -205,6 +111,9 @@ struct HistoryView: View {
                 ToolbarItem(placement: .primaryAction) { exportButton }
             }
         }
+        // The stack, the title, the undo bar, the sheets and the feedback are declared
+        // ONCE and shared by both layouts. A pane that carried its own would give the
+        // wide window two undo bars and two copies of every sheet.
         .safeAreaInset(edge: .bottom) { undoBar }
         .sensoryFeedback(.success, trigger: undoTick)
         .sheet(item: $calendarShare) { request in
@@ -217,6 +126,207 @@ struct HistoryView: View {
                 analysisExport = nil
             }
         }
+    }
+
+    /// One column or two, built from the same blocks.
+    ///
+    /// The empty state stays single-column in both: with nothing logged there is no log
+    /// to stand beside the summaries, and two half-empty panes state the emptiness twice.
+    @ViewBuilder
+    private func content(wide: Bool, width: CGFloat) -> some View {
+        if logs.isEmpty {
+            List {
+                emptyCard.houseListRow(top: 12, bottom: 10)
+            }
+            .historyList()
+            // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling it
+            // disturbs the safe-area layout and the title creeps under the status bar.
+            .background { AppBackground() }
+        } else {
+            // Folded ONCE per body evaluation and handed down, rather than each of the
+            // ~200 questions a card asks re-scanning the whole log array. See `DayLedger`.
+            let ledger = DayLedger(logs: logs, today: clock.today, trackingSince: templates.trackingSince)
+            // Bound once: it walks every log, and reading it three times in one body
+            // evaluation walked them three times.
+            let routines = routineOptions
+            // Indexed once for the deck. Each card then scans only its own sessions for
+            // grip options and series instead of filtering the entire history once per
+            // routine, per chip tap.
+            let logsByRoutine = routineLogIndex
+            if wide {
+                twoPane(ledger: ledger, routines: routines,
+                        logsByRoutine: logsByRoutine, width: width)
+            } else {
+                singleColumn(ledger: ledger, routines: routines, logsByRoutine: logsByRoutine)
+            }
+        }
+    }
+
+    /// The phone's History, unchanged: one `List`, the two summary blocks as rows above
+    /// the log.
+    ///
+    /// A real `List` rather than `ScreenScaffold`'s ScrollView, for exactly the reason
+    /// Maxes is one: swipe-to-delete, the row-slide physics and the full-swipe commit all
+    /// come from UIKit, and a hand-rolled drag gesture never matches them. The summary
+    /// cards are just rows; nothing here needs `scrollTo`.
+    private func singleColumn(ledger: DayLedger,
+                              routines: [RoutineOption],
+                              logsByRoutine: [String: [WorkoutLog]]) -> some View {
+        List {
+            monthBlock(ledger).summaryListRow(top: 12, bottom: 6)
+            trendBlock(routines, logsByRoutine: logsByRoutine).summaryListRow(top: 6, bottom: 6)
+            sessionRows
+        }
+        .historyList()
+        // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling it
+        // disturbs the safe-area layout and the title creeps under the status bar.
+        .background { AppBackground() }
+    }
+
+    /// An iPad in landscape: the summaries left, the log right.
+    ///
+    /// Full-bleed, the one `List` ran the month grid's cells out to the size of coasters
+    /// and made every session row a metre wide. Splitting it is not a new screen — it is
+    /// the same two questions in the same order, turned ninety degrees, and the right
+    /// half stays a real `List` because the swipes are the whole reason it is one. The
+    /// summaries move to a plain ScrollView because nothing in them swipes, and because a
+    /// column that scrolls on its own is the point: the grid and the trend stay put while
+    /// years of sessions go past them.
+    private func twoPane(ledger: DayLedger,
+                         routines: [RoutineOption],
+                         logsByRoutine: [String: [WorkoutLog]],
+                         width: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            ScrollView {
+                // 12 between the blocks and 12 above the first, so the column keeps the
+                // rhythm the `List` rows have today.
+                VStack(spacing: 12) {
+                    summaryBlocks(ledger: ledger, routines: routines,
+                                  logsByRoutine: logsByRoutine)
+                }
+                .padding(.top, 12)
+                .padding(.bottom, 24)
+            }
+            // Two cards usually fit the height; nothing should rubber-band when they do.
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollEdgeEffectStyle(.soft, for: .bottom)
+            .frame(width: summaryWidth(in: width))
+
+            List { sessionRows }
+                .historyList()
+        }
+        // ONE field behind both panes rather than one each: the mesh, its highlight and
+        // the vignette are all relative to their own bounds, so two would seam down the
+        // divider. Still `.background {}` and never a ZStack sibling — as a sibling it
+        // disturbs the safe-area layout and the title creeps under the status bar.
+        .background { AppBackground() }
+    }
+
+    /// How wide the summaries stand.
+    ///
+    /// A little under half the window, stopping at the house's regular-width column: past
+    /// 560 the five-week grid spaces its cells until a week stops reading as a row, and
+    /// the log is the longer thing, so it keeps the larger share. 420 is the floor the
+    /// cards were measured at — below it the trend chips wrap — and never more than half
+    /// the window, so a narrow regular-width landscape window cannot hand the sessions a
+    /// gutter to live in.
+    private func summaryWidth(in total: CGFloat) -> CGFloat {
+        min(max(total * 0.44, 420), Metrics.maxContentWidthRegular, total * 0.5)
+    }
+
+    // MARK: - The blocks both layouts are made of
+
+    /// One card per 5-WEEK WINDOW, swiped like every other deck (Nuri, 2026-08-10:
+    /// "swipable cards of previous windows") — and only a deck once a second window
+    /// exists to swipe to, the same honesty rule as Today's.
+    ///
+    /// The block pads ITSELF rather than leaning on a row inset, because it has to sit in
+    /// two containers: the deck manages its own margins so the neighbour peeks at the
+    /// container's edge — the screen in one column, the left pane in two — and the lone
+    /// card sits on the house grid either way.
+    @ViewBuilder
+    private func monthBlock(_ ledger: DayLedger) -> some View {
+        Group {
+            if monthPageCount(ledger) > 1 {
+                monthDeck(ledger)
+            } else {
+                monthCard(0, ledger).padding(.horizontal, Metrics.hPadding)
+            }
+        }
+        .tourAnchor(.historyMonth)
+        // Stagger stops at the cards, which are the only rows guaranteed to be on screen
+        // at load. A `List` is lazy, so a staggered session row would fade and rise as it
+        // scrolled under your thumb — an entrance animation replayed mid-scroll reads as
+        // the screen glitching.
+        .staggerIn(0)
+    }
+
+    /// One trend card per routine with measured pulls, and the deck only exists once a
+    /// second routine has data to swipe to — the same rule as Today's: a permanent sliver
+    /// of "more" on a screen with one routine would say there is more when there isn't.
+    @ViewBuilder
+    private func trendBlock(_ routines: [RoutineOption],
+                            logsByRoutine: [String: [WorkoutLog]]) -> some View {
+        Group {
+            if routines.count > 1 {
+                trendDeck(routines, logsByRoutine: logsByRoutine)
+            } else if let only = routines.first {
+                trendCard(only, logs: logsByRoutine[only.key, default: []])
+                    .padding(.horizontal, Metrics.hPadding)
+            } else {
+                emptyTrendCard.padding(.horizontal, Metrics.hPadding)
+            }
+        }
+        .staggerIn(1)
+    }
+
+    /// Both summaries, in order, for the wide layout's left column. The single column
+    /// places the same two blocks as `List` rows — same views, same tour anchor, same
+    /// entrance — so the two layouts cannot drift apart.
+    @ViewBuilder
+    private func summaryBlocks(ledger: DayLedger,
+                               routines: [RoutineOption],
+                               logsByRoutine: [String: [WorkoutLog]]) -> some View {
+        monthBlock(ledger)
+        trendBlock(routines, logsByRoutine: logsByRoutine)
+    }
+
+    /// The log itself: the label, the sessions, the door to the rest, the footnote.
+    /// `List` rows in BOTH layouts — that is what keeps the swipes, and it is why the
+    /// right-hand pane is a `List` rather than another ScrollView.
+    @ViewBuilder
+    private var sessionRows: some View {
+        // A plain row, never a `Section` header: plain-style headers PIN, and the
+        // content then scrolls illegibly behind a clear background.
+        CapsLabel(String(localized: "Sessions")).houseListRow(top: 10, bottom: 2)
+
+        // TEN, then a door (Nuri, 2026-08-10): the log grows forever, and a habit app's
+        // history would soon be a hundred rows of scroll under two cards. The recent ones
+        // are the ones you check; the rest are one tap away, not gone.
+        ForEach(visibleLogs) { log in
+            SessionRow(log: log,
+                       name: displayName(of: log),
+                       leadingGrip: reps(for: log).first?.grip)
+                .sessionListRow()
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    Button {
+                        analysisExport = makeExportRequest(workout: log)
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .tint(Accent.graphite)
+                    .accessibilityLabel("Export workout")
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    deleteButton(log)
+                }
+        }
+
+        if !showAllSessions, logs.count > Self.recentSessionLimit {
+            showAllRow
+        }
+
+        footnote.houseListRow(top: 14, bottom: 24)
     }
 
     /// Offered even with nothing logged — the sheet then says plainly that there is
@@ -886,6 +996,32 @@ struct HistoryView: View {
         }
         trendCache.series[cacheKey] = result
         return result
+    }
+}
+
+// MARK: - Rows and lists shared by both layouts
+
+private extension View {
+    /// The house `List` treatment. Shared so the single column and the wide layout's
+    /// right-hand pane cannot drift. `AppBackground` is deliberately NOT here: one
+    /// column puts it on this list, the wide layout puts one field behind both panes.
+    func historyList() -> some View {
+        self
+            .listStyle(.plain)
+            // The list draws its own cards on the slate field; the system's grouped fill
+            // would sit between them and the background they are meant to float on.
+            .scrollContentBackground(.hidden)
+            .scrollEdgeEffectStyle(.soft, for: .bottom)
+    }
+
+    /// A summary block as a `List` row. NO horizontal inset, unlike `houseListRow`: the
+    /// blocks pad themselves so they can sit in a plain column too, and a deck has to
+    /// reach the container's edge for its neighbour to peek at it.
+    func summaryListRow(top: CGFloat, bottom: CGFloat) -> some View {
+        self
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: top, leading: 0, bottom: bottom, trailing: 0))
     }
 }
 

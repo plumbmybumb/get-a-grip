@@ -54,13 +54,36 @@ struct SettingsView: View {
             gaugeKindRow.staggerIn(1)
             gaugeRow.staggerIn(2)
             weightUnitsCard.staggerIn(3)
+            remindersCard.staggerIn(4)
             // ABOVE About, deliberately. About is the block of statements the app OWES
             // whoever is using it — storage, attribution, licence — and a door out to a
             // person is a thing you DO, so it belongs with the other actions rather than
             // filed under the small print.
-            SupportCard().staggerIn(4)
-            openSourceCard.staggerIn(5)
-            aboutCard.staggerIn(6)
+            SupportCard().staggerIn(5)
+            openSourceCard.staggerIn(6)
+            aboutCard.staggerIn(7)
+        }
+    }
+
+    /// Which device rings. The routines sync; the reminders must not, or every iPad
+    /// and iPhone on the account would fire the same 19:30 at once — see
+    /// `SettingsStore.remindsOnThisDevice`.
+    private var remindersCard: some View {
+        @Bindable var settings = settings
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        return MaterialCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: $settings.remindsOnThisDevice) {
+                    Text(isPad ? "Remind on this iPad" : "Remind on this iPhone")
+                        .font(.system(.headline, weight: .semibold))
+                }
+                .accessibilityIdentifier("settings.remindsOnThisDevice")
+                Text("Routine reminders are scheduled on each device separately. A session logged on any of them silences the day’s reminders everywhere once it syncs.")
+                    .font(.system(.caption)).foregroundStyle(Ink.secondary)
+            }
+        }
+        .onChange(of: settings.remindsOnThisDevice) { _, _ in
+            templates.reminderDeviceSettingChanged()
         }
     }
 

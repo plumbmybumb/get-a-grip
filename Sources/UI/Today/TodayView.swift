@@ -203,7 +203,18 @@ struct TodayView: View {
         // routine list arrives through a `@Query`, so "is there a routine" is not knowable
         // on the first frame — reading it once in `onAppear` would show the empty-handed
         // act to somebody who has six routines.
-        .onChange(of: ordered.count, initial: true) { _, _ in syncTour() }
+        .onChange(of: ordered.count, initial: true) { _, _ in
+            syncTour()
+            #if DEBUG
+            // Headless verification: `-previewBuilder` opens the first routine's editor,
+            // because `simctl` cannot tap. Here rather than `onAppear` for the reason the
+            // tour is: the routine list is a `@Query`, unknowable on the first frame.
+            if ProcessInfo.processInfo.arguments.contains("-previewBuilder"),
+               builder == nil, let first = ordered.first {
+                builder = .edit(first.id)
+            }
+            #endif
+        }
         // ALSO when a session closes. Saving your first routine with "Save and start
         // training" takes you straight into the runner, so the resume has to wait for you
         // to come back — otherwise act two starts behind the cover, the session act is

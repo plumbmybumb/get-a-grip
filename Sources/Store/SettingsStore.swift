@@ -70,6 +70,16 @@ final class SettingsStore {
         didSet { store.set(weightUnit.rawValue, forKey: "weightUnit") }
     }
 
+    /// Whether THIS device schedules the routine reminders. Device-local on purpose: the
+    /// routines sync, so without this every iPad and iPhone signed into the account
+    /// would fire the same 19:30 reminder at once. The phone defaults to on and an iPad
+    /// to off (the default is injected by the app, since the store knows no idiom);
+    /// either can be flipped in Settings. Off clears this device's pending reminders on
+    /// the next replan and asks for no notification permission.
+    var remindsOnThisDevice: Bool {
+        didSet { store.set(remindsOnThisDevice, forKey: "remindsOnThisDevice") }
+    }
+
     /// One-shot, like the notification ask: the note Frez asks to be shown the first time
     /// the Dyno is selected has been read on this device. Never shown again after Next,
     /// and never shown at all for any other gauge.
@@ -83,10 +93,12 @@ final class SettingsStore {
         didSet { store.set(reviewRequested, forKey: "reviewRequested") }
     }
 
-    init(defaults: UserDefaults? = nil) {
+    /// `remindersDefault` is what an untouched device does — see `remindsOnThisDevice`.
+    init(defaults: UserDefaults? = nil, remindersDefault: Bool = true) {
         let s = defaults ?? AppGroup.defaults ?? .standard
         self.store = s
         weightUnit = WeightUnit(rawValue: s.string(forKey: "weightUnit") ?? "") ?? .kg
+        remindsOnThisDevice = s.object(forKey: "remindsOnThisDevice") as? Bool ?? remindersDefault
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-previewWeightLb") { weightUnit = .lb }
         #endif

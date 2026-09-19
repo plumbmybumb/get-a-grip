@@ -28,10 +28,13 @@ The current development toolchain is Xcode 26.6 / Swift 6 / iOS 26.5 simulator.
 ./build.sh          # Generate the Xcode project and build
 ./build.sh test     # XCTest suite
 ./build.sh run      # Launch with a deterministic demo gauge
+./build.sh watch-run   # Build the Apple Watch app and launch it on a watch simulator
 ```
 
 The script automatically selects an installed iPhone simulator. Set `SIM_UDID` to
-choose one explicitly. Simulator builds need no signing credentials and use local
+choose one explicitly — an iPad's udid builds and runs the iPad layouts. The watch
+verbs pick the newest Apple Watch simulator; set `WATCH_UDID` to choose. See
+[docs/PLATFORMS.md](docs/PLATFORMS.md) for how the iPad and the watch fit. Simulator builds need no signing credentials and use local
 storage. The simulator cannot verify real Bluetooth transport.
 
 For your own iPhone, copy `project.local.yml.example` to `project.local.yml`, enter

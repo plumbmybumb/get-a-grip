@@ -13,7 +13,41 @@ protocol RunnerActivityPublishing: AnyObject {
     func end() async
 }
 
+#if canImport(ActivityKit)
 extension SessionActivityController: RunnerActivityPublishing {}
+#endif
+
+/// The wrist publishes into nothing: watchOS has no ActivityKit, and the phone's card
+/// is mirrored to the watch by the system when the PHONE runs the session.
+@MainActor
+final class NoLiveActivity: RunnerActivityPublishing {
+    let isRunning = false
+    func start(routineName: String, plannedReps: Int, setCount: Int,
+               state: SessionActivity.ContentState) {}
+    func update(_ state: SessionActivity.ContentState) async {}
+    func end() async {}
+}
+
+/// What a session sounds and feels like, behind one seam: `CuePlayer` on the phone
+/// (tones plus Core Haptics), `WatchCuePlayer` on the wrist (the system's haptics). The
+/// runner emits `RunnerCue`s and never plays one itself, so this is the only line
+/// between the engine and anybody's ears.
+@MainActor
+protocol RunnerCuePlaying: AnyObject {
+    func begin()
+    func end()
+    func play(_ cue: RunnerCue)
+    func gripChanged()
+}
+
+/// Nothing at all — the default where no player has been chosen, and what tests get.
+@MainActor
+final class SilentCuePlayer: RunnerCuePlaying {
+    func begin() {}
+    func end() {}
+    func play(_ cue: RunnerCue) {}
+    func gripChanged() {}
+}
 
 enum StaleBatchHealDecision: Equatable {
     case hold
@@ -123,7 +157,7 @@ final class RunnerSession {
 
     @ObservationIgnored private let device: DeviceStore
     @ObservationIgnored private let liveActivity: any RunnerActivityPublishing
-    @ObservationIgnored private let cues = CuePlayer()
+    @ObservationIgnored private let cues: any RunnerCuePlaying
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var hasStarted = false
     @ObservationIgnored private var hasBegun = false
@@ -152,11 +186,13 @@ final class RunnerSession {
     /// must not start quietly using one that happens to be connected.
     init(template: SessionTemplate, device: DeviceStore, maxes: MaxTable = MaxTable(),
          timerOnly: Bool = false,
-         liveActivity: any RunnerActivityPublishing = SessionActivityController()) {
+         liveActivity: any RunnerActivityPublishing = RunnerSession.defaultLiveActivity(),
+         cues: any RunnerCuePlaying = RunnerSession.defaultCues()) {
         self.template = template
         self.plan = template.plan
         self.device = device
         self.liveActivity = liveActivity
+        self.cues = cues
         self.timerOnly = timerOnly
         // Read ONCE, like the timing policy below: what this session is driving must not
         // change under it because a different gauge was selected in Settings mid-workout.
@@ -172,6 +208,28 @@ final class RunnerSession {
             plan: template.plan, maxes: maxes, timerOnly: timerOnly,
             maxCreditedSampleGapSeconds: device.gaugeCapabilities.hasDeviceClock
                 ? nil : Self.syntheticClockGapCapSeconds)
+    }
+
+    /// The platform's Live Activity, or none. A default argument rather than an `#if`
+    /// inside `init`, so every caller — the runner screen, the watch, the tests — reads
+    /// the same signature.
+    static func defaultLiveActivity() -> any RunnerActivityPublishing {
+        #if canImport(ActivityKit)
+        SessionActivityController()
+        #else
+        NoLiveActivity()
+        #endif
+    }
+
+    /// The phone's tones and haptics; silence on the wrist until the watch screen hands
+    /// in its own player, because the default must never reach for a framework the
+    /// platform lacks.
+    static func defaultCues() -> any RunnerCuePlaying {
+        #if os(watchOS)
+        SilentCuePlayer()
+        #else
+        CuePlayer()
+        #endif
     }
 
     var weightUnit: WeightUnit = .kg {

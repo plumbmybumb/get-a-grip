@@ -29,6 +29,12 @@ struct RunnerView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// Size CLASS, never the idiom — see `live(_:)`.
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    /// The two-column layout's ceiling. Wider than this and the graph is a metre from
+    /// the numbers it explains.
+    private static let wideWidth: CGFloat = 1000
 
     @State private var session: RunnerSession?
     /// Whether the grip hangs off the Dynamic Island — which is a fact about the DEVICE,
@@ -243,7 +249,7 @@ struct RunnerView: View {
             // scrolling instead of clipping labels or reducing their chosen type.
             GeometryReader { geometry in
                 ScrollView {
-                    liveContent(session)
+                    liveContent(session, wide: false)
                         .frame(minHeight: max(0, geometry.size.height - (hasIsland ? 46 : 0)), alignment: .top)
                 }
                 .scrollBounceBehavior(.basedOnSize)
@@ -253,11 +259,41 @@ struct RunnerView: View {
                 .padding(.top, hasIsland ? 46 : 0)
             }
         } else {
-            liveContent(session)
+            // WIDE when the window is regular-width AND wider than tall: an iPad in
+            // landscape, or a foldable opened sideways. Size class and aspect, never the
+            // idiom — an iPad in portrait keeps the stacked column, and a Slide Over
+            // column is a phone. Apple's own guidance for the foldable says the same.
+            GeometryReader { geometry in
+                liveContent(session, wide: sizeClass == .regular
+                                              && geometry.size.width > geometry.size.height)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+            }
         }
     }
 
-    private func liveContent(_ session: RunnerSession) -> some View {
+    private func liveContent(_ session: RunnerSession, wide: Bool) -> some View {
+        Group {
+            if wide {
+                wideContent(session)
+            } else {
+                stackedContent(session)
+            }
+        }
+        .padding(.horizontal, Metrics.hPadding)
+        // The fingers reach ~92 pt down the screen and content starts at 59, so the hand
+        // needs the gap bought for it — otherwise the grip name lands under the knuckles.
+        .padding(.top, hasIsland ? (typeSize.isAccessibilitySize ? 0 : 46) : 8)
+        .padding(.bottom, Metrics.spacing)
+        // The stacked column keeps the PHONE's width even on a regular-width screen: the
+        // hero numeral, the ring and the button rows were all measured at 440, and an
+        // iPad in portrait shows that same picture with wider margins. The wide layout
+        // earns more because it is two columns.
+        .frame(maxWidth: wide ? Self.wideWidth : Metrics.maxContentWidth)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// The phone's layout: identity, hero, graph, controls, top to bottom.
+    private func stackedContent(_ session: RunnerSession) -> some View {
         VStack(spacing: 12) {
             if timerOnly {
                 timerOnlyIdentity(session)
@@ -265,6 +301,42 @@ struct RunnerView: View {
                 timerPositionLine(session)
             } else {
                 measuredTop(session)
+                traceCard(session)
+            }
+            controls(session)
+        }
+    }
+
+    /// Two columns for a wide window: the words and numbers read at a distance on the
+    /// left, at exactly the phone's column width so nothing is re-measured, with the
+    /// controls under them; the graph — or the timer dial — takes the whole height on
+    /// the right. The same views, arranged for the room; nothing is invented for the
+    /// iPad. This is also the "opened flat" layout a foldable gets for free.
+    private func wideContent(_ session: RunnerSession) -> some View {
+        HStack(alignment: .top, spacing: Metrics.spacing) {
+            VStack(spacing: 12) {
+                if timerOnly {
+                    timerOnlyIdentity(session)
+                    timerPositionLine(session)
+                } else {
+                    measuredTop(session)
+                }
+                Spacer(minLength: 12)
+                controls(session)
+            }
+            .frame(width: Metrics.maxContentWidth - 2 * Metrics.hPadding)
+            if timerOnly {
+                timerDial(session)
+            } else {
+                traceCard(session)
+            }
+        }
+    }
+
+    /// The graph and everything that sits on it. Shared by both layouts so the two
+    /// cannot drift — the lane, the no-signal notice, the grip cue and the tour anchor
+    /// are one card wherever it is placed.
+    private func traceCard(_ session: RunnerSession) -> some View {
                 ZStack {
                     LiveTrace(thresholdKg: session.plan.thresholdKg,
                               // Only while the rep is actually live. A lane drawn during
@@ -323,16 +395,6 @@ struct RunnerView: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("runner.graph")
                 .tourAnchor(.runnerTrace)
-            }
-            controls(session)
-        }
-        .padding(.horizontal, Metrics.hPadding)
-        // The fingers reach ~92 pt down the screen and content starts at 59, so the hand
-        // needs the gap bought for it — otherwise the grip name lands under the knuckles.
-        .padding(.top, hasIsland ? (typeSize.isAccessibilitySize ? 0 : 46) : 8)
-        .padding(.bottom, Metrics.spacing)
-        .frame(maxWidth: Metrics.maxContentWidth)
-        .frame(maxWidth: .infinity)
     }
 
     /// The scheduled interval, not the dwindling numeral,
@@ -1088,6 +1150,9 @@ struct RunnerView: View {
                            enabled: pauseEnabled, disabledReason: pauseReason) {
                     session.send(phase.isPaused ? .resume : .pause)
                 }
+                // An iPad on a bench with a keyboard case: space pauses, the same key
+                // every video player uses. The runner has no text field to fight over it.
+                .keyboardShortcut(.space, modifiers: [])
                 .accessibilityIdentifier("runner.pause")
                 // Neither Tare nor Connect belongs here without a gauge: one has nothing
                 // to zero and the other would offer to change the session you are in.
@@ -1112,6 +1177,7 @@ struct RunnerView: View {
             AdaptiveActionRow(spacing: 10) {
                 wideButton(String(localized: "Skip pull"), enabled: skipEnabled,
                            disabledReason: skipReason) { session.send(.skipRep) }
+                    .keyboardShortcut("s", modifiers: [])
                     .accessibilityIdentifier("runner.skipPull")
                 wideButton(String(localized: "Skip set"), enabled: skipEnabled,
                            disabledReason: skipReason) { session.send(.skipSet) }

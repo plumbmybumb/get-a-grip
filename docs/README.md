@@ -8,6 +8,7 @@ the release or audit they describe has shipped.
 | Document | What it holds |
 | --- | --- |
 | [NEXT_RELEASE.md](NEXT_RELEASE.md) | Fixes and features queued for the next iOS and Android versions |
+| [PLATFORMS.md](PLATFORMS.md) | iPad and Apple Watch: what shipped, the one-gauge rule, what is still owed on hardware |
 | [RELEASE_1.1.0_PLAN.md](RELEASE_1.1.0_PLAN.md) | The 1.1.0 development plan |
 | [ANDROID_PLAY_BETA.md](ANDROID_PLAY_BETA.md) | Play closed-beta playbook and build ledger |
 | [ANDROID_RELEASE_PRIVACY.md](ANDROID_RELEASE_PRIVACY.md) | Play privacy and release declarations |

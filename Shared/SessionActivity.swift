@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
 
+#if canImport(ActivityKit)
 import ActivityKit
+#else
+/// The wrist has no ActivityKit — the phone's Live Activity is mirrored to it by the
+/// system — but the runner still speaks this contract, so the shape exists everywhere
+/// and only the conformance is real on iOS.
+protocol ActivityAttributes: Codable, Hashable {
+    associatedtype ContentState: Codable & Hashable
+}
+#endif
 import Foundation
 import SwiftUI
 

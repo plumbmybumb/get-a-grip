@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
 
+#if os(watchOS)
+/// The wrist has no idle timer to hold: a running `HKWorkoutSession` is what keeps a
+/// watch session alive, and the screen sleeps and wakes with the wrist regardless. Same
+/// names, so the runner session compiles unchanged.
+@MainActor
+enum IdleTimerLock {
+    static func acquire() {}
+    static func release() {}
+}
+#else
 import UIKit
 
 /// Keeps the screen awake for as long as anything still needs it.
@@ -42,3 +52,4 @@ enum IdleTimerLock {
     static var depth: Int { holders }
     #endif
 }
+#endif

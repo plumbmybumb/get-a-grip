@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
 
+#if canImport(ActivityKit)
 import ActivityKit
 import Foundation
 
@@ -89,3 +90,4 @@ final class SessionActivityController {
         }
     }
 }
+#endif

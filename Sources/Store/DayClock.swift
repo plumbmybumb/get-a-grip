@@ -3,7 +3,9 @@
 
 import Foundation
 import Observation
+#if !os(watchOS)
 import UIKit
+#endif
 
 /// The app's single source of "today".
 ///
@@ -40,10 +42,17 @@ final class DayClock {
     init(today: DayStamp = .today()) {
         self.today = today
         let center = NotificationCenter.default
+        #if os(watchOS)
+        // No application object on the wrist. Foundation's day-change post is the same
+        // midnight; the manual-clock-change case UIKit also folds in is covered by the
+        // foreground refresh.
+        let names: [Notification.Name] = [.NSCalendarDayChanged, .NSSystemTimeZoneDidChange]
+        #else
         let names: [Notification.Name] = [
             UIApplication.significantTimeChangeNotification,
             .NSSystemTimeZoneDidChange,
         ]
+        #endif
         observers.tokens = names.map { name in
             center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 Task { @MainActor in self?.refresh() }

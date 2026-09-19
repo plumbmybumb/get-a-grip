@@ -3,7 +3,21 @@
 
 import Foundation
 import Observation
+#if !os(watchOS)
 import UIKit
+#endif
+
+#if os(watchOS)
+/// watchOS has no background-task assertion. `.invalid` is the only value there, so
+/// `beginBackgroundGrace` takes its DENIED branch — disconnect at once — which is the
+/// right rule for a watch: outside a workout session nothing keeps the app alive long
+/// enough for a grace to mean anything, and inside one the stream is left alone anyway.
+struct BackgroundAssertionID: Equatable, Sendable {
+    static let invalid = BackgroundAssertionID()
+}
+#else
+typealias BackgroundAssertionID = UIBackgroundTaskIdentifier
+#endif
 
 /// Everything the app knows about the gauge right now: link state, the live force
 /// reading, the rolling trace the graph draws, and battery/firmware.
@@ -420,7 +434,7 @@ final class DeviceStore {
 
     @ObservationIgnored private var isInBackground = false
     @ObservationIgnored private var backgroundGraceTask: Task<Void, Never>?
-    @ObservationIgnored private var backgroundAssertion: UIBackgroundTaskIdentifier = .invalid
+    @ObservationIgnored private var backgroundAssertion: BackgroundAssertionID = .invalid
     /// Set when the background rule tears down a broadcast scan; consumed by the next
     /// foreground return. Lives only across a background→foreground span, where no UI
     /// is reachable — an explicit `disconnect()` clears it.
@@ -491,10 +505,15 @@ final class DeviceStore {
     /// demand, and "what happens when iOS says no" is the branch that protects the
     /// gauge's battery — the one thing here that must not go untested.
     @ObservationIgnored
-    var beginAssertion: (@escaping @MainActor () -> Void) -> UIBackgroundTaskIdentifier = { handler in
-        UIApplication.shared.beginBackgroundTask(withName: "gauge-disconnect-grace") {
+    var beginAssertion: (@escaping @MainActor () -> Void) -> BackgroundAssertionID = { handler in
+        #if os(watchOS)
+        _ = handler
+        return .invalid
+        #else
+        return UIApplication.shared.beginBackgroundTask(withName: "gauge-disconnect-grace") {
             MainActor.assumeIsolated { handler() }
         }
+        #endif
     }
 
     /// Came back inside the window: the link was never touched, so there is nothing to
@@ -532,8 +551,10 @@ final class DeviceStore {
     }
 
     @ObservationIgnored
-    var endAssertion: (UIBackgroundTaskIdentifier) -> Void = {
-        UIApplication.shared.endBackgroundTask($0)
+    var endAssertion: (BackgroundAssertionID) -> Void = { id in
+        #if !os(watchOS)
+        UIApplication.shared.endBackgroundTask(id)
+        #endif
     }
 
     func stopStreaming(cause: StreamStopCause) {

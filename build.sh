@@ -4,6 +4,9 @@
 #   ./build.sh        -> regenerate project + build to the pinned simulator
 #   ./build.sh run    -> the above, then boot + install + launch on the simulator
 #   ./build.sh test   -> regenerate project + run the XCTest suite on the pinned simulator
+#   ./build.sh watch  -> regenerate project + build the watch app for a watchOS simulator
+#   ./build.sh watch-run -> the above, then boot + install + launch it WITH -mockDevice
+#   SIM_UDID=<an iPad's udid> ./build.sh run   -> the iPad build, same verbs
 #
 # It prints ONLY actionable errors/warnings + the final status. The full,
 # unfiltered xcodebuild log is always at build/last-build.log for debugging.
@@ -82,6 +85,67 @@ if [ "${1:-}" = "test" ]; then
   exit 0
 fi
 
+# 1c. `watch` / `watch-run` verbs: build the watch app for a watchOS simulator, and
+# optionally boot + install + launch it there. Always with the mock gauge — the watch
+# Simulator has no Bluetooth stack either. Override WATCH_UDID to pick a device.
+if [ "${1:-}" = "watch" ] || [ "${1:-}" = "watch-run" ]; then
+  WATCH_UDID="${WATCH_UDID:-}"
+  if [ -z "$WATCH_UDID" ]; then
+    WATCH_UDID=$(xcrun simctl list devices available -j | python3 -c '
+import json,sys,re
+items=[]
+for runtime, devices in json.load(sys.stdin)["devices"].items():
+    match=re.search(r"watchOS-(\d+)-(\d+)",runtime)
+    if match and int(match[1]) >= 26:
+        for d in devices:
+            if d.get("isAvailable") and d["name"].startswith("Apple Watch"):
+                items.append((int(match[1]),int(match[2]),d["name"],d["udid"]))
+print(max(items)[-1] if items else "")')
+  fi
+  if [ -z "$WATCH_UDID" ]; then
+    echo "Install a watchOS 26 or newer Apple Watch simulator in Xcode, or set WATCH_UDID."
+    exit 1
+  fi
+  WATCH_LOG="build/last-watch-build.log"
+  xcodebuild \
+    -project "$PROJECT" \
+    -scheme "DoigtWatch" \
+    -configuration Debug \
+    -destination "platform=watchOS Simulator,id=$WATCH_UDID" \
+    -derivedDataPath "$DERIVED" \
+    CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO \
+    build > "$WATCH_LOG" 2>&1
+  WSTATUS=$?
+  grep -E "error:|warning:|fatal error|ld: |Undefined symbol|The following build commands failed|BUILD SUCCEEDED|BUILD FAILED" "$WATCH_LOG" \
+    | grep -vE "appintentsmetadataprocessor.*Metadata extraction skipped" \
+    | sed -E 's#'"$PWD"'/##g' \
+    || true
+  if [ $WSTATUS -ne 0 ]; then
+    echo "❌ WATCH BUILD FAILED (status $WSTATUS) — full log: $WATCH_LOG"
+    exit $WSTATUS
+  fi
+  echo "✅ WATCH BUILD SUCCEEDED"
+  if [ "${1:-}" = "watch-run" ]; then
+    shift
+    # By path: Launch Services does not always know the Simulator by name.
+  open -a "$DEVELOPER_DIR/Applications/Simulator.app" 2>/dev/null || open -a Simulator 2>/dev/null \
+    || echo "⚠️  Could not open the Simulator app — continuing headless (simctl needs no window)"
+    xcrun simctl boot "$WATCH_UDID" 2>/dev/null || true
+    WATCH_APP="$DERIVED/Build/Products/Debug-watchsimulator/DoigtWatch.app"
+    WATCH_BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$WATCH_APP/Info.plist") \
+      || { echo "❌ Could not read the built watch app's bundle identifier" >&2; exit 1; }
+    xcrun simctl bootstatus "$WATCH_UDID" -b >/dev/null \
+      || { echo "❌ Simulator $WATCH_UDID did not finish booting" >&2; exit 1; }
+    xcrun simctl terminate "$WATCH_UDID" "$WATCH_BUNDLE_ID" 2>/dev/null || true
+    xcrun simctl install "$WATCH_UDID" "$WATCH_APP" \
+      || { echo "❌ Watch simulator install failed" >&2; exit 1; }
+    xcrun simctl launch "$WATCH_UDID" "$WATCH_BUNDLE_ID" -mockDevice "$@" >/dev/null \
+      || { echo "❌ Watch simulator launch failed" >&2; exit 1; }
+    echo "🚀 launched $WATCH_BUNDLE_ID (mock device) on watch simulator $WATCH_UDID"
+  fi
+  exit 0
+fi
+
 # 2. Build. Ad-hoc sign for the simulator (no team needed). NOTE: ad-hoc signing
 # strips the iCloud entitlements, so CloudKit-backed SwiftData falls back to the
 # local-only store in simulator builds (the app handles this — see DoigtApp.swift).
@@ -112,7 +176,9 @@ echo "✅ BUILD SUCCEEDED"
 # has no Bluetooth stack at all, so a real client would sit at "scanning" forever.
 if [ "${1:-}" = "run" ]; then
   shift
-  open -a Simulator || { echo "❌ Could not open Simulator" >&2; exit 1; }
+  # By path: Launch Services does not always know the Simulator by name.
+  open -a "$DEVELOPER_DIR/Applications/Simulator.app" 2>/dev/null || open -a Simulator 2>/dev/null \
+    || echo "⚠️  Could not open the Simulator app — continuing headless (simctl needs no window)"
   xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
   APP_PATH="$DERIVED/Build/Products/Debug-iphonesimulator/$SCHEME.app"
   BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP_PATH/Info.plist") \

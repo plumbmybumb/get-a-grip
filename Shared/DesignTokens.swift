@@ -2,7 +2,9 @@
 // Original contributions Copyright 2026 Nuri Bruner.
 
 import SwiftUI
+#if !os(watchOS)
 import UIKit
+#endif
 
 // Widget-safe design subset — this file is in `Shared/`, so when a workout widget
 // eventually exists it compiles into that target too. Nothing here may reference
@@ -27,7 +29,12 @@ extension Color {
 
     /// A colour that resolves differently in light vs dark appearance.
     static func adaptive(_ light: Color, _ dark: Color) -> Color {
+        #if os(watchOS)
+        // The wrist is always dark, and watchOS has no trait collection to ask.
+        dark
+        #else
         Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light) })
+        #endif
     }
 }
 
@@ -166,6 +173,11 @@ enum Metrics {
     /// system large title and toolbar rather than sitting inset from them.
     static let hPadding: CGFloat = 20
     static let maxContentWidth: CGFloat = 440
+    /// The column on a REGULAR-width screen (iPad, and a foldable's inner display). 440
+    /// was a phone number: centred in an 11-inch window it reads as a phone app in a
+    /// frame. 560 keeps the cards readable at arm's length without stretching a set row
+    /// into a form. Sheets keep 440 — a form sheet is already narrow.
+    static let maxContentWidthRegular: CGFloat = 560
     static let fieldHeight: CGFloat = 54
     static let buttonHeight: CGFloat = 56
     static let buttonHorizontalPadding: CGFloat = 16

@@ -91,3 +91,36 @@ extension MaxRecord {
         set { sourceRaw = newValue.rawValue }
     }
 }
+
+extension Collection where Element == MaxRecord {
+    /// Newest per GRIP **AND HAND** — see `maxKey`. Keyed on the grip alone, recording a
+    /// right-hand max would supersede the left-hand one you took a minute earlier, and
+    /// one of your two hands would silently lose its number.
+    ///
+    /// Here rather than in the store so the watch's runner resolves loads against
+    /// exactly the fold the phone's does.
+    func newestPerGripAndHand() -> [String: MaxRecord] {
+        var newest: [String: MaxRecord] = [:]
+        for record in self {
+            let key = record.maxKey
+            if let held = newest[key], held.recordedAt >= record.recordedAt { continue }
+            newest[key] = record
+        }
+        return newest
+    }
+
+    /// The table a session resolves its percentage targets against.
+    func maxTable() -> MaxTable { MaxTable.folding(newestPerGripAndHand()) }
+}
+
+extension MaxTable {
+    /// Built from the newest-per-hand fold in one breath, so a table can never disagree
+    /// with the records it was folded from.
+    static func folding(_ newest: [String: MaxRecord]) -> MaxTable {
+        var table = MaxTable()
+        for record in newest.values {
+            table.record(record.kg, grip: record.gripKey, side: record.side)
+        }
+        return table
+    }
+}

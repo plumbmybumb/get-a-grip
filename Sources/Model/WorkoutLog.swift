@@ -113,6 +113,31 @@ extension Collection where Element == WorkoutLog {
     func benchmark(on day: DayStamp) -> Bool {
         contains { $0.dayKey == day.raw && $0.kind == .benchmark }
     }
+
+    /// HANG sessions only, per routine, on `day` — the "1 of 2 today" join. A climb has
+    /// no routine to attribute to and does not fill a slot; it settles the whole day,
+    /// which is the separate question `climb(on:)` answers. A log whose routine was
+    /// deleted still counts as a session trained but has nothing to attribute to —
+    /// grouping is best-effort by design.
+    ///
+    /// Here rather than in the store so the watch, which has no store, counts a day
+    /// exactly as the phone does.
+    func hangCompletions(on day: DayStamp) -> [UUID: Int] {
+        var counts: [UUID: Int] = [:]
+        for log in self where log.dayKey == day.raw && !log.kind.isClimb {
+            guard let id = log.templateID else { continue }
+            counts[id, default: 0] += 1
+        }
+        return counts
+    }
+
+    /// `.hangManual` ONLY, deliberately — not every log with a nil `templateID`. A
+    /// runner session whose routine was later deleted also has no id, and it is dropped
+    /// on purpose (see `hangCompletions`); crediting those here would retroactively
+    /// change how old days score. A hand-logged hang never had a routine to begin with.
+    func unattributedHangs(on day: DayStamp) -> Int {
+        filter { $0.dayKey == day.raw && $0.kind == .hangManual }.count
+    }
 }
 
 extension WorkoutLog {

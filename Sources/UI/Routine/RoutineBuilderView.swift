@@ -96,6 +96,9 @@ private struct BuilderDocument: View {
     @Environment(SettingsStore.self) private var settings
     @Environment(TourController.self) private var tour
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Read once per window shape, never per keystroke — the size class only changes
+    /// when the window does, so it costs the document nothing the way `dismiss` did.
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     @Query(sort: [SortDescriptor(\SessionTemplate.sortIndex), SortDescriptor(\SessionTemplate.createdAt)])
     private var routines: [SessionTemplate]
@@ -182,7 +185,10 @@ private struct BuilderDocument: View {
                     .padding(.horizontal, Metrics.hPadding)
                     .padding(.top, 12)
                     .padding(.bottom, 28)
-                    .frame(maxWidth: Metrics.maxContentWidth)
+                    // The document takes the regular-width column on an iPad: a 440 pt
+                    // set list centred in a full-screen cover is a phone in a frame.
+                    .frame(maxWidth: sizeClass == .regular ? Metrics.maxContentWidthRegular
+                                                           : Metrics.maxContentWidth)
                     .frame(maxWidth: .infinity)
                 }
                 .scrollDismissesKeyboard(.interactively)
@@ -240,7 +246,17 @@ private struct BuilderDocument: View {
         // The builder act of the first-run tour draws over THIS screen — hosted here
         // since the deck it used to live on is gone.
         .tourHost(tour, act: .builder)
-        .onAppear { if mode.isCreating { tour.builderOpened() } }
+        .onAppear {
+            if mode.isCreating { tour.builderOpened() }
+            #if DEBUG
+            // Headless verification: `-previewGripPanel` opens the first set's grip
+            // panel, the one control on this screen a screenshot cannot reach.
+            if ProcessInfo.processInfo.arguments.contains("-previewGripPanel"),
+               let first = draft.plan.sets.first {
+                editingGrip = first.id
+            }
+            #endif
+        }
         // Only when there is something to lose: a swipe-down that discards six sets of
         // authored intent has no undo, unlike everything else in this document.
         .interactiveDismissDisabled(isDirty)

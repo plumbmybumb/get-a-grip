@@ -24,9 +24,22 @@ Info.plist, so treat it as a usage credential with device and rate limits that c
 extracted from a shipped binary, not as a secret that protects anyone's data.
 
 Use `DEVELOPER_DIR` to select an Xcode installation and `SIM_UDID` to choose an
-installed iOS 26+ iPhone simulator. Tests launch a simulator; close it when finished.
-Do not pass `-mockDevice` for real gauge verification. The in-app demo remains
-available to people without hardware.
+installed iOS 26+ iPhone or iPad simulator. Tests launch a simulator; close it when
+finished. Do not pass `-mockDevice` for real gauge verification. The in-app demo
+remains available to people without hardware.
+
+The Apple Watch app (`DoigtWatch`, embedded in the iOS app) builds with
+`./build.sh watch` and runs with `./build.sh watch-run`, on the newest installed
+watchOS 26+ simulator or the one `WATCH_UDID` names. The watch simulator has neither
+Bluetooth nor CloudKit, so `watch-run` always passes `-mockDevice`, and the DEBUG
+seeding arguments (`-seedTwoRoutines`, `-seedHistory`) give it routines to show;
+`-previewWatchRunner` opens the first routine's session on launch, and
+`-noWorkoutSession` keeps the Health permission sheet — which the simulator cannot
+answer — out of the way. Its bundle id is
+`$(GETAGRIP_COMPANION_BUNDLE_ID).watchkitapp`; the watch and the companion both carry
+the HealthKit capability, which the workout session needs. Real Bluetooth, Health and
+CloudKit behaviour on the wrist needs a signed device build — see
+[docs/PLATFORMS.md](docs/PLATFORMS.md) for what is still owed there.
 
 The app icon's procedural source is `scripts/make_app_icon.swift`. Run it with an
 output PNG path and `any`, `dark` or `tinted`. The tinted palette is grayscale for
