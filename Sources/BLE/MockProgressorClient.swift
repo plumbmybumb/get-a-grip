@@ -49,8 +49,8 @@ final class MockProgressorClient: ProgressorClient {
     /// `-mockJitterMS N` (DEBUG only): each delivery is late by a random 0…N ms, with the
     /// batches that fell due meanwhile landing together — the real radio's p95 300 ms /
     /// max 420 ms gaps between ~190 ms packets (Nuri's phone, 2026-09-19). The device
-    /// timestamps keep their 80 Hz; only arrival wobbles, which is what a jitter buffer
-    /// has to absorb.
+    /// timestamps keep their 80 Hz; only arrival wobbles, which is what the trace has to
+    /// draw through.
     private static let jitterMS: Int = {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -180,7 +180,7 @@ final class MockProgressorClient: ProgressorClient {
                 let now = ContinuousClock.now
                 // Everything handed over in one wake is ONE packet, marked once: the real
                 // radio's late notification carries all its samples under a single mark,
-                // and the store sizes its jitter buffer from packet starts.
+                // and the store learns the packet span from packet starts.
                 var packetStart = true
                 while due <= now {
                     self.emitBatch(packetStart: packetStart)

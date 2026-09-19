@@ -33,8 +33,8 @@ final class TraceDrawProbe: @unchecked Sendable {
     static let shared = TraceDrawProbe()
     /// `-traceHeadLog`: every draw's head position is kept and written to
     /// `Documents/tracehead.csv` by the diagnostics dumper. Smoothness is judged from
-    /// those rows — the head's step per frame, and how many points came due at once —
-    /// instead of from watching a screen; that is how the jitter buffer was sized.
+    /// those rows — the head's step per frame, how much stream came due per frame —
+    /// instead of from watching a screen; that is how the day's renderings were compared.
     static let logsHead = ProcessInfo.processInfo.arguments.contains("-traceHeadLog")
     private let lock = NSLock()
     private var _line = "no draw yet"
@@ -416,15 +416,11 @@ struct ForceTraceView: View {
         /// arithmetic that measures 0.03 % of a frame — the cost was never the maths,
         /// it was the garbage.
 
-        // TRUE age, so every point sits where its own time puts it — including PAST the
-        // right edge when the wall clock has not reached it. Bunched delivery (an iPad's
-        // radio stack hands the stream over in clumps of a second or more) puts the last
-        // points of each clump ahead of wall time; pinning the newest point to the edge
-        // instead, as this used to, lurched the whole line left by a clump each time one
-        // landed, and the store then dropped the buffer to keep its timeline sane — which
-        // is why Nuri's iPad drew no line at all (2026-09-19). Those points now wait beyond
-        // the edge and slide in on time, a jitter buffer, and the line stays continuous
-        // whatever the delivery looks like. `.clipped()` hides the waiting segment.
+        // TRUE age, so every point sits where its own time puts it. The store stamps a
+        // packet's newest reading at its arrival (`DeviceStore.playbackTime`), so nothing
+        // normally sits past the right edge; the few milliseconds an early packet's tail
+        // can lead the clock by are simply not drawn until due. `.clipped()` keeps any
+        // off-canvas geometry invisible.
         func x(_ index: Int) -> CGFloat {
             let age = now - samples[index].t
             return plotRight - CGFloat(age / Self.windowSeconds) * size.width
@@ -518,7 +514,7 @@ struct ForceTraceView: View {
         // half a second of silence there is no synthetic head, and the trace slides away
         // rather than pinning a stale value to the edge.
         let streaming = frozenAt == nil && now - samples[samples.count - 1].t < 0.5
-        let headPoint = (streaming && head != nil) ? CGPoint(x: plotRight, y: y(head!)) : lastPoint
+        let headPoint = streaming ? head.map { CGPoint(x: plotRight, y: y($0)) } ?? lastPoint : lastPoint
 
         // The settled body, then each freshly arrived packet as its own piece with its own
         // strength; the tail to the head takes the newest piece's strength.
