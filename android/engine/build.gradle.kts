@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MPL-2.0
+// Original contributions Copyright 2026 Nuri Bruner.
+
 // The engine: a pure Kotlin/JVM library with ZERO Android dependencies, exactly as
 // `Shared/` on iOS may import nothing but Foundation. Everything in here is a
 // translation of a file in `Shared/Engine` (same file name, same type names, the

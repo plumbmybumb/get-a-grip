@@ -1,5 +1,7 @@
 # Get a Grip
 
+[![Tests](https://github.com/plumbmybumb/get-a-grip/actions/workflows/tests.yml/badge.svg)](https://github.com/plumbmybumb/get-a-grip/actions/workflows/tests.yml)
+
 Native iOS and Android apps for climbing finger training with Bluetooth force gauges.
 Build a routine once, then open the app and start pulling. Grips live inline in each
 set: edge depth, fingers, and position. There is no grip library to maintain.
@@ -20,22 +22,25 @@ or endorsed by any gauge manufacturer.
 
 ### iOS
 
-Requires a Mac, Xcode 26 or newer with an iOS 26+ simulator, Python 3, and
-[XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
-The current development toolchain is Xcode 26.6 / Swift 6 / iOS 26.5 simulator.
+Requires a Mac, Xcode 26 or newer with **both** the iOS 26+ and watchOS 26+ simulator
+platforms installed, Python 3, and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+(`brew install xcodegen`). The watch platform is not optional: the iOS app embeds the
+watch app, so a plain build needs it.
 
 ```sh
 ./build.sh          # Generate the Xcode project and build
 ./build.sh test     # XCTest suite
+./build.sh uitest   # XCUITest suite
 ./build.sh run      # Launch with a deterministic demo gauge
 ./build.sh watch-run   # Build the Apple Watch app and launch it on a watch simulator
 ```
 
-The script automatically selects an installed iPhone simulator. Set `SIM_UDID` to
-choose one explicitly — an iPad's udid builds and runs the iPad layouts. The watch
-verbs pick the newest Apple Watch simulator; set `WATCH_UDID` to choose. See
-[docs/PLATFORMS.md](docs/PLATFORMS.md) for how the iPad and the watch fit. Simulator builds need no signing credentials and use local
-storage. The simulator cannot verify real Bluetooth transport.
+The newest installed iOS 26+ iPhone simulator is chosen automatically; set `SIM_UDID`
+to choose one — an iPad's udid builds and runs the iPad layouts. The watch verbs pick
+the newest Apple Watch simulator; set `WATCH_UDID` to choose. See
+[docs/PLATFORMS.md](docs/PLATFORMS.md) for how the iPad and the watch fit. Simulator
+builds need no signing credentials and use local storage. The simulator cannot verify
+real Bluetooth transport.
 
 For your own iPhone, copy `project.local.yml.example` to `project.local.yml`, enter
 your team and unique app/group/CloudKit identifiers, and generate with
@@ -67,12 +72,21 @@ The first build downloads the open-source build tools and libraries.
 | --- | --- |
 | `Shared/` | Swift engine, codecs, persistence values, and design tokens |
 | `Sources/` | SwiftUI app, Bluetooth clients, stores, and runner |
+| `Watch/` | The Apple Watch app, embedded in and shipped with the iOS app |
 | `Widget/` | iOS Live Activity |
 | `Tests/` | iOS regression tests |
+| `UITests/` | XCUITest suites, run by `./build.sh uitest` |
 | `android/engine/` | Pure Kotlin engine and codec tests |
 | `android/app/` | Jetpack Compose app and Android tests |
 | `Fixtures/` | Synthetic cross-platform fixtures and Swift replay tool |
+| `Legal/` | The Terms and Privacy texts both apps bundle byte-for-byte, current and archived |
+| `LICENSES/` | Upstream license texts kept with the binaries |
+| `scripts/` | App icon generator and the dependency-notice tools |
 | `docs/` | Feature and export-format documentation |
+
+Code comments cite the maintainer and a date — "(Nuri, 2026-08-03)". Those are dated
+design decisions taken from his own training with the app, recorded so a later change
+knows what it is overruling.
 
 ## Devices and privacy
 
@@ -97,8 +111,9 @@ Get a Grip account or app-operated training backend.
 
 ## Contributing and releases
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and
-[BRANDING.md](BRANDING.md). Changes are reviewed before entering the official app.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+[SECURITY.md](SECURITY.md), and [BRANDING.md](BRANDING.md).
+[CHANGELOG.md](CHANGELOG.md) indexes the shipped builds. Changes are reviewed before entering the official app.
 Community builds use their own signing identities. The release source commit should
 be tagged whenever an official store version is shipped; this initial public source
 snapshot is not a claim of an App Store or Google Play release.

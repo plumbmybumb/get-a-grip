@@ -25,7 +25,7 @@ per-hand edits, save receipts, the + button) — is built and verified in source
 13 September 2026 (1,077 tests pass; exercised on the API 36 emulator) but **not yet
 signed or uploaded**. Build the bundle with the private upload key, check its certificate
 against the build 9 upload, tag `android-v1.0.1-10`, then create the next release on the
-same track with the notes in `releases/android-1.0.1-10/`. See
+same track with the notes in `docs/releases/android-1.0.1-10/`. See
 [the 1.0.3 release record](releases/notes/RELEASE_2026-09-12_1.0.3.md) for hashes and the iOS side.
 
 ## Previous submission — 8 September 2026

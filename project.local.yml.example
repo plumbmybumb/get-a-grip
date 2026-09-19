@@ -27,3 +27,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.getagrip.tests
+  # The XCUITest bundle (`./build.sh uitest`). It launches the app rather than linking
+  # it, so it needs an id of its own like every other target here.
+  DoigtUITests:
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.getagrip.uitests

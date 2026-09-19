@@ -1,0 +1,90 @@
+name: Bug report
+description: Something the app does that it should not, or stops doing
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use synthetic examples. Remove personal training data and device identifiers
+        from anything you attach. Security issues go to SECURITY.md instead.
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: The phone, tablet or watch, and how it is set up if that matters.
+      placeholder: iPhone 13 mini, Dynamic Type at accessibility1
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: iOS or Android version
+      placeholder: iOS 26.5, or Android 15 (API 35)
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version and build
+      description: Settings names both.
+      placeholder: 1.1.0 (10)
+    validations:
+      required: true
+  - type: dropdown
+    id: gauge
+    attributes:
+      label: Gauge
+      options:
+        - Tindeq Progressor
+        - Frez Dyno
+        - WH-C06 crane scale
+        - Entralpi force plate
+        - Climbro
+        - Griptonite Motherboard
+        - PitchSix Force Board
+        - Jlyscales CTS500
+        - Demo gauge
+        - No gauge (timer only)
+        - Other or unsure
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: What you did, in the order you did it.
+      placeholder: |
+        1. Start the daily routine with the gauge connected.
+        2. Pull the second rep and come off the edge.
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What happened instead. Screenshots and a screen recording help.
+    validations:
+      required: true
+  - type: dropdown
+    id: diagnostics
+    attributes:
+      label: Diagnostics attached?
+      description: >-
+        Settings › About › Diagnostics copies the recent connection and signal
+        breadcrumbs to the clipboard. They are the fastest way to settle anything about
+        the gauge, the link or session timing. They live in memory only, so copy them
+        before force-quitting.
+      options:
+        - "Yes, pasted below or attached"
+        - "No"
+        - "Not applicable"
+    validations:
+      required: true

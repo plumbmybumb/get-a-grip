@@ -1,12 +1,23 @@
 # Fixtures — the cross-platform contract
 
-Language-neutral test fixtures asserted by BOTH the iOS engine (through the Swift oracle in
-`tools/oracle/`, and later `Tests/FixtureConformanceTests.swift`) and the Android engine suite
-(`android/engine/src/test/kotlin/.../*FixtureTests.kt`). The two engines share no code; these
-files are what keep them from drifting. **A rule change in `Shared/Engine` is not done until the
-fixture and the Kotlin twin change with it**, and vice versa.
+Language-neutral test fixtures. The two engines share no code; these files are what keep them
+from drifting. **A rule change in `Shared/Engine` is not done until the fixture and the Kotlin
+twin change with it**, and vice versa.
 
-Every file is plain JSON (or Markdown for export documents). "Canonical JSON" always means the
+Who asserts what is NOT symmetric, and it is worth knowing before trusting a green run:
+
+- **Kotlin reads every family.** `android/engine/src/test/kotlin/.../*FixtureTests.kt` covers
+  `blob/` (`BlobFixtureTests`, `JsonFixtureTests`), `codec/` (`CodecFixtureTests`), `keys/`
+  (`KeyFixtureTests`), `planmath/` (`PlanMathFixtureTests`), `export/` (`ExportFixtureTests`),
+  `runner/` (`RunnerFixtureTests`) and `share/` (`ShareFixtureTests`).
+- **Swift reads three**, through the oracle in `tools/oracle/`: `runner verify`, `share verify`
+  and `export verify`. There is no Swift reader for `blob/`, `codec/`, `keys/` or `planmath/` —
+  the iOS side asserts those rules in its own XCTest files against the same values, not against
+  these files. (An earlier version of this README promised a
+  `Tests/FixtureConformanceTests.swift`; it was never written. Adding one is the obvious way to
+  close the gap, and until then a change to those four families is only checked on Kotlin.)
+
+Every file is plain JSON, except the export documents, which are Markdown and CSV. "Canonical JSON" always means the
 byte-exact output of `BlobCodec` (Foundation `JSONEncoder([.sortedKeys])`): compact, sorted keys,
 whole doubles as integers, absent optionals omitted — see `blob/json-writer.json`. Where a
 fixture embeds a JSON document as a value, it is a **string** of canonical JSON, so a decode →
@@ -43,9 +54,25 @@ re-encode round-trip is a free byte check.
 
 ## `codec/`
 
-One file per gauge: `{gauge, cases:[{name, answering?, frames:[hex…], expect}]}`.
+One file per gauge: `{gauge, cases:[{name, answering?, decoder?, frames:[hex…], expect}]}`.
+
+**The file name, the `gauge` field and `GaugeKind.rawValue` are ONE string.**
+`CodecFixtureTests` asserts the first two match ("a fixture file must be named for the gauge it
+describes") and resolves the third with `GaugeKind.fromRaw(gauge)`, so `codec/climbro.json` must
+say `"gauge": "climbro"` and there must be a `GaugeKind` whose raw value is `climbro`. A second
+test, `everyGaugeKindHasAFixtureFile`, walks `GaugeKind.entries` and fails when one has no file —
+adding a device cannot quietly skip this contract.
+
 - `frames` are hex strings (uppercase, no spaces), fed IN ORDER to ONE decoder instance (the
   Progressor decoder is stateless; the framed gauges reassemble across frames).
+- `decoder` — `{coefficient, tareSamples?}`, REQUIRED for a gauge whose capabilities say
+  `requiresRemoteCalibration` (the Frez Dyno; `codec/frezdyno.json` is the example). Those
+  gauges stream raw counts, so `makeFrameDecoder()` returns nil and the case has to supply the
+  per-device slope the app would normally fetch by serial. `tareSamples` is how many samples the
+  zero is averaged from — the fixtures pass **9** instead of the shipping default so a case is
+  two frames long rather than hundreds; omit it to get the default. A case without `decoder` on
+  such a gauge fails with "no frame decoder, and the case carries no 'decoder' object", and a
+  `decoder` on a gauge that reports kilograms fails with "this gauge takes no coefficient".
 - Progressor: `answering` is the pending command (`"getBatteryVoltage"`, `"getAppVersion"`, …
   or absent) and `expect` is `{events:[…]}` with these shapes, one per `ProgressorEvent` case:
   `{"type":"sample","kg","micros","batchStart"}`, `{"type":"battery","millivolts"}`,
@@ -88,10 +115,34 @@ One file per gauge: `{gauge, cases:[{name, answering?, frames:[hex…], expect}]
 
 ## `export/`
 
-- `<scenario>.json` — `{input}` mirroring `AnalysisExport.Input` (`sessions`, `maxes`, `today`,
-  `generatedOn`, `sessionsPerDayTarget`; instants as ISO-8601 UTC strings, days as epoch-day
-  ints, enum raws as strings, reps as canonical `RepSummary` JSON objects), and `<scenario>.md`
-  — the expected document, byte for byte, produced by the Swift oracle.
+**A scenario is EIGHT files**, and all eight are compared byte for byte — 18 scenarios, 144
+files, of which 108 are CSV:
+
+| File | What it is |
+| --- | --- |
+| `<scenario>.json` | The input |
+| `<scenario>.md` | The expected Markdown document |
+| `<scenario>.{all,recent,workout}.{pulls,summary}.csv` | The expected CSV, one per scope × detail |
+
+- `<scenario>.json` is `AnalysisExport.Input` flattened at the TOP LEVEL — `{generatedOn, maxes,
+  sessions, sessionsPerDayTarget, today}`, pretty-printed with sorted keys. There is no `{input}`
+  wrapper. Instants are ISO-8601 UTC strings, days are epoch-day ints, enum raws are strings and
+  reps are canonical `RepSummary` JSON objects. `ExportInputDTO` in `tools/oracle/OracleExport.swift`
+  and `AnalysisExport.Input.fromJson` in Kotlin are the two halves of that contract.
+- The six CSVs are every `CSVScope` × `CSVDetail` pair. The `workout` scope is generated from the
+  FIRST session alone, which is what makes the "one workout" share path testable from the same
+  input as the whole history.
+- **Adding a scenario means adding all eight files, through the oracle** — write the builder in
+  `scenarios()`, run `oracle export scenarios <dir>` to write the `.json`, then
+  `oracle export generate <dir>` to write the `.md` and the six `.csv` from the real
+  `AnalysisExport`. Hand-writing any of the outputs defeats the point: `generate` reads the JSON
+  back off disk, so the document is made from exactly the bytes Kotlin will read.
+- **`csv-v2-timing-summary` is an ORPHAN.** Its eight files are on disk and both sides verify
+  them, but `scenarios()` in `OracleExport.swift` has no builder for it (17 builders, 18
+  scenarios on disk). `oracle export scenarios` will therefore never rewrite its input, so the
+  day the DTO shape changes it goes stale by hand or not at all. It needs a builder restoring or
+  the eight files deleting — a decision for the maintainer, recorded here rather than tidied
+  away.
 
 ## `runner/`
 
@@ -117,3 +168,58 @@ no arguments for the command list. One mode is not in that list because it is au
 than checking: `oracle export scenarios <dir>` rewrites `export/*.json` from the Swift-side
 scenario builders, and `oracle export generate` then produces the `.md` **by reading those JSON
 files back**, so the document is always made from exactly the bytes Kotlin will read.
+
+## Verifying
+
+From the repository root:
+
+```sh
+./Fixtures/tools/oracle/build.sh
+./Fixtures/tools/oracle/build/oracle runner verify Fixtures
+./Fixtures/tools/oracle/build/oracle share  verify Fixtures
+./Fixtures/tools/oracle/build/oracle export verify Fixtures
+./android/build.sh engine    # the Kotlin half — every family, including the four the oracle does not read
+```
+
+`share verify` reads BOTH `share/urls.json` and `share/urls-android.json`, so it is the command
+that proves the iOS decoder accepts Kotlin's URLs. `export verify` walks the `.json` files on
+disk and re-derives the `.md` and all six `.csv` for each.
+
+## Regenerating
+
+**Never regenerate a fixture to make a failing test pass.** That is the rule in `AGENTS.md`, and
+it is the one that keeps these files evidence rather than an echo: a fixture rewritten to match
+a regression records the regression as the contract, and the other engine then "agrees" with it.
+Regenerate when you have decided to change the contract, say so in the pull request, and read
+the diff — both engines' expectations move in the same commit or neither does.
+
+There is no `--force`, no confirmation and no dry run: **the authoring commands overwrite in
+place on plain invocation.** (`oracle` below is `./Fixtures/tools/oracle/build/oracle`.)
+
+```sh
+oracle share  generate Fixtures   # rewrites share/urls.json and share/roundtrip.json
+oracle export scenarios Fixtures  # rewrites export/<scenario>.json from the Swift builders
+oracle export generate Fixtures   # rewrites every export/<scenario>.md and .csv
+oracle runner record   Fixtures   # rewrites runner/*.json from the Swift engine
+```
+
+Kotlin's recorder is the exception, and deliberately so: `RunnerTraceTests` re-derives every
+trace and compares it byte for byte unless `-Dgetagrip.record=1` is passed, so a Kotlin
+regression cannot quietly rewrite the evidence against itself.
+
+```sh
+./android/gradlew :engine:test --tests '*RunnerTrace*' -Dgetagrip.record=1
+```
+
+That flag reaches the test JVM only because `android/engine/build.gradle.kts` forwards it
+explicitly — a test JVM does not inherit the build's `-D`. The same file is where two other
+things are wired, and both are load-bearing:
+
+- `systemProperty("getagrip.fixtures", …)` passes the absolute path of this directory, so no
+  test ever guesses a relative path from its working directory. `Fixtures.root` fails loudly
+  when the property is missing or the directory is not there.
+- `inputs.dir(…Fixtures)` declares this directory an INPUT of the test task. Without it a
+  regenerated fixture leaves the task UP-TO-DATE and the whole cross-platform contract silently
+  stops being checked: `oracle share generate` rewrote `urls.json`, `./android/build.sh engine`
+  reported success without running one assertion against it, and `oracle share verify` then read
+  the `urls-android.json` of an older run. Measured, 2026-09-04.

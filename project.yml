@@ -312,7 +312,10 @@ schemes:
         DoigtWatch: all
     run:
       config: Debug
-  LegalUI:
+  # Named for the TARGET it runs, not for the first suite that needed it: UITests/ has
+  # covered appearance, weight units, margins and layout since the legal-entry checks
+  # this scheme was created for. `./build.sh uitest` drives it.
+  DoigtUITests:
     build:
       targets:
         Doigt: all

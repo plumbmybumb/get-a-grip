@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MPL-2.0
+// Original contributions Copyright 2026 Nuri Bruner.
+
 // The Android app. Jetpack Compose over the pure `:engine`; Material 3 chrome wearing
 // the app's own palette (dynamic colour off — see ui/theme/Tokens.kt).
 //

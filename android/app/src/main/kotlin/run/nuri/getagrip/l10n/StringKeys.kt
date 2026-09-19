@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MPL-2.0
+// Original contributions Copyright 2026 Nuri Bruner.
+
 package run.nuri.getagrip.l10n
 
 import run.nuri.getagrip.R

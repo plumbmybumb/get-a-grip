@@ -4,6 +4,7 @@
 **/.kotlin/
 **/.idea/
 **/__pycache__/
+node_modules/
 *.xcodeproj/
 *.xcworkspace/
 xcuserdata/

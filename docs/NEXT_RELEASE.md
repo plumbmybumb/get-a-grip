@@ -1,9 +1,29 @@
-# Next release fixes and features
+# Release record and the queue behind it
 
-The work scoped in the [1.1.0 plan](RELEASE_1.1.0_PLAN.md) is being packaged as
-[iOS 1.0.3 (7) and Android 1.0.1 (9)](releases/notes/RELEASE_2026-09-12_1.0.3.md), following
-the developer’s final version choice. The completed items below document the
-preceding release.
+The current versions are **iOS 1.1.0 (10)** and **Android 1.0.1 (11)**. Android 1.0.1 (11)
+went to the closed Alpha track on 18 September 2026
+([release record](releases/notes/RELEASE_2026-09-18_ANDROID_11.md)); iOS 1.1.0 is in
+preparation, and its store copy is written ([English](releases/1.1.0/ios-en-US.txt),
+[French](releases/1.1.0/ios-fr-FR.txt)). The 1.1.0 section below says what it ships; each
+section after it carries its own status line and records work that preceded it. The
+development plan those were scoped against is kept in
+[history/RELEASE_1.1.0_PLAN.md](history/RELEASE_1.1.0_PLAN.md).
+
+## 1.1.0 — the session screen
+
+Status: in preparation for iOS **1.1.0 (10)**. The Android side ships with
+**1.0.1 (11)**; see [its release record](releases/notes/RELEASE_2026-09-18_ANDROID_11.md).
+
+- The force trace fills the whole screen, and the numbers sit on one Liquid Glass panel
+  that takes the colour of the moment: blue while the clock runs, amber when it is
+  waiting on you. During a rest the countdown fills the screen, big enough to read from
+  the wall.
+- iPad: in landscape the graph takes the whole display, with the grip, the next pull and
+  the controls in one column beside it.
+- Apple Watch: the whole face is the colour of the state — blue to pull, green while the
+  clock runs, red to re-grip, orange before a different grip.
+- Low Power Mode on either device stops the clocks rolling.
+- A gauge that delivers its readings in bursts no longer empties the graph.
 
 ## App-wide weight units — iOS and Android
 

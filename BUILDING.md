@@ -32,13 +32,8 @@ The Apple Watch app (`DoigtWatch`, embedded in the iOS app) builds with
 `./build.sh watch` and runs with `./build.sh watch-run`, on the newest installed
 watchOS 26+ simulator or the one `WATCH_UDID` names. The watch simulator has neither
 Bluetooth nor CloudKit, so `watch-run` always passes `-mockDevice`, and the DEBUG
-seeding arguments (`-seedTwoRoutines`, `-seedHistory`) give it routines to show;
-`-previewWatchRunner` opens the first routine's session on launch, and
-`-noWorkoutSession` keeps the Health permission sheet — which the simulator cannot
-answer — out of the way. `-previewDimmed` draws the face as Always On does (reduced
-luminance), `-previewLowPower` stands in for Low Power Mode on either simulator, and
-`-mockProfile shaky` (or `weak`, `idle`) scripts the demo gauge so a screenshot can
-catch RE-GRIP — all DEBUG-only. Its bundle id is
+seeding arguments give it routines to show. Everything the watch reads at launch is in
+[DEBUG launch arguments](#debug-launch-arguments) below. Its bundle id is
 `$(GETAGRIP_COMPANION_BUNDLE_ID).watchkitapp`; the watch and the companion both carry
 the HealthKit capability, which the workout session needs. Real Bluetooth, Health and
 CloudKit behaviour on the wrist needs a signed device build — see
@@ -48,6 +43,81 @@ The app icon's procedural source is `scripts/make_app_icon.swift`. Run it with a
 output PNG path and `any`, `dark` or `tinted`. The tinted palette is grayscale for
 the system's tint treatment; the script rejects unknown styles instead of silently
 writing the light variant.
+
+## DEBUG launch arguments
+
+`simctl` cannot tap, so the states worth screenshotting or driving headlessly are
+reachable by launch argument. Every one below is behind `#if DEBUG` except
+`-mockDevice`, which a release build also honours because the in-app demo has to work
+for people without hardware. Pass them after the app: `./build.sh run -tab 1
+-seedHistory`, or `./build.sh watch-run -previewWatchRunner`.
+
+### Seeding
+
+Seeding is the only thing in either app that inserts a routine without a user asking.
+The three routine flags are mutually exclusive and "no routines" wins, so a run that
+asked for the empty first-run state can never get a seeded one.
+
+| Argument | What it does | Where |
+| --- | --- | --- |
+| `-seedNoRoutines` | Deletes every routine, for the empty first-run state | iOS, watch |
+| `-seedRoutine` | Replaces the routines with the starter routine alone | iOS, watch |
+| `-seedTwoRoutines` | The daily ritual plus a max-day routine: a percentage band on one, a typed kilogram band on the other, and an edge span across the daily's sets | iOS, watch |
+| `-seedHistory` | Three weeks of plausible sessions and maxes, attached to those routines by id, so the month grid and the trend line have something to draw | iOS, watch |
+
+### Previews
+
+The `-previewRunner*` and `-previewSummary` states drive REAL runner events in an
+in-memory store: the engine stops at the requested phase and only the fake gauge keeps
+drawing, and nothing they write reaches the real store. The rest — the builder, grip
+panel, start, tab, unit and watch arguments — drive the REAL app on the real store,
+because `simctl` cannot tap; pair them with the seeding above.
+
+| Argument | What it does | Where |
+| --- | --- | --- |
+| `-previewRunnerWorking` | Opens the runner mid-hold, clock running | iOS |
+| `-previewRunnerWarning` | The same, with the load dropped away: RE-GRIP | iOS |
+| `-previewRunnerRelease` | Stops at `.releasing` — the hold is banked, LET GO | iOS |
+| `-previewRunnerRest` | Stops in the rest countdown | iOS |
+| `-previewRunnerPaused` | The rest, paused | iOS |
+| `-previewRunnerTimer` | Any of the above with no gauge at all (timer-only) | iOS |
+| `-previewRunnerSetBreak` | Makes that rest a set break, by giving the plan a second set | iOS |
+| `-previewRunnerLargeCounts` | 50 sets of 100 pulls, for the widest counters the layout can be asked to hold | iOS |
+| `-previewRunnerRestSeconds N` | The rest length, default 20; a value outside the plan's own range is ignored | iOS |
+| `-previewRunnerRestProgressing` | Keeps the real ticker running instead of holding the phase still | iOS |
+| `-previewRunnerPauseAtTwo` | Pauses through the real event funnel when the countdown shows 2, so a test can inspect that state and tap the normal Resume | iOS |
+| `-previewRunnerSignalLost` | Drops the gauge at the phase | iOS |
+| `-previewRunnerTarget` | Gives every set a 4–8 kg band and pulls 6 kg inside it | iOS |
+| `-previewRunnerWave` | Shapes the fake force into a rising, wobbling curve instead of the flat line geometry tests want | iOS |
+| `-previewSummary` | The session summary, in memory | iOS |
+| `-previewHandMaxes` | That summary with one grip pulled three times, for the per-hand maxes | iOS |
+| `-previewLog` | Opens the summary's log sheet on launch | iOS |
+| `-previewBuilder` | Opens the first routine's editor | iOS |
+| `-previewGripPanel` | Opens the first set's grip panel, the one control on that screen a screenshot cannot reach | iOS |
+| `-startFirstRoutine` | The "Connect and start" tap on Today — with `-mockDevice`, a whole measured session through the real store and runner | iOS |
+| `-tab N` | Preselects a tab | iOS |
+| `-previewWeightLb` | Starts in pounds | iOS |
+| `-previewWatchRunner` | Opens the first routine's session on launch | watch |
+| `-previewWatchTimerOnly` | With the above, on the clock alone | watch |
+| `-previewDimmed` | Draws the face as Always On does (reduced luminance) — the simulator has no wrist to lower | watch |
+
+### Gauge
+
+| Argument | What it does | Where |
+| --- | --- | --- |
+| `-mockDevice` | The scripted demo gauge instead of CoreBluetooth. `./build.sh run` and `watch-run` always pass it: the Simulator has no Bluetooth stack | iOS, watch |
+| `-mockProfile shaky\|weak\|idle` | Scripts that demo gauge, which is how RE-GRIP gets onto a screenshot — `clean` never drops. A release build's demo is always the textbook pull | iOS, watch |
+| `-mockClumpMS N` | Delivers notifications in bunches every N ms instead of one every 100 ms, reproducing the late-and-together delivery that hid the trace on an iPad. Sample timestamps are untouched; only their arrival bunches | iOS, watch |
+| `-noWorkoutSession` | Runs the session without a HealthKit workout, whose permission sheet the watch simulator cannot answer | watch |
+
+### Diagnostics
+
+| Argument | What it does | Where |
+| --- | --- | --- |
+| `-flatBackground` | Swaps the five-layer background for one opaque fill. Run it on the phone when a screen scrolls badly: if the lag vanishes, the answer is compositing rather than SwiftUI | iOS |
+| `-dumpInteractions` | Writes the UIKit view tree, window frames, clipping and attached `UIInteraction`s to `Documents/interactions.txt` a few seconds after launch | iOS |
+| `-longUndo` | Stretches the Undo window to ten minutes, because a `simctl` round trip is slower than any human | iOS |
+| `-timings` | Prints how long the off-main reminder plan took, and how many items it produced | iOS |
 
 ## Android configuration
 
@@ -76,13 +146,36 @@ Use `./android/build.sh :app:bundleRelease` for an app bundle after configuring 
 own upload key. A fork must also choose its own `applicationId` before distribution.
 Do not change the official application's ID or signing key for existing users.
 
+## Tests
+
+```sh
+./build.sh test          # iOS XCTest suite (DoigtTests)
+./build.sh uitest        # iOS XCUITest suite (DoigtUITests)
+./build.sh uitest RunnerAppearanceUITests   # one class, or Class/testMethod
+./android/build.sh test  # Kotlin engine and Android app tests
+```
+
+`test` is the correctness gate and runs in CI. `uitest` is not in CI and is run by hand,
+because it drives a booted simulator and takes minutes; it logs to
+`build/last-uitest.log` and, like `test`, prints only failures and the summary.
+
+**Known failing:** `RunnerAppearanceUITests.testAppearanceChangesKeepLiveProgressAndPausedRestCanResume`
+fails on `main` today. Fix it before adding `uitest` to the workflow — a suite that is
+known to be red teaches everyone to ignore it.
+
 ## Cross-platform checks
 
 ```sh
 ./Fixtures/tools/oracle/build.sh
 ./Fixtures/tools/oracle/build/oracle runner verify Fixtures
+./Fixtures/tools/oracle/build/oracle share  verify Fixtures
+./Fixtures/tools/oracle/build/oracle export verify Fixtures
 python3 android/scripts/xcstrings_to_android.py
 ```
+
+CI runs the first two. `share verify` and `export verify` are the other half of the
+same contract and are run by hand — `share verify` is what puts Kotlin's URLs through
+the iOS decoder.
 
 The oracle defaults to this repository's Swift source; `GETAGRIP_IOS_TREE` can
 explicitly select another checkout. Fixtures are synthetic and checked into source.
@@ -91,13 +184,16 @@ Do not add actual training exports, personal diagnostics, or device identifiers.
 
 ## Before a public release
 
-Pending fixes and features for the next iOS and Android versions are tracked in
-[Next release fixes and features](docs/NEXT_RELEASE.md).
+What the current release ships, and the fixes and features queued behind it, are
+tracked in [the release record](docs/NEXT_RELEASE.md).
 
 Run both test suites, compare the cross-platform fixtures, inspect the merged
 Android manifest, and test camera permission/scan flow and Bluetooth on hardware.
 Keep MPL and dependency notices bundled with binaries. Update dependency notices
-when changing libraries. Tag the exact source commit used for each shipped version,
+when changing libraries: `scripts/dependency-licenses.gradle` resolves the release
+dependencies' POMs, and `scripts/generate-notices.py` folds them and the upstream texts
+in `LICENSES/` into `THIRD_PARTY_NOTICES.txt`. Run the Gradle task first — the script
+says so and stops if its inventory is missing. Tag the exact source commit used for each shipped version,
 with separate platform tags if their store versions differ.
 
 For iOS, inspect the entitlements in the **final distribution-signed export**, not

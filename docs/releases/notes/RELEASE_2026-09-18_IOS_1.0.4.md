@@ -3,7 +3,7 @@
 Prepared 18 September 2026 from the canonical public checkout, main at `5a0c043`.
 
 - iOS: 1.0.4 (9), app and widget.
-- Store copy: `releases/1.0.4/ios-en-US.txt` and `ios-fr-FR.txt` (What's New).
+- Store copy: `docs/releases/1.0.4/ios-en-US.txt` and `docs/releases/1.0.4/ios-fr-FR.txt` (What's New).
 - Android: 1.0.1 (11) was submitted to the Alpha track earlier the same day with the
   same features; see `RELEASE_2026-09-18_ANDROID_11.md`.
 
@@ -71,7 +71,7 @@ Release tag `ios-v1.0.4-9` pins `5a0c043`; this record is a documentation-only c
   description naming the Frez Dyno, the v2 screenshot set in both the 6.9" and
   6.5" slots in the playbook order, review notes for the Frez note and the rating
   prompt, build 9 attached. The listing has no French localization, so the French
-  What's New in `releases/1.0.4/` is unused until one is added.
+  What's New in `docs/releases/1.0.4/` is unused until one is added.
 - App Privacy: "Other Data Types" (App Functionality, not linked, no tracking)
   entered up to the dialog's Publish button and left there, because publishing
   changes the live product page at once and the developer had not asked for that.

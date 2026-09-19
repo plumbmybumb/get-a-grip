@@ -45,6 +45,8 @@ if one ever does.
 
 from __future__ import annotations
 
+SPDX_HEADER = "// SPDX-License-Identifier: MPL-2.0\n// Original contributions Copyright 2026 Nuri Bruner.\n"
+
 import hashlib
 import json
 import os
@@ -501,7 +503,9 @@ def main() -> int:
         + "\n</resources>\n",
     )
 
-    write(os.path.join(KOTLIN, "StringKeys.kt"), kotlin_source(key_map, plural_map))
+    # The generated file is still a source file in the tree: it carries the same SPDX
+    # header as every hand-written one, so a licence-header check never singles it out.
+    write(os.path.join(KOTLIN, "StringKeys.kt"), SPDX_HEADER + kotlin_source(key_map, plural_map))
 
     print(
         f"{len(rows)} keys ({len(plural_names)} plurals) + {len(extra)} Android-only; "

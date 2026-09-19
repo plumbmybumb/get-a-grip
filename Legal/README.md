@@ -34,6 +34,9 @@ replace the configured App Store EULA.
 ## Verification
 
 Run `./build.sh test` and `./android/build.sh test` for storage and Android UI cases.
-The `LegalUI` Xcode scheme checks direct entry to training and max measurement without
-an agreement screen. Android UI tests check offline documents and malformed historical
-records. Use disposable simulators with synthetic data; do not reset a user's records.
+The `DoigtUITests` scheme (`./build.sh uitest`) runs the whole of `UITests/` — appearance,
+weight units, margins, layout and the rest. `LegalAgreementUITests` inside it is what
+checks that training and max measurement open directly, with no agreement screen; the
+scheme was once named for those checks alone, and now covers the suite. Android UI tests
+check offline documents and malformed historical records. Use disposable simulators with
+synthetic data; do not reset a user's records.

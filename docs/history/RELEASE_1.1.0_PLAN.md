@@ -3,7 +3,7 @@
 Release update, 12 September 2026: the completed changes below are being packaged
 as **iOS 1.0.3 (7) and Android 1.0.1 (9)**, at the developer’s request,
 with bug fixes leading the release.
-See `RELEASE_2026-09-12_1.0.3.md` for packaging and submission status.
+See `docs/releases/notes/RELEASE_2026-09-12_1.0.3.md` for packaging and submission status.
 
 Started 10 September 2026 on `codex/release-1-1-0`, based on public commit
 `333d630fa63b728335fcc7309d8f0e0f32cf005e`. This is the next shared iOS/Android
@@ -201,4 +201,4 @@ and release:
 - [ ] Confirm the Android border fix on the reporter's actual device if available.
 - [x] Write final release notes, verify signed artifacts, tag exact source and
   submit the completed work. Store review status is recorded in
-  `RELEASE_2026-09-12_1.0.3.md`; neither build is claimed approved yet.
+  `docs/releases/notes/RELEASE_2026-09-12_1.0.3.md`; neither build is claimed approved yet.

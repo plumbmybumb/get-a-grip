@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 #
-# Doigt — the ONE canonical build/run command.
-#   ./build.sh        -> regenerate project + build to the pinned simulator
+# Get a Grip — the ONE canonical build/run command.
+#   ./build.sh        -> regenerate project + build to the chosen simulator
 #   ./build.sh run    -> the above, then boot + install + launch on the simulator
-#   ./build.sh test   -> regenerate project + run the XCTest suite on the pinned simulator
+#   ./build.sh test   -> regenerate project + run the XCTest suite (DoigtTests)
+#   ./build.sh uitest -> regenerate project + run the XCUITest suite (DoigtUITests)
+#   ./build.sh uitest WeightUnitsUITests           -> one class
+#   ./build.sh uitest WeightUnitsUITests/testFoo   -> one test
 #   ./build.sh watch  -> regenerate project + build the watch app for a watchOS simulator
 #   ./build.sh watch-run -> the above, then boot + install + launch it WITH -mockDevice
 #   SIM_UDID=<an iPad's udid> ./build.sh run   -> the iPad build, same verbs
@@ -14,7 +17,11 @@
 # House convention: quote every path (sibling projects live under paths with
 # spaces, and this script gets copied between them).
 #
-# Pins: Xcode 26.6 · iOS deployment target 26.0 · simulator iPhone 17 Pro / iOS 26.5.
+# Requires Xcode 26 or newer; the iOS deployment target is 26.0. The SIMULATOR is not
+# pinned — the newest installed iOS 26+ iPhone is chosen at run time, so a machine that
+# has only the current runtime still builds. SIM_UDID overrides that choice (an iPad's
+# udid builds and runs the iPad layouts); the watch verbs pick the newest watchOS 26+
+# Apple Watch the same way, and WATCH_UDID overrides it.
 # DEVELOPER_DIR is set here in case the machine's active dir is CommandLineTools
 # rather than Xcode (avoids needing sudo).
 #
@@ -85,7 +92,42 @@ if [ "${1:-}" = "test" ]; then
   exit 0
 fi
 
-# 1c. `watch` / `watch-run` verbs: build the watch app for a watchOS simulator, and
+# 1c. `uitest` verb: the XCUITest suite in UITests/, which is its own target and its own
+# scheme (DoigtUITests) because a UI test launches the app as a separate process rather
+# than linking it. A second argument narrows the run to one class or one test; xcodebuild
+# wants it as `-only-testing:<target>/<class>[/<test>]`, so only the tail is typed here.
+# Full log goes to build/last-uitest.log; only failures + the summary are surfaced.
+if [ "${1:-}" = "uitest" ]; then
+  UITEST_LOG="build/last-uitest.log"
+  # `${VAR:+"$VAR"}` expands to NOTHING when the filter is empty, instead of to an empty
+  # argument that xcodebuild would reject.
+  ONLY=""
+  [ -n "${2:-}" ] && ONLY="-only-testing:DoigtUITests/$2"
+  xcodebuild \
+    -project "$PROJECT" \
+    -scheme "DoigtUITests" \
+    -configuration Debug \
+    -destination "platform=iOS Simulator,id=$SIM_UDID" \
+    -derivedDataPath "$DERIVED" \
+    CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO \
+    ${ONLY:+"$ONLY"} \
+    test > "$UITEST_LOG" 2>&1
+  USTATUS=$?
+
+  grep -E "error:|warning:|fatal error|ld: |Undefined symbol|The following build commands failed|Test Suite '.*' (passed|failed)|Executed [0-9]+ test|\*\* TEST (SUCCEEDED|FAILED)" "$UITEST_LOG" \
+    | grep -vE "appintentsmetadataprocessor.*Metadata extraction skipped" \
+    | sed -E 's#'"$PWD"'/##g' \
+    || true
+
+  if [ $USTATUS -ne 0 ]; then
+    echo "❌ UI TESTS FAILED (status $USTATUS) — full log: $UITEST_LOG"
+    exit $USTATUS
+  fi
+  echo "✅ UI TESTS PASSED"
+  exit 0
+fi
+
+# 1d. `watch` / `watch-run` verbs: build the watch app for a watchOS simulator, and
 # optionally boot + install + launch it there. Always with the mock gauge — the watch
 # Simulator has no Bluetooth stack either. Override WATCH_UDID to pick a device.
 if [ "${1:-}" = "watch" ] || [ "${1:-}" = "watch-run" ]; then
