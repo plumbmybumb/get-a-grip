@@ -73,6 +73,26 @@ struct IslandHand: View {
     /// into them. Low and shallow passes safely underneath.
     private static let thumbAngle: Double = 26
 
+    /// The hand's frame and the point it grows about — kept below the physical island,
+    /// so only the drawing grows and the roots stay put.
+    private static let frameHeight: CGFloat = 100
+    private static let growthAnchorY: CGFloat = 0.5433
+    /// A changed grip draws the hand a quarter larger; a long rest, a fifth.
+    static let emphasisScale: CGFloat = 1.25
+    static let restFocusScale: CGFloat = 1.2
+
+    /// **How far the fingertips reach down past their resting tip at `scale`** — the
+    /// growth the runner's layout makes room for, so a bigger hand PUSHES the panel
+    /// under it down rather than reaching into it (Nuri, 2026-09-19). `scaleEffect`
+    /// moves no layout on its own, which left the enlarged grip-change hand a few
+    /// points off the glass. Measured from the longest finger, about the same anchor
+    /// the drawing scales about.
+    static func tipDrop(scale: CGFloat) -> CGFloat {
+        let tip = islandBottom + gap + baseLength
+        let anchor = frameHeight * growthAnchorY
+        return max(0, (tip - anchor) * (scale - 1))
+    }
+
     /// **Does this device have a Dynamic Island?** The runner asks too — the layout
     /// underneath changes shape around the hand — so it is one answer, in one place.
     ///
@@ -111,10 +131,11 @@ struct IslandHand: View {
         // caller, from `isSupported`.
         GeometryReader { geo in
             hand(width: geo.size.width)
-                .frame(height: 100, alignment: .top)
+                .frame(height: Self.frameHeight, alignment: .top)
                 // Keep the roots below the physical island; only the drawing grows.
-                .scaleEffect(emphasized && !reduceMotion ? 1.25 : (restFocused ? 1.2 : 1),
-                             anchor: UnitPoint(x: 0.5, y: 0.5433))
+                .scaleEffect(emphasized && !reduceMotion ? Self.emphasisScale
+                                                         : (restFocused ? Self.restFocusScale : 1),
+                             anchor: UnitPoint(x: 0.5, y: Self.growthAnchorY))
                 .animation(reduceMotion ? nil : Motion.state(false), value: restFocused)
         }
         .ignoresSafeArea()

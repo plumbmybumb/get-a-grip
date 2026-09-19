@@ -59,6 +59,7 @@ private final class RunnerCuePreviewState {
         let setBreak = arguments.contains("-previewRunnerSetBreak")
         let largeCounts = arguments.contains("-previewRunnerLargeCounts")
         let signalLost = arguments.contains("-previewRunnerSignalLost")
+        let shaped = arguments.contains("-previewRunnerWave")
         let hasTarget = arguments.contains("-previewRunnerTarget")
         let pullingKg = hasTarget ? 6.0 : 12.0
         let pauseAtTwo = arguments.contains("-previewRunnerPauseAtTwo")
@@ -131,9 +132,12 @@ private final class RunnerCuePreviewState {
             pump = Task { [weak self] in
                 var micros: UInt32 = 2_600_000
                 var didPauseAtTwo = false
+                var beat = 0
                 while !Task.isCancelled {
                     guard let self else { return }
-                    self.client.emit(kg: kg, micros: micros)
+                    self.client.emit(kg: shaped ? Self.shapedKg(base: kg, at: Double(beat) * 0.1) : kg,
+                                     micros: micros)
+                    beat += 1
                     micros &+= 100_000
                     // XCTest may wait for an accessibility snapshot longer than one
                     // countdown second. Pause through the real event funnel once at
@@ -150,6 +154,18 @@ private final class RunnerCuePreviewState {
                 }
             }
         }
+    }
+
+    /// `-previewRunnerWave`: a pull with a SHAPE — the ramp on, a wobble about the
+    /// load, a settle — for screenshots that judge the graph. The flat line the fixtures
+    /// draw by default is right for geometry tests and wrong for looking at a trace.
+    /// Zero stays zero: a resting gauge does not wobble.
+    private static func shapedKg(base: Double, at t: Double) -> Double {
+        guard base > 0 else { return 0 }
+        let onset = min(1, t / 0.7)
+        let rise = 1 - pow(1 - onset, 3)
+        let wobble = sin(t * 5.1) * 0.9 + sin(t * 13.7) * 0.35 + sin(t * 2.3) * 0.6
+        return max(0, base * rise + wobble * onset)
     }
 
     func stop() {

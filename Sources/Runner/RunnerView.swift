@@ -49,6 +49,9 @@ struct RunnerView: View {
     @State private var gripEmphasis = false
     @State private var gripBorderOpacity = 0.0
     @State private var emphasizedGripID: String?
+    /// Where the stacked layout's full-bleed graph goes, measured from the layout that
+    /// sits on top of it — see `backgroundTrace`.
+    @State private var traceGeometry = BackgroundTraceGeometry()
 
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 76
     @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 22
@@ -57,6 +60,8 @@ struct RunnerView: View {
     /// identity block in the wide layout, where the room is real.
     @ScaledMetric(relativeTo: .largeTitle) private var promptSize: CGFloat = 34
     @ScaledMetric(relativeTo: .subheadline) private var nameSize: CGFloat = 15
+    /// The ambient countdown's size — see `ambientCountdown`.
+    @ScaledMetric(relativeTo: .largeTitle) private var ambientSize: CGFloat = 176
 
     var body: some View {
         Group {
@@ -264,7 +269,10 @@ struct RunnerView: View {
                 .accessibilityIdentifier("runner.content")
                 // The camera hand is fixed at the root. Keep the scrolling viewport
                 // below it, so the top content cannot slide through the fingers.
-                .padding(.top, hasIsland ? 46 : 0)
+                .padding(.top, hasIsland ? 46 + handPush : 0)
+                .background {
+                    backgroundTrace(session, bottomInset: geometry.safeAreaInsets.bottom)
+                }
             }
         } else {
             // WIDE when the window is regular-width AND wider than tall: an iPad in
@@ -272,9 +280,17 @@ struct RunnerView: View {
             // idiom — an iPad in portrait keeps the stacked column, and a Slide Over
             // column is a phone. Apple's own guidance for the foldable says the same.
             GeometryReader { geometry in
-                liveContent(session, wide: sizeClass == .regular
-                                              && geometry.size.width > geometry.size.height)
+                let wide = sizeClass == .regular && geometry.size.width > geometry.size.height
+                liveContent(session, wide: wide)
                     .frame(width: geometry.size.width, height: geometry.size.height)
+                    // The stacked layout's graph is the SCREEN — see `backgroundTrace`.
+                    // The wide layout keeps its card: two columns over one full-width
+                    // curve would put the numbers on top of the load they explain.
+                    .background {
+                        if !wide {
+                            backgroundTrace(session, bottomInset: geometry.safeAreaInsets.bottom)
+                        }
+                    }
             }
         }
     }
@@ -290,7 +306,7 @@ struct RunnerView: View {
         .padding(.horizontal, Metrics.hPadding)
         // The fingers reach ~92 pt down the screen and content starts at 59, so the hand
         // needs the gap bought for it — otherwise the grip name lands under the knuckles.
-        .padding(.top, hasIsland ? (typeSize.isAccessibilitySize ? 0 : 46) : 8)
+        .padding(.top, hasIsland ? (typeSize.isAccessibilitySize ? 0 : 46 + handPush) : 8)
         .padding(.bottom, Metrics.spacing)
         // The stacked column keeps the PHONE's width even on a regular-width screen: the
         // hero numeral, the ring and the button rows were all measured at 440, and an
@@ -300,18 +316,37 @@ struct RunnerView: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// **The enlarged grip-change hand pushes the panel down** by exactly the distance
+    /// its fingertips grow (`IslandHand.tipDrop`), in the same transaction that grows
+    /// them, so the hand and the glass move as one thing and the fingers never reach
+    /// into the numbers (Nuri, 2026-09-19). The ordinary long-rest enlargement does
+    /// NOT push: that would move the graph at every REST→PULL boundary, which is the
+    /// jump the rest layout was measured to avoid, and at a fifth larger the tips still
+    /// clear the panel. A changed grip is rare and is meant to be felt. Reduce Motion
+    /// draws no enlarged hand, so there is nothing to make room for.
+    private var handPush: CGFloat {
+        gripEmphasis && !reduceMotion ? IslandHand.tipDrop(scale: IslandHand.emphasisScale) : 0
+    }
+
     /// The phone's layout: identity, hero, graph, controls, top to bottom.
+    ///
+    /// One `GlassEffectContainer` for the two glass surfaces on this screen — the
+    /// panel and the dock — so Liquid Glass renders them in a single pass rather than
+    /// blurring the live canvas twice. Nothing here changes shape between phases (the
+    /// panel reserves its geometry on purpose), so no morphing identities are needed.
     private func stackedContent(_ session: RunnerSession) -> some View {
-        VStack(spacing: 12) {
-            if timerOnly {
-                timerOnlyIdentity(session)
-                timerDial(session)
-                timerPositionLine(session)
-            } else {
-                measuredTop(session)
-                traceCard(session)
+        GlassEffectContainer(spacing: 24) {
+            VStack(spacing: 12) {
+                if timerOnly {
+                    timerOnlyIdentity(session)
+                    timerDial(session)
+                    timerPositionLine(session)
+                } else {
+                    infoPanel(session)
+                    graphRegion(session)
+                }
+                controls(session)
             }
-            controls(session)
         }
     }
 
@@ -410,68 +445,226 @@ struct RunnerView: View {
         .accessibilityIdentifier("runner.next")
     }
 
-    /// The graph and everything that sits on it. Shared by both layouts so the two
-    /// cannot drift — the lane, the no-signal notice, the grip cue and the tour anchor
-    /// are one card wherever it is placed.
+    /// The graph as a CARD — the wide layout's home for it, under the identity block
+    /// and the NEXT card. Everything that sits on the graph is shared with the stacked
+    /// layout's open region (`graphRegion`) so the two cannot drift.
     private func traceCard(_ session: RunnerSession) -> some View {
-                ZStack {
-                    LiveTrace(thresholdKg: session.plan.thresholdKg,
-                              // Only while the rep is actually live. A lane drawn during
-                              // the rest would ask you to hold a load you are not holding.
-                              targetBand: isWorking(session) || isArmed(session)
-                                  ? session.snapshot.targetBand : nil,
-                              tint: tint(session))
-                    // A connected gauge that is not sending is the one failure "0.0 kg"
-                    // renders as a lie — it reads as a device measuring nothing rather
-                    // than an app receiving nothing, and there is no way to tell them
-                    // apart by looking. Say it, and say what to do.
-                    if !session.snapshot.hasSignal
-                        || (showsRestFocus(session) && !restSignalIsAvailable(session)) {
-                        noSignalNotice(session)
-                            .accessibilityIdentifier("runner.signalWarning")
-                    }
-                }
-                .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil,
-                       maxHeight: .infinity)
-                .background(.regularMaterial,
-                            in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
-                        .strokeBorder(StatusTint.armed, lineWidth: 3)
-                        .opacity(session.snapshot.hasSignal ? gripBorderOpacity : 0)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
-                .overlay(alignment: .topLeading) {
-                    // An overlay never participates in the graph's layout. Keep the
-                    // newest readings at the right edge clear, and let signal warnings
-                    // take priority over the brief grip cue.
-                    if gripEmphasis, session.snapshot.hasSignal, !showsRestFocus(session),
-                       let grip = session.snapshot.grip {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("New grip")
-                                .font(.headline)
-                                .foregroundStyle(Color(hex: "1B1F25"))
-                            Text(grip.shortName)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Color(hex: "1B1F25"))
-                                .lineLimit(2)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(StatusTint.armed,
-                                    in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
-                        .padding(12)
-                        .padding(.trailing, 64)
-                        .transition(.opacity)
-                        .allowsHitTesting(false)
-                        // The existing grip-change announcement already speaks this.
-                        .accessibilityHidden(true)
-                    }
-                }
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("runner.graph")
-                .tourAnchor(.runnerTrace)
+        ZStack {
+            LiveTrace(thresholdKg: session.plan.thresholdKg,
+                      targetBand: liveTargetBand(session),
+                      tint: tint(session))
+            signalNotice(session)
+        }
+        .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil,
+               maxHeight: .infinity)
+        .background(.regularMaterial,
+                    in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
+                .strokeBorder(StatusTint.armed, lineWidth: 3)
+                .opacity(session.snapshot.hasSignal ? gripBorderOpacity : 0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        .overlay(alignment: .topLeading) { newGripChip(session) }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("runner.graph")
+        .tourAnchor(.runnerTrace)
+    }
+
+    /// Only while the rep is actually live. A lane drawn during the rest would ask you
+    /// to hold a load you are not holding.
+    private func liveTargetBand(_ session: RunnerSession) -> ClosedRange<Double>? {
+        isWorking(session) || isArmed(session) ? session.snapshot.targetBand : nil
+    }
+
+    /// A connected gauge that is not sending is the one failure "0.0 kg" renders as a
+    /// lie — it reads as a device measuring nothing rather than an app receiving
+    /// nothing, and there is no way to tell them apart by looking. Say it, and say what
+    /// to do.
+    @ViewBuilder
+    private func signalNotice(_ session: RunnerSession) -> some View {
+        if showsSignalNotice(session) {
+            noSignalNotice(session)
+                .accessibilityIdentifier("runner.signalWarning")
+        }
+    }
+
+    private func showsSignalNotice(_ session: RunnerSession) -> Bool {
+        !session.snapshot.hasSignal
+            || (showsRestFocus(session) && !restSignalIsAvailable(session))
+    }
+
+    /// **The countdown you can read from the wall.** While the clock is the only thing
+    /// happening — the count-in, a rest, a paused rest — the open graph is four
+    /// hundred points of nothing, so the seconds go there, huge and thin, and fade the
+    /// moment the trace has something to show (Nuri, 2026-09-19: *"clear understanding
+    /// of the app from a distance"*). The panel keeps the precise figure with its unit
+    /// and stays the accessible one; this is the ambient echo, hidden from VoiceOver.
+    private func showsAmbientCountdown(_ session: RunnerSession) -> Bool {
+        switch session.snapshot.phase {
+        case .resting, .leadIn: true
+        case .paused(let inner):
+            switch inner {
+            case .resting, .leadIn: true
+            default: false
+            }
+        default: false
+        }
+    }
+
+    private func ambientCountdown(_ session: RunnerSession) -> some View {
+        Text("\(session.snapshot.secondsShown)")
+            .font(.system(size: ambientSize, weight: .thin))
+            .displayTracking(ambientSize)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.35)
+            // A clock rolls; measured at 0.75 the secondary ink clears 3:1 on the light
+            // field for a numeral this size.
+            .contentTransition(reduceMotion ? .identity : .numericText(countsDown: true))
+            .animation(reduceMotion ? nil : Motion.live, value: session.snapshot.secondsShown)
+            .foregroundStyle(Ink.secondary.opacity(0.75))
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    /// The brief grip-change chip. An overlay never participates in the graph's
+    /// layout. Keep the newest readings at the right edge clear, and let signal
+    /// warnings take priority over the brief grip cue.
+    @ViewBuilder
+    private func newGripChip(_ session: RunnerSession) -> some View {
+        if gripEmphasis, session.snapshot.hasSignal, !showsRestFocus(session),
+           let grip = session.snapshot.grip {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("New grip")
+                    .font(.headline)
+                    .foregroundStyle(Color(hex: "1B1F25"))
+                Text(grip.shortName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color(hex: "1B1F25"))
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(StatusTint.armed,
+                        in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
+            .padding(12)
+            .padding(.trailing, 64)
+            .transition(.opacity)
+            .allowsHitTesting(false)
+            // The existing grip-change announcement already speaks this.
+            .accessibilityHidden(true)
+        }
+    }
+
+    // MARK: - The stacked layout: the graph is the screen, the numbers are glass
+
+    /// **The information panel** — the identity block on one Liquid Glass surface
+    /// floating over the graph (Nuri's sketch, 2026-09-19: *"a full background and a
+    /// liquid glass frame over the graph that has the info on it instead of two
+    /// distinct sections"*). The same `measuredTop` as before — grip, prompt, hero,
+    /// progress, counters, and the rest summary in their place — so nothing about what
+    /// the panel SAYS changed, only what it sits on.
+    ///
+    /// `accessibleGlass`, never raw `.glassEffect`: under Reduce Transparency the panel
+    /// becomes an opaque card, which is the only way the numbers stay legible over a
+    /// live curve. The grip-change outline moves here from the graph's card — the panel
+    /// is where the changed grip is NAMED, and the open graph has no edge to draw it on.
+    private func infoPanel(_ session: RunnerSession) -> some View {
+        measuredTop(session)
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 12)
+            .frame(maxWidth: .infinity)
+            // The rim is applied BEFORE the glass, so it is part of the panel's content.
+            // Inside a `GlassEffectContainer` the glass is composited above anything
+            // applied after `.glassEffect`, and an overlay there vanished under the
+            // material — measured in pixels, not by eye, which had read a warm edge
+            // as the rim (2026-09-19).
+            .overlay {
+                Self.panelShape
+                    .strokeBorder(StatusTint.armed, lineWidth: 3)
+                    .opacity(session.snapshot.hasSignal ? gripBorderOpacity : 0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            .accessibleGlass(nil, in: Self.panelShape)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("runner.panel")
+    }
+
+    /// Sheet radius, not card radius: a glass surface floating over content is the
+    /// system's sheet vocabulary, and beside 56 pt capsules a 22 pt corner reads tight.
+    private static var panelShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: Metrics.radiusSheet, style: .continuous)
+    }
+
+    /// **The open graph** — the stretch of screen between the panel and the controls
+    /// where the curve runs in the clear. It draws nothing itself: the trace is the
+    /// screen's background (`backgroundTrace`), and this is the frame that PLACES the
+    /// plot inside it, plus what still belongs on the graph — the no-signal notice, the
+    /// tour anchor, and the `runner.graph` element the UI tests measure the layout by.
+    ///
+    /// NOT the grip-change chip. In the card it sat in a corner; on an open graph it
+    /// floated loose thirty points under the panel, saying what the panel's amber rim,
+    /// its NEW GRIP badge and the orange hand already say — a stray box over the trace
+    /// for no new information (measured 2026-09-19). The wide layout's card keeps it.
+    private func graphRegion(_ session: RunnerSession) -> some View {
+        let notice = showsSignalNotice(session)
+        let ambient = !notice && showsAmbientCountdown(session)
+        return ZStack {
+            Color.clear
+            if ambient {
+                ambientCountdown(session)
+                    .transition(.opacity)
+            }
+            if notice {
+                noSignalNotice(session)
+                    .accessibilityIdentifier("runner.signalWarning")
+            }
+        }
+        .animation(Motion.state(reduceMotion), value: ambient)
+        .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil,
+               maxHeight: .infinity)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+            traceGeometry.region = $0
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("runner.graph")
+        .tourAnchor(.runnerTrace)
+    }
+
+    /// **The trace as the SCREEN, not a card** — the stacked layout's graph.
+    ///
+    /// The canvas runs edge to edge, under the status bar, the panel and the controls;
+    /// the PLOT inside it is placed by the glass it runs beneath, see
+    /// `BackgroundTraceGeometry`. Only the graph's home changed: the same `LiveTrace`
+    /// leaf, the same lane, the same phase tint, still read from the store one level
+    /// down so a sample invalidates nothing but the canvas. Nothing force-shaped in a
+    /// gauge-free session, exactly as before.
+    @ViewBuilder
+    private func backgroundTrace(_ session: RunnerSession, bottomInset: CGFloat) -> some View {
+        if !timerOnly {
+            ZStack(alignment: .top) {
+                PhaseWash(tint: tint(session), height: traceGeometry.regionTopInCanvas)
+                LiveTrace(thresholdKg: session.plan.thresholdKg,
+                          targetBand: liveTargetBand(session),
+                          tint: tint(session),
+                          plot: traceGeometry.plot(bottomSafeInset: bottomInset),
+                          lit: true)
+            }
+            // Measured INSIDE `ignoresSafeArea`: outside it the reported frame is the
+            // safe-area frame the parent proposed, not the full-bleed one the canvas
+            // actually draws in, and the plot landed 45 pt high.
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+                traceGeometry.canvas = $0
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+        }
     }
 
     /// The scheduled interval, not the dwindling numeral,
@@ -1212,17 +1405,38 @@ struct RunnerView: View {
 
     // MARK: - Controls
 
+    /// **The dock** — the five actions on ONE glass surface, the way iOS 26 draws a
+    /// toolbar, instead of five separate glass capsules (Nuri, 2026-09-19). Inside it
+    /// each action sits in a quiet ink well rather than its own glass: glass on glass
+    /// is the one layering Liquid Glass asks you not to do, and five lozenges over a
+    /// live curve read as five objects where there is one control surface. Hold to
+    /// end keeps its red fill — the single tinted item, as a toolbar's one destructive
+    /// action would be.
     private func controls(_ session: RunnerSession) -> some View {
-        VStack(spacing: 10) {
-            AdaptiveActionRow(spacing: 10) {
-                pauseButton(session)
-                gaugeButton(session)
+        VStack(spacing: Self.dockSpacing) {
+            AdaptiveActionRow(spacing: Self.dockSpacing) {
+                pauseButton(session, docked: true)
+                gaugeButton(session, docked: true)
             }
-            AdaptiveActionRow(spacing: 10) {
-                skipButtons(session)
+            AdaptiveActionRow(spacing: Self.dockSpacing) {
+                skipButtons(session, docked: true)
                 endButton(session)
             }
         }
+        .padding(Self.dockSpacing)
+        .accessibleGlass(nil, in: Self.dockShape)
+        // `.contain`, explicitly: an identifier on a bare container makes SwiftUI
+        // COMBINE its children into one element, and every button in the dock
+        // vanished from the accessibility tree (16 UI tests could not find Pause).
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("runner.dock")
+    }
+
+    private static let dockSpacing: CGFloat = 8
+
+    /// Same radius family as the panel, so the two glass surfaces read as siblings.
+    private static var dockShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: Metrics.radiusSheet, style: .continuous)
     }
 
     /// The wide layout's single row under the graph: the same five controls at one
@@ -1246,12 +1460,13 @@ struct RunnerView: View {
     /// large-title weight — swapping the labels spent the two Skips' names on the same
     /// repeated word, and VoiceOver read "Paused, dimmed. Paused." twice with no way to
     /// tell them apart. The full sentence rides the hint instead.
-    private func pauseButton(_ session: RunnerSession) -> some View {
+    private func pauseButton(_ session: RunnerSession, docked: Bool = false) -> some View {
         let phase = session.snapshot.phase
         return wideButton(phase.isPaused ? String(localized: "Resume") : String(localized: "Pause"),
                           systemImage: phase.isPaused ? "play.fill" : "pause.fill",
                           enabled: RunnerControlPolicy.pauseEnabled(for: phase),
-                          disabledReason: RunnerControlPolicy.pauseDisabledReason(for: phase)) {
+                          disabledReason: RunnerControlPolicy.pauseDisabledReason(for: phase),
+                          docked: docked) {
             session.send(phase.isPaused ? .resume : .pause)
         }
         // An iPad on a bench with a keyboard case: space pauses, the same key every
@@ -1263,37 +1478,38 @@ struct RunnerView: View {
     /// Neither Tare nor Connect belongs here without a gauge: one has nothing to zero
     /// and the other would offer to change the session you are in.
     @ViewBuilder
-    private func gaugeButton(_ session: RunnerSession) -> some View {
+    private func gaugeButton(_ session: RunnerSession, docked: Bool = false) -> some View {
         if timerOnly {
             EmptyView()
         } else if device.state.isConnected {
-            TareButton(session: session)
+            TareButton(session: session, docked: docked)
                 .accessibilityIdentifier("runner.tare")
         } else if device.canCancelBroadcastSearch {
-            wideButton(String(localized: "Cancel"), systemImage: "xmark") {
+            wideButton(String(localized: "Cancel"), systemImage: "xmark", docked: docked) {
                 device.disconnect()
             }
             .accessibilityLabel(String(localized: "Cancel"))
             .accessibilityValue(device.state.label)
             .accessibilityIdentifier("gauge.connectionAction")
         } else {
-            wideButton(String(localized: "Connect"), systemImage: "dot.radiowaves.left.and.right") {
+            wideButton(String(localized: "Connect"), systemImage: "dot.radiowaves.left.and.right",
+                       docked: docked) {
                 device.connect()
             }
         }
     }
 
     @ViewBuilder
-    private func skipButtons(_ session: RunnerSession) -> some View {
+    private func skipButtons(_ session: RunnerSession, docked: Bool = false) -> some View {
         let phase = session.snapshot.phase
         let skipEnabled = RunnerControlPolicy.skipEnabled(for: phase)
         let skipReason = RunnerControlPolicy.skipDisabledReason(for: phase)
         wideButton(String(localized: "Skip pull"), enabled: skipEnabled,
-                   disabledReason: skipReason) { session.send(.skipRep) }
+                   disabledReason: skipReason, docked: docked) { session.send(.skipRep) }
             .keyboardShortcut("s", modifiers: [])
             .accessibilityIdentifier("runner.skipPull")
         wideButton(String(localized: "Skip set"), enabled: skipEnabled,
-                   disabledReason: skipReason) { session.send(.skipSet) }
+                   disabledReason: skipReason, docked: docked) { session.send(.skipSet) }
             .accessibilityIdentifier("runner.skipSet")
     }
 
@@ -1314,6 +1530,7 @@ struct RunnerView: View {
     private func wideButton(_ title: String, systemImage: String? = nil,
                             tint: Color = Ink.primary,
                             enabled: Bool = true, disabledReason: String? = nil,
+                            docked: Bool = false,
                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
@@ -1323,7 +1540,7 @@ struct RunnerView: View {
             .font(.system(.subheadline, weight: .semibold))
             .foregroundStyle(enabled ? tint : Ink.tertiary.opacity(0.5))
             .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
-            .accessibleGlass(nil, in: .capsule)
+            .runnerActionSurface(docked: docked)
             .contentShape(.capsule)
         }
         .buttonStyle(PressFeedbackButtonStyle())
@@ -1461,12 +1678,107 @@ private struct LiveTrace: View {
     var thresholdKg: Double?
     var targetBand: ClosedRange<Double>?
     var tint: Color
+    /// Where the plot sits in the canvas — the card's own clearances unless the trace
+    /// is the screen's background.
+    var plot: ForceTraceView.PlotInsets = .card
+    var lit = false
     var body: some View {
         ForceTraceView(samples: device.trace,
                        thresholdKg: thresholdKg, targetBand: targetBand, tint: tint,
                        nominalSampleRate: device.gaugeCapabilities.nominalSampleRate,
                        bridgesSparseDelivery: device.gaugeCapabilities.isBroadcast,
-                       diagnostics: device.pipelineDiagnostics)
+                       diagnostics: device.pipelineDiagnostics,
+                       plot: plot, lit: lit)
+    }
+}
+
+/// **The phase colour, under the glass.** Glass only reads as glass when something
+/// with colour passes beneath it, and the panel sat over an empty headroom. This is
+/// the trace's own wash carried up from the open region's edge to the top of the
+/// screen in the phase tint — blue while the clock runs, amber while it waits on you,
+/// steel at rest, red when the link is gone — so the top third of the phone says the
+/// state before a word is read, and the panel has colour to refract. A plain fill
+/// under a fixed mask, so the colour change between phases animates as a fill does;
+/// the field itself stays static, which is what every glass surface needs to sample.
+private struct PhaseWash: View {
+    var tint: Color
+    var height: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Rectangle()
+            .fill(tint)
+            .mask(alignment: .top) {
+                LinearGradient(stops: [.init(color: .black.opacity(0.30), location: 0),
+                                       .init(color: .clear, location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+            }
+            .frame(height: max(0, height))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .animation(Motion.state(reduceMotion), value: tint)
+            .accessibilityHidden(true)
+    }
+}
+
+extension View {
+    /// A runner action's surface: its own glass capsule where it floats on the screen
+    /// (the wide layout), a quiet ink well where it sits inside the dock — the same
+    /// fill the house uses for an inset well, and never glass on glass.
+    @ViewBuilder
+    fileprivate func runnerActionSurface(docked: Bool) -> some View {
+        if docked {
+            background(Capsule().fill(Ink.primary.opacity(0.05)))
+        } else {
+            accessibleGlass(nil, in: .capsule)
+        }
+    }
+}
+
+/// Where the stacked layout's full-bleed plot goes, measured from the layout on top
+/// of it.
+///
+/// `ForceTraceView` keeps `TraceAxis.ceilingHeadroom` above the highest load it has
+/// seen, so a pull's peak lands at 80 % of the plot's height. Solving for the plot top
+/// that puts that 80 % line exactly on the open region's upper edge keeps the curve
+/// the climber actually reaches in the clear and puts only the HEADROOM under the
+/// panel: a new peak crosses under the glass while the axis glides to make room for
+/// it — which is also the one moment the panel is unmistakably glass. The FLOOR sits
+/// on the region's lower edge, just above the controls: with it at the screen's bottom
+/// edge instead, the 0 kg line and the threshold rule ran underneath the buttons, and a
+/// dashed rule crossing the gap between two rows of capsules read as a stray line
+/// (measured on the iOS 27 sim, 2026-09-19). The canvas still runs under the controls
+/// — the fill's wash is what the capsules refract — but nothing the plot LABELS does.
+private struct BackgroundTraceGeometry {
+    /// The open region between the panel and the controls, in window coordinates.
+    var region: CGRect = .zero
+    /// The canvas — the whole window, once it has been measured.
+    var canvas: CGRect = .zero
+
+    #if DEBUG
+    /// COMPARISON AID, to be deleted with the losing variant: `-previewRunnerFloorAtEdge`
+    /// drops the plot's floor to the screen's bottom edge, so the resting line runs
+    /// beneath the buttons instead of just above them.
+    private static let floorAtEdge =
+        ProcessInfo.processInfo.arguments.contains("-previewRunnerFloorAtEdge")
+    #else
+    private static let floorAtEdge = false
+    #endif
+
+    /// The open region's upper edge in the canvas's own coordinates — where the
+    /// phase wash ends and the curve's usual range begins. Zero until measured.
+    var regionTopInCanvas: CGFloat {
+        guard canvas.height > 0, region.height > 0 else { return 0 }
+        return max(0, region.minY - canvas.minY)
+    }
+
+    func plot(bottomSafeInset: CGFloat) -> ForceTraceView.PlotInsets {
+        guard canvas.height > 0, region.height > 0 else { return .card }
+        let headroom = 1 - 1 / TraceAxis.ceilingHeadroom
+        let regionTop = region.minY - canvas.minY
+        let bottom = Self.floorAtEdge ? bottomSafeInset : max(0, canvas.maxY - region.maxY)
+        // top = regionTop − headroom · (height − bottom − top), solved for top.
+        let top = (regionTop - headroom * (canvas.height - bottom)) / (1 - headroom)
+        return ForceTraceView.PlotInsets(top: max(0, top), bottom: bottom, trailing: 8)
     }
 }
 
@@ -1478,6 +1790,8 @@ private struct TareButton: View {
     @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
     var session: RunnerSession
+    /// Inside the dock the button gives up its own glass — see `runnerActionSurface`.
+    var docked = false
 
     @State private var promptedKg = 0.0
     @State private var promptedConnectionEpoch: UInt64 = 0
@@ -1530,7 +1844,7 @@ private struct TareButton: View {
             }
             .font(.system(.subheadline, weight: .semibold))
             .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
-            .accessibleGlass(nil, in: .capsule)
+            .runnerActionSurface(docked: docked)
             .contentShape(.capsule)
         }
         .buttonStyle(PressFeedbackButtonStyle())

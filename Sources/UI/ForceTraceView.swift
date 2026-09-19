@@ -14,6 +14,16 @@ private enum TraceInset {
     static let bottom: CGFloat = 10
 }
 
+/// Axis constants shared with the layout that places a full-bleed plot — file scope,
+/// like `TraceInset`, so a plain geometry struct can read them.
+enum TraceAxis {
+    /// How much headroom the axis keeps above the highest load it has seen, and above
+    /// a target band's ceiling: the peak lands at 1 / this of the plot's height.
+    /// `RunnerView` places its full-bleed plot so that exactly this headroom — and
+    /// nothing the curve normally reaches — lies under the glass panel.
+    static let ceilingHeadroom: Double = 1.25
+}
+
 /// The live force trace: a rolling window of the gauge's readings, scrolling smoothly.
 ///
 /// Time-based, not index-based: the Progressor delivers ~80 Hz samples in batches of
@@ -50,6 +60,31 @@ struct ForceTraceView: View {
     var diagnostics: PipelineDiagnostics? = nil
     /// A completed effort keeps its measured picture instead of scrolling off screen.
     var frozenAt: TimeInterval? = nil
+    /// **Where the plot sits inside the canvas.** In a card it is the card less the
+    /// small edge clearances; when the trace is the SCREEN's background
+    /// (`RunnerView`'s stacked layout) the canvas is the whole display and the caller
+    /// places the plot by the glass it runs beneath — ceiling under the information
+    /// panel, floor under the controls. A value, like everything else here.
+    var plot: PlotInsets = .card
+    /// **Drawn as a LIT object** — the runner's full-bleed trace. The stroke brightens
+    /// toward now, the live point glows, and the lane's edges are solid hairlines: on
+    /// an open screen a flat 2.5 pt line and two dashed rules read as chart furniture,
+    /// and a curve you look at for twenty minutes should look like the thing being
+    /// measured. A card keeps the plain drawing, so no other screen changes.
+    var lit: Bool = false
+
+    /// The band of the canvas that 0 kg → ceiling maps onto, as insets from the
+    /// canvas's own edges.
+    struct PlotInsets: Equatable {
+        var top: CGFloat = TraceInset.top
+        var bottom: CGFloat = TraceInset.bottom
+        /// Clearance between the head of the trace and the right edge. Zero in a card,
+        /// whose own inset keeps the head dot whole; a full-bleed canvas ends at the
+        /// physical screen edge under the screen border, so the head steps in from it.
+        var trailing: CGFloat = 0
+        /// The card's own clearances.
+        static let card = PlotInsets()
+    }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -128,8 +163,8 @@ struct ForceTraceView: View {
         for sample in samples where sample.kg > axis.maxSeen { axis.maxSeen = sample.kg }
         // The band's ceiling has to be ON the axis with headroom above it, or the lane
         // you are aiming for sits jammed against the top edge of the card.
-        let target = max(10, axis.maxSeen * 1.25, (thresholdKg ?? 0) * 1.6,
-                         (targetBand?.upperBound ?? 0) * 1.25)
+        let target = max(10, axis.maxSeen * TraceAxis.ceilingHeadroom, (thresholdKg ?? 0) * 1.6,
+                         (targetBand?.upperBound ?? 0) * TraceAxis.ceilingHeadroom)
         let dt = min(max(now - axis.lastFrame, 0), 0.1)
         axis.lastFrame = now
         if axis.displayed == 0 || reduceMotion || frozenAt != nil {
@@ -241,11 +276,13 @@ struct ForceTraceView: View {
 
     private func draw(in context: GraphicsContext, size: CGSize, now: TimeInterval,
                       ceiling: Double) {
-        let plotHeight = max(1, size.height - TraceInset.top - TraceInset.bottom)
+        let plotTop = plot.top
+        let plotHeight = max(1, size.height - plotTop - plot.bottom)
+        let plotRight = size.width - plot.trailing
 
         func y(_ kg: Double) -> CGFloat {
             let fraction = min(max(kg, 0), ceiling) / ceiling
-            return TraceInset.top + plotHeight - CGFloat(fraction) * plotHeight
+            return plotTop + plotHeight - CGFloat(fraction) * plotHeight
         }
 
         if let targetBand {
@@ -257,13 +294,14 @@ struct ForceTraceView: View {
             let top = y(targetBand.upperBound)
             let bottom = y(targetBand.lowerBound)
             let lane = CGRect(x: 0, y: top, width: size.width, height: max(1, bottom - top))
-            context.fill(Path(lane), with: .color(Ink.tertiary.opacity(0.13)))
+            context.fill(Path(lane), with: .color(Ink.tertiary.opacity(lit ? 0.11 : 0.13)))
             for edge in [top, bottom] {
                 var rule = Path()
                 rule.move(to: CGPoint(x: 0, y: edge))
                 rule.addLine(to: CGPoint(x: size.width, y: edge))
-                context.stroke(rule, with: .color(Ink.tertiary.opacity(0.5)),
-                               style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                context.stroke(rule, with: .color(Ink.tertiary.opacity(lit ? 0.38 : 0.5)),
+                               style: lit ? StrokeStyle(lineWidth: 1)
+                                          : StrokeStyle(lineWidth: 1, dash: [4, 4]))
             }
         } else if let thresholdKg, thresholdKg > 0, thresholdKg < ceiling {
             var rule = Path()
@@ -288,7 +326,7 @@ struct ForceTraceView: View {
 
         func x(_ index: Int) -> CGFloat {
             let age = (newest.t - samples[index].t) + drift
-            return size.width - CGFloat(age / Self.windowSeconds) * size.width
+            return plotRight - CGFloat(age / Self.windowSeconds) * size.width
         }
 
         // **START AT THE NEWEST UNBROKEN RUN.** A gap in the buffer means the stream
@@ -377,7 +415,7 @@ struct ForceTraceView: View {
                 i -= 1
             }
             let edgeKg = count > 0 ? sum / count : smoothed(samples.count - 1)
-            head = CGPoint(x: size.width, y: y(edgeKg))
+            head = CGPoint(x: plotRight, y: y(edgeKg))
             line.addLine(to: head)
         } else {
             head = CGPoint(x: x(samples.count - 1), y: y(smoothed(samples.count - 1)))
@@ -428,11 +466,25 @@ struct ForceTraceView: View {
             }
             layer.fill(fill, with: .linearGradient(
                 Gradient(colors: [tint.opacity(0.28), tint.opacity(0.02)]),
-                startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
+                startPoint: CGPoint(x: 0, y: plotTop), endPoint: CGPoint(x: 0, y: size.height)))
         }
 
-        context.stroke(line, with: .color(tint),
-                       style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+        if lit {
+            // History dims toward the left and NOW is full strength, so the eye lands
+            // on the end of the line that matters; the glow marks the live point from
+            // across a room. Both are plain fills — no blur filter, nothing per frame
+            // that a Canvas does not already do.
+            context.stroke(line, with: .linearGradient(
+                Gradient(colors: [tint.opacity(0.45), tint]),
+                startPoint: .zero, endPoint: CGPoint(x: size.width, y: 0)),
+                style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+            context.fill(Path(ellipseIn: CGRect(x: head.x - 16, y: head.y - 16, width: 32, height: 32)),
+                         with: .radialGradient(Gradient(colors: [tint.opacity(0.55), tint.opacity(0)]),
+                                               center: head, startRadius: 0, endRadius: 16))
+        } else {
+            context.stroke(line, with: .color(tint),
+                           style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+        }
 
         context.fill(Path(ellipseIn: CGRect(x: head.x - 4, y: head.y - 4, width: 8, height: 8)),
                      with: .color(tint))

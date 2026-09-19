@@ -128,17 +128,26 @@ final class RestFocusUITests: XCTestCase {
         XCTAssertTrue(element("runner.restFocus.hand", in: app).label.localizedCaseInsensitiveContains("left"))
         XCTAssertTrue(element("runner.restFocus.phase", in: app).label.contains("PAUSED"))
         assertRestSummaryAboveGraph(in: app)
-        XCTAssertGreaterThan(orangeFractionAtGraphEdge(in: app), 0.08,
-                             "The orange graph outline must survive the initial animation and remain at two seconds")
+        XCTAssertGreaterThan(orangeFractionAtPanelEdge(in: app), 0.08,
+                             "The orange panel outline must survive the initial animation and remain at two seconds")
         screenshot(app, name: "Grip change — enlarged orange glyph and outline at final two seconds")
 
         app.buttons["runner.pause"].tap()
         XCTAssertTrue(identity.waitForNonExistence(timeout: 5))
         assertControlsVisible(in: app)
-        assertSameFrame(element("runner.graph", in: app).frame, graphFrame, name: "Live graph after grip change")
+        // The enlarged grip-change hand pushed the panel — and so the graph's top edge —
+        // down while it showed; once the pull is ready the hand shrinks and the panel
+        // slides back up. Give the 0.3 s settle a moment before measuring.
+        Thread.sleep(forTimeInterval: 0.8)
+        let restored = element("runner.graph", in: app).frame
+        XCTAssertLessThan(restored.minY, graphFrame.minY - 4,
+                          "The panel must slide back up once the enlarged hand has gone")
+        XCTAssertEqual(restored.maxY, graphFrame.maxY, accuracy: 2, "Live graph after grip change")
+        XCTAssertEqual(restored.minX, graphFrame.minX, accuracy: 2, "Live graph after grip change")
+        XCTAssertEqual(restored.width, graphFrame.width, accuracy: 2, "Live graph after grip change")
         assertSameFrame(app.buttons["runner.pause"].frame, pauseFrame, name: "Pause")
         assertSameFrame(app.buttons["runner.end"].frame, endFrame, name: "Hold to end")
-        XCTAssertLessThan(orangeFractionAtGraphEdge(in: app), 0.01,
+        XCTAssertLessThan(orangeFractionAtPanelEdge(in: app), 0.01,
                           "The previous grip-change outline must clear when the next pull is ready")
         screenshot(app, name: "Grip change — emphasis clears when the next pull is ready")
     }
@@ -151,7 +160,7 @@ final class RestFocusUITests: XCTestCase {
                        "A short grip-change rest must keep the compact workout layout")
         XCTAssertTrue(element("runner.prompt", in: app).label.localizedCaseInsensitiveContains("left"))
         assertControlsVisible(in: app)
-        XCTAssertGreaterThan(orangeFractionAtGraphEdge(in: app), 0.08,
+        XCTAssertGreaterThan(orangeFractionAtPanelEdge(in: app), 0.08,
                              "The original compact grip-change cue must retain its orange outline")
         screenshot(app, name: "Three-second grip change — original compact cue")
     }
@@ -316,14 +325,16 @@ final class RestFocusUITests: XCTestCase {
     /// Inspect the rendered straight left edge, away from rounded corners and trace
     /// content. Color is intentionally checked in pixels: the outline is decorative,
     /// so an accessibility flag would only prove state, not that the cue was visible.
-    private func orangeFractionAtGraphEdge(in app: XCUIApplication,
+    /// The grip-change outline rims the glass PANEL in the stacked layout — the graph
+    /// underneath it is the screen's background and has no edge of its own.
+    private func orangeFractionAtPanelEdge(in app: XCUIApplication,
                                             file: StaticString = #filePath, line: UInt = #line) -> Double {
-        let graph = element("runner.graph", in: app).frame
+        let graph = element("runner.panel", in: app).frame
         let appFrame = app.frame
         let region = CGRect(x: graph.minX, y: graph.minY + 36,
                             width: 6, height: max(0, graph.height - 72))
         guard region.height > 0, let image = app.screenshot().image.cgImage else {
-            XCTFail("A graph screenshot is required to inspect its outline", file: file, line: line)
+            XCTFail("A panel screenshot is required to inspect its outline", file: file, line: line)
             return 0
         }
         let scaleX = CGFloat(image.width) / appFrame.width
