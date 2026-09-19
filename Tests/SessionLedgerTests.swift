@@ -12,7 +12,7 @@ import XCTest
 @MainActor
 final class SessionLedgerTests: XCTestCase {
 
-    private static let schema = Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self])
+    private static let schema = TestFixtures.schema
 
     private func makeWorld(today: DayStamp = DayStamp(raw: 20_000))
         throws -> (container: ModelContainer, ledger: SessionLedger, clock: DayClock) {
@@ -107,7 +107,7 @@ final class SessionLedgerTests: XCTestCase {
     }
 
     func testNewestPerGripAndHandKeepsBothHands() throws {
-        let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let grip = TestFixtures.halfCrimp20
         let earlier = Date(timeIntervalSinceReferenceDate: 1_000)
         let later = Date(timeIntervalSinceReferenceDate: 2_000)
         let records = [

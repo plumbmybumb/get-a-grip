@@ -6,16 +6,13 @@ import XCTest
 @MainActor
 final class WeightUnitsUITests: XCTestCase {
     func testSettingsPoundsChoicePersistsAndManualMaxUsesPounds() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-seedRoutine", "-mockDevice", "-tab", "3", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        let skip = app.buttons["Skip"]
-        if skip.waitForExistence(timeout: 2) { skip.tap() }
+        let app = launchApp(arguments: ["-seedRoutine", "-mockDevice", "-tab", "3"])
+        dismissTour(in: app)
         let pounds = app.buttons["Pounds (lb)"]
         reveal(pounds, in: app)
         XCTAssertTrue(pounds.isHittable)
         pounds.tap()
-        screenshot(app, name: "iPhone weight settings in pounds")
+        attachScreenshot(app, name: "iPhone weight settings in pounds")
         app.terminate()
         app.launch()
         reveal(pounds, in: app)
@@ -37,38 +34,26 @@ final class WeightUnitsUITests: XCTestCase {
         field.typeText("50")
         app.buttons["Done"].firstMatch.tap()
         XCTAssertTrue(amount.label.contains("50.0 lb"))
-        screenshot(app, name: "iPhone manual max in pounds")
+        attachScreenshot(app, name: "iPhone manual max in pounds")
         app.buttons["maxEdit.cancel"].tap()
         app.terminate()
     }
 
     func testRestLabelStaysBetweenCountersAndPoundPreviewKeepsActionsVisible() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-previewRunnerRest", "-previewRunnerRestSeconds", "3", "-previewWeightLb", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        let counters = app.descendants(matching: .any).matching(identifier: "runner.counters").firstMatch
+        let app = launchApp(arguments: ["-previewRunnerRest", "-previewRunnerRestSeconds", "3",
+                                        "-previewWeightLb"])
+        let counters = element("runner.counters", in: app)
         XCTAssertTrue(counters.waitForExistence(timeout: 5))
         XCTAssertTrue(counters.label.contains("REST"), counters.debugDescription)
-        let hero = app.descendants(matching: .any).matching(identifier: "runner.hero").firstMatch
+        let hero = element("runner.hero", in: app)
         XCTAssertTrue(hero.exists)
         XCTAssertGreaterThan(counters.frame.minY, hero.frame.maxY, "The rest label belongs below the numbers on every iPhone")
-        screenshot(app, name: "iPhone rest label and gray border")
+        attachScreenshot(app, name: "iPhone rest label and gray border")
         app.terminate()
-        app.launchArguments = ["-previewRunnerWorking", "-previewWeightLb", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        XCTAssertTrue(app.buttons["runner.pause"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["runner.pause"].isHittable)
-        screenshot(app, name: "iPhone 12 kg pull displayed as 26.5 lb")
-        app.terminate()
-    }
-
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<8 where !element.isHittable { app.swipeUp() }
-    }
-    private func screenshot(_ app: XCUIApplication, name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        let working = launchApp(arguments: ["-previewRunnerWorking", "-previewWeightLb"])
+        XCTAssertTrue(working.buttons["runner.pause"].waitForExistence(timeout: 5))
+        XCTAssertTrue(working.buttons["runner.pause"].isHittable)
+        attachScreenshot(working, name: "iPhone 12 kg pull displayed as 26.5 lb")
+        working.terminate()
     }
 }

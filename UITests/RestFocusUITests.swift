@@ -27,7 +27,7 @@ final class RestFocusUITests: XCTestCase {
                        "The live weight must not compete with upcoming grip information during a long rest")
         assertRestSummaryAboveGraph(in: app)
         assertControlsVisible(in: app)
-        screenshot(app, name: "Rest focus — next right hand and timer above the live graph")
+        attachScreenshot(app, name: "Rest focus — next right hand and timer above the live graph")
     }
 
     func testRestSummaryKeepsGraphAndControlsAtOriginalSizeAndPosition() {
@@ -37,7 +37,7 @@ final class RestFocusUITests: XCTestCase {
         let pauseFrame = legacy.buttons["runner.pause"].frame
         let endFrame = legacy.buttons["runner.end"].frame
         XCTAssertGreaterThan(graphFrame.height, 160, "Measure the plot itself, not an empty accessibility proxy")
-        screenshot(legacy, name: "Original rest layout — graph geometry baseline")
+        attachScreenshot(legacy, name: "Original rest layout — graph geometry baseline")
         legacy.terminate()
 
         let focused = launchRest(seconds: 10, extra: ["-previewRunnerTarget"])
@@ -47,7 +47,7 @@ final class RestFocusUITests: XCTestCase {
         assertSameFrame(element("runner.graph", in: focused).frame, graphFrame, name: "Full-size live graph")
         assertSameFrame(focused.buttons["runner.pause"].frame, pauseFrame, name: "Pause")
         assertSameFrame(focused.buttons["runner.end"].frame, endFrame, name: "Hold to end")
-        screenshot(focused, name: "Rest focus — same graph and control geometry")
+        attachScreenshot(focused, name: "Rest focus — same graph and control geometry")
     }
 
     func testLongestSetBreakAndTenThousandPullPlanFitAboveGraph() {
@@ -68,7 +68,7 @@ final class RestFocusUITests: XCTestCase {
             XCTAssertLessThanOrEqual(count.frame.maxX, app.frame.maxX - 16, identifier)
         }
         assertControlsVisible(in: app)
-        screenshot(app, name: "Rest focus — 900-second set break and 10000 planned pulls")
+        attachScreenshot(app, name: "Rest focus — 900-second set break and 10000 planned pulls")
     }
 
     func testShortRestsKeepTheExistingLayout() {
@@ -78,7 +78,7 @@ final class RestFocusUITests: XCTestCase {
             XCTAssertFalse(element("runner.restFocus", in: app).exists)
             XCTAssertTrue(element("runner.counters", in: app).label.contains("REST"))
             assertControlsVisible(in: app)
-            screenshot(app, name: "Short rest — compact layout")
+            attachScreenshot(app, name: "Short rest — compact layout")
             app.terminate()
         }
     }
@@ -97,7 +97,7 @@ final class RestFocusUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [twoSeconds], timeout: 20), .completed)
         XCTAssertTrue(identity.exists, "Scheduled ten-second rests keep the focus layout for their whole duration")
         assertRestSummaryAboveGraph(in: app)
-        screenshot(app, name: "Rest focus — final two seconds")
+        attachScreenshot(app, name: "Rest focus — final two seconds")
         XCTAssertTrue(app.buttons["runner.pause"].label.contains("Resume"))
         app.buttons["runner.pause"].tap()
         XCTAssertTrue(identity.waitForNonExistence(timeout: 5), "The normal pull layout returns when rest finishes")
@@ -105,7 +105,7 @@ final class RestFocusUITests: XCTestCase {
         assertSameFrame(element("runner.graph", in: app).frame, graphFrame, name: "Live graph")
         assertSameFrame(app.buttons["runner.pause"].frame, pauseFrame, name: "Pause")
         assertSameFrame(app.buttons["runner.end"].frame, endFrame, name: "Hold to end")
-        screenshot(app, name: "After rest — pull layout restored")
+        attachScreenshot(app, name: "After rest — pull layout restored")
     }
 
     func testChangedGripStaysOrangeThroughFinalRestSecondsAndClearsWhenPullResumes() {
@@ -113,7 +113,7 @@ final class RestFocusUITests: XCTestCase {
         defer { app.terminate() }
         let identity = element("runner.restFocus", in: app)
         XCTAssertTrue(identity.waitForExistence(timeout: 5))
-        screenshot(app, name: "Grip change — next hand and full grip above the live graph")
+        attachScreenshot(app, name: "Grip change — next hand and full grip above the live graph")
         let graphFrame = element("runner.graph", in: app).frame
         let pauseFrame = app.buttons["runner.pause"].frame
         let endFrame = app.buttons["runner.end"].frame
@@ -130,16 +130,22 @@ final class RestFocusUITests: XCTestCase {
         assertRestSummaryAboveGraph(in: app)
         XCTAssertGreaterThan(orangeFractionAtPanelEdge(in: app), 0.08,
                              "The orange panel outline must survive the initial animation and remain at two seconds")
-        screenshot(app, name: "Grip change — enlarged orange glyph and outline at final two seconds")
+        attachScreenshot(app, name: "Grip change — enlarged orange glyph and outline at final two seconds")
 
         app.buttons["runner.pause"].tap()
         XCTAssertTrue(identity.waitForNonExistence(timeout: 5))
         assertControlsVisible(in: app)
         // The enlarged grip-change hand pushed the panel — and so the graph's top edge —
         // down while it showed; once the pull is ready the hand shrinks and the panel
-        // slides back up. Give the 0.3 s settle a moment before measuring.
-        Thread.sleep(forTimeInterval: 0.8)
-        let restored = element("runner.graph", in: app).frame
+        // slides back up. WAIT for that frame rather than sleeping past the 0.3 s
+        // settle: a sleep long enough to be safe on a loaded machine is time every
+        // passing run pays for, and a shorter one is how this test turns flaky.
+        let graph = element("runner.graph", in: app)
+        waitFor(graph, NSPredicate { subject, _ in
+            guard let element = subject as? XCUIElement else { return false }
+            return element.frame.minY < graphFrame.minY - 4
+        }, timeout: 3)
+        let restored = graph.frame
         XCTAssertLessThan(restored.minY, graphFrame.minY - 4,
                           "The panel must slide back up once the enlarged hand has gone")
         XCTAssertEqual(restored.maxY, graphFrame.maxY, accuracy: 2, "Live graph after grip change")
@@ -149,7 +155,7 @@ final class RestFocusUITests: XCTestCase {
         assertSameFrame(app.buttons["runner.end"].frame, endFrame, name: "Hold to end")
         XCTAssertLessThan(orangeFractionAtPanelEdge(in: app), 0.01,
                           "The previous grip-change outline must clear when the next pull is ready")
-        screenshot(app, name: "Grip change — emphasis clears when the next pull is ready")
+        attachScreenshot(app, name: "Grip change — emphasis clears when the next pull is ready")
     }
 
     func testShortChangedGripRestKeepsCompactCueAndOrangeGraphOutline() {
@@ -162,7 +168,7 @@ final class RestFocusUITests: XCTestCase {
         assertControlsVisible(in: app)
         XCTAssertGreaterThan(orangeFractionAtPanelEdge(in: app), 0.08,
                              "The original compact grip-change cue must retain its orange outline")
-        screenshot(app, name: "Three-second grip change — original compact cue")
+        attachScreenshot(app, name: "Three-second grip change — original compact cue")
     }
 
     func testOldPreviewPreferenceCannotDisablePermanentRestLayout() {
@@ -173,13 +179,9 @@ final class RestFocusUITests: XCTestCase {
     }
 
     func testSettingsDoesNotOfferTheRemovedPreviewSwitch() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-seedRoutine", "-mockDevice", "-tab", "3",
-                               "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
+        let app = launchApp(arguments: ["-seedRoutine", "-mockDevice", "-tab", "3"])
         defer { app.terminate() }
-        let skip = app.buttons["Skip"]
-        if skip.waitForExistence(timeout: 2) { skip.tap() }
+        dismissTour(in: app)
         for _ in 0..<8 {
             XCTAssertFalse(app.switches["settings.restFocusPreview"].exists)
             app.swipeUp()
@@ -194,7 +196,7 @@ final class RestFocusUITests: XCTestCase {
         XCTAssertTrue(paused.buttons["runner.pause"].label.contains("Resume"))
         XCTAssertEqual(element("runner.restFocus.countdown", in: paused).label, "10")
         assertRestSummaryAboveGraph(in: paused)
-        screenshot(paused, name: "Rest focus — paused")
+        attachScreenshot(paused, name: "Rest focus — paused")
         paused.terminate()
 
         let disconnected = launchRest(seconds: 10, extra: ["-previewRunnerSignalLost"])
@@ -208,7 +210,7 @@ final class RestFocusUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(warningFrame.minY, element("runner.graph", in: disconnected).frame.minY,
                                     "Gauge recovery guidance stays in the graph, clear of the rest instruction")
         XCTAssertTrue(disconnected.buttons["Connect"].isHittable)
-        screenshot(disconnected, name: "Rest focus — lost connection")
+        attachScreenshot(disconnected, name: "Rest focus — lost connection")
     }
 
     func testTimerOnlyLongRestKeepsTheTimingInterface() {
@@ -219,7 +221,7 @@ final class RestFocusUITests: XCTestCase {
         XCTAssertFalse(element("runner.graph", in: app).exists)
         XCTAssertTrue(app.buttons["runner.end"].isHittable)
         XCTAssertFalse(app.buttons["runner.tare"].exists)
-        screenshot(app, name: "Timer-only rest — existing timing interface")
+        attachScreenshot(app, name: "Timer-only rest — existing timing interface")
     }
 
     func testReleaseAndWorkingPhasesKeepTheNormalInterface() {
@@ -232,7 +234,7 @@ final class RestFocusUITests: XCTestCase {
                 XCTAssertTrue(element("runner.prompt", in: app).label.contains("LET GO"))
             }
             assertControlsVisible(in: app)
-            screenshot(app, name: phase == "-previewRunnerRelease" ? "Release — LET GO remains visible" : "Working — original measurements")
+            attachScreenshot(app, name: phase == "-previewRunnerRelease" ? "Release — LET GO remains visible" : "Working — original measurements")
             app.terminate()
         }
     }
@@ -253,24 +255,17 @@ final class RestFocusUITests: XCTestCase {
                 XCTAssertFalse(label.label.contains("…"), identifier)
             }
             if !scrolls { assertRestSummaryAboveGraph(in: app) }
-            screenshot(app, name: "Rest focus — French \(category), upcoming set")
+            attachScreenshot(app, name: "Rest focus — French \(category), upcoming set")
             assertControlsVisible(in: app, allowsScrolling: scrolls)
-            screenshot(app, name: "Rest focus — French \(category), controls")
+            attachScreenshot(app, name: "Rest focus — French \(category), controls")
             app.terminate()
         }
     }
 
     private func launchRest(seconds: Int, phase: String = "-previewRunnerRest",
                             language: String = "en", extra: [String] = []) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = [phase, "-previewRunnerRestSeconds", String(seconds),
-                               "-AppleLanguages", "(\(language))", "-AppleLocale", language == "fr" ? "fr_FR" : "en_US"] + extra
-        app.launch()
-        return app
-    }
-
-    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+        launchApp(arguments: [phase, "-previewRunnerRestSeconds", String(seconds)] + extra,
+                  language: language)
     }
 
     private func assertRestSummaryAboveGraph(in app: XCUIApplication,
@@ -377,12 +372,5 @@ final class RestFocusUITests: XCTestCase {
             return 0
         }
         return Double(orangeCount) / Double(pixelCount)
-    }
-
-    private func screenshot(_ app: XCUIApplication, name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
     }
 }

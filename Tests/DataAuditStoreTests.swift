@@ -7,13 +7,14 @@ import XCTest
 @MainActor
 final class DataAuditStoreTests: XCTestCase {
     private func world() throws -> (ModelContainer, ModelContext, DayClock, TemplateStore) {
-        let schema = Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self])
+        let schema = TestFixtures.schema
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try ModelContainer(for: schema, configurations: [config])
         let context = ModelContext(container)
         let clock = DayClock()
-        let settings = SettingsStore()
-        settings.didAskNotificationPermission = true
+        // The whole reset, not just this file's own field: SettingsStore is shared
+        // UserDefaults, so a partial one inherits whatever another file left behind.
+        let settings = resetSettings(SettingsStore())
         return (container, context, clock, TemplateStore(context: context, clock: clock,
                                                         settings: settings, storageMode: .localOnly))
     }

@@ -46,16 +46,16 @@ final class SessionPeakHandsUITests: XCTestCase {
         }
     }
 
+    /// The locale used to be passed as the LANGUAGE ("fr", not "fr_FR"), so the French
+    /// screenshots below were taken with root-locale formatting. The shared launcher
+    /// pairs them, which is the whole reason it exists.
     private func launch(language: String, largeText: Bool) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = ["-previewSummary", "-previewHandMaxes", "-mockDevice",
-                               "-AppleLanguages", "(\(language))", "-AppleLocale", language]
+        var arguments = ["-previewSummary", "-previewHandMaxes", "-mockDevice"]
         if largeText {
-            app.launchArguments += ["-UIPreferredContentSizeCategoryName",
-                                    "UICTContentSizeCategoryAccessibilityXXXL"]
+            arguments += ["-UIPreferredContentSizeCategoryName",
+                          "UICTContentSizeCategoryAccessibilityXXXL"]
         }
-        app.launch()
-        return app
+        return launchApp(arguments: arguments, language: language)
     }
 
     private func openPeaks(in app: XCUIApplication) {
@@ -68,16 +68,5 @@ final class SessionPeakHandsUITests: XCTestCase {
 
     private func peak(_ side: String, in app: XCUIApplication) -> XCUIElement {
         app.buttons["summary.peak.20|IMRL|halfCrimp|\(side)"]
-    }
-
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<8 where !element.isHittable { app.swipeUp() }
-    }
-
-    private func attachScreenshot(_ app: XCUIApplication, name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
     }
 }

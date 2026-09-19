@@ -22,45 +22,53 @@ final class RunnerAppearanceUITests: XCTestCase {
         let skip = app.buttons["runner.skipPull"]
         waitFor(skip, NSPredicate(format: "enabled == YES"), timeout: 10)
         skip.tap()
-        let prompt = element("runner.prompt", in: app)
-        // Skipping under the mock's load still respects LET GO before rest begins.
-        waitFor(prompt, NSPredicate(format: "label == %@", "RIGHT HAND NEXT"), timeout: 15)
-        let counters = element("runner.counters", in: app)
-        let position = positionText(counters.label)
-        XCTAssertTrue(position.contains("pull 2 of"), counters.label)
-        let upcomingGrip = counters.label
+
+        // Skipping under the mock's load still respects LET GO before the rest begins,
+        // so the wait covers the release as well as the skip itself.
+        //
+        // The seeded routine rests 20 s, and a rest that long is the REST-FOCUS layout:
+        // the panel names the next hand, grip and position, and the compact prompt and
+        // counters are `.hidden()` — which takes them out of the accessibility tree as
+        // well as out of the drawing. So live progress is read where the screen states
+        // it, not from the elements the compact layout used to carry.
+        let restFocus = element("runner.restFocus", in: app)
+        XCTAssertTrue(restFocus.waitForExistence(timeout: 25), app.debugDescription)
+        let hand = element("runner.restFocus.hand", in: app)
+        let pullCount = element("runner.restFocus.pullCount", in: app)
+        waitFor(hand, NSPredicate(format: "label == %@", "Right hand next"), timeout: 5)
+        let position = pullCount.label
+        XCTAssertTrue(position.contains("Pull 2 of "), position)
 
         // This first switch happens during an actively counting rest, matching an
         // automatic sunset appearance change rather than an app background/relaunch.
         device.appearance = .dark
         XCTAssertEqual(app.state, .runningForeground)
-        XCTAssertEqual(prompt.label, "RIGHT HAND NEXT")
-        XCTAssertEqual(counters.label, upcomingGrip)
+        XCTAssertEqual(hand.label, "Right hand next")
+        XCTAssertEqual(pullCount.label, position)
         attachScreenshot(app, name: "Live rest survives light to dark")
 
         let pause = app.buttons["runner.pause"]
         pause.tap()
-        waitFor(prompt, NSPredicate(format: "label == %@", "PAUSED"), timeout: 3)
-        let pausedState = counters.label
+        let phase = element("runner.restFocus.phase", in: app)
+        waitFor(phase, NSPredicate(format: "label CONTAINS %@", "PAUSED"), timeout: 3)
         for dark in [false, true] {
             device.appearance = dark ? .dark : .light
             XCTAssertEqual(app.state, .runningForeground)
-            XCTAssertEqual(prompt.label, "PAUSED")
-            XCTAssertEqual(counters.label, pausedState)
+            XCTAssertTrue(phase.label.contains("PAUSED"), phase.label)
+            XCTAssertEqual(hand.label, "Right hand next")
+            XCTAssertEqual(pullCount.label, position)
             XCTAssertTrue(pause.label.contains("Resume"), pause.label)
             XCTAssertTrue(app.buttons["runner.end"].isHittable)
         }
 
         pause.tap()
-        waitFor(prompt, NSPredicate(format: "label == %@", "RIGHT HAND NEXT"), timeout: 3)
-        XCTAssertEqual(positionText(counters.label), position)
-        // Clock values are intentionally hidden from VoiceOver in the measured
-        // runner. Reaching the upcoming pull proves the real rest ticker resumed;
-        // a session whose onDisappear called end() remains stuck here forever.
-        waitFor(prompt,
-                NSPredicate(format: "label CONTAINS %@ AND label != %@", "RIGHT", "RIGHT HAND NEXT"),
-                timeout: 25)
-        XCTAssertEqual(positionText(counters.label), position)
+        // Clock values are intentionally hidden from VoiceOver in the measured runner,
+        // so the proof that the real rest ticker resumed is reaching the next pull at
+        // all: the rest has to run itself down and hand the screen back to the pull
+        // layout. A session whose onDisappear called end() remains stuck here forever.
+        let prompt = element("runner.prompt", in: app)
+        waitFor(prompt, NSPredicate(format: "label CONTAINS %@", "RIGHT"), timeout: 30)
+        XCTAssertFalse(restFocus.exists, "the pull layout replaces the rest panel")
         XCTAssertTrue(app.buttons["runner.end"].isHittable)
         attachScreenshot(app, name: "Live pull resumes after appearance changes")
     }
@@ -103,11 +111,9 @@ final class RunnerAppearanceUITests: XCTestCase {
     }
 
     private func startLiveMockSession() -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = ["-seedRoutine", "-mockDevice", "-AppleLanguages", "(en)",
-                               "-AppleLocale", "en_US", "-UIPreferredContentSizeCategoryName",
-                               "UICTContentSizeCategoryL"]
-        app.launch()
+        let app = launchApp(arguments: ["-seedRoutine", "-mockDevice",
+                                        "-UIPreferredContentSizeCategoryName",
+                                        "UICTContentSizeCategoryL"])
         dismissTour(in: app)
         let start = app.buttons["Connect and start"]
         XCTAssertTrue(start.waitForExistence(timeout: 10))
@@ -115,32 +121,5 @@ final class RunnerAppearanceUITests: XCTestCase {
         XCTAssertTrue(app.buttons["runner.end"].waitForExistence(timeout: 10))
         dismissTour(in: app)
         return app
-    }
-
-    private func dismissTour(in app: XCUIApplication) {
-        let skip = app.buttons["Skip"]
-        if skip.waitForExistence(timeout: 2) { skip.tap() }
-    }
-
-    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
-    }
-
-    private func positionText(_ counters: String) -> String {
-        counters.components(separatedBy: ", ").prefix(2).joined(separator: ", ")
-    }
-
-    private func waitFor(_ element: XCUIElement, _ predicate: NSPredicate, timeout: TimeInterval,
-                         file: StaticString = #filePath, line: UInt = #line) {
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed,
-                       element.debugDescription, file: file, line: line)
-    }
-
-    private func attachScreenshot(_ app: XCUIApplication, name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
     }
 }

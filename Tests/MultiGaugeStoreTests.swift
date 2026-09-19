@@ -82,7 +82,7 @@ final class MultiGaugeStoreTests: XCTestCase {
         let original = DeviceStore.persistedGaugeKind()
         defer { DeviceStore.persistGaugeKind(original) }
 
-        let store = DeviceStore(client: FakeGaugeClient(kind: .progressor))
+        let store = DeviceStore(client: RecordingProgressorClient(kind: .progressor))
         store.selectGaugeKind(.entralpi)
         XCTAssertEqual(store.gaugeKind, .entralpi)
 
@@ -217,11 +217,11 @@ final class MultiGaugeStoreTests: XCTestCase {
     /// with the radio (Nuri, 2026-08-17). Compared against the CONSTANT, not a literal, so
     /// this test still passes if `TarePolicy.liveReadingMaxAgeSeconds` is ever retuned.
     func testTareReadingMaxAgeIsBroadcastAware() {
-        let broadcast = DeviceStore(client: FakeGaugeClient(kind: .whc06))
+        let broadcast = DeviceStore(client: RecordingProgressorClient(kind: .whc06))
         XCTAssertEqual(broadcast.tareReadingMaxAge, 3.5,
                        "a broadcast gauge's advertisements arrive in bursty clumps, not a steady 80 Hz stream")
 
-        let progressor = DeviceStore(client: FakeGaugeClient(kind: .progressor))
+        let progressor = DeviceStore(client: RecordingProgressorClient(kind: .progressor))
         XCTAssertEqual(progressor.tareReadingMaxAge, TarePolicy.liveReadingMaxAgeSeconds,
                        "a connected stream keeps the Tindeq's own bound, untouched")
     }
@@ -233,7 +233,7 @@ final class MultiGaugeStoreTests: XCTestCase {
     /// own LiPo discharge curve. Pushing the ported devices through that curve would read
     /// 42 % as a voltage.
     func testStandardBatteryPercentageBypassesTheProgressorDischargeCurve() {
-        let client = FakeGaugeClient(kind: .entralpi)
+        let client = RecordingProgressorClient(kind: .entralpi)
         let store = DeviceStore(client: client)
         XCTAssertEqual(store.gaugeKind, .entralpi, "the injected client declares the kind")
 
@@ -300,7 +300,7 @@ final class MultiGaugeStoreTests: XCTestCase {
     /// looks at this the scan has usually already re-armed itself.
     func testAGaugeThatCannotStreamInTheBackgroundIsDisconnectedAtOnce() {
         for state in [ProgressorConnectionState.connected, .scanning] {
-            let client = FakeGaugeClient(kind: .whc06)
+            let client = RecordingProgressorClient(kind: .whc06)
             let device = DeviceStore(client: client)
             device.beginAssertion = { _ in .invalid }
             device.endAssertion = { _ in }
@@ -320,7 +320,7 @@ final class MultiGaugeStoreTests: XCTestCase {
     /// sustains background streaming still gets the window, so the Bluetooth-drop fix
     /// survives for every device it was written for.
     func testAGaugeThatSustainsBackgroundStreamingStillGetsTheGrace() {
-        let client = FakeGaugeClient(kind: .entralpi)
+        let client = RecordingProgressorClient(kind: .entralpi)
         let device = DeviceStore(client: client)
         device.beginAssertion = { _ in UIBackgroundTaskIdentifier(rawValue: 1) }
         device.endAssertion = { _ in }
@@ -340,7 +340,7 @@ final class MultiGaugeStoreTests: XCTestCase {
     /// safe, and without it every app switch costs a manual Connect tap, the exact
     /// reconnect churn the Tindeq's grace exists to avoid.
     func testABroadcastScanTornDownByBackgroundingResumesItselfOnForeground() {
-        let client = FakeGaugeClient(kind: .whc06)
+        let client = RecordingProgressorClient(kind: .whc06)
         let device = DeviceStore(client: client)
         device.beginAssertion = { _ in .invalid }
         device.endAssertion = { _ in }
@@ -356,7 +356,7 @@ final class MultiGaugeStoreTests: XCTestCase {
     /// An EXPLICIT disconnect is a decision, not a casualty of backgrounding, and the
     /// foreground return must not overrule it.
     func testAnExplicitDisconnectIsNotOverruledByTheForegroundResume() {
-        let client = FakeGaugeClient(kind: .whc06)
+        let client = RecordingProgressorClient(kind: .whc06)
         let device = DeviceStore(client: client)
         device.beginAssertion = { _ in .invalid }
         device.endAssertion = { _ in }
@@ -377,7 +377,7 @@ final class MultiGaugeStoreTests: XCTestCase {
     /// never stopped, and the zero is app-side arithmetic. All it buys is a visible gap in
     /// the readings at the moment somebody asked for a clean zero.
     func testTaringABroadcastScaleDoesNotRekickTheScan() {
-        let broadcast = FakeGaugeClient(kind: .whc06)
+        let broadcast = RecordingProgressorClient(kind: .whc06)
         let scale = DeviceStore(client: broadcast)
         broadcast.setState(.connected)
         scale.startStreaming(cause: .initial)
@@ -387,7 +387,7 @@ final class MultiGaugeStoreTests: XCTestCase {
                        "the tare added no second start")
 
         // The connected case is unchanged, and it is the one a hardware session earned.
-        let connected = FakeGaugeClient(kind: .entralpi)
+        let connected = RecordingProgressorClient(kind: .entralpi)
         let plate = DeviceStore(client: connected)
         connected.setState(.connected)
         plate.startStreaming(cause: .initial)
@@ -408,40 +408,4 @@ final class MultiGaugeStoreTests: XCTestCase {
         XCTAssertFalse(capabilities.sustainsBackgroundStreaming,
                        "iOS coalesces duplicate advertisements in the background, so the scan goes silent")
     }
-}
-
-/// A client that reports whatever kind a test needs and pushes events on demand. The
-/// counterpart to `BLELifecycleTests`' recording client, which is fixed to the Progressor.
-@MainActor
-private final class FakeGaugeClient: ProgressorClient {
-    var onEvent: ((ProgressorEvent) -> Void)?
-    var onStateChange: ((ProgressorConnectionState) -> Void)?
-    var onDiagnostic: ((ProgressorClientDiagnostic) -> Void)?
-
-    private(set) var state: ProgressorConnectionState = .idle
-    private(set) var deviceName: String? = "Test gauge"
-    let kind: GaugeKind
-    private(set) var commands: [ProgressorCommand] = []
-
-    init(kind: GaugeKind) {
-        self.kind = kind
-    }
-
-    func connect() { setState(.connected) }
-    func disconnect() { setState(.disconnected(reason: nil)) }
-    func send(_ command: ProgressorCommand) { commands.append(command) }
-
-    func startStreaming(cause: StreamStartCause) {
-        commands.append(.startWeightMeasurement)
-        onDiagnostic?(.streamStartWritten(cause))
-    }
-
-    func sleepDevice() { send(.enterSleep) }
-
-    func setState(_ next: ProgressorConnectionState) {
-        state = next
-        onStateChange?(next)
-    }
-
-    func emit(_ event: ProgressorEvent) { onEvent?(event) }
 }

@@ -188,7 +188,9 @@ final class FrezDynoIntegrationTests: XCTestCase {
     /// The client's calibration diagnostics become store state the screens read, and a
     /// breadcrumb that names the phase but never the serial.
     func testCalibrationDiagnosticsBecomeStoreStateAndASerialFreeBreadcrumb() {
-        let client = ScriptedClient(kind: .frezdyno)
+        // The serial in the device name is the point: the breadcrumb assertion below is
+        // vacuous against a client that was never named after a Dyno.
+        let client = RecordingProgressorClient(kind: .frezdyno, deviceName: "FrezDyno-000123")
         let store = DeviceStore(client: client)
         client.connect()
         XCTAssertTrue(store.state.isConnected)
@@ -216,33 +218,8 @@ final class FrezDynoIntegrationTests: XCTestCase {
     }
 
     func testEveryOtherGaugeReportsCalibrationNotRequired() {
-        let store = DeviceStore(client: ScriptedClient(kind: .cts500))
+        let store = DeviceStore(client: RecordingProgressorClient(kind: .cts500))
         XCTAssertEqual(store.calibrationStatus, .notRequired)
         XCTAssertFalse(store.calibrationStatus.blocksForce)
-    }
-}
-
-/// The smallest `ProgressorClient` that can report a connection and forward diagnostics.
-@MainActor
-private final class ScriptedClient: ProgressorClient {
-    var onEvent: ((ProgressorEvent) -> Void)?
-    var onPacketBoundary: ((PacketBoundary) -> Void)?
-    var onStateChange: ((ProgressorConnectionState) -> Void)?
-    var onDiagnostic: ((ProgressorClientDiagnostic) -> Void)?
-    private(set) var state: ProgressorConnectionState = .idle
-    private(set) var deviceName: String? = "FrezDyno-000123"
-    let kind: GaugeKind
-
-    init(kind: GaugeKind) { self.kind = kind }
-
-    func connect() { setState(.connected) }
-    func disconnect() { setState(.disconnected(reason: nil)) }
-    func send(_ command: ProgressorCommand) {}
-    func startStreaming(cause: StreamStartCause) { onDiagnostic?(.streamStartWritten(cause)) }
-    func sleepDevice() { disconnect() }
-
-    private func setState(_ next: ProgressorConnectionState) {
-        state = next
-        onStateChange?(next)
     }
 }

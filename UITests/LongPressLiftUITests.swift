@@ -8,7 +8,7 @@ import XCTest
 /// The lift is a UIKit animation driven by a real touch, so `simctl` cannot trigger it
 /// and no screenshot flag can freeze it. The test itself only checks that the hold opens
 /// the menu; the point of it is what happens around it. To see the lift frame by frame:
-/// build for testing under the `LegalUI` scheme, start
+/// build for testing under the `DoigtUITests` scheme (`./build.sh uitest`), start
 /// `xcrun simctl io <udid> recordVideo --codec h264 lift.mov`, run
 /// `-only-testing:DoigtUITests/LongPressLiftUITests` with `test-without-building`,
 /// stop the recording with SIGINT, then `ffmpeg -i lift.mov -vf fps=30 f%04d.png`.

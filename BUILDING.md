@@ -160,7 +160,7 @@ Do not change the official application's ID or signing key for existing users.
 because it drives a booted simulator and takes minutes; it logs to
 `build/last-uitest.log` and, like `test`, prints only failures and the summary.
 
-**Known failing:** `RunnerAppearanceUITests.testAppearanceChangesKeepLiveProgressAndPausedRestCanResume`
+**Known failing:** `LegalAgreementUITests.testMaxMeasurementControlsRemainReachableWithLargeText` is stale — the per-grip measure button now opens the gauge directly, so the "Measure on the gauge" step it waits for never appears, and it depends on ambient simulator state. It needs a decided flow and deterministic seeding like `MaxesFlowUITests` before it can be trusted again.
 fails on `main` today. Fix it before adding `uitest` to the workflow — a suite that is
 known to be red teaches everyone to ignore it.
 

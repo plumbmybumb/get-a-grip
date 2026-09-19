@@ -14,13 +14,11 @@ final class RunnerActionMarginsUITests: XCTestCase {
     }
 
     private func checkFrenchRunnerActions(category: String, name: String, allowsScrolling: Bool) {
-        let app = XCUIApplication()
-        app.launchArguments = ["-previewRunnerRest", "-previewRunnerRestSeconds", "3", "-AppleLanguages", "(fr)",
-                               "-AppleLocale", "fr_FR", "-UIPreferredContentSizeCategoryName",
-                               category]
-        app.launch()
+        let app = launchApp(arguments: ["-previewRunnerRest", "-previewRunnerRestSeconds", "3",
+                                        "-UIPreferredContentSizeCategoryName", category],
+                            language: "fr")
         defer { app.terminate() }
-        let prompt = app.descendants(matching: .any).matching(identifier: "runner.prompt").firstMatch
+        let prompt = element("runner.prompt", in: app)
         XCTAssertTrue(prompt.waitForExistence(timeout: 5))
         XCTAssertEqual(prompt.label, "MAIN DROITE ENSUITE")
         if allowsScrolling {
@@ -59,12 +57,5 @@ final class RunnerActionMarginsUITests: XCTestCase {
             XCTAssertTrue(end.waitForNonExistence(timeout: 3),
                           "A stationary deliberate hold must still end the workout")
         }
-    }
-
-    private func attachScreenshot(_ app: XCUIApplication, name: String) {
-        let image = XCTAttachment(screenshot: app.screenshot())
-        image.name = name
-        image.lifetime = .keepAlways
-        add(image)
     }
 }

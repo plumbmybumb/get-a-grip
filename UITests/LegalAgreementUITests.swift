@@ -6,11 +6,8 @@ import XCTest
 @MainActor
 final class LegalAgreementUITests: XCTestCase {
     func testMaxesCreationLivesInMaxesTab() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-seedRoutine", "-mockDevice", "-tab", "2", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        let skip = app.buttons["Skip"]
-        if skip.waitForExistence(timeout: 2) { skip.tap() }
+        let app = launchApp(arguments: ["-seedRoutine", "-mockDevice", "-tab", "2"])
+        dismissTour(in: app)
         XCTAssertFalse(app.buttons["Manage maxes"].exists)
         let add = app.buttons["maxes.add"]
         for _ in 0..<12 where !add.isHittable { app.swipeUp() }
@@ -45,9 +42,7 @@ final class LegalAgreementUITests: XCTestCase {
         }
         XCTAssertTrue(save.isEnabled)
         XCTAssertTrue(save.isHittable)
-        let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = "Compact log with both ratings"; shot.lifetime = .keepAlways
-        add(shot)
+        attachScreenshot(app, name: "Compact log with both ratings")
         app.buttons["About session types"].tap()
         XCTAssertTrue(save.isHittable)
         app.buttons["About session types"].tap()
@@ -78,10 +73,7 @@ final class LegalAgreementUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Discard this session"].isHittable)
         effort.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.5)).tap()
         XCTAssertEqual(effort.value as? String, "Hard")
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "Summary with effort ladder"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
+        attachScreenshot(app, name: "Summary with effort ladder")
         app.terminate()
     }
 
@@ -104,10 +96,7 @@ final class LegalAgreementUITests: XCTestCase {
         origin.press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 0, dy: -90)))
         XCTAssertEqual(effort.value as? String, "Comfortable")
         XCTAssertTrue(app.buttons["Save"].isHittable)
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "Large text effort ladder"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
+        attachScreenshot(app, name: "Large text effort ladder")
         app.terminate()
     }
 
@@ -116,8 +105,7 @@ final class LegalAgreementUITests: XCTestCase {
         app.launchArguments = ["-seedRoutine", "-mockDevice"]
         for _ in 0..<2 {
             app.launch()
-            let tourSkip = app.buttons["Skip"]
-            if tourSkip.waitForExistence(timeout: 3) { tourSkip.tap() }
+            dismissTour(in: app, timeout: 3)
             let start = app.buttons["Connect and start"]
             XCTAssertTrue(start.waitForExistence(timeout: 10))
             start.tap()
@@ -132,8 +120,7 @@ final class LegalAgreementUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-seedRoutine", "-mockDevice"]
         app.launch()
-        let skip = app.buttons["Skip"]
-        if skip.waitForExistence(timeout: 2) { skip.tap() }
+        dismissTour(in: app)
         let overview = app.buttons["routine.overview.open"].firstMatch
         XCTAssertTrue(overview.waitForExistence(timeout: 5))
         overview.tap()
@@ -168,10 +155,7 @@ final class LegalAgreementUITests: XCTestCase {
         enter("Upper bound", "19")
         XCTAssertTrue(app.buttons["Lower bound, 17 %. Double tap to type a value."].exists)
         XCTAssertTrue(app.buttons["Upper bound, 19 %. Double tap to type a value."].exists)
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "Exact target percentages"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
+        attachScreenshot(app, name: "Exact target percentages")
         app.terminate()
     }
 
@@ -180,8 +164,7 @@ final class LegalAgreementUITests: XCTestCase {
         app.launchArguments = ["-seedRoutine", "-mockDevice",
                                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
         app.launch()
-        let skip = app.buttons["Skip"]
-        if skip.waitForExistence(timeout: 2) { skip.tap() }
+        dismissTour(in: app)
         app.tabBars.buttons["Maxes"].tap()
         let addMax = app.buttons["Measure for 20 mm edge, 4 fingers, half crimp"]
         XCTAssertTrue(addMax.waitForExistence(timeout: 5))
@@ -202,10 +185,7 @@ final class LegalAgreementUITests: XCTestCase {
         XCTAssertTrue(start.waitForExistence(timeout: 5))
         for _ in 0..<4 where !start.isHittable { app.swipeUp() }
         XCTAssertTrue(start.isHittable)
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "Max controls with large text"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
+        attachScreenshot(app, name: "Max controls with large text")
         app.terminate()
     }
 

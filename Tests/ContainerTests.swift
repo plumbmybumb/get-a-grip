@@ -17,10 +17,11 @@ final class ContainerTests: XCTestCase {
     /// looks exactly like total data loss.
     private static let storeName = "Doigt"
     private static let cloudKitContainerID = "iCloud.run.nuri.doigt"
+    /// The official identities, used to check the fallbacks a fork's build replaces.
+    private static let appGroupID = "group.run.nuri.doigt"
+    private static let officialBundleID = "run.nuri.doigt"
 
-    private var schema: Schema {
-        Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self])
-    }
+    private var schema: Schema { TestFixtures.schema }
 
     // MARK: - Schema shape
 
@@ -99,9 +100,19 @@ final class ContainerTests: XCTestCase {
         XCTAssertEqual(config.name, "Doigt")
         XCTAssertEqual(config.url.lastPathComponent, "Doigt.store",
                        "the configuration name IS the on-disk filename")
-        // Both identifiers below are as painful to retrofit as the bundle id.
-        XCTAssertEqual(Self.cloudKitContainerID, "iCloud.run.nuri.doigt")
-        XCTAssertEqual(AppGroup.id, "group.run.nuri.doigt")
+        // The App Group suite is as painful to retrofit as the bundle id — but a FORK
+        // builds with its own (`project.local.yml` sets `GETAGRIP_APP_GROUP`, which
+        // reaches `AppGroup.id` through the host app's Info.plist). So the frozen fact
+        // is the FALLBACK: a build that configures nothing must land on the official
+        // suite, and a build that configures one must actually get it. Asserting the
+        // resolved id against the official literal only ever told a fork it was wrong.
+        let configured = Bundle.main.object(forInfoDictionaryKey: "GetAGripAppGroup") as? String
+        XCTAssertEqual(AppGroup.id, configured ?? Self.appGroupID,
+                       "AppGroup.id must read the configured suite, and fall back to the official one")
+        if Bundle.main.bundleIdentifier == Self.officialBundleID {
+            XCTAssertEqual(AppGroup.id, Self.appGroupID,
+                           "the official build's suite is baked into its provisioning profile")
+        }
     }
 
     // MARK: - Model defaults that CloudKit will actually see

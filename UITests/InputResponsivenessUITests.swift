@@ -11,8 +11,7 @@ final class InputResponsivenessUITests: XCTestCase {
         app.launchArguments = ["-seedRoutine", "-mockDevice"]
         app.launch()
         defer { app.terminate() }
-        let skip = app.buttons["Skip"]
-        if skip.waitForExistence(timeout: 2) { skip.tap() }
+        dismissTour(in: app)
         let overview = app.buttons["routine.overview.open"].firstMatch
         XCTAssertTrue(overview.waitForExistence(timeout: 5))
         overview.tap()

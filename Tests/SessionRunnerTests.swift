@@ -173,7 +173,7 @@ final class SessionRunnerTests: XCTestCase {
         }
     }
 
-    func testACleanRepCompletesExactlyAtItsTargetAndBanksTheTime() {
+    func testACleanRepCompletesExactlyAtItsTargetAndBanksTheTime() throws {
         var runner = SessionRunner(plan: plan(hold: 10))
         var feeder = Feeder()
 
@@ -187,7 +187,7 @@ final class SessionRunnerTests: XCTestCase {
         XCTAssertTrue(cues.contains(.sessionCompleted))
         XCTAssertEqual(runner.phase, .finished)
 
-        let rep = try! XCTUnwrap(runner.results.first)
+        let rep = try XCTUnwrap(runner.results.first)
         XCTAssertEqual(rep.outcome, .completed)
         // The debounce is real time the climber spent pulling but is deliberately not
         // banked, so held lands just at target rather than over it.
@@ -517,7 +517,7 @@ final class SessionRunnerTests: XCTestCase {
 
     /// A shaky hold dips below the line ten times and still finishes — it just takes
     /// longer in wall-clock terms, because only time ON the edge is banked.
-    func testAShakyHoldCompletesAndOnlyLosesTheSecondsItActuallyLost() {
+    func testAShakyHoldCompletesAndOnlyLosesTheSecondsItActuallyLost() throws {
         var runner = SessionRunner(plan: plan(hold: 5))
         var feeder = Feeder()
         runner.handle(.start, at: 0)
@@ -529,7 +529,7 @@ final class SessionRunnerTests: XCTestCase {
         }
 
         XCTAssertTrue(cues.contains(.repEnded(completed: true)), "dips never end a rep")
-        let rep = try! XCTUnwrap(runner.results.first)
+        let rep = try XCTUnwrap(runner.results.first)
         XCTAssertEqual(rep.outcome, .completed)
         // Accrual PAUSES during a dip rather than resetting, so the rep still banks its
         // full target — it just takes longer in wall-clock terms to get there.
@@ -670,14 +670,14 @@ final class SessionRunnerTests: XCTestCase {
 
     /// The device's µs clock is a UInt32 and rolls over every ~71.6 minutes. A session
     /// that straddles the wrap must not lose or invent a rep.
-    func testARepSpanningTheTimestampWrapKeepsCountingCorrectly() {
+    func testARepSpanningTheTimestampWrapKeepsCountingCorrectly() throws {
         var runner = SessionRunner(plan: plan(hold: 4))
         var feeder = Feeder()
         feeder.micros = UInt32.max - 25_000       // two samples from the wrap
         runner.handle(.start, at: 0)
 
         _ = feeder.hold(&runner, kg: pulling, seconds: 5)
-        let rep = try! XCTUnwrap(runner.results.first)
+        let rep = try XCTUnwrap(runner.results.first)
         XCTAssertEqual(rep.outcome, .completed)
         XCTAssertEqual(rep.heldSeconds, 4, accuracy: 0.05)
     }
@@ -1364,7 +1364,7 @@ final class SessionRunnerTests: XCTestCase {
         XCTAssertEqual(runner.slots, PlanMath.sequence(for: p))
     }
 
-    func testHandsAlternateAcrossRepsAndResetAtEachSetBoundary() {
+    func testHandsAlternateAcrossRepsAndResetAtEachSetBoundary() throws {
         // `repsPerSide: 2` with a two-sided mode is FOUR reps per set, not two — the
         // property is named per-side precisely so this factor of two is never a surprise.
         let p = plan(reps: 2, sets: 2, mode: .alternateEachRep)
@@ -1374,7 +1374,7 @@ final class SessionRunnerTests: XCTestCase {
                        [.left, .right, .left, .right, .left, .right, .left, .right])
         // The load-bearing part: set 1 begins on the LEFT again rather than continuing
         // the parity of set 0, so each set is balanced on its own terms.
-        let firstOfSecondSet = try! XCTUnwrap(runner.slots.first { $0.setIndex == 1 })
+        let firstOfSecondSet = try XCTUnwrap(runner.slots.first { $0.setIndex == 1 })
         XCTAssertEqual(firstOfSecondSet.side, .left)
         XCTAssertEqual(firstOfSecondSet.repIndex, 0)
     }

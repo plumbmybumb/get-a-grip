@@ -5,7 +5,7 @@ import XCTest
 @testable import Doigt
 
 final class SessionMaxCandidateTests: XCTestCase {
-    private let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+    private let grip = TestFixtures.halfCrimp20
 
     private func rep(_ side: Side, _ kg: Double, grip: GripSpec? = nil,
                      outcome: RepOutcome = .completed) -> RepSummary {

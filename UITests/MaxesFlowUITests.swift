@@ -13,14 +13,14 @@ final class MaxesFlowUITests: XCTestCase {
         defer { app.terminate() }
         XCTAssertFalse(app.buttons["Manage maxes"].exists)
         XCTAssertTrue(app.buttons["maxes.add"].exists)
-        screenshot(app, name: "Maxes with direct measurement and edit actions")
+        attachScreenshot(app, name: "Maxes with direct measurement and edit actions")
 
         openMeasurement(for: sharedGrip, in: app)
         XCTAssertFalse(app.buttons["maxEdit.save"].exists)
         XCTAssertTrue(app.buttons["max.measure.left"].isSelected)
         XCTAssertEqual(app.buttons["max.measure.left"].value as? String, "Not measured")
         XCTAssertEqual(app.buttons["max.measure.right"].value as? String, "Not measured")
-        screenshot(app, name: "Known grip opens directly on the gauge")
+        attachScreenshot(app, name: "Known grip opens directly on the gauge")
 
         let leftValue = capture("left", in: app)
         XCTAssertEqual(app.buttons["max.measure.right"].value as? String, "Not measured",
@@ -29,8 +29,8 @@ final class MaxesFlowUITests: XCTestCase {
         XCTAssertEqual(app.buttons["max.measure.left"].value as? String, leftValue,
                        "Measuring right must retain the completed left-hand peak")
         XCTAssertTrue(rightValue.contains("ready to save"))
-        reveal(app.buttons["max.measure.left"], in: app)
-        screenshot(app, name: "Separate left and right peaks ready to save")
+        revealInSheet(app.buttons["max.measure.left"], in: app)
+        attachScreenshot(app, name: "Separate left and right peaks ready to save")
 
         let save = app.buttons["max.measure.save"]
         XCTAssertEqual(save.label, "Save maxes")
@@ -48,7 +48,7 @@ final class MaxesFlowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["maxEdit.shared"].exists,
                       "Separate hand measurements retain the previous shared record")
         XCTAssertFalse(app.buttons["maxEdit.save"].isEnabled)
-        screenshot(app, name: "Saved measurements reopen as exact per-hand values")
+        attachScreenshot(app, name: "Saved measurements reopen as exact per-hand values")
     }
 
     func testCancellingCapturedMaxPreservesSharedFallbackWithoutCreatingHandRecords() {
@@ -70,7 +70,7 @@ final class MaxesFlowUITests: XCTestCase {
 
         openEdit(for: sharedGrip, in: app)
         assertNoExactHandMaxes(in: app)
-        screenshot(app, name: "Cancelled capture leaves existing maxes intact")
+        attachScreenshot(app, name: "Cancelled capture leaves existing maxes intact")
     }
 
     func testEditPrefillsExactHandsCancelsDraftAndCommitsFocusedFieldOnSave() {
@@ -92,7 +92,7 @@ final class MaxesFlowUITests: XCTestCase {
         XCTAssertTrue(valueButton("Right hand", in: app).label.contains("21.8 kg"))
         enter("22.2", for: "Left hand", in: app)
         typeWithoutFinishing("23.4", for: "Right hand", in: app)
-        screenshot(app, name: "Save while the right-hand field still has focus")
+        attachScreenshot(app, name: "Save while the right-hand field still has focus")
         tap(app.buttons["maxEdit.save"], in: app)
         dismissReceiptIfPresent(in: app)
         XCTAssertTrue(app.buttons["maxes.edit.\(splitGrip)"].waitForExistence(timeout: 5))
@@ -141,7 +141,7 @@ final class MaxesFlowUITests: XCTestCase {
         XCTAssertFalse(leftRetest.isSelected, "Cancelling must discard explicit retest selections")
         XCTAssertFalse(app.buttons["maxEdit.save"].isEnabled)
         tap(leftRetest, in: app)
-        screenshot(app, name: "Explicit unchanged left-hand retest")
+        attachScreenshot(app, name: "Explicit unchanged left-hand retest")
         tap(app.buttons["maxEdit.save"], in: app)
         dismissReceiptIfPresent(in: app)
         XCTAssertTrue(app.buttons["maxes.edit.\(splitGrip)"].waitForExistence(timeout: 5))
@@ -159,7 +159,7 @@ final class MaxesFlowUITests: XCTestCase {
         XCTAssertTrue(rightHistory.label.contains("21.8 kilograms, measured "))
         XCTAssertTrue(rightHistory.label.contains("1 earlier max"),
                       "The untouched hand must retain its existing record and provenance")
-        screenshot(app, name: "Unchanged retest appends only the selected hand's history")
+        attachScreenshot(app, name: "Unchanged retest appends only the selected hand's history")
     }
 
     func testRecentGripChoicePrefillsItsExactHandValuesWithoutWriting() {
@@ -172,7 +172,7 @@ final class MaxesFlowUITests: XCTestCase {
         for _ in 0..<5 where !choice.isHittable { recent.swipeLeft() }
         tap(choice, in: app)
         XCTAssertTrue(choice.isSelected)
-        screenshot(app, name: "Choose a recent routine grip before entering maxes")
+        attachScreenshot(app, name: "Choose a recent routine grip before entering maxes")
         tap(app.buttons["Enter by hand"], in: app)
         XCTAssertTrue(app.buttons["maxEdit.save"].waitForExistence(timeout: 3))
         XCTAssertTrue(valueButton("Left hand", in: app).label.contains("20.5 kg"))
@@ -211,7 +211,7 @@ final class MaxesFlowUITests: XCTestCase {
         tap(app.buttons["max.measure.adjust"], in: app)
         XCTAssertTrue(valueButton("Left hand", in: app).label.contains("\(number(in: measured)) kg"))
         typeWithoutFinishing("24.5", for: "Left hand", in: app)
-        screenshot(app, name: "Correct captured left-hand value before saving")
+        attachScreenshot(app, name: "Correct captured left-hand value before saving")
         tap(app.buttons["max.adjust.apply"], in: app)
         XCTAssertTrue((app.buttons["max.measure.left"].value as? String ?? "").hasPrefix("24.5 "))
         XCTAssertEqual(app.buttons["max.measure.right"].value as? String, "Not measured")
@@ -230,8 +230,8 @@ final class MaxesFlowUITests: XCTestCase {
                                                         "max.receipt.scale.")).count, 0,
                        "One-hand correction cannot offer to scale a shared typed kg band")
         XCTAssertFalse(app.buttons["max.receipt.leave"].exists)
-        reveal(dailyChange, in: app)
-        screenshot(app, name: "Saved correction explains the percentage targets that changed")
+        revealInSheet(dailyChange, in: app)
+        attachScreenshot(app, name: "Saved correction explains the percentage targets that changed")
         tap(app.buttons["max.receipt.done"], in: app)
 
         XCTAssertTrue(app.buttons["maxes.edit.\(sharedGrip)"].waitForExistence(timeout: 5))
@@ -250,54 +250,49 @@ final class MaxesFlowUITests: XCTestCase {
     func testFrenchMaxesAndMeasurementRemainReachableWithLargeText() {
         let app = launch(language: "fr", largeText: true)
         defer { app.terminate() }
-        screenshot(app, name: "French Maxes at accessibility text size")
+        attachScreenshot(app, name: "French Maxes at accessibility text size")
         openMeasurement(for: splitGrip, in: app)
         for (side, name) in [("left", "Main gauche"), ("right", "Main droite")] {
             let hand = app.buttons["max.measure.\(side)"]
             XCTAssertTrue(hand.waitForExistence(timeout: 3))
-            reveal(hand, in: app)
+            revealInSheet(hand, in: app)
             XCTAssertTrue(hand.isHittable)
             XCTAssertEqual(hand.label, name)
             XCTAssertGreaterThanOrEqual(hand.frame.minX, app.frame.minX)
             XCTAssertLessThanOrEqual(hand.frame.maxX, app.frame.maxX)
         }
-        screenshot(app, name: "French separate hand measurement at accessibility text size")
+        attachScreenshot(app, name: "French separate hand measurement at accessibility text size")
         connectIfNeeded(in: app)
         let start = app.buttons["max.measure.start"]
         XCTAssertTrue(start.waitForExistence(timeout: 5))
-        reveal(start, in: app)
+        revealInSheet(start, in: app)
         XCTAssertTrue(start.isHittable)
-        screenshot(app, name: "French large text gauge controls remain reachable")
+        attachScreenshot(app, name: "French large text gauge controls remain reachable")
         tap(app.buttons["max.measure.cancel"], in: app)
 
         openEdit(for: splitGrip, in: app)
         for name in ["Main gauche", "Main droite"] {
             let value = valueButton(name, in: app)
             XCTAssertTrue(value.waitForExistence(timeout: 3))
-            reveal(value, in: app)
+            revealInSheet(value, in: app)
             XCTAssertTrue(value.isHittable)
         }
-        screenshot(app, name: "French per-hand manual edit at accessibility text size")
+        attachScreenshot(app, name: "French per-hand manual edit at accessibility text size")
         XCTAssertTrue(app.buttons["maxEdit.cancel"].isHittable)
     }
 
     private func launch(language: String = "en", largeText: Bool = false,
                         withTargetRoutines: Bool = false) -> XCUIApplication {
-        continueAfterFailure = false
-        let app = XCUIApplication()
         // seedHistory also resets and seeds maxes: shared 30.5 kg on the four-finger
         // grip, exact left 20.5 / right 21.8 kg on the front-three grip.
-        app.launchArguments = [withTargetRoutines ? "-seedTwoRoutines" : "-seedRoutine",
-                               "-seedHistory", "-mockDevice", "-tab", "2",
-                               "-AppleLanguages", "(\(language))", "-AppleLocale",
-                               language == "fr" ? "fr_FR" : "en_US", "-weightUnit", "kg"]
+        var arguments = [withTargetRoutines ? "-seedTwoRoutines" : "-seedRoutine",
+                         "-seedHistory", "-mockDevice", "-tab", "2", "-weightUnit", "kg"]
         if largeText {
-            app.launchArguments += ["-UIPreferredContentSizeCategoryName",
-                                    "UICTContentSizeCategoryAccessibilityXXXL"]
+            arguments += ["-UIPreferredContentSizeCategoryName",
+                          "UICTContentSizeCategoryAccessibilityXXXL"]
         }
-        app.launch()
-        let skip = app.buttons[language == "fr" ? "Passer" : "Skip"]
-        if skip.waitForExistence(timeout: 2) { skip.tap() }
+        let app = launchApp(arguments: arguments, language: language)
+        dismissTour(in: app)
         XCTAssertTrue(app.buttons["maxes.measure.\(splitGrip)"].waitForExistence(timeout: 5))
         return app
     }
@@ -359,8 +354,7 @@ final class MaxesFlowUITests: XCTestCase {
     }
 
     private func current(_ grip: String, side: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any)
-            .matching(identifier: "maxes.current.\(grip).\(side)").firstMatch
+        element("maxes.current.\(grip).\(side)", in: app)
     }
 
     private func historyRow(_ side: String, in app: XCUIApplication) -> XCUIElement {
@@ -387,26 +381,17 @@ final class MaxesFlowUITests: XCTestCase {
     }
 
     private func tap(_ element: XCUIElement, in app: XCUIApplication) {
-        XCTAssertTrue(element.waitForExistence(timeout: 5))
-        reveal(element, in: app)
-        XCTAssertTrue(element.isHittable, element.debugDescription)
+        revealInSheet(element, in: app)
         element.tap()
     }
 
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<10 where !element.isHittable {
-            if element.exists, element.frame.minY < app.frame.midY {
-                app.swipeDown()
-            } else {
-                app.swipeUp()
-            }
-        }
-    }
-
-    private func screenshot(_ app: XCUIApplication, name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
+    /// The shared `reveal`, with this file's own two departures from its defaults: the
+    /// measurement and edit sheets scroll BOTH ways — a previous step can leave the next
+    /// control off the TOP — and they are the deepest screens in the suite, so the bound
+    /// stays at 10. Named rather than overloaded, so no call site can pick up the plain
+    /// one-directional default by accident.
+    private func revealInSheet(_ element: XCUIElement, in app: XCUIApplication,
+                               file: StaticString = #filePath, line: UInt = #line) {
+        reveal(element, in: app, attempts: 10, bidirectional: true, file: file, line: line)
     }
 }

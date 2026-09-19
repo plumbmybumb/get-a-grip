@@ -20,10 +20,10 @@ final class RoutineOverviewUITests: XCTestCase {
         XCTAssertTrue(spokenText(totals).contains("6 sets · 36 pulls total"), spokenText(totals))
         XCTAssertTrue(app.staticTexts["Lead-in before each set"].exists)
         XCTAssertTrue(app.staticTexts["5 s"].exists)
-        capture(app, name: "Routine overview duration and hand order")
+        attachScreenshot(app, name: "Routine overview duration and hand order")
 
         let first = element("routine.overview.set.0", in: app)
-        reveal(first, scrolling: scroll)
+        reveal(first, in: app, scrolling: scroll)
         let firstText = spokenText(first).lowercased()
         XCTAssertTrue(firstText.contains("20 mm"), firstText)
         XCTAssertTrue(firstText.contains("4 fingers"), firstText)
@@ -34,7 +34,7 @@ final class RoutineOverviewUITests: XCTestCase {
         XCTAssertTrue(firstText.contains("18–22 % of max"), firstText)
 
         let last = element("routine.overview.set.5", in: app)
-        reveal(last, scrolling: scroll)
+        reveal(last, in: app, scrolling: scroll)
         let lastText = spokenText(last).lowercased()
         XCTAssertTrue(lastText.contains("10 mm"), lastText)
         XCTAssertTrue(lastText.contains("full crimp"), lastText)
@@ -42,7 +42,7 @@ final class RoutineOverviewUITests: XCTestCase {
         XCTAssertFalse(element("routine.overview.set.6", in: app).exists)
         XCTAssertEqual(app.textFields.count, 0, "The overview is read-only")
         XCTAssertFalse(app.buttons["Increase Pulls per side"].exists)
-        capture(app, name: "Routine overview mixed-grip plan")
+        attachScreenshot(app, name: "Routine overview mixed-grip plan")
     }
 
     func testOverviewClosesToTodayAndEditOpensTheExistingBuilder() {
@@ -72,7 +72,7 @@ final class RoutineOverviewUITests: XCTestCase {
         let app = launchSeededApp()
         defer { app.terminate() }
         let history = app.buttons["consistency.history"]
-        revealOnToday(history, in: app)
+        reveal(history, in: app, attempts: 5)
         history.tap()
         XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.tabBars.buttons["History"].isSelected)
@@ -80,7 +80,7 @@ final class RoutineOverviewUITests: XCTestCase {
 
         app.tabBars.buttons["Today"].tap()
         let log = app.buttons["consistency.log"]
-        revealOnToday(log, in: app)
+        reveal(log, in: app, attempts: 5)
         log.tap()
         XCTAssertTrue(app.navigationBars["Log a session"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.scrollViews["sessionLog.form"].exists)
@@ -90,7 +90,7 @@ final class RoutineOverviewUITests: XCTestCase {
     }
 
     func testFrenchOverviewKeepsThePlanAndActionsReachableAtAccessibilityText() {
-        let app = launchSeededApp(language: "fr", locale: "fr_FR",
+        let app = launchSeededApp(language: "fr",
                                   category: "UICTContentSizeCategoryAccessibilityM")
         defer { app.terminate() }
         openOverview(in: app)
@@ -106,21 +106,21 @@ final class RoutineOverviewUITests: XCTestCase {
         assertHorizontalFit(duration, in: app)
         let totals = element("routine.overview.totals", in: app)
         XCTAssertTrue(spokenText(totals).contains("36"), spokenText(totals))
-        capture(app, name: "French AX1 routine overview — header and native actions")
+        attachScreenshot(app, name: "French AX1 routine overview — header and native actions")
 
         let scroll = app.scrollViews["routine.overview.scroll"]
         let first = element("routine.overview.set.0", in: app)
-        reveal(first, scrolling: scroll)
+        reveal(first, in: app, scrolling: scroll)
         revealWholeRow(first, scrolling: scroll)
         assertHorizontalFit(first, in: app)
         for text in first.staticTexts.allElementsBoundByIndex {
             assertHorizontalFit(text, in: app)
         }
         XCTAssertTrue(edit.isHittable, "Edit must stay reachable while the plan scrolls")
-        capture(app, name: "French AX1 routine overview — full first set")
+        attachScreenshot(app, name: "French AX1 routine overview — full first set")
 
         let last = element("routine.overview.set.5", in: app)
-        reveal(last, scrolling: scroll)
+        reveal(last, in: app, scrolling: scroll)
         XCTAssertTrue(spokenText(last).contains("10 mm"), spokenText(last))
         XCTAssertTrue(close.isHittable)
         close.tap()
@@ -128,26 +128,22 @@ final class RoutineOverviewUITests: XCTestCase {
         XCTAssertTrue(app.buttons["routine.overview.open"].firstMatch.exists)
     }
 
-    private func launchSeededApp(language: String = "en", locale: String = "en_US",
+    private func launchSeededApp(language: String = "en",
                                  category: String? = nil) -> XCUIApplication {
-        continueAfterFailure = false
-        let app = XCUIApplication()
-        app.launchArguments = ["-seedTwoRoutines", "-seedHistory", "-mockDevice",
-                               "-AppleLanguages", "(\(language))", "-AppleLocale", locale,
-                               "-tour.seen.intro", "1", "-tour.seen.builder", "1"]
+        var arguments = ["-seedTwoRoutines", "-seedHistory", "-mockDevice",
+                         "-tour.seen.intro", "1", "-tour.seen.builder", "1"]
         if let category {
-            app.launchArguments += ["-UIPreferredContentSizeCategoryName", category]
+            arguments += ["-UIPreferredContentSizeCategoryName", category]
         }
-        app.launch()
-        let skip = app.buttons["Skip"]
-        if skip.waitForExistence(timeout: 2) { skip.tap() }
+        let app = launchApp(arguments: arguments, language: language)
+        dismissTour(in: app)
         XCTAssertTrue(app.buttons["routine.overview.open"].firstMatch.waitForExistence(timeout: 5))
         return app
     }
 
     private func openOverview(in app: XCUIApplication) {
         let open = visibleOverviewButton(in: app)
-        revealOnToday(open, in: app)
+        reveal(open, in: app, attempts: 5)
         open.tap()
         XCTAssertTrue(app.buttons["routine.overview.edit"].waitForExistence(timeout: 3))
     }
@@ -167,20 +163,11 @@ final class RoutineOverviewUITests: XCTestCase {
         return visible ?? candidates.firstMatch
     }
 
-    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
-    }
-
     private func spokenText(_ element: XCUIElement) -> String {
         ([element.label, element.value as? String ?? ""]
             + element.staticTexts.allElementsBoundByIndex.map(\.label))
             .joined(separator: " ")
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-    }
-
-    private func reveal(_ element: XCUIElement, scrolling scroll: XCUIElement) {
-        for _ in 0..<8 where !element.isHittable { scroll.swipeUp() }
-        XCTAssertTrue(element.isHittable, element.debugDescription)
     }
 
     private func revealWholeRow(_ row: XCUIElement, scrolling scroll: XCUIElement) {
@@ -200,18 +187,5 @@ final class RoutineOverviewUITests: XCTestCase {
         XCTAssertGreaterThan(element.frame.width, 0, element.label)
         XCTAssertGreaterThanOrEqual(element.frame.minX, app.frame.minX, element.label)
         XCTAssertLessThanOrEqual(element.frame.maxX, app.frame.maxX, element.label)
-    }
-
-    private func revealOnToday(_ element: XCUIElement, in app: XCUIApplication) {
-        XCTAssertTrue(element.waitForExistence(timeout: 5))
-        for _ in 0..<5 where !element.isHittable { app.swipeUp() }
-        XCTAssertTrue(element.isHittable)
-    }
-
-    private func capture(_ app: XCUIApplication, name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
     }
 }

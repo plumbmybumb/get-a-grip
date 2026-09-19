@@ -26,7 +26,7 @@ final class TemplateStoreTests: XCTestCase {
         let store: TemplateStore
     }
 
-    private static let fullSchema = Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self])
+    private static let fullSchema = TestFixtures.schema
 
     /// On-disk stores created for the read-only seam, removed in `tearDown`.
     private var scratchStores: [URL] = []
@@ -95,13 +95,9 @@ final class TemplateStoreTests: XCTestCase {
         // unpredictable moments and make the rollback assertions racy.
         let context = ModelContext(container)
         let clock = DayClock()
-        let settings = SettingsStore()
-        // SettingsStore is UserDefaults-backed, so it carries state between test runs.
-        settings.builderGuideDone = false
-        settings.didAskNotificationPermission = true
-        settings.lastStartedRoutineID = nil
-        settings.lastStartedDayRaw = 0
-        settings.draftStash = nil
+        // SettingsStore is UserDefaults-backed, so it carries state between test runs —
+        // and between test FILES, which is why the reset lives in one place.
+        let settings = resetSettings(SettingsStore())
         let store = TemplateStore(context: context, clock: clock, settings: settings,
                                   storageMode: .localOnly)
         return World(container: container, context: context, clock: clock,
@@ -1092,7 +1088,7 @@ final class TemplateStoreTests: XCTestCase {
 
     func testRecentGripsAreDeduplicatedByKeyMostRecentFirstAndCappedAtSix() throws {
         let w = try makeWorld()
-        let a = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let a = TestFixtures.halfCrimp20
         let b = GripSpec(edgeMM: 18, fingers: .four, position: .halfCrimp)
         let c = GripSpec(edgeMM: 16, fingers: .four, position: .halfCrimp)
         let d = GripSpec(edgeMM: 14, fingers: .four, position: .halfCrimp)
@@ -1132,7 +1128,7 @@ final class TemplateStoreTests: XCTestCase {
     /// biggest. A max that has come down is still the truth about today.
     func testRecordMaxAppendsAndCurrentMaxIsTheNewestForThatKey() throws {
         let w = try makeWorld()
-        let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let grip = TestFixtures.halfCrimp20
         let other = GripSpec(edgeMM: 20, fingers: .frontTwo, position: .halfCrimp)
 
         let aWeekAgo = MaxRecord(grip: grip, kg: 44, source: .measured,
@@ -1158,7 +1154,7 @@ final class TemplateStoreTests: XCTestCase {
     /// it.
     func testLeftAndRightMaxesAreSeparateCurrentRecords() throws {
         let w = try makeWorld()
-        let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let grip = TestFixtures.halfCrimp20
 
         XCTAssertTrue(w.store.recordMax(40, for: grip, side: .left))
         XCTAssertTrue(w.store.recordMax(36, for: grip, side: .right))
@@ -1317,7 +1313,7 @@ final class TemplateStoreTests: XCTestCase {
     /// touches the picker — and a later side-specific max overrides only that side.
     func testABothHandsMaxCoversEitherHandUntilThatHandHasItsOwn() throws {
         let w = try makeWorld()
-        let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let grip = TestFixtures.halfCrimp20
 
         XCTAssertTrue(w.store.recordMax(40, for: grip))
         XCTAssertEqual(try XCTUnwrap(w.store.currentMax(for: grip, side: .left)), 40, accuracy: 0.0001)
@@ -1331,7 +1327,7 @@ final class TemplateStoreTests: XCTestCase {
 
     func testMaxTableMirrorsCurrentMaxes() throws {
         let w = try makeWorld()
-        let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let grip = TestFixtures.halfCrimp20
         XCTAssertTrue(w.store.recordMax(40, for: grip, side: .left))
         XCTAssertTrue(w.store.recordMax(36, for: grip, side: .right))
 
@@ -1344,7 +1340,7 @@ final class TemplateStoreTests: XCTestCase {
     /// what keeps an upgraded install behaving exactly as it did.
     func testAMaxDefaultsToBothHands() throws {
         let w = try makeWorld()
-        let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let grip = TestFixtures.halfCrimp20
         XCTAssertTrue(w.store.recordMax(40, for: grip))
 
         let stored = try XCTUnwrap(try w.context.fetch(FetchDescriptor<MaxRecord>()).first)
@@ -1354,7 +1350,7 @@ final class TemplateStoreTests: XCTestCase {
 
     func testSuggestedBandIsNilWithoutAMaxForThatExactGrip() throws {
         let w = try makeWorld()
-        let fourFinger = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let fourFinger = TestFixtures.halfCrimp20
         let frontTwo = GripSpec(edgeMM: 20, fingers: .frontTwo, position: .halfCrimp)
 
         XCTAssertTrue(w.store.recordMax(40, for: fourFinger))
@@ -1401,7 +1397,7 @@ final class TemplateStoreTests: XCTestCase {
     /// in the app would resolve against nothing.
     func testTheMaxTableSurvivesEveryWriteThatTouchesNoMax() throws {
         let w = try makeWorld()
-        let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let grip = TestFixtures.halfCrimp20
         XCTAssertTrue(w.store.recordMax(42, for: grip, source: .measured))
         let measuredAt = try XCTUnwrap(w.store.lastMeasuredMaxAt)
 
@@ -1430,7 +1426,7 @@ final class TemplateStoreTests: XCTestCase {
     /// number on screen.
     func testDeletingAMaxRefoldsBackToThePreviousOne() throws {
         let w = try makeWorld()
-        let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let grip = TestFixtures.halfCrimp20
         w.context.insert(MaxRecord(grip: grip, kg: 38, source: .measured,
                                    recordedAt: Date.now.addingTimeInterval(-7 * 86_400)))
         try w.context.save()
@@ -1776,7 +1772,7 @@ final class TemplateStoreTests: XCTestCase {
 
     func testScalingKgTargetsMovesEveryMatchingSetAndLeavesTheRestAlone() throws {
         let w = try makeWorld()
-        let crimp = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let crimp = TestFixtures.halfCrimp20
         let drag = GripSpec(edgeMM: 20, fingers: .frontTwo, position: .drag)
 
         let morning = try XCTUnwrap(w.store.create(kgTargetDraft(named: "Morning", crimp, drag)))
@@ -1803,7 +1799,7 @@ final class TemplateStoreTests: XCTestCase {
     /// away a half-built routine someone had left unsaved in the builder.
     func testScalingKgTargetsLeavesTheBuilderRescueCopyAlone() throws {
         let w = try makeWorld()
-        let crimp = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let crimp = TestFixtures.halfCrimp20
         let drag = GripSpec(edgeMM: 20, fingers: .frontTwo, position: .drag)
         let saved = try XCTUnwrap(w.store.create(kgTargetDraft(named: "Morning", crimp, drag)))
 
@@ -1815,7 +1811,7 @@ final class TemplateStoreTests: XCTestCase {
 
     func testScalingKgTargetsRefusesANonsenseRatioAndIgnoresAnUnknownRoutine() throws {
         let w = try makeWorld()
-        let crimp = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        let crimp = TestFixtures.halfCrimp20
         let drag = GripSpec(edgeMM: 20, fingers: .frontTwo, position: .drag)
         let saved = try XCTUnwrap(w.store.create(kgTargetDraft(named: "Morning", crimp, drag)))
 
