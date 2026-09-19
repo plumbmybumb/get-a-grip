@@ -65,6 +65,9 @@ struct DoigtApp: App {
                 .environment(\.weightUnit, settings.weightUnit)
                 .environment(templates)
                 .environment(device)
+                #if DEBUG
+                .onAppear { DebugInteractionDump.scheduleIfRequested() }
+                #endif
                 .onChange(of: scenePhase) { _, phase in
                     device.recordScenePhase(String(describing: phase))
                     switch phase {

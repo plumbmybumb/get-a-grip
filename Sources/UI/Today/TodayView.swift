@@ -379,6 +379,19 @@ struct TodayView: View {
         // this deck is a CHOOSER where every settle is a deliberate pick (a pin and a
         // haptic), so it moves like the builder's pager — one card per swipe.
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+        // UNCLIPPED, for the long press. UIKit parents the context-menu lift — the card
+        // scaled up about 2.5 % with a soft shadow under it — inside the nearest scroll
+        // view, and this one is exactly one card tall. Clipped, the first half-second of
+        // every lift showed the card's corners sliced flat at the row's top and bottom
+        // and the shadow cut into a hard-edged band the width of the screen (Nuri's
+        // phone, 2026-09-19). Reproduced frame by frame on the pinned simulator with
+        // `LongPressLiftUITests` under `simctl io recordVideo`; the UIKit view dump
+        // behind `-dumpInteractions` showed the row's `HostingScrollView` as the only
+        // clipping view with the band's exact frame, and lifting the clip removed both
+        // the slice and the band in the next recording. Nothing else changes: the deck
+        // is full-bleed, so sideways there is no screen beyond it, and the row is the
+        // tallest card, so there is nothing to spill vertically.
+        .scrollClipDisabled()
         .scrollPosition(id: $deckPosition)
         .scrollIndicators(.hidden)
         // Full-bleed: the deck escapes the column's padding so the neighbour peeks at
