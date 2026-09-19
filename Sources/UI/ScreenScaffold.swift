@@ -40,9 +40,6 @@ struct ScreenScaffold<Content: View>: View {
     /// The screen lays its cards out in a `CardGrid` on a wide window, so the column
     /// opens up to two cards' width instead of the single regular-width column.
     var gridsOnWideScreens: Bool = false
-    /// A colour washed down from the top of the field — Today's deck glow. Nil on every
-    /// other screen, so the field stays exactly what it was.
-    var glow: DeckGlow? = nil
     @ViewBuilder var content: Content
 
     /// Size CLASS, never the idiom: a Slide Over iPad column is compact and gets the
@@ -60,14 +57,8 @@ struct ScreenScaffold<Content: View>: View {
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
             // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling it
             // disturbs the ScrollView's safe-area layout and the title creeps under
-            // the status bar. The glow, when a screen has one, sits over the field and
-            // under everything else, and animates only when the deck moves.
-            .background {
-                ZStack(alignment: .top) {
-                    AppBackground()
-                    if let glow { DeckGlowWash(glow: glow) }
-                }
-            }
+            // the status bar.
+            .background { AppBackground() }
             .navigationTitle(title)
             .navigationSubtitle(subtitle ?? "")
         }

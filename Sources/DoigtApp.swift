@@ -53,6 +53,9 @@ struct DoigtApp: App {
                         paused: ProcessInfo.processInfo.arguments.contains("-previewRunnerPaused"))
                 } else if showSummaryPreview {
                     DebugSummaryPreview { showSummaryPreview = false }
+                } else if ProcessInfo.processInfo.arguments.contains("-previewGauge") {
+                    // Settings › Live gauge, opened directly — screenshots (simctl can't tap).
+                    NavigationStack { GaugeView() }
                 } else {
                     RootTabView()
                 }

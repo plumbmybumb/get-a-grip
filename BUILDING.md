@@ -63,8 +63,8 @@ asked for the empty first-run state can never get a seeded one.
 | `-seedNoRoutines` | Deletes every routine, for the empty first-run state | iOS, watch |
 | `-seedRoutine` | Replaces the routines with the starter routine alone | iOS, watch |
 | `-seedTwoRoutines` | The daily ritual plus a max-day routine: a percentage band on one, a typed kilogram band on the other, and an edge span across the daily's sets | iOS, watch |
-| `-deckPage N` | Parks Today's routine deck on card N at launch — screenshots of the deck glow under each routine without a gesture. | iOS |
 | `-seedHistory` | Three weeks of plausible sessions and maxes, attached to those routines by id, so the month grid and the trend line have something to draw | iOS, watch |
+| `-previewGauge` | Opens Settings › Live gauge directly, for screenshots | iOS |
 
 ### Previews
 
