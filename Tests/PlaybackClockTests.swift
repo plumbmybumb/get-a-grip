@@ -96,6 +96,8 @@ final class PlaybackClockTests: XCTestCase {
         XCTAssertEqual(device.traceUnderruns, 0)
         XCTAssertEqual(device.playbackMargin, DeviceStore.playbackMarginFloor, accuracy: 0.02,
                        "regular packets sit on the margin's floor")
+        XCTAssertEqual(device.playbackLead, device.playbackMargin + 0.1, accuracy: 0.02,
+                       "the lead is the margin plus one 100 ms packet")
     }
 
     /// The margin follows the radio: a packet that lands 300 ms later than its own span

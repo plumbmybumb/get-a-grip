@@ -532,31 +532,11 @@ struct RunnerView: View {
         // measured reason. The plot keeps the card's small edge clearances; on a wide
         // screen it keeps clear of the bezel.
         .background {
-            if !timerOnly {
-                LiveTrace(thresholdKg: session.plan.thresholdKg,
-                          targetBand: liveTargetBand(session),
-                          tint: tint(session),
-                          plot: ForceTraceView.PlotInsets(top: wide ? 24 : 12,
-                                                          bottom: wide ? 24 : 6,
-                                                          trailing: 8),
-                          lit: true)
-                    .padding(.leading, wide ? 0 : -Metrics.hPadding)
-                    .padding(.trailing, -Metrics.hPadding)
-                    // The wash already cross-fades between phases; the trace snapped,
-                    // and on an object this size a hard cut of colour is a jolt. The
-                    // blend runs on the same house curve, so the two move as one thing.
-                    .modifier(BlendedTint(fraction: traceTintFraction,
-                                          from: traceTintFrom, to: traceTintTo))
-                    .onAppear {
-                        traceTintFrom = tint(session)
-                        traceTintTo = tint(session)
-                    }
-                    .onChange(of: tint(session)) { old, new in
-                        traceTintFrom = old
-                        traceTintTo = new
-                        traceTintFraction = 0
-                        withAnimation(Motion.state(reduceMotion)) { traceTintFraction = 1 }
-                    }
+            // On the phone only: the wide layout's trace is the whole screen's background
+            // and runs under the glass column — see `backgroundTrace`.
+            if !timerOnly, !wide {
+                liveTrace(session, plot: ForceTraceView.PlotInsets(top: 12, bottom: 6, trailing: 8))
+                    .padding(.horizontal, -Metrics.hPadding)
             }
         }
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
@@ -565,6 +545,31 @@ struct RunnerView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("runner.graph")
         .tourAnchor(.runnerTrace)
+    }
+
+    /// The graph's canvas with its phase-tint blend, placed by the caller: the open
+    /// region's background on the phone, the whole screen's on the iPad.
+    private func liveTrace(_ session: RunnerSession, plot: ForceTraceView.PlotInsets) -> some View {
+        LiveTrace(thresholdKg: session.plan.thresholdKg,
+                  targetBand: liveTargetBand(session),
+                  tint: tint(session),
+                  plot: plot,
+                  lit: true)
+            // The wash already cross-fades between phases; the trace snapped, and on an
+            // object this size a hard cut of colour is a jolt. The blend runs on the same
+            // house curve, so the two move as one thing.
+            .modifier(BlendedTint(fraction: traceTintFraction,
+                                  from: traceTintFrom, to: traceTintTo))
+            .onAppear {
+                traceTintFrom = tint(session)
+                traceTintTo = tint(session)
+            }
+            .onChange(of: tint(session)) { old, new in
+                traceTintFrom = old
+                traceTintTo = new
+                traceTintFraction = 0
+                withAnimation(Motion.state(reduceMotion)) { traceTintFraction = 1 }
+            }
     }
 
     /// **The trace as the SCREEN, not a card** — the stacked layout's graph.
@@ -578,19 +583,25 @@ struct RunnerView: View {
     @ViewBuilder
     private func backgroundTrace(_ session: RunnerSession, wide: Bool) -> some View {
         if !timerOnly {
-            // ONLY the wash lives under the glass. The live canvas used to run under
-            // the panel and the dock too, and iOS re-blurs a glass backdrop every frame
-            // the layer beneath it changes — so the trace was being rendered and then
-            // blurred twice over, at 120 Hz, and the line's own motion went uneven on
-            // Nuri's phone (his recording, 2026-09-19 evening: "jittery, different from
-            // the old line"). The wash is a fill that changes once per phase, which is
-            // exactly what a glass surface can sit on for free; the trace now draws in
-            // the open region alone (`graphRegion`), edge to edge sideways but never
-            // beneath glass.
-            PhaseWash(tint: tint(session),
-                      edge: wide ? .leading : .top,
-                      length: wide ? traceGeometry.regionLeadingInCanvas
-                                   : traceGeometry.regionTopInCanvas)
+            // On the PHONE only the wash lives under the glass: the trace draws in the
+            // open region (`graphRegion`), edge to edge sideways, and the panel and dock
+            // sit on a fill that changes once per phase. On the iPad the trace IS the
+            // screen — it runs under the glass column and off the left edge, which is
+            // what a canvas this size is for (Nuri, 2026-09-19: "such a good opportunity
+            // to have it written behind the glass panes"). iOS re-blurs a glass backdrop
+            // every frame the layer beneath it changes, so that is a real cost on the
+            // M4: the line was once blamed for jitter on that account on the phone, and
+            // the cause turned out to be the playback clock; the iPad pays the blur and
+            // is measured for it.
+            ZStack {
+                PhaseWash(tint: tint(session),
+                          edge: wide ? .leading : .top,
+                          length: wide ? traceGeometry.regionLeadingInCanvas
+                                       : traceGeometry.regionTopInCanvas)
+                if wide {
+                    liveTrace(session, plot: ForceTraceView.PlotInsets(top: 44, bottom: 36, trailing: 8))
+                }
+            }
             // Measured INSIDE `ignoresSafeArea`: outside it the reported frame is the
             // safe-area frame the parent proposed, not the full-bleed one.
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {

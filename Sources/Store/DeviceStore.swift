@@ -146,9 +146,15 @@ final class DeviceStore {
     /// How far ahead of wall time a packet's FIRST sample is stamped at equilibrium: the
     /// jitter margin.
     var playbackMargin: TimeInterval {
-        min(max(latenessEnvelope + Self.playbackMarginPad, Self.playbackMarginFloor),
-            Self.playbackMarginCeiling)
+        // A broadcast scale's multi-second holes are its nature, not jitter a buffer can
+        // absorb: learning them would drag its already sparse line a second behind.
+        let ceiling = gaugeCapabilities.isBroadcast ? 0.25 : Self.playbackMarginCeiling
+        return min(max(latenessEnvelope + Self.playbackMarginPad, Self.playbackMarginFloor), ceiling)
     }
+    /// How far ahead of wall time a packet's NEWEST reading is stamped: the margin plus
+    /// the packet. The trace draws its body this much left of the edge — where the
+    /// readings truly belong in time — and keeps the zone for the live pen.
+    var playbackLead: TimeInterval { playbackMargin + packetSpanEstimate }
     /// The clock's target depth: the margin plus half a packet, because the per-sample slew
     /// settles a packet centred on the target.
     var playbackDelay: TimeInterval { playbackMargin + packetSpanEstimate / 2 }
@@ -323,7 +329,11 @@ final class DeviceStore {
     /// becoming an unreadable smear. Sized from the gauge's own rate: 480 points was
     /// exactly six seconds of the Progressor's 80 Hz, and at the Dyno's 250 Hz the same
     /// buffer would hold under two seconds, so the graph would end mid-pull.
-    private static let traceSeconds: Double = 6
+    /// Two seconds more than the window shows: the buffer's lead (a packet plus its
+    /// margin, up to ~1.6 s) is pending past the right edge, and a full buffer's oldest
+    /// point must still lie OFF the left edge or the fill's start ramp jitters on screen
+    /// as points age out (Nuri, 2026-09-19: "the shading disappears in a jittery way").
+    private static let traceSeconds: Double = 8
     private static let minimumTraceCapacity = 480
     private var traceCapacity: Int {
         max(Self.minimumTraceCapacity, Int(Self.traceSeconds * gaugeCapabilities.nominalSampleRate))

@@ -55,25 +55,35 @@ history syncs through CloudKit; a live session never moves between devices.
   display environment (Reduce Motion, Reduce Transparency, Low Power, max refresh): a trace
   that steps at the packet rate on one device and glides on another is that setting, not a
   bug (Nuri's iPad has Reduce Motion on, 2026-09-19).
-- **The playback clock runs one packet BEHIND on purpose — it is a jitter buffer, and no
-  deeper than a margin.** The real Progressor stream reaches the app as ~15 samples every
-  ~190 ms with p95 300 ms and max 420 ms gaps (both of Nuri's devices, diagnostics of
-  2026-09-19). Slewing the clock toward wall time itself settles each packet CENTRED on its
-  arrival: half of it is drawn at once as a chunk, the head glides for half a packet, then
-  the buffer is dry until the next one and the head fell back to a running average — a pen
-  that jumped twice per packet ("the line getting written feels kinda jittery"). The store
-  now stamps each packet's first sample a MARGIN ahead of wall time (`playbackMargin`: the
-  relaxing envelope of how late packets run beyond their own span, plus 30 ms, floored at
-  40 ms), so the packet is still pending when it lands and `TraceHead` always has a next
-  point to glide toward. Sizing it to the worst gap instead put the line 400–500 ms behind
-  the hand ("slightly behind my actual pull"): a smooth line cannot be less than one packet
-  behind, and this one is a packet plus the margin. When the radio is later than the margin
-  the pen HOLDS for the few frames it takes and resumes — the late packet is stamped just
-  ahead of now (`playbackTime`'s underrun), the hold stays drawn as a short plateau
-  (`streamGapSeconds` bridges up to 0.75 s), and the depth it added relaxes through the
-  ordinary slew. Reproduce the radio on the mock with `-mockClumpMS 190 -mockJitterMS 120`,
-  judge the result from `-traceHeadLog`'s per-frame rows, and read the buffer's own line in
-  the DEBUG diagnostics (`Trace buffer: margin … underruns …`), not by eye.
+- **The trace's pen is LIVE; its body is a jitter-buffered glide one packet behind.** The
+  real Progressor stream reaches the app as ~15 samples every ~190 ms with p95 300 ms and
+  max 420 ms gaps (both of Nuri's devices, diagnostics of 2026-09-19). Drawn as it arrives,
+  the line grew in 190 ms chunks and the head stepped ("the line getting written feels
+  kinda jittery"); glided through a buffer sized to the worst gap it was smooth and sat
+  400–500 ms behind the hand ("slightly behind my actual pull"). A constant-speed pen can
+  never show a reading less than one packet after it was taken, so the two wants are split:
+  the BODY is drawn from the store's buffered clock (`DeviceStore.playbackTime` stamps each
+  packet's first reading a `playbackMargin` ahead of wall time — the relaxing envelope of
+  how late packets run beyond their own span, plus 30 ms, floored at 40 ms — so a packet
+  is still pending when it lands and the frontier advances one point per frame), shifted
+  left by the store's `playbackLead` so its points sit at their true place in time; the
+  PEN at the edge is `TracePen` — the eased mean of the newest 100 ms of readings, pending
+  ones included, settling like a live sensor value — and a straight connector spans the
+  zone between them. When the radio is later than the margin the frontier holds and
+  resumes (the late packet is stamped just ahead of now, `playbackTime`'s underrun; the
+  trace bridges gaps up to 0.75 s) while the pen has already moved. The buffer keeps two
+  seconds more than the window so a full buffer's start stays off the left edge (the fill's
+  start ramp otherwise jitters on screen). Reproduce the radio on the mock with
+  `-mockClumpMS 190 -mockJitterMS 120`, read the buffer's own line in the DEBUG
+  diagnostics (`Trace buffer: margin … underruns …`) and `-traceHeadLog`'s per-frame
+  rows, not by eye. The Dyno's 250 Hz and a broadcast scale's 8–10 Hz go through the same
+  clock: the buffer capacity is sized from the gauge's rate, a broadcast scale's margin is
+  capped at 250 ms because its multi-second holes are its nature, and the pen glides
+  between sparse readings instead of stepping.
+- **On the iPad the trace runs UNDER the glass column and off the left edge.** The phone
+  keeps its trace in the open region (only the phase wash sits under the panel and dock);
+  the iPad's canvas is the whole screen. iOS re-blurs a glass backdrop every frame the
+  layer beneath changes, so this is measured on the M4 rather than assumed.
 - The four tabs use `.sidebarAdaptable`: the top tab bar on iPad, the ordinary bar on
   the phone. History goes two-pane in the same wide condition.
 - Reminders are per device (`SettingsStore.remindsOnThisDevice`): the phone defaults on,

@@ -226,7 +226,7 @@ private struct GaugeTrace: View {
                        tint: device.isStreaming ? StatusTint.engaged : Ink.tertiary,
                        nominalSampleRate: device.gaugeCapabilities.nominalSampleRate,
                        bridgesSparseDelivery: device.gaugeCapabilities.isBroadcast,
-                       diagnostics: device.pipelineDiagnostics)
+                       diagnostics: device.pipelineDiagnostics, playbackLead: device.playbackLead)
             .frame(height: 190)
             .padding(.horizontal, 4)
             .background(.regularMaterial,
