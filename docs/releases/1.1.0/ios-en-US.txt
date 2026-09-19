@@ -1,5 +1,5 @@
 The session screen is new. The force trace now fills the whole screen, and the numbers sit on one Liquid Glass panel that takes the colour of the moment: blue while the clock runs, amber when it is waiting on you. During a rest the countdown fills the screen, big enough to read from the wall.
 • iPad: in landscape the graph takes the whole display, with your grip, the next pull and the controls in one column beside it.
 • Apple Watch: the whole face is the colour of the state — blue to pull, green while the clock runs, red to re-grip, orange before a different grip.
-• Low Power Mode on either device stops the clocks rolling.
+• In Low Power Mode the digits snap instead of sliding, to spare the battery. The clocks keep counting.
 • A gauge that delivers its readings in bursts no longer empties the graph.
