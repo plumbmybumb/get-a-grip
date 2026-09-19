@@ -96,6 +96,7 @@ struct DoigtApp: App {
                             + " reduceTransparency=\(UIAccessibility.isReduceTransparencyEnabled)"
                             + " lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled)"
                             + " maxFPS=\(UIScreen.main.maximumFramesPerSecond)"
+                            + "\n" + device.playbackReport
                         let report = env + "\n\n" + DiagnosticReport.text(from: device.diagnosticEntries)
                             + "\n\nLast trace draw: " + TraceDrawProbe.shared.line
                             + "\n\n" + device.pipelineDiagnostics.report

@@ -112,7 +112,7 @@ final class DeviceStore {
     /// clumps of roughly twice its value — well past any radio stack's, far below a
     /// suspended app's backlog.
     static let lateDeliveryLimitSeconds: TimeInterval = 3.0
-    /// **THE JITTER BUFFER: playback runs a packet behind on purpose.**
+    /// **THE JITTER BUFFER: playback runs a packet behind on purpose — and no more.**
     ///
     /// The clock used to slew every sample toward wall time itself, and the equilibrium
     /// of that is a packet CENTRED on its own arrival — half of it already due the moment
@@ -123,28 +123,58 @@ final class DeviceStore {
     /// line advanced in visible steps — "the line getting written feels kinda jittery".
     /// The remedy is the one every streaming player uses: stamp the stream a buffer's
     /// depth AHEAD of wall time, so a packet is still entirely in the future when it
-    /// lands and the head always has a next point to glide toward. The depth is the
-    /// recent worst arrival gap plus a margin, floored for the Progressor's own cadence
-    /// and capped so a clumping radio cannot push the picture seconds behind the hand.
-    /// The line lags reality by about the depth; the kg readout beside it does not.
-    static let playbackDelayFloor: TimeInterval = 0.25
-    static let playbackDelayCeiling: TimeInterval = 1.5
-    static let playbackDelayMargin: TimeInterval = 0.05
-    /// How fast the remembered worst gap relaxes, in seconds per second, so one late
-    /// packet deepens the buffer for a while rather than forever.
-    static let arrivalGapDecayPerSecond: TimeInterval = 0.02
+    /// lands and the head always has a next point to glide toward.
+    ///
+    /// **The depth is a MARGIN over one packet, not the worst gap ever seen.** Sized to the
+    /// worst gap plus half a packet the line ran 400–500 ms behind the hand — smooth, and
+    /// Nuri felt it ("slightly behind my actual pull", 2026-09-19). A smooth line cannot be
+    /// less than one packet behind: the pen glides toward points it already holds, and the
+    /// next packet is the earliest anything newer can exist. So the margin covers how LATE
+    /// packets run beyond their own span, remembered as an envelope that relaxes within a
+    /// couple of seconds, and when the radio is later than that the pen HOLDS for the few
+    /// frames it takes and resumes (`playbackTime`'s underrun) rather than chunking. The
+    /// line lags reality by about the margin plus half a packet; the kg readout does not.
+    static let playbackMarginFloor: TimeInterval = 0.04
+    static let playbackMarginCeiling: TimeInterval = 1.4
+    static let playbackMarginPad: TimeInterval = 0.03
+    /// How fast the remembered lateness relaxes, in seconds per second: one late packet
+    /// deepens the buffer for a couple of seconds, not for the session.
+    static let latenessDecayPerSecond: TimeInterval = 0.06
     /// Gaps past this are a stall (the silence watchdog's business), not delivery jitter
     /// a buffer should learn from — a resumed app's 30 s gap must not deepen it.
     static let arrivalGapLearnLimitSeconds: TimeInterval = 2.0
-    /// The buffer's current depth: how far ahead of wall time the newest packet is stamped.
-    var playbackDelay: TimeInterval {
-        min(max(arrivalGapEnvelope + Self.playbackDelayMargin, Self.playbackDelayFloor),
-            Self.playbackDelayCeiling)
+    /// How far ahead of wall time a packet's FIRST sample is stamped at equilibrium: the
+    /// jitter margin.
+    var playbackMargin: TimeInterval {
+        min(max(latenessEnvelope + Self.playbackMarginPad, Self.playbackMarginFloor),
+            Self.playbackMarginCeiling)
     }
-    /// Wall time of the last packet's first sample, and the decaying envelope of the gaps
-    /// between packets — the delivery pattern the buffer depth is sized from.
+    /// The clock's target depth: the margin plus half a packet, because the per-sample slew
+    /// settles a packet centred on the target.
+    var playbackDelay: TimeInterval { playbackMargin + packetSpanEstimate / 2 }
+    /// The delivery pattern the buffer is sized from: wall time of the last packet's first
+    /// sample and where it was stamped, the running span of a packet, and the relaxing
+    /// envelope of how late packets have run beyond that span.
     @ObservationIgnored private var lastPacketArrival: TimeInterval?
-    @ObservationIgnored private var arrivalGapEnvelope: TimeInterval = 0
+    @ObservationIgnored private var lastPacketFirstT: TimeInterval?
+    @ObservationIgnored private var packetSpanEstimate: TimeInterval = 0.1
+    @ObservationIgnored private var latenessEnvelope: TimeInterval = 0
+    /// Session tallies for the DEBUG diagnostics: how the buffer actually behaved.
+    @ObservationIgnored private var bufferPackets = 0
+    @ObservationIgnored private var bufferUnderruns = 0
+    @ObservationIgnored private var bufferMaxHold: TimeInterval = 0
+    @ObservationIgnored private var bufferMarginSum: TimeInterval = 0
+    /// How often the buffer ran dry this link — the pen held instead of chunking.
+    var traceUnderruns: Int { bufferUnderruns }
+    /// One line for the diagnostics report: the buffer's sizing and what it cost. The mean
+    /// margin plus half a packet is how far the pen runs behind the hand, before radio latency.
+    var playbackReport: String {
+        let meanMargin = bufferPackets > 0 ? bufferMarginSum / Double(bufferPackets) : 0
+        return String(format: "Trace buffer: margin %.0f ms (envelope %.0f, span %.0f, delay %.0f) · packets %d · mean margin at arrival %.0f ms · underruns %d (max hold %.0f ms)",
+                      playbackMargin * 1000, latenessEnvelope * 1000, packetSpanEstimate * 1000,
+                      playbackDelay * 1000, bufferPackets, meanMargin * 1000, bufferUnderruns,
+                      bufferMaxHold * 1000)
+    }
     @ObservationIgnored private var traceStorage: [TracePoint] = []
     var trace: [TracePoint] { _ = sampleRevision; return traceStorage }
     @ObservationIgnored private var lastTraceMicros: UInt32?
@@ -672,6 +702,7 @@ final class DeviceStore {
         lastTraceMicros = nil
         // The gap to the first packet after a resume is the suspension, not the radio.
         lastPacketArrival = nil
+        lastPacketFirstT = nil
     }
 
     /// The playback clock: device-time deltas on a wall-time footing, held a buffer's
@@ -693,10 +724,11 @@ final class DeviceStore {
     /// it happens, so the graph would clear itself every few seconds for the session's whole
     /// life. Keyed to the nominal rate the arithmetic is identical for the Progressor at
     /// 80 Hz and honest for the 8–40 Hz kinds.
-    private func playbackTime(for sample: ForceSample) -> TimeInterval {
+    private func playbackTime(for sample: ForceSample, wallNow: TimeInterval,
+                              snapMargin: TimeInterval) -> TimeInterval {
         // The clock's target is a buffer's depth AHEAD of wall time — see `playbackDelay`.
         // Everything below that compared against wall time now compares against this.
-        let target = Date().timeIntervalSinceReferenceDate + playbackDelay
+        let target = wallNow + playbackDelay
         defer { lastTraceMicros = sample.deviceMicros }
         guard let previous = lastTraceMicros, let lastT = traceStorage.last?.t else { return target }
         let deltaMicros = sample.deviceMicros &- previous   // wrap-safe
@@ -713,6 +745,20 @@ final class DeviceStore {
             ? Double(deltaMicros) / 1_000_000
             : 1.0 / max(1, gaugeCapabilities.nominalSampleRate)
         let candidate = lastT + delta
+        // **UNDERRUN: the pen holds, it does not chunk.** A packet that lands after the
+        // buffer ran dry would be due at once — its whole span drawn in one frame and the
+        // head jumping to the end of it, which is the step the buffer exists to prevent.
+        // Stamping its first sample a margin ahead of now instead lets the pen, which has
+        // been holding its last value, resume gliding through the packet; the hold stays
+        // drawn as a short plateau, and the extra depth it added relaxes through the
+        // ordinary slew over the next seconds. The margin used is the one in force BEFORE
+        // this packet raised the envelope, or a late packet would also lengthen its own
+        // hold. Trusted deltas only — a counter reset is a break, handled below.
+        if sample.isBatchStart, trusted, candidate < wallNow {
+            bufferUnderruns += 1
+            bufferMaxHold = max(bufferMaxHold, wallNow - candidate)
+            return wallNow + snapMargin
+        }
         let error = target - candidate
         // BEHIND the target. Two different things look alike here and get different limits:
         //
@@ -835,7 +881,13 @@ final class DeviceStore {
         resetPeak()
         // The delivery pattern belongs to the link; the next one is measured afresh.
         lastPacketArrival = nil
-        arrivalGapEnvelope = 0
+        lastPacketFirstT = nil
+        latenessEnvelope = 0
+        packetSpanEstimate = 0.1
+        bufferPackets = 0
+        bufferUnderruns = 0
+        bufferMaxHold = 0
+        bufferMarginSum = 0
     }
 
     /// Fixed English for the breadcrumb ring — a phase, never the serial the status
@@ -910,21 +962,34 @@ final class DeviceStore {
                 lastTraceMicros = nil
             }
 
-            // The delivery pattern, learned from the gaps between PACKETS (a packet's first
-            // sample carries the mark; the rest of it arrives in the same turn). The
-            // envelope tracks the worst recent gap and relaxes slowly, so the buffer stays
-            // deep enough for the radio's bad moments without lagging forever after one.
+            // The delivery pattern, learned at PACKET starts (a packet's first sample
+            // carries the mark; the rest of it arrives in the same turn): how long a packet
+            // spans, and how much later than that span each one lands. The envelope keeps
+            // the worst recent lateness and relaxes within a couple of seconds, so the
+            // buffer covers the radio's bad moments without lagging long after one.
+            let marginBefore = playbackMargin
             if sample.isBatchStart {
                 if let last = lastPacketArrival {
                     let gap = wallNow - last
+                    if let firstT = lastPacketFirstT, let lastT = traceStorage.last?.t, lastT >= firstT {
+                        let span = lastT - firstT + 1.0 / max(1, gaugeCapabilities.nominalSampleRate)
+                        packetSpanEstimate += (span - packetSpanEstimate) * 0.3
+                    }
                     if gap <= Self.arrivalGapLearnLimitSeconds {
-                        arrivalGapEnvelope = max(gap, arrivalGapEnvelope - Self.arrivalGapDecayPerSecond * gap)
+                        let lateness = gap - packetSpanEstimate
+                        latenessEnvelope = max(lateness, latenessEnvelope - Self.latenessDecayPerSecond * gap)
                     }
                 }
                 lastPacketArrival = wallNow
             }
 
-            let point = TracePoint(kg: sample.kg, t: playbackTime(for: sample))
+            let point = TracePoint(kg: sample.kg,
+                                   t: playbackTime(for: sample, wallNow: wallNow, snapMargin: marginBefore))
+            if sample.isBatchStart {
+                lastPacketFirstT = point.t
+                bufferPackets += 1
+                bufferMarginSum += point.t - wallNow
+            }
             onTracePoint?(point)
             traceStorage.append(point)
             sampleStateChanged()

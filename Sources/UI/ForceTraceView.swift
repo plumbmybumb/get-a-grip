@@ -172,8 +172,14 @@ struct ForceTraceView: View {
     /// into a graph instead of dropping it"). Points older than the window still fall
     /// off the left edge on their own; a scale that genuinely left is the silence
     /// watchdog's job, not the renderer's.
+    ///
+    /// Floored at 0.75 s since the jitter buffer: a packet the radio delivers late is
+    /// stamped past the hold it caused (`DeviceStore.playbackTime`), which leaves a gap of
+    /// the hold's length in the timeline. That is a plateau to draw across, not a stop —
+    /// the stream never paused, its transport did — and anything a human would call an
+    /// interruption is still seconds long.
     private var streamGapSeconds: Double {
-        bridgesSparseDelivery ? .greatestFiniteMagnitude : max(0.35, 3.0 / max(1, nominalSampleRate))
+        bridgesSparseDelivery ? .greatestFiniteMagnitude : max(0.75, 3.0 / max(1, nominalSampleRate))
     }
 
     /// Cross-frame axis state. A reference type on purpose: it is written in the

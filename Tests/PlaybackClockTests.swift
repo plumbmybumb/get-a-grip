@@ -68,51 +68,76 @@ final class PlaybackClockTests: XCTestCase {
         XCTAssertGreaterThan(device.trace.count, 0, "and the samples after it started a fresh run")
     }
 
+    private func packet(_ client: RecordingProgressorClient, from micros: inout UInt32) {
+        for index in 0..<8 {
+            client.emit(.sample(ForceSample(kg: 4, deviceMicros: micros, isBatchStart: index == 0)))
+            micros &+= Self.microsPerSample
+        }
+    }
+
     /// The buffer's whole point: a packet is still in the FUTURE when it lands, so the
-    /// head always has a next point to glide toward. Regular 100 ms packets for a second,
-    /// each one's first sample marked as the real client marks it.
-    func testEveryPacketIsStillPendingWhenItLands() async throws {
+    /// head always has a next point to glide toward — and no deeper than a margin, so the
+    /// pen runs as little behind the hand as a smooth line can. Regular 100 ms packets for
+    /// a second, each one's first sample marked as the real client marks it.
+    func testEveryPacketIsStillPendingWhenItLandsAndNoDeeperThanAMargin() async throws {
         let (device, client) = makeStreamingStore()
         var micros: UInt32 = 0
-        for packet in 0..<10 {
+        for index in 0..<10 {
             let arrival = Date().timeIntervalSinceReferenceDate
-            for index in 0..<8 {
-                client.emit(.sample(ForceSample(kg: 4, deviceMicros: micros, isBatchStart: index == 0)))
-                micros &+= Self.microsPerSample
-            }
+            packet(client, from: &micros)
             let first = try XCTUnwrap(device.trace.dropLast(7).last)
-            XCTAssertGreaterThan(first.t - arrival, 0.1,
-                                 "packet \(packet): its first sample is due no sooner than 100 ms after it lands")
+            XCTAssertGreaterThan(first.t - arrival, 0.0, "packet \(index): its first sample is still pending when it lands")
+            XCTAssertLessThan(first.t - arrival, 0.2, "packet \(index): but only by a margin")
             let newest = try XCTUnwrap(device.trace.last)
-            XCTAssertLessThan(newest.t - arrival, 1.0, "packet \(packet): and the whole packet is due within a second")
+            XCTAssertLessThan(newest.t - arrival, 0.5, "packet \(index): and the whole packet is due within half a second")
             try await Task.sleep(for: .milliseconds(100))
         }
         XCTAssertEqual(flushes(in: device), 0)
-        XCTAssertEqual(device.playbackDelay, DeviceStore.playbackDelayFloor, accuracy: 0.05,
-                       "regular 100 ms packets sit on the floor")
+        XCTAssertEqual(device.traceUnderruns, 0)
+        XCTAssertEqual(device.playbackMargin, DeviceStore.playbackMarginFloor, accuracy: 0.02,
+                       "regular packets sit on the margin's floor")
     }
 
-    /// The depth follows the radio: a late packet deepens the buffer by its own gap, and a
-    /// stall does not — a resumed app's half-minute is not delivery jitter.
-    func testTheBufferDeepensWithLatePacketsButNotWithStalls() async throws {
+    /// The margin follows the radio: a packet that lands 300 ms later than its own span
+    /// deepens the buffer by about that much, and a stall does not — a resumed app's
+    /// half-minute is not delivery jitter.
+    func testTheMarginDeepensWithLatePacketsButNotWithStalls() async throws {
         let (device, client) = makeStreamingStore()
         var micros: UInt32 = 0
-        func packet() {
-            for index in 0..<8 {
-                client.emit(.sample(ForceSample(kg: 4, deviceMicros: micros, isBatchStart: index == 0)))
-                micros &+= Self.microsPerSample
-            }
-        }
-        packet()
+        packet(client, from: &micros)
+        try await Task.sleep(for: .milliseconds(100))
+        packet(client, from: &micros)
         try await Task.sleep(for: .milliseconds(400))
-        packet()
-        XCTAssertGreaterThan(device.playbackDelay, 0.4, "a 400 ms gap is remembered as the depth to keep")
-        XCTAssertLessThan(device.playbackDelay, 0.6)
+        packet(client, from: &micros)
+        XCTAssertGreaterThan(device.playbackMargin, 0.25, "300 ms of lateness is remembered as the margin to keep")
+        XCTAssertLessThan(device.playbackMargin, 0.45)
 
         device.dropStaleTrace()   // the foreground path after a suspension
         try await Task.sleep(for: .milliseconds(200))
-        packet()
-        XCTAssertLessThan(device.playbackDelay, 0.6, "the gap to the first packet after a resume is not learned")
+        packet(client, from: &micros)
+        XCTAssertLessThan(device.playbackMargin, 0.45, "the gap to the first packet after a resume is not learned")
+    }
+
+    /// When the radio is later than the margin the pen HOLDS and resumes: the late packet is
+    /// stamped just ahead of now, not due at once as a chunk, and the hold it caused is a
+    /// gap short enough for the trace to draw across as a plateau.
+    func testALatePacketHoldsInsteadOfChunking() async throws {
+        let (device, client) = makeStreamingStore()
+        var micros: UInt32 = 0
+        for _ in 0..<3 {
+            packet(client, from: &micros)
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        let before = try XCTUnwrap(device.trace.last)
+        try await Task.sleep(for: .milliseconds(400))   // the buffer has been dry for ~300 ms
+        let arrival = Date().timeIntervalSinceReferenceDate
+        packet(client, from: &micros)
+        let first = try XCTUnwrap(device.trace.dropLast(7).last)
+        XCTAssertEqual(device.traceUnderruns, 1)
+        XCTAssertGreaterThanOrEqual(first.t, arrival, "the late packet is pending, not a chunk")
+        XCTAssertLessThan(first.t - arrival, 0.1, "and only by the margin that was in force")
+        XCTAssertGreaterThan(first.t - before.t, 0.3, "the hold is in the timeline")
+        XCTAssertLessThan(first.t - before.t, 0.75, "and short enough to draw across")
     }
 
     /// A counter reset a second or more back is still a stall: the clock snaps forward

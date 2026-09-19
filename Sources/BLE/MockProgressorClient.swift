@@ -178,8 +178,13 @@ final class MockProgressorClient: ProgressorClient {
                 }
                 guard let self else { return }
                 let now = ContinuousClock.now
+                // Everything handed over in one wake is ONE packet, marked once: the real
+                // radio's late notification carries all its samples under a single mark,
+                // and the store sizes its jitter buffer from packet starts.
+                var packetStart = true
                 while due <= now {
-                    self.emitBatch()
+                    self.emitBatch(packetStart: packetStart)
+                    packetStart = false
                     due += batch
                 }
             }
@@ -198,13 +203,14 @@ final class MockProgressorClient: ProgressorClient {
     /// One notification's worth of samples, exactly as the device batches them —
     /// which is what makes the runner's "accrue from device timestamps, not arrival
     /// time" rule testable against something realistic.
-    private func emitBatch() {
+    private func emitBatch(packetStart: Bool = true) {
         onPacketBoundary?(.began(receivedAt: ProcessInfo.processInfo.systemUptime))
         defer { onPacketBoundary?(.ended) }
         for index in 0..<Self.batchSize {
             let seconds = Double(elapsedSamples) / Self.sampleHz
             let kg = MockForceProfile.force(at: seconds, profile: profile) - tareOffsetKg
-            onEvent?(.sample(ForceSample(kg: kg, deviceMicros: deviceMicros, isBatchStart: index == 0)))
+            onEvent?(.sample(ForceSample(kg: kg, deviceMicros: deviceMicros,
+                                         isBatchStart: packetStart && index == 0)))
             elapsedSamples += 1
             // Wrapping on purpose: over a long session the real device's UInt32 µs
             // clock rolls over at ~71.6 minutes, and the app must survive it.
