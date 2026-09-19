@@ -3,6 +3,7 @@
 
 import SwiftData
 import SwiftUI
+import WatchKit
 
 /// The session on the wrist. Two pages, swiped vertically like the system Workout app:
 /// the FACE — phase, countdown, hand, grip — and the CONTROLS. The face is for between
@@ -25,6 +26,15 @@ struct WatchRunnerView: View {
     @State private var session: RunnerSession?
     @State private var keeper = WorkoutKeeper()
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 54
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The face turns upside down on the watch hand's pulls — see `FaceFlipPolicy`. Off
+    /// for anyone whose block posture is different; device-local, like every preference.
+    @AppStorage("watch.flipForWatchHand") private var flipsForWatchHand = true
+
+    /// Which wrist this watch is on, as the wearer told watchOS. `.both` is never a wrist.
+    private var wrist: Side {
+        WKInterfaceDevice.current().wristLocation == .right ? .right : .left
+    }
 
     var body: some View {
         Group {
@@ -80,6 +90,8 @@ struct WatchRunnerView: View {
     private func face(_ session: RunnerSession) -> some View {
         let snapshot = session.snapshot
         let tint = tint(session)
+        let flipped = FaceFlipPolicy.shouldFlip(phase: snapshot.phase, side: snapshot.side,
+                                                wrist: wrist, enabled: flipsForWatchHand)
         return VStack(spacing: 2) {
             Text(promptText(session))
                 .font(.headline.weight(.heavy))
@@ -119,6 +131,12 @@ struct WatchRunnerView: View {
             }
         }
         .padding(.horizontal, 4)
+        // UPSIDE DOWN for the watch hand's pulls: palm down on a block in front of you,
+        // the wrist is under your eyes with 12 o'clock at your elbow. The turn itself is
+        // the cue that this pull is the watch hand's; the house curve, so it is one
+        // motion and not a spin.
+        .rotationEffect(.degrees(flipped ? 180 : 0))
+        .animation(Motion.state(reduceMotion), value: flipped)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("watch.face")
     }
@@ -214,6 +232,13 @@ struct WatchRunnerView: View {
                     }
                     .disabled(!TarePolicy.phaseAllowsTare(phase) || device.isLoadedForTare)
                 }
+                // See `FaceFlipPolicy`. On this page, read the normal way up, because
+                // the switch is for the moment the flip turns out to be wrong.
+                Toggle(isOn: $flipsForWatchHand) {
+                    Text("Flip for the watch hand")
+                }
+                .font(.footnote)
+                .accessibilityIdentifier("watch.flipToggle")
                 Button(role: .destructive) {
                     session.send(.abort)
                 } label: {

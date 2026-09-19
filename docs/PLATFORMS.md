@@ -62,6 +62,11 @@ anywhere, which is why a session works with the phone in a bag.
 - **Haptics first.** Mid-hang the watch faces the ceiling, so `WatchCuePlayer` maps
   every engine cue to a system haptic; the face is for between pulls — phase word,
   countdown, hand, grip, the kilogram readout. No trace.
+- **The face flips for the watch hand.** Pulling a block in front of you, palm down
+  with the forearm level, puts the watch under your eyes reading upside down;
+  `FaceFlipPolicy` turns the face 180° on the watch hand's pulls (the device reports
+  which wrist it is on), and never during a rest, a pause or on the controls page. A
+  toggle on the controls page turns it off for a different posture.
 - `WorkoutKeeper` runs every session inside an `HKWorkoutSession`
   (`functionalStrengthTraining`, indoor): that is what keeps the app and the Bluetooth
   stream alive with the wrist down, and it lands in Fitness as a workout. Health access
