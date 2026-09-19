@@ -55,31 +55,26 @@ history syncs through CloudKit; a live session never moves between devices.
   display environment (Reduce Motion, Reduce Transparency, Low Power, max refresh): a trace
   that steps at the packet rate on one device and glides on another is that setting, not a
   bug (Nuri's iPad has Reduce Motion on, 2026-09-19).
-- **The trace's pen is LIVE; its body is a jitter-buffered glide one packet behind.** The
-  real Progressor stream reaches the app as ~15 samples every ~190 ms with p95 300 ms and
-  max 420 ms gaps (both of Nuri's devices, diagnostics of 2026-09-19). Drawn as it arrives,
-  the line grew in 190 ms chunks and the head stepped ("the line getting written feels
-  kinda jittery"); glided through a buffer sized to the worst gap it was smooth and sat
-  400–500 ms behind the hand ("slightly behind my actual pull"). A constant-speed pen can
-  never show a reading less than one packet after it was taken, so the two wants are split:
-  the BODY is drawn from the store's buffered clock (`DeviceStore.playbackTime` stamps each
-  packet's first reading a `playbackMargin` ahead of wall time — the relaxing envelope of
-  how late packets run beyond their own span, plus 30 ms, floored at 40 ms — so a packet
-  is still pending when it lands and the frontier advances one point per frame), shifted
-  left by the store's `playbackLead` so its points sit at their true place in time; the
-  PEN at the edge is `TracePen` — the eased mean of the newest 100 ms of readings, pending
-  ones included, settling like a live sensor value — and a straight connector spans the
-  zone between them. When the radio is later than the margin the frontier holds and
-  resumes (the late packet is stamped just ahead of now, `playbackTime`'s underrun; the
-  trace bridges gaps up to 0.75 s) while the pen has already moved. The buffer keeps two
-  seconds more than the window so a full buffer's start stays off the left edge (the fill's
-  start ramp otherwise jitters on screen). Reproduce the radio on the mock with
-  `-mockClumpMS 190 -mockJitterMS 120`, read the buffer's own line in the DEBUG
-  diagnostics (`Trace buffer: margin … underruns …`) and `-traceHeadLog`'s per-frame
-  rows, not by eye. The Dyno's 250 Hz and a broadcast scale's 8–10 Hz go through the same
-  clock: the buffer capacity is sized from the gauge's rate, a broadcast scale's margin is
-  capped at 250 ms because its multi-second holes are its nature, and the pen glides
-  between sparse readings instead of stepping.
+- **The trace draws the raw data as it arrives; its only smoothing is visual and lag-free.**
+  The real Progressor stream reaches the app as ~15 samples every ~190 ms with p95 300 ms and
+  max 420 ms gaps (both of Nuri's devices, diagnostics of 2026-09-19). Three renderings were
+  tried that day: drawn as it arrived with the clock slewed toward wall time, the line
+  grew in chunks and the head stepped ("the line getting written feels kinda jittery");
+  glided through a jitter buffer it was smooth and sat a packet plus a margin behind the
+  hand ("slightly behind my actual pull"); a live pen with a straight connector back to a
+  buffered body looked wrong ("that small straight part of the line"). Nuri's verdict —
+  "just take the raw data and feed it in", "as smooth as you can visually without
+  oversmoothing" — is the rule. `DeviceStore.playbackTime` targets wall time LESS half a
+  packet, so a packet's newest reading is stamped at its arrival and nothing sits in the
+  future (the old pause-and-lurch, and every waiting scheme, came from future stamps);
+  `ForceTraceView` draws every known point at its true place, fades a freshly arrived
+  packet's segment in over 120 ms instead of popping it, and eases the head dot toward the
+  newest reading over ~60 ms. Positions are never delayed; nothing is extrapolated. The
+  buffer keeps two seconds more than the window so a full buffer's start stays off the
+  left edge (the fill's start ramp otherwise jitters on screen). Reproduce the radio on the
+  mock with `-mockClumpMS 190 -mockJitterMS 120` and judge from `-traceHeadLog`'s per-frame
+  rows. The Dyno's 250 Hz and a broadcast scale's 8–10 Hz go through the same clock; the
+  buffer capacity is sized from the gauge's rate.
 - **On the iPad the trace runs UNDER the glass column and off the left edge.** The phone
   keeps its trace in the open region (only the phase wash sits under the panel and dock);
   the iPad's canvas is the whole screen. iOS re-blurs a glass backdrop every frame the

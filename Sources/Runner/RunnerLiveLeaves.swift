@@ -129,6 +129,6 @@ struct LiveTrace: View {
                        nominalSampleRate: device.gaugeCapabilities.nominalSampleRate,
                        bridgesSparseDelivery: device.gaugeCapabilities.isBroadcast,
                        diagnostics: device.pipelineDiagnostics,
-                       plot: plot, lit: lit, playbackLead: device.playbackLead)
+                       plot: plot, lit: lit)
     }
 }

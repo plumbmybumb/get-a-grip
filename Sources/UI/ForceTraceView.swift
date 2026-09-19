@@ -53,22 +53,16 @@ final class TraceDrawProbe: @unchecked Sendable {
 }
 #endif
 
-/// **The pen: the live reading at the edge.** The mean of the newest 100 ms of readings,
-/// pending ones included — they are known the moment the packet lands — so the pen has
-/// the kg readout's freshness while a packet's batch noise is damped. A pure function so
-/// the rule is unit-tested; the easing toward it lives in the view, like the axis.
-enum TracePen {
-    static let window: TimeInterval = 0.1
-    static func target(samples: [DeviceStore.TracePoint]) -> Double? {
-        guard let newest = samples.last else { return nil }
-        var sum = 0.0, count = 0.0
-        var i = samples.count - 1
-        while i >= 0, newest.t - samples[i].t <= window {
-            sum += samples[i].kg
-            count += 1
-            i -= 1
-        }
-        return count > 0 ? sum / count : newest.kg
+/// The head's two visual softeners — the only smoothing the trace applies, both lag-free.
+enum TraceHead {
+    /// How long a newly arrived segment takes to reach full strength.
+    static let freshSeconds: TimeInterval = 0.12
+    /// The head's target: the newest readings, lightly averaged — three at 80 Hz is ~40 ms,
+    /// batch noise damped and nothing hidden. A pure function so it is unit-tested.
+    static func newestKg(samples: [DeviceStore.TracePoint]) -> Double? {
+        guard !samples.isEmpty else { return nil }
+        let n = min(3, samples.count)
+        return samples.suffix(n).reduce(0) { $0 + $1.kg } / Double(n)
     }
 }
 
@@ -122,12 +116,6 @@ struct ForceTraceView: View {
     /// and a curve you look at for twenty minutes should look like the thing being
     /// measured. A card keeps the plain drawing, so no other screen changes.
     var lit: Bool = false
-    /// How far ahead of wall time the store stamps a packet's newest reading — the depth
-    /// of its jitter buffer plus a packet. The body is drawn this much left of the edge,
-    /// which is where its samples truly belong in time, and the zone it leaves is the
-    /// pen's (`DeviceStore.playbackLead`). Eased in the view, so a buffer that deepens
-    /// after a late packet drifts the body rather than lurching it.
-    var playbackLead: TimeInterval = 0.15
 
     /// The band of the canvas that 0 kg → ceiling maps onto, as insets from the
     /// canvas's own edges.
@@ -168,14 +156,8 @@ struct ForceTraceView: View {
     /// into a graph instead of dropping it"). Points older than the window still fall
     /// off the left edge on their own; a scale that genuinely left is the silence
     /// watchdog's job, not the renderer's.
-    ///
-    /// Floored at 0.75 s since the jitter buffer: a packet the radio delivers late is
-    /// stamped past the hold it caused (`DeviceStore.playbackTime`), which leaves a gap of
-    /// the hold's length in the timeline. That is a plateau to draw across, not a stop —
-    /// the stream never paused, its transport did — and anything a human would call an
-    /// interruption is still seconds long.
     private var streamGapSeconds: Double {
-        bridgesSparseDelivery ? .greatestFiniteMagnitude : max(0.75, 3.0 / max(1, nominalSampleRate))
+        bridgesSparseDelivery ? .greatestFiniteMagnitude : max(0.35, 3.0 / max(1, nominalSampleRate))
     }
 
     /// Cross-frame axis state. A reference type on purpose: it is written in the
@@ -191,9 +173,8 @@ struct ForceTraceView: View {
         /// right now" without a Task teardown/rebuild every time a sample arrives — see
         /// `watchForExpiry()`.
         var newestTime: TimeInterval?
-        /// The pen's eased value and the eased zone width — per-frame values, not clocks.
-        var penKg: Double?
-        var lead: TimeInterval?
+        /// The head dot's eased value — a per-frame value, not a clock.
+        var headKg: Double?
     }
     @State private var axis = AxisMemory()
     /// A TimelineView cannot notice on its own that a stopped trace has finally slid
@@ -230,35 +211,21 @@ struct ForceTraceView: View {
         return dt
     }
 
-    /// The pen settles toward the live reading like a sensor value — `Motion.live`'s
-    /// intent, no overshoot, because an overshooting pen would draw a load nobody pulled.
-    /// About 130 ms to 90 %: a packet lands every ~190 ms, and a faster ease had the pen
-    /// sprint and rest inside each interval, a throb on a hard pull; this one is still
-    /// moving when the next packet lands and reacts within a frame. Snapped under Reduce
-    /// Motion (the timeline is paused there anyway) and on a frozen trace.
-    private func penValue(dt: TimeInterval) -> Double? {
-        guard let target = TracePen.target(samples: samples) else {
-            axis.penKg = nil
+    /// The head dot settles toward the newest reading over ~60 ms — no overshoot, because an
+    /// overshooting head would draw a load nobody pulled, and short enough that it is a
+    /// softening of the packet step rather than a delay of it. Snapped under Reduce Motion
+    /// (the timeline is paused there anyway) and on a frozen trace.
+    private func headValue(dt: TimeInterval) -> Double? {
+        guard let target = TraceHead.newestKg(samples: samples) else {
+            axis.headKg = nil
             return nil
         }
-        if let current = axis.penKg, !reduceMotion, frozenAt == nil {
-            axis.penKg = current + (target - current) * min(1, dt * 16)
+        if let current = axis.headKg, !reduceMotion, frozenAt == nil {
+            axis.headKg = current + (target - current) * min(1, dt * 25)
         } else {
-            axis.penKg = target
+            axis.headKg = target
         }
-        return axis.penKg
-    }
-
-    /// The zone width follows the store's lead slowly (~0.5 s), so a buffer that deepens
-    /// after a late packet drifts the body a few points rather than lurching it.
-    private func leadValue(dt: TimeInterval) -> TimeInterval {
-        let target = max(playbackLead, 0.1)
-        if let current = axis.lead, !reduceMotion {
-            axis.lead = current + (target - current) * min(1, dt * 2)
-        } else {
-            axis.lead = target
-        }
-        return axis.lead ?? target
+        return axis.headKg
     }
 
     private func axisCeiling(dt: TimeInterval) -> Double {
@@ -310,10 +277,9 @@ struct ForceTraceView: View {
             // MainActor-bound view state, and the draw closure only needs the number.
             let dt = frameDelta(now: now)
             let ceiling = axisCeiling(dt: dt)
-            let pen = penValue(dt: dt)
-            let lead = leadValue(dt: dt)
+            let head = headValue(dt: dt)
             Canvas { context, size in
-                draw(in: context, size: size, now: now, ceiling: ceiling, pen: pen, lead: lead)
+                draw(in: context, size: size, now: now, ceiling: ceiling, head: head)
             }
         }
         .opacity(reduceMotion ? 0.85 : 1)
@@ -392,7 +358,7 @@ struct ForceTraceView: View {
     }
 
     private func draw(in context: GraphicsContext, size: CGSize, now: TimeInterval,
-                      ceiling: Double, pen: Double?, lead: TimeInterval) {
+                      ceiling: Double, head: Double?) {
         let plotTop = plot.top
         let plotHeight = max(1, size.height - plotTop - plot.bottom)
         let plotRight = size.width - plot.trailing
@@ -454,11 +420,8 @@ struct ForceTraceView: View {
         // is why Nuri's iPad drew no line at all (2026-09-19). Those points now wait beyond
         // the edge and slide in on time, a jitter buffer, and the line stays continuous
         // whatever the delivery looks like. `.clipped()` hides the waiting segment.
-        // Plus the LEAD: a stamp sits a buffer's depth ahead of the moment its reading was
-        // taken, so the body draws that much further left — at its true place in time —
-        // and the zone left at the edge belongs to the pen.
         func x(_ index: Int) -> CGFloat {
-            let age = now - samples[index].t + lead
+            let age = now - samples[index].t
             return plotRight - CGFloat(age / Self.windowSeconds) * size.width
         }
 
@@ -513,94 +476,103 @@ struct ForceTraceView: View {
         var context = context
         context.opacity = frozenAt == nil ? min(1, (now - samples[runStart].t) / 0.5) : 1
 
-        // Only what is DUE is drawn as the BODY. Points still ahead of the playback clock
-        // stay pending, so the body ends at the last due one — the FRONTIER — a zone short
-        // of the edge; what lives at the edge is the pen (`TracePen`). Nothing due yet in
-        // this run leaves `lastDue` below the anchor, and only the pen draws.
+        // Everything known is drawn, at its true place in time. The clock stamps a packet's
+        // newest reading at its arrival, so "due" is simply "arrived" — the filter only
+        // catches the few milliseconds a slightly early packet's tail sits past now.
         var lastDue = samples.count - 1
         while lastDue >= anchorIndex, samples[lastDue].t > now { lastDue -= 1 }
-
-        var line = Path()
-        var firstDrawn: CGPoint?
-        var frontier: CGPoint?
-        if lastDue >= anchorIndex {
-            for index in anchorIndex...lastDue {
-                let point = CGPoint(x: x(index), y: y(smoothed(index)))
-                if firstDrawn == nil {
-                    line.move(to: point)
-                    firstDrawn = point
-                } else {
-                    line.addLine(to: point)
-                }
-                frontier = point
-            }
-        }
-
-        // **THE PEN IS LIVE; THE BODY IS SMOOTH.** While data is flowing the pen sits at
-        // the edge on the eased mean of the newest 100 ms of readings — the kg readout's
-        // own freshness, settling like a live sensor value — and a straight connector
-        // spans the zone back to the frontier, where the true curve emerges one point per
-        // frame as the buffered clock reaches it. A pen that only glided through the
-        // buffer showed a pull's onset a whole packet late ("slightly behind my actual
-        // pull", Nuri 2026-09-19); a pen that stepped to every packet, with the line
-        // arriving in chunks behind it, was the jitter before that. This is both halves:
-        // the freshest reading at the edge, the recorded curve smooth behind it, and the
-        // connector never claims a load outside what was measured. Half a second without
-        // fresh data and there is no pen: the trace slides away rather than pinning a
-        // stale value to the edge.
-        let streaming = frozenAt == nil && now - samples[samples.count - 1].t < 0.5
-        let head: CGPoint
-        if streaming, let pen {
-            head = CGPoint(x: plotRight, y: y(pen))
-            if frontier != nil {
-                line.addLine(to: head)
-            } else {
-                line.move(to: head)
-                firstDrawn = head
-            }
-        } else if let frontier {
-            head = frontier
-        } else {
+        guard lastDue >= anchorIndex else {
             #if DEBUG
             TraceDrawProbe.shared.set("early: nothingDue anchor=\(anchorIndex) count=\(samples.count)")
             #endif
             return
         }
-        guard let firstDrawn else { return }
 
-        // Soft fill under the curve reads as "load", the stroke reads as "now".
+        // **THE FRESH SEGMENT MATERIALIZES; THE HEAD SETTLES.** Raw data arrives in packets
+        // of ~190 ms, so a whole segment of line becomes known at once, and drawn at full
+        // strength that is a pop five times a second — the jitter Nuri saw on a plot this
+        // tall (2026-09-19). Positions are never touched: a buffered glide and a live pen
+        // with a connector were both tried the same day and rejected (one felt behind the
+        // hand, the other looked wrong — "just take the raw data and feed it in"). Instead
+        // the readings that arrived within the last `TraceHead.freshSeconds` fade in over
+        // those frames, and the head dot eases toward the newest reading over ~60 ms.
+        // Visual only: nothing is delayed, nothing is invented.
+        let freshSince = now - TraceHead.freshSeconds
+        var settledEnd = lastDue
+        if !reduceMotion, frozenAt == nil {
+            while settledEnd >= anchorIndex, samples[settledEnd].arrival > freshSince { settledEnd -= 1 }
+        }
+
+        func point(_ i: Int) -> CGPoint { CGPoint(x: x(i), y: y(smoothed(i))) }
+        let firstDrawn = point(anchorIndex)
+        let lastPoint = point(lastDue)
+
+        // WHILE DATA IS FLOWING the head rides the right edge — the newest reading, eased —
+        // and a short segment joins the last drawn point to it: a packet's width at most,
+        // as the newest point slides left until the next packet lands at the edge. After
+        // half a second of silence there is no synthetic head, and the trace slides away
+        // rather than pinning a stale value to the edge.
+        let streaming = frozenAt == nil && now - samples[samples.count - 1].t < 0.5
+        let headPoint = (streaming && head != nil) ? CGPoint(x: plotRight, y: y(head!)) : lastPoint
+
+        // The settled body, then each freshly arrived packet as its own piece with its own
+        // strength; the tail to the head takes the newest piece's strength.
+        struct Piece { var path: Path; var opacity: Double }
+        var pieces: [Piece] = []
+        if settledEnd >= anchorIndex {
+            var path = Path()
+            path.move(to: firstDrawn)
+            if settledEnd > anchorIndex {
+                for index in (anchorIndex + 1)...settledEnd { path.addLine(to: point(index)) }
+            }
+            pieces.append(Piece(path: path, opacity: 1))
+        }
+        var index = max(settledEnd + 1, anchorIndex)
+        while index <= lastDue {
+            let arrival = samples[index].arrival
+            let from = max(index - 1, anchorIndex)
+            var path = Path()
+            path.move(to: point(from))
+            while index <= lastDue, samples[index].arrival == arrival {
+                path.addLine(to: point(index))
+                index += 1
+            }
+            pieces.append(Piece(path: path,
+                                opacity: min(1, max(0, (now - arrival) / TraceHead.freshSeconds))))
+        }
+        if headPoint != lastPoint {
+            var path = Path()
+            path.move(to: lastPoint)
+            path.addLine(to: headPoint)
+            pieces.append(Piece(path: path, opacity: pieces.last?.opacity ?? 1))
+        }
+
+        // Soft fill under the curve reads as "load", the stroke reads as "now". ONE fill,
+        // at full strength, under everything known — the fade belongs to the stroke alone.
+        // Fading the fill piece by piece made the shading pulse in and out at the head with
+        // every packet (Nuri, 2026-09-19), which is the opposite of what a fill is for.
         //
         // **Closed at the line's OWN first x, never at 0.** With a full buffer the curve
-        // already starts off the left edge and the two are the same point, which is why
-        // this went unnoticed — but any short buffer (a fresh session, a tare, coming back
-        // from the home screen) starts the line mid-canvas, and closing at 0 drew a
-        // diagonal from the bottom-left corner up to it: the "weird shadow under the
-        // graph" in Nuri's screenshots. The fill now drops straight down from where the
-        // data actually begins.
-        var fill = line
-        fill.addLine(to: CGPoint(x: head.x, y: size.height))
+        // already starts off the left edge and the two are the same point — but a short
+        // buffer (a fresh session, a tare, coming back from the home screen) starts the
+        // line mid-canvas, and closing at 0 drew a diagonal from the bottom-left corner up
+        // to it: the "weird shadow under the graph" in Nuri's screenshots (2026-08-09).
+        var fill = Path()
+        fill.move(to: firstDrawn)
+        if lastDue > anchorIndex {
+            for index in (anchorIndex + 1)...lastDue { fill.addLine(to: point(index)) }
+        }
+        if headPoint != lastPoint { fill.addLine(to: headPoint) }
+        fill.addLine(to: CGPoint(x: headPoint.x, y: size.height))
         fill.addLine(to: CGPoint(x: firstDrawn.x, y: size.height))
         fill.closeSubpath()
 
-        // FADED IN FROM THE LEFT. Closing the fill under its first point is correct, but
-        // on a short buffer — the first seconds after a tare, a reconnect, or coming back
-        // from the home screen — it drops a full-strength vertical cliff in the middle of
-        // the card, which reads as a wall of load that was never pulled (Nuri, 2026-08-09).
-        // The mask ramps the fill up over its first 40 pt, so history begins rather than
-        // starts. Only the fill: the STROKE is real data and stays crisp to its first point.
+        // FADED IN FROM THE LEFT when the run begins on screen: a full-strength vertical
+        // cliff mid-canvas reads as a wall of load that was never pulled. Off-screen runs
+        // fill solid — the clip is the boundary, and a clipped edge cannot jump (the store
+        // keeps two seconds more than the window shows so a full buffer's start IS off
+        // screen; the shading used to jitter as points aged out when it was not).
         context.drawLayer { layer in
-            // The ramp exists for a run that BEGINS on-screen only. A run already
-            // extending past the left edge has no beginning to soften — and ramping
-            // it anyway re-anchored the fade to whichever sample happened to be the
-            // off-screen anchor, so the shading's left edge JUMPED each time a point
-            // aged out while the stroke above it slid smoothly (Nuri, 2026-08-18:
-            // "the shading under it is not smoothly disappearing"). Off-screen runs
-            // fill solid; the view's clip is the boundary, and a clipped edge cannot
-            // jump. The handover is seamless: the moment a run's start crosses x = 0
-            // the ramp's visible remainder is already nil. (The store keeps two seconds
-            // more history than the window shows so a full buffer's start IS off-screen
-            // — the buffer's own lead used to eat that slack and put the start on-screen,
-            // where it jittered exactly like this.)
             if firstDrawn.x > 0 {
                 layer.clipToLayer { mask in
                     let ramp = CGRect(x: firstDrawn.x, y: 0, width: 40, height: size.height)
@@ -619,33 +591,37 @@ struct ForceTraceView: View {
                 startPoint: CGPoint(x: 0, y: plotTop), endPoint: CGPoint(x: 0, y: size.height)))
         }
 
-        if lit {
-            // History dims toward the left and NOW is full strength, so the eye lands
-            // on the end of the line that matters; the glow marks the live point from
-            // across a room. Both are plain fills — no blur filter, nothing per frame
-            // that a Canvas does not already do.
-            context.stroke(line, with: .linearGradient(
-                Gradient(colors: [tint.opacity(0.45), tint]),
-                startPoint: .zero, endPoint: CGPoint(x: size.width, y: 0)),
-                style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-            context.fill(Path(ellipseIn: CGRect(x: head.x - 16, y: head.y - 16, width: 32, height: 32)),
-                         with: .radialGradient(Gradient(colors: [tint.opacity(0.55), tint.opacity(0)]),
-                                               center: head, startRadius: 0, endRadius: 16))
-        } else {
-            context.stroke(line, with: .color(tint),
-                           style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+        for piece in pieces {
+            var strokeContext = context
+            strokeContext.opacity *= piece.opacity
+            if lit {
+                // History dims toward the left and NOW is full strength, so the eye lands
+                // on the end of the line that matters. Plain fills — no blur filter,
+                // nothing per frame that a Canvas does not already do.
+                strokeContext.stroke(piece.path, with: .linearGradient(
+                    Gradient(colors: [tint.opacity(0.45), tint]),
+                    startPoint: .zero, endPoint: CGPoint(x: size.width, y: 0)),
+                    style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+            } else {
+                strokeContext.stroke(piece.path, with: .color(tint),
+                                     style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+            }
         }
-
-        context.fill(Path(ellipseIn: CGRect(x: head.x - 4, y: head.y - 4, width: 8, height: 8)),
+        if lit {
+            // The glow marks the live point from across a room.
+            context.fill(Path(ellipseIn: CGRect(x: headPoint.x - 16, y: headPoint.y - 16, width: 32, height: 32)),
+                         with: .radialGradient(Gradient(colors: [tint.opacity(0.55), tint.opacity(0)]),
+                                               center: headPoint, startRadius: 0, endRadius: 16))
+        }
+        context.fill(Path(ellipseIn: CGRect(x: headPoint.x - 4, y: headPoint.y - 4, width: 8, height: 8)),
                      with: .color(tint))
         #if DEBUG
         TraceDrawProbe.shared.set(String(format:
-            "STROKED size=%.0fx%.0f anchor=%d lastDue=%d/%d firstX=%.0f frontierX=%.0f headY=%.0f opacity=%.2f",
+            "STROKED size=%.0fx%.0f anchor=%d lastDue=%d/%d firstX=%.0f lastX=%.0f headY=%.0f pieces=%d opacity=%.2f",
             size.width, size.height, anchorIndex, lastDue, samples.count - 1,
-            firstDrawn.x, frontier?.x ?? -1, head.y, context.opacity))
+            firstDrawn.x, lastPoint.x, headPoint.y, pieces.count, context.opacity))
         if TraceDrawProbe.logsHead {
-            TraceDrawProbe.shared.logHead(now: now, head: head,
-                                          dueT: lastDue >= 0 ? samples[lastDue].t : now,
+            TraceDrawProbe.shared.logHead(now: now, head: headPoint, dueT: samples[lastDue].t,
                                           newestT: samples[samples.count - 1].t,
                                           pending: samples.count - 1 - lastDue)
         }

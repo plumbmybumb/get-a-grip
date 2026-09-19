@@ -75,71 +75,25 @@ final class PlaybackClockTests: XCTestCase {
         }
     }
 
-    /// The buffer's whole point: a packet is still in the FUTURE when it lands, so the
-    /// head always has a next point to glide toward — and no deeper than a margin, so the
-    /// pen runs as little behind the hand as a smooth line can. Regular 100 ms packets for
-    /// a second, each one's first sample marked as the real client marks it.
-    func testEveryPacketIsStillPendingWhenItLandsAndNoDeeperThanAMargin() async throws {
+    /// Nothing is stamped in the future: a packet's newest reading lands at the moment it
+    /// arrived, and the older readings sit behind it by their device deltas. Regular 100 ms
+    /// packets for a second, each one's first sample marked as the real client marks it.
+    func testAPacketsNewestReadingIsStampedAtItsArrival() async throws {
         let (device, client) = makeStreamingStore()
         var micros: UInt32 = 0
         for index in 0..<10 {
             let arrival = Date().timeIntervalSinceReferenceDate
             packet(client, from: &micros)
-            let first = try XCTUnwrap(device.trace.dropLast(7).last)
-            XCTAssertGreaterThan(first.t - arrival, 0.0, "packet \(index): its first sample is still pending when it lands")
-            XCTAssertLessThan(first.t - arrival, 0.2, "packet \(index): but only by a margin")
             let newest = try XCTUnwrap(device.trace.last)
-            XCTAssertLessThan(newest.t - arrival, 0.5, "packet \(index): and the whole packet is due within half a second")
+            let first = try XCTUnwrap(device.trace.dropLast(7).last)
+            if index >= 2 {   // the span estimate has met two packets
+                XCTAssertEqual(newest.t, arrival, accuracy: 0.04, "packet \(index): its newest reading is stamped at arrival")
+            }
+            XCTAssertLessThan(first.t, newest.t, "the packet's readings sit behind its newest by their deltas")
+            XCTAssertEqual(newest.arrival, arrival, accuracy: 0.01)
             try await Task.sleep(for: .milliseconds(100))
         }
         XCTAssertEqual(flushes(in: device), 0)
-        XCTAssertEqual(device.traceUnderruns, 0)
-        XCTAssertEqual(device.playbackMargin, DeviceStore.playbackMarginFloor, accuracy: 0.02,
-                       "regular packets sit on the margin's floor")
-        XCTAssertEqual(device.playbackLead, device.playbackMargin + 0.1, accuracy: 0.02,
-                       "the lead is the margin plus one 100 ms packet")
-    }
-
-    /// The margin follows the radio: a packet that lands 300 ms later than its own span
-    /// deepens the buffer by about that much, and a stall does not — a resumed app's
-    /// half-minute is not delivery jitter.
-    func testTheMarginDeepensWithLatePacketsButNotWithStalls() async throws {
-        let (device, client) = makeStreamingStore()
-        var micros: UInt32 = 0
-        packet(client, from: &micros)
-        try await Task.sleep(for: .milliseconds(100))
-        packet(client, from: &micros)
-        try await Task.sleep(for: .milliseconds(400))
-        packet(client, from: &micros)
-        XCTAssertGreaterThan(device.playbackMargin, 0.25, "300 ms of lateness is remembered as the margin to keep")
-        XCTAssertLessThan(device.playbackMargin, 0.45)
-
-        device.dropStaleTrace()   // the foreground path after a suspension
-        try await Task.sleep(for: .milliseconds(200))
-        packet(client, from: &micros)
-        XCTAssertLessThan(device.playbackMargin, 0.45, "the gap to the first packet after a resume is not learned")
-    }
-
-    /// When the radio is later than the margin the pen HOLDS and resumes: the late packet is
-    /// stamped just ahead of now, not due at once as a chunk, and the hold it caused is a
-    /// gap short enough for the trace to draw across as a plateau.
-    func testALatePacketHoldsInsteadOfChunking() async throws {
-        let (device, client) = makeStreamingStore()
-        var micros: UInt32 = 0
-        for _ in 0..<3 {
-            packet(client, from: &micros)
-            try await Task.sleep(for: .milliseconds(100))
-        }
-        let before = try XCTUnwrap(device.trace.last)
-        try await Task.sleep(for: .milliseconds(400))   // the buffer has been dry for ~300 ms
-        let arrival = Date().timeIntervalSinceReferenceDate
-        packet(client, from: &micros)
-        let first = try XCTUnwrap(device.trace.dropLast(7).last)
-        XCTAssertEqual(device.traceUnderruns, 1)
-        XCTAssertGreaterThanOrEqual(first.t, arrival, "the late packet is pending, not a chunk")
-        XCTAssertLessThan(first.t - arrival, 0.1, "and only by the margin that was in force")
-        XCTAssertGreaterThan(first.t - before.t, 0.3, "the hold is in the timeline")
-        XCTAssertLessThan(first.t - before.t, 0.75, "and short enough to draw across")
     }
 
     /// A counter reset a second or more back is still a stall: the clock snaps forward

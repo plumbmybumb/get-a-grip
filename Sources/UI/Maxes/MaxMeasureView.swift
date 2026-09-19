@@ -545,7 +545,7 @@ private struct MaxMeasurementTrace: View {
                        nominalSampleRate: device.gaugeCapabilities.nominalSampleRate,
                        bridgesSparseDelivery: device.gaugeCapabilities.isBroadcast,
                        diagnostics: device.pipelineDiagnostics,
-                       frozenAt: frozenTrace?.last?.t, playbackLead: device.playbackLead)
+                       frozenAt: frozenTrace?.last?.t)
             .frame(height: 168)
             .padding(.horizontal, 4)
             .background(.regularMaterial,
