@@ -434,18 +434,19 @@ struct RunnerView: View {
     }
 
     private func ambientCountdown(_ session: RunnerSession) -> some View {
-        Text("\(session.snapshot.secondsShown)")
-            .font(.system(size: ambientSize, weight: .thin))
-            .displayTracking(ambientSize)
-            .monospacedDigit()
-            .lineLimit(1)
-            .minimumScaleFactor(0.35)
-            // A clock rolls — unless Reduce Motion or Low Power Mode says otherwise
-            // (`clockRolls`). Measured at 0.75 the secondary ink clears 3:1 on the light
-            // field for a numeral this size.
-            .contentTransition(clockRolls && !reduceMotion ? .numericText(countsDown: true) : .identity)
-            .animation(clockRolls && !reduceMotion ? Motion.live : nil,
-                       value: session.snapshot.secondsShown)
+        // A clock rolls — unless Reduce Motion or Low Power Mode says otherwise
+        // (`clockRolls`) — and it rolls WITHOUT `.numericText()`: see `RollingNumeral`.
+        // Measured at 0.75 the secondary ink clears 3:1 on the light field for a numeral
+        // this size.
+        RollingNumeral(value: session.snapshot.secondsShown, countsDown: true,
+                       rolls: clockRolls && !reduceMotion, shift: ambientSize * 0.25) { seconds in
+            Text("\(seconds)")
+                .font(.system(size: ambientSize, weight: .thin))
+                .displayTracking(ambientSize)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.35)
+        }
             .foregroundStyle(Ink.secondary.opacity(0.75))
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1061,10 +1062,13 @@ struct RunnerView: View {
                 // pressure scales it down. A translated next-hand caption must neither
                 // split 20 into 2/0 nor move the graph when pausing a rest.
                 Text("0").hidden().accessibilityHidden(true)
-                Text(value)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .contentTransition(rolls ? .numericText() : .identity)
+                // A clock rolls without `.numericText()` — see `RollingNumeral`.
+                RollingNumeral(value: value, countsDown: true, rolls: rolls,
+                               shift: heroSize * scale * 0.25) { value in
+                    Text(value)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
                     .foregroundStyle(tint)
             }
             .font(.system(size: heroSize * scale, weight: .thin))
@@ -1211,18 +1215,16 @@ struct RunnerView: View {
         return ZStack {
             LiveTimerRing(session: session, lineWidth: lineWidth, tint: tint(session))
             VStack(spacing: 2) {
-                Text("\(session.snapshot.secondsShown)")
-                    .font(.system(size: heroSize, weight: .thin))
-                    .displayTracking(heroSize)
-                    .monospacedDigit()
-                    .minimumScaleFactor(0.55)
-                    .lineLimit(1)
-                    .contentTransition(clockRolls ? .numericText() : .identity)
-                    // `.numericText()` needs an animation OBSERVING the value or it does
-                    // nothing — the digits just cut. The outer animation watches `phase`,
-                    // which changes once per phase, not once per second, so without this
-                    // the hero numeral of a timer snapped instead of rolling.
-                    .animation(clockRolls ? Motion.live : nil, value: session.snapshot.secondsShown)
+                // A clock rolls without `.numericText()` — see `RollingNumeral`.
+                RollingNumeral(value: session.snapshot.secondsShown, countsDown: true,
+                               rolls: clockRolls, shift: heroSize * 0.25) { seconds in
+                    Text("\(seconds)")
+                        .font(.system(size: heroSize, weight: .thin))
+                        .displayTracking(heroSize)
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.55)
+                        .lineLimit(1)
+                }
                     .foregroundStyle(Ink.primary)
                 CapsLabel(promptText(session), tint: tint(session))
                     .lineLimit(1)

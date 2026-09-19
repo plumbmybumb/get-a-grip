@@ -215,13 +215,15 @@ struct WatchRunnerView: View {
     /// stops rolling too once the face is dimmed or the battery rationed (`NumeralRoll`).
     private func hero(_ value: String, unit: String, ink: Color, quiet: Color, rolls: Bool) -> some View {
         HStack(alignment: .lastTextBaseline, spacing: 2) {
-            Text(value)
-                .font(.system(size: heroSize, weight: .medium, design: .rounded))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .contentTransition(rolls ? .numericText() : .identity)
-                .animation(rolls ? Motion.live : nil, value: value)
+            // Rolls without `.numericText()` — see `RollingNumeral`; on the wrist the
+            // blur that transition renders on the CPU would be paid out of the battery.
+            RollingNumeral(value: value, countsDown: true, rolls: rolls, shift: heroSize * 0.25) { value in
+                Text(value)
+                    .font(.system(size: heroSize, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
                 .foregroundStyle(ink)
             Text(unit)
                 .font(.caption2)

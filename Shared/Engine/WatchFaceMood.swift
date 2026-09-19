@@ -141,8 +141,9 @@ struct WatchFacePalette: Equatable, Sendable {
     }
 }
 
-/// Whether a clock numeral may ROLL — `.contentTransition(.numericText())` — or must cut
-/// straight to the next digit.
+/// Whether a clock numeral may ROLL — `RollingNumeral`'s slide, never
+/// `.contentTransition(.numericText())`, which blurs on the CPU — or must cut straight to
+/// the next digit.
 ///
 /// The house rule is that clocks roll and measurements snap. Two states take the roll
 /// away from a clock too: reduced luminance, where watchOS redraws once a second and a

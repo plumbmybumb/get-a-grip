@@ -154,9 +154,18 @@ anywhere, which is why a session works with the phone in a bag.
   green is a plain green rather than moss, because it means the clock is running, not
   "easy on the fingers".
 - **The clock does not roll when the face is dimmed or the battery rationed**
-  (`NumeralRoll`, shared with the phone): a `.numericText()` roll caught at one redraw a
-  second is a smear, and Low Power Mode on either device cuts the digits the same way
-  (`PowerState` observes it). The load readout never rolled — measurements snap.
+  (`NumeralRoll`, shared with the phone): a roll caught at one redraw a second is a
+  smear, and Low Power Mode on either device cuts the digits the same way (`PowerState`
+  observes it). The load readout never rolled — measurements snap.
+- **Clocks roll with `RollingNumeral`, never `.contentTransition(.numericText())`.** The
+  system transition renders every animated frame of the roll through a CPU Gaussian blur:
+  on the phone's runner — the hero seconds and the big rest numeral, rolling once a
+  second all session — that was 14 points of a core, 27 % of the app's time in
+  `vSepConvolve…` (Time Profiler over USB, real session path, 2026-09-19; with the
+  digits snapping the blur vanished and the app fell from 51 % to 37 % of a core). It was
+  hunted through the panel shadow and the glass first; neither moved the number. The
+  shared numeral keys the text by its value and slides the old one out and the new one
+  in — offset and opacity, GPU-composited — and bypasses the keying when it must not roll.
 - **The live load is throttled on the wrist** (`WatchForceReadout`, five updates a
   second, rounded to a tenth): a readout that followed every sample re-rendered the face
   eighty times a second and lagged. The engine still sees every sample.
