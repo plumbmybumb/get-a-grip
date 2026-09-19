@@ -68,7 +68,14 @@ struct RoutineCard: View {
     @ScaledMetric(relativeTo: .body) private var sessionDot: CGFloat = 16
 
     var body: some View {
-        MaterialCard {
+        // FLAT, not material, for the sake of the long press. The lift snapshots the
+        // card, and a backdrop blur is rendered in its own pass: for the first frames of
+        // the scale-up the material came out as its full bounds rectangle before the
+        // rounded mask caught up — a grey band poking past the corners (Nuri's phone,
+        // 2026-09-19). The flat fill is fitted to be indistinguishable from the material
+        // over this field (see `CardFill`), and a fill snapshots as exactly the shape it
+        // is drawn in.
+        MaterialCard(surface: .flat) {
             cardContent
         }
         // Graphite, not bleu: bleu is the live-force signal, and "your next ritual"
