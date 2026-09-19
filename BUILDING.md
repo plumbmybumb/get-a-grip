@@ -109,6 +109,8 @@ because `simctl` cannot tap; pair them with the seeding above.
 | `-mockDevice` | The scripted demo gauge instead of CoreBluetooth. `./build.sh run` and `watch-run` always pass it: the Simulator has no Bluetooth stack | iOS, watch |
 | `-mockProfile shaky\|weak\|idle` | Scripts that demo gauge, which is how RE-GRIP gets onto a screenshot — `clean` never drops. A release build's demo is always the textbook pull | iOS, watch |
 | `-mockClumpMS N` | Delivers notifications in bunches every N ms instead of one every 100 ms, reproducing the late-and-together delivery that hid the trace on an iPad. Sample timestamps are untouched; only their arrival bunches | iOS, watch |
+| `-mockJitterMS N` | Each delivery is late by a random 0…N ms and the batches that fell due meanwhile land together — the real radio's jittery packet gaps. Combine with `-mockClumpMS 190` for the Progressor's measured pattern | iOS, watch |
+| `-traceHeadLog` | Writes every trace draw's head position to `Documents/tracehead.csv` beside `diagnostics.txt`, for an objective read of the line's smoothness | iOS |
 | `-noWorkoutSession` | Runs the session without a HealthKit workout, whose permission sheet the watch simulator cannot answer | watch |
 
 ### Diagnostics

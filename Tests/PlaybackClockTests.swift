@@ -68,6 +68,53 @@ final class PlaybackClockTests: XCTestCase {
         XCTAssertGreaterThan(device.trace.count, 0, "and the samples after it started a fresh run")
     }
 
+    /// The buffer's whole point: a packet is still in the FUTURE when it lands, so the
+    /// head always has a next point to glide toward. Regular 100 ms packets for a second,
+    /// each one's first sample marked as the real client marks it.
+    func testEveryPacketIsStillPendingWhenItLands() async throws {
+        let (device, client) = makeStreamingStore()
+        var micros: UInt32 = 0
+        for packet in 0..<10 {
+            let arrival = Date().timeIntervalSinceReferenceDate
+            for index in 0..<8 {
+                client.emit(.sample(ForceSample(kg: 4, deviceMicros: micros, isBatchStart: index == 0)))
+                micros &+= Self.microsPerSample
+            }
+            let first = try XCTUnwrap(device.trace.dropLast(7).last)
+            XCTAssertGreaterThan(first.t - arrival, 0.1,
+                                 "packet \(packet): its first sample is due no sooner than 100 ms after it lands")
+            let newest = try XCTUnwrap(device.trace.last)
+            XCTAssertLessThan(newest.t - arrival, 1.0, "packet \(packet): and the whole packet is due within a second")
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertEqual(flushes(in: device), 0)
+        XCTAssertEqual(device.playbackDelay, DeviceStore.playbackDelayFloor, accuracy: 0.05,
+                       "regular 100 ms packets sit on the floor")
+    }
+
+    /// The depth follows the radio: a late packet deepens the buffer by its own gap, and a
+    /// stall does not — a resumed app's half-minute is not delivery jitter.
+    func testTheBufferDeepensWithLatePacketsButNotWithStalls() async throws {
+        let (device, client) = makeStreamingStore()
+        var micros: UInt32 = 0
+        func packet() {
+            for index in 0..<8 {
+                client.emit(.sample(ForceSample(kg: 4, deviceMicros: micros, isBatchStart: index == 0)))
+                micros &+= Self.microsPerSample
+            }
+        }
+        packet()
+        try await Task.sleep(for: .milliseconds(400))
+        packet()
+        XCTAssertGreaterThan(device.playbackDelay, 0.4, "a 400 ms gap is remembered as the depth to keep")
+        XCTAssertLessThan(device.playbackDelay, 0.6)
+
+        device.dropStaleTrace()   // the foreground path after a suspension
+        try await Task.sleep(for: .milliseconds(200))
+        packet()
+        XCTAssertLessThan(device.playbackDelay, 0.6, "the gap to the first packet after a resume is not learned")
+    }
+
     /// A counter reset a second or more back is still a stall: the clock snaps forward
     /// and the line breaks, because the timeline itself broke.
     func testAnUntrustedGapStillSnapsForward() async throws {

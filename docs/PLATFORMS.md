@@ -50,6 +50,24 @@ history syncs through CloudKit; a live session never moves between devices.
   Settings › About › Diagnostics report — including the trace's last-draw decision — to
   `Documents/diagnostics.txt` in DEBUG, which is how it was caught on the device without
   a paste. **Never position the trace against `timeline.date`; it is only a redraw tick.**
+  Reduce Motion pauses that timeline outright, so under it `timeline.date` never advanced
+  at all — a second route to the same blank graph. The DEBUG report's first line states the
+  display environment (Reduce Motion, Reduce Transparency, Low Power, max refresh): a trace
+  that steps at the packet rate on one device and glides on another is that setting, not a
+  bug (Nuri's iPad has Reduce Motion on, 2026-09-19).
+- **The playback clock runs a packet BEHIND on purpose — it is a jitter buffer.** The
+  real Progressor stream reaches the app as ~15 samples every ~190 ms with p95 300 ms and
+  max 420 ms gaps (both of Nuri's devices, diagnostics of 2026-09-19). Slewing the clock
+  toward wall time itself settles each packet CENTRED on its arrival: half of it is drawn
+  at once as a chunk, the head glides for half a packet, then the buffer is dry until the
+  next one and the head fell back to a running average — a pen that jumped twice per
+  packet ("the line getting written feels kinda jittery"). `DeviceStore.playbackTime`
+  now targets wall time plus `playbackDelay` — the recent worst arrival gap plus a
+  margin, floored at 250 ms, capped at 1.5 s — so every packet is still pending when it
+  lands and `TraceHead` always has a next point to glide toward; when the buffer does run
+  dry the head HOLDS rather than averaging. The line lags reality by about the depth; the
+  kg readout does not. Reproduce the radio on the mock with `-mockClumpMS 190
+  -mockJitterMS 120`, and judge the result from `-traceHeadLog`'s per-frame rows, not by eye.
 - The four tabs use `.sidebarAdaptable`: the top tab bar on iPad, the ordinary bar on
   the phone. History goes two-pane in the same wide condition.
 - Reminders are per device (`SettingsStore.remindsOnThisDevice`): the phone defaults on,

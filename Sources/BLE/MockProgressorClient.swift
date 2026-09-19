@@ -46,6 +46,22 @@ final class MockProgressorClient: ProgressorClient {
         return 0
     }()
 
+    /// `-mockJitterMS N` (DEBUG only): each delivery is late by a random 0…N ms, with the
+    /// batches that fell due meanwhile landing together — the real radio's p95 300 ms /
+    /// max 420 ms gaps between ~190 ms packets (Nuri's phone, 2026-09-19). The device
+    /// timestamps keep their 80 Hz; only arrival wobbles, which is what a jitter buffer
+    /// has to absorb.
+    private static let jitterMS: Int = {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if let flag = args.firstIndex(of: "-mockJitterMS"), flag + 1 < args.count,
+           let ms = Int(args[flag + 1]) {
+            return ms
+        }
+        #endif
+        return 0
+    }()
+
     private var connectTask: Task<Void, Never>?
     private var connectionGeneration: UInt64 = 0
     private var pump: Task<Void, Never>?
@@ -144,17 +160,27 @@ final class MockProgressorClient: ProgressorClient {
         elapsedSamples = 0
         deviceMicros = 0
         pump = Task { [weak self] in
+            // Batches fall due on the device's own 80 Hz schedule whatever the pump does;
+            // the pump only decides WHEN it hands them over. One per period by default;
+            // under `-mockClumpMS` it wakes once per clump, under `-mockJitterMS` each wake
+            // is late by a random amount — and every batch that fell due while it slept
+            // lands together, exactly as a radio stack delivers late notifications.
+            let batchMS = Int(1000 * Double(Self.batchSize) / Self.sampleHz)
+            let batch = Duration.milliseconds(batchMS)
+            let clump = Duration.milliseconds(max(Self.clumpMS, batchMS))
+            var due = ContinuousClock.now + batch
             while !Task.isCancelled {
-                guard let self else { return }
-                let batchMS = Int(1000 * Double(Self.batchSize) / Self.sampleHz)
-                // One batch per period by default; under `-mockClumpMS` the same batches
-                // arrive together after the whole clump's worth of time has passed.
-                let batchesPerClump = max(1, Self.clumpMS / batchMS)
-                for _ in 0..<batchesPerClump { self.emitBatch() }
+                let jitter = Duration.milliseconds(Self.jitterMS > 0 ? Int.random(in: 0...Self.jitterMS) : 0)
                 do {
-                    try await Task.sleep(for: .milliseconds(batchMS * batchesPerClump))
+                    try await Task.sleep(until: due + (clump - batch) + jitter, clock: .continuous)
                 } catch {
                     return
+                }
+                guard let self else { return }
+                let now = ContinuousClock.now
+                while due <= now {
+                    self.emitBatch()
+                    due += batch
                 }
             }
         }

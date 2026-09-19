@@ -88,11 +88,24 @@ struct DoigtApp: App {
                                                               in: .userDomainMask).first
                     else { return }
                     while !Task.isCancelled {
-                        let report = DiagnosticReport.text(from: device.diagnosticEntries)
+                        // The display environment first: it is what explains a trace that
+                        // steps at the packet rate (Reduce Motion pauses its timeline) or a
+                        // screen that will not exceed 60 Hz, and none of it is visible in
+                        // a copied file otherwise.
+                        let env = "Env: reduceMotion=\(UIAccessibility.isReduceMotionEnabled)"
+                            + " reduceTransparency=\(UIAccessibility.isReduceTransparencyEnabled)"
+                            + " lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled)"
+                            + " maxFPS=\(UIScreen.main.maximumFramesPerSecond)"
+                        let report = env + "\n\n" + DiagnosticReport.text(from: device.diagnosticEntries)
                             + "\n\nLast trace draw: " + TraceDrawProbe.shared.line
                             + "\n\n" + device.pipelineDiagnostics.report
                         try? report.write(to: docs.appendingPathComponent("diagnostics.txt"),
                                           atomically: true, encoding: .utf8)
+                        if TraceDrawProbe.logsHead {
+                            try? TraceDrawProbe.shared.headRows.write(
+                                to: docs.appendingPathComponent("tracehead.csv"),
+                                atomically: true, encoding: .utf8)
+                        }
                         try? await Task.sleep(for: .seconds(2))
                     }
                 }

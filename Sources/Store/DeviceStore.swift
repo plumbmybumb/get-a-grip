@@ -112,6 +112,39 @@ final class DeviceStore {
     /// clumps of roughly twice its value — well past any radio stack's, far below a
     /// suspended app's backlog.
     static let lateDeliveryLimitSeconds: TimeInterval = 3.0
+    /// **THE JITTER BUFFER: playback runs a packet behind on purpose.**
+    ///
+    /// The clock used to slew every sample toward wall time itself, and the equilibrium
+    /// of that is a packet CENTRED on its own arrival — half of it already due the moment
+    /// it lands (drawn at once, as a chunk), the other half pending for half a packet,
+    /// then nothing pending at all until the next one. On the real radio a packet is
+    /// ~15 samples every ~190 ms with p95 300 ms / max 420 ms gaps (both of Nuri's devices,
+    /// diagnostics of 2026-09-19), so the head ran dry for most of every interval and the
+    /// line advanced in visible steps — "the line getting written feels kinda jittery".
+    /// The remedy is the one every streaming player uses: stamp the stream a buffer's
+    /// depth AHEAD of wall time, so a packet is still entirely in the future when it
+    /// lands and the head always has a next point to glide toward. The depth is the
+    /// recent worst arrival gap plus a margin, floored for the Progressor's own cadence
+    /// and capped so a clumping radio cannot push the picture seconds behind the hand.
+    /// The line lags reality by about the depth; the kg readout beside it does not.
+    static let playbackDelayFloor: TimeInterval = 0.25
+    static let playbackDelayCeiling: TimeInterval = 1.5
+    static let playbackDelayMargin: TimeInterval = 0.05
+    /// How fast the remembered worst gap relaxes, in seconds per second, so one late
+    /// packet deepens the buffer for a while rather than forever.
+    static let arrivalGapDecayPerSecond: TimeInterval = 0.02
+    /// Gaps past this are a stall (the silence watchdog's business), not delivery jitter
+    /// a buffer should learn from — a resumed app's 30 s gap must not deepen it.
+    static let arrivalGapLearnLimitSeconds: TimeInterval = 2.0
+    /// The buffer's current depth: how far ahead of wall time the newest packet is stamped.
+    var playbackDelay: TimeInterval {
+        min(max(arrivalGapEnvelope + Self.playbackDelayMargin, Self.playbackDelayFloor),
+            Self.playbackDelayCeiling)
+    }
+    /// Wall time of the last packet's first sample, and the decaying envelope of the gaps
+    /// between packets — the delivery pattern the buffer depth is sized from.
+    @ObservationIgnored private var lastPacketArrival: TimeInterval?
+    @ObservationIgnored private var arrivalGapEnvelope: TimeInterval = 0
     @ObservationIgnored private var traceStorage: [TracePoint] = []
     var trace: [TracePoint] { _ = sampleRevision; return traceStorage }
     @ObservationIgnored private var lastTraceMicros: UInt32?
@@ -637,16 +670,19 @@ final class DeviceStore {
         traceStorage.removeAll(keepingCapacity: true)
         sampleStateChanged()
         lastTraceMicros = nil
+        // The gap to the first packet after a resume is the suspension, not the radio.
+        lastPacketArrival = nil
     }
 
-    /// The playback clock: device-time deltas on a wall-time footing.
+    /// The playback clock: device-time deltas on a wall-time footing, held a buffer's
+    /// depth ahead of the wall clock.
     ///
     /// Delta comes from the device (wrap-safe), so batching never bunches points; a
     /// delta outside (0, 1 s] means the counter restarted or the timeline broke, and
-    /// one sample period is the honest guess. The result is slewed toward wall time by
-    /// at most 0.5 ms per sample — enough to track clock drift, too little to see —
-    /// and snaps after a 250 ms error (a real stall, where slewing would take seconds
-    /// to converge).
+    /// one sample period is the honest guess. The result is slewed toward the target
+    /// (wall time plus `playbackDelay`) by at most 0.5 ms per sample — enough to track
+    /// clock drift and a changing buffer depth, too little to see — and snaps after a
+    /// genuine stall, where slewing would take seconds to converge.
     ///
     /// **"One sample period" is THIS gauge's**, not the Tindeq's 12.5 ms. Every reading in
     /// one notification carries the same stamp (see `GattGaugeClient.ingest`), so the
@@ -658,9 +694,11 @@ final class DeviceStore {
     /// life. Keyed to the nominal rate the arithmetic is identical for the Progressor at
     /// 80 Hz and honest for the 8–40 Hz kinds.
     private func playbackTime(for sample: ForceSample) -> TimeInterval {
-        let wallNow = Date().timeIntervalSinceReferenceDate
+        // The clock's target is a buffer's depth AHEAD of wall time — see `playbackDelay`.
+        // Everything below that compared against wall time now compares against this.
+        let target = Date().timeIntervalSinceReferenceDate + playbackDelay
         defer { lastTraceMicros = sample.deviceMicros }
-        guard let previous = lastTraceMicros, let lastT = traceStorage.last?.t else { return wallNow }
+        guard let previous = lastTraceMicros, let lastT = traceStorage.last?.t else { return target }
         let deltaMicros = sample.deviceMicros &- previous   // wrap-safe
         // The (0, 1 s] trust window is a DEVICE-clock rule: past it the counter
         // restarted and one period is the honest guess. A SYNTHETIC stamp is
@@ -675,8 +713,8 @@ final class DeviceStore {
             ? Double(deltaMicros) / 1_000_000
             : 1.0 / max(1, gaugeCapabilities.nominalSampleRate)
         let candidate = lastT + delta
-        let error = wallNow - candidate
-        // BEHIND wall time. Two different things look alike here and get different limits:
+        let error = target - candidate
+        // BEHIND the target. Two different things look alike here and get different limits:
         //
         // - An UNTRUSTED delta (a counter reset, a gap over a second) means the timeline
         //   itself broke and one period was substituted. More than a second behind after
@@ -692,14 +730,15 @@ final class DeviceStore {
         //   Contiguous data may lag `lateDeliveryLimitSeconds` instead: the line stays
         //   whole and runs a clump behind reality, which is what the readout beside it
         //   already does.
-        if error > (trusted ? Self.lateDeliveryLimitSeconds : 1.0) { return wallNow }
-        // Running AHEAD of wall time is the other half of a clump — its last samples land
-        // before their time. `ForceTraceView` now draws only what is due and lets the rest
+        if error > (trusted ? Self.lateDeliveryLimitSeconds : 1.0) { return target }
+        // Running AHEAD of the target is the other half of a clump — its last samples land
+        // before their time. `ForceTraceView` draws only what is due and lets the rest
         // wait past its right edge, so being ahead by a clump is harmless; only a real
-        // backlog is dropped, by the caller — see `handle(_:)`. Crawling toward wall time
-        // instead was tried and was worse: it converges over tens of seconds, and the
+        // backlog is dropped, by the caller — see `handle(_:)`. Crawling toward the target
+        // from far away was tried and was worse: it converges over tens of seconds, and the
         // whole trace sits squashed into a few pixels the entire time (Nuri's 13.9 kg
-        // screenshot, 2026-08-09).
+        // screenshot, 2026-08-09). The ±0.5 ms slew is a 4 % time-stretch: enough to
+        // follow the buffer depth as the delivery pattern changes, too little to see.
         return candidate + min(max(error, -0.0005), 0.0005)
     }
 
@@ -794,6 +833,9 @@ final class DeviceStore {
         currentKg = 0
         lastSample = nil
         resetPeak()
+        // The delivery pattern belongs to the link; the next one is measured afresh.
+        lastPacketArrival = nil
+        arrivalGapEnvelope = 0
     }
 
     /// Fixed English for the breadcrumb ring — a phase, never the serial the status
@@ -859,12 +901,27 @@ final class DeviceStore {
             // repair. `dropStaleTrace()` on foreground stays as the fast path.
             // It was 0.5 s, sized against an iPhone's 100 ms batches — and it dropped the
             // buffer at the tail of every iPad clump (Nuri's iPad, 2026-09-19).
+            let wallNow = Date().timeIntervalSinceReferenceDate
             if let lastT = traceStorage.last?.t,
-               lastT > Date().timeIntervalSinceReferenceDate + Self.lateDeliveryLimitSeconds {
+               lastT > wallNow + playbackDelay + Self.lateDeliveryLimitSeconds {
                 record(.traceFlush(count: 1))
                 traceStorage.removeAll(keepingCapacity: true)
                 sampleStateChanged()
                 lastTraceMicros = nil
+            }
+
+            // The delivery pattern, learned from the gaps between PACKETS (a packet's first
+            // sample carries the mark; the rest of it arrives in the same turn). The
+            // envelope tracks the worst recent gap and relaxes slowly, so the buffer stays
+            // deep enough for the radio's bad moments without lagging forever after one.
+            if sample.isBatchStart {
+                if let last = lastPacketArrival {
+                    let gap = wallNow - last
+                    if gap <= Self.arrivalGapLearnLimitSeconds {
+                        arrivalGapEnvelope = max(gap, arrivalGapEnvelope - Self.arrivalGapDecayPerSecond * gap)
+                    }
+                }
+                lastPacketArrival = wallNow
             }
 
             let point = TracePoint(kg: sample.kg, t: playbackTime(for: sample))

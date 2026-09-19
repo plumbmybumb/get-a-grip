@@ -31,13 +31,56 @@ enum TraceAxis {
 /// diagnostics dumper.
 final class TraceDrawProbe: @unchecked Sendable {
     static let shared = TraceDrawProbe()
+    /// `-traceHeadLog`: every draw's head position is kept and written to
+    /// `Documents/tracehead.csv` by the diagnostics dumper. Smoothness is judged from
+    /// those rows — the head's step per frame, and how many points came due at once —
+    /// instead of from watching a screen; that is how the jitter buffer was sized.
+    static let logsHead = ProcessInfo.processInfo.arguments.contains("-traceHeadLog")
     private let lock = NSLock()
     private var _line = "no draw yet"
     private var _count = 0
+    private var _rows: [String] = ["now,headX,headY,dueT,newestT,pending"]
     func set(_ s: String) { lock.lock(); _count += 1; _line = "#\(_count) " + s; lock.unlock() }
     var line: String { lock.lock(); defer { lock.unlock() }; return _line }
+    /// `dueT` is the last drawn point's time and `newestT` the buffer's: their difference
+    /// to `now` says how much stream came due this frame and how deep the buffer sits.
+    func logHead(now: TimeInterval, head: CGPoint, dueT: TimeInterval, newestT: TimeInterval, pending: Int) {
+        lock.lock(); defer { lock.unlock() }
+        guard _rows.count < 40_000 else { return }
+        _rows.append(String(format: "%.4f,%.2f,%.2f,%.4f,%.4f,%d", now, head.x, head.y, dueT, newestT, pending))
+    }
+    var headRows: String { lock.lock(); defer { lock.unlock() }; return _rows.joined(separator: "\n") }
 }
 #endif
+
+/// The load at the trace's right edge — the point being written — as a pure function of
+/// the buffer and the clock, so the one rule that keeps the pen steady is testable:
+///
+/// **The head never steps.** While a point is still pending past the edge the head is the
+/// line's exact crossing of it, interpolated toward that point; the moment the buffer runs
+/// dry the head HOLDS the last due value, which is where the interpolation had just
+/// arrived. It used to switch to a 120 ms running average instead, and on a real radio —
+/// ~15 samples every ~190 ms, arriving centred on the clock — that switch happened twice
+/// per packet: the pen jumped between "the value now" and "the average of the last packet",
+/// a full kilogram apart on a hard pull (Nuri, 2026-09-19: "the line getting written
+/// feels kinda jittery"). `DeviceStore.playbackDelay` keeps the buffer from running dry in
+/// the first place; this keeps the fallback invisible when it does.
+enum TraceHead {
+    /// - Returns: nil once the stream has been silent for half a second — no fresh data,
+    ///   no synthetic head, and the trace slides away instead of pinning a stale flat line
+    ///   to the edge.
+    static func edgeKg(samples: [DeviceStore.TracePoint], lastDue: Int, now: TimeInterval,
+                       smoothed: (Int) -> Double) -> Double? {
+        if lastDue < samples.count - 1 {
+            let t0 = samples[lastDue].t, t1 = samples[lastDue + 1].t
+            let fraction = t1 > t0 ? min(1, max(0, (now - t0) / (t1 - t0))) : 0
+            let kg0 = smoothed(lastDue), kg1 = smoothed(lastDue + 1)
+            return kg0 + (kg1 - kg0) * fraction
+        }
+        guard now - samples[lastDue].t < 0.5 else { return nil }
+        return smoothed(lastDue)
+    }
+}
 
 /// The live force trace: a rolling window of the gauge's readings, scrolling smoothly.
 ///
@@ -346,18 +389,12 @@ struct ForceTraceView: View {
                            style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
         }
 
-        guard samples.count > 1, let newest = samples.last else {
+        guard samples.count > 1 else {
             #if DEBUG
             TraceDrawProbe.shared.set("early: count<=1 (count=\(samples.count))")
             #endif
             return
         }
-
-        // How far the window's right edge has slid past the newest point. Wall-clock,
-        // so it grows every frame; `t` is the store's slewed playback time, so radio
-        // jitter doesn't move the trace. SIGNED: negative means the newest point is not
-        // due yet.
-        let drift = now - newest.t
 
         /// Smoothed inline rather than via a precomputed array. At 120 Hz the two
         /// 480-element arrays this replaces were ~1.4 MB/s of pure allocation churn for
@@ -459,37 +496,18 @@ struct ForceTraceView: View {
             return
         }
 
-        // WHILE DATA IS FLOWING, the head rides the right edge. The newest sample is
-        // always one BLE batch (~100 ms) old, so placing the head at its timestamp left
-        // a sliver of card between fill and edge that breathed at 10 Hz — the firmware's
-        // delivery cadence made visible, which is exactly what this view exists to hide.
-        // The edge value is a 250 ms running average (batch noise damped, a real pull
-        // still tracked); the historical points stay placed by their own timestamps, so
-        // the anti-stutter geometry is untouched. The 0.5 s staleness cap keeps the old
-        // behaviour after stop/disconnect: no fresh data, no synthetic head, and the
-        // trace slides away instead of pinning a stale flat line to the edge forever.
+        // WHILE DATA IS FLOWING, the head rides the right edge: the line's exact crossing
+        // of it, interpolated toward the first pending point — the store stamps every
+        // packet a buffer's depth ahead of the clock (`DeviceStore.playbackDelay`), so
+        // there normally IS one. Should the buffer run dry the head holds where it is,
+        // continuous with the interpolation (`TraceHead`). Placing the head at the newest
+        // sample's own timestamp instead left a sliver between fill and edge that breathed
+        // at the delivery cadence, which is exactly what this view exists to hide. The
+        // historical points stay placed by their own timestamps. After 0.5 s of silence
+        // there is no synthetic head: the trace slides away rather than pinning a stale
+        // flat line to the edge forever.
         let head: CGPoint
-        if lastDue < samples.count - 1 {
-            // Points are waiting past the edge, so the head is exact: the line's crossing
-            // of x = width, interpolated between the last due point and the first pending
-            // one. No synthetic average is needed — the data for this instant exists.
-            let t0 = samples[lastDue].t, t1 = samples[lastDue + 1].t
-            let fraction = t1 > t0 ? (now - t0) / (t1 - t0) : 0
-            let kg0 = smoothed(lastDue), kg1 = smoothed(lastDue + 1)
-            head = CGPoint(x: plotRight, y: y(kg0 + (kg1 - kg0) * fraction))
-            line.addLine(to: head)
-        } else if drift < 0.5 {
-            // 120 ms — roughly one BLE batch. Long enough to damp batch noise, short
-            // enough that a fast pull's onset doesn't drag a laggy hook at the tip
-            // (at 250 ms the averaged head visibly trailed the line during hard pulls).
-            var sum = 0.0, count = 0.0
-            var i = samples.count - 1
-            while i >= 0, newest.t - samples[i].t <= 0.12 {
-                sum += samples[i].kg
-                count += 1
-                i -= 1
-            }
-            let edgeKg = count > 0 ? sum / count : smoothed(samples.count - 1)
+        if let edgeKg = TraceHead.edgeKg(samples: samples, lastDue: lastDue, now: now, smoothed: smoothed) {
             head = CGPoint(x: plotRight, y: y(edgeKg))
             line.addLine(to: head)
         } else {
@@ -568,6 +586,11 @@ struct ForceTraceView: View {
             "STROKED size=%.0fx%.0f anchor=%d lastDue=%d/%d firstX=%.0f headX=%.0f firstY=%.0f headY=%.0f opacity=%.2f",
             size.width, size.height, anchorIndex, lastDue, samples.count - 1,
             firstDrawn.x, head.x, firstDrawn.y, head.y, context.opacity))
+        if TraceDrawProbe.logsHead {
+            TraceDrawProbe.shared.logHead(now: now, head: head, dueT: samples[lastDue].t,
+                                          newestT: samples[samples.count - 1].t,
+                                          pending: samples.count - 1 - lastDue)
+        }
         #endif
     }
 
