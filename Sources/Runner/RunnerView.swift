@@ -354,13 +354,17 @@ struct RunnerView: View {
     }
 
     /// The wide window (an iPad in landscape, a foldable opened flat): the graph fills
-    /// the whole screen and ONE glass column sits on the left — the panel, the NEXT
-    /// card and the dock, at the phone's measured width — so the curve's history slides
-    /// under the glass and its newest seconds run in the clear on the right (Nuri,
-    /// 2026-09-19: *"the back being just the graph that fills the whole screen, then
-    /// offset the squares to one side, still big enough to see"*). The same views as
-    /// the phone's, scaled for the room; only the NEXT card is new, because only here
-    /// is there room to say what follows the pull you are on.
+    /// the whole screen and the phone's two objects sit in the two left corners — the
+    /// panel top-left, the dock bottom-left, at the phone's measured width — so the
+    /// curve's history slides under the glass and its newest seconds run in the clear
+    /// on the right (Nuri, 2026-09-19: *"the back being just the graph that fills the
+    /// whole screen, then offset the squares to one side, still big enough to see"*).
+    ///
+    /// The NEXT card that used to sit between them is gone (Nuri, same evening). It
+    /// only ever existed because the old layout had spare room; over a live graph every
+    /// glass surface is a place the curve cannot be read, a third object made "what
+    /// comes next" as heavy as the pull under way, and the phone has never had one —
+    /// the rest panel already names the next hand and grip.
     private func wideContent(_ session: RunnerSession) -> some View {
         GlassEffectContainer(spacing: 24) {
             HStack(alignment: .top, spacing: Metrics.spacing) {
@@ -373,10 +377,11 @@ struct RunnerView: View {
                     } else {
                         infoPanel(session, scale: Self.wideScale)
                     }
-                    nextCard(session)
+                    Spacer(minLength: 16)
                     controls(session)
                 }
                 .frame(width: Self.wideColumnWidth)
+                .frame(maxHeight: .infinity)
                 if timerOnly {
                     timerDial(session)
                 } else {
@@ -384,69 +389,6 @@ struct RunnerView: View {
                 }
             }
         }
-    }
-
-    // MARK: - What comes next (the wide layout's card)
-
-    private struct UpNext {
-        var title: String
-        var detail: String?
-        var grip: GripSpec?
-    }
-
-    /// What follows the pull the screen is describing. During a rest the main block
-    /// already describes the pull AHEAD (`SessionRunner.displaySlot`), so "next" is
-    /// what follows that one; otherwise it is what follows the pull under way. Read off
-    /// the runner's resolved slots, the same list the snapshot is published from.
-    private func upNext(_ session: RunnerSession) -> UpNext? {
-        let slots = session.runner.slots
-        guard let index = session.snapshot.phase.slotIndex, slots.indices.contains(index) else {
-            return nil
-        }
-        let pending = isResting(session) ? min(index + 1, slots.count - 1) : index
-        let slot = slots[pending]
-        guard pending + 1 < slots.count else {
-            return UpNext(title: String(localized: "Last pull"),
-                          detail: String(localized: "Then the session is done."),
-                          grip: nil)
-        }
-        let following = slots[pending + 1]
-        let restWord = slot.isLastOfSet ? String(localized: "Set break") : String(localized: "Rest")
-        let title = slot.restAfter > 0
-            ? String(localized: "\(restWord) \(slot.restAfter) s")
-            : String(localized: "Straight on")
-        return UpNext(title: title,
-                      detail: String(localized: "then \(following.side.prompt) · \(following.grip.line)"),
-                      grip: following.grip)
-    }
-
-    private func nextCard(_ session: RunnerSession) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            CapsLabel(String(localized: "Next"))
-            if let next = upNext(session) {
-                Text(next.title)
-                    .font(.system(.title, weight: .semibold))
-                    .foregroundStyle(Ink.primary)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                if let grip = next.grip {
-                    RunnerGripGlyph(grip: grip, emphasized: false)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                if let detail = next.detail {
-                    Text(detail)
-                        .font(.system(.title3, weight: .medium))
-                        .foregroundStyle(Ink.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibleGlass(nil, in: Self.panelShape)
-        .animation(Motion.state(reduceMotion), value: session.snapshot.phase.slotIndex)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("runner.next")
     }
 
     /// Only while the rep is actually live. A lane drawn during the rest would ask you
