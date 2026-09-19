@@ -309,7 +309,7 @@ struct ForceTraceView: View {
             var rule = Path()
             rule.move(to: CGPoint(x: 0, y: y(thresholdKg)))
             rule.addLine(to: CGPoint(x: size.width, y: y(thresholdKg)))
-            context.stroke(rule, with: .color(Ink.tertiary.opacity(0.55)),
+            context.stroke(rule, with: .color(Ink.tertiary.opacity(lit ? 0.35 : 0.55)),
                            style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
         }
 

@@ -57,10 +57,18 @@ struct RunnerRestFocusSummary: View {
                         .accessibilityIdentifier("runner.restFocus.target")
                 }
             }
-            VStack(spacing: 4) {
-                Text(phaseLabel)
-                    .font(.title.weight(.semibold))
-                    .foregroundStyle(snapshot.phase.isPaused ? StatusTint.armed : Ink.primary)
+            VStack(spacing: 8) {
+                // One headline per surface: the hand word is the instruction, and the
+                // giant countdown and the wash already say "rest" at screen scale, so the
+                // phase word steps down to a badge in the instrument voice. PAUSED keeps
+                // its amber as a FILL with dark ink — amber text measures 1.7:1 on the
+                // light field and cannot carry a word this small.
+                CapsLabel(phaseLabel, size: 13,
+                          tint: snapshot.phase.isPaused ? Color(hex: "1B1F25") : Ink.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(snapshot.phase.isPaused ? StatusTint.armed
+                                                                       : Ink.tertiary.opacity(0.16)))
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("runner.restFocus.phase")
                 HStack(alignment: .top, spacing: 16) {

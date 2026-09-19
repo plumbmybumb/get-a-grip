@@ -59,6 +59,10 @@ struct RunnerView: View {
     /// Where the stacked layout's full-bleed graph goes, measured from the layout that
     /// sits on top of it — see `backgroundTrace`.
     @State private var traceGeometry = BackgroundTraceGeometry()
+    /// The trace's colour GLIDES between phases — see `BlendedTint`.
+    @State private var traceTintFrom: Color = StatusTint.calm
+    @State private var traceTintTo: Color = StatusTint.calm
+    @State private var traceTintFraction: Double = 1
 
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 76
     @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 22
@@ -485,9 +489,15 @@ struct RunnerView: View {
                     .accessibilityHidden(true)
             }
             .accessibleGlass(nil, in: Self.panelShape)
+            .shadow(color: .black.opacity(Self.floatingShadowOpacity), radius: 22, y: 10)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("runner.panel")
     }
+
+    /// A context-aware shadow: these surfaces float over a MOVING curve, not a plain
+    /// field, and Apple's own rule for glass is a heavier shadow over busy content than
+    /// over calm. Light enough that the glass still reads as thin.
+    private static let floatingShadowOpacity = 0.16
 
     /// Sheet radius, not card radius: a glass surface floating over content is the
     /// system's sheet vocabulary, and beside 56 pt capsules a 22 pt corner reads tight.
@@ -515,8 +525,12 @@ struct RunnerView: View {
             // must not hide it — it moves up and the notice takes the room below.
             VStack(spacing: 8) {
                 if ambient {
+                    // It materializes: a whisper of scale with the fade, critically
+                    // damped, so the numeral arrives rather than switches on. Under
+                    // Reduce Motion it is the cross-fade alone.
                     ambientCountdown(session)
-                        .transition(.opacity)
+                        .transition(reduceMotion ? .opacity
+                                                 : .opacity.combined(with: .scale(scale: 0.96)))
                 }
                 if notice {
                     noSignalNotice(session)
@@ -564,6 +578,20 @@ struct RunnerView: View {
             // actually draws in, and the plot landed 45 pt high.
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
                 traceGeometry.canvas = $0
+            }
+            // The wash already cross-fades between phases; the trace snapped, and on
+            // an object the size of the screen a hard cut of colour is a jolt. The
+            // blend runs on the same house curve, so the two move as one thing.
+            .modifier(BlendedTint(fraction: traceTintFraction, from: traceTintFrom, to: traceTintTo))
+            .onAppear {
+                traceTintFrom = tint(session)
+                traceTintTo = tint(session)
+            }
+            .onChange(of: tint(session)) { old, new in
+                traceTintFrom = old
+                traceTintTo = new
+                traceTintFraction = 0
+                withAnimation(Motion.state(reduceMotion)) { traceTintFraction = 1 }
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)
@@ -1328,6 +1356,7 @@ struct RunnerView: View {
         }
         .padding(Self.dockSpacing)
         .accessibleGlass(nil, in: Self.dockShape)
+        .shadow(color: .black.opacity(Self.floatingShadowOpacity), radius: 22, y: 10)
         // `.contain`, explicitly: an identifier on a bare container makes SwiftUI
         // COMBINE its children into one element, and every button in the dock
         // vanished from the accessibility tree (16 UI tests could not find Pause).
@@ -1562,6 +1591,7 @@ private struct LiveTargetChip: View {
 /// dependency belongs to the graph alone.
 private struct LiveTrace: View {
     @Environment(DeviceStore.self) private var device
+    @Environment(\.blendedTraceTint) private var blendedTint
     var thresholdKg: Double?
     var targetBand: ClosedRange<Double>?
     var tint: Color
@@ -1571,11 +1601,40 @@ private struct LiveTrace: View {
     var lit = false
     var body: some View {
         ForceTraceView(samples: device.trace,
-                       thresholdKg: thresholdKg, targetBand: targetBand, tint: tint,
+                       thresholdKg: thresholdKg, targetBand: targetBand, tint: blendedTint ?? tint,
                        nominalSampleRate: device.gaugeCapabilities.nominalSampleRate,
                        bridgesSparseDelivery: device.gaugeCapabilities.isBroadcast,
                        diagnostics: device.pipelineDiagnostics,
                        plot: plot, lit: lit)
+    }
+}
+
+/// The trace's colour between two phases, interpolated per frame on the house curve.
+/// An `Animatable` modifier rather than an animated `Color` state: SwiftUI does not
+/// interpolate a `Color` value, but it does interpolate this fraction, and the
+/// `Canvas` underneath redraws every frame anyway, so the mixed colour simply flows
+/// through the environment into the drawing.
+private struct BlendedTint: ViewModifier, @preconcurrency Animatable {
+    var fraction: Double
+    var from: Color
+    var to: Color
+    var animatableData: Double {
+        get { fraction }
+        set { fraction = newValue }
+    }
+    func body(content: Content) -> some View {
+        content.environment(\.blendedTraceTint, from.mix(with: to, by: min(max(fraction, 0), 1)))
+    }
+}
+
+private struct BlendedTraceTintKey: EnvironmentKey {
+    static let defaultValue: Color? = nil
+}
+
+extension EnvironmentValues {
+    fileprivate var blendedTraceTint: Color? {
+        get { self[BlendedTraceTintKey.self] }
+        set { self[BlendedTraceTintKey.self] = newValue }
     }
 }
 
