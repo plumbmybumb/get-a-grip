@@ -38,6 +38,18 @@ history syncs through CloudKit; a live session never moves between devices.
   is regular-width and wider than tall — the numbers and controls on the left at the
   phone's own column width, the graph (or the timer dial) taking the height on the
   right. Every view is shared; nothing was drawn for the iPad alone.
+- **The force trace measures "now" from the WALL clock (`Date()`), never from the
+  `TimelineView` schedule's date.** The animation clock stops while the device sleeps or
+  the app is suspended, and the trace's sample timestamps come from `Date()`. On an iPad
+  that had been locked mid-session the two diverged by the whole sleep gap (~25 s), and
+  because the renderer positions every point by `now − t`, the lagging clock threw the
+  entire buffer into the "future" and the graph drew nothing — while the phone, never
+  suspended in the same session, was fine. Nuri's "no line on iPad, works on iPhone"
+  (2026-09-19). The buffer, the BLE pipeline and the store's playback clock were all
+  healthy; the bug was one line reading the wrong clock. `-dumpDiagnostics` writes the
+  Settings › About › Diagnostics report — including the trace's last-draw decision — to
+  `Documents/diagnostics.txt` in DEBUG, which is how it was caught on the device without
+  a paste. **Never position the trace against `timeline.date`; it is only a redraw tick.**
 - The four tabs use `.sidebarAdaptable`: the top tab bar on iPad, the ordinary bar on
   the phone. History goes two-pane in the same wide condition.
 - Reminders are per device (`SettingsStore.remindsOnThisDevice`): the phone defaults on,
