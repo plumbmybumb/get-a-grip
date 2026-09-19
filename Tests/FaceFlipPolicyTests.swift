@@ -17,6 +17,11 @@ final class FaceFlipPolicyTests: XCTestCase {
         }
     }
 
+    func testTurnsTowardTheHandOnEitherWrist() {
+        XCTAssertEqual(FaceFlipPolicy.rotationDegrees(wrist: .left), 90, "up goes to 3 o'clock")
+        XCTAssertEqual(FaceFlipPolicy.rotationDegrees(wrist: .right), -90, "up goes to 9 o'clock")
+    }
+
     func testNeverFlipsBetweenPullsOrWhenSwitchedOff() {
         XCTAssertFalse(FaceFlipPolicy.shouldFlip(phase: .resting(slot: 0), side: .left, wrist: .left, enabled: true),
                        "a rest looks forward to the next hand while the wrist is at your side")

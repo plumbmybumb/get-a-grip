@@ -69,11 +69,26 @@ anywhere, which is why a session works with the phone in a bag.
 - **Haptics first.** Mid-hang the watch faces the ceiling, so `WatchCuePlayer` maps
   every engine cue to a system haptic; the face is for between pulls — phase word,
   countdown, hand, grip, the kilogram readout. No trace.
-- **The face flips for the watch hand.** Pulling a block in front of you, palm down
-  with the forearm level, puts the watch under your eyes reading upside down;
-  `FaceFlipPolicy` turns the face 180° on the watch hand's pulls (the device reports
-  which wrist it is on), and never during a rest, a pause or on the controls page. A
-  toggle on the controls page turns it off for a different posture.
+- **The face turns toward the hand on the watch hand's pulls.** Pulling a block in
+  front of you, palm down with the forearm level, puts the watch under your eyes with
+  the hand past the crown edge, so the text runs along the arm; `FaceFlipPolicy` turns
+  the face a quarter (clockwise on the left wrist, anticlockwise on the right), laid out
+  for the screen's long axis, and never during a rest, a pause or on the controls page.
+  The turn snaps rather than animates — a spinning face stuttered on the wrist. A toggle
+  on the controls page turns it off for a different posture.
+- **Always On dims the face and no app can stop it.** Once the wrist leaves the
+  raise-to-wake pose — palm down on a block counts — watchOS drops to reduced
+  luminance at one redraw a second; Apple's Workout app dims the same way. The face
+  stays legible dimmed (`isLuminanceReduced`: numbers and hand word in white, the small
+  print hidden). Wake Duration 70 s in the watch's Display settings keeps a tap lit
+  through a set.
+- **The live load is throttled on the wrist** (`WatchForceReadout`, five updates a
+  second, rounded to a tenth): a readout that followed every sample re-rendered the face
+  eighty times a second and lagged. The engine still sees every sample.
+- The watch target builds with `ENABLE_DEBUG_DYLIB: NO`: the Debug stub-plus-dylib
+  layout is what the phone's Watch app refuses to install ("integrity could not be
+  verified"), and installing through the phone is the route that works when Xcode
+  cannot reach the watch.
 - `WorkoutKeeper` runs every session inside an `HKWorkoutSession`
   (`functionalStrengthTraining`, indoor): that is what keeps the app and the Bluetooth
   stream alive with the wrist down, and it lands in Fitness as a workout. Health access

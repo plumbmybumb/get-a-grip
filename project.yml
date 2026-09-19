@@ -266,6 +266,12 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
         SKIP_INSTALL: YES
+        # A Debug build's stub-executable-plus-debug-dylib layout is what Xcode wants
+        # for previews, and it is what the phone's Watch app REFUSES to install
+        # ("integrity could not be verified", Nuri's watch, 2026-09-19). Installing the
+        # watch app through the phone is the only route that works when Xcode cannot
+        # reach the watch, so the watch target is built as one plain executable always.
+        ENABLE_DEBUG_DYLIB: NO
 
   DoigtTests:
     type: bundle.unit-test

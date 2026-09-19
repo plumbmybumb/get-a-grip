@@ -25,8 +25,17 @@ struct WatchRunnerView: View {
 
     @State private var session: RunnerSession?
     @State private var keeper = WorkoutKeeper()
-    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 54
+    @State private var readout = WatchForceReadout()
+    /// Two heroes share a row now — the load and the clock — so each is a size under
+    /// the old lone numeral, and both a size over what a wrist could read before.
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 44
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Always On: with the wrist out of the raise pose — palm down on a block counts —
+    /// watchOS dims the display and redraws it once a second, and no app can hold full
+    /// brightness (Apple's own Workout app dims the same way). What an app CAN do is
+    /// stay legible dimmed: the two numbers and the hand word in full white, the small
+    /// print gone.
+    @Environment(\.isLuminanceReduced) private var dimmed
     /// The face turns upside down on the watch hand's pulls — see `FaceFlipPolicy`. Off
     /// for anyone whose block posture is different; device-local, like every preference.
     @AppStorage("watch.flipForWatchHand") private var flipsForWatchHand = true
@@ -61,6 +70,7 @@ struct WatchRunnerView: View {
                                     cues: WatchCuePlayer())
             session = new
             new.begin()
+            if !timerOnly { readout.begin(reading: device) }
             #if DEBUG
             // Headless verification: the watch simulator cannot answer the Health
             // permission sheet a workout session raises, so `-noWorkoutSession` runs
@@ -72,6 +82,7 @@ struct WatchRunnerView: View {
         .onDisappear {
             session?.end()
             keeper.end()
+            readout.end()
         }
         .onChange(of: device.state.isConnected) { _, connected in
             session?.connectionChanged(isConnected: connected)
@@ -87,39 +98,72 @@ struct WatchRunnerView: View {
 
     // MARK: - The face
 
+    /// The face, turned a quarter toward the hand on the watch hand's pulls — see
+    /// `FaceFlipPolicy`. Laid out for the canvas it will occupy AFTER the turn (the
+    /// screen's height as its width), then rotated, so nothing is clipped or centred in
+    /// the wrong frame. The turn SNAPS: animating a quarter-turn of the whole face
+    /// stuttered on the wrist, and the haptic already marks the beat.
     private func face(_ session: RunnerSession) -> some View {
         let snapshot = session.snapshot
+        let turned = FaceFlipPolicy.shouldFlip(phase: snapshot.phase, side: snapshot.side,
+                                               wrist: wrist, enabled: flipsForWatchHand)
+        return GeometryReader { geo in
+            faceContent(session)
+                .frame(width: turned ? geo.size.height : geo.size.width,
+                       height: turned ? geo.size.width : geo.size.height)
+                .rotationEffect(.degrees(turned ? FaceFlipPolicy.rotationDegrees(wrist: wrist) : 0))
+                .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("watch.face")
+    }
+
+    private func faceContent(_ session: RunnerSession) -> some View {
+        let snapshot = session.snapshot
         let tint = tint(session)
-        let flipped = FaceFlipPolicy.shouldFlip(phase: snapshot.phase, side: snapshot.side,
-                                                wrist: wrist, enabled: flipsForWatchHand)
-        return VStack(spacing: 2) {
+        return VStack(spacing: 4) {
             Text(promptText(session))
-                .font(.headline.weight(.heavy))
-                .foregroundStyle(tint)
+                .font(.title3.weight(.heavy))
+                .foregroundStyle(dimmed ? Color.white : tint)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-            Text("\(snapshot.secondsShown)")
-                .font(.system(size: heroSize, weight: .thin, design: .rounded))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .animation(Motion.live, value: snapshot.secondsShown)
+            // BOTH numbers, like the phone's hero: what you are pulling and how much
+            // longer. The load was a caption before, and on an Ultra it was
+            // unreadable from a bench (Nuri, 2026-09-19).
+            HStack(alignment: .lastTextBaseline, spacing: 10) {
+                if !timerOnly {
+                    hero(WeightUnit.kg.number(readout.kg), unit: WeightUnit.kg.symbol,
+                         tint: dimmed ? Color.white
+                              : (snapshot.hasSignal ? forceTint(session) : Color.secondary),
+                         rolls: false)
+                }
+                hero("\(snapshot.secondsShown)", unit: String(localized: "s"),
+                     tint: dimmed ? Color.white : Color.primary, rolls: true)
+            }
             if let grip = snapshot.grip {
                 HStack(spacing: 8) {
                     HandMark(fingers: grip.fingers, position: grip.position,
-                             side: snapshot.side ?? .both, barWidth: 7, tint: tint)
-                    Text(grip.shortName)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                             side: snapshot.side ?? .both, barWidth: 8,
+                             tint: dimmed ? Color.white : tint)
+                    if !dimmed {
+                        Text(grip.shortName)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
                 }
             }
-            Text(positionLine(session))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-            if !timerOnly {
-                WatchLiveForce(tint: forceTint(session), hasSignal: snapshot.hasSignal)
+            if !dimmed {
+                Text(positionLine(session))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            if !timerOnly, !snapshot.hasSignal {
+                Text("waiting for the gauge")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
             if keeper.state == .denied || keeper.state == .unavailable {
                 // Said plainly: without a workout session the app sleeps with the
@@ -131,14 +175,24 @@ struct WatchRunnerView: View {
             }
         }
         .padding(.horizontal, 4)
-        // UPSIDE DOWN for the watch hand's pulls: palm down on a block in front of you,
-        // the wrist is under your eyes with 12 o'clock at your elbow. The turn itself is
-        // the cue that this pull is the watch hand's; the house curve, so it is one
-        // motion and not a spin.
-        .rotationEffect(.degrees(flipped ? 180 : 0))
-        .animation(Motion.state(reduceMotion), value: flipped)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("watch.face")
+    }
+
+    /// A numeral and its unit. `rolls` is the difference between a CLOCK and a
+    /// MEASUREMENT, the phone's rule: the countdown rolls, the load snaps.
+    private func hero(_ value: String, unit: String, tint: Color, rolls: Bool) -> some View {
+        HStack(alignment: .lastTextBaseline, spacing: 2) {
+            Text(value)
+                .font(.system(size: heroSize, weight: .medium, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .contentTransition(rolls ? .numericText() : .identity)
+                .animation(rolls ? Motion.live : nil, value: value)
+                .foregroundStyle(tint)
+            Text(unit)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func promptText(_ session: RunnerSession) -> String {
@@ -247,22 +301,5 @@ struct WatchRunnerView: View {
                 .accessibilityIdentifier("watch.end")
             }
         }
-    }
-}
-
-/// The live reading, in its own leaf: `currentKg` moves at sample rate, and read from
-/// the face it would rebuild the whole page to move one number.
-private struct WatchLiveForce: View {
-    @Environment(DeviceStore.self) private var device
-    var tint: Color
-    var hasSignal: Bool
-
-    var body: some View {
-        Text(hasSignal ? WeightUnit.kg.text(device.currentKg) : String(localized: "waiting for the gauge"))
-            .font(.caption)
-            .monospacedDigit()
-            .foregroundStyle(hasSignal ? tint : Color.secondary)
-            // A measurement snaps; only clocks roll.
-            .contentTransition(.identity)
     }
 }
