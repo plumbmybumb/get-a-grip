@@ -50,11 +50,13 @@ history syncs through CloudKit; a live session never moves between devices.
   Settings › About › Diagnostics report — including the trace's last-draw decision — to
   `Documents/diagnostics.txt` in DEBUG, which is how it was caught on the device without
   a paste. **Never position the trace against `timeline.date`; it is only a redraw tick.**
-  Reduce Motion pauses that timeline outright, so under it `timeline.date` never advanced
-  at all — a second route to the same blank graph. The DEBUG report's first line states the
-  display environment (Reduce Motion, Reduce Transparency, Low Power, max refresh): a trace
-  that steps at the packet rate on one device and glides on another is that setting, not a
-  bug (Nuri's iPad has Reduce Motion on, 2026-09-19).
+  The DEBUG report's first line states the display environment (Reduce Motion, Reduce
+  Transparency, Low Power, max refresh). **Reduce Motion no longer pauses the trace's
+  timeline**: it used to, so the graph redrew only when a packet landed — two points of
+  step on a card, a 37 pt lurch of the whole picture five times a second on an iPad's
+  full-screen canvas (Nuri's iPad has Reduce Motion on; "so laggy", 2026-09-19). A slow,
+  steady slide is the gentlest way a graph of time can move; the setting now drops only the
+  decoration (the trace's 0.85 opacity), never the tick.
 - **The trace draws the raw data as it arrives; its only smoothing is visual and lag-free.**
   The real Progressor stream reaches the app as ~15 samples every ~190 ms with p95 300 ms and
   max 420 ms gaps (both of Nuri's devices, diagnostics of 2026-09-19). Three renderings were

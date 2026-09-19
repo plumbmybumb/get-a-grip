@@ -213,14 +213,13 @@ struct ForceTraceView: View {
 
     /// The head dot settles toward the newest reading over ~60 ms — no overshoot, because an
     /// overshooting head would draw a load nobody pulled, and short enough that it is a
-    /// softening of the packet step rather than a delay of it. Snapped under Reduce Motion
-    /// (the timeline is paused there anyway) and on a frozen trace.
+    /// softening of the packet step rather than a delay of it. Snapped on a frozen trace.
     private func headValue(dt: TimeInterval) -> Double? {
         guard let target = TraceHead.newestKg(samples: samples) else {
             axis.headKg = nil
             return nil
         }
-        if let current = axis.headKg, !reduceMotion, frozenAt == nil {
+        if let current = axis.headKg, frozenAt == nil {
             axis.headKg = current + (target - current) * min(1, dt * 25)
         } else {
             axis.headKg = target
@@ -253,10 +252,16 @@ struct ForceTraceView: View {
         // Key the deadline state to the sample that armed it. A fresh sample therefore
         // resumes immediately, before the replacement task gets its first turn to run.
         let deadlineReached = newestTime == nil || expiredNewestTime == newestTime
-        let paused = frozenAt != nil || reduceMotion || alreadyExpired || deadlineReached
-        // Paused under Reduce Motion: the Canvas then redraws only when data changes,
-        // which is the old stepping behaviour — correct here, because someone who asked
-        // for less motion should not be given a continuously sliding graph.
+        let paused = frozenAt != nil || alreadyExpired || deadlineReached
+        // NOT paused under Reduce Motion. It used to be: the Canvas then redrew only when
+        // data arrived, "the old stepping behaviour", on the theory that someone who
+        // asked for less motion should not get a continuously sliding graph. On a small
+        // card each step was two points. On the full-screen canvas — an iPad's 1180 pt
+        // window — every packet became a 37 pt lurch of the whole picture five times a
+        // second, the head and the fill jumping with it: far MORE motion, and the abrupt
+        // kind Reduce Motion exists to remove (Nuri's iPad, 2026-09-19: "so laggy").
+        // A slow, steady slide is the gentlest way a graph of time can move; what the
+        // setting drops here is the decoration (the 0.85 opacity below), not the tick.
         TimelineView(.animation(paused: paused)) { timeline in
             let _ = diagnostics?.drawing(now: ProcessInfo.processInfo.systemUptime)
             // **`now` is the WALL clock, not `timeline.date`.** The schedule's date rides
@@ -499,7 +504,7 @@ struct ForceTraceView: View {
         // Visual only: nothing is delayed, nothing is invented.
         let freshSince = now - TraceHead.freshSeconds
         var settledEnd = lastDue
-        if !reduceMotion, frozenAt == nil {
+        if frozenAt == nil {
             while settledEnd >= anchorIndex, samples[settledEnd].arrival > freshSince { settledEnd -= 1 }
         }
 
