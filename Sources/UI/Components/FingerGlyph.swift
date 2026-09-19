@@ -25,14 +25,9 @@ struct FingerGlyph: View {
     @ScaledMetric(relativeTo: .caption) var gap: CGFloat = 3
     var tint: Color = Accent.graphite
 
-    /// Fingers are taller than they are wide — the ratio is what stops a bar ever
-    /// reading as a dot, at any size.
-    private var barHeight: CGFloat { dot * 1.75 }
-
-    /// A HAND's proportions — middle longest, little shortest — matching `FingerPips`
-    /// and the island. Flat bars read as a barcode; these read as a hand at a glance,
-    /// which is what makes the glyph work at 6 pt in a History row.
-    private static let lengthFactor: [CGFloat] = [0.86, 1.0, 0.94, 0.80]
+    /// Fingers are taller than they are wide — see `HandGeometry.barAspect`, which is
+    /// the ratio that stops a bar ever reading as a dot, at any size.
+    private var barHeight: CGFloat { dot * HandGeometry.barAspect }
 
     /// **A FULL CAPSULE — byte-for-byte the island hand's rule** (`IslandHand.radius`),
     /// asked for twice by Nuri (2026-08-09: *"they need to have the identical radii so
@@ -87,7 +82,7 @@ struct FingerGlyph: View {
                 shape.strokeBorder(Ink.tertiary, lineWidth: 1)
             }
         }
-        .frame(width: dot, height: barHeight * Self.lengthFactor[index])
+        .frame(width: dot, height: barHeight * HandGeometry.lengthFactor[index])
     }
 }
 

@@ -38,13 +38,17 @@ struct RunnerView: View {
     /// Size CLASS, never the idiom — see `live(_:)`.
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    /// The wide layout's glass column — panel, NEXT card and dock stacked at the
-    /// phone's measured width on one side of the screen, the graph filling the rest
+    /// The wide layout's glass column — the panel and the dock in the two left
+    /// corners at the phone's measured width, the graph filling the rest
     /// (Nuri, 2026-09-19: *"offset the squares to one side, still big enough to see"*).
-    private static let wideColumnWidth: CGFloat = 440
+    ///
+    /// The house token, not a literal of the same value: "the phone's measured width"
+    /// is exactly what `Metrics.maxContentWidth` means, and `liveContent` already caps
+    /// the stacked column with it. Two copies of 440 would be two places to change.
+    private static let wideColumnWidth: CGFloat = Metrics.maxContentWidth
     /// How much larger the identity block draws in the wide layout — the numbers,
-    /// the hand word and the grip picture, read from a bench. 1.4 is what a 440 pt
-    /// column holds with the two numerals side by side.
+    /// the hand word and the grip picture, read from a bench. 1.4 is what that
+    /// column's width holds with the two numerals side by side.
     private static let wideScale: CGFloat = 1.4
 
     @State private var session: RunnerSession?
@@ -255,7 +259,7 @@ struct RunnerView: View {
         // Teaching over a running clock costs you the pull being explained, and a scrim
         // that blocks Pause and Skip while a hold counts down is worse than no tutorial.
         // Measured sessions only: with no gauge there is no lane to point at and the last
-        // step would light an empty card.
+        // step would light an empty graph.
         .onChange(of: tour.isRunning) { was, now in
             if was, !now { session?.send(.resume) }
         }
@@ -282,7 +286,7 @@ struct RunnerView: View {
                 // below it, so the top content cannot slide through the fingers.
                 .padding(.top, hasIsland ? 46 + handPush : 0)
                 .background {
-                    backgroundTrace(session, bottomInset: geometry.safeAreaInsets.bottom, wide: false)
+                    backgroundTrace(session, wide: false)
                 }
             }
         } else {
@@ -296,7 +300,7 @@ struct RunnerView: View {
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     // The graph is the SCREEN in both layouts — see `backgroundTrace`.
                     .background {
-                        backgroundTrace(session, bottomInset: geometry.safeAreaInsets.bottom, wide: wide)
+                        backgroundTrace(session, wide: wide)
                     }
             }
         }
@@ -404,15 +408,7 @@ struct RunnerView: View {
     /// A connected gauge that is not sending is the one failure "0.0 kg" renders as a
     /// lie — it reads as a device measuring nothing rather than an app receiving
     /// nothing, and there is no way to tell them apart by looking. Say it, and say what
-    /// to do.
-    @ViewBuilder
-    private func signalNotice(_ session: RunnerSession) -> some View {
-        if showsSignalNotice(session) {
-            noSignalNotice(session)
-                .accessibilityIdentifier("runner.signalWarning")
-        }
-    }
-
+    /// to do — the notice itself is drawn by `graphRegion`.
     private func showsSignalNotice(_ session: RunnerSession) -> Bool {
         !session.snapshot.hasSignal
             || (showsRestFocus(session) && !restSignalIsAvailable(session))
@@ -482,27 +478,16 @@ struct RunnerView: View {
             // material — measured in pixels, not by eye, which had read a warm edge
             // as the rim (2026-09-19).
             .overlay {
-                Self.panelShape
+                RunnerGlass.surfaceShape
                     .strokeBorder(StatusTint.armed, lineWidth: 3)
                     .opacity(session.snapshot.hasSignal ? gripBorderOpacity : 0)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
-            .accessibleGlass(nil, in: Self.panelShape)
-            .shadow(color: .black.opacity(Self.floatingShadowOpacity), radius: 22, y: 10)
+            .accessibleGlass(nil, in: RunnerGlass.surfaceShape)
+            .runnerFloatingShadow()
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("runner.panel")
-    }
-
-    /// A context-aware shadow: these surfaces float over a MOVING curve, not a plain
-    /// field, and Apple's own rule for glass is a heavier shadow over busy content than
-    /// over calm. Light enough that the glass still reads as thin.
-    private static let floatingShadowOpacity = 0.16
-
-    /// Sheet radius, not card radius: a glass surface floating over content is the
-    /// system's sheet vocabulary, and beside 56 pt capsules a 22 pt corner reads tight.
-    private static var panelShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: Metrics.radiusSheet, style: .continuous)
     }
 
     /// **The open graph** — the stretch of screen between the panel and the controls
@@ -511,10 +496,10 @@ struct RunnerView: View {
     /// plot inside it, plus what still belongs on the graph — the no-signal notice, the
     /// tour anchor, and the `runner.graph` element the UI tests measure the layout by.
     ///
-    /// NOT the grip-change chip. In the card it sat in a corner; on an open graph it
-    /// floated loose thirty points under the panel, saying what the panel's amber rim,
-    /// its NEW GRIP badge and the orange hand already say — a stray box over the trace
-    /// for no new information (measured 2026-09-19). The wide layout's card keeps it.
+    /// NOT the grip-change chip. In the old card it sat in a corner; on an open graph
+    /// it floated loose thirty points under the panel, saying what the panel's amber
+    /// rim, its NEW GRIP badge and the orange hand already say — a stray box over the
+    /// trace for no new information (measured 2026-09-19). Neither layout draws it now.
     private func graphRegion(_ session: RunnerSession) -> some View {
         let notice = showsSignalNotice(session)
         let ambient = showsAmbientCountdown(session)
@@ -558,8 +543,7 @@ struct RunnerView: View {
     /// down so a sample invalidates nothing but the canvas. Nothing force-shaped in a
     /// gauge-free session, exactly as before.
     @ViewBuilder
-    private func backgroundTrace(_ session: RunnerSession, bottomInset: CGFloat,
-                                 wide: Bool) -> some View {
+    private func backgroundTrace(_ session: RunnerSession, wide: Bool) -> some View {
         if !timerOnly {
             ZStack(alignment: .topLeading) {
                 // Under the panel on the phone; under the column on the iPad.
@@ -570,7 +554,7 @@ struct RunnerView: View {
                 LiveTrace(thresholdKg: session.plan.thresholdKg,
                           targetBand: liveTargetBand(session),
                           tint: tint(session),
-                          plot: traceGeometry.plot(bottomSafeInset: bottomInset, wide: wide),
+                          plot: traceGeometry.plot(wide: wide),
                           lit: true)
             }
             // Measured INSIDE `ignoresSafeArea`: outside it the reported frame is the
@@ -701,22 +685,21 @@ struct RunnerView: View {
         return String(localized: "Set \(set) of \(session.snapshot.setCount)")
     }
 
-    /// Which pull you are ON, not how many you have completed.
-    ///
-    /// The count of RECORDED reps includes skipped ones, so a session skipped through
-    /// read "34 of 36 pulls" — which says you did 34. Position through the plan is what
-    /// this row is for, and it matches the "Set 6 of 6" beside it.
+    /// Which pull you are ON, not how many you have completed — see
+    /// `RunnerSnapshot.pullPosition`. It matches the "Set 6 of 6" beside it.
     private func pullLine(_ session: RunnerSession) -> String {
-        let planned = session.snapshot.plannedRepCount
-        let position = min(session.snapshot.completedRepCount + 1, planned)
-        return String(localized: "Pull \(position) of \(planned)")
+        String(localized: "Pull \(session.snapshot.pullPosition) of \(session.snapshot.plannedRepCount)")
     }
 
-    /// The grip, and — during a rest — the fact that it is the one COMING UP.
-    ///
-    /// The snapshot already looks forward while resting (`SessionRunner.displaySlot`), so
-    /// this row silently changed meaning between phases. "Next" is what makes that legible
-    /// instead of leaving you to work out which grip you are being shown.
+    /// The name row alone — used by the island layout, where the picture has moved to
+    /// the top of the screen and drawing it twice would be silly.
+    @ViewBuilder
+    private func gripLineText(_ session: RunnerSession, timerOnly: Bool = false) -> some View {
+        if session.snapshot.grip != nil {
+            nameRow(session, timerOnly: timerOnly).frame(maxWidth: .infinity)
+        }
+    }
+
     /// The grip, as a BIG CENTRED GLYPH over its own name.
     ///
     /// It used to be a 9 pt glyph inline at the head of a left-aligned text row, and on
@@ -729,15 +712,6 @@ struct RunnerView: View {
     ///
     /// The height comes out of the force trace, which absorbs the slack (`maxHeight:
     /// .infinity`) — a graph is worth less than knowing which hand shape to make.
-    /// The name row alone — used by the island experiment, where the picture has moved
-    /// to the top of the screen and drawing it twice would be silly.
-    @ViewBuilder
-    private func gripLineText(_ session: RunnerSession, timerOnly: Bool = false) -> some View {
-        if session.snapshot.grip != nil {
-            nameRow(session, timerOnly: timerOnly).frame(maxWidth: .infinity)
-        }
-    }
-
     @ViewBuilder
     private func gripLine(_ session: RunnerSession, timerOnly: Bool = false,
                           scale: CGFloat = 1) -> some View {
@@ -753,6 +727,11 @@ struct RunnerView: View {
         }
     }
 
+    /// The grip, and — during a rest — the fact that it is the one COMING UP.
+    ///
+    /// The snapshot already looks forward while resting (`SessionRunner.displaySlot`), so
+    /// this row silently changed meaning between phases. "Next" is what makes that legible
+    /// instead of leaving you to work out which grip you are being shown.
     @ViewBuilder
     private func nameRow(_ session: RunnerSession, timerOnly: Bool = false,
                          scale: CGFloat = 1) -> some View {
@@ -905,8 +884,8 @@ struct RunnerView: View {
             }
             return grip.spoken
         }
-        let lo = weightText(band.lowerBound)
-        let hi = weightText(band.upperBound)
+        let lo = weightUnit.number(band.lowerBound)
+        let hi = weightUnit.number(band.upperBound)
         if resting {
             return changingGrip
                 ? String(localized: "New grip next: \(grip.spoken), target \(lo) to \(hi) \(weightUnit.spokenName)")
@@ -923,10 +902,6 @@ struct RunnerView: View {
     private func isArmed(_ session: RunnerSession) -> Bool {
         if case .armed = session.snapshot.phase { return true }
         return false
-    }
-
-    private func weightText(_ kg: Double) -> String {
-        weightUnit.number(kg)
     }
 
     /// The one thing that has to be readable across a room: which hand, and whether to
@@ -951,8 +926,9 @@ struct RunnerView: View {
             // LET GO, PAUSED — was hidden from VoiceOver with no substitute anywhere
             // else: `spokenState` speaks set/pull/hand/grip but never the phase, and the
             // cues cannot stand in for it either (`.dropoutWarning` fires the identical
-            // tone for both RE-GRIP and EASE OFF, which CLAUDE.md itself resolves with
-            // "only the screen has words"; pause/resume emit no cue at all). An explicit
+            // tone for both RE-GRIP and EASE OFF — the cue means "the clock stopped",
+            // which is true either way, and only the screen has the words that tell the
+            // two apart; pause/resume emit no cue at all). An explicit
             // label — matching what `timerDial`'s `spokenDialState` already does for the
             // gauge-free fallback — replaces the old `.accessibilityHidden(true)`.
             .accessibilityElement(children: .ignore)
@@ -969,27 +945,18 @@ struct RunnerView: View {
         return promptText(session)
     }
 
+    /// The ladder itself is `RunnerPromptWords`, shared with the watch — this only
+    /// gathers the facts. `timerOnly` is one of them: a gauge-free session has nothing
+    /// to connect to, so its first second says GET READY rather than CONNECTING, which
+    /// is what the watch has always said and what this screen used not to.
     private func promptText(_ session: RunnerSession) -> String {
-        switch session.snapshot.phase {
-        case .idle: device.state.isConnected ? String(localized: "GET READY") : String(localized: "CONNECTING")
-        case .leadIn: String(localized: "GET READY")
-        case .armed: String(localized: "\(session.snapshot.side?.prompt ?? "") — PULL")
-        // The clock stopping without saying so looks like a bug, and the instinct it
-        // provokes — pull harder — is the wrong one. Say what to do instead, and note
-        // that with a target range there are now TWO ways to stall it: the reflex that
-        // fixes one makes the other worse, so the word has to name which.
-        case .working:
-            if session.snapshot.isDropped { String(localized: "RE-GRIP") }
-            else if session.snapshot.isOverTarget { String(localized: "EASE OFF") }
-            else { session.snapshot.side?.prompt ?? "" }
-        // The hold is banked and the rest has NOT started — say the one thing that
-        // starts it. Silence here would read as a frozen clock, which is the same bug
-        // "RE-GRIP" exists to prevent at the other end of the rep.
-        case .releasing: String(localized: "LET GO")
-        case .resting: session.snapshot.isSetBreak ? String(localized: "SET BREAK") : String(localized: "REST")
-        case .paused: String(localized: "PAUSED")
-        case .finished: String(localized: "DONE")
-        }
+        RunnerPromptWords.word(phase: session.snapshot.phase,
+                               side: session.snapshot.side,
+                               isConnected: device.state.isConnected,
+                               timerOnly: timerOnly,
+                               isDropped: session.snapshot.isDropped,
+                               isOverTarget: session.snapshot.isOverTarget,
+                               isSetBreak: session.snapshot.isSetBreak)
     }
 
 
@@ -1109,7 +1076,9 @@ struct RunnerView: View {
 
     /// One definition, laid out twice by `ViewThatFits` — the chips must be identical in
     /// the one-row and stacked forms or the layout would change content as it wraps.
-    /// **A FIXED set of chips, and that is what stops the dial moving.**
+    ///
+    /// **A FIXED set of chips — fixed for the whole SESSION, not for the current slot —
+    /// and that is what stops the dial moving.**
     ///
     /// `Next` used to be a chip here, appearing only during rest — which meant the row
     /// could hold three chips resting and two working. At REST→WORK that can flip
@@ -1119,7 +1088,6 @@ struct RunnerView: View {
     /// as the rest badge, RESERVED at its widest form for the whole session (see
     /// `nameRow`'s timer branch) — same constant-height property, achieved the same way
     /// as the target chip below.
-    /// **The chip COUNT is fixed for the whole session, not for the current slot.**
     ///
     /// Moving `Next` out was only half the fix: `targetBand` is per-slot, so a routine
     /// carrying a target on some sets and not others still changed the chip count at a
@@ -1248,8 +1216,8 @@ struct RunnerView: View {
         // than overflowing. Measured at the largest accessibility size on the pinned sim.
         .frame(maxWidth: dialDiameter, maxHeight: dialDiameter)
         .aspectRatio(1, contentMode: .fit)
-        // **THE COLUMN MUST STILL FILL THE SCREEN.** In the measured layout the trace card
-        // carries `maxHeight: .infinity`, and that is what made the whole VStack tall.
+        // **THE COLUMN MUST STILL FILL THE SCREEN.** In the measured layout the open
+        // graph carries `maxHeight: .infinity`, and that is what made the whole VStack tall.
         // Without an equivalent here the timer column hugged its content and got centred,
         // which broke two things at once: a dead band above the identity block, and the
         // Dynamic Island hand landing on top of the grip line — `.islandHand` is an
@@ -1355,8 +1323,8 @@ struct RunnerView: View {
             }
         }
         .padding(Self.dockSpacing)
-        .accessibleGlass(nil, in: Self.dockShape)
-        .shadow(color: .black.opacity(Self.floatingShadowOpacity), radius: 22, y: 10)
+        .accessibleGlass(nil, in: RunnerGlass.surfaceShape)
+        .runnerFloatingShadow()
         // `.contain`, explicitly: an identifier on a bare container makes SwiftUI
         // COMBINE its children into one element, and every button in the dock
         // vanished from the accessibility tree (16 UI tests could not find Pause).
@@ -1366,11 +1334,6 @@ struct RunnerView: View {
 
     private static let dockSpacing: CGFloat = 8
 
-    /// Same radius family as the panel, so the two glass surfaces read as siblings.
-    private static var dockShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: Metrics.radiusSheet, style: .continuous)
-    }
-
     /// The buttons KEEP their identity while disabled: the visible reason the house
     /// rule demands is the prompt above them, which says PAUSED / CONNECTING at
     /// large-title weight — swapping the labels spent the two Skips' names on the same
@@ -1378,7 +1341,7 @@ struct RunnerView: View {
     /// tell them apart. The full sentence rides the hint instead.
     private func pauseButton(_ session: RunnerSession, docked: Bool = false) -> some View {
         let phase = session.snapshot.phase
-        return wideButton(phase.isPaused ? String(localized: "Resume") : String(localized: "Pause"),
+        return dockButton(phase.isPaused ? String(localized: "Resume") : String(localized: "Pause"),
                           systemImage: phase.isPaused ? "play.fill" : "pause.fill",
                           enabled: RunnerControlPolicy.pauseEnabled(for: phase),
                           disabledReason: RunnerControlPolicy.pauseDisabledReason(for: phase),
@@ -1401,14 +1364,14 @@ struct RunnerView: View {
             TareButton(session: session, docked: docked)
                 .accessibilityIdentifier("runner.tare")
         } else if device.canCancelBroadcastSearch {
-            wideButton(String(localized: "Cancel"), systemImage: "xmark", docked: docked) {
+            dockButton(String(localized: "Cancel"), systemImage: "xmark", docked: docked) {
                 device.disconnect()
             }
             .accessibilityLabel(String(localized: "Cancel"))
             .accessibilityValue(device.state.label)
             .accessibilityIdentifier("gauge.connectionAction")
         } else {
-            wideButton(String(localized: "Connect"), systemImage: "dot.radiowaves.left.and.right",
+            dockButton(String(localized: "Connect"), systemImage: "dot.radiowaves.left.and.right",
                        docked: docked) {
                 device.connect()
             }
@@ -1420,11 +1383,11 @@ struct RunnerView: View {
         let phase = session.snapshot.phase
         let skipEnabled = RunnerControlPolicy.skipEnabled(for: phase)
         let skipReason = RunnerControlPolicy.skipDisabledReason(for: phase)
-        wideButton(String(localized: "Skip pull"), enabled: skipEnabled,
+        dockButton(String(localized: "Skip pull"), enabled: skipEnabled,
                    disabledReason: skipReason, docked: docked) { session.send(.skipRep) }
             .keyboardShortcut("s", modifiers: [])
             .accessibilityIdentifier("runner.skipPull")
-        wideButton(String(localized: "Skip set"), enabled: skipEnabled,
+        dockButton(String(localized: "Skip set"), enabled: skipEnabled,
                    disabledReason: skipReason, docked: docked) { session.send(.skipSet) }
             .accessibilityIdentifier("runner.skipSet")
     }
@@ -1434,16 +1397,17 @@ struct RunnerView: View {
             .accessibilityIdentifier("runner.end")
     }
 
-    /// Flexible-width glass button. `SecondaryGlassButton` hugs its label, which is
-    /// right on a sheet and wrong here — three hugging buttons in one row truncated
-    /// "Pause" to "Pa…" on the pinned sim. Glass INSIDE the label, then the content
-    /// shape, then the style outside.
+    /// A dock action: FULL-WIDTH in its slot, not iPad-wide — both layouts use it,
+    /// and the name says which width it means. `SecondaryGlassButton` hugs its label,
+    /// which is right on a sheet and wrong here: three hugging buttons in one row
+    /// truncated "Pause" to "Pa…" on the pinned sim. Glass INSIDE the label, then
+    /// the content shape, then the style outside.
     ///
     /// `enabled`/`disabledReason` dim AND disable, with the reason surfaced as the
     /// accessibility hint. The label is never swapped: sighted use reads the reason
     /// off the screen's own PAUSED / CONNECTING prompt, and the hint carries the full
     /// sentence for VoiceOver.
-    private func wideButton(_ title: String, systemImage: String? = nil,
+    private func dockButton(_ title: String, systemImage: String? = nil,
                             tint: Color = Ink.primary,
                             enabled: Bool = true, disabledReason: String? = nil,
                             docked: Bool = false,
@@ -1468,9 +1432,11 @@ struct RunnerView: View {
         guard let grip = session.snapshot.grip, let set = session.snapshot.setNumber else {
             return String(localized: "Session finished")
         }
+        // `pullPosition`, not `completed + 1`: this label was the one readout with no
+        // clamp, so VoiceOver alone could say "pull 37 of 36".
         return String(localized: """
             Set \(set) of \(session.snapshot.setCount), \
-            pull \(session.snapshot.completedRepCount + 1) of \(session.snapshot.plannedRepCount), \
+            pull \(session.snapshot.pullPosition) of \(session.snapshot.plannedRepCount), \
             \(session.snapshot.side?.name ?? "") hand, \(grip.spoken)
             """)
     }
@@ -1479,553 +1445,4 @@ struct RunnerView: View {
 private struct GripCueKey: Equatable {
     var id: String?
     var resting: Bool
-}
-
-// MARK: - The things that change 80× a second
-
-/// The live kilogram readout, isolated in its OWN view.
-///
-/// `DeviceStore.currentKg` changes with every force sample. Read from `RunnerView`'s
-/// body, that rebuilt the entire screen — counters, prompt, grip line, controls — 80
-/// times a second to move one number. A leaf view reading the store directly means the
-/// invalidation stops here, at the only thing that actually changed.
-private struct LiveForceReadout: View {
-    @Environment(\.weightUnit) private var weightUnit
-    @Environment(DeviceStore.self) private var device
-    var tint: Color
-    var size: CGFloat
-    var unitSize: CGFloat
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(weightUnit.number(device.currentKg))
-                .font(.system(size: size, weight: .thin))
-                    .displayTracking(size)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                // A measurement snaps; only clocks roll.
-                .contentTransition(.identity)
-                .foregroundStyle(tint)
-            Text(weightUnit.symbol)
-                .font(.system(size: unitSize))
-                .foregroundStyle(Ink.tertiary)
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-/// The timer ring updates at 10 Hz; the surrounding numeral, prompts and controls
-/// only observe the whole-second snapshot. Its animation never drives app state.
-private struct LiveTimerRing: View {
-    var session: RunnerSession
-    var lineWidth: CGFloat
-    var tint: Color
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        let fraction = session.phaseRemainingFraction ?? 0
-        ZStack {
-            Circle().stroke(Ink.tertiary.opacity(0.18), lineWidth: lineWidth)
-            if fraction > 0 {
-                Circle()
-                    .trim(from: 0, to: fraction)
-                    .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .animation(reduceMotion ? nil : Motion.live, value: fraction)
-            }
-        }
-    }
-}
-
-/// The exact measured fraction belongs to this leaf alone. Linear settling fills the
-/// frames between BLE packets without forecasting credited work or easing to a stop
-/// per packet. The caller keys this view to the working phase so a skipped/next pull
-/// starts cleanly instead of draining the previous pull's bar backwards.
-private struct LiveRepProgress: View {
-    var session: RunnerSession
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        ProgressView(value: session.repProgress)
-            .tint(StatusTint.engaged)
-            .animation(reduceMotion ? nil : Motion.measuredProgress, value: session.repProgress)
-            .accessibilityHidden(true)
-    }
-}
-
-/// The target's live state changes with every force sample, so the chip owns that
-/// high-frequency observation instead of invalidating the runner screen around it.
-private struct LiveTargetChip: View {
-    @Environment(\.weightUnit) private var weightUnit
-    @Environment(DeviceStore.self) private var device
-    var band: ClosedRange<Double>
-    var isWorking: Bool
-    var timerOnly = false
-
-    var body: some View {
-        // In a timer-only session the gauge value is zero or stale by definition. Letting
-        // it light this instruction chip would claim that an unmeasured pull is engaged.
-        let live = !timerOnly && isWorking && band.contains(device.currentKg)
-        Text(String(localized: "\(weightText(band.lowerBound))–\(weightText(band.upperBound)) \(weightUnit.symbol)"))
-            .font(.system(.footnote, weight: .semibold))
-            .monospacedDigit()
-            .foregroundStyle(live ? Color.white : Ink.secondary)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
-            .background {
-                Capsule()
-                    .fill(live ? StatusTint.engaged : Color.clear)
-                    .overlay(Capsule().stroke(Ink.tertiary.opacity(live ? 0 : 0.6), lineWidth: 1))
-            }
-            .animation(Motion.live, value: live)
-            .accessibilityHidden(true)
-    }
-
-    private func weightText(_ kg: Double) -> String {
-        weightUnit.number(kg)
-    }
-}
-
-/// Same reasoning for the trace: `DeviceStore.trace` grows with every sample, so the
-/// dependency belongs to the graph alone.
-private struct LiveTrace: View {
-    @Environment(DeviceStore.self) private var device
-    @Environment(\.blendedTraceTint) private var blendedTint
-    var thresholdKg: Double?
-    var targetBand: ClosedRange<Double>?
-    var tint: Color
-    /// Where the plot sits in the canvas — the card's own clearances unless the trace
-    /// is the screen's background.
-    var plot: ForceTraceView.PlotInsets = .card
-    var lit = false
-    var body: some View {
-        ForceTraceView(samples: device.trace,
-                       thresholdKg: thresholdKg, targetBand: targetBand, tint: blendedTint ?? tint,
-                       nominalSampleRate: device.gaugeCapabilities.nominalSampleRate,
-                       bridgesSparseDelivery: device.gaugeCapabilities.isBroadcast,
-                       diagnostics: device.pipelineDiagnostics,
-                       plot: plot, lit: lit)
-    }
-}
-
-/// The trace's colour between two phases, interpolated per frame on the house curve.
-/// An `Animatable` modifier rather than an animated `Color` state: SwiftUI does not
-/// interpolate a `Color` value, but it does interpolate this fraction, and the
-/// `Canvas` underneath redraws every frame anyway, so the mixed colour simply flows
-/// through the environment into the drawing.
-private struct BlendedTint: ViewModifier, @preconcurrency Animatable {
-    var fraction: Double
-    var from: Color
-    var to: Color
-    var animatableData: Double {
-        get { fraction }
-        set { fraction = newValue }
-    }
-    func body(content: Content) -> some View {
-        content.environment(\.blendedTraceTint, from.mix(with: to, by: min(max(fraction, 0), 1)))
-    }
-}
-
-private struct BlendedTraceTintKey: EnvironmentKey {
-    static let defaultValue: Color? = nil
-}
-
-extension EnvironmentValues {
-    fileprivate var blendedTraceTint: Color? {
-        get { self[BlendedTraceTintKey.self] }
-        set { self[BlendedTraceTintKey.self] = newValue }
-    }
-}
-
-/// **The phase colour, under the glass.** Glass only reads as glass when something
-/// with colour passes beneath it, and the panel sat over an empty headroom. This is
-/// the trace's own wash carried up from the open region's edge to the top of the
-/// screen in the phase tint — blue while the clock runs, amber while it waits on you,
-/// steel at rest, red when the link is gone — so the top third of the phone says the
-/// state before a word is read, and the panel has colour to refract. A plain fill
-/// under a fixed mask, so the colour change between phases animates as a fill does;
-/// the field itself stays static, which is what every glass surface needs to sample.
-private struct PhaseWash: View {
-    enum Edge { case top, leading }
-    var tint: Color
-    /// The edge the wash hangs from: the top under the phone's panel, the leading
-    /// edge under the iPad's column.
-    var edge: Edge = .top
-    /// How far it reaches from that edge before it has faded out.
-    var length: CGFloat
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        Rectangle()
-            .fill(tint)
-            .mask(alignment: edge == .top ? .top : .leading) {
-                LinearGradient(stops: [.init(color: .black.opacity(0.30), location: 0),
-                                       .init(color: .clear, location: 1)],
-                               startPoint: edge == .top ? .top : .leading,
-                               endPoint: edge == .top ? .bottom : .trailing)
-            }
-            .frame(width: edge == .leading ? max(0, length) : nil,
-                   height: edge == .top ? max(0, length) : nil)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .animation(Motion.state(reduceMotion), value: tint)
-            .accessibilityHidden(true)
-    }
-}
-
-extension View {
-    /// A runner action's surface: its own glass capsule where it floats on the screen
-    /// (the wide layout), a quiet ink well where it sits inside the dock — the same
-    /// fill the house uses for an inset well, and never glass on glass.
-    @ViewBuilder
-    fileprivate func runnerActionSurface(docked: Bool) -> some View {
-        if docked {
-            background(Capsule().fill(Ink.primary.opacity(0.05)))
-        } else {
-            accessibleGlass(nil, in: .capsule)
-        }
-    }
-}
-
-/// Where the stacked layout's full-bleed plot goes, measured from the layout on top
-/// of it.
-///
-/// `ForceTraceView` keeps `TraceAxis.ceilingHeadroom` above the highest load it has
-/// seen, so a pull's peak lands at 80 % of the plot's height. Solving for the plot top
-/// that puts that 80 % line exactly on the open region's upper edge keeps the curve
-/// the climber actually reaches in the clear and puts only the HEADROOM under the
-/// panel: a new peak crosses under the glass while the axis glides to make room for
-/// it — which is also the one moment the panel is unmistakably glass. The FLOOR sits
-/// on the region's lower edge, just above the controls: with it at the screen's bottom
-/// edge instead, the 0 kg line and the threshold rule ran underneath the buttons, and a
-/// dashed rule crossing the gap between two rows of capsules read as a stray line
-/// (measured on the iOS 27 sim, 2026-09-19). The canvas still runs under the controls
-/// — the fill's wash is what the capsules refract — but nothing the plot LABELS does.
-private struct BackgroundTraceGeometry {
-    /// The open region between the panel and the controls, in window coordinates.
-    var region: CGRect = .zero
-    /// The canvas — the whole window, once it has been measured.
-    var canvas: CGRect = .zero
-
-    #if DEBUG
-    /// COMPARISON AID, to be deleted with the losing variant: `-previewRunnerFloorAtEdge`
-    /// drops the plot's floor to the screen's bottom edge, so the resting line runs
-    /// beneath the buttons instead of just above them.
-    private static let floorAtEdge =
-        ProcessInfo.processInfo.arguments.contains("-previewRunnerFloorAtEdge")
-    #else
-    private static let floorAtEdge = false
-    #endif
-
-    /// The open region's upper edge in the canvas's own coordinates — where the
-    /// phase wash ends and the curve's usual range begins. Zero until measured.
-    var regionTopInCanvas: CGFloat {
-        guard canvas.height > 0, region.height > 0 else { return 0 }
-        return max(0, region.minY - canvas.minY)
-    }
-
-    /// The open region's leading edge — in the wide layout, where the glass column
-    /// ends and the wash under it fades out.
-    var regionLeadingInCanvas: CGFloat {
-        guard canvas.width > 0, region.width > 0 else { return 0 }
-        return max(0, region.minX - canvas.minX)
-    }
-
-    /// Clearance between the wide layout's plot and the screen's top and bottom edges,
-    /// so the curve does not kiss the bezel.
-    private static let wideEdgeInset: CGFloat = 24
-
-    func plot(bottomSafeInset: CGFloat, wide: Bool = false) -> ForceTraceView.PlotInsets {
-        guard canvas.height > 0, region.height > 0 else { return .card }
-        if wide {
-            // Nothing sits above or below the open region on a wide screen — the
-            // column is beside it — so the plot simply spans the region's height,
-            // and the curve's history slides under the column on its way out.
-            return ForceTraceView.PlotInsets(
-                top: max(0, region.minY - canvas.minY) + Self.wideEdgeInset,
-                bottom: max(0, canvas.maxY - region.maxY) + Self.wideEdgeInset,
-                trailing: 8)
-        }
-        let headroom = 1 - 1 / TraceAxis.ceilingHeadroom
-        let regionTop = region.minY - canvas.minY
-        let bottom = Self.floorAtEdge ? bottomSafeInset : max(0, canvas.maxY - region.maxY)
-        // top = regionTop − headroom · (height − bottom − top), solved for top.
-        let top = (regionTop - headroom * (canvas.height - bottom)) / (1 - headroom)
-        return ForceTraceView.PlotInsets(top: max(0, top), bottom: bottom, trailing: 8)
-    }
-}
-
-/// Loaded taring is useful for a static sling or mounted block, so the control confirms
-/// instead of silently refusing a meaningful reading. The phase guard — not the load —
-/// keeps taring out of a live rep; confirmation is the warning that prevents an allowed
-/// phase from zeroing a load the climber did not mean to discard.
-private struct TareButton: View {
-    @Environment(\.weightUnit) private var weightUnit
-    @Environment(DeviceStore.self) private var device
-    var session: RunnerSession
-    /// Inside the dock the button gives up its own glass — see `runnerActionSurface`.
-    var docked = false
-
-    @State private var promptedKg = 0.0
-    @State private var promptedConnectionEpoch: UInt64 = 0
-    @State private var showingConfirmation = false
-
-    var body: some View {
-        let enabled = canTareNow
-        Button {
-            // Re-check on touch-up against the live stores. A pull that starts after an
-            // unloaded touch-down must not slip through an enabled frame and zero load.
-            guard device.state.isConnected else { return }
-            switch tapDecision {
-            case .blocked:
-                return
-            case .wakeStream:
-                // Not a tare, and `wakeStream()` cannot become one. See
-                // `TareTapDecision.wakeStream`: with no live samples the load is unknown,
-                // and the frozen reading says 0 kg however loaded the gauge actually is.
-                session.wakeStream()
-            case .confirm, .tare:
-                // The rendered decision said the reading was live; confirm that against
-                // the exact clock before doing anything irreversible. See
-                // `TarePolicy.isSafeToTareNow` — this can only downgrade to a wake.
-                // Same bound the button's own mode was drawn from
-                // (`device.tareReadingMaxAge`), so the tap can never disagree with what
-                // it was shown.
-                guard TarePolicy.isSafeToTareNow(
-                    sampleAge: device.secondsSinceLastSample(),
-                    maxAgeSeconds: device.tareReadingMaxAge) else {
-                    session.wakeStream()
-                    return
-                }
-                if TarePolicy.shouldConfirm(readingKg: device.currentKg) {
-                    promptTare()
-                } else {
-                    session.tare()
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: tapDecision == .wakeStream
-                      ? "arrow.clockwise" : "arrow.counterclockwise")
-                // The label says what the tap will actually DO — "Wake" when the stream
-                // is dead, and the phase's reason while disabled (see
-                // `TarePolicy.disabledLabel`). A button reading "Tare" that restarts the
-                // stream instead would be lying about itself.
-                Text(tapDecision == .wakeStream
-                     ? String(localized: "Wake")
-                     : (TarePolicy.disabledLabel(for: session.snapshot.phase) ?? String(localized: "Tare")))
-            }
-            .font(.system(.subheadline, weight: .semibold))
-            .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
-            .runnerActionSurface(docked: docked)
-            .contentShape(.capsule)
-        }
-        .buttonStyle(PressFeedbackButtonStyle())
-        .disabled(!enabled)
-        .foregroundStyle(enabled ? Ink.primary : Ink.tertiary.opacity(0.5))
-        .accessibilityHint(tareDisabledReason
-                           ?? (tapDecision == .wakeStream
-                               ? String(localized: "Restart the reading. The gauge is connected but not sending.")
-                               : String(localized: "Zero the gauge.")))
-        .alert("Zero the gauge?", isPresented: $showingConfirmation) {
-            Button("Zero it", role: .destructive) { confirmTare() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Zero it?"))
-        }
-    }
-
-    private var tapDecision: TareTapDecision {
-        // `device.isLoadedForTare`, not `device.currentKg` — the coarse, change-guarded
-        // flag, so this computed property (read three times in `body`) does not register
-        // a dependency on a value moving at sample rate. See its doc comment on
-        // `DeviceStore` and `TarePolicy.tapDecision`.
-        TarePolicy.tapDecision(phase: session.snapshot.phase,
-                               isReadingLive: device.isReadingLive,
-                               isLoadedForTare: device.isLoadedForTare)
-    }
-
-    /// Enabled for the WAKE even in a phase that forbids taring — waking never zeroes
-    /// anything, and a dead stream mid-pull is when you most need it back.
-    private var canTareNow: Bool { tapDecision != .blocked }
-
-    private var tareDisabledReason: String? {
-        tapDecision == .blocked
-            ? TarePolicy.disabledReason(for: session.snapshot.phase)
-            : nil
-    }
-
-    private func promptTare() {
-        promptedKg = device.currentKg
-        promptedConnectionEpoch = device.connectionEpoch
-        showingConfirmation = true
-    }
-
-    private func confirmTare() {
-        switch TarePolicy.confirmationDecision(
-            promptedKg: promptedKg,
-            currentKg: device.currentKg,
-            promptedEpoch: promptedConnectionEpoch,
-            currentEpoch: device.connectionEpoch,
-            isConnected: device.state.isConnected,
-            sampleAge: device.secondsSinceLastSample(),
-            phase: session.snapshot.phase,
-            maxAgeSeconds: device.tareReadingMaxAge
-        ) {
-        case .reject:
-            // Deliberately silent. A reject means the phase moved into a pull, the link
-            // changed, or the gauge went away — and in every one of those cases the
-            // screen behind the alert has already changed to say so, including the Tare
-            // button's own label. A second alert explaining why the first one did
-            // nothing would be noise stacked on noise.
-            return
-        case .reask:
-            // The quoted number is no longer safe to authorize. Re-arm with the fresh
-            // SIGNED reading on the next runloop pass: this button is inside the alert
-            // that is dismissing right now, and setting `showingConfirmation` back to
-            // true synchronously is swallowed by that dismissal.
-            promptedKg = device.currentKg
-            promptedConnectionEpoch = device.connectionEpoch
-            Task { @MainActor in
-                await Task.yield()
-                showingConfirmation = true
-            }
-        case .tare:
-            session.tare()
-        }
-    }
-}
-
-// MARK: - Hold to end
-
-/// Ending a session takes a deliberate HOLD, not a tap plus a dialog.
-///
-/// A confirmation sheet mid-workout is two taps with chalk on your hands, and the second
-/// one is the reflex you learn to fire without reading. A hold carries the same "are you
-/// sure" in the gesture itself: the button fills while you mean it, and letting go early
-/// costs nothing. Nothing is destroyed either way — everything already done is kept.
-private struct HoldToEndButton: View {
-    var allowsScrolling = false
-    var action: () -> Void
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var progress: Double = 0
-    /// SEPARATE from `progress`, and that is the entire fix for the overlap.
-    ///
-    /// The label used to read `progress > 0`, so it changed INSIDE the 0.9 s
-    /// `withAnimation` that drives the fill — and SwiftUI cross-fades a Text whose
-    /// content changes under an animation. Two strings of different widths, both
-    /// half-opaque, sat on top of each other for the whole hold. Flipping a plain Bool
-    /// outside the transaction swaps the label instantly instead.
-    @State private var isHolding = false
-    @State private var holdTask: Task<Void, Never>?
-    @State private var firedTick = 0
-    @State private var slidOff = false
-    @State private var hitFrame: CGRect = .zero
-
-    /// Long enough to be deliberate, short enough not to feel like a punishment.
-    private static let holdSeconds: Double = 0.9
-    private static let slideSlop: CGFloat = 24
-
-    var body: some View {
-        ZStack {
-            // Reserve both titles so beginning a hold cannot reflow the action row.
-            Text("Keep holding…").hidden().accessibilityHidden(true)
-            Text("Hold to end").hidden().accessibilityHidden(true)
-            Text(isHolding ? "Keep holding…" : "Hold to end")
-                .foregroundStyle(Accent.alarm)
-                .contentTransition(.identity)
-                .animation(nil, value: isHolding)
-        }
-        .font(.system(.subheadline, weight: .semibold))
-        .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
-        .background {
-            GeometryReader { geo in
-                ZStack {
-                    Capsule().fill(Accent.alarm.opacity(0.16))
-                    Capsule()
-                        .fill(Accent.alarm.opacity(0.42))
-                        .mask(alignment: .leading) {
-                            Rectangle()
-                                .frame(width: geo.size.width * progress)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                }
-            }
-        }
-        .contentShape(.capsule)
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { hitFrame = $0 }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                .onChanged {
-                    if allowsScrolling,
-                       abs($0.translation.width) > 10 || abs($0.translation.height) > 10 {
-                        slidOff = true
-                        cancelHold()
-                    } else {
-                        let localPoint = CGPoint(x: $0.location.x - hitFrame.minX,
-                                                 y: $0.location.y - hitFrame.minY)
-                        updateHold(at: localPoint, in: hitFrame.size)
-                    }
-                }
-                .onEnded { _ in endHold() }
-        )
-        .onDisappear { endHold() }
-        .sensoryFeedback(.impact(weight: .heavy, intensity: 0.9), trigger: firedTick)
-        .accessibilityElement()
-        .accessibilityLabel("End session")
-        .accessibilityHint("Press and hold to end. Everything you've already done is kept.")
-        .accessibilityAddTraits(.isButton)
-        // VoiceOver cannot express a hold, so an activation ends it outright — the
-        // gesture is the safeguard for a thumb, not a substitute for the action.
-        .accessibilityAction { action() }
-    }
-
-    private func updateHold(at location: CGPoint, in size: CGSize) {
-        guard !slidOff else { return }
-        let bounds = CGRect(origin: .zero, size: size)
-            .insetBy(dx: -Self.slideSlop, dy: -Self.slideSlop)
-        guard bounds.contains(location) else {
-            slidOff = true
-            cancelHold()
-            return
-        }
-        beginHold()
-    }
-
-    private func endHold() {
-        cancelHold()
-        slidOff = false
-    }
-
-    private func beginHold() {
-        guard holdTask == nil else { return }
-        // OUTSIDE the animation, deliberately — see `isHolding`.
-        isHolding = true
-        // UNCONDITIONAL — deliberately not gated on `reduceMotion`, and that is a
-        // decision rather than an oversight (audit rank 28). This fill is the
-        // functional progress readout for a 0.9 s hold-to-confirm gesture — how much
-        // longer to keep holding — not decorative motion; snapping straight to a full
-        // bar under Reduce Motion would remove the one signal that the hold is
-        // registering at all, while the gesture itself still takes exactly 0.9 s
-        // either way. It also has to match `holdTask`'s real sleep, which no token
-        // can express.
-        withAnimation(.linear(duration: Self.holdSeconds)) { progress = 1 }
-        holdTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(Self.holdSeconds))
-            guard !Task.isCancelled else { return }
-            firedTick += 1
-            action()
-        }
-    }
-
-    private func cancelHold() {
-        holdTask?.cancel()
-        holdTask = nil
-        isHolding = false
-        // `Motion.state(reduceMotion)` already resolves to `Motion.reduced` when the
-        // flag is set — the ternary was redundant and produced a second, divergent,
-        // untokenised reduced-motion curve.
-        withAnimation(Motion.state(reduceMotion)) { progress = 0 }
-    }
 }

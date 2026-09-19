@@ -568,11 +568,10 @@ private struct ExportHandMark: View {
     let fingers: FingerSet
     let ink: Color
 
-    private static let lengthFactor: [CGFloat] = [0.86, 1.0, 0.94, 0.80]
     private let barWidth: CGFloat = 5
     private let gap: CGFloat = 2.5
 
-    private var barHeight: CGFloat { barWidth * 1.75 }
+    private var barHeight: CGFloat { barWidth * HandGeometry.barAspect }
 
     var body: some View {
         VStack(alignment: .leading, spacing: max(1.5, gap * 0.6)) {
@@ -600,7 +599,7 @@ private struct ExportHandMark: View {
                 shape.strokeBorder(ink.opacity(0.45), lineWidth: 1)
             }
         }
-        .frame(width: barWidth, height: barHeight * Self.lengthFactor[index])
+        .frame(width: barWidth, height: barHeight * HandGeometry.lengthFactor[index])
     }
 }
 

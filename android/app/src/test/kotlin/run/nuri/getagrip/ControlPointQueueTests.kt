@@ -16,10 +16,11 @@ import kotlin.test.assertTrue
 /// because on iOS they are private state inside `LiveProgressorClient` and the Simulator
 /// has no CoreBluetooth to drive them with.
 ///
-/// They are ALL rules that hardware taught, each one written up in the root CLAUDE.md, and
-/// splitting them behind `ControlPointTransport` is what finally makes them assertable —
-/// which is the whole reason the split exists. Every case below is a failure that actually
-/// happened on a real Progressor.
+/// They are ALL rules that hardware taught — tare integrity, the release gate, serialized
+/// untagged query replies and connection-epoch cleanup, the four AGENTS.md names as things
+/// to preserve — and splitting them behind `ControlPointTransport` is what finally makes
+/// them assertable, which is the whole reason the split exists. Every case below is a
+/// failure that actually happened on a real Progressor.
 class ControlPointQueueTests {
 
     /// **Tag-0 replies carry no echo of the command they answer, so queries are

@@ -287,10 +287,6 @@ struct SetRowView: View, Equatable {
         "\(Int((fraction * 100).rounded()))"
     }
 
-    private func weightText(_ kg: Double) -> String {
-        weightUnit.number(kg)
-    }
-
     private var moveRow: some View {
         HStack(spacing: 10) {
             moveButton(String(localized: "Move up"), systemImage: "chevron.up",
@@ -390,7 +386,7 @@ struct SetRowView: View, Equatable {
         // Since targets are stored per set now, "inherited" is no longer the question;
         // "does this one differ from its neighbours" is.
         if let band = set.targetBand {
-            parts.append(String(localized: "\(weightText(band.lowerBound))–\(weightText(band.upperBound)) \(weightUnit.symbol)"))
+            parts.append(String(localized: "\(weightUnit.number(band.lowerBound))–\(weightUnit.number(band.upperBound)) \(weightUnit.symbol)"))
         } else if percentBandsVary, let percent = set.targetPercentBand {
             parts.append(String(localized: "\(percentText(percent.lowerBound))–\(percentText(percent.upperBound)) %"))
         }
@@ -405,7 +401,7 @@ struct SetRowView: View, Equatable {
         if let hold = set.holdSeconds { parts.append(String(localized: "\(hold) second hold")) }
         if let rest = set.restSeconds { parts.append(String(localized: "\(rest) second rest")) }
         if let band = set.targetBand {
-            parts.append(String(localized: "target \(weightText(band.lowerBound)) to \(weightText(band.upperBound)) \(weightUnit.spokenName)"))
+            parts.append(String(localized: "target \(weightUnit.number(band.lowerBound)) to \(weightUnit.number(band.upperBound)) \(weightUnit.spokenName)"))
         } else if percentBandsVary, let percent = set.targetPercentBand {
             parts.append(String(localized: "target \(percentText(percent.lowerBound)) to \(percentText(percent.upperBound)) percent of your max"))
         }

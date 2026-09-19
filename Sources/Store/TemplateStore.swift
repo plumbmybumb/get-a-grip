@@ -1168,6 +1168,24 @@ final class TemplateStore {
             let oldBand: ClosedRange<Double>?
             let newBand: ClosedRange<Double>
             var id: String { routineID.uuidString + "·\(side.rawValue)·\(loPercent)–\(hiPercent)" }
+
+            /// **The move, in one sentence** — `25–30 % · now 8.0–12.0 kg · was 7.0–10.0`.
+            ///
+            /// Here rather than on either screen, because TWO report this same fact at
+            /// two moments: the impact block while a max is being entered
+            /// (`MaxesView`) and the receipt once it is saved (`MaxSaveReceipt`). Two
+            /// copies of the wording could only drift, and then the receipt would
+            /// explain a move in different words from the sheet that offered it. The
+            /// band is the house `WeightUnit.bandText`, unitless — the line states the
+            /// unit once, after the newer number.
+            func line(unit: WeightUnit) -> String {
+                let pct = String(localized: "\(Int((loPercent * 100).rounded()))–\(Int((hiPercent * 100).rounded())) %")
+                var line = String(localized: "\(pct) · now \(unit.bandText(newBand, withUnit: false)) \(unit.symbol)")
+                if let oldBand, oldBand != newBand {
+                    line += String(localized: " · was \(unit.bandText(oldBand, withUnit: false))")
+                }
+                return line
+            }
         }
 
         /// Explicit-kilogram sets on this grip, offered a proportional rescale. An

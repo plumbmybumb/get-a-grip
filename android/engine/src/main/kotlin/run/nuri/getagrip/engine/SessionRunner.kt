@@ -27,7 +27,7 @@ import kotlin.math.min
 //   - `defer` becomes `try { … } finally { … }` in the two places it is load-bearing
 //     (`receive`, `holdTick`), because in both the deferred write must happen on an
 //     early return too.
-// Integer widths follow android/CLAUDE.md: `UInt64` → `ULong`, `UInt32` → `UInt`, and
+// Integer widths follow this port's own mapping: `UInt64` → `ULong`, `UInt32` → `UInt`, and
 // Swift's `&-` is plain `-` because Kotlin's unsigned arithmetic wraps by definition.
 
 // MARK: - Phases

@@ -29,8 +29,11 @@ import Foundation
 /// is `@MainActor`, the central is created with `queue: .main`, and the delegate
 /// conformances are declared `@preconcurrency` so main-actor-isolated methods may
 /// witness CoreBluetooth's nonisolated `@objc` requirements (SE-0423). The two
-/// alternatives — plain isolated methods, or `nonisolated` + `MainActor.assumeIsolated`
-/// — DO NOT COMPILE; see CLAUDE.md before rediscovering them.
+/// alternatives DO NOT COMPILE, so don't rediscover them: plain isolated methods report
+/// "conformance ... crosses into main actor-isolated code", and `nonisolated` methods
+/// wrapping their bodies in `MainActor.assumeIsolated` report "sending 'peripheral' risks
+/// causing data races" — passing a non-Sendable `CBPeripheral` into the closure IS the
+/// boundary crossing the checker rejects.
 ///
 /// Protocol knowledge ported from hangtime-grip-connect (BSD-2-Clause, © 2024
 /// Stevie-Ray Hartog, https://github.com/Stevie-Ray/hangtime-grip-connect).
@@ -392,6 +395,12 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     private func beginStartSequence(cause: StreamStartCause) {
         let payloads = profile.streamStartPayloads
         let delay = profile.startPayloadDelaySeconds
+        // CAPTURED, like every other deadline on this client. The sleep can outlive the
+        // link it was started for, and a task belonging to a connection that is gone must
+        // neither write into the next one nor clear the slot the next one's sequence
+        // holds — clearing it out of turn is what lets a later start be refused as one
+        // already running, or run twice.
+        let generation = self.generation
         startSequenceTask = Task { [weak self] in
             for (index, payload) in payloads.enumerated() {
                 if index > 0 {
@@ -401,10 +410,12 @@ final class GattGaugeClient: NSObject, ProgressorClient {
                         return   // cancelled with the link; `clearLinkState` clears the slot
                     }
                 }
-                guard !Task.isCancelled, let self, self.state.isConnected else { return }
+                guard !Task.isCancelled, let self,
+                      self.generation == generation, self.state.isConnected else { return }
                 self.enqueueStart(payload, cause: index == payloads.count - 1 ? cause : nil)
             }
-            self?.startSequenceTask = nil
+            guard let self, self.generation == generation else { return }
+            self.startSequenceTask = nil
         }
     }
 

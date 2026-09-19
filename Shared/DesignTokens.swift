@@ -78,6 +78,18 @@ extension Font {
 /// a training app actually has to say at arm's length, mid-hang, without reading a
 /// word: *you are pulling hard enough* (bleu), and *something is wrong* (red).
 enum Accent {
+    /// **The hues as `RRGGBB` text**, for the surfaces that need the string rather than
+    /// the `Color`: `WatchFacePalette` computes its contrast from the hex and hands the
+    /// watch a string to turn back into a colour, so it cannot take a `Color` token. One
+    /// literal per hue, read from here by both, is what stops the face and the app from
+    /// drifting into two different blues while claiming to be one signal.
+    enum Hex {
+        /// Bleu de France, light scheme — `Accent.bleu`'s own value.
+        static let bleu = "1E6FC4"
+        /// The alarm red, light scheme — `Accent.alarm` and `Accent.alarmFlat`.
+        static let alarm = "C62828"
+    }
+
     /// The INTERACTIVE accent — tab tint, buttons, toggles, selection. Near-black in
     /// light mode, near-white in dark: it reads as ink rather than as a colour.
     static let graphite = Color.adaptive(Color(hex: "2B3038"), Color(hex: "E7EBF1"))
@@ -87,7 +99,7 @@ enum Accent {
     /// Bleu de France — the app's identity hue and the LIVE-FORCE signal: the force
     /// trace while engaged, the ring during a work phase, the "pull now" prompt.
     /// French name, French blue.
-    static let bleu = Color.adaptive(Color(hex: "1E6FC4"), Color(hex: "5AA9F0"))
+    static let bleu = Color.adaptive(Color(hex: Hex.bleu), Color(hex: "5AA9F0"))
     static let bleuFlat = Color(hex: "318CE7")
 
     /// Moss — the LIGHT-INTENSITY signal, and green's only appearance in the palette.
@@ -99,8 +111,8 @@ enum Accent {
 
     /// RESERVED for alarm: dropout below threshold mid-rep, destructive actions,
     /// connection lost. Never chrome — the moment red is decorative it stops working.
-    static let alarm = Color.adaptive(Color(hex: "C62828"), Color(hex: "F0574C"))
-    static let alarmFlat = Color(hex: "C62828")
+    static let alarm = Color.adaptive(Color(hex: Hex.alarm), Color(hex: "F0574C"))
+    static let alarmFlat = Color(hex: Hex.alarm)
 }
 
 /// Runner state → hue. The one place the whole app agrees on what a phase looks

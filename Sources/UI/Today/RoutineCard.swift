@@ -189,7 +189,7 @@ struct RoutineCard: View {
     /// nothing resolves (no targets anywhere, or kilogram bands with no max on file —
     /// the identity state, and his own daily routine's state); moss at or under 30 %
     /// of max; the armed orange between; alarm red from 80 % up. Two palette rules are
-    /// SPENT here deliberately, recorded in CLAUDE.md: green's first appearance, and
+    /// SPENT here deliberately: green's first appearance, and
     /// red at rest — defensible because a near-max prescription is attention-family
     /// information about somebody's fingers, not chrome. Colour is reinforcement, not
     /// the only carrier: the plan row SPEAKS the percentage, and greyscale simply

@@ -95,8 +95,7 @@ import run.nuri.getagrip.ui.tour.tourAnchor
 /// still "the fewest that can carry the ritual".
 ///
 /// Material Symbols are not the SF Symbols
-/// the iOS app names, so each one is a translation rather than a match, and the mapping is
-/// recorded in `android/CLAUDE.md`:
+/// the iOS app names, so each one is a translation rather than a match. The mapping:
 ///
 /// - `figure.climbing` maps to our original `ClimbingIcon`: a climber on a rope.
 ///   The former Hiking substitute depicted the wrong activity.
@@ -216,7 +215,7 @@ fun RootTabView() {
         return
     }
 
-    // THE BUILDER IS A FULL-SCREEN COVER, never a sheet and never a push (root CLAUDE.md):
+    // THE BUILDER IS A FULL-SCREEN COVER, never a sheet and never a push:
     // nothing touches the store until Save, Cancel IS undo, and a back chevron would promise
     // save-as-you-go. Hosted here so it covers the tab bar like the runner does.
     var building by remember { mutableStateOf<BuilderMode?>(null) }

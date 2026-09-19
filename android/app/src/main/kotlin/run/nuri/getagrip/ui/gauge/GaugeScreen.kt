@@ -555,7 +555,8 @@ private fun WaitingForGauge() {
 // MARK: - Previews
 
 /// A preview store: the mock client is the only one that needs no Context, which is exactly
-/// why it exists — see "Mock vs demo mode" in the root CLAUDE.md.
+/// why it exists. It is always compiled in, never behind a debug flag, so the gauge's own
+/// "Try demo mode" reaches the same client a preview does.
 @Composable
 private fun previewStore(): DeviceStore {
     val scope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }

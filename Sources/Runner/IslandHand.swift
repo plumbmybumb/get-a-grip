@@ -55,9 +55,10 @@ struct IslandHand: View {
     /// rather than splaying past its edges.
     private static let barWidth: CGFloat = 22
     private static let barGap: CGFloat = 8
-    /// A hand's proportions, INDEX → LITTLE. Mirrored along with the fingers, so the
-    /// middle finger is longest whichever way round the hand is drawn.
-    private static let lengthFactor: [CGFloat] = [0.86, 1.0, 0.94, 0.80]
+    /// The bar the whole house derives its finger from: 22 × 38 against the hardware,
+    /// which is `HandGeometry.barAspect` rounded. These two stay MEASURED numbers
+    /// because this hand is drawn against a physical cutout; every other mark sizes
+    /// itself from the ratio.
     private static let baseLength: CGFloat = 38
     /// The clearance every part of the hand keeps from the island — fingers and thumb
     /// alike, so the whole drawing reads as one family of detached shapes.
@@ -185,7 +186,7 @@ struct IslandHand: View {
     private func finger(slot: Int, originX: CGFloat) -> some View {
         let anatomical = mirrored ? 3 - slot : slot
         let on = grip.fingers.contains(FingerSet.allFingers[anatomical])
-        let length = Self.baseLength * Self.lengthFactor[anatomical]
+        let length = Self.baseLength * HandGeometry.lengthFactor[anatomical]
 
         return RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
             // Pure black matches the hardware at rest; orange names an actual grip change.

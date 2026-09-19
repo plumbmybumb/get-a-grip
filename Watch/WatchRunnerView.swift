@@ -229,29 +229,27 @@ struct WatchRunnerView: View {
         }
     }
 
+    /// The next hand replaces the word during a rest — the wrist has room for one
+    /// line, and which hand comes next is what it is for. Everything else is the
+    /// phone's ladder, shared: `RunnerPromptWords`.
     private func promptText(_ session: RunnerSession) -> String {
         let snapshot = session.snapshot
         if case .resting = snapshot.phase, let nextHand = snapshot.nextRestHandPrompt { return nextHand }
-        switch snapshot.phase {
-        case .idle: return device.state.isConnected || timerOnly ? String(localized: "GET READY") : String(localized: "CONNECTING")
-        case .leadIn: return String(localized: "GET READY")
-        case .armed: return String(localized: "\(snapshot.side?.prompt ?? "") — PULL")
-        case .working:
-            if snapshot.isDropped { return String(localized: "RE-GRIP") }
-            if snapshot.isOverTarget { return String(localized: "EASE OFF") }
-            return snapshot.side?.prompt ?? ""
-        case .releasing: return String(localized: "LET GO")
-        case .resting: return snapshot.isSetBreak ? String(localized: "SET BREAK") : String(localized: "REST")
-        case .paused: return String(localized: "PAUSED")
-        case .finished: return String(localized: "DONE")
-        }
+        return RunnerPromptWords.word(phase: snapshot.phase,
+                                      side: snapshot.side,
+                                      isConnected: device.state.isConnected,
+                                      timerOnly: timerOnly,
+                                      isDropped: snapshot.isDropped,
+                                      isOverTarget: snapshot.isOverTarget,
+                                      isSetBreak: snapshot.isSetBreak)
     }
 
-    /// Which pull you are ON, not how many you have completed — the phone's rule.
+    /// Which pull you are ON, not how many you have completed — the phone's rule, and
+    /// the phone's arithmetic (`RunnerSnapshot.pullPosition`).
     private func positionLine(_ session: RunnerSession) -> String {
         let snapshot = session.snapshot
         let planned = snapshot.plannedRepCount
-        let position = min(snapshot.completedRepCount + 1, planned)
+        let position = snapshot.pullPosition
         guard let set = snapshot.setNumber else { return String(localized: "Pull \(position) of \(planned)") }
         return String(localized: "Set \(set) of \(snapshot.setCount) · Pull \(position) of \(planned)")
     }

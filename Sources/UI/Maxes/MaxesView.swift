@@ -185,7 +185,7 @@ struct MaxesView: View {
         // with its content pushed over.
         .padding(.leading, 22)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Earlier max for \(grip.spoken). \(weightText(record.kg)) \(weightUnit.spokenName), recorded \(when(record))."))
+        .accessibilityLabel(String(localized: "Earlier max for \(grip.spoken). \(weightUnit.number(record.kg)) \(weightUnit.spokenName), recorded \(when(record))."))
     }
 
     private func weight(_ kg: Double, prominent: Bool) -> some View {
@@ -312,7 +312,7 @@ struct MaxesView: View {
             ? "" : String(localized: ", \(history.current.side.name.lowercased()) hand")
         let provenance = history.current.source == .measured
             ? String(localized: "measured ") : String(localized: "recorded ")
-        var sentence = String(localized: "\(history.grip.spoken)\(hand). Max \(weightText(history.current.kg)) \(weightUnit.spokenName), \(provenance)\(when(history.current)).")
+        var sentence = String(localized: "\(history.grip.spoken)\(hand). Max \(weightUnit.number(history.current.kg)) \(weightUnit.spokenName), \(provenance)\(when(history.current)).")
         if !history.earlier.isEmpty {
             let count = history.earlier.count
             sentence += String(localized: " \(count) earlier \(count == 1 ? String(localized: "max") : String(localized: "maxes")).")
@@ -322,10 +322,6 @@ struct MaxesView: View {
 
     private func when(_ record: MaxRecord) -> String {
         record.recordedAt.formatted(.relative(presentation: .named))
-    }
-
-    private func weightText(_ kg: Double) -> String {
-        weightUnit.number(kg)
     }
 }
 
@@ -485,7 +481,7 @@ struct MaxEntrySheet: View {
         VStack(alignment: .leading, spacing: 18) {
             block(String(localized: "SAVED")) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(weightText(kg))
+                    Text(weightUnit.number(kg))
                         .font(.system(.largeTitle, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(Ink.primary)
@@ -503,7 +499,7 @@ struct MaxEntrySheet: View {
                                 Text(move.side == .both ? move.routineName : "\(move.routineName) · \(move.side.name)")
                                     .font(.system(.subheadline, weight: .semibold))
                                     .foregroundStyle(Ink.primary)
-                                Text(percentLine(move))
+                                Text(move.line(unit: weightUnit))
                                     .font(.system(.footnote))
                                     .monospacedDigit()
                                     .foregroundStyle(Ink.secondary)
@@ -526,7 +522,7 @@ struct MaxEntrySheet: View {
                                     .font(.system(.subheadline, weight: .semibold))
                                     .foregroundStyle(Ink.primary)
                                 ForEach(offer.moves, id: \.self) { move in
-                                    Text(String(localized: "\(bandText(move.oldBand)) \(weightUnit.symbol)  →  \(bandText(move.newBand)) \(weightUnit.symbol)"))
+                                    Text(String(localized: "\(weightUnit.bandText(move.oldBand, withUnit: false)) \(weightUnit.symbol)  →  \(weightUnit.bandText(move.newBand, withUnit: false)) \(weightUnit.symbol)"))
                                         .font(.system(.footnote))
                                         .monospacedDigit()
                                         .foregroundStyle(Ink.secondary)
@@ -563,19 +559,6 @@ struct MaxEntrySheet: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func percentLine(_ move: TemplateStore.MaxImpact.PercentMove) -> String {
-        let pct = String(localized: "\(Int((move.loPercent * 100).rounded()))–\(Int((move.hiPercent * 100).rounded())) %")
-        var line = String(localized: "\(pct) · now \(bandText(move.newBand)) \(weightUnit.symbol)")
-        if let old = move.oldBand, old != move.newBand {
-            line += String(localized: " · was \(bandText(old))")
-        }
-        return line
-    }
-
-    private func bandText(_ band: ClosedRange<Double>) -> String {
-        String(localized: "\(weightText(band.lowerBound))–\(weightText(band.upperBound))")
-    }
-
     @ViewBuilder
     private func block<Content: View>(_ label: String,
                                       @ViewBuilder content: () -> Content) -> some View {
@@ -594,7 +577,7 @@ struct MaxEntrySheet: View {
     private var bandCaption: String? {
         guard kg > 0 else { return String(localized: "Enter a max above zero to save it.") }
         guard let band = PlanMath.suggestedBand(maxKg: kg) else { return nil }
-        return String(localized: "20–30 % of that is \(weightText(band.lowerBound))–\(weightText(band.upperBound)) \(weightUnit.symbol)")
+        return String(localized: "20–30 % of that is \(weightUnit.number(band.lowerBound))–\(weightUnit.number(band.upperBound)) \(weightUnit.symbol)")
     }
 
     /// Append, never edit — so the sheet says so before you tap Save rather than leaving
@@ -605,7 +588,7 @@ struct MaxEntrySheet: View {
         // SAME hand, and quoting the other hand's number here would read as a
         // contradiction of what you are about to type.
         if let existing = templates.currentMaxes[MaxTable.key(grip: grip.key, side: side)] {
-            Text(String(localized: "Your current max on this grip\(side == .both ? "" : String(localized: " for that hand")) is \(weightText(existing.kg)) \(weightUnit.symbol), recorded \(existing.recordedAt.formatted(.relative(presentation: .named))). Saving adds a new one and keeps the old as history."))
+            Text(String(localized: "Your current max on this grip\(side == .both ? "" : String(localized: " for that hand")) is \(weightUnit.number(existing.kg)) \(weightUnit.symbol), recorded \(existing.recordedAt.formatted(.relative(presentation: .named))). Saving adds a new one and keeps the old as history."))
                 .font(.system(.footnote))
                 .foregroundStyle(Ink.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -653,10 +636,6 @@ struct MaxEntrySheet: View {
             // The sheet becomes the receipt: what followed, and what is on offer.
             withAnimation(Motion.state(reduceMotion)) { impact = computed }
         }
-    }
-
-    private func weightText(_ value: Double) -> String {
-        weightUnit.number(value)
     }
 }
 

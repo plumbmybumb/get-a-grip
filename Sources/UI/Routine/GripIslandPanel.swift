@@ -188,8 +188,6 @@ private struct IslandHandPicker: View {
     /// of them is under the floor.
     private static let pitch: CGFloat = 44
     private static let baseLength: CGFloat = 46
-    /// A hand's proportions, index → little. The same array the runner uses.
-    private static let lengthFactor: [CGFloat] = [0.86, 1.0, 0.94, 0.80]
     /// The clearance every part of the hand keeps from the palm.
     private static let gap: CGFloat = 6
 
@@ -233,7 +231,7 @@ private struct IslandHandPicker: View {
 
     private func finger(_ index: Int) -> some View {
         let isOn = fingers.contains(FingerSet.allFingers[index])
-        let length = Self.baseLength * Self.lengthFactor[index]
+        let length = Self.baseLength * HandGeometry.lengthFactor[index]
         let centreX = mid - Self.handWidth / 2 + Self.barWidth / 2 + CGFloat(index) * Self.pitch
 
         return Button {

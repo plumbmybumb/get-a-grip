@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.Density
 
 /// Material 3 wearing the app's own palette. Dynamic colour is deliberately not offered:
 /// the palette IS the identity, and the two signal hues only mean something because
-/// graphite stays ink (root CLAUDE.md, "Design system").
+/// graphite stays ink: it is the INTERACTIVE colour, never a hue.
 @Composable
 fun GetAGripTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -87,5 +87,5 @@ fun GetAGripTheme(
 
 /// The app-wide font-scale ceiling. 2.0 is where AOSP's own accessibility slider tops out and
 /// what the pinned phone reaches; iOS's `.accessibility3` is the same idea one notch below its
-/// own maximum. Documented in `android/CLAUDE.md`.
+/// own maximum.
 const val MAX_FONT_SCALE = 2.0f

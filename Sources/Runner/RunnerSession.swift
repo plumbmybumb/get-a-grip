@@ -603,7 +603,7 @@ final class RunnerSession {
                                           side: snapshot.side ?? .both,
                                           phase: activityPhase,
                                           setNumber: snapshot.setNumber ?? 1,
-                                          repPosition: repPosition,
+                                          repPosition: snapshot.pullPosition,
                                           weightUnit: weightUnit)
         // **Compared WITHOUT `endsAt`, and that is the whole point.** `endsAt` is
         // `now + secondsRemaining`, so it drifts by fractions of a second on every one of
@@ -630,13 +630,6 @@ final class RunnerSession {
         var weightUnit: WeightUnit
     }
 
-    /// Which pull you are ON. Floored at 1: a card reading "Pull 0 of 12" says the
-    /// session has not started, and by the time anyone can see it, it has.
-    private var repPosition: Int {
-        guard snapshot.plannedRepCount > 0 else { return 1 }
-        return max(1, min(snapshot.completedRepCount + 1, snapshot.plannedRepCount))
-    }
-
     private func activityState(grip: GripSpec) -> SessionActivity.ContentState {
         let phase = activityPhase
         // ARMED runs no clock — it waits on you, with no timeout, by design. So the
@@ -649,7 +642,7 @@ final class RunnerSession {
             side: snapshot.side ?? .both,
             phase: phase,
             setNumber: snapshot.setNumber ?? 1,
-            repPosition: repPosition,
+            repPosition: snapshot.pullPosition,
             targetLoKg: snapshot.targetBand?.lowerBound,
             targetHiKg: snapshot.targetBand?.upperBound,
             // An ABSOLUTE deadline, recomputed from the same countdown the screen shows.
@@ -747,4 +740,17 @@ struct RunnerSnapshot: Equatable {
 
     /// Whole seconds on whichever clock is running.
     var secondsShown = 0
+
+    /// **Which pull you are ON, not how many you have completed.**
+    ///
+    /// ONE definition, because five readouts say this same sentence — the runner's
+    /// counter row, the rest focus, the watch, the Live Activity and the VoiceOver
+    /// label — and they must never disagree with each other or with "Set 6 of 6".
+    ///
+    /// Clamped at both ends, and both ends were real bugs. Recorded reps include
+    /// SKIPPED ones, so an unclamped `completed + 1` ran past the plan and claimed
+    /// "pull 37 of 36" — a position can never exceed the plan it came from. Floored at
+    /// 1 because "Pull 0 of 12" says a session has not started, and by the time anyone
+    /// can read it, it has.
+    var pullPosition: Int { max(1, min(completedRepCount + 1, plannedRepCount)) }
 }

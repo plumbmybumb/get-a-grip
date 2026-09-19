@@ -142,8 +142,8 @@ data class TourStep(
 
 // MARK: - The script
 
-/// TRANSLATION NOTE: every list here is a `get()`, not a stored `val`, for the reason
-/// `android/CLAUDE.md` states about display names — a top-level `val` initialises once per
+/// TRANSLATION NOTE: every list here is a `get()`, not a stored `val`, for the same reason
+/// the display names are — a top-level `val` initialises once per
 /// process, so a translated sentence baked in at construction keeps the language it was born
 /// in after the phone's language changes under a running process.
 object TourScript {

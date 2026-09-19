@@ -42,16 +42,14 @@ struct EdgeMark: View {
     /// Scales with the title it sits beside; the declared size is the design size.
     @ScaledMetric(relativeTo: .title2) private var barWidth: CGFloat = 5.5
 
-    /// A HAND's proportions — `FingerGlyph.lengthFactor`, verbatim.
-    private static let lengthFactor: [CGFloat] = [0.86, 1.0, 0.94, 0.80]
-
     private var gap: CGFloat { barWidth * 0.55 }
-    /// 2.2×, deliberately more elongated than `FingerGlyph`'s 1.75: at this mark's
-    /// small size the glyph's ratio rounds the bars into DOTS — and four filled dots
-    /// one row above the session dots is the "circles all the way down" collision the
-    /// shape vocabulary exists to prevent. Elongation is what keeps a bar a bar when
-    /// the drawing shrinks; the icon renders big enough never to need it.
-    private var tallestBar: CGFloat { barWidth * 2.2 }
+    /// **A DELIBERATE departure from `HandGeometry.barAspect`**, not a stale copy of it:
+    /// at this mark's small size the house ratio rounds the bars into DOTS — and four
+    /// filled dots one row above the session dots is the "circles all the way down"
+    /// collision the shape vocabulary exists to prevent. Elongation is what keeps a bar
+    /// a bar when the drawing shrinks; the icon renders big enough never to need it.
+    private static let smallMarkAspect: CGFloat = 2.2
+    private var tallestBar: CGFloat { barWidth * Self.smallMarkAspect }
     private var handWidth: CGFloat { barWidth * 4 + gap * 3 }
 
     var body: some View {
@@ -92,7 +90,7 @@ struct EdgeMark: View {
                 shape.strokeBorder(Ink.tertiary, lineWidth: 1)
             }
         }
-        .frame(width: barWidth, height: tallestBar * Self.lengthFactor[index])
+        .frame(width: barWidth, height: tallestBar * HandGeometry.lengthFactor[index])
     }
 }
 

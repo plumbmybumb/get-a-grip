@@ -149,8 +149,8 @@ struct RoutineShareSheet: View {
 
     /// `prominent` picks the ink: the INVERSE ink is correct only over
     /// `.glassProminent`'s opaque graphite fill — on plain glass it rendered white on
-    /// the light slate field, the exact white-on-white trap CLAUDE.md records, one
-    /// colour scheme over.
+    /// the light slate field — the same white-on-white trap `Accent.graphite` sets for
+    /// any fill that does not name its own label colour, one colour scheme over.
     private func actionLabel(_ title: String, systemImage: String?,
                              prominent: Bool) -> some View {
         HStack(spacing: 8) {

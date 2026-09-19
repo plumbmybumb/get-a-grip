@@ -302,9 +302,20 @@ final class DeviceStore {
     }
 
     /// `-mockDevice` is passed by `./build.sh run`, since a simulator build can never
-    /// reach real hardware.
+    /// reach real hardware. DEBUG only, exactly like `-mockProfile` below: a shipped
+    /// build must not be switchable to a scripted gauge by a launch argument, where a
+    /// session would record loads nobody pulled.
+    ///
+    /// This gates the ARGUMENT, never the mock: `MockProgressorClient` stays compiled
+    /// into every configuration, because the gauge's own "Try demo mode"
+    /// (`useMockDevice(_:)`) is how anyone without hardware — App Review included —
+    /// gets past a screen that would otherwise never connect.
     static var mockRequestedAtLaunch: Bool {
-        ProcessInfo.processInfo.arguments.contains("-mockDevice")
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-mockDevice")
+        #else
+        return false
+        #endif
     }
 
     /// `-mockProfile shaky` (or `weak`, `idle`) scripts the demo gauge for a headless

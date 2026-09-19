@@ -101,7 +101,7 @@ struct MaxSaveReceiptView: View {
                                 .font(.footnote)
                                 .foregroundStyle(Ink.secondary)
                         }
-                        Text(percentLine(item.move))
+                        Text(item.move.line(unit: weightUnit))
                             .font(.footnote)
                             .monospacedDigit()
                             .foregroundStyle(Ink.secondary)
@@ -128,7 +128,7 @@ struct MaxSaveReceiptView: View {
                             .font(.system(.subheadline, weight: .semibold))
                             .foregroundStyle(Ink.primary)
                         ForEach(routine.moves, id: \.self) { move in
-                            Text(String(localized: "\(bandText(move.oldBand)) \(weightUnit.symbol)  →  \(bandText(move.newBand)) \(weightUnit.symbol)"))
+                            Text(String(localized: "\(weightUnit.bandText(move.oldBand, withUnit: false)) \(weightUnit.symbol)  →  \(weightUnit.bandText(move.newBand, withUnit: false)) \(weightUnit.symbol)"))
                                 .font(.footnote)
                                 .monospacedDigit()
                                 .foregroundStyle(Ink.secondary)
@@ -166,18 +166,5 @@ struct MaxSaveReceiptView: View {
                 }
             }
         }
-    }
-
-    private func percentLine(_ move: TemplateStore.MaxImpact.PercentMove) -> String {
-        let pct = String(localized: "\(Int((move.loPercent * 100).rounded()))–\(Int((move.hiPercent * 100).rounded())) %")
-        var line = String(localized: "\(pct) · now \(bandText(move.newBand)) \(weightUnit.symbol)")
-        if let old = move.oldBand, old != move.newBand {
-            line += String(localized: " · was \(bandText(old))")
-        }
-        return line
-    }
-
-    private func bandText(_ band: ClosedRange<Double>) -> String {
-        String(localized: "\(weightUnit.number(band.lowerBound))–\(weightUnit.number(band.upperBound))")
     }
 }

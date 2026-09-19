@@ -210,8 +210,8 @@ struct ForceTraceView: View {
         // ONE long-lived watcher for the view's whole life, not one per sample. The
         // previous `.task(id: newestTime)` tore down and reallocated a ~6 s sleep Task
         // on every rendered sample — i.e. at display rate for a 21-minute session — the
-        // exact anti-pattern CLAUDE.md already names for the draft stash ("COALESCES;
-        // it does not cancel-and-restart"). A fresh sample needs none of that: it just
+        // exact anti-pattern the builder's draft stash already avoids by COALESCING
+        // rather than cancelling and restarting. A fresh sample needs none of that: it just
         // has to stop matching `expiredNewestTime`, which the render-time comparison
         // above already does for free. The watcher's only job is the opposite
         // direction — noticing when nothing is left to draw.

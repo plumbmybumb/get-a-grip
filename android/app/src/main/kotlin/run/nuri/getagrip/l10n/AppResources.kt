@@ -26,7 +26,7 @@ object AppResources {
 
 /// A counted string, off the composition. `count` selects the plural form and is also the
 /// first format argument, which is how every counted key in the catalog is written
-/// (`%d missed`) — see the plural rules in the root `CLAUDE.md`.
+/// (`%d missed`).
 ///
 /// With no resources (a JVM unit test, or before `Application.onCreate`) this degrades to
 /// the English key formatted with its arguments, exactly as `L10n.tr` does.

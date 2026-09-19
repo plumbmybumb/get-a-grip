@@ -16,7 +16,7 @@ import run.nuri.getagrip.ui.theme.mineralField
 
 /// **CONTRAST IS MEASURED, NEVER EYEBALLED.**
 ///
-/// That rule is in the root `CLAUDE.md` because dark mode has now hidden two real failures
+/// The rule is written down because dark mode has now hidden two real failures
 /// from a careful eye on the iOS app — a white-on-white primary button, and a routine card
 /// whose rep counts sat at 3.7:1 while its hollow rings sat at 2.1:1. The method there is
 /// screenshot pixels; this is the same arithmetic run against the palette's own literals, in

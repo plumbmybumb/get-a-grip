@@ -92,7 +92,7 @@ struct RunnerRestFocusSummary: View {
     }
 
     private var pullCount: some View {
-        let position = min(snapshot.completedRepCount + 1, snapshot.plannedRepCount)
+        let position = snapshot.pullPosition
         return count(label: String(localized: "Pull"), current: position,
                      total: snapshot.plannedRepCount,
                      spoken: String(localized: "Pull \(position) of \(snapshot.plannedRepCount)"),

@@ -57,9 +57,6 @@ struct FingerPips: View {
     /// drawing can never disagree with the token.
     private static let names = [String(localized: "Index"), String(localized: "Middle"),
                                  String(localized: "Ring"), String(localized: "Little")]
-    /// A hand's proportions, not a bar chart's. Applied to the DRAWN bar only.
-    private static let heightFactor: [CGFloat] = [0.86, 1.0, 0.94, 0.80]
-
     var body: some View {
         VStack(alignment: .leading, spacing: showsName ? 8 : 6) {
             // The canonical name, live: the same string every other surface in the app
@@ -130,7 +127,9 @@ struct FingerPips: View {
                                 .strokeBorder(Ink.tertiary.opacity(0.45), lineWidth: 1)
                         }
                     }
-                    .frame(width: width, height: height * Self.heightFactor[index])
+                    // A hand's proportions, not a bar chart's (`HandGeometry`).
+                    // Applied to the DRAWN bar only — the hit box stays square.
+                    .frame(width: width, height: height * HandGeometry.lengthFactor[index])
             }
             .frame(width: hitWidth, height: height)
             .contentShape(.rect)

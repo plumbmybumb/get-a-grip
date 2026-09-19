@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 /// There is not much pure logic in a tab bar, which is exactly why this is worth pinning: the
 /// icons and their ORDER are an identity decision that a stray import can change silently, and
 /// nothing in a build failure would say so. The mapping from the SF Symbols the iOS app names
-/// is recorded on `Tab` and in `android/CLAUDE.md`.
+/// is recorded on `Tab`, next to the icons themselves.
 class TabIconTests {
 
     /// **Order is the tab bar's contract**, and it is not only cosmetic: `TourStep.tab` is an

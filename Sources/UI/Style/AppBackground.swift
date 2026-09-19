@@ -108,26 +108,35 @@ struct AppBackground: View {
 /// pressed paper/stone rather than the dusty speckle a single white-noise pass gives.
 /// Generated once with CoreImage; the grain TILES (sharp at any size, ~256KB), the
 /// mottle is a stretched sheet (blur can't tile without seaming).
+///
+/// **Nothing here force-unwraps, and the fallback is an EMPTY image.** These are lazy
+/// `static let`s, so the render runs inside whichever screen happens to touch the
+/// background first — and CoreImage can legitimately return nothing under memory
+/// pressure. A trap there would take the app down while drawing a texture; an empty
+/// `UIImage` simply omits the layer, leaving the mesh, the highlight and the vignette,
+/// which is a background nobody would notice was one short.
 @MainActor
 private enum SlateTexture {
     /// 1 texel = 1 DEVICE PIXEL, so fine grain actually reads as fine rather than as
     /// a slightly blurred picture of a texture.
     private static var pixelScale: CGFloat { max(2, UITraitCollection.current.displayScale) }
 
-    private static func gray(_ image: CIImage, alpha: CGFloat) -> CIImage {
+    private static func gray(_ image: CIImage, alpha: CGFloat) -> CIImage? {
         let mono = CIFilter.colorControls()
         mono.inputImage = image
         mono.saturation = 0
         let fade = CIFilter.colorMatrix()
         fade.inputImage = mono.outputImage
         fade.aVector = CIVector(x: 0, y: 0, z: 0, w: alpha)
-        return fade.outputImage!
+        return fade.outputImage
     }
 
     static let grain: UIImage = {
         let side: CGFloat = 256
         let rect = CGRect(x: 0, y: 0, width: side, height: side)
-        let noise = CIFilter.randomGenerator().outputImage!.cropped(to: rect)
+        guard let noise = CIFilter.randomGenerator().outputImage?.cropped(to: rect) else {
+            return UIImage()
+        }
         // Two octaves: a sharp pass plus a half-pixel-blurred one. Pure white noise
         // alone reads as digital speckle; the softer companion gives it the slight
         // irregularity of a pressed surface.
@@ -136,13 +145,14 @@ private enum SlateTexture {
         let composite = CIFilter.sourceOverCompositing()
         composite.inputImage = fine
         composite.backgroundImage = soft
-        let cg = CIContext().createCGImage(composite.outputImage!.cropped(to: rect), from: rect)!
+        guard let blended = composite.outputImage?.cropped(to: rect),
+              let cg = CIContext().createCGImage(blended, from: rect) else { return UIImage() }
         return UIImage(cgImage: cg, scale: pixelScale, orientation: .up)
     }()
 
     static let mottle: UIImage = {
         let rect = CGRect(x: 0, y: 0, width: 320, height: 660)
-        let noise = CIFilter.randomGenerator().outputImage!
+        guard let noise = CIFilter.randomGenerator().outputImage else { return UIImage() }
         let clouds = gray(
             noise
                 .transformed(by: CGAffineTransform(scaleX: 14, y: 14))
@@ -151,7 +161,9 @@ private enum SlateTexture {
                 .cropped(to: rect),
             alpha: 0.075
         )
-        let cg = CIContext().createCGImage(clouds, from: rect)!
+        guard let clouds, let cg = CIContext().createCGImage(clouds, from: rect) else {
+            return UIImage()
+        }
         return UIImage(cgImage: cg, scale: 1, orientation: .up)
     }()
 }
