@@ -8,6 +8,8 @@ import SwiftUI
 struct RunnerRestFocusSummary: View {
     let snapshot: RunnerSnapshot
     let showsGlyph: Bool
+    /// The wide runner draws the numeral larger, like the rest of its identity block.
+    var scale: CGFloat = 1
     @Environment(\.weightUnit) private var weightUnit
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -84,7 +86,7 @@ struct RunnerRestFocusSummary: View {
     private var countdown: some View {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
             Text("\(snapshot.secondsShown)")
-                .font(.system(size: numeralSize, weight: .thin))
+                .font(.system(size: numeralSize * scale, weight: .thin))
                 .displayTracking(numeralSize)
                 .monospacedDigit()
                 .lineLimit(1)

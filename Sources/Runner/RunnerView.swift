@@ -32,9 +32,13 @@ struct RunnerView: View {
     /// Size CLASS, never the idiom — see `live(_:)`.
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    /// The two-column layout's ceiling. Wider than this and the graph is a metre from
-    /// the numbers it explains.
-    private static let wideWidth: CGFloat = 1000
+    /// The wide layout's ceiling: the graph runs the full width underneath the numbers,
+    /// so it can use nearly all of a 13-inch screen; past this the far end of the
+    /// trace is a long way from the readout it explains.
+    private static let wideWidth: CGFloat = 1180
+    /// How much larger the identity block draws in the wide layout — the numbers,
+    /// the hand word and the grip picture, read from a bench.
+    private static let wideScale: CGFloat = 1.6
 
     @State private var session: RunnerSession?
     /// Whether the grip hangs off the Dynamic Island — which is a fact about the DEVICE,
@@ -49,6 +53,10 @@ struct RunnerView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 76
     @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 22
     @ScaledMetric(relativeTo: .largeTitle) private var dialDiameter: CGFloat = 240
+    /// The prompt's and the grip name's base sizes — scaled up with the rest of the
+    /// identity block in the wide layout, where the room is real.
+    @ScaledMetric(relativeTo: .largeTitle) private var promptSize: CGFloat = 34
+    @ScaledMetric(relativeTo: .subheadline) private var nameSize: CGFloat = 15
 
     var body: some View {
         Group {
@@ -307,30 +315,99 @@ struct RunnerView: View {
         }
     }
 
-    /// Two columns for a wide window: the words and numbers read at a distance on the
-    /// left, at exactly the phone's column width so nothing is re-measured, with the
-    /// controls under them; the graph — or the timer dial — takes the whole height on
-    /// the right. The same views, arranged for the room; nothing is invented for the
-    /// iPad. This is also the "opened flat" layout a foldable gets for free.
+    /// The wide window, laid out the way Nuri sketched it on the iPad (2026-09-19): the
+    /// grip, the hand word and the two numbers LARGE at the top left, a card at the top
+    /// right saying what comes next, the graph — or the timer dial — across the whole
+    /// width underneath, and one row of controls under that. The same views as the
+    /// phone's, scaled for the room; only the NEXT card is new, because only here is
+    /// there room to say what follows the pull you are on. This is also the "opened
+    /// flat" layout a foldable gets for free.
     private func wideContent(_ session: RunnerSession) -> some View {
-        HStack(alignment: .top, spacing: Metrics.spacing) {
-            VStack(spacing: 12) {
-                if timerOnly {
-                    timerOnlyIdentity(session)
-                    timerPositionLine(session)
-                } else {
-                    measuredTop(session)
+        VStack(spacing: 16) {
+            HStack(alignment: .top, spacing: Metrics.spacing) {
+                VStack(spacing: 14) {
+                    if timerOnly {
+                        timerOnlyIdentity(session, scale: Self.wideScale)
+                        timerPositionLine(session)
+                    } else {
+                        measuredTop(session, scale: Self.wideScale)
+                    }
                 }
-                Spacer(minLength: 12)
-                controls(session)
+                .frame(maxWidth: .infinity)
+                nextCard(session)
+                    .frame(width: 320)
             }
-            .frame(width: Metrics.maxContentWidth - 2 * Metrics.hPadding)
             if timerOnly {
                 timerDial(session)
             } else {
                 traceCard(session)
             }
+            wideControls(session)
         }
+    }
+
+    // MARK: - What comes next (the wide layout's card)
+
+    private struct UpNext {
+        var title: String
+        var detail: String?
+        var grip: GripSpec?
+    }
+
+    /// What follows the pull the screen is describing. During a rest the main block
+    /// already describes the pull AHEAD (`SessionRunner.displaySlot`), so "next" is
+    /// what follows that one; otherwise it is what follows the pull under way. Read off
+    /// the runner's resolved slots, the same list the snapshot is published from.
+    private func upNext(_ session: RunnerSession) -> UpNext? {
+        let slots = session.runner.slots
+        guard let index = session.snapshot.phase.slotIndex, slots.indices.contains(index) else {
+            return nil
+        }
+        let pending = isResting(session) ? min(index + 1, slots.count - 1) : index
+        let slot = slots[pending]
+        guard pending + 1 < slots.count else {
+            return UpNext(title: String(localized: "Last pull"),
+                          detail: String(localized: "Then the session is done."),
+                          grip: nil)
+        }
+        let following = slots[pending + 1]
+        let restWord = slot.isLastOfSet ? String(localized: "Set break") : String(localized: "Rest")
+        let title = slot.restAfter > 0
+            ? String(localized: "\(restWord) \(slot.restAfter) s")
+            : String(localized: "Straight on")
+        return UpNext(title: title,
+                      detail: String(localized: "then \(following.side.prompt) · \(following.grip.line)"),
+                      grip: following.grip)
+    }
+
+    private func nextCard(_ session: RunnerSession) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            CapsLabel(String(localized: "Next"))
+            if let next = upNext(session) {
+                Text(next.title)
+                    .font(.system(.title, weight: .semibold))
+                    .foregroundStyle(Ink.primary)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                if let grip = next.grip {
+                    RunnerGripGlyph(grip: grip, emphasized: false)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if let detail = next.detail {
+                    Text(detail)
+                        .font(.system(.title3, weight: .medium))
+                        .foregroundStyle(Ink.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial,
+                    in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        .animation(Motion.state(reduceMotion), value: session.snapshot.phase.slotIndex)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("runner.next")
     }
 
     /// The graph and everything that sits on it. Shared by both layouts so the two
@@ -411,7 +488,7 @@ struct RunnerView: View {
     /// The long-rest summary uses only the existing space above the graph. Reserve
     /// that whole block so the graph and controls stay anchored through a hand swap.
     /// Accessibility sizes reflow naturally inside the existing scrolling layout.
-    private func measuredTop(_ session: RunnerSession) -> some View {
+    private func measuredTop(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         let focused = showsRestFocus(session)
         return Group {
             if focused && typeSize.isAccessibilitySize {
@@ -421,14 +498,15 @@ struct RunnerView: View {
                     if focused {
                         // Hidden retains geometry and removes the old live readout
                         // from both the drawing and the accessibility tree.
-                        measuredTopContents(session).hidden()
+                        measuredTopContents(session, scale: scale).hidden()
                     } else {
-                        measuredTopContents(session)
+                        measuredTopContents(session, scale: scale)
                     }
                 }
                 .overlay {
                     if focused {
-                        RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland)
+                        RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
+                                               scale: scale)
                             .transition(.opacity)
                     }
                 }
@@ -437,15 +515,15 @@ struct RunnerView: View {
         .animation(Motion.state(reduceMotion), value: focused)
     }
 
-    private func measuredTopContents(_ session: RunnerSession) -> some View {
-        VStack(spacing: 12) {
+    private func measuredTopContents(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
+        VStack(spacing: 12 * scale) {
             if hasIsland {
                 gripLineText(session)
             } else {
-                gripLine(session)
+                gripLine(session, scale: scale)
             }
-            prompt(session)
-            hero(session)
+            prompt(session, scale: scale)
+            hero(session, scale: scale)
             progress(session)
             counters(session)
         }
@@ -537,11 +615,12 @@ struct RunnerView: View {
     }
 
     @ViewBuilder
-    private func gripLine(_ session: RunnerSession, timerOnly: Bool = false) -> some View {
+    private func gripLine(_ session: RunnerSession, timerOnly: Bool = false,
+                          scale: CGFloat = 1) -> some View {
         if let grip = session.snapshot.grip {
-            VStack(spacing: 6) {
-                RunnerGripGlyph(grip: grip, emphasized: gripEmphasis)
-                nameRow(session, timerOnly: timerOnly)
+            VStack(spacing: 6 * scale) {
+                RunnerGripGlyph(grip: grip, emphasized: gripEmphasis, scale: scale)
+                nameRow(session, timerOnly: timerOnly, scale: scale)
             }
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .combine)
@@ -551,7 +630,8 @@ struct RunnerView: View {
     }
 
     @ViewBuilder
-    private func nameRow(_ session: RunnerSession, timerOnly: Bool = false) -> some View {
+    private func nameRow(_ session: RunnerSession, timerOnly: Bool = false,
+                         scale: CGFloat = 1) -> some View {
         if let grip = session.snapshot.grip {
             if timerOnly {
                 VStack(spacing: 6) {
@@ -576,7 +656,7 @@ struct RunnerView: View {
                             }
                         }
                         Text(gripDisplayName(session, grip: grip))
-                            .font(.system(.subheadline, weight: .medium))
+                            .font(.system(size: nameSize * scale, weight: .medium))
                             .foregroundStyle(Ink.secondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -605,7 +685,7 @@ struct RunnerView: View {
                             restBadge(session)
                         }
                         Text(gripDisplayName(session, grip: grip))
-                            .font(.system(.subheadline, weight: .medium))
+                            .font(.system(size: nameSize * scale, weight: .medium))
                             .foregroundStyle(Ink.secondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -727,7 +807,7 @@ struct RunnerView: View {
 
     /// The one thing that has to be readable across a room: which hand, and whether to
     /// be pulling right now.
-    private func prompt(_ session: RunnerSession) -> some View {
+    private func prompt(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         ZStack {
             // Keep the original phase label's line height when a longer translated
             // hand instruction scales to fit. The graph must not move at REST→PULL
@@ -736,7 +816,7 @@ struct RunnerView: View {
             Text(measuredPromptText(session))
         }
             .tourAnchor(.runnerHand)
-            .font(.system(.largeTitle, weight: .heavy))
+            .font(.system(size: promptSize * scale, weight: .heavy))
             .foregroundStyle(tint(session))
             .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
             .minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.6)
@@ -813,19 +893,21 @@ struct RunnerView: View {
     /// to hang on. An earlier build swapped one for the other and the load simply
     /// vanished for the ten seconds it mattered most.
     @ViewBuilder
-    private func hero(_ session: RunnerSession) -> some View {
+    private func hero(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         VStack(alignment: .trailing, spacing: 4) {
-            HStack(alignment: .lastTextBaseline, spacing: 18) {
+            HStack(alignment: .lastTextBaseline, spacing: 18 * scale) {
                 // No gauge, no kilogram. The clock takes the whole hero rather than sharing
                 // it with a permanent 0.0 — an empty measurement reads as a fault.
                 if !timerOnly {
-                    LiveForceReadout(tint: forceTint(session), size: heroSize, unitSize: unitSize)
+                    LiveForceReadout(tint: forceTint(session),
+                                     size: heroSize * scale, unitSize: unitSize * scale)
                 }
                 readout(value: "\(session.snapshot.secondsShown)",
                         unit: String(localized: "s"),
                         tint: isStalled(session) ? StatusTint.armed : Ink.primary,
                         rolls: true,
-                        caption: nil)
+                        caption: nil,
+                        scale: scale)
                     .tourAnchor(.runnerClock)
             }
         }
@@ -851,7 +933,7 @@ struct RunnerView: View {
     /// second the same animation turns the one number you are trying to read mid-pull
     /// into a permanent blur. It snaps.
     private func readout(value: String, unit: String, tint: Color,
-                         rolls: Bool, caption: String? = nil) -> some View {
+                         rolls: Bool, caption: String? = nil, scale: CGFloat = 1) -> some View {
         HStack(alignment: .lastTextBaseline, spacing: 4) {
             ZStack(alignment: Alignment(horizontal: .center, vertical: .lastTextBaseline)) {
                 // Reserve the numeral's original line height even when horizontal
@@ -864,8 +946,8 @@ struct RunnerView: View {
                     .contentTransition(rolls ? .numericText() : .identity)
                     .foregroundStyle(tint)
             }
-            .font(.system(size: heroSize, weight: .thin))
-            .displayTracking(heroSize)
+            .font(.system(size: heroSize * scale, weight: .thin))
+            .displayTracking(heroSize * scale)
             .monospacedDigit()
             VStack(alignment: .leading, spacing: 2) {
                 if let caption {
@@ -880,7 +962,7 @@ struct RunnerView: View {
                         .fixedSize(horizontal: true, vertical: true)
                 }
                 Text(unit)
-                    .font(.system(size: unitSize))
+                    .font(.system(size: unitSize * scale))
                     .foregroundStyle(Ink.tertiary)
             }
         }
@@ -972,13 +1054,13 @@ struct RunnerView: View {
     }
 
     @ViewBuilder
-    private func timerOnlyIdentity(_ session: RunnerSession) -> some View {
+    private func timerOnlyIdentity(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         // The island already owns the glyph on supported phones. Drawing it again in the
         // identity block would make the hand read as two instructions, not one.
         if hasIsland {
             gripLineText(session, timerOnly: true)
         } else {
-            gripLine(session, timerOnly: true)
+            gripLine(session, timerOnly: true, scale: scale)
         }
     }
 
@@ -1131,61 +1213,93 @@ struct RunnerView: View {
     // MARK: - Controls
 
     private func controls(_ session: RunnerSession) -> some View {
-        let phase = session.snapshot.phase
-        let pauseEnabled = RunnerControlPolicy.pauseEnabled(for: phase)
-        let pauseReason = RunnerControlPolicy.pauseDisabledReason(for: phase)
-        let skipEnabled = RunnerControlPolicy.skipEnabled(for: phase)
-        let skipReason = RunnerControlPolicy.skipDisabledReason(for: phase)
-
-        return VStack(spacing: 10) {
+        VStack(spacing: 10) {
             AdaptiveActionRow(spacing: 10) {
-                // The buttons KEEP their identity while disabled: the visible reason
-                // the house rule demands is the prompt above them, which says PAUSED /
-                // CONNECTING at large-title weight — swapping the labels spent the two
-                // Skips' names on the same repeated word, and VoiceOver read "Paused,
-                // dimmed. Paused." twice with no way to tell them apart. The full
-                // sentence rides the hint instead.
-                wideButton(phase.isPaused ? String(localized: "Resume") : String(localized: "Pause"),
-                           systemImage: phase.isPaused ? "play.fill" : "pause.fill",
-                           enabled: pauseEnabled, disabledReason: pauseReason) {
-                    session.send(phase.isPaused ? .resume : .pause)
-                }
-                // An iPad on a bench with a keyboard case: space pauses, the same key
-                // every video player uses. The runner has no text field to fight over it.
-                .keyboardShortcut(.space, modifiers: [])
-                .accessibilityIdentifier("runner.pause")
-                // Neither Tare nor Connect belongs here without a gauge: one has nothing
-                // to zero and the other would offer to change the session you are in.
-                if timerOnly {
-                    EmptyView()
-                } else if device.state.isConnected {
-                    TareButton(session: session)
-                        .accessibilityIdentifier("runner.tare")
-                } else if device.canCancelBroadcastSearch {
-                    wideButton(String(localized: "Cancel"), systemImage: "xmark") {
-                        device.disconnect()
-                    }
-                    .accessibilityLabel(String(localized: "Cancel"))
-                    .accessibilityValue(device.state.label)
-                    .accessibilityIdentifier("gauge.connectionAction")
-                } else {
-                    wideButton(String(localized: "Connect"), systemImage: "dot.radiowaves.left.and.right") {
-                        device.connect()
-                    }
-                }
+                pauseButton(session)
+                gaugeButton(session)
             }
             AdaptiveActionRow(spacing: 10) {
-                wideButton(String(localized: "Skip pull"), enabled: skipEnabled,
-                           disabledReason: skipReason) { session.send(.skipRep) }
-                    .keyboardShortcut("s", modifiers: [])
-                    .accessibilityIdentifier("runner.skipPull")
-                wideButton(String(localized: "Skip set"), enabled: skipEnabled,
-                           disabledReason: skipReason) { session.send(.skipSet) }
-                    .accessibilityIdentifier("runner.skipSet")
-                HoldToEndButton(allowsScrolling: typeSize.isAccessibilitySize) { session.send(.abort) }
-                    .accessibilityIdentifier("runner.end")
+                skipButtons(session)
+                endButton(session)
             }
         }
+    }
+
+    /// The wide layout's single row under the graph: the same five controls at one
+    /// width, in the same order the phone stacks them.
+    private func wideControls(_ session: RunnerSession) -> some View {
+        HStack(spacing: 10) {
+            pauseButton(session)
+            gaugeButton(session)
+            skipButtons(session)
+            endButton(session)
+        }
+        // PINNED to the house button height. The labels fill their row's height so
+        // the phone's two rows come out even, and with the graph above them flexible
+        // that "row" was a third of the screen — five lozenges the size of the
+        // numerals (measured on the 13-inch sim, 2026-09-19).
+        .frame(height: Metrics.buttonHeight)
+    }
+
+    /// The buttons KEEP their identity while disabled: the visible reason the house
+    /// rule demands is the prompt above them, which says PAUSED / CONNECTING at
+    /// large-title weight — swapping the labels spent the two Skips' names on the same
+    /// repeated word, and VoiceOver read "Paused, dimmed. Paused." twice with no way to
+    /// tell them apart. The full sentence rides the hint instead.
+    private func pauseButton(_ session: RunnerSession) -> some View {
+        let phase = session.snapshot.phase
+        return wideButton(phase.isPaused ? String(localized: "Resume") : String(localized: "Pause"),
+                          systemImage: phase.isPaused ? "play.fill" : "pause.fill",
+                          enabled: RunnerControlPolicy.pauseEnabled(for: phase),
+                          disabledReason: RunnerControlPolicy.pauseDisabledReason(for: phase)) {
+            session.send(phase.isPaused ? .resume : .pause)
+        }
+        // An iPad on a bench with a keyboard case: space pauses, the same key every
+        // video player uses. The runner has no text field to fight over it.
+        .keyboardShortcut(.space, modifiers: [])
+        .accessibilityIdentifier("runner.pause")
+    }
+
+    /// Neither Tare nor Connect belongs here without a gauge: one has nothing to zero
+    /// and the other would offer to change the session you are in.
+    @ViewBuilder
+    private func gaugeButton(_ session: RunnerSession) -> some View {
+        if timerOnly {
+            EmptyView()
+        } else if device.state.isConnected {
+            TareButton(session: session)
+                .accessibilityIdentifier("runner.tare")
+        } else if device.canCancelBroadcastSearch {
+            wideButton(String(localized: "Cancel"), systemImage: "xmark") {
+                device.disconnect()
+            }
+            .accessibilityLabel(String(localized: "Cancel"))
+            .accessibilityValue(device.state.label)
+            .accessibilityIdentifier("gauge.connectionAction")
+        } else {
+            wideButton(String(localized: "Connect"), systemImage: "dot.radiowaves.left.and.right") {
+                device.connect()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func skipButtons(_ session: RunnerSession) -> some View {
+        let phase = session.snapshot.phase
+        let skipEnabled = RunnerControlPolicy.skipEnabled(for: phase)
+        let skipReason = RunnerControlPolicy.skipDisabledReason(for: phase)
+        wideButton(String(localized: "Skip pull"), enabled: skipEnabled,
+                   disabledReason: skipReason) { session.send(.skipRep) }
+            .keyboardShortcut("s", modifiers: [])
+            .accessibilityIdentifier("runner.skipPull")
+        wideButton(String(localized: "Skip set"), enabled: skipEnabled,
+                   disabledReason: skipReason) { session.send(.skipSet) }
+            .accessibilityIdentifier("runner.skipSet")
+    }
+
+    private func endButton(_ session: RunnerSession) -> some View {
+        HoldToEndButton(allowsScrolling: typeSize.isAccessibilitySize) { session.send(.abort) }
+            .accessibilityIdentifier("runner.end")
     }
 
     /// Flexible-width glass button. `SecondaryGlassButton` hugs its label, which is

@@ -8,16 +8,19 @@ import SwiftUI
 struct RunnerGripGlyph: View {
     let grip: GripSpec
     let emphasized: Bool
+    /// The wide runner draws the picture larger — it has the room, and the grip is the
+    /// one instruction acted on with chalk on your hands.
+    var scale: CGFloat = 1
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .caption) private var scaledDot: CGFloat = 18
     @ScaledMetric(relativeTo: .caption) private var scaledGap: CGFloat = 7
 
     var body: some View {
-        FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 18, gap: 7,
+        FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 18 * scale, gap: 7 * scale,
                     tint: emphasized ? StatusTint.armed : Accent.graphite)
             .scaleEffect(emphasized && !reduceMotion ? 1.25 : 1)
-            .frame(height: typeSize.isAccessibilitySize ? accessibleHeight : 44)
+            .frame(height: typeSize.isAccessibilitySize ? accessibleHeight : 44 * scale)
     }
 
     private var accessibleHeight: CGFloat {

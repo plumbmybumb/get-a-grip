@@ -642,8 +642,16 @@ final class DeviceStore {
             : 1.0 / max(1, gaugeCapabilities.nominalSampleRate)
         let candidate = lastT + delta
         let error = wallNow - candidate
-        // BEHIND wall time by a lot: we stalled, so jump forward and carry on.
-        if error > 0.25 { return wallNow }
+        // BEHIND wall time by more than a second: a real stall, so jump forward and
+        // carry on. It was a quarter of a second, and that was measured against an
+        // iPhone's delivery — eight samples every 100 ms. An iPad's Bluetooth stack
+        // hands the same stream over in half-second CLUMPS, and every clump then
+        // snapped the clock forward, which the graph reads as a break in the line: the
+        // trace restarted at every clump and drew nothing at all (Nuri's iPad,
+        // 2026-09-19). Under a second the clock is allowed to lag instead — the line
+        // stays continuous and runs a clump behind reality, which is what the readout
+        // beside it already does.
+        if error > 1.0 { return wallNow }
         // Running AHEAD of wall time is handled by the caller, which drops the buffer and
         // starts again — see `handle(_:)`. Crawling toward wall time instead was tried and
         // was worse: it converges over tens of seconds, and the whole trace sits squashed
