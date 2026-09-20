@@ -100,15 +100,15 @@ struct WatchFacePalette: Equatable, Sendable {
         case (.rest, true), (.paused, true):          return .init(fillHex: "22272E", inkIsWhite: true)
         case (.newGrip, false):                       return .init(fillHex: "F26B0A", inkIsWhite: false)
         case (.newGrip, true):                        return .init(fillHex: "8A3D00", inkIsWhite: true)
-        // The shared hues come from the TOKENS (`Accent.Hex`), not from a second copy
+        // The shared hues come from the engine's `AccentHex`, not from a second copy
         // of the same six characters: blue means "pull" and red means "attention" on
         // both screens, and a face that drifted a shade off the app would be saying so
         // about a signal that is meant to be one.
-        case (.pull, false):                          return .init(fillHex: Accent.Hex.bleu, inkIsWhite: true)
+        case (.pull, false):                          return .init(fillHex: AccentHex.bleu, inkIsWhite: true)
         case (.pull, true):                           return .init(fillHex: "123F70", inkIsWhite: true)
         case (.holding, false):                       return .init(fillHex: "2EBF5C", inkIsWhite: false)
         case (.holding, true):                        return .init(fillHex: "135E2E", inkIsWhite: true)
-        case (.regrip, false), (.linkDown, false):    return .init(fillHex: Accent.Hex.alarm, inkIsWhite: true)
+        case (.regrip, false), (.linkDown, false):    return .init(fillHex: AccentHex.alarm, inkIsWhite: true)
         case (.regrip, true), (.linkDown, true):      return .init(fillHex: "711717", inkIsWhite: true)
         // DELIBERATELY its own literal, not `StatusTint.armed` (FF9800). The phone's
         // amber is CHROME on a slate field; this one floods the entire face, and it was

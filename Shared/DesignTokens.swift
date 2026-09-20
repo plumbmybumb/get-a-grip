@@ -83,11 +83,11 @@ enum Accent {
     /// watch a string to turn back into a colour, so it cannot take a `Color` token. One
     /// literal per hue, read from here by both, is what stops the face and the app from
     /// drifting into two different blues while claiming to be one signal.
+    /// The engine owns the values (`AccentHex`): the watch face reads them there, and
+    /// the engine compiles without SwiftUI. These are the same strings, by reference.
     enum Hex {
-        /// Bleu de France, light scheme — `Accent.bleu`'s own value.
-        static let bleu = "1E6FC4"
-        /// The alarm red, light scheme — `Accent.alarm` and `Accent.alarmFlat`.
-        static let alarm = "C62828"
+        static let bleu = AccentHex.bleu
+        static let alarm = AccentHex.alarm
     }
 
     /// The INTERACTIVE accent — tab tint, buttons, toggles, selection. Near-black in
