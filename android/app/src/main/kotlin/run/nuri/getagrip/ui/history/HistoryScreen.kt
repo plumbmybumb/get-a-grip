@@ -81,6 +81,7 @@ import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.l10n.trQuantity
 import run.nuri.getagrip.store.AnalysisExportAssembler
 import run.nuri.getagrip.store.DayLedger
+import run.nuri.getagrip.data.lifetime
 import run.nuri.getagrip.store.HistoryFeed
 import run.nuri.getagrip.store.LocalDayClock
 import run.nuri.getagrip.store.LocalHistoryFeed
@@ -150,6 +151,8 @@ fun HistoryScreen(
     // passes per 35-day card.
     val trackingSince = templates.trackingSince
     val ledger = remember(logs, today, trackingSince) { DayLedger(logs, today, trackingSince) }
+    // The odometer, folded once from the same feed — columns only, no blobs.
+    val lifetime = remember(logs) { logs.lifetime }
     val windowCount = HistoryWindows.pageCount(ledger.trackingSince, today)
 
     fun displayName(log: WorkoutLogEntity): String {
@@ -227,6 +230,13 @@ fun HistoryScreen(
                             MonthCard(0, ledger, today) { shareRequest = it }
                         }
                     }
+                }
+                item("lifetime") {
+                    // SECOND, above the log and below the calendar (Nuri, 2026-09-20): the
+                    // calendar says how often, the odometer says how much, all of it — and
+                    // the sessions it adds up sit right under it. (iOS puts its per-grip
+                    // trend deck between the two; Android has no trend deck.)
+                    LifetimeCard(lifetime, Modifier.padding(horizontal = Metrics.hPadding, vertical = 6.dp))
                 }
                 item("sessions-label") {
                     CapsLabel(

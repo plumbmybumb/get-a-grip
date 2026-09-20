@@ -84,6 +84,7 @@ import run.nuri.getagrip.ui.runner.RunnerHost
 import run.nuri.getagrip.ui.settings.SettingsScreen
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
+import run.nuri.getagrip.ui.gauge.LiveGaugeHost
 import run.nuri.getagrip.ui.today.TodayScreen
 import run.nuri.getagrip.ui.tour.LocalTourController
 import run.nuri.getagrip.ui.tour.TourAct
@@ -218,6 +219,14 @@ fun RootTabView() {
     // THE BUILDER IS A FULL-SCREEN COVER, never a sheet and never a push:
     // nothing touches the store until Save, Cancel IS undo, and a back chevron would promise
     // save-as-you-go. Hosted here so it covers the tab bar like the runner does.
+    // The live gauge from Today's header, replacing the root the way the runner does: the
+    // graph wants the whole screen, and a back gesture is the way out.
+    var liveGauge by rememberSaveable { mutableStateOf(false) }
+    if (liveGauge) {
+        LiveGaugeHost(onClose = { liveGauge = false })
+        return
+    }
+
     var building by remember { mutableStateOf<BuilderMode?>(null) }
     val builderMode = building
     if (builderMode != null) {
@@ -393,6 +402,7 @@ fun RootTabView() {
                     onEdit = { template -> building = BuilderMode.Edit(template.id) },
                     onShowHistory = { current = Tab.History },
                     onLogSession = { loggingSession = true },
+                    onOpenGauge = { liveGauge = true },
                     // The two presentations Today cannot see: both are hosted here and both
                     // leave this screen composed underneath them, so the guard has to be
                     // told. Everything else that could collide replaces Today outright.

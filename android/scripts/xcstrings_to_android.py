@@ -309,11 +309,24 @@ def load_catalogs() -> dict[str, dict]:
             if key in SKIP_KEYS:
                 continue
             if key in merged and unit_of(merged[key]) != unit_of(entry):
+                # Xcode's resync leaves a PLACEHOLDER in the widget catalog — an `en`
+                # unit in state "new" and no French — for a key the app catalog has
+                # translated. The translated entry wins; two catalogs that both carry a
+                # French unit and still disagree are the real conflict, and still fail.
+                if has_french(entry) and not has_french(merged[key]):
+                    merged[key] = entry
+                    continue
+                if has_french(merged[key]) and not has_french(entry):
+                    continue
                 raise SystemExit(
                     f"{relative}: '{key}' disagrees with an earlier catalog"
                 )
             merged.setdefault(key, entry)
     return merged
+
+
+def has_french(entry: dict) -> bool:
+    return "fr" in entry.get("localizations", {})
 
 
 def unit_of(entry: dict) -> str:

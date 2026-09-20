@@ -5,6 +5,8 @@ package run.nuri.getagrip.engine
 
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -117,5 +119,57 @@ class DayStampTests {
     fun dayStampEncodesAsABareInt() {
         assertEquals("20669", BlobCodec.encode(DayStamp(20_669)))
         assertEquals(DayStamp(20_669), BlobCodec.decode("20669", DayStamp::fromJson))
+    }
+
+    // MARK: - The training day turns at 04:00
+
+    private fun paris(y: Int, mo: Int, d: Int, h: Int, min: Int = 0, sec: Int = 0): Instant =
+        ZonedDateTime.of(y, mo, d, h, min, sec, 0, zone("Europe/Paris")).toInstant()
+
+    /// Nuri's 2026-09-19 hang: started 23:47, over 44 seconds past midnight. One evening,
+    /// one day — and "today" at 00:30 is still that evening, while the CALENDAR day is
+    /// untouched for everything that genuinely wants a date.
+    @Test
+    fun theTrainingDayTurnsAtFourNotMidnight() {
+        val paris = zone("Europe/Paris")
+        val sept19 = DayStamp.of(2026, 9, 19)
+        val sept20 = DayStamp.of(2026, 9, 20)
+
+        assertEquals(sept19, DayStamp.trainingDayOf(paris(2026, 9, 19, 23, 47), paris))
+        assertEquals(sept19, DayStamp.trainingDayOf(paris(2026, 9, 20, 0, 0, 44), paris), "44 seconds past midnight is still the evening")
+        assertEquals(sept19, DayStamp.trainingDayOf(paris(2026, 9, 20, 3, 59, 59), paris))
+        assertEquals(sept20, DayStamp.trainingDayOf(paris(2026, 9, 20, 4, 0), paris))
+        assertEquals(sept20, DayStamp.trainingDayOf(paris(2026, 9, 20, 10, 1), paris))
+
+        assertEquals(sept19, DayStamp.today(paris, now = paris(2026, 9, 20, 0, 30)), "'today' is the training day")
+        assertEquals(sept20, DayStamp.today(paris, now = paris(2026, 9, 20, 4, 0)))
+        assertEquals(sept20, DayStamp.of(paris(2026, 9, 20, 0, 30), paris), "the calendar day is untouched")
+    }
+
+    /// The night the clocks go forward in Paris (29 March 2026) has 23 hours. "Minus four
+    /// hours" from 04:30 CEST lands at 23:30 CET the evening before — a session started well
+    /// after the rollover filed under the wrong day. Calendar arithmetic does not.
+    @Test
+    fun theRolloverSurvivesTheNightTheClocksGoForward() {
+        val paris = zone("Europe/Paris")
+        val halfPastFour = paris(2026, 3, 29, 4, 30)
+        assertEquals(
+            DayStamp.of(2026, 3, 28),
+            DayStamp.of(halfPastFour.minusSeconds(4 * 3600), paris),
+            "the naive arithmetic this test exists to rule out",
+        )
+        assertEquals(DayStamp.of(2026, 3, 29), DayStamp.trainingDayOf(halfPastFour, paris))
+        assertEquals(DayStamp.of(2026, 3, 28), DayStamp.trainingDayOf(paris(2026, 3, 29, 3, 30), paris))
+    }
+
+    /// What `DayClock` sleeps until: the coming 04:00, and exactly 04:00 already counts as
+    /// the new day so the next wake-up is a day away.
+    @Test
+    fun nextRolloverIsTheComingFourAM() {
+        val paris = zone("Europe/Paris")
+        val fourAM = paris(2026, 9, 20, 4, 0)
+        assertEquals(fourAM, DayStamp.nextRollover(paris(2026, 9, 19, 23, 47), paris))
+        assertEquals(fourAM.plusSeconds(24 * 3600), DayStamp.nextRollover(paris(2026, 9, 20, 9, 0), paris))
+        assertEquals(fourAM.plusSeconds(24 * 3600), DayStamp.nextRollover(fourAM, paris))
     }
 }

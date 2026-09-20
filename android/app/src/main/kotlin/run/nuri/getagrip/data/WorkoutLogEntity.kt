@@ -23,9 +23,10 @@ import kotlin.math.roundToInt
 /// One finished session, frozen.
 ///
 /// Everything here that could have come from a `SessionTemplateEntity` is a SNAPSHOT
-/// instead: the name, the plan, and every rep's own `GripSpec`. Editing or deleting a
-/// routine must never rewrite history — which is what makes destructive edits cheap
-/// enough to offer behind a swipe and an undo bar rather than a dialog.
+/// instead: the name, the plan, and every rep's own `GripSpec`. Editing a routine must
+/// never rewrite history — which is what makes edits cheap enough to offer behind a swipe
+/// and an undo bar rather than a dialog. Deleting one takes its sessions with it, and the
+/// same Undo puts them back (`TemplateStore.delete`, Nuri 2026-09-20).
 ///
 /// Same schema rules as `SessionTemplateEntity`: every column defaulted or nullable, no
 /// uniqueness beyond the primary key, no relationships, additive changes only.
@@ -34,9 +35,11 @@ data class WorkoutLogEntity(
     @PrimaryKey val id: UUID = UUID.randomUUID(),
     val startedAt: Instant = storedNow(),
     val finishedAt: Instant = storedNow(),
-    /// Epoch day FROZEN at save. It is the join for "2 of 2 today" — a cheap Int
-    /// predicate rather than a calendar pass over every log — and it keeps a 00:30
-    /// session on the day the user actually lived through.
+    /// Epoch day FROZEN at save — the TRAINING day, which turns at
+    /// `DayStamp.ROLLOVER_HOUR`, so a 00:30 session stays on the evening it belonged to.
+    /// It is the join for "2 of 2 today": a cheap Int predicate rather than a calendar
+    /// pass over every log. Rewritten once, by `TemplateStore.repairTrainingDays`, for
+    /// rows stamped by the clock that used to turn at midnight.
     val dayKey: Int = 0,
     /// Best-effort grouping ONLY. The routine may be gone; nothing here needs it back.
     val templateID: UUID? = null,
@@ -79,10 +82,14 @@ data class WorkoutLogEntity(
 
     val day: DayStamp get() = DayStamp(dayKey)
 
-    /// The timestamp of a hand log is when it was entered; its chosen training day
-    /// must still display correctly when it was logged the following morning.
-    fun historyDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate =
-        if (kind.isLoggedByHand) day.localDate() else startedAt.atZone(zone).toLocalDate()
+    /// The date History shows for this row: its TRAINING day, for every kind of row. A
+    /// hand log records when the entry was created, so its chosen day was always the one
+    /// to show; a runner session used to show its start instant, which is a different
+    /// calendar day from the training day for anything begun in the small hours — the
+    /// row said the 19th while the grid and the tally credited the 20th. One date per row,
+    /// the same one every other surface counts by.
+    @Suppress("UNUSED_PARAMETER")
+    fun historyDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate = day.localDate()
 
     /// null for an ungraded session, or for a scale value from a future build.
     val grade: RPE? get() = rpe?.let { RPE.fromRaw(it) }
@@ -220,3 +227,64 @@ fun Collection<WorkoutLogEntity>.settled(on: DayStamp): Boolean =
 /// (`TemplateStore.recordMax` upserts).
 fun Collection<WorkoutLogEntity>.benchmark(on: DayStamp): Boolean =
     any { it.dayKey == on.raw && it.kind == SessionKind.benchmark }
+
+/// What a lifetime of sessions adds up to — see `Collection<WorkoutLogEntity>.lifetime` and
+/// History's `LifetimeCard`. Hangboard sessions the app ran or that were logged by hand
+/// count as sessions; a climb is a day at the gym; a benchmark day is a day trained and
+/// nothing else.
+data class LifetimeStats(
+    val sessions: Int = 0,
+    /// Completed pulls only — a skipped pull is a pull that did not happen.
+    val pulls: Int = 0,
+    /// Every second on the edge, across every completed or partial hold.
+    val heldSeconds: Double = 0.0,
+    /// Load × pulls, summed — the number a lifter calls volume.
+    val volumeKg: Double = 0.0,
+    /// Distinct days with a climb logged — two climbs on one day are one day at the gym.
+    val climbDays: Int = 0,
+    /// Distinct training days with anything on them, climbs and benchmarks included.
+    val daysTrained: Int = 0,
+    val heaviestPullKg: Double = 0.0,
+    /// The earliest training day on record.
+    val since: DayStamp? = null,
+) {
+    val isEmpty: Boolean get() = sessions == 0 && climbDays == 0 && daysTrained == 0
+}
+
+/// The all-time tally in History (Nuri, 2026-09-20: "lifetime stats"). Folded from the
+/// DENORMALIZED columns only — never from the rep blobs — so it costs a row per session,
+/// not a decode, and can be recomputed on every refresh of the feed.
+val Collection<WorkoutLogEntity>.lifetime: LifetimeStats
+    get() {
+        var sessions = 0
+        var pulls = 0
+        var held = 0.0
+        var volume = 0.0
+        var heaviest = 0.0
+        var since: DayStamp? = null
+        val days = HashSet<Int>()
+        val climbDays = HashSet<Int>()
+        for (log in this) {
+            days.add(log.dayKey)
+            since = since?.let { minOf(it, log.day) } ?: log.day
+            when (log.kind) {
+                SessionKind.hang, SessionKind.hangManual -> {
+                    sessions += 1
+                    pulls += log.completedReps
+                    held += log.totalHeldSeconds
+                    // The lifting convention — load × reps, added up — from the session's
+                    // time-weighted mean and its completed count. Exact when every hold in
+                    // a session ran its full length, which is what a completed pull means.
+                    volume += log.avgKg * log.completedReps
+                    heaviest = maxOf(heaviest, log.peakKg)
+                }
+                SessionKind.climbVolume, SessionKind.climbLimit -> climbDays.add(log.dayKey)
+                SessionKind.benchmark -> Unit
+            }
+        }
+        return LifetimeStats(
+            sessions = sessions, pulls = pulls, heldSeconds = held, volumeKg = volume,
+            climbDays = climbDays.size, daysTrained = days.size, heaviestPullKg = heaviest,
+            since = since,
+        )
+    }

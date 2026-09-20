@@ -15,6 +15,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -41,7 +42,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SettingsInputAntenna
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -91,7 +91,6 @@ import run.nuri.getagrip.store.LocalSettingsStore
 import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.pressFeedback
-import run.nuri.getagrip.ui.gauge.GaugeScreen
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.readablePageWidth
@@ -102,7 +101,6 @@ import run.nuri.getagrip.ui.tour.LocalTourController
 
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_GAUGE_PICKER = "gauge-picker"
-private const val ROUTE_LIVE_GAUGE = "live-gauge"
 
 /// The Settings tab: what the gauge is doing, a door to choosing one, a door to the live
 /// gauge, and the statements the app owes whoever is using it.
@@ -123,18 +121,12 @@ fun SettingsScreen(
         composable(ROUTE_SETTINGS) {
             SettingsRoot(
                 onOpenGaugePicker = { nav.navigate(ROUTE_GAUGE_PICKER) },
-                onOpenLiveGauge = { nav.navigate(ROUTE_LIVE_GAUGE) },
             )
         }
         composable(ROUTE_GAUGE_PICKER) {
             InnerScreen(title = tr("Gauge"), onBack = { nav.popBackStack() }) { padding ->
                 // A tap applies AND dismisses — the same rule the grip picker follows.
                 GaugePickerScreen(Modifier.padding(padding)) { nav.popBackStack() }
-            }
-        }
-        composable(ROUTE_LIVE_GAUGE) {
-            InnerScreen(title = tr("Live gauge"), onBack = { nav.popBackStack() }) { padding ->
-                GaugeScreen(Modifier.padding(padding))
             }
         }
     }
@@ -144,7 +136,6 @@ fun SettingsScreen(
 @Composable
 private fun SettingsRoot(
     onOpenGaugePicker: () -> Unit,
-    onOpenLiveGauge: () -> Unit,
 ) {
     val palette = LocalGripPalette.current
     val device = LocalDeviceStore.current
@@ -179,8 +170,24 @@ private fun SettingsRoot(
                 .padding(bottom = Metrics.spacing + LocalFloatingTabBarInset.current),
             verticalArrangement = Arrangement.spacedBy(Metrics.spacing),
         ) {
-            // The device card first: it is the answer to the question that brings anyone
-            // to this screen.
+            // WHICH gauge, first, with a rim (Nuri, 2026-09-20). Eight gauges and one row
+            // to choose between them, and the row read as a status line — nobody with a
+            // WH-C06 could tell it was the place to say so. The bleu rim and the line
+            // under the name say "this is a choice"; the Device card that follows says
+            // what the chosen one is doing.
+            NavRow(
+                icon = Icons.Outlined.SettingsInputAntenna,
+                iconTint = palette.bleu,
+                title = tr("Gauge"),
+                subtitle = if (device.isMock) tr("Demo device") else device.gaugeKind.displayName,
+                // Counted from the registry, like the makers sentence in About, so a
+                // ninth gauge cannot leave this line claiming eight.
+                note = tr("Tap to choose yours — Get a Grip works with %d different gauges.", GaugeKind.selectable.size),
+                outline = palette.bleu,
+                onClick = onOpenGaugePicker,
+            )
+
+            // What the chosen gauge is doing.
             Card {
                 CapsLabel(tr("Device"))
                 Spacer(Modifier.size(4.dp))
@@ -202,22 +209,8 @@ private fun SettingsRoot(
 
             WeightUnitSetting(LocalSettingsStore.current)
 
-            // WHICH gauge before the live gauge itself: choosing the device precedes using
-            // it, and everything below this row describes whatever it selects.
-            NavRow(
-                icon = Icons.Outlined.SettingsInputAntenna,
-                iconTint = palette.graphite,
-                title = tr("Gauge"),
-                subtitle = if (device.isMock) tr("Demo device") else device.gaugeKind.displayName,
-                onClick = onOpenGaugePicker,
-            )
-            NavRow(
-                icon = Icons.Outlined.Speed,
-                iconTint = palette.bleu,
-                title = tr("Live gauge"),
-                subtitle = tr("Pull and watch the force in real time"),
-                onClick = onOpenLiveGauge,
-            )
+            // The live gauge used to have a row here. It is a button on Today's bar now
+            // (2026-09-20) — one door, on the screen that opens every day, not two.
 
             SupportCard(
                 gauge = device.gaugeKind.displayName + if (device.isMock) " (${tr("Demo device")})" else "",
@@ -754,6 +747,10 @@ private fun LabelledValue(label: String, value: String) {
 
 /// A full-width row that opens something. **The whole row is the hit target**, 44 dp at
 /// minimum: a row that draws full-width and is only tappable on its words is half dead.
+///
+/// `note` is a third line in tertiary ink, and `outline` a two-point rim — a hairline is
+/// mostly antialiased edge and measured under 3:1 on iOS — for the one row on the screen
+/// that is a choice rather than a status.
 @Composable
 private fun NavRow(
     icon: ImageVector,
@@ -762,16 +759,20 @@ private fun NavRow(
     subtitle: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    note: String? = null,
+    outline: androidx.compose.ui.graphics.Color? = null,
 ) {
     val palette = LocalGripPalette.current
     val interactionSource = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(Metrics.radiusCard)
     Surface(
-        shape = RoundedCornerShape(Metrics.radiusCard),
+        shape = shape,
         color = palette.card,
         modifier = modifier
             .widthIn(max = Metrics.maxContentWidth)
             .fillMaxWidth()
             .heightIn(min = 44.dp)
+            .then(if (outline != null) Modifier.border(2.dp, outline, shape) else Modifier)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -796,6 +797,14 @@ private fun NavRow(
                     color = palette.inkPrimary,
                 )
                 Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
+                if (note != null) {
+                    Text(
+                        note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.inkTertiary,
+                        modifier = Modifier.padding(top = 3.dp),
+                    )
+                }
             }
             Icon(
                 Icons.AutoMirrored.Outlined.KeyboardArrowRight,

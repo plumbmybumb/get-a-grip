@@ -105,9 +105,15 @@ class GetAGripApplication : Application() {
         // channel that does not exist yet is silently dropped.
         LiveUpdateNotification.ensureChannel(this)
         dayClockReceiver.register(this)
+        clock.scheduleRolloverRefresh(storeScope) {
+            storeScope.launch { templates.refreshIfDayChanged() }
+        }
         observeProcessLifecycle()
         storeScope.launch {
             Seeds.apply(database, intent)
+            // Before the first derived world, so a session filed under the wrong day by
+            // the midnight-turning clock is counted on the right one from the first frame.
+            templates.repairTrainingDays()
             templates.syncDerived()
             historyFeed.refresh()
         }

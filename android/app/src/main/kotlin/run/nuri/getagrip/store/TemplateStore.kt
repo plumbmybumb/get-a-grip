@@ -47,6 +47,7 @@ import run.nuri.getagrip.engine.SessionKind
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.Side
 import java.time.Instant
+import java.time.ZoneId
 import java.time.LocalTime
 import java.util.UUID
 
@@ -170,7 +171,7 @@ class TemplateStore(
     /// off a live `@Model` object. The Room row already IS those raw columns, blobs
     /// included, so the entity is the snapshot — and a column added to the entity can
     /// never go missing from the undo the way `isOnDemand` did on iOS.
-    var lastDeleted: SessionTemplateEntity? by mutableStateOf(null)
+    var lastDeleted: DeletedRoutine? by mutableStateOf(null)
         private set
 
     /// The same offer for a deleted session, on its own slot rather than sharing the
@@ -703,15 +704,32 @@ class TemplateStore(
 
     // MARK: - Delete and undo
 
+    /// A deleted routine and ITS SESSIONS, together (Nuri, 2026-09-20): a routine used to
+    /// leave its history behind, and the result was a per-grip trend for a routine that no
+    /// longer existed. Both are the RAW rows, blobs included, so the same Undo puts routine
+    /// and sessions back exactly as they were.
+    data class DeletedRoutine(
+        val routine: SessionTemplateEntity,
+        val sessions: List<WorkoutLogEntity>,
+    ) {
+        val id: UUID get() = routine.id
+    }
+
     suspend fun delete(template: SessionTemplateEntity): Boolean {
         // The row as it stands on disk, not the caller's copy — the RAW columns, blobs
         // included, are what `undoDelete` puts back.
         val restorable = gateway.routine(template.id) ?: return false
-        persistAndSync(maxesChanged = false) { it.removeRoutine(template.id) }
+        // Its sessions go with it. A read that FAILS refuses the whole delete: deleting the
+        // routine anyway would leave its sessions behind as orphans nothing can reach.
+        val sessions = (gateway.allLogs() ?: return false).filter { it.templateID == template.id }
+        persistAndSync(maxesChanged = false) { writer ->
+            sessions.forEach { writer.removeLog(it.id) }
+            writer.removeRoutine(template.id)
+        }
         // Only offer undo for a delete that actually landed — the transaction rolled
         // back on failure, so the routine is still there and "Undo" would duplicate it.
         if (saveError != null) return false
-        lastDeleted = restorable
+        lastDeleted = DeletedRoutine(restorable, sessions)
         armUndoExpiry()
         return true
     }
@@ -739,8 +757,13 @@ class TemplateStore(
 
         // `updatedAt` is deliberately NOT restored: the restore is itself the most recent
         // thing that happened to this routine, and `recentGrips` reads that order.
-        val row = restorable.copy(updatedAt = storedNow())
-        persistAndSync(maxesChanged = false) { it.putRoutine(row) }
+        val row = restorable.routine.copy(updatedAt = storedNow())
+        persistAndSync(maxesChanged = false) { writer ->
+            writer.putRoutine(row)
+            // Its sessions come back with it, as the raw rows they were — never through
+            // `WorkoutLogEntity.from`, which would re-derive their numbers.
+            restorable.sessions.forEach { writer.putLog(it) }
+        }
 
         // Only consume the undo once the restore has landed. Clearing it first would mean
         // a rolled-back save loses the routine for good — the one outcome the undo bar
@@ -836,6 +859,31 @@ class TemplateStore(
         )
         persistAndSync(maxesChanged = false) { it.putLog(log) }
         return if (saveError == null) log else null
+    }
+
+    /// **Re-file every session the app itself timed under the training day it started
+    /// in.** Until 2026-09-20 the clock turned at midnight, so a session that ran across it
+    /// was stamped with the morning after, and one evening scored as two days. The day now
+    /// turns at `DayStamp.ROLLOVER_HOUR`, and this brings the rows written under the old
+    /// rule into line with it. Hand-logged sessions are left alone: their day is the one
+    /// the person chose. Deterministic from a frozen column, so a row already right is never
+    /// touched — which is what makes it safe, and cheap, to run on every launch. Returns how
+    /// many rows moved; 0 when the read fails. Straight through the gateway rather than
+    /// `persistAndSync`: the launch sequence derives the world right after.
+    suspend fun repairTrainingDays(zone: ZoneId = ZoneId.systemDefault()): Int {
+        val logs = gateway.allLogs() ?: return 0
+        val moved = logs.filter { !it.kind.isLoggedByHand }
+            .mapNotNull { log ->
+                val day = DayStamp.trainingDayOf(log.startedAt, zone).raw
+                if (log.dayKey == day) null else log.copy(dayKey = day)
+            }
+        if (moved.isEmpty()) return 0
+        try {
+            gateway.write { writer -> moved.forEach { writer.putLog(it) } }
+        } catch (error: Throwable) {
+            return 0
+        }
+        return moved.size
     }
 
     /// Write a finished session. Goes through the hub like every other mutation, so the

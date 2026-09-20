@@ -24,6 +24,7 @@
     <string name="s_kg_since">%1$s %2$s kg since %3$s</string>
     <string name="s_ready_to_save_3a4d28">%1$s %2$s, ready to save</string>
     <string name="s_your_hardest_pull">%1$s %2$s, your hardest pull</string>
+    <string name="s_x_7eb4c3" translatable="false">%1$s (%2$s)</string>
     <string name="s_thumb_55886d">%s + thumb</string>
     <string name="s_at_the_gym_today">%s at the gym today</string>
     <string name="s_at_the_gym_today_plus_lld_hang_sessions">%1$s at the gym today, plus %2$d hang sessions</string>
@@ -43,6 +44,7 @@
     <string name="s_rest_1bd51a">%s rest</string>
     <string name="s_sends_raw_sensor_counts_so_the_first_time_a_unit_connect">%s sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server.</string>
     <string name="s_speaks_a_protocol_its_maker_published_but_no_unit_has_be">%s speaks a protocol its maker published, but no unit has been tried on this app yet.</string>
+    <string name="s_t">%s t</string>
     <string name="s_under_tension_cf82bb">%s under tension</string>
     <string name="s_under_tension_per_side">%s under tension per side</string>
     <string name="s_x_6c2c70">%1$s · %2$s</string>
@@ -71,6 +73,7 @@
     <string name="s_opens_an_email_to">%1$s. Opens an email to %2$s.</string>
     <string name="s_up_next">%s. Up next.</string>
     <string name="s_x_5516fb">%1$s: %2$s</string>
+    <string name="s_x_916317" translatable="false">%1$s: %2$s\n%3$s: %4$s\n%5$s: %6$s\n%7$s: %8$s</string>
     <string name="s_lld_of_lld_completed">%1$s: %2$d of %3$d completed</string>
     <string name="s_x_b2ab65">%1$s–%2$s</string>
     <string name="s_x_93a2c7">%1$s–%2$s %%</string>
@@ -80,6 +83,7 @@
     <string name="s_kg_b676b2">%1$s–%2$s kg</string>
     <string name="s_kg_target">%1$s–%2$s kg target</string>
     <string name="s_lld_16070a">%d</string>
+    <string name="s_lld_80890b" translatable="false">%d %%</string>
     <string name="s_lld_of_max">%d %% of max</string>
     <string name="s_lld_e5f107">%1$d %2$s</string>
     <string name="s_lld_before_this_routine_existed">%1$d %2$s before this routine existed</string>
@@ -110,7 +114,8 @@
     <string name="s_lld_of_lld_days_trained">%1$d of %2$d days trained</string>
     <string name="s_lld_of_lld_days_trained_since_you_started">%1$d of %2$d days trained since you started</string>
     <string name="s_lld_of_lld_pulls_completed">%1$d of %2$d pulls completed</string>
-    <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension_pea">%1$d of %2$d pulls completed, %3$d seconds under tension, peak %4$s kilograms</string>
+    <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension_pea_cb6f8b" translatable="false">%1$d of %2$d pulls completed, %3$d seconds under tension, peak %4$s %5$s</string>
+    <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension_pea_3a3be9">%1$d of %2$d pulls completed, %3$d seconds under tension, peak %4$s kilograms</string>
     <string name="s_lld_of_lld_sessions_done_today">%1$d of %2$d sessions done today</string>
     <string name="s_lld_of_35_days_trained">%d of 35 days trained</string>
     <string name="s_lld_of_the_last_35_days_trained">%d of the last 35 days trained</string>
@@ -163,6 +168,7 @@
     <string name="s_timing_only_73f9e8">, timing only</string>
     <string name="s_battery_lld_percent">. Battery %d percent</string>
     <string name="s_peak_target_lld_percent_of_max">. Peak target %d percent of max.</string>
+    <string name="s_0" translatable="false">0</string>
     <string name="s_1_pull_total">1 pull total</string>
     <string name="s_1h">1h</string>
     <string name="s_1h30">1h30</string>
@@ -210,6 +216,9 @@
     <string name="s_all_history">All history</string>
     <string name="s_all_six_on_the_left_then_all_six_on_the_right_inside_one">All six on the left, then all six on the right, inside one set.</string>
     <string name="s_all_the_pulls_on_one_hand_then_all_of_them_on_the_other">All the pulls on one hand, then all of them on the other, inside one set.</string>
+    <string name="s_all_time">All time</string>
+    <string name="s_all_time_since">All time · since %s</string>
+    <string name="s_all_time_your_numbers_land_here_after_the_first_session">All time. Your numbers land here after the first session.</string>
     <string name="s_allow_camera_access_in_settings_to_scan_a_shared_routine">Allow camera access in Settings to scan a shared routine.</string>
     <string name="s_already_the_first_set">Already the first set</string>
     <string name="s_already_the_last_set">Already the last set</string>
@@ -261,6 +270,7 @@
     <string name="s_choose_a_session_kind_to_see_how_it_counts">Choose a session kind to see how it counts.</string>
     <string name="s_clear">Clear</string>
     <string name="s_clear_rating">Clear rating</string>
+    <string name="s_climbing_days">Climbing days</string>
     <string name="s_climbing_gym">Climbing gym</string>
     <string name="s_climbro">Climbro</string>
     <string name="s_close">Close</string>
@@ -272,6 +282,7 @@
     <string name="s_column_names_and_the_data_guide_stay_in_english_your_not">Column names and the data guide stay in English. Your notes stay as written.</string>
     <string name="s_comfortable">Comfortable</string>
     <string name="s_connect">Connect</string>
+    <string name="s_connect_a_gauge_and_pull_the_force_draws_here">Connect a gauge and pull — the force draws here.</string>
     <string name="s_connect_and_start">Connect and start</string>
     <string name="s_connect_gauge">Connect gauge</string>
     <string name="s_connect_your_gauge_to_measure">Connect your gauge to measure.</string>
@@ -302,7 +313,7 @@
     <string name="s_couldn_t_save_your_measurements_are_still_here_try_again">Couldn’t save. Your measurements are still here — try again.</string>
     <string name="s_couldn_t_update_the_weight_targets_your_maxes_are_saved">Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are.</string>
     <string name="s_counting">Counting</string>
-    <string name="s_crimpdeq" translatable="false">Crimpdeq</string>
+    <string name="s_current_peak" translatable="false">Current %1$s %2$s, peak %3$s %4$s%5$s</string>
     <string name="s_current_kilograms_peak_kilograms">Current %1$s kilograms, peak %2$s kilograms%3$s</string>
     <string name="s_custom">Custom</string>
     <string name="s_doigt">DOIGT</string>
@@ -315,6 +326,7 @@
     <string name="s_data_characteristic_does_not_notify">Data characteristic does not notify</string>
     <string name="s_date">Date</string>
     <string name="s_date_range">Date range</string>
+    <string name="s_days_trained">Days trained</string>
     <string name="s_decrease">Decrease %s</string>
     <string name="s_delete">Delete</string>
     <string name="s_delete_routine_0cb076">Delete routine</string>
@@ -427,7 +439,6 @@
     <string name="s_get_a_grip_training_export">Get a Grip — training export</string>
     <string name="s_get_ready_70c1b9">Get ready</string>
     <string name="s_grip_bcd6f0">Grip</string>
-    <string name="s_grip_connect" translatable="false">Grip Connect</string>
     <string name="s_grips_from_your_routines_tap_one_then_change_anything_yo">Grips from your routines. Tap one, then change anything you like.</string>
     <string name="s_griptonite">Griptonite</string>
     <string name="s_griptonite_motherboard">Griptonite Motherboard</string>
@@ -445,6 +456,7 @@
     <string name="s_hard">Hard</string>
     <string name="s_hard_bouldering_or_projecting_a_maximal_pull_on_your_fin">Hard bouldering or projecting — a maximal pull on your fingers.</string>
     <string name="s_harder_than_your_max">Harder than your max</string>
+    <string name="s_heaviest_pull">Heaviest pull</string>
     <string name="s_hello">Hello,</string>
     <string name="s_hints_reset_open_a_routine_to_see_them">Hints reset — open a routine to see them</string>
     <string name="s_history">History</string>
@@ -723,6 +735,8 @@
     <string name="s_right_left_right_left_swapping_hands_every_pull">Right, left, right, left — swapping hands every pull.</string>
     <string name="s_ring">Ring</string>
     <string name="s_ritual_or_whenever">Ritual or whenever</string>
+    <string name="s_routine_and_its_lld_sessions_deleted">Routine and its %d sessions deleted</string>
+    <string name="s_routine_and_its_session_deleted">Routine and its session deleted</string>
     <string name="s_routine_deleted">Routine deleted</string>
     <string name="s_routine_name">Routine name</string>
     <string name="s_routine_options">Routine options</string>
@@ -846,6 +860,7 @@
     <string name="s_tap_it_and_set_the_edge_which_fingers_how_many_pulls_and">Tap it and set the edge, which fingers, how many pulls and how long. Nothing is saved until you tap Save, and the tour carries on when you are back.</string>
     <string name="s_tap_the_days_to_open_history_use_log_a_session_to_add_cl">Tap the days to open History. Use Log a session to add climbing or hangs done away from the gauge.</string>
     <string name="s_tap_the_plan_to_see_your_grips_timing_and_hand_order_you">Tap the plan to see your grips, timing and hand order. You can edit the routine from its overview.</string>
+    <string name="s_tap_to_choose_yours_get_a_grip_works_with_lld_different">Tap to choose yours — Get a Grip works with %d different gauges.</string>
     <string name="s_tare_71c87f">Tare</string>
     <string name="s_tare_is_unavailable_during_the_pull">Tare is unavailable during the pull.</string>
     <string name="s_tare_is_unavailable_while_waiting_for_you_to_let_go">Tare is unavailable while waiting for you to let go.</string>
@@ -937,12 +952,14 @@
     <string name="s_used_when_a_hand_has_no_max_of_its_own_and_for_two_hande">Used when a hand has no max of its own, and for two-handed pulls.</string>
     <string name="s_volume">Volume</string>
     <string name="s_volume_climbing">Volume climbing</string>
+    <string name="s_volume_is_load_pulls_added_up_under_tension_is_every_sec">Volume is load × pulls, added up. Under tension is every second on the edge.</string>
     <string name="s_volume_session">Volume session</string>
     <string name="s_wh_c06_crane_scale">WH-C06 crane scale</string>
     <string name="s_what_kind_of_session">WHAT KIND OF SESSION</string>
     <string name="s_what_you_ll_pull">WHAT YOU\'LL PULL</string>
     <string name="s_when">WHEN</string>
     <string name="s_waiting_for_the_gauge">Waiting for the gauge</string>
+    <string name="s_waiting_for_the_gauge_it_s_connected_but_not_sending_try">Waiting for the gauge. It\'s connected but not sending — try Wake.</string>
     <string name="s_wake">Wake</string>
     <string name="s_we_keep_our_hardware_margins_low_because_we_believe_ever">We keep our hardware margins low because we believe everyone should have access to their own data.</string>
     <string name="s_weight_targets">Weight targets</string>
@@ -971,6 +988,7 @@
     <string name="s_yesterday_da2483">Yesterday</string>
     <string name="s_you_can_change_any_of_it_later_this_same_screen_is_the_e">You can change any of it later — this same screen is the editor.</string>
     <string name="s_you_can_connect_your_gauge_later">You can connect your gauge later.</string>
+    <string name="s_your_all_time_numbers_land_here_after_the_first_session">Your all-time numbers land here after the first session.</string>
     <string name="s_your_ceiling_per_grip">Your ceiling, per grip</string>
     <string name="s_your_current_max_on_this_grip_is_recorded_saving_adds_a">Your current max on this grip%1$s is %2$s %3$s, recorded %4$s. Saving adds a new one and keeps the old as history.</string>
     <string name="s_your_current_max_on_this_grip_is_kg_recorded_saving_adds">Your current max on this grip%1$s is %2$s kg, recorded %3$s. Saving adds a new one and keeps the old as history.</string>

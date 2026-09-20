@@ -863,22 +863,85 @@ class TemplateStoreTests {
 
     // MARK: - History is frozen
 
+    /// Nuri, 2026-09-20: a routine deleted weeks ago still fed its per-grip trend on iOS,
+    /// because its sessions stayed. They go with the routine now — and come back with it,
+    /// row for row and under their original ids, from the same Undo. Sessions of OTHER
+    /// routines and hand-logged sessions are not on the line.
     @Test
-    fun deletingARoutineLeavesItsLogsIntactWithTheFrozenName() = runTest {
+    fun deletingARoutineDeletesItsSessionsAndUndoPutsThemBack() = runTest {
+        val w = makeWorld()
+        val daily = assertNotNull(w.store.create(RoutineDraft.starter))
+        val rest = assertNotNull(w.store.create(RoutineDraft.blank("Rest day")))
+        val mine = insertLog(w, daily, DayStamp.today() - 2)
+        val mineToo = insertLog(w, daily, DayStamp.today() - 1)
+        val theirs = insertLog(w, rest, DayStamp.today() - 1)
+        val climb = assertNotNull(w.store.recordLoggedSession(SessionKind.climbLimit))
+        val ownIDs = setOf(mine.id, mineToo.id)
+
+        assertTrue(w.store.delete(daily))
+
+        assertEquals(setOf(theirs.id, climb.id), workoutLogs(w).map { it.id }.toSet(),
+            "only the deleted routine's own sessions go")
+        assertEquals(2, w.store.lastDeleted?.sessions?.size)
+
+        w.store.undoDelete()
+
+        val restored = workoutLogs(w)
+        assertEquals(ownIDs + theirs.id + climb.id, restored.map { it.id }.toSet())
+        for (log in restored.filter { it.id in ownIDs }) {
+            assertEquals(daily.id, log.templateID, "still attributed to the restored routine")
+            assertEquals(listOf(mine, mineToo).first { it.id == log.id }.resultsData, log.resultsData,
+                "the raw row, not a decode-re-encode")
+            assertEquals("Daily no-hangs", log.templateName)
+        }
+        assertNotNull(w.store.routine(daily.id))
+        assertNull(w.store.lastDeleted)
+    }
+
+    /// A routine with no sessions deletes as it always did — and the bar's count is zero.
+    @Test
+    fun deletingASessionlessRoutineCarriesNoSessions() = runTest {
         val w = makeWorld()
         val template = assertNotNull(w.store.create(RoutineDraft.starter))
-        val templateID = template.id
-        insertLog(w, template, DayStamp.today() - 1)
-
         assertTrue(w.store.delete(template))
+        assertEquals(0, w.store.lastDeleted?.sessions?.size)
+    }
 
-        val log = assertNotNull(workoutLogs(w).firstOrNull())
-        assertEquals("Daily no-hangs", log.templateName)
-        assertEquals(templateID, log.templateID)
-        assertNull(w.store.routine(templateID), "templateID is best-effort grouping only")
-        assertEquals(6, log.plan?.sets?.size, "the frozen plan is still readable")
-        assertEquals(1, log.reps.size)
-        assertTrue(log.planData.isNotEmpty())
+    /// Nuri's 2026-09-19 hang: started 23:47, saved 44 seconds into the 20th by a clock that
+    /// turned at midnight. The launch repair re-files it under the evening it belonged to,
+    /// leaves the hand-logged climb on the day the person chose, and has nothing to do the
+    /// second time.
+    @Test
+    fun repairRefilesASessionThatCrossedMidnightUnderItsEvening() = runTest {
+        val w = makeWorld()
+        val paris = ZoneId.of("Europe/Paris")
+        val started = java.time.ZonedDateTime.of(2026, 9, 19, 23, 47, 0, 0, paris).toInstant()
+        val sept19 = DayStamp.of(2026, 9, 19)
+        val sept20 = DayStamp.of(2026, 9, 20)
+        val plan = RoutineDraft.starter.normalized.plan.executable
+        val hang = WorkoutLogEntity.from(
+            plan = plan, templateID = null, templateName = "Daily burn", sessionsPerDayTarget = 2,
+            reps = listOf(RepSummary(grip = plan.sets.first().grip)),
+            startedAt = started, finishedAt = started.plusSeconds(13 * 60), day = sept20,
+        )
+        val climb = WorkoutLogEntity.logged(SessionKind.climbLimit, sept20, started.plusSeconds(20 * 60), 2)
+        val morningStart = started.plusSeconds(10 * 3600)
+        val morning = WorkoutLogEntity.from(
+            plan = plan, templateID = null, templateName = "Daily burn", sessionsPerDayTarget = 2,
+            reps = listOf(RepSummary(grip = plan.sets.first().grip)),
+            startedAt = morningStart, finishedAt = morningStart.plusSeconds(13 * 60), day = sept20,
+        )
+        w.db.logs().upsert(hang)
+        w.db.logs().upsert(climb)
+        w.db.logs().upsert(morning)
+
+        assertEquals(1, w.store.repairTrainingDays(paris))
+        val after = workoutLogs(w).associateBy { it.id }
+        assertEquals(sept19, after.getValue(hang.id).day, "the evening it was part of")
+        assertEquals(sept20, after.getValue(climb.id).day, "a hand log keeps the day the person chose")
+        assertEquals(sept20, after.getValue(morning.id).day, "a row already right is not touched")
+        assertEquals(0, w.store.repairTrainingDays(paris))
+        assertEquals(3, workoutLogs(w).size)
     }
 
     /// The frozen-name rule, stated as a test because it is the one people "fix".
@@ -1678,8 +1741,12 @@ class TemplateStoreTests {
         }
     }
 
+    /// Every row is dated by its TRAINING day, in every zone — a timed session included. It
+    /// used to show its start instant, which for a session begun in the small hours is a
+    /// different calendar day from the one the grid and the tally credit (Nuri,
+    /// 2026-09-20). The frozen `dayKey` is the one date every surface agrees on.
     @Test
-    fun historyDateUsesManualDayAcrossTimeZonesButPreservesTimedStart() {
+    fun historyDateIsTheTrainingDayForEveryRowInEveryTimeZone() {
         val day = DayStamp.of(2026, 9, 5)
         val entered = Instant.parse("2026-09-06T10:00:00Z")
         val manual = WorkoutLogEntity.logged(SessionKind.hangManual, day, entered, 1)
@@ -1687,7 +1754,7 @@ class TemplateStoreTests {
         for (zoneName in listOf("UTC", "America/Los_Angeles", "Pacific/Auckland")) {
             val zone = ZoneId.of(zoneName)
             assertEquals(day.localDate(), manual.historyDate(zone))
-            assertEquals(entered.atZone(zone).toLocalDate(), timed.historyDate(zone))
+            assertEquals(day.localDate(), timed.historyDate(zone), "the row, the grid and the tally name the same day")
         }
     }
 

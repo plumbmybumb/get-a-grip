@@ -24,6 +24,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -96,6 +98,10 @@ fun TodayScreen(
     onShowHistory: () -> Unit = {},
     /// The log sheet, shared with History — a gym session or a hang done away from the gauge.
     onLogSession: () -> Unit = {},
+    /// The live gauge, from the button on the header. Some people use the gauge and no
+    /// routine at all (2026-09-20), so it is one tap from Today — the same top-right door
+    /// History and Maxes have. The host presents it; this screen never knows how.
+    onOpenGauge: () -> Unit = {},
     /// Whether the HOST has nothing of its own on screen. Today owns every presentation a
     /// scan can collide with except two — the log sheet and the max composer both live in
     /// `RootTabView` while this screen stays composed underneath them — so the host has to
@@ -261,6 +267,7 @@ fun TodayScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Header(
+                onOpenGauge = onOpenGauge,
                 nextReminderText = selected?.let { nextReminderText(it) },
                 dateLine = dateLine(today),
                 modifier = Modifier.padding(horizontal = Metrics.hPadding),
@@ -326,10 +333,18 @@ fun TodayScreen(
         }
     }
 
+    // The bar names the sessions because they are the part nobody expects to be on the
+    // line: a routine's history goes with it (`TemplateStore.delete`), and "Routine
+    // deleted" alone would be a true sentence about the smaller half.
+    val deletedSessions = templates.lastDeleted?.sessions?.size ?: 0
     UndoSnackbarEffect(
         hostState = snackbar,
         deleted = templates.lastDeleted,
-        message = tr("Routine deleted"),
+        message = when (deletedSessions) {
+            0 -> tr("Routine deleted")
+            1 -> tr("Routine and its session deleted")
+            else -> tr("Routine and its %d sessions deleted", deletedSessions)
+        },
         onUndo = { scope.launch { templates.undoDelete(); feed.refresh() } },
         onExpired = { templates.dismissUndo() },
     )
@@ -408,6 +423,7 @@ fun TodayScreen(
 private fun Header(
     nextReminderText: String?,
     dateLine: String,
+    onOpenGauge: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalGripPalette.current
@@ -417,12 +433,24 @@ private fun Header(
         // I think that respects the Apple design better"); the height Today needed came out
         // of the content instead. It is drawn here rather than in a `LargeTopAppBar` because
         // a collapsing bar would scroll the title away on the one screen that must not move.
-        Text(
-            tr("Today"),
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.SemiBold,
-            color = palette.inkPrimary,
-        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                tr("Today"),
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = palette.inkPrimary,
+            )
+            Spacer(Modifier.weight(1f))
+            // The bar's one action, where History keeps its export and Maxes its add: the
+            // live gauge, wearing the icon its Settings row used to.
+            IconButton(onClick = onOpenGauge) {
+                Icon(
+                    Icons.Outlined.Speed,
+                    contentDescription = tr("Live gauge"),
+                    tint = palette.graphite,
+                )
+            }
+        }
         Text(dateLine, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

@@ -13,8 +13,9 @@ import java.time.ZonedDateTime
 /// A calendar day as an integer — days since 1970-01-01 (proleptic Gregorian).
 ///
 /// A training day is the day the user lived through, which has no timezone: a session
-/// finished at 00:30 belongs to the evening it was part of, and "2 of 2 today" must
-/// flip at local midnight without a relaunch. Storing days as integers makes all of
+/// finished at 00:30 belongs to the evening it was part of — the day turns at
+/// `ROLLOVER_HOUR`, not midnight — and "2 of 2 today" must flip at that hour without a
+/// relaunch. Storing days as integers makes all of
 /// that pure integer math and immune to the DST/timezone off-by-one bugs a timestamp
 /// invites, and it makes `WorkoutLog.dayKey` a cheap Int predicate.
 ///
@@ -60,7 +61,44 @@ data class DayStamp(val raw: Int) : Comparable<DayStamp>, JsonEncodable {
         fun of(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): DayStamp =
             DayStamp(instant.atZone(zone).toLocalDate().toEpochDay().toInt())
 
-        fun today(zone: ZoneId = ZoneId.systemDefault()): DayStamp = of(Instant.now(), zone)
+        /// TODAY is the training day, not the calendar day — see `ROLLOVER_HOUR`. Every
+        /// "today" in the app comes through here (`DayClock`), so the tally, the strip, the
+        /// grid and the day a session is filed under cannot disagree about when a day ends.
+        /// `now` is a test seam.
+        fun today(zone: ZoneId = ZoneId.systemDefault(), now: Instant = Instant.now()): DayStamp =
+            trainingDayOf(now, zone)
+
+        // MARK: - The training day
+
+        /// **A training day turns at 04:00, not at midnight.** A hang that starts at 23:47
+        /// and ends 44 seconds past midnight is an evening session; filing it under the
+        /// morning after scores one evening as two days, which is exactly what Nuri's own
+        /// history showed on iOS (2026-09-20). The promise this file always made — a 00:30
+        /// session belongs to the day the climber lived through — was never implemented
+        /// until this constant existed: the clock simply turned at midnight. Anything in the
+        /// small hours before this counts for the day before.
+        const val ROLLOVER_HOUR = 4
+
+        /// The training day `instant` falls in: its calendar day, or the previous one when
+        /// the local clock reads earlier than `ROLLOVER_HOUR`. Calendar arithmetic, never
+        /// "minus four hours": on the night the clocks go forward, 04:30 minus four hours
+        /// is 23:30 the evening before.
+        fun trainingDayOf(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): DayStamp {
+            val local = instant.atZone(zone)
+            val date = if (local.hour < ROLLOVER_HOUR) local.toLocalDate().minusDays(1) else local.toLocalDate()
+            return DayStamp(date.toEpochDay().toInt())
+        }
+
+        /// The instant the training day after `instant`'s begins — the coming 04:00 local.
+        /// What `DayClock` sleeps until, since no system broadcast marks that hour.
+        fun nextRollover(after: Instant, zone: ZoneId = ZoneId.systemDefault()): Instant {
+            val local = after.atZone(zone)
+            var candidate = local.toLocalDate().atTime(ROLLOVER_HOUR, 0).atZone(zone)
+            if (!candidate.isAfter(local)) {
+                candidate = local.toLocalDate().plusDays(1).atTime(ROLLOVER_HOUR, 0).atZone(zone)
+            }
+            return candidate.toInstant()
+        }
 
         /// The range of days `from..to`, inclusive, in order.
         fun span(from: DayStamp, to: DayStamp): List<DayStamp> =

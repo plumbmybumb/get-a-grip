@@ -43,6 +43,7 @@
     <string name="s_rest_1bd51a">%s de repos</string>
     <string name="s_sends_raw_sensor_counts_so_the_first_time_a_unit_connect">%s envoie des valeurs brutes de capteur : la première fois qu\'un exemplaire se connecte, l\'app demande une seule fois son étalonnage à son fabricant, par numéro de série. La réponse reste sur ce téléphone et n\'est plus jamais redemandée ; aucun autre capteur ne passe par un serveur.</string>
     <string name="s_speaks_a_protocol_its_maker_published_but_no_unit_has_be">%s parle un protocole publié par son fabricant, mais aucun exemplaire n\'a encore été essayé avec cette app.</string>
+    <string name="s_t">%s t</string>
     <string name="s_under_tension_cf82bb">%s sous tension</string>
     <string name="s_under_tension_per_side">%s sous tension par côté</string>
     <string name="s_x_6c2c70">%1$s · %2$s</string>
@@ -110,7 +111,7 @@
     <string name="s_lld_of_lld_days_trained">%1$d sur %2$d jours d\'entraînement</string>
     <string name="s_lld_of_lld_days_trained_since_you_started">%1$d sur %2$d jours d\'entraînement depuis tes débuts</string>
     <string name="s_lld_of_lld_pulls_completed">%1$d sur %2$d tirages effectués</string>
-    <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension_pea">%1$d sur %2$d tirages effectués, %3$d secondes sous tension, pic à %4$s kilogrammes</string>
+    <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension_pea_3a3be9">%1$d sur %2$d tirages effectués, %3$d secondes sous tension, pic à %4$s kilogrammes</string>
     <string name="s_lld_of_lld_sessions_done_today">%1$d sur %2$d séances faites aujourd\'hui</string>
     <string name="s_lld_of_35_days_trained">%d sur 35 jours d\'entraînement</string>
     <string name="s_lld_of_the_last_35_days_trained">%d des 35 derniers jours d\'entraînement</string>
@@ -210,6 +211,9 @@
     <string name="s_all_history">Tout l’historique</string>
     <string name="s_all_six_on_the_left_then_all_six_on_the_right_inside_one">Les six à gauche, puis les six à droite, dans une même série.</string>
     <string name="s_all_the_pulls_on_one_hand_then_all_of_them_on_the_other">Toutes les tractions d’une main, puis de l’autre, dans une même série.</string>
+    <string name="s_all_time">Depuis toujours</string>
+    <string name="s_all_time_since">Depuis toujours · depuis le %s</string>
+    <string name="s_all_time_your_numbers_land_here_after_the_first_session">Depuis toujours. Tes chiffres arrivent ici après la première séance.</string>
     <string name="s_allow_camera_access_in_settings_to_scan_a_shared_routine">Autorise l’accès à l’appareil photo dans Réglages pour scanner une routine partagée.</string>
     <string name="s_already_the_first_set">Déjà la première série</string>
     <string name="s_already_the_last_set">Déjà la dernière série</string>
@@ -261,6 +265,7 @@
     <string name="s_choose_a_session_kind_to_see_how_it_counts">Choisis un type de séance pour voir comment elle compte.</string>
     <string name="s_clear">Effacer</string>
     <string name="s_clear_rating">Effacer l’évaluation</string>
+    <string name="s_climbing_days">Jours d\'escalade</string>
     <string name="s_climbing_gym">Salle d\'escalade</string>
     <string name="s_climbro">Climbro</string>
     <string name="s_close">Fermer</string>
@@ -272,6 +277,7 @@
     <string name="s_column_names_and_the_data_guide_stay_in_english_your_not">Les noms des colonnes et le guide restent en anglais. Tes notes sont conservées telles quelles.</string>
     <string name="s_comfortable">Confortable</string>
     <string name="s_connect">Connecter</string>
+    <string name="s_connect_a_gauge_and_pull_the_force_draws_here">Connecte un capteur et tire : la force se dessine ici.</string>
     <string name="s_connect_and_start">Connecter et commencer</string>
     <string name="s_connect_gauge">Connecter le capteur</string>
     <string name="s_connect_your_gauge_to_measure">Connecte ton capteur pour mesurer.</string>
@@ -314,6 +320,7 @@
     <string name="s_data_characteristic_does_not_notify">La caractéristique de données ne notifie pas</string>
     <string name="s_date">Date</string>
     <string name="s_date_range">Période</string>
+    <string name="s_days_trained">Jours entraînés</string>
     <string name="s_decrease">Diminuer %s</string>
     <string name="s_delete">Supprimer</string>
     <string name="s_delete_routine_0cb076">Supprimer la routine</string>
@@ -443,6 +450,7 @@
     <string name="s_hard">Dur</string>
     <string name="s_hard_bouldering_or_projecting_a_maximal_pull_on_your_fin">Bloc dur ou travail de projet — une sollicitation maximale des doigts.</string>
     <string name="s_harder_than_your_max">Plus dur que ton max</string>
+    <string name="s_heaviest_pull">Tirage le plus lourd</string>
     <string name="s_hello">Hello,</string>
     <string name="s_hints_reset_open_a_routine_to_see_them">Conseils réinitialisés — ouvre une routine pour les voir</string>
     <string name="s_history">Historique</string>
@@ -720,6 +728,8 @@
     <string name="s_right_left_right_left_swapping_hands_every_pull">Droite, gauche, droite, gauche — on change de main à chaque tirage.</string>
     <string name="s_ring">Annulaire</string>
     <string name="s_ritual_or_whenever">Rituel ou libre</string>
+    <string name="s_routine_and_its_lld_sessions_deleted">Routine et ses %d séances supprimées</string>
+    <string name="s_routine_and_its_session_deleted">Routine et sa séance supprimées</string>
     <string name="s_routine_deleted">Routine supprimée</string>
     <string name="s_routine_name">Nom de la routine</string>
     <string name="s_routine_options">Options de la routine</string>
@@ -843,6 +853,7 @@
     <string name="s_tap_it_and_set_the_edge_which_fingers_how_many_pulls_and">Touche-la et règle la réglette, les doigts, le nombre de tirages et la durée. Rien n\'est enregistré tant que tu ne touches pas Enregistrer, et la visite reprend à ton retour.</string>
     <string name="s_tap_the_days_to_open_history_use_log_a_session_to_add_cl">Touche les jours pour ouvrir l’historique. Utilise Ajouter une séance pour noter de l’escalade ou des suspensions sans capteur.</string>
     <string name="s_tap_the_plan_to_see_your_grips_timing_and_hand_order_you">Touche le programme pour voir les prises, les durées et l’ordre des mains. Tu peux modifier la routine depuis son aperçu.</string>
+    <string name="s_tap_to_choose_yours_get_a_grip_works_with_lld_different">Touche pour choisir le tien : Get a Grip fonctionne avec %d capteurs différents.</string>
     <string name="s_tare_71c87f">Tarer</string>
     <string name="s_tare_is_unavailable_during_the_pull">Tarer est indisponible pendant le tirage.</string>
     <string name="s_tare_is_unavailable_while_waiting_for_you_to_let_go">Tarer est indisponible tant que tu n\'as pas relâché.</string>
@@ -934,12 +945,14 @@
     <string name="s_used_when_a_hand_has_no_max_of_its_own_and_for_two_hande">Utilisé lorsqu’une main n’a pas de max individuel, et pour les tirages à deux mains.</string>
     <string name="s_volume">Volume</string>
     <string name="s_volume_climbing">Escalade en volume</string>
+    <string name="s_volume_is_load_pulls_added_up_under_tension_is_every_sec">Le volume, c\'est charge × tirages, additionnés. Sous tension, chaque seconde sur la réglette.</string>
     <string name="s_volume_session">Séance de volume</string>
     <string name="s_wh_c06_crane_scale">Peson WH-C06</string>
     <string name="s_what_kind_of_session">QUEL TYPE DE SÉANCE</string>
     <string name="s_what_you_ll_pull">CE QUE TU VAS TIRER</string>
     <string name="s_when">QUAND</string>
     <string name="s_waiting_for_the_gauge">En attente du capteur</string>
+    <string name="s_waiting_for_the_gauge_it_s_connected_but_not_sending_try">En attente du capteur. Il est connecté mais n\'envoie rien : essaie Réveiller.</string>
     <string name="s_wake">Réveiller</string>
     <string name="s_we_keep_our_hardware_margins_low_because_we_believe_ever">We keep our hardware margins low because we believe everyone should have access to their own data.</string>
     <string name="s_weight_targets">Cibles de poids</string>
@@ -968,6 +981,7 @@
     <string name="s_yesterday_da2483">Hier</string>
     <string name="s_you_can_change_any_of_it_later_this_same_screen_is_the_e">Tu peux tout changer plus tard — c\'est ce même écran qui sert d\'éditeur.</string>
     <string name="s_you_can_connect_your_gauge_later">Tu peux connecter ton capteur plus tard.</string>
+    <string name="s_your_all_time_numbers_land_here_after_the_first_session">Tes chiffres depuis toujours arrivent ici après la première séance.</string>
     <string name="s_your_ceiling_per_grip">Ton plafond, par prise</string>
     <string name="s_your_current_max_on_this_grip_is_recorded_saving_adds_a">Ton max actuel sur cette prise%1$s est de %2$s %3$s, enregistré %4$s. Enregistrer en ajoute un nouveau et garde l\'ancien dans l\'historique.</string>
     <string name="s_your_current_max_on_this_grip_is_kg_recorded_saving_adds">Ton max actuel sur cette prise%1$s est de %2$s kg, enregistré %3$s. Enregistrer en ajoute un nouveau et garde l\'ancien dans l\'historique.</string>

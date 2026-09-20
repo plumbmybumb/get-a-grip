@@ -14,7 +14,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import run.nuri.getagrip.engine.DayStamp
+import java.time.Instant
 
 /// The app's single source of "today".
 ///
@@ -53,6 +59,21 @@ class DayClock(today: DayStamp = DayStamp.today()) {
     fun advance(to: DayStamp) {
         if (to != today) today = to
     }
+
+    /// The training day turns at `DayStamp.ROLLOVER_HOUR` (04:00), an hour no system
+    /// broadcast marks — `ACTION_DATE_CHANGED` is midnight's. So the clock sleeps until
+    /// the next rollover, refreshes, tells the store, and goes back to sleep for the
+    /// life of the process; a process that is not running is caught by the resume
+    /// refresh instead, as before. The iOS twin is `DayClock.armRolloverRefresh`.
+    fun scheduleRolloverRefresh(scope: CoroutineScope, onDayMayHaveChanged: () -> Unit): Job =
+        scope.launch {
+            while (isActive) {
+                val wait = DayStamp.nextRollover(Instant.now()).toEpochMilli() - System.currentTimeMillis()
+                delay(maxOf(1_000L, wait))
+                refresh()
+                onDayMayHaveChanged()
+            }
+        }
 }
 
 /// Registered by the Application for the life of the process.

@@ -31,6 +31,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -580,5 +587,37 @@ private fun GaugeScreenDarkPreview() {
         androidx.compose.runtime.CompositionLocalProvider(LocalDeviceStore provides previewStore()) {
             Surface(color = LocalGripPalette.current.field) { GaugeScreen() }
         }
+    }
+}
+
+/// **The gauge as a screen of its own**, opened from the button on Today's header. The
+/// gauge screen itself is untouched (Nuri, 2026-09-20: no redesign of the working screens
+/// on Android); this is only the chrome around it — a title, a back arrow, and the
+/// system's back gesture — the way the max measurement presents itself.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LiveGaugeHost(onClose: () -> Unit) {
+    val palette = LocalGripPalette.current
+    BackHandler(onBack = onClose)
+    Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = { Text(tr("Gauge")) },
+                navigationIcon = {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Back"))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    scrolledContainerColor = palette.card,
+                    titleContentColor = palette.inkPrimary,
+                    navigationIconContentColor = palette.inkPrimary,
+                ),
+            )
+        },
+    ) { padding ->
+        GaugeScreen(Modifier.padding(padding))
     }
 }
