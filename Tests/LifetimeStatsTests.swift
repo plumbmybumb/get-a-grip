@@ -37,6 +37,8 @@ final class LifetimeStatsTests: XCTestCase {
                  on: day + 1),
             WorkoutLog(logged: .hangManual, day: day + 1, at: (day + 1).date(), sessionsPerDayTarget: 2, minutes: 15),
             WorkoutLog(logged: .climbLimit, day: day + 3, at: (day + 3).date(), sessionsPerDayTarget: 2, minutes: 90),
+            // A second climb the same day: one day at the gym, not two.
+            WorkoutLog(logged: .climbVolume, day: day + 3, at: (day + 3).date(), sessionsPerDayTarget: 2, minutes: 60),
             WorkoutLog(logged: .benchmark, day: day + 5, at: (day + 5).date(), sessionsPerDayTarget: 2),
         ]
 
@@ -46,7 +48,7 @@ final class LifetimeStatsTests: XCTestCase {
         XCTAssertEqual(stats.pulls, 2, "completed pulls only")
         XCTAssertEqual(stats.heldSeconds, 17)
         XCTAssertEqual(stats.volumeKg, 18 + 12, "load × pulls, per session, added up")
-        XCTAssertEqual(stats.climbs, 1)
+        XCTAssertEqual(stats.climbDays, 1, "distinct days, not climbs logged")
         XCTAssertEqual(stats.daysTrained, 4, "the benchmark day counts as a day, twice-trained days once")
         XCTAssertEqual(stats.heaviestPullKg, 20)
         XCTAssertEqual(stats.since, day)

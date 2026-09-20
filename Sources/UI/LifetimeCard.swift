@@ -4,44 +4,50 @@
 import SwiftUI
 
 /// **All time, at the top of Settings** (Nuri, 2026-09-20: "lifetime stats — number of
-/// routines done, total load lifetime, anything else?"). Six numbers and the date they
-/// count from: sessions, pulls, time under tension, volume, days trained, the heaviest
-/// pull. Nothing here is a chart or a trend — History owns those — this is the odometer.
+/// routines done, total load lifetime, anything else?"). Sessions, pulls, time under
+/// tension, volume, days trained, climbing days, the heaviest pull, and the date they
+/// count from. Nothing here is a chart or a trend — History owns those — this is the
+/// odometer.
+///
+/// A LEDGER, not tiles. The first cut laid six numbers in a three-column grid, and on
+/// the phone it read as ragged: a "49" left a hole two numbers wide, "4 hr, 40 min"
+/// crowded the right edge, and the whole thing sat above a Device card drawn as
+/// label-left, value-right rows (Nuri: "spacing on this is kind of ugly"). Same rows as
+/// that neighbour now, so the two cards share one rhythm and every value lands on one
+/// right-hand axis.
 ///
 /// Folded from denormalized columns (`Collection.lifetime`), so opening the tab costs a
 /// row per session, never a decode.
 struct LifetimeCard: View {
     var stats: LifetimeStats
     @Environment(\.weightUnit) private var weightUnit
-    /// Tiles wrap on their own: three to a row on a phone, fewer once the type grows,
-    /// and never a column squeezed to an ellipsis.
-    @ScaledMetric(relativeTo: .title3) private var tileWidth: CGFloat = 100
 
     var body: some View {
         MaterialCard {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(title)
                 if stats.isEmpty {
                     Text("Your all-time numbers land here after the first session.")
-                        .font(.system(.subheadline))
                         .foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: tileWidth), spacing: 8, alignment: .top)],
-                              alignment: .leading, spacing: 14) {
-                        tile(stats.sessions.formatted(), String(localized: "Sessions"))
-                        tile(stats.pulls.formatted(), String(localized: "Pulls"))
-                        tile(heldText, String(localized: "Under tension"))
-                        tile(volumeText, String(localized: "Volume"))
-                        tile(stats.daysTrained.formatted(), String(localized: "Days trained"))
-                        tile(weightUnit.text(stats.heaviestPullKg), String(localized: "Heaviest pull"))
+                    row(String(localized: "Sessions"), stats.sessions.formatted())
+                    row(String(localized: "Pulls"), stats.pulls.formatted())
+                    row(String(localized: "Under tension"), heldText)
+                    row(String(localized: "Volume"), volumeText)
+                    row(String(localized: "Days trained"), stats.daysTrained.formatted())
+                    if stats.climbDays > 0 {
+                        row(String(localized: "Climbing days"), stats.climbDays.formatted())
                     }
-                    Text(footnote)
+                    row(String(localized: "Heaviest pull"), weightUnit.text(stats.heaviestPullKg))
+                    Text("Volume is load × pulls, added up. Under tension is every second on the edge.")
                         .font(.system(.caption))
                         .foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
                 }
             }
+            .font(.system(.subheadline))
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(spoken)
@@ -54,28 +60,26 @@ struct LifetimeCard: View {
         return String(localized: "All time · since \(from)")
     }
 
-    private func tile(_ value: String, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+    /// The Device card's row, with the value in primary ink and a little weight: these
+    /// are facts about the person, not the link's status.
+    private func row(_ label: String, _ value: String) -> some View {
+        LabeledContent(label) {
             Text(value)
-                .font(.system(.title3, weight: .semibold))
+                .fontWeight(.semibold)
                 .monospacedDigit()
                 .foregroundStyle(Ink.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            CapsLabel(label)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Hours and minutes once there are hours, minutes and seconds before — two units,
-    /// never three: "3 hr, 12 min" reads, "3 hr, 12 min, 40 sec" is a stopwatch.
+    /// never three: "4 hr, 40 min" reads, "4 hr, 40 min, 12 sec" is a stopwatch.
     private var heldText: String {
         Duration.seconds(stats.heldSeconds)
             .formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated,
                               maximumUnitCount: 2))
     }
 
-    /// Tonnes once kilograms pass a thousand — "21.6 t" is the odometer reading, "21 600
+    /// Tonnes once kilograms pass a thousand — "20.3 t" is the odometer reading, "20 300
     /// kg" is a spreadsheet. Pounds stay pounds: a ton is two different weights in English.
     private var volumeText: String {
         switch weightUnit {
@@ -89,23 +93,17 @@ struct LifetimeCard: View {
         }
     }
 
-    /// What the two numbers people ask about MEAN, and where the climbs went.
-    private var footnote: String {
-        var lines = [String(localized: "Volume is load × pulls, added up. Under tension is every second on the edge.")]
-        if stats.climbs > 0 {
-            lines.append(stats.climbs == 1
-                         ? String(localized: "One of the days trained was at the climbing gym.")
-                         : String(localized: "\(stats.climbs) of the days trained were at the climbing gym."))
-        }
-        return lines.joined(separator: " ")
-    }
-
     private var spoken: String {
         guard !stats.isEmpty else { return String(localized: "All time. Your numbers land here after the first session.") }
-        return String(localized: """
-            \(title). \(stats.sessions) sessions, \(stats.pulls) pulls, \(heldText) under tension, \
-            volume \(volumeText), \(stats.daysTrained) days trained, heaviest pull \
-            \(weightUnit.number(stats.heaviestPullKg)) \(weightUnit.spokenName).
-            """)
+        var parts = [
+            String(localized: "\(stats.sessions) sessions"),
+            String(localized: "\(stats.pulls) pulls"),
+            String(localized: "\(heldText) under tension"),
+            String(localized: "volume \(volumeText)"),
+            String(localized: "\(stats.daysTrained) days trained"),
+        ]
+        if stats.climbDays > 0 { parts.append(String(localized: "\(stats.climbDays) climbing days")) }
+        parts.append(String(localized: "heaviest pull \(weightUnit.number(stats.heaviestPullKg)) \(weightUnit.spokenName)"))
+        return "\(title). \(parts.joined(separator: ", "))."
     }
 }

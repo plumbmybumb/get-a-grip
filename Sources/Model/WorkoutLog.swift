@@ -148,6 +148,7 @@ extension Collection where Element == WorkoutLog {
     var lifetime: LifetimeStats {
         var stats = LifetimeStats()
         var days = Set<Int>()
+        var climbDays = Set<Int>()
         for log in self {
             days.insert(log.dayKey)
             stats.since = stats.since.map { Swift.min($0, log.day) } ?? log.day
@@ -162,12 +163,13 @@ extension Collection where Element == WorkoutLog {
                 stats.volumeKg += log.avgKg * Double(log.completedReps)
                 stats.heaviestPullKg = Swift.max(stats.heaviestPullKg, log.peakKg)
             case .climbVolume, .climbLimit:
-                stats.climbs += 1
+                climbDays.insert(log.dayKey)
             case .benchmark:
                 break
             }
         }
         stats.daysTrained = days.count
+        stats.climbDays = climbDays.count
         return stats
     }
 }
@@ -183,14 +185,15 @@ struct LifetimeStats: Equatable, Sendable {
     var heldSeconds = 0.0
     /// Load × pulls, summed — the number a lifter calls volume.
     var volumeKg = 0.0
-    var climbs = 0
+    /// Distinct days with a climb logged — two climbs on one day are one day at the gym.
+    var climbDays = 0
     /// Distinct training days with anything on them, climbs and benchmarks included.
     var daysTrained = 0
     var heaviestPullKg = 0.0
     /// The earliest training day on record.
     var since: DayStamp?
 
-    var isEmpty: Bool { sessions == 0 && climbs == 0 && daysTrained == 0 }
+    var isEmpty: Bool { sessions == 0 && climbDays == 0 && daysTrained == 0 }
 }
 
 extension WorkoutLog {

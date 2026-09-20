@@ -111,16 +111,6 @@
         }
       }
     },
-    "%lld of the days trained were at the climbing gym." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld des jours entraînés étaient à la salle d'escalade."
-          }
-        }
-      }
-    },
     "All time" : {
       "localizations" : {
         "fr" : {
@@ -151,6 +141,16 @@
         }
       }
     },
+    "Climbing days" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jours d'escalade"
+          }
+        }
+      }
+    },
     "Days trained" : {
       "localizations" : {
         "fr" : {
@@ -167,16 +167,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tirage le plus lourd"
-          }
-        }
-      }
-    },
-    "One of the days trained was at the climbing gym." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un des jours entraînés était à la salle d'escalade."
           }
         }
       }
