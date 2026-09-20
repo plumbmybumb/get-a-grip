@@ -14,8 +14,10 @@ import SwiftUI
 /// mean, battery) because this is also the screen that retires every hardware risk in
 /// the project.
 ///
-/// Reached two ways: pushed from Settings › Live gauge, and as a full-screen cover from
-/// the gauge button on Today's bar — `presentedAsCover` is what adds the Done item.
+/// Reached from the gauge button on Today's bar, as a full-screen cover —
+/// `presentedAsCover` is what adds the Done item. The Settings row it used to sit behind
+/// is gone (Nuri, 2026-09-20): one door, on the screen that opens every day. The DEBUG
+/// `-previewGauge` launch still pushes it bare for screenshots.
 struct GaugeView: View {
     var presentedAsCover = false
 

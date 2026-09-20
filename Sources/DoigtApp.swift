@@ -54,8 +54,9 @@ struct DoigtApp: App {
                 } else if showSummaryPreview {
                     DebugSummaryPreview { showSummaryPreview = false }
                 } else if ProcessInfo.processInfo.arguments.contains("-previewGauge") {
-                    // Settings › Live gauge, opened directly and already reading — screenshots
-                    // (simctl can't tap, and a gauge screen at 0.0 kg says nothing).
+                    // The live gauge (Today's gauge button), opened directly and already
+                    // reading — screenshots (simctl can't tap, and a gauge at 0.0 kg says
+                    // nothing).
                     NavigationStack { GaugeView() }
                         .task {
                             device.connect()

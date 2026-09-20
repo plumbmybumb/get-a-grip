@@ -26,8 +26,11 @@ Android owes the first two rules.
   name, but get no trend card.
 - **The live gauge is the runner's screen without a routine** — the trace as the screen,
   the numbers on one glass panel, the actions on one glass dock — and it is one tap from
-  Today through the gauge button on the bar. The watch got the same door: the gauge row on
-  its list opens a live gauge screen. Android keeps its gauge as it is.
+  Today through the gauge button on the bar, which replaces the Settings row. The watch
+  got the same door: the gauge row on its list opens a live gauge screen. Android keeps
+  its gauge as it is.
+- **Settings opens on the odometer**: sessions, pulls, time under tension, volume (load ×
+  pulls), days trained and the heaviest pull, all time, with the date they count from.
 
 ## 1.1.0 — the session screen
 

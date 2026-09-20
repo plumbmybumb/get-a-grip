@@ -25,13 +25,13 @@ enum DiagnosticReport {
     }
 }
 
-/// Three cards: what the gauge is doing, a door to the live gauge, and the statements
-/// the app owes whoever is using it.
+/// The odometer, what the gauge is doing, the preferences, and the statements the app
+/// owes whoever is using it.
 ///
-/// The live gauge lives HERE rather than on Today. Today is the ritual — one routine,
-/// one tap — and a second card offering a different, more interesting screen is the
-/// first millimetre of the library the whole app exists to avoid. The gauge is still
-/// one tap from the runner, which is where a raw reading is actually wanted.
+/// The live gauge used to live HERE rather than on Today, to keep the ritual screen to
+/// one routine and one tap. That held until people turned out to use the gauge and no
+/// routine at all (2026-09-20): it moved to a button on Today's bar, and the row here
+/// went with it — one door, on the screen that opens every day, not two.
 struct SettingsView: View {
     @Environment(DeviceStore.self) private var device
     @Environment(TemplateStore.self) private var templates
@@ -45,14 +45,21 @@ struct SettingsView: View {
     /// deliberately not persisted, so reopening Settings offers the reset again.
     @State private var guideReset = false
     @State private var tourReset = false
+    /// The all-time tally, read when the tab opens — a session cannot be saved from
+    /// inside Settings, so once per appearance is once per change. nil until read, and
+    /// nil again if the read fails, which hides the card rather than showing zeros.
+    @State private var lifetime: LifetimeStats?
 
     var body: some View {
         ScreenScaffold(title: String(localized: "Settings")) {
-            deviceCard.staggerIn(0)
-            // WHICH gauge before the live gauge itself: choosing the device precedes using
-            // it, and everything below this row describes whatever it selects.
-            gaugeKindRow.staggerIn(1)
-            gaugeRow.staggerIn(2)
+            // FIRST: the one card here that is about the person rather than the app.
+            if let lifetime {
+                LifetimeCard(stats: lifetime).staggerIn(0)
+            }
+            deviceCard.staggerIn(1)
+            // WHICH gauge: choosing the device precedes using it, and everything below
+            // this row describes whatever it selects.
+            gaugeKindRow.staggerIn(2)
             weightUnitsCard.staggerIn(3)
             remindersCard.staggerIn(4)
             // ABOVE About, deliberately. About is the block of statements the app OWES
@@ -63,6 +70,8 @@ struct SettingsView: View {
             openSourceCard.staggerIn(6)
             aboutCard.staggerIn(7)
         }
+        .onAppear { lifetime = templates.lifetimeStats() }
+        .onChange(of: templates.sessionsSavedThisLaunch) { _, _ in lifetime = templates.lifetimeStats() }
     }
 
     /// Which device rings. The routines sync; the reminders must not, or every iPad
@@ -171,43 +180,6 @@ struct SettingsView: View {
         .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityLabel("Gauge. Currently \(device.isMock ? "the demo device" : device.gaugeKind.displayName).")
-    }
-
-    // MARK: - Live gauge
-
-    private var gaugeRow: some View {
-        NavigationLink {
-            GaugeView()
-        } label: {
-            MaterialCard {
-                HStack(spacing: 14) {
-                    Image(systemName: "gauge.with.dots.needle.bottom.50percent")
-                        .font(.system(.title2))
-                        .foregroundStyle(StatusTint.engaged)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Live gauge")
-                            .font(.system(.headline, weight: .semibold))
-                            .foregroundStyle(Ink.primary)
-                        Text("Pull and watch the force in real time")
-                            .font(.system(.subheadline))
-                            .foregroundStyle(Ink.secondary)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(.footnote, weight: .semibold))
-                        .foregroundStyle(Ink.tertiary)
-                        .accessibilityHidden(true)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        // A row that draws full-width must hit full-width: SwiftUI's default hit area
-        // is the label's OPAQUE content, so the Spacer and the card's material
-        // contribute nothing without this.
-        .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
-        .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityLabel("Live gauge. Pull and watch the force in real time.")
     }
 
     private var hasRoutine: Bool { !routines.isEmpty }

@@ -101,6 +101,106 @@
         }
       }
     },
+    "%@ t" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ t"
+          }
+        }
+      }
+    },
+    "%lld of the days trained were at the climbing gym." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld des jours entraînés étaient à la salle d'escalade."
+          }
+        }
+      }
+    },
+    "All time" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depuis toujours"
+          }
+        }
+      }
+    },
+    "All time · since %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depuis toujours · depuis le %@"
+          }
+        }
+      }
+    },
+    "All time. Your numbers land here after the first session." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depuis toujours. Tes chiffres arrivent ici après la première séance."
+          }
+        }
+      }
+    },
+    "Days trained" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jours entraînés"
+          }
+        }
+      }
+    },
+    "Heaviest pull" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tirage le plus lourd"
+          }
+        }
+      }
+    },
+    "One of the days trained was at the climbing gym." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un des jours entraînés était à la salle d'escalade."
+          }
+        }
+      }
+    },
+    "Volume is load × pulls, added up. Under tension is every second on the edge." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le volume, c'est charge × tirages, additionnés. Sous tension, chaque seconde sur la réglette."
+          }
+        }
+      }
+    },
+    "Your all-time numbers land here after the first session." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tes chiffres depuis toujours arrivent ici après la première séance."
+          }
+        }
+      }
+    },
     "—" : {
       "shouldTranslate" : false
     },

@@ -141,6 +141,56 @@ extension Collection where Element == WorkoutLog {
     func unattributedHangs(on day: DayStamp) -> Int {
         filter { $0.dayKey == day.raw && $0.kind == .hangManual }.count
     }
+
+    /// The all-time tally at the top of Settings (Nuri, 2026-09-20: "lifetime stats").
+    /// Folded from the DENORMALIZED columns only — never from the rep blobs — so it costs
+    /// a row per session, not a decode, and can be recomputed every time the tab opens.
+    var lifetime: LifetimeStats {
+        var stats = LifetimeStats()
+        var days = Set<Int>()
+        for log in self {
+            days.insert(log.dayKey)
+            stats.since = stats.since.map { Swift.min($0, log.day) } ?? log.day
+            switch log.kind {
+            case .hang, .hangManual:
+                stats.sessions += 1
+                stats.pulls += log.completedReps
+                stats.heldSeconds += log.totalHeldSeconds
+                // The lifting convention — load × reps, added up — from the session's
+                // time-weighted mean and its completed count. Exact when every hold in a
+                // session ran its full length, which is what a completed pull means.
+                stats.volumeKg += log.avgKg * Double(log.completedReps)
+                stats.heaviestPullKg = Swift.max(stats.heaviestPullKg, log.peakKg)
+            case .climbVolume, .climbLimit:
+                stats.climbs += 1
+            case .benchmark:
+                break
+            }
+        }
+        stats.daysTrained = days.count
+        return stats
+    }
+}
+
+/// What a lifetime of sessions adds up to — see `Collection.lifetime` and `LifetimeCard`.
+/// Hangboard sessions the app ran or that were logged by hand count as sessions; a climb
+/// is a day at the gym; a benchmark day is a day trained and nothing else.
+struct LifetimeStats: Equatable, Sendable {
+    var sessions = 0
+    /// Completed pulls only — a skipped pull is a pull that did not happen.
+    var pulls = 0
+    /// Every second on the edge, across every completed or partial hold.
+    var heldSeconds = 0.0
+    /// Load × pulls, summed — the number a lifter calls volume.
+    var volumeKg = 0.0
+    var climbs = 0
+    /// Distinct training days with anything on them, climbs and benchmarks included.
+    var daysTrained = 0
+    var heaviestPullKg = 0.0
+    /// The earliest training day on record.
+    var since: DayStamp?
+
+    var isEmpty: Bool { sessions == 0 && climbs == 0 && daysTrained == 0 }
 }
 
 extension WorkoutLog {
