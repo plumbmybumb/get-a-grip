@@ -1,6 +1,23 @@
 # Android Play closed beta
 
-## Current status — 18 September 2026
+## Current status — 21 September 2026 release record
+
+Build **1.0.2 (12)** was uploaded on **20 September 2026, approximately 12:35 CEST**
+and submitted at approximately **12:38 CEST** to **Closed testing - Alpha, 100%**.
+Play Console confirmed **Changes in review**, with automated quick checks running.
+Managed publishing is off; build 11 was verified available to selected testers before
+this submission and remains the released build until approval.
+
+| Build | Source | Track | Status | Record |
+| --- | --- | --- | --- | --- |
+| 1.0.2 (12) | `android-v1.0.2-12`, `7f2dc3e` | Closed Alpha, 100% | Submitted for review on 20 Sep 2026 | [Record](releases/notes/RELEASE_2026-09-21_ANDROID_12.md) |
+
+The release includes the 04:00 training day and launch repair, cascading routine
+deletes with Undo, Today's gauge button, the all-time History card and Settings'
+gauge picker. The upload certificate matched the expected key; the only warning
+was missing native debug symbols. Production, pricing and listing were unchanged.
+
+## Previous status — 18 September 2026
 
 Build **1.0.1 (11)** — Frez Dyno support (official protocol, untested on hardware; the
 one-time note from Frez; the calibration lookup, the app's first and only network

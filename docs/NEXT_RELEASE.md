@@ -1,19 +1,22 @@
 # Release record and the queue behind it
 
-The current versions are **iOS 1.1.0 (10)** and **Android 1.0.1 (11)**. Android 1.0.1 (11)
-went to the closed Alpha track on 18 September 2026
-([release record](releases/notes/RELEASE_2026-09-18_ANDROID_11.md)); iOS 1.1.0 is in
-preparation, and its store copy is written ([English](releases/1.1.0/ios-en-US.txt),
-[French](releases/1.1.0/ios-fr-FR.txt)). The 1.1.0 section below says what it ships; each
-section after it carries its own status line and records work that preceded it. The
-development plan those were scoped against is kept in
+The submitted versions are **iOS 1.1.1 (11)** and **Android 1.0.2 (12)**, built
+from `7f2dc3e` and sent for review on **20 September 2026**. App Store Connect shows
+**Waiting for Review**; Play Console shows **Changes in review** for Closed testing -
+Alpha at 100%, with quick checks running. Their records retain the requested
+21 September release labels: [iOS](releases/notes/RELEASE_2026-09-21_IOS_1.1.1.md)
+and [Android](releases/notes/RELEASE_2026-09-21_ANDROID_12.md).
+
+The previously released builds remain **iOS 1.1.0 (10)** and **Android 1.0.1 (11)**
+until approval. The development plan is kept in
 [history/RELEASE_1.1.0_PLAN.md](history/RELEASE_1.1.0_PLAN.md).
 
 ## iOS 1.1.1 (11) and Android 1.0.2 (12) — the training day, deleted routines, the gauge as a screen
 
-Status: implemented on 20 September 2026. iOS 1.1.0 (10) was approved and released, so
-this ships as its own version, 1.1.1 (11), with its own What's New in
-[docs/releases/1.1.1/](releases/1.1.1/); Android as 1.0.2 (12) on the Alpha track.
+Status: **submitted for review on 20 September 2026**. iOS **1.1.1 (11)** is
+**Waiting for Review**, with What's New from [docs/releases/1.1.1/](releases/1.1.1/).
+Android **1.0.2 (12)** is **Changes in review**, Closed testing - Alpha at 100%.
+The previous iOS 1.1.0 (10) was approved and released, so 1.1.1 is its own version.
 Android carries the day rule, the cascading delete, the odometer in History, the rimmed
 gauge picker and the gauge button on Today; its working screens (runner and gauge) keep
 their current look by Nuri's call.
