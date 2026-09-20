@@ -153,11 +153,14 @@ struct HistoryView: View {
             // grip options and series instead of filtering the entire history once per
             // routine, per chip tap.
             let logsByRoutine = routineLogIndex
+            // The odometer, folded once from the same query — columns only, no blobs.
+            let lifetime = logs.lifetime
             if wide {
-                twoPane(ledger: ledger, routines: routines,
-                        logsByRoutine: logsByRoutine, width: width)
+                twoPane(ledger: ledger, routines: routines, logsByRoutine: logsByRoutine,
+                        lifetime: lifetime, width: width)
             } else {
-                singleColumn(ledger: ledger, routines: routines, logsByRoutine: logsByRoutine)
+                singleColumn(ledger: ledger, routines: routines, logsByRoutine: logsByRoutine,
+                             lifetime: lifetime)
             }
         }
     }
@@ -171,10 +174,15 @@ struct HistoryView: View {
     /// cards are just rows; nothing here needs `scrollTo`.
     private func singleColumn(ledger: DayLedger,
                               routines: [RoutineOption],
-                              logsByRoutine: [String: [WorkoutLog]]) -> some View {
+                              logsByRoutine: [String: [WorkoutLog]],
+                              lifetime: LifetimeStats) -> some View {
         List {
             monthBlock(ledger).summaryListRow(top: 12, bottom: 6)
             trendBlock(routines, logsByRoutine: logsByRoutine).summaryListRow(top: 6, bottom: 6)
+            // THIRD, above the log and below the two pictures (Nuri, 2026-09-20): the
+            // month says how often, the trend says how hard, the odometer says how much,
+            // all of it — and the sessions it adds up sit right under it.
+            lifetimeBlock(lifetime).summaryListRow(top: 6, bottom: 6)
             sessionRows
         }
         .historyList()
@@ -195,6 +203,7 @@ struct HistoryView: View {
     private func twoPane(ledger: DayLedger,
                          routines: [RoutineOption],
                          logsByRoutine: [String: [WorkoutLog]],
+                         lifetime: LifetimeStats,
                          width: CGFloat) -> some View {
         HStack(spacing: 0) {
             ScrollView {
@@ -202,7 +211,7 @@ struct HistoryView: View {
                 // rhythm the `List` rows have today.
                 VStack(spacing: 12) {
                     summaryBlocks(ledger: ledger, routines: routines,
-                                  logsByRoutine: logsByRoutine, wide: true)
+                                  logsByRoutine: logsByRoutine, lifetime: lifetime, wide: true)
                 }
                 .padding(.top, 12)
                 .padding(.bottom, 24)
@@ -301,9 +310,17 @@ struct HistoryView: View {
     private func summaryBlocks(ledger: DayLedger,
                                routines: [RoutineOption],
                                logsByRoutine: [String: [WorkoutLog]],
+                               lifetime: LifetimeStats,
                                wide: Bool = false) -> some View {
         monthBlock(ledger, wide: wide)
         trendBlock(routines, logsByRoutine: logsByRoutine, wide: wide)
+        lifetimeBlock(lifetime)
+    }
+
+    /// The all-time card — see `LifetimeCard`. Same margins as the two blocks above it.
+    private func lifetimeBlock(_ lifetime: LifetimeStats) -> some View {
+        LifetimeCard(stats: lifetime)
+            .padding(.horizontal, Metrics.hPadding)
     }
 
     /// The log itself: the label, the sessions, the door to the rest, the footnote.

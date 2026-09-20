@@ -25,13 +25,19 @@ enum DiagnosticReport {
     }
 }
 
-/// The odometer, what the gauge is doing, the preferences, and the statements the app
-/// owes whoever is using it.
+/// Which gauge, what it is doing, the preferences, and the statements the app owes
+/// whoever is using it.
+///
+/// **The gauge picker comes FIRST, with a rim** (Nuri, 2026-09-20). Eight gauges and one
+/// row to choose between them, and the row read as a status line — nobody with a WH-C06
+/// could tell it was the place to say so. The bleu rim and the line under the name say
+/// "this is a choice"; the Device card that follows says what the chosen one is doing.
 ///
 /// The live gauge used to live HERE rather than on Today, to keep the ritual screen to
 /// one routine and one tap. That held until people turned out to use the gauge and no
 /// routine at all (2026-09-20): it moved to a button on Today's bar, and the row here
-/// went with it — one door, on the screen that opens every day, not two.
+/// went with it — one door, on the screen that opens every day, not two. The all-time
+/// tally that briefly sat here moved to History, where the sessions it adds up are.
 struct SettingsView: View {
     @Environment(DeviceStore.self) private var device
     @Environment(TemplateStore.self) private var templates
@@ -45,33 +51,23 @@ struct SettingsView: View {
     /// deliberately not persisted, so reopening Settings offers the reset again.
     @State private var guideReset = false
     @State private var tourReset = false
-    /// The all-time tally, read when the tab opens — a session cannot be saved from
-    /// inside Settings, so once per appearance is once per change. nil until read, and
-    /// nil again if the read fails, which hides the card rather than showing zeros.
-    @State private var lifetime: LifetimeStats?
 
     var body: some View {
         ScreenScaffold(title: String(localized: "Settings")) {
-            // FIRST: the one card here that is about the person rather than the app.
-            if let lifetime {
-                LifetimeCard(stats: lifetime).staggerIn(0)
-            }
+            // WHICH gauge, first: choosing the device precedes using it, and everything
+            // below this row describes whatever it selects.
+            gaugeKindRow.staggerIn(0)
             deviceCard.staggerIn(1)
-            // WHICH gauge: choosing the device precedes using it, and everything below
-            // this row describes whatever it selects.
-            gaugeKindRow.staggerIn(2)
-            weightUnitsCard.staggerIn(3)
-            remindersCard.staggerIn(4)
+            weightUnitsCard.staggerIn(2)
+            remindersCard.staggerIn(3)
             // ABOVE About, deliberately. About is the block of statements the app OWES
             // whoever is using it — storage, attribution, licence — and a door out to a
             // person is a thing you DO, so it belongs with the other actions rather than
             // filed under the small print.
-            SupportCard().staggerIn(5)
-            openSourceCard.staggerIn(6)
-            aboutCard.staggerIn(7)
+            SupportCard().staggerIn(4)
+            openSourceCard.staggerIn(5)
+            aboutCard.staggerIn(6)
         }
-        .onAppear { lifetime = templates.lifetimeStats() }
-        .onChange(of: templates.sessionsSavedThisLaunch) { _, _ in lifetime = templates.lifetimeStats() }
     }
 
     /// Which device rings. The routines sync; the reminders must not, or every iPad
@@ -148,6 +144,10 @@ struct SettingsView: View {
 
     // MARK: - Which gauge
 
+    /// The one card on the screen with a rim: bleu, two points — a hairline is mostly
+    /// antialiased edge and measured under 3:1 elsewhere in the app — drawn INSIDE the
+    /// label so it presses with the card. The line under the name is the other half of
+    /// the same sentence: this is where you pick, and there is something to pick from.
     private var gaugeKindRow: some View {
         NavigationLink {
             GaugePickerView()
@@ -156,7 +156,7 @@ struct SettingsView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "dot.radiowaves.left.and.right")
                         .font(.system(.title2))
-                        .foregroundStyle(Accent.graphite)
+                        .foregroundStyle(Accent.bleu)
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Gauge")
@@ -165,6 +165,11 @@ struct SettingsView: View {
                         Text(device.isMock ? String(localized: "Demo device") : device.gaugeKind.displayName)
                             .font(.system(.subheadline))
                             .foregroundStyle(Ink.secondary)
+                        Text(gaugeChoiceNote)
+                            .font(.system(.footnote))
+                            .foregroundStyle(Ink.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 3)
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
@@ -174,12 +179,24 @@ struct SettingsView: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
+            .overlay {
+                RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
+                    .strokeBorder(Accent.bleu, lineWidth: 2)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         }
         // Full-width row, full-width hit area — the card's material and the Spacer
         // contribute nothing to SwiftUI's default opaque-content hit test.
         .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityLabel("Gauge. Currently \(device.isMock ? "the demo device" : device.gaugeKind.displayName).")
+        .accessibilityLabel("Gauge. Currently \(device.isMock ? "the demo device" : device.gaugeKind.displayName). \(gaugeChoiceNote)")
+    }
+
+    /// Counted from the registry, like the makers sentence in About, so a ninth gauge
+    /// cannot leave this line claiming eight.
+    private var gaugeChoiceNote: String {
+        String(localized: "Tap to choose yours — Get a Grip works with \(GaugeKind.selectable.count) different gauges.")
     }
 
     private var hasRoutine: Bool { !routines.isEmpty }

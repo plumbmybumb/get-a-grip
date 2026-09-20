@@ -397,17 +397,6 @@ final class TemplateStore {
         return (try? context.fetchCount(descriptor)) ?? 0
     }
 
-    /// The all-time tally for Settings. UNBOUNDED like `fetchMaxes`, and deliberately
-    /// limited to the columns the fold reads: the plan and result blobs stay on disk, so
-    /// the whole history costs a row per session rather than a decode per session. nil
-    /// when the read fails — a failed read is not "nothing trained yet".
-    func lifetimeStats() -> LifetimeStats? {
-        var descriptor = FetchDescriptor<WorkoutLog>()
-        descriptor.propertiesToFetch = [\.kindRaw, \.dayKey, \.completedReps,
-                                        \.totalHeldSeconds, \.avgKg, \.peakKg]
-        return (try? context.fetch(descriptor))?.lifetime
-    }
-
     private func fetchLogs(from earliest: DayStamp) -> [WorkoutLog]? {
         let floor = earliest.raw
         let descriptor = FetchDescriptor<WorkoutLog>(

@@ -29,8 +29,11 @@ Android owes the first two rules.
   Today through the gauge button on the bar, which replaces the Settings row. The watch
   got the same door: the gauge row on its list opens a live gauge screen. Android keeps
   its gauge as it is.
-- **Settings opens on the odometer**: sessions, pulls, time under tension, volume (load ×
-  pulls), days trained and the heaviest pull, all time, with the date they count from.
+- **History gets the odometer**, between the trend deck and the sessions: sessions, pulls,
+  time under tension, volume (load × pulls), days trained, climbing days and the heaviest
+  pull, all time, with the date they count from.
+- **Settings opens on the gauge picker**, rimmed in bleu with a line saying it is where you
+  choose among the gauges the app drives.
 
 ## 1.1.0 — the session screen
 

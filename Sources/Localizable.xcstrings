@@ -171,6 +171,16 @@
         }
       }
     },
+    "Tap to choose yours — Get a Grip works with %lld different gauges." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touche pour choisir le tien : Get a Grip fonctionne avec %lld capteurs différents."
+          }
+        }
+      }
+    },
     "Volume is load × pulls, added up. Under tension is every second on the edge." : {
       "localizations" : {
         "fr" : {

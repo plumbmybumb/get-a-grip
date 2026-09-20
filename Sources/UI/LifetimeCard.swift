@@ -3,11 +3,13 @@
 
 import SwiftUI
 
-/// **All time, at the top of Settings** (Nuri, 2026-09-20: "lifetime stats — number of
-/// routines done, total load lifetime, anything else?"). Sessions, pulls, time under
-/// tension, volume, days trained, climbing days, the heaviest pull, and the date they
-/// count from. Nothing here is a chart or a trend — History owns those — this is the
-/// odometer.
+/// **All time, in History between the trend deck and the sessions** (Nuri, 2026-09-20:
+/// "lifetime stats — number of routines done, total load lifetime, anything else?").
+/// Sessions, pulls, time under tension, volume, days trained, climbing days, the heaviest
+/// pull, and the date they count from. Nothing here is a chart or a trend — the two
+/// cards above it own those — this is the odometer, and it sits right over the sessions
+/// it adds up. It opened at the top of Settings for an hour; History is where the
+/// question is asked.
 ///
 /// A LEDGER, not tiles. The first cut laid six numbers in a three-column grid, and on
 /// the phone it read as ragged: a "49" left a hole two numbers wide, "4 hr, 40 min"
@@ -16,8 +18,8 @@ import SwiftUI
 /// that neighbour now, so the two cards share one rhythm and every value lands on one
 /// right-hand axis.
 ///
-/// Folded from denormalized columns (`Collection.lifetime`), so opening the tab costs a
-/// row per session, never a decode.
+/// Folded from denormalized columns (`Collection.lifetime`) off History's own query, so
+/// it costs a row per session, never a decode.
 struct LifetimeCard: View {
     var stats: LifetimeStats
     @Environment(\.weightUnit) private var weightUnit
