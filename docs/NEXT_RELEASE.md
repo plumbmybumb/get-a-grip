@@ -9,12 +9,13 @@ section after it carries its own status line and records work that preceded it. 
 development plan those were scoped against is kept in
 [history/RELEASE_1.1.0_PLAN.md](history/RELEASE_1.1.0_PLAN.md).
 
-## After 1.1.0 — the training day, deleted routines, the gauge as a screen
+## 1.1.0 (11) and Android 1.0.2 (12) — the training day, deleted routines, the gauge as a screen
 
-Status: implemented on 20 September 2026, queued for the build after iOS 1.1.0 (10) and
-the Android build after 1.0.1 (11). Android carries the day rule, the cascading delete,
-the odometer in History, the rimmed gauge picker and the gauge button on Today; its
-working screens (runner and gauge) keep their current look by Nuri's call.
+Status: implemented on 20 September 2026 and folded into the still-unsubmitted iOS 1.1.0
+as build 11 (replacing build 10 on the prepared version) and into Android 1.0.2 (12).
+Android carries the day rule, the cascading delete, the odometer in History, the rimmed
+gauge picker and the gauge button on Today; its working screens (runner and gauge) keep
+their current look by Nuri's call.
 
 - **A training day turns at 04:00, not midnight.** A hang started at 23:47 and finished
   44 seconds past midnight was filed under the morning after, so one evening scored as

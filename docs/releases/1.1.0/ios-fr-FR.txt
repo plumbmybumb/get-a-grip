@@ -3,3 +3,8 @@ L'écran de séance est nouveau. La courbe de force occupe désormais tout l'éc
 • Apple Watch : tout le cadran prend la couleur de l'état — bleu pour tirer, vert quand le chrono tourne, rouge pour reprendre la prise, orange avant une prise différente.
 • En mode Économie d'énergie, les chiffres changent d'un coup au lieu de glisser, pour ménager la batterie. Les chronos continuent de tourner.
 • Une balance qui envoie ses mesures par rafales ne vide plus le graphique.
+• Le capteur en direct est à un tap depuis Aujourd'hui, et il ressemble maintenant à l'écran de séance : la courbe remplit l'écran, les chiffres reposent sur un panneau de verre, les actions sur une seule barre.
+• L'historique gagne une carte « depuis toujours » : séances, tirages, temps sous tension, volume, jours entraînés, votre tirage le plus lourd.
+• Une séance qui dépasse minuit compte pour la soirée à laquelle elle appartenait. Votre journée d'entraînement change désormais à 4 h.
+• Supprimer une routine supprime aussi ses séances, et Annuler ramène les deux.
+• Les réglages s'ouvrent sur le choix du capteur, pour que choisir parmi les capteurs compatibles soit la première chose visible.
