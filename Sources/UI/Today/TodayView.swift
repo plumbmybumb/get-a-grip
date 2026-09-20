@@ -53,6 +53,11 @@ struct TodayView: View {
     @Environment(TourController.self) private var tour
 
     @State private var running: SessionTemplate?
+    /// The live gauge, as a full-screen cover from the button on the bar. Some people
+    /// use the gauge and no routine at all (2026-09-20), so it is one tap from Today —
+    /// the same top-right door History and Maxes already have, wearing the icon the
+    /// Settings row uses for it.
+    @State private var showingGauge = false
     /// Whether the session being presented was started without a gauge. Not part of the
     /// routine — the same routine is run both ways — so it rides alongside `running`.
     @State private var runningTimerOnly = false
@@ -91,7 +96,7 @@ struct TodayView: View {
         builder == nil && running == nil && pendingStartID == nil
             && overview == nil && pendingOverviewEditID == nil
             && !loggingSession && shareRequest == nil && !scanningRoutine
-            && importPreview == nil && importError == nil
+            && !showingGauge && importPreview == nil && importError == nil
     }
 
     /// The single door from the store's inbox to the screen, called on arrival and from
@@ -135,6 +140,17 @@ struct TodayView: View {
                        fitsOnePage: true, gridsOnWideScreens: true) {
             header
                 .staggerIn(0)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Live gauge", systemImage: "gauge.with.dots.needle.bottom.50percent") {
+                            showingGauge = true
+                        }
+                        .labelStyle(.iconOnly)
+                        .tint(Accent.graphite)
+                        .accessibilityHint("Pull and watch the force in real time")
+                        .accessibilityIdentifier("today.gauge")
+                    }
+                }
 
             // The deck exists the moment ANY routine does — with one routine its only
             // neighbour is the ghost card, and that peek is honest: there genuinely is
@@ -204,6 +220,12 @@ struct TodayView: View {
         .fullScreenCover(item: $running, onDismiss: { drainImportInbox(); askForReviewIfDue() }) { routine in
             RunnerView(template: routine, timerOnly: runningTimerOnly)
                 .onAppear { templates.noteSessionStarted(routine) }
+        }
+        // A COVER, like the runner it now resembles, not a push: the phone is on a bench
+        // and the graph wants the whole screen. Its own stack, for the inline title and
+        // the Done item.
+        .fullScreenCover(isPresented: $showingGauge, onDismiss: { drainImportInbox() }) {
+            NavigationStack { GaugeView(presentedAsCover: true) }
         }
         // `initial: true` so this is both the start trigger and the resume trigger. The
         // routine list arrives through a `@Query`, so "is there a routine" is not knowable
@@ -562,8 +584,8 @@ struct TodayView: View {
     @ViewBuilder
     private var undoBar: some View {
         VStack(spacing: 0) {
-            if templates.lastDeleted != nil {
-                UndoBar(message: String(localized: "Routine deleted")) {
+            if let deleted = templates.lastDeleted {
+                UndoBar(message: undoMessage(sessions: deleted.sessions.count)) {
                     templates.undoDelete()
                     undoTick += 1
                 }
@@ -575,6 +597,17 @@ struct TodayView: View {
         .padding(.bottom, 8)
         .animation(Motion.state(reduceMotion),
                    value: templates.lastDeleted)
+    }
+
+    /// The bar names the sessions because they are the part nobody expects to be on
+    /// the line: a routine's history goes with it (`TemplateStore.delete`), and
+    /// "Routine deleted" alone would be a true sentence about the smaller half.
+    private func undoMessage(sessions: Int) -> String {
+        switch sessions {
+        case 0: String(localized: "Routine deleted")
+        case 1: String(localized: "Routine and its session deleted")
+        default: String(localized: "Routine and its \(sessions) sessions deleted")
+        }
     }
 
     // MARK: - Selection

@@ -130,6 +130,9 @@ final class TemplateStore {
         let isOnDemand: Bool
         let sortIndex: Int
         let createdAt: Date
+        /// The routine's own sessions, deleted with it and restored with it (Nuri,
+        /// 2026-09-20). Raw columns, like everything else here — see `DeletedSession`.
+        let sessions: [DeletedSession]
     }
 
     /// Everything needed to put a deleted session back EXACTLY as it happened — raw
@@ -164,6 +167,29 @@ final class TemplateStore {
         /// would put back a HANGBOARD session, and the day it completed would silently
         /// go back to being incomplete.
         let kindRaw: String
+
+        /// Captured as RAW columns, blobs included — see `undoDeleteSession()`.
+        init(_ log: WorkoutLog) {
+            id = log.id
+            startedAt = log.startedAt
+            finishedAt = log.finishedAt
+            dayKey = log.dayKey
+            templateID = log.templateID
+            templateName = log.templateName
+            planData = log.planData
+            resultsData = log.resultsData
+            sessionsPerDayTarget = log.sessionsPerDayTarget
+            totalHeldSeconds = log.totalHeldSeconds
+            peakKg = log.peakKg
+            avgKg = log.avgKg
+            completedReps = log.completedReps
+            plannedReps = log.plannedReps
+            rpe = log.rpe
+            fingerStrainRaw = log.fingerStrainRaw
+            durationMinutes = log.durationMinutes
+            notes = log.notes
+            kindRaw = log.kindRaw
+        }
     }
 
     /// The day `syncDerived` last published for. Kept separately from `clock.today`
@@ -203,6 +229,9 @@ final class TemplateStore {
         self.syncedDay = clock.today
         observeExternalChanges()
         clock.onDayChanged = { [weak self] in self?.refreshIfDayChanged() }
+        // Before the first derived world, so a session filed under the wrong day by the
+        // midnight-turning clock is counted on the right one from the first frame.
+        ledger.repairTrainingDays()
         syncDerived()
     }
 
@@ -794,6 +823,18 @@ final class TemplateStore {
     @discardableResult
     func delete(_ template: SessionTemplate) -> Bool {
         guard template.modelContext != nil else { return false }
+        // ITS SESSIONS GO WITH IT (Nuri, 2026-09-20). A deleted routine used to keep its
+        // history — "history answers for itself" — and the result was a "Load per grip"
+        // card that went on charting a routine that no longer existed. The sessions are
+        // snapshotted exactly as a single deleted session is, raw columns and blobs, and
+        // the same Undo puts routine and sessions back together. A read that FAILS
+        // refuses the whole delete: deleting the routine anyway would leave its sessions
+        // behind as orphans nothing on screen can reach.
+        let routineID: UUID? = template.id
+        let ownSessions = FetchDescriptor<WorkoutLog>(
+            predicate: #Predicate<WorkoutLog> { $0.templateID == routineID },
+            sortBy: [SortDescriptor(\.startedAt)])
+        guard let sessions = try? context.fetch(ownSessions) else { return false }
         // Captured as RAW columns, blobs included — see `undoDelete()`.
         let restorable = DeletedRoutine(
             id: template.id,
@@ -816,8 +857,10 @@ final class TemplateStore {
             remindersEnabled: template.remindersEnabled,
             isOnDemand: template.isOnDemand,
             sortIndex: template.sortIndex,
-            createdAt: template.createdAt
+            createdAt: template.createdAt,
+            sessions: sessions.map(DeletedSession.init)
         )
+        for log in sessions { context.delete(log) }
         context.delete(template)
         persistAndSync(maxesChanged: false)
         // Only offer undo for a delete that actually landed — `persistAndSync` rolls
@@ -878,6 +921,9 @@ final class TemplateStore {
         // order.
         template.updatedAt = .now
         context.insert(template)
+        // Its sessions come back with it, by the same raw-column path a single deleted
+        // session takes — see `restored(_:)`.
+        for session in restorable.sessions { context.insert(Self.restored(session)) }
         persistAndSync(maxesChanged: false)
 
         // Only consume the undo once the restore has landed. Clearing it first would
@@ -997,27 +1043,7 @@ final class TemplateStore {
     func deleteSession(_ log: WorkoutLog) -> Bool {
         guard log.modelContext != nil else { return false }
         // Captured as RAW columns, blobs included — see `undoDeleteSession()`.
-        let restorable = DeletedSession(
-            id: log.id,
-            startedAt: log.startedAt,
-            finishedAt: log.finishedAt,
-            dayKey: log.dayKey,
-            templateID: log.templateID,
-            templateName: log.templateName,
-            planData: log.planData,
-            resultsData: log.resultsData,
-            sessionsPerDayTarget: log.sessionsPerDayTarget,
-            totalHeldSeconds: log.totalHeldSeconds,
-            peakKg: log.peakKg,
-            avgKg: log.avgKg,
-            completedReps: log.completedReps,
-            plannedReps: log.plannedReps,
-            rpe: log.rpe,
-            fingerStrainRaw: log.fingerStrainRaw,
-            durationMinutes: log.durationMinutes,
-            notes: log.notes,
-            kindRaw: log.kindRaw
-        )
+        let restorable = DeletedSession(log)
         context.delete(log)
         persistAndSync(maxesChanged: false)
         // Only offer undo for a delete that actually landed — `persistAndSync` rolls
@@ -1038,7 +1064,20 @@ final class TemplateStore {
     func undoDeleteSession() {
         guard let restorable = lastDeletedSession else { return }
         sessionUndoExpiry?.cancel()
+        context.insert(Self.restored(restorable))
+        persistAndSync(maxesChanged: false)
 
+        // Only consume the undo once the restore has landed — see `undoDelete()`.
+        if saveError == nil {
+            lastDeletedSession = nil
+        } else {
+            armSessionUndoExpiry()
+        }
+    }
+
+    /// A `WorkoutLog` rebuilt from its raw columns, for `undoDeleteSession()` and for a
+    /// routine's sessions coming back with it in `undoDelete()`.
+    private static func restored(_ restorable: DeletedSession) -> WorkoutLog {
         let log = WorkoutLog(plan: SessionPlan(), templateID: nil, templateName: "",
                              sessionsPerDayTarget: 1, reps: [],
                              startedAt: restorable.startedAt, finishedAt: restorable.finishedAt,
@@ -1062,15 +1101,7 @@ final class TemplateStore {
         log.durationMinutes = restorable.durationMinutes
         log.notes = restorable.notes
         log.kindRaw = restorable.kindRaw
-        context.insert(log)
-        persistAndSync(maxesChanged: false)
-
-        // Only consume the undo once the restore has landed — see `undoDelete()`.
-        if saveError == nil {
-            lastDeletedSession = nil
-        } else {
-            armSessionUndoExpiry()
-        }
+        return log
     }
 
     func dismissSessionUndo() {

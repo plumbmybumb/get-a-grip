@@ -2774,6 +2774,16 @@
         }
       }
     },
+    "Connect a gauge and pull — the force draws here." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecte un capteur et tire : la force se dessine ici."
+          }
+        }
+      }
+    },
     "Connect and start" : {
       "localizations" : {
         "fr" : {
@@ -8147,6 +8157,26 @@
         }
       }
     },
+    "Routine and its %lld sessions deleted" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Routine et ses %lld séances supprimées"
+          }
+        }
+      }
+    },
+    "Routine and its session deleted" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Routine et sa séance supprimées"
+          }
+        }
+      }
+    },
     "Routine deleted" : {
       "localizations" : {
         "fr" : {
@@ -10631,6 +10661,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En attente du capteur"
+          }
+        }
+      }
+    },
+    "Waiting for the gauge. It's connected but not sending — try Wake." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente du capteur. Il est connecté mais n'envoie rien : essaie Réveiller."
           }
         }
       }

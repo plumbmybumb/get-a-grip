@@ -127,4 +127,44 @@ final class SessionLedgerTests: XCTestCase {
         XCTAssertNil(table.max(grip: grip.key, side: .both),
                      "a both-hands rep never borrows a one-handed number")
     }
+
+    // MARK: - The launch repair
+
+    /// Nuri's 2026-09-19 hang: started 23:47, saved 44 seconds into the 20th by a clock
+    /// that turned at midnight. The repair re-files it under the evening it belonged to,
+    /// leaves the hand-logged climb on the day the person chose, and has nothing to do
+    /// the second time.
+    func testRepairRefilesASessionThatCrossedMidnightUnderItsEvening() throws {
+        let world = try makeWorld()
+        var paris = Calendar(identifier: .gregorian)
+        paris.timeZone = TimeZone(identifier: "Europe/Paris")!
+        let started = paris.date(from: DateComponents(year: 2026, month: 9, day: 19, hour: 23, minute: 47))!
+        let sept19 = DayStamp(year: 2026, month: 9, day: 19)
+        let sept20 = DayStamp(year: 2026, month: 9, day: 20)
+        let plan = RoutineDraft.starter.normalized.plan.executable
+
+        let hang = WorkoutLog(plan: plan, templateID: nil, templateName: "Daily burn",
+                              sessionsPerDayTarget: 2, reps: [oneRep(of: plan)],
+                              startedAt: started, finishedAt: started.addingTimeInterval(13 * 60),
+                              day: sept20)
+        let climb = WorkoutLog(logged: .climbLimit, day: sept20,
+                               at: started.addingTimeInterval(20 * 60), sessionsPerDayTarget: 2)
+        let morning = WorkoutLog(plan: plan, templateID: nil, templateName: "Daily burn",
+                                 sessionsPerDayTarget: 2, reps: [oneRep(of: plan)],
+                                 startedAt: started.addingTimeInterval(10 * 3600),
+                                 finishedAt: started.addingTimeInterval(10 * 3600 + 13 * 60),
+                                 day: sept20)
+        let context = world.container.mainContext
+        context.insert(hang)
+        context.insert(climb)
+        context.insert(morning)
+        try context.save()
+
+        XCTAssertEqual(world.ledger.repairTrainingDays(calendar: paris), 1)
+        XCTAssertEqual(hang.day, sept19, "the evening it was part of")
+        XCTAssertEqual(climb.day, sept20, "a hand log keeps the day the person chose")
+        XCTAssertEqual(morning.day, sept20, "a row already right is not touched")
+        XCTAssertEqual(world.ledger.repairTrainingDays(calendar: paris), 0)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutLog>()).count, 3)
+    }
 }

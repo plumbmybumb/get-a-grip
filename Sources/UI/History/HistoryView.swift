@@ -883,8 +883,7 @@ struct HistoryView: View {
 
     /// The grouping key: the frozen `templateID` when the log has one, else the frozen
     /// name. ID first so a renamed routine keeps ONE line (both spellings share the ID);
-    /// the name catches logs from before IDs were recorded. A deleted routine keeps its
-    /// group either way — history answers for itself.
+    /// the name catches logs from before IDs were recorded.
     private func routineKey(of log: WorkoutLog) -> String {
         log.templateID?.uuidString ?? log.templateName
     }
@@ -924,6 +923,12 @@ struct HistoryView: View {
         var order: [String] = []
         // `logs` is newest-first, so first sighting fixes both the order and the name.
         for log in logs where log.kind == .hang {
+            // No card for a routine that no longer exists (Nuri, 2026-09-20: "Daily
+            // no-hangs" was long deleted and still had a Load per grip card). Deleting a
+            // routine now takes its sessions with it, so this only catches rows written
+            // before that rule and rows a CloudKit import delivered ahead of their
+            // routine; both still list below, under the frozen name.
+            if let id = log.templateID, templates.routineNames[id] == nil { continue }
             let key = routineKey(of: log)
             guard names[key] == nil else { continue }
             guard reps(for: log).contains(where: chartable) else { continue }

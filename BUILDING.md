@@ -100,6 +100,7 @@ because `simctl` cannot tap; pair them with the seeding above.
 | `-previewWeightLb` | Starts in pounds | iOS |
 | `-previewWatchRunner` | Opens the first routine's session on launch | watch |
 | `-previewWatchTimerOnly` | With the above, on the clock alone | watch |
+| `-previewWatchGauge` | Opens the live gauge screen on launch, already reading from the demo gauge | watch |
 | `-previewDimmed` | Draws the face as Always On does (reduced luminance) — the simulator has no wrist to lower | watch |
 
 ### Gauge

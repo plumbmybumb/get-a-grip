@@ -9,6 +9,26 @@ section after it carries its own status line and records work that preceded it. 
 development plan those were scoped against is kept in
 [history/RELEASE_1.1.0_PLAN.md](history/RELEASE_1.1.0_PLAN.md).
 
+## After 1.1.0 — the training day, deleted routines, the gauge as a screen
+
+Status: implemented on 20 September 2026, queued for the build after iOS 1.1.0 (10).
+Android owes the first two rules.
+
+- **A training day turns at 04:00, not midnight.** A hang started at 23:47 and finished
+  44 seconds past midnight was filed under the morning after, so one evening scored as
+  two days (Nuri's own history, 2026-09-20). `DayStamp.today()` is the training day,
+  `DayClock` wakes itself at the rollover, and `SessionLedger.repairTrainingDays` re-files
+  every session the app timed under the day it started in, once, on launch. History dates
+  every row by that day, so the row, the grid and the tally agree.
+- **Deleting a routine deletes its sessions**, restorable together from the same ten-second
+  Undo, and the bar says how many went. A "Load per grip" card no longer outlives its
+  routine; sessions of a routine deleted before this rule still list under the frozen
+  name, but get no trend card.
+- **The live gauge is the runner's screen without a routine** — the trace as the screen,
+  the numbers on one glass panel, the actions on one glass dock — and it is one tap from
+  Today through the gauge button on the bar. The watch got the same door: the gauge row on
+  its list opens a live gauge screen. Android keeps its gauge as it is.
+
 ## 1.1.0 — the session screen
 
 Status: in preparation for iOS **1.1.0 (10)**. The Android side ships with

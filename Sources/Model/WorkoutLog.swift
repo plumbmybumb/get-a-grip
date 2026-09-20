@@ -7,9 +7,10 @@ import SwiftData
 /// One finished session, frozen.
 ///
 /// Everything here that could have come from a `SessionTemplate` is a SNAPSHOT instead:
-/// the name, the plan, and every rep's own `GripSpec`. Editing or deleting a routine
-/// must never rewrite history — which is what makes destructive edits cheap enough to
-/// offer behind a swipe and an undo bar rather than a dialog.
+/// the name, the plan, and every rep's own `GripSpec`. Editing a routine must never
+/// rewrite history — which is what makes edits cheap enough to offer behind a swipe and
+/// an undo bar rather than a dialog. Deleting one takes its sessions with it, and the
+/// same Undo puts them back (`TemplateStore.delete`, Nuri 2026-09-20).
 ///
 /// Same CloudKit rules as `SessionTemplate`: every attribute defaulted or optional, no
 /// uniqueness constraint, no relationships, additive changes only.
@@ -20,9 +21,11 @@ final class WorkoutLog {
     var id: UUID = UUID()
     var startedAt: Date = Date.now
     var finishedAt: Date = Date.now
-    /// Epoch day FROZEN at save. It is the join for "2 of 2 today" — a cheap Int
-    /// predicate rather than a `Calendar` pass over every log — and it keeps a 00:30
-    /// session on the day the user actually lived through.
+    /// Epoch day FROZEN at save — the TRAINING day, which turns at
+    /// `DayStamp.rolloverHour`, so a 00:30 session stays on the evening it belonged to.
+    /// It is the join for "2 of 2 today": a cheap Int predicate rather than a `Calendar`
+    /// pass over every log. Rewritten once, by `SessionLedger.repairTrainingDays`, for
+    /// rows stamped by the clock that used to turn at midnight.
     var dayKey: Int = 0
     /// Best-effort grouping ONLY. The routine may be gone; nothing here needs it back.
     var templateID: UUID? = nil
@@ -184,10 +187,15 @@ extension WorkoutLog {
 
     var day: DayStamp { DayStamp(raw: dayKey) }
 
-    /// Hand logs record when the entry was created, not when the training began.
-    /// Display their chosen day, including older rows entered the following morning.
+    /// The date History shows for this row: its TRAINING day, for every kind of row.
+    /// A hand log records when the entry was created, not when the training happened,
+    /// so its chosen day was always the one to show; a runner session used to show its
+    /// start instant instead, which is a different calendar day from the training day
+    /// for anything that began in the small hours — the row said the 19th while the grid
+    /// and the tally credited the 20th (Nuri, 2026-09-20). One date per row now, the
+    /// same one every other surface counts by.
     func historyDate(calendar: Calendar = .current) -> Date {
-        kind.isLoggedByHand ? day.date(calendar: calendar) : startedAt
+        day.date(calendar: calendar)
     }
 
     /// nil for an ungraded session, or for a scale value from a future build.

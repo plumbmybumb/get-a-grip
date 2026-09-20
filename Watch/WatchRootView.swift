@@ -5,19 +5,27 @@ import SwiftData
 import SwiftUI
 
 /// Today, on the wrist: the routines that synced from the phone, how many rounds each
-/// has had today, and a Start. No builder, no history, no maxes — the phone is where the
-/// library lives; this is the one screen the ritual needs.
+/// has had today, a Start, and the live gauge. No builder, no history, no maxes — the
+/// phone is where the library lives; this is the one screen the ritual needs.
 struct WatchRootView: View {
     var storageMode: StorageMode
 
     @Environment(DayClock.self) private var clock
     @State private var running: RunRequest?
+    #if DEBUG
+    /// Headless verification: `-previewWatchGauge` opens the gauge screen on launch,
+    /// because `simctl` cannot tap a watch.
+    @State private var previewingGauge = ProcessInfo.processInfo.arguments.contains("-previewWatchGauge")
+    #endif
 
     var body: some View {
         NavigationStack {
             WatchTodayList(storageMode: storageMode, day: clock.today) { request in
                 running = request
             }
+            #if DEBUG
+            .navigationDestination(isPresented: $previewingGauge) { WatchGaugeView() }
+            #endif
             // Keyed on the DAY, and on the list rather than on this view: a watch worn
             // past midnight rebuilds the today-query with the new floor, while the
             // session pushed on top — which may be mid-rest at 00:00 — is left untouched.
@@ -109,7 +117,13 @@ private struct WatchTodayList: View {
                 }
             }
             Section {
-                gaugeRow
+                // A door, not just a status line: the live gauge on the wrist (2026-09-20).
+                NavigationLink {
+                    WatchGaugeView()
+                } label: {
+                    gaugeRow
+                }
+                .accessibilityIdentifier("watch.gauge")
             } footer: {
                 if storageMode != .cloud {
                     Text("Not syncing with iCloud on this watch. Routines and sessions stay here.")

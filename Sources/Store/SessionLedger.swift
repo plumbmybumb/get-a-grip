@@ -76,4 +76,33 @@ final class SessionLedger {
         }
         return log
     }
+
+    /// **Re-file every session the app itself timed under the training day it started
+    /// in.** Until 2026-09-20 the clock turned at midnight, so a session that ran across
+    /// it — Nuri's 23:47 hang, finished 44 seconds into the 20th — was stamped with the
+    /// morning after, and one evening scored as two days. The day now turns at
+    /// `DayStamp.rolloverHour`, and this brings the rows written under the old rule into
+    /// line with it. Hand-logged sessions are left alone: their day is the one the person
+    /// chose. Deterministic from a frozen column, so every synced device reaches the same
+    /// answer and a row already right is never touched — which is what makes it safe,
+    /// and cheap, to run on every launch. Returns how many rows moved.
+    @discardableResult
+    func repairTrainingDays(calendar: Calendar = .current) -> Int {
+        guard let logs = try? context.fetch(FetchDescriptor<WorkoutLog>()) else { return 0 }
+        var moved = 0
+        for log in logs where !log.kind.isLoggedByHand {
+            let day = DayStamp(trainingDayOf: log.startedAt, calendar: calendar).raw
+            guard log.dayKey != day else { continue }
+            log.dayKey = day
+            moved += 1
+        }
+        guard moved > 0 else { return 0 }
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            return 0
+        }
+        return moved
+    }
 }

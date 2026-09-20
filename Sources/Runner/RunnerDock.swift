@@ -43,3 +43,102 @@ extension View {
         }
     }
 }
+
+// MARK: - Dock actions, as views
+
+/// A dock action as a VIEW — the same button `RunnerView.dockButton` draws for Pause and
+/// the Skips (full width in its slot, glass inside the label when it floats, a quiet ink
+/// well inside a dock), so a second screen with a dock is built from the runner's own
+/// parts rather than a lookalike. The gauge screen is that second screen.
+///
+/// `enabled`/`disabledReason` dim AND disable, with the reason surfaced as the
+/// accessibility hint; the label is never swapped for it.
+///
+/// `fillsRowHeight` is for a button INSIDE an `AdaptiveActionRow`, where the row bounds
+/// it and it merely matches its neighbours. Standing alone in a `VStack` the same
+/// `maxHeight: .infinity` claims every flexible point on the screen — the gauge's Stop
+/// button measured half the display that way (2026-09-20) — so it is off by default.
+struct DockButton: View {
+    var title: String
+    var systemImage: String? = nil
+    var tint: Color = Ink.primary
+    var enabled = true
+    var disabledReason: String? = nil
+    var docked = true
+    var fillsRowHeight = false
+    var action: () -> Void
+
+    init(_ title: String, systemImage: String? = nil, tint: Color = Ink.primary,
+         enabled: Bool = true, disabledReason: String? = nil, docked: Bool = true,
+         fillsRowHeight: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.systemImage = systemImage
+        self.tint = tint
+        self.enabled = enabled
+        self.disabledReason = disabledReason
+        self.docked = docked
+        self.fillsRowHeight = fillsRowHeight
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let systemImage { Image(systemName: systemImage) }
+                Text(title)
+            }
+            .font(.system(.subheadline, weight: .semibold))
+            .foregroundStyle(enabled ? tint : Ink.tertiary.opacity(0.5))
+            .actionLabelLayout(fullWidth: true, fillsRowHeight: fillsRowHeight)
+            .runnerActionSurface(docked: docked)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+        .disabled(!enabled)
+        .accessibilityHint(disabledReason ?? "")
+    }
+}
+
+/// The dock's one TINTED item — a tinted well with the tint's own legible ink on it,
+/// never a solid fill with white on it, so it reads as the dock's primary action
+/// without becoming a second kind of surface. Bleu to start a measurement, alarm to
+/// stop one.
+///
+/// `GlassTint`, not a bare `Color`: its `text` is the ink already chosen to stay
+/// legible over translucent surfaces. The first cut put the accent itself on a 16 %
+/// well and MEASURED 2.5:1 in dark mode and 2.6:1 for bleu in light — under the 3:1
+/// floor for a label this size — where this pair clears 4.5:1 (2026-09-20).
+struct DockTintedButton: View {
+    var title: String
+    var systemImage: String? = nil
+    var tint: GlassTint
+    var enabled = true
+    var action: () -> Void
+
+    init(_ title: String, systemImage: String? = nil, tint: GlassTint, enabled: Bool = true,
+         action: @escaping () -> Void) {
+        self.title = title
+        self.systemImage = systemImage
+        self.tint = tint
+        self.enabled = enabled
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let systemImage { Image(systemName: systemImage) }
+                Text(title)
+            }
+            .font(.system(.subheadline, weight: .semibold))
+            .foregroundStyle(enabled ? tint.text : Ink.tertiary.opacity(0.5))
+            // Never `fillsRowHeight`: this one stands alone under the row — see
+            // `DockButton` for the half-a-screen it grew to otherwise.
+            .actionLabelLayout(fullWidth: true)
+            .background(Capsule().fill((tint.glass ?? Ink.primary).opacity(enabled ? 0.22 : 0.08)))
+            .contentShape(.capsule)
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+        .disabled(!enabled)
+    }
+}

@@ -115,4 +115,62 @@ final class DayStampTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(DayStamp.self, from: Data("20669".utf8)),
                        DayStamp(raw: 20_669))
     }
+
+    // MARK: - The training day turns at 04:00
+
+    /// Nuri's 2026-09-19 hang: started 23:47, over 44 seconds past midnight. One evening,
+    /// one day — and "today" at 00:30 is still that evening, while the CALENDAR day is
+    /// untouched for everything that genuinely wants a date.
+    func testTheTrainingDayTurnsAtFourNotMidnight() {
+        let paris = calendar("Europe/Paris")
+        func at(_ day: Int, _ hour: Int, _ minute: Int = 0, _ second: Int = 0) -> Date {
+            paris.date(from: DateComponents(year: 2026, month: 9, day: day,
+                                            hour: hour, minute: minute, second: second))!
+        }
+        let sept19 = DayStamp(year: 2026, month: 9, day: 19)
+        let sept20 = DayStamp(year: 2026, month: 9, day: 20)
+
+        XCTAssertEqual(DayStamp(trainingDayOf: at(19, 23, 47), calendar: paris), sept19)
+        XCTAssertEqual(DayStamp(trainingDayOf: at(20, 0, 0, 44), calendar: paris), sept19,
+                       "44 seconds past midnight is still the evening")
+        XCTAssertEqual(DayStamp(trainingDayOf: at(20, 3, 59, 59), calendar: paris), sept19)
+        XCTAssertEqual(DayStamp(trainingDayOf: at(20, 4), calendar: paris), sept20)
+        XCTAssertEqual(DayStamp(trainingDayOf: at(20, 10, 1), calendar: paris), sept20)
+
+        XCTAssertEqual(DayStamp.today(calendar: paris, now: at(20, 0, 30)), sept19,
+                       "'today' is the training day")
+        XCTAssertEqual(DayStamp.today(calendar: paris, now: at(20, 4)), sept20)
+        XCTAssertEqual(DayStamp(date: at(20, 0, 30), calendar: paris), sept20,
+                       "the calendar day is untouched")
+    }
+
+    /// The night the clocks go forward in Paris (29 March 2026) has 23 hours. "Minus four
+    /// hours" from 04:30 CEST lands at 23:30 CET the evening before — a session started
+    /// well after the rollover filed under the wrong day. Calendar arithmetic does not.
+    func testTheRolloverSurvivesTheNightTheClocksGoForward() {
+        let paris = calendar("Europe/Paris")
+        let halfPastFour = paris.date(from: DateComponents(year: 2026, month: 3, day: 29, hour: 4, minute: 30))!
+        XCTAssertEqual(DayStamp(date: halfPastFour.addingTimeInterval(-4 * 3600), calendar: paris),
+                       DayStamp(year: 2026, month: 3, day: 28),
+                       "the naive arithmetic this test exists to rule out")
+        XCTAssertEqual(DayStamp(trainingDayOf: halfPastFour, calendar: paris),
+                       DayStamp(year: 2026, month: 3, day: 29))
+        let halfPastThree = paris.date(from: DateComponents(year: 2026, month: 3, day: 29, hour: 3, minute: 30))!
+        XCTAssertEqual(DayStamp(trainingDayOf: halfPastThree, calendar: paris),
+                       DayStamp(year: 2026, month: 3, day: 28))
+    }
+
+    /// What `DayClock` sleeps until: the coming 04:00, and exactly 04:00 already counts
+    /// as the new day so the next wake-up is a day away.
+    func testNextRolloverIsTheComingFourAM() {
+        let paris = calendar("Europe/Paris")
+        let lateEvening = paris.date(from: DateComponents(year: 2026, month: 9, day: 19, hour: 23, minute: 47))!
+        let fourAM = paris.date(from: DateComponents(year: 2026, month: 9, day: 20, hour: 4))!
+        XCTAssertEqual(DayStamp.nextRollover(after: lateEvening, calendar: paris), fourAM)
+        let morning = paris.date(from: DateComponents(year: 2026, month: 9, day: 20, hour: 9))!
+        XCTAssertEqual(DayStamp.nextRollover(after: morning, calendar: paris),
+                       fourAM.addingTimeInterval(24 * 3600))
+        XCTAssertEqual(DayStamp.nextRollover(after: fourAM, calendar: paris),
+                       fourAM.addingTimeInterval(24 * 3600))
+    }
 }

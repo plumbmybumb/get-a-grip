@@ -6,8 +6,9 @@ import Foundation
 /// A calendar day as an integer — days since 1970-01-01 (proleptic Gregorian).
 ///
 /// A training day is the day the user lived through, which has no timezone: a session
-/// finished at 00:30 belongs to the evening it was part of, and "2 of 2 today" must
-/// flip at local midnight without a relaunch. Storing days as integers makes all of
+/// finished at 00:30 belongs to the evening it was part of — the day turns at
+/// `rolloverHour`, not midnight — and "2 of 2 today" must flip at that hour without a
+/// relaunch. Storing days as integers makes all of
 /// that pure integer math and immune to the DST/timezone off-by-one bugs `Date`
 /// invites (a local-midnight `Date` re-read in another timezone shifts a day), and it
 /// makes `WorkoutLog.dayKey` a cheap Int predicate instead of a Calendar pass over
@@ -85,8 +86,46 @@ extension DayStamp {
         self.raw = Int((utcMidnight.timeIntervalSince1970 / Self.secondsPerDay).rounded(.down))
     }
 
-    static func today(calendar: Calendar = .current) -> DayStamp {
-        DayStamp(date: .now, calendar: calendar)
+    /// TODAY is the training day, not the calendar day — see `rolloverHour`. Every
+    /// "today" in the app comes through here (`DayClock`), so the tally, the strip, the
+    /// grid and the day a session is filed under cannot disagree about when a day ends.
+    /// `now` is a test seam.
+    static func today(calendar: Calendar = .current, now: Date = .now) -> DayStamp {
+        DayStamp(trainingDayOf: now, calendar: calendar)
+    }
+
+    // MARK: - The training day
+
+    /// **A training day turns at 04:00, not at midnight.** A hang that starts at 23:47
+    /// and ends 44 seconds past midnight is an evening session; filing it under the
+    /// morning after scores one evening as two days, which is exactly what Nuri's own
+    /// history showed (2026-09-20: the row dated the 19th, the tally and the calendar
+    /// crediting the 20th). The promise this file always made — a 00:30 session belongs
+    /// to the day the climber lived through — was never actually implemented until this
+    /// constant existed: the clock simply turned at midnight. Anything in the small hours
+    /// before this counts for the day before. Four is after any late session and before
+    /// any morning one.
+    static let rolloverHour = 4
+
+    /// The training day `date` falls in: its calendar day, or the previous one when the
+    /// local clock reads earlier than `rolloverHour`. Calendar arithmetic, deliberately
+    /// not "minus four hours": on the night the clocks go back, 04:30 is only three and a
+    /// half hours past midnight, and subtracting a fixed interval filed it a day early.
+    init(trainingDayOf date: Date, calendar: Calendar = .current) {
+        let comps = Self.gregorian(zoneOf: calendar)
+            .dateComponents([.year, .month, .day, .hour], from: date)
+        var day = DayStamp(year: comps.year!, month: comps.month!, day: comps.day!)
+        if let hour = comps.hour, hour < Self.rolloverHour { day = day - 1 }
+        self = day
+    }
+
+    /// The instant the training day after `date`'s begins — the coming 04:00 local. What
+    /// `DayClock` sleeps until, since UIKit posts nothing at that hour.
+    static func nextRollover(after date: Date, calendar: Calendar = .current) -> Date {
+        let rollover = DateComponents(hour: rolloverHour, minute: 0, second: 0)
+        return Self.gregorian(zoneOf: calendar)
+            .nextDate(after: date, matching: rollover, matchingPolicy: .nextTime)
+            ?? date.addingTimeInterval(Self.secondsPerDay)
     }
 
     /// Local start-of-day for this day — for date pickers and chart axes. (If local

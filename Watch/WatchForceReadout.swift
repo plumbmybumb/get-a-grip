@@ -14,6 +14,9 @@ import Observation
 @Observable @MainActor
 final class WatchForceReadout {
     private(set) var kg: Double = 0
+    /// The gauge screen's peak, mirrored at the same rate for the same reason:
+    /// `DeviceStore.peakKg` publishes on every sample that raises it.
+    private(set) var peakKg: Double = 0
 
     @ObservationIgnored private var task: Task<Void, Never>?
 
@@ -27,6 +30,8 @@ final class WatchForceReadout {
                 guard let self, let device else { return }
                 let next = (device.currentKg * 10).rounded() / 10
                 if next != self.kg { self.kg = next }
+                let peak = (device.peakKg * 10).rounded() / 10
+                if peak != self.peakKg { self.peakKg = peak }
             }
         }
     }

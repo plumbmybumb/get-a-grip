@@ -17,12 +17,17 @@ import UIKit
 ///
 /// `significantTimeChangeNotification` is the right hook: UIKit posts it at local
 /// midnight, and also when the clock is changed manually or the device crosses into a new
-/// time zone — all three change which calendar day the user is training in.
+/// time zone — all three change which calendar day the user is training in. The TRAINING
+/// day turns later than that, at `DayStamp.rolloverHour`, an hour nothing in UIKit
+/// announces — so the clock also books its own wake-up for it (`armRolloverRefresh`).
 @Observable @MainActor
 final class DayClock {
     private(set) var today: DayStamp
     /// The store reacts after the clock has changed, independent of notification order.
     @ObservationIgnored var onDayChanged: (@MainActor () -> Void)?
+    /// The pending wake-up for the next rollover. Holds `self` weakly, so a clock that is
+    /// gone simply lets it lapse; re-armed by every refresh.
+    @ObservationIgnored private var rolloverRefresh: Task<Void, Never>?
 
     /// Tokens live in a box that unregisters itself: Swift 6 forbids a nonisolated
     /// `deinit` from touching a non-Sendable stored property of a `@MainActor` class,
@@ -58,13 +63,31 @@ final class DayClock {
                 Task { @MainActor in self?.refresh() }
             }
         }
+        armRolloverRefresh()
     }
 
-    /// Also called on foreground: a device that was asleep across midnight may not
-    /// deliver the time-change notification until the app is active again.
+    /// Also called on foreground: a device that was asleep across midnight — or across
+    /// the 04:00 rollover — may not deliver the time-change notification, and cannot run
+    /// the rollover task, until the app is active again.
     func refresh() {
         let now = DayStamp.today()
         advance(to: now)
+        armRolloverRefresh()
+    }
+
+    /// The training day turns at `DayStamp.rolloverHour` (see `DayStamp`), which UIKit
+    /// posts nothing for — `significantTimeChange` is midnight's. So the clock sleeps
+    /// until the next rollover and refreshes itself; a process suspended across it does
+    /// not run this and is caught by the foreground refresh instead. Continuous clock,
+    /// so a phone that dozed with the app in the foreground still wakes on time.
+    private func armRolloverRefresh() {
+        rolloverRefresh?.cancel()
+        let interval = DayStamp.nextRollover(after: .now).timeIntervalSinceNow
+        rolloverRefresh = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(max(1, interval)), clock: .continuous)
+            guard !Task.isCancelled else { return }
+            self?.refresh()
+        }
     }
 
     /// Tests only in practice — nothing in the app calls it. Kept out of `refresh`'s

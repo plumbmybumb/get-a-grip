@@ -752,23 +752,52 @@ final class TemplateStoreTests: XCTestCase {
         XCTAssertNotNil(w.store.lastDeleted, "the routine's offer outlives the session's")
     }
 
-    // MARK: - History is frozen
+    // MARK: - A routine's sessions go with it
 
-    func testDeletingARoutineLeavesItsLogsIntactWithTheFrozenName() throws {
+    /// Nuri, 2026-09-20: a routine deleted weeks ago still had a "Load per grip" card,
+    /// because its sessions stayed. They go with the routine now — and come back with
+    /// it, byte for byte and under their original ids, from the same Undo. Sessions of
+    /// OTHER routines and hand-logged sessions are not on the line.
+    func testDeletingARoutineDeletesItsSessionsAndUndoPutsThemBack() throws {
+        let w = try makeWorld()
+        let daily = try XCTUnwrap(w.store.create(.starter))
+        let rest = try XCTUnwrap(w.store.create(.blank(named: "Rest day")))
+        let dailyID = daily.id
+        let mine = try insertLog(w, template: daily, day: DayStamp.today() - 2)
+        let mineToo = try insertLog(w, template: daily, day: DayStamp.today() - 1)
+        let theirs = try insertLog(w, template: rest, day: DayStamp.today() - 1)
+        let climb = try XCTUnwrap(w.store.recordLoggedSession(.climbLimit))
+        let ownIDs: Set<UUID> = [mine.id, mineToo.id]
+        let blobs = [mine.id: mine.resultsData, mineToo.id: mineToo.resultsData]
+        let days = [mine.id: mine.dayKey, mineToo.id: mineToo.dayKey]
+
+        XCTAssertTrue(w.store.delete(daily))
+
+        XCTAssertEqual(Set(workoutLogs(w).map(\.id)), [theirs.id, climb.id],
+                       "only the deleted routine's own sessions go")
+        XCTAssertEqual(w.store.lastDeleted?.sessions.count, 2)
+        XCTAssertEqual(w.store.lastDeleted?.sessions.map(\.templateID), [dailyID, dailyID])
+
+        w.store.undoDelete()
+
+        let restored = workoutLogs(w)
+        XCTAssertEqual(Set(restored.map(\.id)), ownIDs.union([theirs.id, climb.id]))
+        for log in restored where ownIDs.contains(log.id) {
+            XCTAssertEqual(log.templateID, dailyID, "still attributed to the restored routine")
+            XCTAssertEqual(log.resultsData, blobs[log.id], "raw bytes, not a decode-re-encode")
+            XCTAssertEqual(log.dayKey, days[log.id])
+            XCTAssertEqual(log.templateName, "Daily no-hangs")
+        }
+        XCTAssertNotNil(w.store.routine(id: dailyID))
+        XCTAssertNil(w.store.lastDeleted)
+    }
+
+    /// A routine with no sessions deletes as it always did — and the bar's count is zero.
+    func testDeletingASessionlessRoutineCarriesNoSessions() throws {
         let w = try makeWorld()
         let template = try XCTUnwrap(w.store.create(.starter))
-        let templateID = template.id
-        try insertLog(w, template: template, day: DayStamp.today() - 1)
-
         XCTAssertTrue(w.store.delete(template))
-
-        let log = try XCTUnwrap(workoutLogs(w).first)
-        XCTAssertEqual(log.templateName, "Daily no-hangs")
-        XCTAssertEqual(log.templateID, templateID)
-        XCTAssertNil(w.store.routine(id: templateID), "templateID is best-effort grouping only")
-        XCTAssertEqual(log.plan?.sets.count, 6, "the frozen plan is still readable")
-        XCTAssertEqual(log.reps.count, 1)
-        XCTAssertFalse(log.planData.isEmpty)
+        XCTAssertEqual(w.store.lastDeleted?.sessions.count, 0)
     }
 
     /// The frozen-name rule, stated as a test because it is the one people "fix".
@@ -1755,7 +1784,11 @@ final class TemplateStoreTests: XCTestCase {
         XCTAssertEqual(try w.context.fetchCount(FetchDescriptor<MaxRecord>()), 2)
     }
 
-    func testHistoryDateUsesManualDayAcrossTimeZonesButPreservesTimedStart() throws {
+    /// Every row is dated by its TRAINING day, in every zone — a timed session included.
+    /// It used to show its start instant, which for a session begun in the small hours
+    /// is a different calendar day from the one the grid and the tally credit (Nuri,
+    /// 2026-09-20). The frozen `dayKey` is the one date every surface agrees on.
+    func testHistoryDateIsTheTrainingDayForEveryRowInEveryTimeZone() throws {
         let day = DayStamp(year: 2026, month: 9, day: 5)
         let entered = Date(timeIntervalSince1970: 1_788_739_200)
         let manual = WorkoutLog(logged: .hangManual, day: day, at: entered, sessionsPerDayTarget: 1)
@@ -1766,7 +1799,8 @@ final class TemplateStoreTests: XCTestCase {
             var calendar = Calendar(identifier: .gregorian)
             calendar.timeZone = try XCTUnwrap(TimeZone(identifier: zone))
             XCTAssertEqual(DayStamp(date: manual.historyDate(calendar: calendar), calendar: calendar), day)
-            XCTAssertEqual(timed.historyDate(calendar: calendar), entered)
+            XCTAssertEqual(DayStamp(date: timed.historyDate(calendar: calendar), calendar: calendar), day,
+                           "the row, the grid and the tally name the same day")
         }
     }
 

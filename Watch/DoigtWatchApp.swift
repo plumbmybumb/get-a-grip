@@ -38,8 +38,12 @@ struct DoigtWatchApp: App {
         // phone takes seed the same world here, before the first frame reads it.
         DebugSeeding.applyLaunchSeeding(context: container.mainContext)
         #endif
+        let ledger = SessionLedger(context: container.mainContext, clock: clock)
+        // The phone's launch repair, on the wrist too — the row may have been written
+        // here, by a build whose clock still turned at midnight.
+        ledger.repairTrainingDays()
         _clock = State(initialValue: clock)
-        _ledger = State(initialValue: SessionLedger(context: container.mainContext, clock: clock))
+        _ledger = State(initialValue: ledger)
     }
 
     var body: some Scene {
