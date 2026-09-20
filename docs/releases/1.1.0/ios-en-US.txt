@@ -3,8 +3,3 @@ The session screen is new. The force trace now fills the whole screen, and the n
 • Apple Watch: the whole face is the colour of the state — blue to pull, green while the clock runs, red to re-grip, orange before a different grip.
 • In Low Power Mode the digits snap instead of sliding, to spare the battery. The clocks keep counting.
 • A gauge that delivers its readings in bursts no longer empties the graph.
-• The live gauge is one tap from Today, and it now looks like the session screen: the trace fills the display, the numbers sit on one glass panel, the actions on one dock.
-• History adds an all-time card: sessions, pulls, time under tension, volume, days trained, your heaviest pull.
-• A session that runs past midnight counts for the evening it belonged to. Your training day now turns at 4 am.
-• Deleting a routine also deletes its sessions, and Undo brings both back.
-• Settings opens on the gauge picker, so choosing among the gauges the app works with is the first thing you see.

@@ -9,10 +9,11 @@ section after it carries its own status line and records work that preceded it. 
 development plan those were scoped against is kept in
 [history/RELEASE_1.1.0_PLAN.md](history/RELEASE_1.1.0_PLAN.md).
 
-## 1.1.0 (11) and Android 1.0.2 (12) — the training day, deleted routines, the gauge as a screen
+## iOS 1.1.1 (11) and Android 1.0.2 (12) — the training day, deleted routines, the gauge as a screen
 
-Status: implemented on 20 September 2026 and folded into the still-unsubmitted iOS 1.1.0
-as build 11 (replacing build 10 on the prepared version) and into Android 1.0.2 (12).
+Status: implemented on 20 September 2026. iOS 1.1.0 (10) was approved and released, so
+this ships as its own version, 1.1.1 (11), with its own What's New in
+[docs/releases/1.1.1/](releases/1.1.1/); Android as 1.0.2 (12) on the Alpha track.
 Android carries the day rule, the cascading delete, the odometer in History, the rimmed
 gauge picker and the gauge button on Today; its working screens (runner and gauge) keep
 their current look by Nuri's call.
@@ -40,8 +41,8 @@ their current look by Nuri's call.
 
 ## 1.1.0 — the session screen
 
-Status: in preparation for iOS **1.1.0 (10)**. The Android side ships with
-**1.0.1 (11)**; see [its release record](releases/notes/RELEASE_2026-09-18_ANDROID_11.md).
+Status: iOS **1.1.0 (10)** approved and released on the App Store. The Android side
+ships with **1.0.1 (11)**; see [its release record](releases/notes/RELEASE_2026-09-18_ANDROID_11.md).
 
 - The force trace fills the whole screen, and the numbers sit on one Liquid Glass panel
   that takes the colour of the moment: blue while the clock runs, amber when it is

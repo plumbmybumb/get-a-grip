@@ -1,0 +1,5 @@
+• The live gauge is one tap from Today, and it now looks like the session screen: the trace fills the display, the numbers sit on one glass panel, the actions on one dock.
+• History adds an all-time card: sessions, pulls, time under tension, volume, days trained, your heaviest pull.
+• A session that runs past midnight counts for the evening it belonged to. Your training day now turns at 4 am.
+• Deleting a routine also deletes its sessions, and Undo brings both back.
+• Settings opens on the gauge picker, so choosing among the gauges the app works with is the first thing you see.

@@ -8,7 +8,7 @@ Version numbers are per platform and deliberately not kept in step.
 
 | Version | Date | Status | Record |
 | --- | --- | --- | --- |
-| iOS 1.1.0 (10) | 20 Sep 2026 | Uploaded and processing; the App Store version is prepared with the v4 screenshot set, not submitted. The session screen: the trace fills the display, the numbers sit on one Liquid Glass panel that takes the colour of the phase, the iPad gets a landscape column and the watch face takes the state's colour | [Record](docs/releases/notes/RELEASE_2026-09-20_IOS_1.1.0.md) |
+| iOS 1.1.0 (10) | 20 Sep 2026 | Approved and released on the App Store. The session screen: the trace fills the display, the numbers sit on one Liquid Glass panel that takes the colour of the phase, the iPad gets a landscape column and the watch face takes the state's colour | [Record](docs/releases/notes/RELEASE_2026-09-20_IOS_1.1.0.md) |
 | Android 1.0.1 (11) | 18 Sep 2026 | Submitted to the closed Alpha track at 100%, with the updated Data safety questionnaire | [Record](docs/releases/notes/RELEASE_2026-09-18_ANDROID_11.md) |
 | iOS 1.0.4 (9) | 18 Sep 2026 | Uploaded, processed and on TestFlight; the App Store version was prepared but not submitted | [Record](docs/releases/notes/RELEASE_2026-09-18_IOS_1.0.4.md) |
 | Android 1.0.1 (10) | 13 Sep 2026 | Built and verified in source; never signed or uploaded, superseded by build 11 | [Record](docs/releases/notes/RELEASE_2026-09-12_1.0.3.md) |
