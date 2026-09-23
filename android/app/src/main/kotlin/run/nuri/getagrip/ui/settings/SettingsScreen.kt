@@ -79,6 +79,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -112,6 +113,13 @@ private const val ROUTE_GAUGE_PICKER = "gauge-picker"
 /// TRANSLATION NOTE: iOS pushes these onto the tab's own `NavigationStack`. The Compose
 /// twin is a NavHost scoped to this tab, which is also what makes predictive back work
 /// unmodified: the system gesture pops this host, and the tab bar stays put.
+///
+/// **Every move is `dropUnlessResumed`, and back names where it goes.** A double tap on the
+/// row, or a tap on the picker's back arrow during the push animation, fired twice: the first
+/// pushed the picker twice (two backs to leave), the second popped past it — and a bare
+/// `popBackStack()` from a destination already on its way out pops SETTINGS itself, leaving
+/// the tab blank. Only a destination that is resumed may navigate; the push is single-top;
+/// back pops TO Settings, never below it.
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
@@ -120,13 +128,16 @@ fun SettingsScreen(
     NavHost(nav, startDestination = ROUTE_SETTINGS, modifier = modifier.fillMaxSize()) {
         composable(ROUTE_SETTINGS) {
             SettingsRoot(
-                onOpenGaugePicker = { nav.navigate(ROUTE_GAUGE_PICKER) },
+                onOpenGaugePicker = dropUnlessResumed {
+                    nav.navigate(ROUTE_GAUGE_PICKER) { launchSingleTop = true }
+                },
             )
         }
         composable(ROUTE_GAUGE_PICKER) {
-            InnerScreen(title = tr("Gauge"), onBack = { nav.popBackStack() }) { padding ->
+            val back = dropUnlessResumed { nav.popBackStack(ROUTE_SETTINGS, inclusive = false) }
+            InnerScreen(title = tr("Gauge"), onBack = back) { padding ->
                 // A tap applies AND dismisses — the same rule the grip picker follows.
-                GaugePickerScreen(Modifier.padding(padding)) { nav.popBackStack() }
+                GaugePickerScreen(Modifier.padding(padding), onSelected = back)
             }
         }
     }
