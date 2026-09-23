@@ -75,7 +75,7 @@ enum ReminderPlanner {
             // the TRAINING day: a 01:00 slot is the last of the evening before, not the
             // first of the morning, so it sorts after 23:00.
             let sorted = Set(routine.reminders).sorted {
-                trainingDayOrder($0) < trainingDayOrder($1)
+                $0.trainingDayOrder < $1.trainingDayOrder
             }
             let suppressed = max(0, sorted.count - max(0, routine.outstandingToday))
             for (index, slot) in sorted.enumerated() {
@@ -91,12 +91,6 @@ enum ReminderPlanner {
             }
         }
         return planned
-    }
-
-    /// Minutes since the training day began — the order a day's slots are lived in.
-    nonisolated static func trainingDayOrder(_ time: ReminderTime) -> Int {
-        let rollover = DayStamp.rolloverHour * 60
-        return (time.minutesFromMidnight - rollover + 1440) % 1440
     }
 
     /// Resolve the slot plan to future calendar dates. Every enabled slot returns

@@ -131,7 +131,7 @@ struct TodayView: View {
     }
 
     var body: some View {
-        // Folded ONCE per evaluation and handed down — see `TodayDeck`.
+        // Folded ONCE per evaluation and handed down — see `TodaySelection`.
         let deck = makeDeck()
         // spacing 16, not the house 22: three or four blocks that must land inside one
         // screen without being as dense as Schengen's dashboard.
@@ -366,8 +366,8 @@ struct TodayView: View {
     /// Today opens on.
     private func routineGrid(_ deck: Deck) -> some View {
         CardGrid {
-            ForEach(deck.ordered) { routine in
-                routineCard(routine, deck: deck)
+            ForEach(deck.cards) { card in
+                routineCard(card, deck: deck)
             }
             newRoutineGhost
                 .id(Self.ghostID)
@@ -388,8 +388,8 @@ struct TodayView: View {
     private func routineDeck(_ deck: Deck) -> some View {
         ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: 8) {
-                ForEach(deck.ordered) { routine in
-                    routineCard(routine, deck: deck)
+                ForEach(deck.cards) { card in
+                    routineCard(card, deck: deck)
                         .containerRelativeFrame(.horizontal)
                 }
                 // The quiet door at the end of the deck — the same grammar as the
@@ -510,9 +510,10 @@ struct TodayView: View {
     /// view it never compared equal and every Today render — a swipe settling, the gauge
     /// state ticking — re-ran every card's body. It compares on what it draws; the
     /// closures only ever act on `routine`, which the summary's `id` pins.
-    private func routineCard(_ routine: SessionTemplate, deck: Deck) -> some View {
-        RoutineCard(
-            summary: deck.summaries[routine.id] ?? templates.summary(for: routine),
+    private func routineCard(_ card: Deck.Card, deck: Deck) -> some View {
+        let routine = card.routine
+        return RoutineCard(
+            summary: card.summary,
             completionText: templates.completionText(routine),
             // The border only exists where there are siblings to distinguish — with one
             // routine it would mark the only real card there is.
@@ -634,7 +635,7 @@ struct TodayView: View {
     /// Everything the body asks about the routines, folded once per evaluation.
     private struct Deck {
         let ordered: [SessionTemplate]
-        /// Rungs 2–4 — see `TodayDeck.upNextID`. Split from `selectedID` because the
+        /// Rungs 2–4 — see `TodaySelection.upNextID`. Split from `selectedID` because the
         /// border must ignore rung 1: swipe away to browse and the border stays put on
         /// the called card, which is what makes it information ("this one is being
         /// asked of you") rather than decoration on whatever is in front.
@@ -650,11 +651,19 @@ struct TodayView: View {
         /// Rung 4 is also what self-heals when a CloudKit merge deletes the chosen
         /// routine: rung 1 simply misses and the rule falls through.
         let selectedID: UUID?
-        /// One summary per routine — each decodes the plan and the reminders, so the
-        /// card and the header share the one built here.
-        let summaries: [UUID: RoutineSummary]
+        /// One per routine, in `ordered`'s order, carrying its summary — each decodes the
+        /// plan and the reminders, so the card and the header share the one built here.
+        let cards: [Card]
 
-        var selectedSummary: RoutineSummary? { selectedID.flatMap { summaries[$0] } }
+        struct Card: Identifiable {
+            let routine: SessionTemplate
+            let summary: RoutineSummary
+            var id: UUID { routine.id }
+        }
+
+        var selectedSummary: RoutineSummary? {
+            selectedID.flatMap { id in cards.first { $0.id == id }?.summary }
+        }
     }
 
     /// "Calling" is computed from the SCHEDULE, deliberately not from the delivered-
@@ -672,20 +681,18 @@ struct TodayView: View {
     private func makeDeck() -> Deck {
         let ordered = self.ordered
         let candidates = ordered.map { routine in
-            TodayDeck.Candidate(
+            TodaySelection.Candidate(
                 id: routine.id,
                 callingMinutes: routine.remindersEnabled && !templates.isDoneForToday(routine)
                     ? routine.reminders.map(\.minutesFromMidnight) : [])
         }
-        let upNextID = TodayDeck.upNextID(candidates, suggestedID: templates.suggestedRoutineID,
-                                          nowMinutes: TodayDeck.minutesNow())
-        let selectedID = TodayDeck.selectedID(chosenID: chosenRoutineID,
-                                              chosenToday: chosenOnDay == clock.today,
-                                              among: candidates.map(\.id), upNextID: upNextID)
-        var summaries: [UUID: RoutineSummary] = [:]
-        for routine in ordered { summaries[routine.id] = templates.summary(for: routine) }
-        return Deck(ordered: ordered, upNextID: upNextID, selectedID: selectedID,
-                    summaries: summaries)
+        let upNextID = TodaySelection.upNextID(candidates, suggestedID: templates.suggestedRoutineID,
+                                               nowMinutes: TodaySelection.minutesNow())
+        let selectedID = TodaySelection.selectedID(chosenID: chosenRoutineID,
+                                                   chosenToday: chosenOnDay == clock.today,
+                                                   among: candidates.map(\.id), upNextID: upNextID)
+        let cards = ordered.map { Deck.Card(routine: $0, summary: templates.summary(for: $0)) }
+        return Deck(ordered: ordered, upNextID: upNextID, selectedID: selectedID, cards: cards)
     }
 
     // MARK: - Starting
