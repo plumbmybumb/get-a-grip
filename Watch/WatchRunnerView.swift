@@ -76,7 +76,12 @@ struct WatchRunnerView: View {
         Group {
             if let session {
                 if session.isFinished {
-                    WatchSummaryView(session: session, template: template) { dismiss() }
+                    WatchSummaryView(session: session, template: template) {
+                        // Saved or discarded; a failed save never gets here. Nothing is
+                        // left to offer back at the next launch.
+                        session.clearDraft()
+                        dismiss()
+                    }
                 } else {
                     TabView {
                         face(session)
@@ -92,9 +97,11 @@ struct WatchRunnerView: View {
             guard session == nil else { return }
             // The maxes are read ONCE, here — a session's targets must not move under
             // the climber because a max was recorded on the phone mid-workout.
+            // `.standard` drafts, as on the phone: a finished session is on disk until it
+            // is saved or discarded, so a watch taken off behind the summary keeps it.
             let new = RunnerSession(template: template, device: device,
                                     maxes: maxRecords.maxTable(), timerOnly: timerOnly,
-                                    cues: WatchCuePlayer())
+                                    cues: WatchCuePlayer(), draftStore: .standard)
             session = new
             new.begin()
             if !timerOnly { readout.begin(reading: device) }

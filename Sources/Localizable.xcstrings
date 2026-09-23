@@ -181,6 +181,16 @@
         }
       }
     },
+    "Unsaved session from %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Séance non enregistrée de %@"
+          }
+        }
+      }
+    },
     "Volume is load × pulls, added up. Under tension is every second on the edge." : {
       "localizations" : {
         "fr" : {
@@ -301,6 +311,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "% du max"
+          }
+        }
+      }
+    },
+    "%@ · %lld of %lld pulls. The app closed before it was saved." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %lld sur %lld tirages. L’app s’est fermée avant l’enregistrement."
           }
         }
       }

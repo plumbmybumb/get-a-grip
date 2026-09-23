@@ -108,6 +108,9 @@ struct RootTabView: View {
         // Started from Today rather than here: which act runs depends on whether a routine
         // exists, and the routine list is a `@Query` that only Today holds.
         .environment(tour)
+        // A session that finished but was neither saved nor discarded before the app
+        // died is offered back once, at launch — see `UnsavedSessionDraft`.
+        .unsavedSessionRecovery()
         // Deliberately NO scenePhase observer: DoigtApp owns the single one, and a
         // second would run `clock.refresh()` + `refreshIfDayChanged()` twice per
         // activation.

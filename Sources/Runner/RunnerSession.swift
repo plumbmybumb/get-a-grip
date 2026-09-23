@@ -170,6 +170,9 @@ final class RunnerSession {
     @ObservationIgnored private var cuesEnded = false
     @ObservationIgnored private var activityStart: Task<Void, Never>?
     @ObservationIgnored private let activityStartDelay: Duration?
+    @ObservationIgnored private let draftStore: UnsavedSessionDraftStore?
+    /// Names this session's on-disk draft — see `UnsavedSessionDraft`.
+    let sessionID = UUID()
     @ObservationIgnored private var streamWatchdog: Task<Void, Never>?
     @ObservationIgnored private var lastSampleAt: TimeInterval = 0
     @ObservationIgnored private var staleBatchHealArmedAt: TimeInterval?
@@ -193,18 +196,23 @@ final class RunnerSession {
     /// because the screen shares one view, and because a session started without a gauge
     /// must not start quietly using one that happens to be connected.
     ///
+    /// `draftStore` is where a finished-but-unsaved session is kept until Save or Discard.
+    /// nil — the default, which tests and the in-memory previews get — writes nothing.
+    ///
     /// `activityStartDelay` holds the Live Activity back off the presenting frame; nil
     /// starts it inside `begin()`, which is what tests that read the first card use.
     init(template: SessionTemplate, device: DeviceStore, maxes: MaxTable = MaxTable(),
          timerOnly: Bool = false,
          liveActivity: any RunnerActivityPublishing = RunnerSession.defaultLiveActivity(),
          cues: any RunnerCuePlaying = RunnerSession.defaultCues(),
+         draftStore: UnsavedSessionDraftStore? = nil,
          activityStartDelay: Duration? = RunnerSession.liveActivityStartDelay) {
         self.template = template
         self.plan = template.plan
         self.device = device
         self.liveActivity = liveActivity
         self.cues = cues
+        self.draftStore = draftStore
         self.activityStartDelay = activityStartDelay
         self.timerOnly = timerOnly
         // Read ONCE, like the timing policy below: what this session is driving must not
@@ -459,6 +467,28 @@ final class RunnerSession {
     /// out before the audio session is released.
     static let finishCueTail: Duration = .seconds(1)
 
+    // MARK: - The unsaved-session draft
+
+    /// Write the finished session to disk, BEFORE anybody is asked whether to keep it.
+    /// Only when there is something to keep — a session with no work shows no Save.
+    private func writeDraft() {
+        guard hasBegun, let draftStore, runner.didAnyWork, let finishedAt else { return }
+        let draft = UnsavedSessionDraft(id: sessionID, plan: plan, reps: runner.results,
+                                        startedAt: startedAt, finishedAt: finishedAt,
+                                        templateID: template.id, templateName: template.name)
+        // Best-effort: a draft that cannot be written costs the recovery, never the
+        // summary in front of you, whose Save does not depend on it.
+        guard (try? draftStore.write(draft)) != nil else { return }
+        LiveSessionDrafts.insert(sessionID)
+    }
+
+    /// The summary was answered — saved or discarded — so there is nothing to recover.
+    /// Called on BOTH, and only after a save that landed: a failed save keeps the draft.
+    func clearDraft() {
+        draftStore?.delete(id: sessionID)
+        LiveSessionDrafts.remove(sessionID)
+    }
+
     /// The session's real first phase is connect-and-tare, which is why Start on Today
     /// is deliberately enabled while the gauge is still asleep.
     func startIfReady(cause: StreamStartCause) {
@@ -629,6 +659,9 @@ final class RunnerSession {
         let emitted = runner.handle(event, at: now, recordedAt: ProcessInfo.processInfo.systemUptime)
         if runner.isFinished, finishedAt == nil {
             finishedAt = startedAt.addingTimeInterval(runner.finishedElapsedSeconds ?? 0)
+            // On disk FIRST, so there is no instant in which the result exists only in
+            // memory behind a summary that has not been answered.
+            writeDraft()
             // The summary may stay open for minutes. Its unfinished save is not a live
             // workout: no lock-screen countdown, no stream, no ticker, no awake screen.
             // The cues below still play — the tail keeps the engines up for the chord.
