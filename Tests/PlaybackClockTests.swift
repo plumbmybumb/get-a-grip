@@ -112,4 +112,23 @@ final class PlaybackClockTests: XCTestCase {
         let gap = resumed - before
         XCTAssertGreaterThan(gap, 1.0, "an untrusted delta more than a second behind snaps to wall time")
     }
+
+    /// The buffer overshoots by up to `slack` and is then cut back to `capacity` in one
+    /// shift, instead of shifting the whole array on every sample. It never loses a
+    /// point it should keep: what survives is always the newest `capacity` or more.
+    func testTheTraceIsTrimmedInChunksAndKeepsTheNewest() {
+        var buffer: [Int] = []
+        var shifts = 0
+        for value in 0..<1_000 {
+            buffer.append(value)
+            let before = buffer.count
+            DeviceStore.trimTrace(&buffer, capacity: 480, slack: 40)
+            if buffer.count != before { shifts += 1 }
+            XCTAssertLessThanOrEqual(buffer.count, 520, "never past capacity plus slack")
+            XCTAssertEqual(buffer.last, value, "the newest point is always kept")
+            XCTAssertEqual(buffer, Array((value - buffer.count + 1)...value), "contiguous, oldest dropped")
+        }
+        XCTAssertGreaterThanOrEqual(buffer.count, 480)
+        XCTAssertEqual(shifts, 12, "one trim per 41 samples past the first 520, not one per sample")
+    }
 }

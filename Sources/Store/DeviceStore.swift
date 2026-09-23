@@ -294,6 +294,23 @@ final class DeviceStore {
     private var traceCapacity: Int {
         max(Self.minimumTraceCapacity, Int(Self.traceSeconds * gaugeCapabilities.nominalSampleRate))
     }
+    /// Half a second of the gauge's samples, floored at 40 — the overshoot the buffer is
+    /// allowed before it is trimmed back.
+    private var traceTrimSlack: Int {
+        max(40, Int(0.5 * gaugeCapabilities.nominalSampleRate))
+    }
+
+    /// **Trimmed in CHUNKS, not a point at a time.** `removeFirst` shifts every element
+    /// left, so trimming to the exact capacity on each sample moved the whole ~480–2000
+    /// point buffer 80–250 times a second to drop one point. Letting it overshoot by
+    /// `slack` and then cutting back to `capacity` does the same shift once per
+    /// half-second. The overshoot is all OLD points, past the window's left edge — the
+    /// capacity already holds two seconds more than the graph shows — so nothing drawn
+    /// changes.
+    nonisolated static func trimTrace<Point>(_ buffer: inout [Point], capacity: Int, slack: Int) {
+        guard buffer.count > capacity + max(0, slack) else { return }
+        buffer.removeFirst(buffer.count - capacity)
+    }
 
     private var client: any ProgressorClient
 
@@ -935,9 +952,7 @@ final class DeviceStore {
             onTracePoint?(point)
             traceStorage.append(point)
             sampleStateChanged()
-            if traceStorage.count > traceCapacity {
-                traceStorage.removeFirst(traceStorage.count - traceCapacity)
-            }
+            Self.trimTrace(&traceStorage, capacity: traceCapacity, slack: traceTrimSlack)
         case .battery(let mv):
             batteryFraction = ProgressorCodec.batteryFraction(millivolts: mv)
         case .batteryFraction(let fraction):
