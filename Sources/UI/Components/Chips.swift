@@ -9,9 +9,8 @@ import SwiftUI
 /// One capsule option.
 ///
 /// Selected draws a single glass surface; unselected is a hairline capsule with **no
-/// glass at all**. That asymmetry is load-bearing rather than cosmetic: an expanded set
-/// row carries twenty-plus chips, and every glass surface re-blurs its backdrop. One
-/// glass surface per row, not ten.
+/// glass at all**. Load-bearing: an expanded set row can carry twenty-plus chips, and
+/// every glass surface re-blurs its backdrop.
 struct Chip: View {
     var title: String
     var isSelected: Bool
@@ -27,9 +26,8 @@ struct Chip: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 12)
                 .padding(.vertical, Metrics.buttonVerticalPadding)
-                // Drawn at 44 and shaped at 44: the visual IS the target. Padding and a
-                // capsule background contribute nothing to SwiftUI's default hit area,
-                // so the content shape is mandatory, not decoration.
+                // Drawn at 44 and shaped at 44: the visual IS the target, and padding plus
+                // a capsule background are not hit-tested without the content shape.
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .modifier(ChipSurface(isSelected: isSelected))
                 .contentShape(.capsule)
@@ -45,8 +43,8 @@ private struct ChipSurface: ViewModifier {
 
     func body(content: Content) -> some View {
         if isSelected {
-            // `.accessibleGlass`, never raw `.glassEffect`: under Reduce Transparency the
-            // tint vanishes, and with it the only thing saying which chip is chosen.
+            // `.accessibleGlass`: under Reduce Transparency raw glass loses its tint,
+            // the only thing saying which chip is chosen.
             content.accessibleGlass(Accent.graphiteFlat.opacity(0.20), in: .capsule)
         } else {
             content.overlay(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
@@ -56,11 +54,9 @@ private struct ChipSurface: ViewModifier {
 
 // MARK: - Layout
 
-/// The shared chip layout: six across, thinning as text grows.
-///
-/// The ladder is 6 → 3 at `.accessibility1` → 2 at `.accessibility3`. `base` is the
-/// comfortable count for THIS row's labels — six for "20 s", fewer for "Half crimp" or
-/// "Alternate each pull", which cannot survive a 48pt cell at any type size.
+/// The shared chip layout: six across, thinning as text grows (6 → 3 at
+/// `.accessibility1` → 2 at `.accessibility3`). `base` is the comfortable count for
+/// THIS row's labels.
 struct ChipGrid<Content: View>: View {
     var base: Int
     @ViewBuilder var content: Content
@@ -73,21 +69,16 @@ struct ChipGrid<Content: View>: View {
     }
 
     private var columns: [GridItem] {
-        // ADAPTIVE, not a fixed count: a fixed 6-column grid squeezes each cell to about
-        // 48pt, and "20 mm" does not fit — measured on the pinned sim, the edge row
-        // rendered as "6…, 8…, 1…, 1…, 1…, 1…", so 10, 12, 15 and 18 mm were literally
-        // indistinguishable. A chip row whose labels can't be read is not a control.
-        // `minimum` scales with the type size, so the frozen 6 → 3 → 2 ladder still
-        // happens on a numbers-only row; rows carrying a unit simply take one fewer
-        // column instead of truncating.
+        // ADAPTIVE, not a fixed count: a fixed 6-column grid squeezed cells to ~48pt
+        // and the edge row rendered "6…, 8…, 1…, 1…, 1…, 1…" — 10, 12, 15 and 18 mm
+        // indistinguishable. `minimum` scales with type size, so the 6 → 3 → 2 ladder
+        // still happens; rows with a unit take one fewer column instead of truncating.
         [GridItem(.adaptive(minimum: minimumChipWidth), spacing: 8, alignment: .leading)]
     }
 
-    /// `base` is the row's intended column count at standard type, and it still carries
-    /// the caller's real information: a numeric row (6) wants narrow cells, while
-    /// "Half crimp" (3) and "Alternate each pull" (2) need wide ones. It sets the
-    /// minimum width rather than a hard count, so the row keeps its intended density
-    /// and simply wraps a chip instead of truncating one.
+    /// `base` is the row's intended column count at standard type (6 for numbers, 3 for
+    /// "Half crimp", 2 for "Alternate each pull"). It sets a minimum width rather than a hard
+    /// count, so the row wraps a chip instead of truncating one.
     private var minimumChipWidth: CGFloat {
         let standard: CGFloat = switch base {
         case ...2: 150
@@ -162,9 +153,9 @@ struct PositionChipRow: View {
         }
     }
 
-    /// A position written by a newer build is not in `known`, and it still gets a chip —
-    /// showing it selected is the whole reason `GripPosition` is an open struct rather
-    /// than an enum. Dropping it here would let this build silently rewrite the set.
+    /// A position written by a newer build is not in `known` and still gets a chip — the
+    /// reason `GripPosition` is an open struct. Dropping it would let this build silently
+    /// rewrite the set.
     private var options: [GripPosition] {
         GripPosition.known.contains(selection) ? GripPosition.known : GripPosition.known + [selection]
     }
@@ -189,11 +180,10 @@ struct HandModeChipRow: View {
 
 /// Which hand a max was pulled with.
 ///
-/// **"Both hands" leads and is the default**, because it is the honest answer for anyone
-/// who has not thought about it and the one that keeps the app behaving exactly as it did
-/// before hands existed — a both-hands max applies to every rep of that grip. Choosing a
-/// side is a deliberate act that says "this number is NOT true of my other hand", and the
-/// engine treats it that way: see `MaxTable`.
+/// **"Both hands" leads and is the default**: the honest answer for anyone who has not
+/// thought about it, and the pre-hands behaviour (applies to every rep of that grip).
+/// Choosing a side says "this number is NOT true of my other hand", and the engine treats
+/// it that way — see `MaxTable`.
 struct MaxSideChipRow: View {
     @Binding var selection: Side
 
@@ -212,9 +202,8 @@ struct MaxSideChipRow: View {
         .sensoryFeedback(.selection, trigger: selection)
     }
 
-    /// NOT `Side.name` — that vocabulary is the runner's ("Left", "Both"), read at arm's
-    /// length mid-set. Here the chips answer "which hand is this max for", where "Both
-    /// hands" and "Left hand" are what the question actually wants back.
+    /// NOT `Side.name`, the runner's arm's-length vocabulary ("Left", "Both"). Here the
+    /// question is which hand the max is for, answered by "Both hands", "Left hand".
     private func name(_ side: Side) -> String {
         switch side {
         case .both:  String(localized: "Both hands")

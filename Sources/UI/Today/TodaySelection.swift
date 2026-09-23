@@ -6,32 +6,26 @@ import Foundation
 /// Which routine Today fronts, and which one wears the up-next border — decided ONCE per
 /// body evaluation from plain values.
 ///
-/// These used to be computed properties on `TodayView`, each re-deriving the ones below
-/// it: `ordered` re-sorted the query on every read (ten and more per render), `upNext`
-/// was asked once per CARD and walked every routine's reminder blob each time, and the
-/// header decoded the selected routine's summary a second time beside the card's own.
-/// Cheap one at a time, and all of it on the frame that swiped the deck. The view now
-/// folds the routines into these values once and hands them down; the rules themselves
-/// live here, where a test can reach them.
+/// As computed properties on `TodayView` they re-derived each other: `ordered` re-sorted
+/// per read (ten-plus per render), `upNext` walked every reminder blob per CARD, and the
+/// header decoded a summary twice — all on the frame that swiped the deck. Now folded
+/// once and handed down, with the rules here where a test can reach them.
 enum TodaySelection {
     /// One routine as the selection rules see it.
     struct Candidate: Equatable {
         let id: UUID
-        /// The routine's reminder times in minutes from midnight — EMPTY when reminders
-        /// are off or the day is already done, because a routine you finished has been
-        /// answered and cannot be "calling".
+        /// Reminder times in minutes from midnight — EMPTY when reminders are off or the day is
+        /// done, because a finished routine cannot be "calling".
         let callingMinutes: [Int]
     }
 
-    /// Rungs 2–4: the routine the app would front WITH NO HAND ON IT — the deck's home
-    /// card, and the one wearing the up-next border.
+    /// Rungs 2–4: the routine the app would front WITH NO HAND ON IT — the deck's home card,
+    /// wearing the up-next border.
     ///
-    /// 2. the routine whose reminder CALLED most recently — fired at or before `now`,
-    ///    the latest such time wins, a tie going to the earlier routine in `candidates`
-    ///    (stable, and biased toward the primary). "Before" and "latest" are in
-    ///    TRAINING-day order (`ReminderTime.trainingDayOrder`), the planner's order: at
-    ///    00:30 the 23:00 reminder called ninety minutes ago, and the 08:00 one has
-    ///    not called yet;
+    /// 2. the routine whose reminder CALLED most recently (at or before `now`; latest wins,
+    ///    ties to the earlier candidate, biased to the primary). Ordered by TRAINING day
+    ///    (`ReminderTime.trainingDayOrder`): at 00:30 the 23:00 reminder called ninety
+    ///    minutes ago and 08:00 has not;
     /// 3. `suggestedID`, the routine started today on this device, while it exists;
     /// 4. the first — the primary.
     static func upNextID(_ candidates: [Candidate], suggestedID: UUID?, nowMinutes: Int) -> UUID? {

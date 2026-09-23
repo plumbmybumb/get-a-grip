@@ -7,15 +7,12 @@ import UIKit
 
 /// ONE rendering of the breadcrumb ring, for every way it can leave the phone.
 ///
-/// The clipboard button and the bug report's attachment carry the SAME text because they
-/// call the same function: two renderings of one report is two things to keep in step,
-/// and the one that goes stale is always the one nobody is looking at.
+/// The clipboard button and the bug report's attachment call the same function, so they
+/// cannot drift; the stale copy is always the one nobody looks at.
 ///
-/// OLDEST FIRST, unlike the list on screen. The list is newest-first because the thing you
-/// just saw happen is the thing you came to look at; a pasted or attached report is read
-/// as a narrative — Siri arrived, then the scene changed, then the trace flushed 40 times
-/// — and a narrative runs forwards. Seconds included: the whole question is whether two
-/// events happened together or seconds apart.
+/// OLDEST FIRST, unlike the list on screen (newest-first, because the thing you just saw
+/// is what you came for): a pasted report is read as a narrative, and a narrative runs
+/// forwards. Seconds included — the question is whether two events happened together.
 enum DiagnosticReport {
     static func text(from entries: [DiagnosticBreadcrumbEntry]) -> String {
         let stamp = Date.FormatStyle(date: .numeric, time: .standard)
@@ -28,51 +25,43 @@ enum DiagnosticReport {
 /// Which gauge, what it is doing, the preferences, and the statements the app owes
 /// whoever is using it.
 ///
-/// **The gauge picker comes FIRST, with a rim** (Nuri, 2026-09-20). Eight gauges and one
-/// row to choose between them, and the row read as a status line — nobody with a WH-C06
-/// could tell it was the place to say so. The bleu rim and the line under the name say
-/// "this is a choice"; the Device card that follows says what the chosen one is doing.
+/// **The gauge picker comes FIRST, with a rim** (Nuri, 2026-09-20): as a plain row it read
+/// as a status line, and nobody with a WH-C06 could tell it was where to say so. The
+/// Device card that follows says what the chosen one is doing.
 ///
-/// The live gauge used to live HERE rather than on Today, to keep the ritual screen to
-/// one routine and one tap. That held until people turned out to use the gauge and no
-/// routine at all (2026-09-20): it moved to a button on Today's bar, and the row here
-/// went with it — one door, on the screen that opens every day, not two. The all-time
-/// tally that briefly sat here moved to History, where the sessions it adds up are.
+/// The live gauge moved to a button on Today's bar once people turned out to use the gauge
+/// with no routine at all (2026-09-20) — one door, not two. The all-time tally moved to
+/// History, beside the sessions it adds up.
 struct SettingsView: View {
     @Environment(DeviceStore.self) private var device
     @Environment(TemplateStore.self) private var templates
     @Environment(TourController.self) private var tour
-    /// Routines exist at all — which decides whether replaying the tour opens with the
-    /// build-one-first act or goes straight to pointing at the card.
+    /// Whether routines exist decides if replaying the tour opens with the build-one act.
     @Query private var routines: [SessionTemplate]
     @Environment(SettingsStore.self) private var settings
 
-    /// Confirmation for the tap that just happened, not a fact about the app —
-    /// deliberately not persisted, so reopening Settings offers the reset again.
+    /// Confirmation for the tap that just happened — not persisted, so reopening Settings
+    /// offers the reset again.
     @State private var guideReset = false
     @State private var tourReset = false
 
     var body: some View {
         ScreenScaffold(title: String(localized: "Settings")) {
-            // WHICH gauge, first: choosing the device precedes using it, and everything
-            // below this row describes whatever it selects.
+            // WHICH gauge first: everything below describes whatever it selects.
             gaugeKindRow.staggerIn(0)
             deviceCard.staggerIn(1)
             weightUnitsCard.staggerIn(2)
             remindersCard.staggerIn(3)
-            // ABOVE About, deliberately. About is the block of statements the app OWES
-            // whoever is using it — storage, attribution, licence — and a door out to a
-            // person is a thing you DO, so it belongs with the other actions rather than
-            // filed under the small print.
+            // ABOVE About: About is the statements the app OWES you (storage,
+            // attribution, licence); a door out to a person is an action, not small print.
             SupportCard().staggerIn(4)
             openSourceCard.staggerIn(5)
             aboutCard.staggerIn(6)
         }
     }
 
-    /// Which device rings. The routines sync; the reminders must not, or every iPad
-    /// and iPhone on the account would fire the same 19:30 at once — see
-    /// `SettingsStore.remindsOnThisDevice`.
+    /// Which device rings. Routines sync; reminders must not, or every device on the account
+    /// fires the same 19:30 — see `SettingsStore.remindsOnThisDevice`.
     private var remindersCard: some View {
         @Bindable var settings = settings
         let isPad = UIDevice.current.userInterfaceIdiom == .pad
@@ -130,10 +119,9 @@ struct SettingsView: View {
                             .contentTransition(.numericText())
                     }
                 }
-                // A synthetic number that looks like a measurement is worse than no
-                // number, so demo mode is never allowed to be ambiguous. Otherwise this
-                // states the SELECTED gauge — the app drives eight of them now, and
-                // "Tindeq Progressor" was a hardcoded claim about one.
+                // A synthetic number that looks like a measurement is worse than none, so
+                // demo mode is never ambiguous. Otherwise this states the SELECTED gauge,
+                // not a hardcoded "Tindeq Progressor".
                 LabeledContent("Source") {
                     Text(device.isMock ? String(localized: "Demo device") : device.gaugeKind.displayName)
                 }
@@ -144,10 +132,9 @@ struct SettingsView: View {
 
     // MARK: - Which gauge
 
-    /// The one card on the screen with a rim: bleu, two points — a hairline is mostly
-    /// antialiased edge and measured under 3:1 elsewhere in the app — drawn INSIDE the
-    /// label so it presses with the card. The line under the name is the other half of
-    /// the same sentence: this is where you pick, and there is something to pick from.
+    /// The one card with a rim: bleu, two points (a hairline is mostly antialiased edge and
+    /// measured under 3:1), drawn INSIDE the label so it presses with the card. The line
+    /// under the name says there is something to pick from.
     private var gaugeKindRow: some View {
         NavigationLink {
             GaugePickerView()
@@ -186,8 +173,7 @@ struct SettingsView: View {
                     .accessibilityHidden(true)
             }
         }
-        // Full-width row, full-width hit area — the card's material and the Spacer
-        // contribute nothing to SwiftUI's default opaque-content hit test.
+        // Full-width row, full-width hit area: material and Spacer are not hit-tested.
         .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityLabel("Gauge. Currently \(device.isMock ? "the demo device" : device.gaugeKind.displayName). \(gaugeChoiceNote)")
@@ -201,8 +187,8 @@ struct SettingsView: View {
 
     private var hasRoutine: Bool { !routines.isEmpty }
 
-    /// Every maker Doigt speaks to, in picker order, de-duplicated — one gauge per maker
-    /// today, but the fold is what keeps the sentence right the day two devices share one.
+    /// Every maker the app speaks to, in picker order, de-duplicated so the sentence stays
+    /// right the day two devices share one.
     private var makersSentence: String {
         var makers: [String] = []
         for kind in GaugeKind.selectable where !makers.contains(kind.maker) {
@@ -301,11 +287,9 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 10) {
 
                         // Descriptive use only, and unconditional: the app is not made by,
-                        // affiliated with, or endorsed by any of these makers, and this is the
-                        // sentence that says so. **The list is built from the registry**, so
-                        // adding a gauge cannot leave a maker unnamed in the one place they all
-                        // have to appear — the failure mode of a typed-out list is a legal line
-                        // that silently goes stale on the next device.
+                        // affiliated with or endorsed by these makers. **Built from the registry**,
+                        // so adding a gauge cannot leave a maker out of the one legal line that
+                        // must name them all.
                         Text("Get a Grip works with force gauges from \(makersSentence). It is not made by, affiliated with, or endorsed by any of them.")
                             .font(.system(.footnote))
                             .foregroundStyle(Ink.secondary)
@@ -316,11 +300,9 @@ struct SettingsView: View {
                     SettingsDisclosure("Diagnostics") {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(alignment: .firstTextBaseline) {
-                                // WITHOUT THIS THE FEATURE DOES NOT WORK. The whole point of the
-                                // ring is to travel from Nuri's phone to whoever is diagnosing the
-                                // drop; a 240 pt scroll view you can only read means retyping
-                                // timestamps by hand, which nobody does. Read-only evidence that
-                                // cannot leave the device is not evidence.
+                                // WITHOUT THIS THE FEATURE DOES NOT WORK: the ring exists to travel to
+                                // whoever is diagnosing the drop, and read-only evidence that cannot leave
+                                // the device means retyping timestamps by hand.
                                 CopyButton(text: { diagnosticReport },
                                            accessibilityLabel: "Copy the diagnostics to the clipboard") {
                                     CompactCopyLabel(copied: $0)
@@ -354,15 +336,13 @@ struct SettingsView: View {
 
                 SettingsDisclosure("Guides and tours") {
                     VStack(alignment: .leading, spacing: 10) {
-                        // TWO DIFFERENT THINGS, and the old labels ("Show the setup guide again"
-                        // / "Take the tour again") were close enough to read as one feature listed
-                        // twice. This one is the step-by-step hints printed INSIDE the routine
-                        // builder; the one below is the spotlight walkthrough of the whole app.
+                        // TWO DIFFERENT THINGS: this is the step-by-step hints INSIDE the builder;
+                        // the row below is the spotlight walkthrough of the whole app. Their old
+                        // labels read as one feature listed twice.
                         Button {
                             settings.builderGuideDone = false
                             guideReset = true
-                            // Back to Today, or the reset happens two tabs away from anywhere you
-                            // could see it and reads as a dead button.
+                            // Back to Today, or the reset happens two tabs away and reads as dead.
                             tour.requestedTab = 0
                         } label: {
                             Label(guideReset ? "Hints reset — open a routine to see them"
@@ -371,21 +351,17 @@ struct SettingsView: View {
                                 .font(.system(.footnote, weight: .semibold))
                                 .foregroundStyle(guideReset ? Ink.secondary : Accent.graphite)
                                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                // Holds a Label and draws full-width — without a content shape
-                                // only the glyph and glyph-width of text would be tappable.
+                                // Holds a Label and draws full-width, so the shape must be declared.
                                 .contentShape(Rectangle())
                         }
-                        // `scales: false`, matching every other bare row on a shared
-                        // `MaterialCard` (`FineTuningSection`, `SetRowView`, `MaxesView`): a
-                        // row with no background of its own scaling on press shrinks its
-                        // content while the card's backdrop stays put.
+                        // `scales: false`, like every bare row on a shared `MaterialCard`: scaling
+                        // shrinks the content while the card's backdrop stays put.
                         .buttonStyle(PressFeedbackButtonStyle(scales: false))
                         .disabled(guideReset)
                         .accessibilityLabel(guideReset ? "Builder hints reset"
                                                        : "Show the builder's hints again")
 
-                        // The spotlight tour, not the builder's inline guide above. Both exist and
-                        // teach different things, which is why they are two rows rather than one.
+                        // The spotlight tour, not the builder's inline guide above.
                         Button {
                             tour.replay(hasRoutine: hasRoutine)
                             tourReset = true
@@ -415,12 +391,11 @@ struct SettingsView: View {
     }
 
     /// Where the routines actually ended up. Someone who believes their training is in
-    /// iCloud when it is device-only finds out at the moment they lose the phone, so
-    /// this states the real mode rather than asserting the happy one.
+    /// iCloud when it is device-only finds out when they lose the phone, so this states the
+    /// real mode.
     ///
-    /// `.isolated` is not a footnote-shaped fact: that fallback container is a
-    /// DIFFERENT store file, so routines saved earlier are genuinely absent from it.
-    /// It gets amber and an icon. The other two modes are statements, not warnings.
+    /// `.isolated` gets amber and an icon: that fallback is a DIFFERENT store file, so
+    /// routines saved earlier are genuinely absent from it. The other two are statements.
     @ViewBuilder
     private var storageLine: some View {
         switch templates.storageMode {
@@ -465,9 +440,8 @@ private struct SettingsDisclosure<Content: View>: View {
 
 // MARK: - Support
 
-/// A frozen mail request, the same shape as `RoutineShareRequest`: what the composer
-/// carries is decided at the TAP. A breadcrumb landing while the sheet is open, or a
-/// gauge waking up in a bag, must not rewrite a message somebody is already typing.
+/// A frozen mail request, like `RoutineShareRequest`: decided at the TAP, so a breadcrumb
+/// or a gauge waking in a bag cannot rewrite a message somebody is typing.
 private struct MailRequest: Identifiable {
     let id = UUID()
     var subject: String
@@ -477,22 +451,20 @@ private struct MailRequest: Identifiable {
 
 /// A door out to a person: a feature request or a bug report, as an email.
 ///
-/// Its own leaf view for two reasons. `@Environment(\.openURL)` is a presentation-scoped
-/// value whose identity moves with the presentation — the trap `OpenSettingsButton`
-/// already carries a warning about — so it is held by the smallest view that needs it.
-/// And the store is read ONLY inside the tap closures, never in `body`, so Observation
-/// registers nothing and a breadcrumb arriving mid-session cannot invalidate Settings.
+/// Its own leaf view because `@Environment(\.openURL)` is presentation-scoped and its
+/// identity moves (see `OpenSettingsButton`), so the smallest view holds it. The store is
+/// read ONLY inside tap closures, never in `body`, so a breadcrumb arriving mid-session
+/// cannot invalidate Settings.
 ///
-/// Nothing here reaches into `DeviceStore` beyond READING what it already publishes: the
-/// store does not know that mail exists, and it must not learn.
+/// Only READS what `DeviceStore` publishes: the store does not know mail exists, and
+/// must not learn.
 private struct SupportCard: View {
     @Environment(DeviceStore.self) private var device
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// Non-nil presents the composer; the composer's own `onFinish` clears it, which is
-    /// what dismisses the sheet.
+    /// Non-nil presents the composer; its `onFinish` clears it, dismissing the sheet.
     @State private var mail: MailRequest?
     @State private var askingDiagnostics = false
     /// Revealed only when the mail route genuinely failed — see `revealAddress()`.
@@ -521,9 +493,8 @@ private struct SupportCard: View {
             }
             .fixedSize(horizontal: false, vertical: true)
         }
-        // Asked BEFORE the composer, because the answer decides what the composer is
-        // built with — and asked only for a bug report: a feature request has nothing a
-        // breadcrumb could explain.
+        // Asked BEFORE the composer, because the answer decides what it is built
+        // with — and only for a bug report.
         .confirmationDialog("Include gauge diagnostics?",
                             isPresented: $askingDiagnostics,
                             titleVisibility: .visible) {
@@ -548,13 +519,9 @@ private struct SupportCard: View {
 
     // MARK: Rows
 
-    /// The bare-row shape every other row on a shared `MaterialCard` uses: 44 pt tall, an
-    /// explicit content shape because it draws full-width, and `scales: false` so pressing
-    /// it does not shrink its content off the card's own backdrop.
     /// The persistent link Apple allows on a settings screen (StoreKit ›
-    /// `RequestReviewAction`), straight to the write-a-review page — and the one place
-    /// the ask can say WHY, since the system prompt's words are Apple's. See
-    /// `ReviewRequestPolicy` for the prompt itself.
+    /// `RequestReviewAction`), straight to the write-a-review page, and the one place the ask
+    /// can say WHY. See `ReviewRequestPolicy` for the prompt itself.
     private static let writeReviewURL = URL(string: "https://apps.apple.com/app/id6804236185?action=write-review")!
 
     private var rateRow: some View {
@@ -589,15 +556,12 @@ private struct SupportCard: View {
         .accessibilityLabel("\(title). Opens an email to \(Self.address).")
     }
 
-    /// THE LAST RESORT, and the reason no control here can look tappable and do nothing:
-    /// with no mail account and no app willing to take a `mailto:`, the two buttons above
-    /// would otherwise be dead. The address itself is the fallback, copyable in one tap.
+    /// THE LAST RESORT: with no mail account and no app taking a `mailto:`, the buttons
+    /// above would be dead, so the address itself is the fallback, copyable in one tap.
     ///
-    /// SIDE BY SIDE until `.accessibility1`, stacked after it. Squeezed against the
-    /// button at accessibility sizes the address broke mid-token — "support@nuri.r / un"
-    /// — and this row exists to be READ and retyped, so it is the one string in the card
-    /// that cannot be allowed to wrap arbitrarily. Same swap `RoutineImportSheet` makes:
-    /// big text is served by full width, and the horizontal pairing is what it spares.
+    /// SIDE BY SIDE until `.accessibility1`, stacked after. Squeezed at accessibility sizes
+    /// the address broke mid-token ("support@nuri.r / un"), and this string exists to be
+    /// read and retyped. Same swap as `RoutineImportSheet`.
     @ViewBuilder
     private var addressRow: some View {
         let address = Text("Email \(Self.address)")
@@ -629,10 +593,8 @@ private struct SupportCard: View {
     // MARK: Routing
 
     private func startBugReport() {
-        // The dialog exists to ask about an ATTACHMENT. With no breadcrumbs to attach —
-        // or no mail account, where the `mailto:` fallback cannot carry a file at all —
-        // there is nothing to ask, so the question is skipped rather than posed and then
-        // silently ignored.
+        // The dialog asks about an ATTACHMENT. With no breadcrumbs, or no mail
+        // account (a `mailto:` cannot carry a file), there is nothing to ask.
         guard MailComposer.canSend, !device.diagnosticEntries.isEmpty else {
             compose(subject: Self.bugSubject, withDiagnostics: false)
             return
@@ -656,9 +618,8 @@ private struct SupportCard: View {
         mail = MailRequest(subject: subject, body: body, attachment: attachment)
     }
 
-    /// No composer, so hand the message to whatever mail app the phone does have. An
-    /// attachment cannot survive this route, which is why the diagnostics question is
-    /// never asked when it is the one available.
+    /// No composer, so hand the message to whatever mail app exists. No attachment survives
+    /// this route, which is why the diagnostics question is skipped here.
     private func openFallback(subject: String, body: String) {
         guard let url = Self.mailtoURL(subject: subject, body: body) else {
             revealAddress()
@@ -685,9 +646,9 @@ private struct SupportCard: View {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "unknown"
         let build = info?["CFBundleVersion"] as? String ?? "unknown"
-        // Demo mode is a CLIENT, not a kind, so it is stated alongside the selected gauge
-        // rather than instead of it — a bug report from a demo session that read as a real
-        // Progressor would send somebody hunting firmware for numbers a timer invented.
+        // Demo mode is a CLIENT, not a kind, so it is stated alongside the gauge: a
+        // demo report read as a real Progressor sends somebody hunting firmware for
+        // numbers a timer invented.
         let gauge = device.isMock
             ? "\(device.gaugeKind.displayName) (demo device active)"
             : device.gaugeKind.displayName
@@ -699,19 +660,17 @@ private struct SupportCard: View {
         ]
     }
 
-    /// The model IDENTIFIER ("iPhone17,1"), not the marketing name — it is what a hardware
-    /// quirk is looked up by. In the Simulator `uname` reports the HOST's architecture, so
-    /// the simulated model is read from the environment first; otherwise a report filed
-    /// from a simulator build claims to come from an "arm64".
+    /// The model IDENTIFIER ("iPhone17,1"), which is what a hardware quirk is looked up by.
+    /// In the Simulator `uname` reports the HOST's architecture, so the simulated model is
+    /// read from the environment first.
     private static var deviceModel: String {
         if let simulated = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] {
             return simulated
         }
         var system = utsname()
         uname(&system)
-        // Copied OUT of the buffer inside the closure: the slice is a view onto memory
-        // that does not outlive it, and `machine` is a fixed-size C tuple whose bytes end
-        // at the first NUL rather than filling it.
+        // Copied OUT inside the closure: the slice does not outlive it, and
+        // `machine` is a fixed-size C tuple whose bytes end at the first NUL.
         let bytes = withUnsafeBytes(of: system.machine) { Array($0.prefix { $0 != 0 }) }
         return String(decoding: bytes, as: UTF8.self)
     }
@@ -730,25 +689,22 @@ private struct SupportCard: View {
 
 // MARK: - Gauge picker
 
-/// Which device Doigt measures with.
+/// Which device the app measures with.
 ///
-/// A pushed screen rather than a card on Settings: eight rows, each owing a maker and —
-/// for seven of them — the same honest caveat, is 400 pt that has no business on a screen
-/// you open to check a battery level. It is also NOT a menu: a menu can show the names and
-/// nothing else, and the one thing this list has to carry is which of these devices has
-/// actually been tested.
+/// A pushed screen, not a card: eight rows with makers and caveats are 400 pt that do not
+/// belong on a screen opened to check a battery. Not a menu either, which shows names and
+/// nothing else, when this list must say which devices have actually been tested.
 ///
-/// Selecting is one tap and pops back, the same "a tap applies and dismisses" rule the
-/// grip picker follows. Nothing connects: `selectGaugeKind` deliberately leaves that to a
-/// Connect tap, because constructing a client is what raises the Bluetooth prompt.
+/// A tap applies and pops back, like the grip picker. Nothing connects:
+/// `selectGaugeKind` leaves that to a Connect tap, because constructing a client raises
+/// the Bluetooth prompt.
 private struct GaugePickerView: View {
     @Environment(DeviceStore.self) private var device
     @Environment(SettingsStore.self) private var settings
     @Environment(\.dismiss) private var dismiss
 
-    /// The kind whose first selection is waiting on its maker's note being read. Only
-    /// the Frez Dyno carries one, and only once: after Next the flag is persisted and
-    /// the row selects like any other, on this device forever.
+    /// The kind whose first selection waits on its maker's note being read. Only the Frez
+    /// Dyno has one, shown once per device; after Next it selects like any other.
     @State private var kindAwaitingIntro: GaugeKind?
 
     var body: some View {
@@ -777,8 +733,7 @@ private struct GaugePickerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sensoryFeedback(.selection, trigger: device.gaugeKind)
         .sheet(item: $kindAwaitingIntro) { kind in
-            // Next is the only way through, and it completes the selection the tap
-            // started — the note is read once, on the way in, never again.
+            // Next is the only way through, and completes the selection the tap started.
             FrezIntroSheet {
                 settings.frezIntroSeen = true
                 kindAwaitingIntro = nil
@@ -789,8 +744,8 @@ private struct GaugePickerView: View {
     }
 
     private func row(for kind: GaugeKind) -> some View {
-        // Demo mode is a client, not a kind, so nothing reads as selected while it runs —
-        // and tapping the gauge you already had selected is how you leave it.
+        // Demo mode is a client, not a kind, so nothing is selected while it runs;
+        // tapping the selected gauge is how you leave it.
         let isSelected = device.gaugeKind == kind && !device.isMock
         return Button {
             if kind.capabilities.requiresRemoteCalibration, !settings.frezIntroSeen {
@@ -818,14 +773,10 @@ private struct GaugePickerView: View {
                     .accessibilityHidden(true)
             }
             .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-            // Holds a Spacer and draws full-width: without this only the words are
-            // tappable and half of every row is dead.
+            // Holds a Spacer and draws full-width: without this half of every row is dead.
             .contentShape(.rect)
         }
-        // `scales: false`: this row shares ONE `MaterialCard` with every other gauge in
-        // the list, and scaling it on press would shrink the row's content while the
-        // card behind all eight rows stays put — the same shape `FineTuningSection`,
-        // `SetRowView` and `MaxesView` already guard for.
+        // `scales: false`: one `MaterialCard` holds all eight rows — see the guide row.
         .buttonStyle(PressFeedbackButtonStyle(scales: false))
         .accessibilityLabel("\(kind.displayName). \(detail(for: kind)).")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
@@ -843,9 +794,8 @@ private struct GaugePickerView: View {
         return parts.joined(separator: " · ")
     }
 
-    /// ONE shared footnote for every unverified row, not a warning repeated eight times —
-    /// and phrased from the capability flags, so the day a device is verified the sentence
-    /// changes with it instead of quietly lying.
+    /// ONE shared footnote for every unverified row, not eight warnings — phrased from the
+    /// capability flags, so it changes the day a device is verified.
     @ViewBuilder
     private var footnotes: some View {
         VStack(alignment: .leading, spacing: 10) {

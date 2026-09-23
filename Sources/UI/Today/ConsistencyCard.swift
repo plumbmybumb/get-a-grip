@@ -5,24 +5,20 @@ import SwiftUI
 
 /// Fourteen days, oldest to newest, ending today.
 ///
-/// No streak, no badge, no score, no praise — and deliberately **no aggregate number in
-/// the header**: "11 of 14 days" is a score, and a score is the first step toward a
-/// streak. The strip IS the summary. The aggregate exists only in the VoiceOver value,
-/// where it has to be a description because a picture cannot be spoken.
+/// No streak, no badge, no score, no praise — and **no aggregate number in the header**:
+/// "11 of 14 days" is a score, the first step toward a streak. The strip IS the summary;
+/// the aggregate exists only in the VoiceOver value, because a picture cannot be spoken.
 struct ConsistencyCard: View {
     /// Exactly what `TemplateStore.consistency` publishes: 14 records, oldest first.
     let days: [DayRecord]
-    /// Logging a climb lives HERE rather than in the routine card's ⋯ menu, which is for
-    /// managing the routine — a gym session is not a fact about the routine. It sits on
-    /// the strip because the strip is what it changes: the control is next to the thing
-    /// it affects, which is the whole of good mapping.
+    /// Logging a climb lives HERE, not in the routine card's ⋯ menu: a gym session is not a
+    /// fact about the routine, and the control sits next to the strip it changes.
     var onLogClimb: () -> Void
     var onShowHistory: () -> Void = {}
 
     var body: some View {
-        // 12 rather than the house 16 vertically: this is the least load-bearing card on
-        // Today, and it is where the last few points came from when the page had to fit
-        // under a large title without scrolling.
+        // 12 rather than 16 vertically: the least load-bearing card on Today, where
+        // the last points came from to fit under a large title.
         MaterialCard(verticalPadding: 12) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
@@ -69,9 +65,8 @@ struct ConsistencyCard: View {
         }
     }
 
-    /// Glass INSIDE the label, then the content shape, then the button style outside —
-    /// the house shape, and the 44 pt frame is what makes the whole capsule live rather
-    /// than just the glyph and the word.
+    /// Glass INSIDE the label, then the content shape, then the button style — the house
+    /// shape; the 44 pt frame makes the whole capsule live.
     private var logClimbButton: some View {
         Button(action: onLogClimb) {
             HStack(spacing: 5) {
@@ -86,9 +81,8 @@ struct ConsistencyCard: View {
         }
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityIdentifier("consistency.log")
-        // Not "at the climbing gym" any more: this sheet also logs hangs done away from
-        // the gauge, and a label naming only one of them hides the other entirely from
-        // anyone who never sees the button's own text.
+        // The sheet also logs hangs done away from the gauge, so the label must not
+        // name only climbing.
         .accessibilityLabel(String(localized: "Log a session you did elsewhere — climbing, or hangs off the gauge"))
     }
 
@@ -99,28 +93,26 @@ struct ConsistencyCard: View {
 /// How one day draws. Every state is SHAPE-encoded, never colour-only, so the strip
 /// survives Reduce Transparency, greyscale and colourblindness intact.
 private enum DayMark: Equatable {
-    /// Earlier than any routine existed. A hairline, not a hole — drawing those days as
-    /// empty circles would tell someone they failed on days they did not own the app.
-    /// This is the most important honesty detail on the screen.
+    /// Earlier than any routine existed. A hairline, not a hole: empty circles would say
+    /// someone failed on days they did not own the app — the screen's key honesty detail.
     case beforeHistory
     case missed
-    /// At least one session, under target. The fill is the CONTINUOUS fraction, which
-    /// reduces to exactly full/half/empty at two sessions a day and stays truthful at
-    /// three — a lighter tint would vanish in greyscale.
+    /// At least one session, under target. The fill is the CONTINUOUS fraction (exactly
+    /// full/half/empty at two a day, truthful at three); a lighter tint would vanish in
+    /// greyscale.
     case partial(Double)
     case full
-    /// A day spent at the climbing gym. FULL — a climb completes the day — but drawn
-    /// with a notch so it is not mistaken for a hangboard day. See `ClimbNotch`.
+    /// A climbing-gym day: FULL (a climb completes the day), notched so it is not a
+    /// hangboard day. See `ClimbNotch`.
     case climbed
-    /// A max-testing day. FULL, bleu, and bored — the same glyph History's grid draws,
-    /// so the vocabulary is learned once. See `BenchmarkBore`.
+    /// A max-testing day: FULL, bleu, and bored — History's glyph. See `BenchmarkBore`.
     case benchmarked
 }
 
 private func mark(for record: DayRecord) -> DayMark {
     guard record.tracked else { return .beforeHistory }
-    // Asked FIRST: a climb settles the day whatever the hang count beside it, so a
-    // climb-plus-nothing day must never fall through to `.missed`.
+    // FIRST: a climb settles the day whatever the hang count, so it must never
+    // fall through to `.missed`.
     if record.climb != nil { return .climbed }
     if record.benchmarked { return .benchmarked }
     if record.completed == 0 { return .missed }
@@ -135,20 +127,15 @@ private struct ConsistencyStrip: View {
     /// ~19pt at accessibility3 — 14 × 19 still fits the 330pt card interior.
     @ScaledMetric(relativeTo: .caption) private var scaledDot: CGFloat = 12
 
-    /// CAPPED, and the cap is load-bearing. Each cell's ideal width is this dot, so
-    /// fourteen of them at an unclamped accessibility size come to ~406pt against a
-    /// 402pt screen — and because the enclosing VStack sizes itself from its children's
-    /// ideals, that widened the entire content column and clipped the device chip, the
-    /// routine title and the summary row off BOTH edges of the screen.
-    ///
-    /// A strip is a sparkline: it exists to be glanced at, and it has to FIT. Anyone who
-    /// needs the detail at a readable size has History's month grid, which is built for
-    /// exactly that.
+    /// CAPPED, and the cap is load-bearing: fourteen unclamped cells at accessibility sizes
+    /// come to ~406pt against a 402pt screen, and since the VStack sizes from its children's
+    /// ideals, that widened the whole column and clipped the chip, title and summary off
+    /// BOTH edges. A strip is a sparkline and must FIT; History's month grid has the detail.
     private var dot: CGFloat { min(scaledDot, 22) }
 
     var body: some View {
-        // Spacing 0 with equal-width cells: the pitch DERIVES from the available width,
-        // so the strip fits every device and every type size without a magic number.
+        // Spacing 0 with equal-width cells: the pitch derives from the width, so it
+        // fits every device and type size without a magic number.
         HStack(spacing: 0) {
             ForEach(Array(days.enumerated()), id: \.element.id) { index, record in
                 cell(record, isToday: index == days.count - 1)
@@ -156,24 +143,22 @@ private struct ConsistencyStrip: View {
             }
         }
         .frame(height: dot + 6)
-        // ONE element. Fourteen focusable dots is swipe torture, and day-by-day detail
-        // belongs to History's month view.
+        // ONE element: fourteen focusable dots is swipe torture.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(String(localized: "Last 14 days"))
         .accessibilityValue(spokenSummary)
     }
 
     private func cell(_ record: DayRecord, isToday: Bool) -> some View {
-        // Top-aligned so today's under-tick lands exactly on the strip's bottom edge
-        // rather than overhanging into the axis row below it.
+        // Top-aligned so today's under-tick sits on the strip's bottom edge, not in
+        // the axis row.
         VStack(spacing: 0) {
             glyph(for: mark(for: record))
                 .frame(width: dot, height: dot)
                 .overlay(alignment: .bottom) {
                     if isToday {
-                        // An under-tick, not a halo: today is still winnable, and at 0 of
-                        // 2 at 8 a.m. it must not read as a failure. A halo would also
-                        // fight the fractional fill sitting inside it.
+                        // An under-tick, not a halo: at 0 of 2 at 8 a.m. today must not read as a
+                        // failure, and a halo would fight the fractional fill.
                         Capsule()
                             .fill(Accent.graphite.opacity(0.6))
                             .frame(width: dot, height: 3)
@@ -215,9 +200,8 @@ private struct ConsistencyStrip: View {
         }
     }
 
-    /// The only place an aggregate is allowed to exist, and it is phrased as a
-    /// description rather than a score. Days before the routine existed are excluded
-    /// from the missed count here exactly as they are in the drawing.
+    /// The only place an aggregate may exist, phrased as a description, not a score.
+    /// Pre-routine days are excluded from "missed" as in the drawing.
     private var spokenSummary: String {
         var complete = 0, partial = 0, missed = 0, untracked = 0, climbed = 0, benchmarked = 0
         for record in days.dropLast() {
@@ -233,8 +217,7 @@ private struct ConsistencyStrip: View {
 
         var counts: [String] = []
         if complete > 0 { counts.append(String(localized: "\(complete) \(complete == 1 ? String(localized: "day") : String(localized: "days")) complete")) }
-        // Named, not folded into "complete": the notch is a distinction the drawing
-        // makes, so the spoken version has to make it too.
+        // Named: the notch is a distinction the drawing makes, so speech must too.
         if climbed > 0 { counts.append(String(localized: "\(climbed) at the climbing gym")) }
         if benchmarked > 0 { counts.append(String(localized: "\(benchmarked) max testing")) }
         if partial > 0 { counts.append(String(localized: "\(partial) partial")) }

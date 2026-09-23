@@ -5,32 +5,26 @@ import SwiftUI
 
 /// The target load for ONE grip, as a single row on that grip's card.
 ///
-/// It used to be a screen of its own in the setup deck, which was wrong twice over
-/// (Nuri, 2026-08-04: "I don't see why there's a separate card for the Max grip thing —
-/// that should be built in"). A percentage only means kilograms once you know WHICH grip
-/// it applies to, so a routine-wide card had to talk in abstractions and then hope you
-/// checked each grip's max separately. Here the row can say the actual answer — "20–30 %
-/// · 6.0–9.0 kg" — because it knows the grip it is sitting on.
+/// On its own (Nuri, 2026-08-04: "that should be built in"), a routine-wide card had to
+/// talk in abstractions; here the row can say the actual answer — "20–30 % · 6.0–9.0 kg"
+/// — because it knows its grip.
 ///
-/// Stored as a PERCENTAGE on the set by default, not kilograms: your max moves, and a
-/// routine that silently keeps prescribing last spring's load is the bookkeeping this app
-/// exists to refuse. The kilograms are resolved fresh at the start of every session.
+/// Stored as a PERCENTAGE by default: your max moves, and a routine that keeps
+/// prescribing last spring's load is the bookkeeping this app refuses. Kilograms are
+/// resolved fresh at the start of every session.
 ///
-/// **But kilograms are typeable too** (Nuri, 2026-08-09: *"we also need to be able to set
-/// weight ranges even if you don't have your max recorded"*). A percentage of a max you
-/// have not measured is a target of nothing — it resolves to no band at run time, and
-/// finding that out mid-session is the wrong moment. So the unit is a choice inside
-/// Custom, and it defaults to kilograms exactly when the percentage could not work. The
-/// kilograms are then the set's own `targetLoKg`/`targetHiKg`, which `PlanMath.targetBand`
-/// already ranks ahead of any percentage.
+/// **Kilograms are typeable too** (Nuri, 2026-08-09): a percentage of an unmeasured max
+/// resolves to no band at run time. So the unit is a choice inside Custom, defaulting to
+/// kilograms exactly when a percentage could not work; they land in the set's own
+/// `targetLoKg`/`targetHiKg`, which `PlanMath.targetBand` ranks ahead of any percentage.
 struct TargetBandRow: View {
     @Environment(\.weightUnit) private var weightUnit
     @Binding var set: SetPlan
-    /// Every max on file, by grip and hand — so a percentage can be shown as the ACTUAL
-    /// kilograms each hand will be asked for, which is the whole point of the row.
+    /// Every max on file, by grip and hand, so a percentage shows the ACTUAL kilograms each
+    /// hand will be asked for.
     var maxes: MaxTable
-    /// Whether this routine alternates hands. `bothHands` puts them on the edge together,
-    /// so there is no per-hand question to answer and the row must not invent one.
+    /// Whether this routine alternates hands. `bothHands` has no per-hand question, and the
+    /// row must not invent one.
     var handMode: HandMode
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -38,19 +32,17 @@ struct TargetBandRow: View {
     /// Whether the editor is open. CLOSED on every appearance, deliberately — see `header`.
     @State private var expanded = false
 
-    /// Sticky once opened: a custom band that happens to LAND on 20–30 % would otherwise
-    /// close the fields under the finger that was still editing it.
+    /// Sticky once opened: a custom band that LANDS on 20–30 % would otherwise close the
+    /// fields under the finger still editing it.
     @State private var showsCustomFields = false
 
-    /// How a custom band is expressed. Not persisted — the STORED band says which it is
-    /// (`targetLoKg` set means kilograms), and this only carries the choice while the
-    /// fields are open and both are momentarily empty.
+    /// How a custom band is expressed. Not persisted: the STORED band says which it is; this
+    /// carries the choice only while the fields are open and momentarily empty.
     private enum Unit: Hashable { case percent, kilograms }
     @State private var unit: Unit = .percent
 
-    /// The bands worth one tap. Low-intensity volume is the app's centre of gravity, so
-    /// it gets two of the four; the others reach strength-endurance and max work without
-    /// pretending a slider would be more precise than a person's intent.
+    /// The bands worth one tap. Low-intensity volume is the app's centre of gravity, so it
+    /// gets two of the four; the others reach strength-endurance and max work.
     private static let bands: [(label: String, range: ClosedRange<Double>)] = [
         ("15–25", 0.15...0.25),
         ("20–30", 0.20...0.30),
@@ -64,10 +56,9 @@ struct TargetBandRow: View {
             if expanded {
                 editor
             } else if unresolved, let caption {
-                // A percentage that resolves to NOTHING must not go quiet just because the
-                // editor is closed. That is the same class of bug as a per-set override
-                // that only appears once you open the row — the set will run without a
-                // target and the row would be the last place you could have found out.
+                // A percentage that resolves to NOTHING must not go quiet because the
+                // editor is closed — the same class of bug as an override hidden until the
+                // row opens. The set would run without a target.
                 Text(caption)
                     .font(.system(.caption, weight: .medium))
                     .foregroundStyle(StatusTint.armed)
@@ -75,9 +66,8 @@ struct TargetBandRow: View {
             }
         }
         .padding(.vertical, 2)
-        // The STORED band says which unit it is; `unit` only carries the choice while the
-        // fields are open. Without this, reopening a set that already holds a kilogram
-        // band would show the percentage fields over it.
+        // The STORED band decides the unit, or reopening a kilogram band would show
+        // percentage fields over it.
         .onAppear { unit = kgBand != nil ? .kilograms : .percent }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Target load for this grip"))
@@ -85,12 +75,10 @@ struct TargetBandRow: View {
 
     /// The row, always. Closed it is 44 pt and states the load; open it is the editor.
     ///
-    /// It shut by default 2026-08-11, when the section was measured at **~293 pt — a third
-    /// of the whole expanded set row**, on a screen where most sets carry no target at all:
-    /// the shipping starter has none, and Nuri's own daily routine deliberately has none
-    /// because it goes by feel. Six chips, a unit picker, a trimmer, a scale and a
-    /// two-line caption is the right editor and the wrong thing to look at six times while
-    /// scrolling past sets you are not editing.
+    /// Shut by default since 2026-08-11: open it measured ~293 pt, a third of an expanded
+    /// set row, on a screen where most sets carry no target (the starter has none; Nuri's
+    /// daily routine goes by feel). The right editor, the wrong thing to scroll past six
+    /// times.
     private var header: some View {
         Button {
             withAnimation(Motion.state(reduceMotion)) { expanded.toggle() }
@@ -112,8 +100,7 @@ struct TargetBandRow: View {
                     .foregroundStyle(Ink.tertiary)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
-            // MANDATORY: the label holds a Spacer and draws full-width, and SwiftUI's
-            // default hit area is the label's OPAQUE content.
+            // MANDATORY: a full-width label with a Spacer hit-tests only its glyphs.
             .contentShape(.rect)
         }
         .buttonStyle(PressFeedbackButtonStyle())
@@ -122,8 +109,8 @@ struct TargetBandRow: View {
         .accessibilityHint(expanded ? String(localized: "Closes the target editor") : String(localized: "Opens the target editor"))
     }
 
-    /// Amber when a hand will genuinely go untargeted — the collapsed row's only way to
-    /// say that the number beside it will not survive to the session.
+    /// Amber when a hand will go untargeted — the collapsed row's only way to say the
+    /// number beside it will not survive to the session.
     private var valueTint: Color {
         if unresolved { return StatusTint.armed }
         return hasTarget ? Ink.primary : Ink.tertiary
@@ -139,35 +126,30 @@ struct TargetBandRow: View {
             ChipGrid(base: 3) {
                 Chip(title: String(localized: "None"), isSelected: !hasTarget && !editingCustom) { clear() }
                 ForEach(Self.bands, id: \.label) { option in
-                    // A preset only reads as selected while the custom fields are CLOSED.
-                    // Otherwise tapping Custom lit "20–30 %" — the band it seeds from —
-                    // and the row said it was on a preset while offering you two fields.
+                    // Selected only while the custom fields are CLOSED; otherwise tapping
+                    // Custom lit "20–30 %", the band it seeds from.
                     Chip(title: String(localized: "\(option.label) %"),
                          isSelected: matches(option.range) && !editingCustom) {
                         apply(option.range)
                         showsCustomFields = false
                     }
                 }
-                // A band nobody thought to make a chip — 17–22 % was Nuri's own example,
-                // and four presets could never have held it.
+                // A band no chip holds — 17–22 % was Nuri's own example.
                 Chip(title: String(localized: "Custom"), isSelected: editingCustom) { beginCustom() }
             }
 
             if editingCustom {
-                // WHICH UNIT, asked only here. It is a question about how you want to
-                // express the load, not another preset value, so it does not belong in
-                // the chip row above — and it only ever comes up once you have said the
-                // presets do not fit.
+                // WHICH UNIT, asked only here: how to express the load is not a preset
+                // value, and it only comes up once the presets do not fit.
                 Picker("Unit", selection: unitBinding) {
                     Text("% of max").tag(Unit.percent)
                     Text(weightUnit.name).tag(Unit.kilograms)
                 }
                 .pickerStyle(.segmented)
 
-                // ONE two-ended control, the trimmer — it replaced a pair of steppers
-                // that made "80 to 90" a dozen taps (Nuri, 2026-08-10). The steps snap
-                // to the same 5 % / 0.5 kg resolution the app rounds targets to, so
-                // every value it can land on is one people quote to each other exactly.
+                // ONE two-ended trimmer; a pair of steppers made "80 to 90" a dozen taps
+                // (Nuri, 2026-08-10). It snaps to the 5 % / 0.5 kg resolution targets
+                // round to.
                 if unit == .kilograms {
                     BandTrimmer(lo: weightUnit.binding(trimLoKgBinding), hi: weightUnit.binding(trimHiKgBinding),
                                 scale: weightUnit.sliderRangeFromKg(0...kgScaleTop), step: 0.5,
@@ -184,8 +166,8 @@ struct TargetBandRow: View {
             if let caption {
                 Text(caption)
                     .font(.system(.caption, weight: .medium))
-                    // Amber only when a hand will genuinely go untargeted — a per-hand
-                    // breakdown is information, not a warning.
+                    // Amber only when a hand will go untargeted; a per-hand breakdown is
+                    // information, not a warning.
                     .foregroundStyle(sides.contains { resolved($0) == nil } && band != nil
                                      ? StatusTint.armed : Ink.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -224,25 +206,22 @@ struct TargetBandRow: View {
 
     // MARK: - Derived
 
-    // `self.` is load-bearing, not noise: a computed property whose body STARTS with the
-    // identifier `set` parses as a setter accessor, and the property is named `set`.
+    // `self.` is load-bearing: a computed property whose body STARTS with the
+    // identifier `set` parses as a setter accessor.
     private var band: ClosedRange<Double>? { self.set.targetPercentBand }
-    /// An explicit kilogram band, which OUTRANKS any percentage — the same order
-    /// `PlanMath.targetBand` resolves in. The two are mutually exclusive here: setting
-    /// either clears the other, so the row can never show one and run the other.
+    /// An explicit kilogram band, which OUTRANKS any percentage (as in `PlanMath.targetBand`).
+    /// Setting either clears the other, so the row never shows one and runs the other.
     private var kgBand: ClosedRange<Double>? { self.set.targetBand }
     private var hasTarget: Bool { kgBand != nil || band != nil }
 
-    /// Whether a percentage could resolve to anything for this grip. When it cannot, a
-    /// percentage target is a target of NOTHING, and kilograms are the only honest way to
-    /// prescribe a load.
+    /// Whether a percentage could resolve to anything for this grip. When it cannot,
+    /// kilograms are the only honest way to prescribe a load.
     private var hasResolvableMax: Bool {
         sides.contains { maxes.max(grip: self.set.grip.key, side: $0).map { $0 > 0 } ?? false }
     }
 
-    /// Where a kilogram band starts when there is nothing to seed it from. The low-
-    /// intensity no-hang load this whole app is built around, in the units someone with
-    /// no max on file can still reason about.
+    /// Where a kilogram band starts with nothing to seed it: the low-intensity no-hang load
+    /// the app is built around, in units usable without a max.
     private static let defaultKgBand: ClosedRange<Double> = 10...15
 
     /// The hands this routine asks about, in the order the runner alternates them.
@@ -250,12 +229,10 @@ struct TargetBandRow: View {
         handMode.sideCount > 1 ? [.left, .right] : [.both]
     }
 
-    /// The kilograms this set will ask of one hand. Resolved locally from the set's own
-    /// percentage rather than through `PlanMath.targetBand`, because this row
-    /// deliberately does not hold a whole `SessionPlan`.
+    /// The kilograms this set asks of one hand, resolved locally from the set's percentage,
+    /// not via `PlanMath.targetBand`, because this row holds no whole `SessionPlan`.
     private func resolved(_ side: Side) -> ClosedRange<Double>? {
-        // An explicit band needs no resolving and no max — it is already the answer, and
-        // it is the same answer for both hands.
+        // An explicit band needs no max and is the same for both hands.
         if let kgBand { return kgBand }
         guard let band,
               let maxKg = maxes.max(grip: self.set.grip.key, side: side), maxKg > 0
@@ -269,14 +246,11 @@ struct TargetBandRow: View {
         sides.count > 1 && resolved(.left) != resolved(.right)
     }
 
-    /// The percentage IS the setting; the kilograms are its consequence, so the row
-    /// leads with kilograms once it can compute them — that is the number you pull
-    /// against — and falls back to the percentage when there is no max to resolve it.
+    /// The percentage IS the setting and the kilograms its consequence, so the row leads with
+    /// kilograms (what you pull against) when it can compute them, else the percentage.
     ///
-    /// **When the hands differ there is no single number to lead with**, so it shows the
-    /// percentage — the thing you actually set, and the one figure that IS true of both
-    /// hands — and the caption underneath carries the two loads, where there is room for
-    /// them to wrap.
+    /// **When the hands differ there is no single number**, so it shows the percentage (the
+    /// one figure true of both) and the caption carries the two loads.
     private var valueText: String {
         if let kgBand { return weightUnit.bandText(kgBand) }
         guard let band else { return String(localized: "None") }
@@ -286,21 +260,19 @@ struct TargetBandRow: View {
 
     private var caption: String? {
         if kgBand != nil {
-            // What it does NOT do is the part worth stating: an explicit load is the one
-            // kind that goes stale, and it is the trade you make for not needing a max.
+            // The part worth stating: an explicit load goes stale, the trade for not
+            // needing a max.
             return String(localized: "A fixed load, the same on both hands — it stays put when your max moves.")
         }
         guard let band else { return nil }
         let resolvedSides = sides.filter { resolved($0) != nil }
 
         if resolvedSides.isEmpty {
-            // Named, not hinted: a percentage with no max resolves to no target at all at
-            // run time, and finding that out mid-session is the wrong moment.
+            // Named: a percentage with no max resolves to no target at run time.
             return String(localized: "No max on file for this grip yet, so this shows no target during a session. Add one in Settings › Maxes.")
         }
-        // One hand has a max and the other does not — which is what an explicitly
-        // left-only or right-only max leaves behind. Say WHICH hand is unloaded, because
-        // the row above will happily show a confident band for the other one.
+        // One hand has a max and the other not (a left- or right-only max). Say
+        // WHICH is unloaded, since the row shows a confident band for the other.
         if resolvedSides.count < sides.count, let missing = sides.first(where: { resolved($0) == nil }) {
             return String(localized: "No max for your \(missing.name.lowercased()) hand, so those pulls show no target. Add one in Settings › Maxes.")
         }
@@ -315,33 +287,29 @@ struct TargetBandRow: View {
     }
 
     private func matches(_ range: ClosedRange<Double>) -> Bool {
-        // A kilogram band is never a percentage preset, however the numbers happen to
-        // line up — 20 kg is not "20 %".
+        // A kilogram band is never a percentage preset: 20 kg is not "20 %".
         guard kgBand == nil, let band else { return false }
         return abs(band.lowerBound - range.lowerBound) < 0.001
             && abs(band.upperBound - range.upperBound) < 0.001
     }
 
-    /// Whether the row is in custom mode: either you asked for it, or the stored band is
-    /// one no preset can express (a routine synced from another device, or a value typed
-    /// here earlier). The second half is what stops a 17–22 % band opening as "None".
+    /// Custom mode: you asked for it, or the stored band is one no preset can express (synced
+    /// or typed earlier), which stops a 17–22 % band opening as "None".
     private var editingCustom: Bool {
         // A kilogram band is always custom: no chip can express one.
         showsCustomFields || kgBand != nil
             || (band != nil && !Self.bands.contains { matches($0.range) })
     }
 
-    /// Opens the fields on a band already in range, so tapping Custom never appears to
-    /// change the load — only who chooses it.
+    /// Opens the fields on a band already in range, so tapping Custom never changes the load.
     private func beginCustom() {
         showsCustomFields = true
         guard !hasTarget else {
             unit = kgBand != nil ? .kilograms : .percent
             return
         }
-        // **Kilograms when a percentage could not work.** Offering "20 % of your max" to
-        // someone who has never measured this grip is offering a number that resolves to
-        // nothing at run time — the exact hole Nuri hit (2026-08-09).
+        // **Kilograms when a percentage could not work**: "20 % of your max" for an
+        // unmeasured grip resolves to nothing at run time (Nuri, 2026-08-09).
         unit = hasResolvableMax ? .percent : .kilograms
         if unit == .kilograms { applyKg(Self.defaultKgBand) } else { apply(0.20...0.30) }
     }
@@ -351,8 +319,7 @@ struct TargetBandRow: View {
             guard new != unit else { return }
             unit = new
             switch new {
-            // Seed from what is on screen where that is possible, so switching units
-            // reads as a conversion rather than a reset.
+            // Seed from what is on screen, so switching units reads as a conversion.
             case .kilograms: applyKg(resolved(sides[0]) ?? Self.defaultKgBand)
             case .percent:   apply(band ?? 0.20...0.30)
             }
@@ -391,9 +358,8 @@ struct TargetBandRow: View {
         }
     }
 
-    /// The kilogram scale's top. Wide enough for strong pullers without making a
-    /// 10–15 kg band a sliver: it grows with the band it has to show and with the
-    /// strongest max on file for this grip.
+    /// The kilogram scale's top: grows with the band and the strongest max on file, so
+    /// strong pullers fit without making 10–15 kg a sliver.
     private var kgScaleTop: Double {
         let bandTop = kgBand?.upperBound ?? Self.defaultKgBand.upperBound
         let maxTop = sides.compactMap { maxes.max(grip: self.set.grip.key, side: $0) }.max() ?? 0
@@ -406,9 +372,8 @@ struct TargetBandRow: View {
         clearPercent()
     }
 
-    /// The two cannot coexist: `PlanMath.targetBand` ranks kilograms first, so leaving a
-    /// percentage behind would leave the row showing one number and the session running
-    /// another.
+    /// The two cannot coexist: `PlanMath.targetBand` ranks kilograms first, so a leftover
+    /// percentage would show one number while the session runs another.
     private func clearPercent() {
         set.targetLoPercent = nil
         set.targetHiPercent = nil
@@ -417,9 +382,8 @@ struct TargetBandRow: View {
     private func apply(_ range: ClosedRange<Double>) {
         set.targetLoPercent = range.lowerBound
         set.targetHiPercent = range.upperBound
-        // A percentage and an explicit kilogram band on the same set would leave the kg
-        // winning silently — `PlanMath.targetBand` ranks it first — so picking a
-        // percentage clears any kilograms the list editor may have put there.
+        // Kilograms would silently win (see `clearPercent`), so picking a
+        // percentage clears any the list editor put there.
         set.targetLoKg = nil
         set.targetHiKg = nil
     }

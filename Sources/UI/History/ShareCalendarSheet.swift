@@ -19,9 +19,8 @@ struct ShareCalendarRequest: Identifiable {
     let bestPull: ShareCalendarBestPull?
 }
 
-/// A value snapshot of the winning current max. The export sheet does not observe a
-/// store, so recording or syncing a max behind it cannot change the preview and shared
-/// file out from under the person looking at them.
+/// A value snapshot of the winning current max. The sheet observes no store, so a max
+/// recorded or synced behind it cannot change the preview or file.
 struct ShareCalendarBestPull {
     let kg: Double
     let grip: GripSpec
@@ -98,9 +97,9 @@ enum ShareCardStyle: String, CaseIterable {
     }
 }
 
-/// The one resolved drawing vocabulary for an export style. The frosted panel is
-/// translucency, NOT blur: a flat PNG cannot blur what is behind it, and a Material
-/// would render grey when captured by ImageRenderer.
+/// The resolved drawing vocabulary for an export style. The frosted panel is
+/// translucency, NOT blur: a PNG cannot blur what is behind it, and a Material renders
+/// grey under ImageRenderer.
 fileprivate struct StyleSpec {
     struct Shadow {
         let color: Color
@@ -189,12 +188,11 @@ struct ShareCalendarSheet: View {
         }
         .presentationDetents([.medium, .large])
         .task(id: renderOptions) {
-            // The first bake waits out the presentation and every later one is
-            // debounced, so a run of style taps costs one render — see
-            // `ShareRenderTiming`. The stale image is withdrawn at once regardless:
-            // `renderedImage` gates on the options synchronously.
-            // Cleared BEFORE the wait: "Saved" belongs to the image that was saved, and
-            // the previous options must never be shared while the new PNG is pending.
+            // The first bake waits out the presentation; later ones are debounced, so a
+            // run of style taps costs one render (`ShareRenderTiming`). The stale image
+            // is withdrawn at once: `renderedImage` gates on the options synchronously.
+            // Cleared BEFORE the wait: "Saved" belongs to the saved image, and old
+            // options must never be shared while the new PNG is pending.
             savedToPhotos = false
             photosAccessDenied = false
             preparedImage = nil
@@ -324,9 +322,8 @@ struct ShareCalendarSheet: View {
         savedToPhotos ? "checkmark" : "square.and.arrow.down"
     }
 
-    /// Photos receives the renderer's original PNG bytes as an asset resource. Passing
-    /// data rather than a UIImage is load-bearing: it preserves alpha and never asks
-    /// UIKit to encode the image a second time.
+    /// Photos receives the renderer's original PNG bytes. Data, not a UIImage, is
+    /// load-bearing: it preserves alpha and avoids a second encode.
     private func saveToPhotos() {
         guard let pngData = renderedImage?.file.data, !savingToPhotos else { return }
         savingToPhotos = true
@@ -366,10 +363,9 @@ struct ShareCalendarSheet: View {
             style: cardStyle, weightUnit: weightUnit)
     }
 
-    /// Rendering happens only once the sheet has settled, and after the export options
-    /// stop changing.
-    /// The renderer is explicitly non-opaque, so the clear canvas — including the
-    /// frosted panel's 0.72 alpha — survives all the way to the share sheet.
+    /// Rendered only once the sheet has settled and the options stop changing. Explicitly
+    /// non-opaque, so the clear canvas (and the panel's 0.72 alpha) survives to the share
+    /// sheet.
     @MainActor
     private func renderImage() async {
         let options = renderOptions
@@ -423,11 +419,9 @@ private struct ShareCalendarExportCard: View {
         repeating: GridItem(.fixed(36), spacing: 7),
         count: 7)
 
-    /// The grid's exact span — 7 fixed cells plus 6 gaps. The WHOLE content column is
-    /// constrained to this width and centred, so the title, summary, best-pull line and
-    /// wordmark all share the grid's edges. Text aligned to the card's padding instead
-    /// sat ~13 pt left of the first column and read as pushed into the corner
-    /// (Nuri, 2026-08-12).
+    /// The grid's exact span — 7 cells plus 6 gaps. The WHOLE column is this wide and
+    /// centred, so title, summary, best-pull line and wordmark share the grid's edges; text
+    /// on the card's padding sat ~13 pt left of the first column (Nuri, 2026-08-12).
     private static let gridWidth: CGFloat = 7 * 36 + 6 * 7
 
     var body: some View {
@@ -483,8 +477,8 @@ private struct ShareCalendarExportCard: View {
             }
         }
         .foregroundStyle(spec.ink)
-        // Width pinned to the grid, then centred by the outer frame; vertical padding
-        // still proposes the full height so the bottom spacer keeps the app name at the foot.
+        // Pinned to the grid and centred by the outer frame; the full height keeps
+        // the app name at the foot.
         .frame(width: Self.gridWidth)
         .padding(.vertical, 20)
         .frame(width: Self.width, height: Self.height, alignment: .top)

@@ -7,9 +7,9 @@ import SwiftUI
 
 /// A glass pill button used for floating chrome.
 ///
-/// The glass lives INSIDE the button label so the press feedback scales the whole
-/// pill and the full capsule is the hit target. Wrapping `.glassEffect` AROUND a
-/// container that holds the Button instead swallows its touches.
+/// The glass lives INSIDE the label, so press feedback scales the whole pill and the full
+/// capsule is the hit target. `.glassEffect` wrapped AROUND a container holding the
+/// Button swallows its touches.
 struct GlassPillButton<Label: View>: View {
     var tint: GlassTint = .neutral
     let action: () -> Void
@@ -30,10 +30,9 @@ struct GlassPillButton<Label: View>: View {
 /// Instant touch-down acknowledgment: sheets take a beat to present, and without
 /// immediate visual response the tap feels dropped.
 struct PressFeedbackButtonStyle: ButtonStyle {
-    /// **Off for row-sized cards.** A card that scales on press drags its own material
-    /// backdrop out from under it — which is why those rows used `.plain` and so had NO
-    /// touch-down feedback at all. Opacity alone solves the backdrop problem without
-    /// throwing away the acknowledgement (audit, 2026-08-11).
+    /// **Off for row-sized cards.** A card that scales on press drags its material backdrop
+    /// out from under it, so those rows used `.plain` and had NO touch-down feedback.
+    /// Opacity alone keeps the acknowledgement (audit, 2026-08-11).
     var scales: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -42,8 +41,8 @@ struct PressFeedbackButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed && !reduceMotion && scales ? 0.94 : 1)
             .opacity(configuration.isPressed ? 0.85 : 1)
-            // Acknowledge the press in the first rendered frame. Only release settles;
-            // an 80 ms ramp spends several frames catching up with a short tap.
+            // Acknowledge the press in the first frame; only release settles. An 80 ms
+            // ramp spends several frames catching up with a short tap.
             .animation(configuration.isPressed
                         ? nil
                         : Motion.state(reduceMotion),
@@ -60,11 +59,9 @@ struct PrimaryGlassButton: View {
 
     @ScaledMetric(relativeTo: .headline) private var textSize: CGFloat = 19
 
-    /// EXPLICIT, because the tint inverts with the colour scheme and the system's own
-    /// label choice does not follow it. `Accent.graphite` is near-black in light mode
-    /// and near-WHITE in dark, so `.glassProminent` rendered a white pill with white
-    /// text — the single button the whole ritual hangs off, unreadable in dark mode.
-    /// The label is simply the opposite: white on the dark fill, near-black on the light one.
+    /// EXPLICIT: `Accent.graphite` inverts with the scheme (near-WHITE in dark) and the
+    /// system's label choice does not follow, so `.glassProminent` rendered white on white —
+    /// the ritual's one button, unreadable in dark mode. The label is always the opposite ink.
     private var labelColor: Color {
         .adaptive(Color(hex: "FFFFFF"), Color(hex: "1B1F25"))
     }
@@ -77,10 +74,9 @@ struct PrimaryGlassButton: View {
             }
             .font(.system(size: textSize, weight: .semibold))
             .foregroundStyle(labelColor)
-            // A HARD height clips the label instead of the button growing: "Start
-            // second session" runs past one line at accessibility sizes, and the one
-            // control the whole ritual hangs off must never render as a cut-off word.
-            // Short titles still measure exactly Metrics.buttonHeight.
+            // No HARD height: it would clip "Start second session" at accessibility
+            // sizes instead of growing. Short titles still measure exactly
+            // Metrics.buttonHeight.
             .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
         }
         .buttonStyle(.glassProminent)
@@ -90,16 +86,12 @@ struct PrimaryGlassButton: View {
 
 /// **Solid twins of the two glass buttons, for the one subtree the system lifts.**
 ///
-/// Liquid Glass renders in its own compositing pass and does not honor the hide the
-/// context-menu lift performs on its source: hold the routine card down and every
-/// in-process layer vanished on cue while the glass button stayed floating alone over
-/// the transition (Nuri's device, 2026-08-18) — the sloppiest thing an interaction can
-/// look like, and unreproducible in the Simulator, which composites glass differently.
-/// So a view that carries `.contextMenu` must be built from NOTHING but in-process
-/// layers: same label rules, same metrics, plain fills. Over the static slate field
-/// the glass buttons read as their tint anyway; side by side the twins are near
-/// indistinguishable at rest and differ only in the refraction nobody sees on a card
-/// they are long-pressing.
+/// Liquid Glass renders in its own compositing pass and ignores the hide the context-menu
+/// lift performs on its source: every in-process layer vanished on cue while the glass
+/// button floated alone over the transition (Nuri's device, 2026-08-18; not reproducible
+/// in the Simulator). So a view carrying `.contextMenu` is built from in-process layers
+/// only: same label rules and metrics, plain fills. Over the static field the twins are
+/// near indistinguishable from the glass at rest.
 struct SolidPrimaryButton: View {
     var title: String
     var systemImage: String? = nil

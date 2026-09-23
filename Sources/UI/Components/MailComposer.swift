@@ -5,13 +5,11 @@ import MessageUI
 import SwiftUI
 import UIKit
 
-/// The system mail sheet, wrapped as thinly as it can be wrapped.
+/// The system mail sheet, wrapped as thinly as it can be.
 ///
-/// It is a WRAPPER and nothing else: the composer owns its own UI, and every decision
-/// about what gets sent — the address, the subject, the footer of app and device facts,
-/// whether the diagnostics ring rides along — belongs to the view that presents it. That
-/// is what keeps mail out of the stores: `DeviceStore` never learns that email exists,
-/// and this file never learns what a gauge is.
+/// A WRAPPER only: every decision about what is sent belongs to the presenting view. That
+/// keeps mail out of the stores — `DeviceStore` never learns email exists, and this file
+/// never learns what a gauge is.
 struct MailComposer: UIViewControllerRepresentable {
     /// A file riding along with the message. One is enough — the only attachment this app
     /// ever sends is the breadcrumb report.
@@ -25,14 +23,12 @@ struct MailComposer: UIViewControllerRepresentable {
     var subject: String
     var body: String
     var attachment: Attachment?
-    /// Called for EVERY result — sent, saved, cancelled, failed — and it is what has to
-    /// take the sheet down: nothing else will. A composer that dismissed only on success
-    /// would be a sheet you cannot leave.
+    /// Called for EVERY result, and the only thing that takes the sheet down; dismissing
+    /// only on success would make a sheet you cannot leave.
     var onFinish: () -> Void
 
-    /// `MFMailComposeViewController` presents an EMPTY sheet when there is no mail
-    /// account configured, so every caller must ask first. Spelled once, here, so the
-    /// presenting view and its `mailto:` fallback can never disagree about the answer.
+    /// The controller presents an EMPTY sheet with no mail account, so callers must ask
+    /// first. Spelled once so the view and its `mailto:` fallback agree.
     static var canSend: Bool { MFMailComposeViewController.canSendMail() }
 
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
@@ -49,17 +45,16 @@ struct MailComposer: UIViewControllerRepresentable {
         return composer
     }
 
-    /// Deliberately empty. Everything the composer carries is set once at presentation;
-    /// rewriting a body somebody is halfway through typing would be worse than useless.
+    /// Empty: set once at presentation; rewriting a half-typed body would be worse than
+    /// useless.
     func updateUIViewController(_ controller: MFMailComposeViewController, context: Context) {}
 
     func makeCoordinator() -> Coordinator { Coordinator(onFinish: onFinish) }
 
-    /// `@preconcurrency` on the conformance is the same shape `LiveProgressorClient` uses
-    /// for CoreBluetooth's delegates: it is what lets a main-actor-isolated method witness
-    /// UIKit's nonisolated `@objc` requirement. Declaring the method `nonisolated` and
-    /// hopping inside instead means sending the non-Sendable controller across an
-    /// isolation boundary, which Swift 6 rejects outright.
+    /// `@preconcurrency`, as with `LiveProgressorClient`'s CoreBluetooth delegates, lets a
+    /// main-actor method witness UIKit's nonisolated `@objc` requirement. A `nonisolated`
+    /// method hopping inside would send the non-Sendable controller across isolation, which
+    /// Swift 6 rejects.
     @MainActor
     final class Coordinator: NSObject, @preconcurrency MFMailComposeViewControllerDelegate {
         private let onFinish: () -> Void

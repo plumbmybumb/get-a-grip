@@ -9,10 +9,9 @@ import SwiftUI
 struct MaxesView: View {
     let grip: GripSpec
     @Environment(\.weightUnit) private var weightUnit
-    /// Newest first — which is also what makes the fold below correct. Grips come out in
-    /// order of their most recent record, and the first record in each bucket is that
-    /// grip's current max. "Current" is the NEWEST, never the biggest: a max that has
-    /// come down is still the number today's percentages have to be taken from.
+    /// Newest first, which is what makes the fold below correct: the first record per bucket
+    /// is the current max. "Current" is the NEWEST, never the biggest — a max that came down
+    /// is still what today's percentages are taken from.
     @Query(sort: [SortDescriptor(\MaxRecord.recordedAt, order: .reverse)])
     private var records: [MaxRecord]
 
@@ -20,17 +19,15 @@ struct MaxesView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var deleteFailed = false
-    /// The grip key whose earlier records are showing — at most one open at a time, the
-    /// same accordion rule the builder's set rows follow.
+    /// The grip key whose earlier records are showing — one at a time, like the builder's
+    /// set rows.
     @State private var expanded: String?
 
     var body: some View {
         let foldedHistories = histories
         let rowEntries = entries(from: foldedHistories)
-        // A real `List`, unlike the builder's document: swipe-to-delete, the row-slide
-        // physics and the full-height separatorless rows all come from UIKit, and a
-        // hand-rolled drag gesture never matches them. Nothing here needs `scrollTo`,
-        // which is the one thing that forced the builder onto a ScrollView.
+        // A real `List`, unlike the builder: swipe-to-delete, row-slide physics and
+        // separatorless rows come from UIKit, and nothing here needs `scrollTo`.
         List {
             if foldedHistories.isEmpty {
                 emptyCard.houseListRow(top: 12, bottom: 10)
@@ -44,8 +41,7 @@ struct MaxesView: View {
             }
 
             if !foldedHistories.isEmpty {
-                // A plain row, never a `Section` header: plain-style headers PIN, and the
-                // content then scrolls illegibly behind a clear background.
+                // A plain row, never a `Section` header: plain-style headers PIN.
                 CapsLabel(String(localized: "YOUR MAXES")).houseListRow(top: 10, bottom: 2)
 
                 ForEach(rowEntries) { entry in
@@ -56,11 +52,10 @@ struct MaxesView: View {
             }
         }
         .listStyle(.plain)
-        // The list draws its own rows on the slate field; the system's grouped fill would
-        // sit between the material cards and the background they are meant to float on.
+        // The system's grouped fill would sit between the cards and the background.
         .scrollContentBackground(.hidden)
-        // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling it
-        // disturbs the safe-area layout and the title creeps under the status bar.
+        // ALWAYS via `.background {}`, never a ZStack sibling: the title creeps
+        // under the status bar.
         .background { AppBackground() }
         .scrollEdgeEffectStyle(.soft, for: .bottom)
         .navigationTitle("Earlier records")
@@ -78,8 +73,7 @@ struct MaxesView: View {
             gripRow(history)
                 .houseListRow()
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    // Names the HAND: with a left and a right row for one grip, a label
-                    // that only said the grip would be the same on both.
+                    // Names the HAND: a left and a right row for one grip would read the same.
                     deleteButton(history.current,
                                  label: String(localized: "Delete this max for \(history.grip.spoken)\(history.current.side == .both ? "" : String(localized: ", \(history.current.side.name.lowercased()) hand"))"))
                 }
@@ -92,10 +86,8 @@ struct MaxesView: View {
         }
     }
 
-    /// One grip, its current max, and — when there is a past — a tap that reveals it.
-    ///
-    /// The row is only a Button when there is something to open. A control that draws
-    /// like a control and does nothing is worse than a plain row.
+    /// One grip, its current max, and — when there is a past — a tap that reveals it. Only a
+    /// Button when there is something to open: a control that does nothing is worse.
     @ViewBuilder
     private func gripRow(_ history: GripHistory) -> some View {
         if history.earlier.isEmpty {
@@ -108,8 +100,7 @@ struct MaxesView: View {
             } label: {
                 gripFace(history)
             }
-            // `.plain`, like the builder's set rows: a row-sized card that scaled on
-            // press would drag its own material backdrop out from under it.
+            // A row-sized card that scaled on press would drag its backdrop with it.
             .buttonStyle(PressFeedbackButtonStyle(scales: false))
             .accessibilityHint("Shows the earlier maxes for this grip")
         }
@@ -117,8 +108,7 @@ struct MaxesView: View {
 
     private func gripFace(_ history: GripHistory) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            // Plain DESIGN sizes: FingerGlyph scales `dot`/`gap` itself, so pre-scaling
-            // them here would apply Dynamic Type twice.
+            // DESIGN sizes: FingerGlyph scales itself; pre-scaling doubles Dynamic Type.
             FingerGlyph(fingers: history.grip.fingers, position: history.grip.position,
                         dot: 6, gap: 3)
                 .padding(.top, 5)
@@ -150,16 +140,15 @@ struct MaxesView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface(.flat, in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
-        // MANDATORY when this face is a Button's label: it holds a Spacer and draws
-        // full-width, and SwiftUI's default hit area is the label's OPAQUE content — the
-        // fill and the padding contribute nothing to it.
+        // MANDATORY as a Button's label: a full-width Spacer label hit-tests only
+        // its opaque content.
         .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenGrip(history))
     }
 
-    /// A superseded record: indented, quieter, and dated, so the current one keeps the
-    /// row's weight. It is here to be READ and to be DELETABLE — nothing more.
+    /// A superseded record: indented, quieter and dated, so the current one keeps the row's
+    /// weight. Here to be READ and DELETED, nothing more.
     private func earlierRow(_ record: MaxRecord, grip: GripSpec) -> some View {
         HStack(spacing: 12) {
             Rectangle()
@@ -179,8 +168,7 @@ struct MaxesView: View {
         .padding(.vertical, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface(.flat, in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
-        // OUTSIDE the background, so the indent is empty space rather than a wider card
-        // with its content pushed over.
+        // OUTSIDE the background, so the indent is empty space, not a wider card.
         .padding(.leading, 22)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(String(localized: "Earlier max for \(grip.spoken). \(weightUnit.number(record.kg)) \(weightUnit.spokenName), recorded \(when(record))."))
@@ -203,12 +191,9 @@ struct MaxesView: View {
     }
 
     private func deleteButton(_ record: MaxRecord, label: String) -> some View {
-        // Full swipe is deliberately OFF here, and that is the one place this screen
-        // departs from the house gesture. Everywhere else a full swipe is safe because a
-        // ten-second Undo bar catches it — but `recordMax` always stamps `recordedAt` as
-        // NOW, so putting a max back would move it to today and quietly rewrite when it
-        // was pulled. Two deliberate actions instead of one undoable one is the honest
-        // trade until the store can restore a record with its own date.
+        // Full swipe is OFF here, unlike the house gesture: `recordMax` stamps
+        // `recordedAt` as NOW, so Undo would move the max to today. Two deliberate
+        // actions until the store can restore a record with its own date.
         Button(role: .destructive) {
             deleteFailed = !templates.deleteMax(record)
         } label: {
@@ -248,9 +233,8 @@ struct MaxesView: View {
         }
     }
 
-    /// Provenance, stated plainly — and it must stay plain now that BOTH sources exist.
-    /// The rows carry the distinction individually ("measured"), so this only has to say
-    /// that the distinction is there and what these numbers are for.
+    /// Provenance, stated plainly. The rows mark "measured" individually, so this only says
+    /// the distinction exists and what the numbers are for.
     private var footnote: some View {
         Text("A max is either measured on the gauge or set by you — the measured ones say so. The percentages elsewhere in the app are worked out from these.")
             .font(.system(.footnote))
@@ -260,13 +244,11 @@ struct MaxesView: View {
 
     // MARK: - Derived
 
-    /// One bucket per grip **AND HAND**, in order of each bucket's most recent record.
-    /// Cheap — a handful of records — and it walks `records` exactly once.
+    /// One bucket per grip **AND HAND**, ordered by each bucket's newest record; one pass.
     ///
-    /// Bucketing on the grip alone would file your left and right maxes together, make
-    /// whichever you recorded second "current", and demote the other to history — so one
-    /// hand's number would vanish from the screen it was entered on. They are separate
-    /// rows because they are separate facts.
+    /// Bucketing on grip alone would make whichever hand was recorded second "current" and
+    /// demote the other to history, so one hand's number would vanish. Separate facts,
+    /// separate rows.
     private var histories: [GripHistory] {
         var order: [String] = []
         var buckets: [String: [MaxRecord]] = [:]
@@ -282,8 +264,8 @@ struct MaxesView: View {
         }
     }
 
-    /// Flattened to ONE entry per list row on purpose: a `ForEach` element that renders
-    /// two rows leaves it ambiguous which row a `.swipeActions` belongs to.
+    /// ONE entry per list row: an element rendering two rows leaves it ambiguous which one a
+    /// `.swipeActions` belongs to.
     private func entries(from histories: [GripHistory]) -> [MaxEntry] {
         histories.flatMap { history -> [MaxEntry] in
             guard expanded == history.key else { return [.current(history)] }
@@ -292,9 +274,8 @@ struct MaxesView: View {
         }
     }
 
-    /// Only the DEPARTURES from the default are marked — a named hand, and a measured
-    /// provenance. "Both hands" and "typed" are the unremarkable cases, and labelling
-    /// them would put two words on every row to distinguish nothing.
+    /// Only DEPARTURES from the default are marked (a named hand, measured provenance);
+    /// labelling "both hands" and "typed" would add words that distinguish nothing.
     private func detailLine(_ history: GripHistory) -> String {
         var parts = [when(history.current)]
         if history.current.side != .both {
@@ -333,8 +314,8 @@ private struct GripHistory {
     let earlier: [MaxRecord]
 }
 
-/// A single list row. The two cases look genuinely different and carry different swipe
-/// actions, so they stay separate rather than sharing one row builder with flags.
+/// A single list row. The two cases look different and carry different swipe actions,
+/// so they stay separate rather than one builder with flags.
 private enum MaxEntry: Identifiable {
     case current(GripHistory)
     case earlier(MaxRecord, GripSpec)
@@ -356,25 +337,22 @@ struct MaxEntrySheet: View {
     @Environment(TemplateStore.self) private var templates
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Closing belongs to the presenter. Reading the environment dismiss action here
-    /// changes its identity with focus, which rebuilt this whole typing-heavy sheet on
-    /// every keystroke — the same measured failure the routine builder avoids.
+    /// Closing belongs to the presenter: reading `dismiss` here rebuilt this typing-heavy
+    /// sheet per keystroke — see `BuilderDocument.onClose`.
     var onSaved: (() -> Void)?
     var onClose: () -> Void
 
-    /// A VALUE, edited freely and written exactly once on Save — same shape as the
-    /// builder's draft, and for the same reason: Cancel IS undo, and a dragged slider
-    /// cannot fire dozens of CloudKit writes.
+    /// A VALUE, edited freely and written once on Save, like the builder's draft: Cancel IS
+    /// undo, and a dragged slider cannot fire dozens of CloudKit writes.
     @State private var grip: GripSpec
     @State private var kg: Double = 0
     @State private var loaded = false
     @State private var failed = false
     @State private var savedTick = 0
-    /// Defaults to `.both`, which is what an untouched picker has always meant and what
-    /// every record written before hands existed means. Nothing here is required.
+    /// Defaults to `.both`, which is what an untouched picker and every pre-hands record mean.
     @State private var side: Side = .both
-    /// Set the moment Save lands with anything to report; the sheet then shows the
-    /// receipt instead of dismissing. nil = still editing.
+    /// Set when Save lands with anything to report; the sheet then shows the receipt instead
+    /// of dismissing. nil = still editing.
     @State private var impact: TemplateStore.MaxImpact?
 
     init(seed: GripSpec, side: Side = .both, onSaved: (() -> Void)? = nil, onClose: @escaping () -> Void) {
@@ -398,8 +376,7 @@ struct MaxEntrySheet: View {
             .scrollEdgeEffectStyle(.soft, for: .bottom)
             .navigationTitle(impact == nil ? "Shared max" : "Saved")
             .navigationBarTitleDisplayMode(.inline)
-            // The grip as it currently stands, live — so the thing being recorded is
-            // stated somewhere fixed while you are three controls deep changing it.
+            // The grip as it currently stands, fixed on screen while you edit it.
             .navigationSubtitle(grip.displayName)
             .toolbar {
                 if impact == nil {
@@ -409,13 +386,11 @@ struct MaxEntrySheet: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save") { save() }
                             .bold()
-                            // `recordMax` rejects zero outright — a 0 kg max would make
-                            // every percentage caption in the app divide by nothing.
+                            // `recordMax` rejects zero: every percentage caption would divide by it.
                             .disabled(kg <= 0)
                     }
                 } else {
-                    // The max is already SAVED — there is no cancel any more, and the
-                    // kg offer's "Leave them" is a button in the content, not chrome.
+                    // Already SAVED: no cancel, and the kg offer's "Leave them" is in content.
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { onClose() }.bold()
                     }
@@ -445,16 +420,11 @@ struct MaxEntrySheet: View {
                 .foregroundStyle(Ink.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // No section label above it: the row states its own subject, and a
-            // "MAX" caps label over a row titled "Max on this grip" is the same
-            // word twice in eighteen points of height.
+            // No section label: the row states its own subject.
             //
-            // The slider spans 0…100, NOT the old 0…60 (Nuri, 2026-08-04: "there
-            // are people who can do a 20 mil edge much more than 60 kg"). 60 was
-            // never a storage limit — typing already reached 200 — but a slider
-            // that stops is read as a ceiling, and being told your max is
-            // off-scale is a poor welcome. 100 keeps a typical 25 kg pull at a
-            // quarter of the track, which is still a usable drag.
+            // The slider spans 0…100, not 0…60 (Nuri, 2026-08-04). Typing already
+            // reached 200, but a slider that stops reads as a ceiling. 100 keeps a
+            // typical 25 kg pull at a quarter of the track.
             ValueRow(title: String(localized: "Max on this grip"), unit: weightUnit.symbol, value: weightUnit.binding($kg),
                      range: weightUnit.sliderRangeFromKg(0...100), limit: weightUnit.rangeFromKg(0...250), step: 0.5, decimals: 1,
                      caption: bandCaption)
@@ -470,11 +440,10 @@ struct MaxEntrySheet: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// **What the number you just saved moves** — shown INSTEAD of dismissing, and only
-    /// when there is something to say. Two sections with two different verbs: percent
-    /// bands already moved (they follow the newest max by design — this is visibility,
-    /// not a question), while typed-kilogram sets are OFFERED a rescale, because a
-    /// number a person typed is never rewritten by arithmetic without a yes.
+    /// **What the number you just saved moves** — shown INSTEAD of dismissing, only when
+    /// there is something to say. Percent bands already moved (they follow the newest max
+    /// by design); typed-kilogram sets are OFFERED a rescale, because a typed number is
+    /// never rewritten by arithmetic without a yes.
     private func impactContent(_ impact: TemplateStore.MaxImpact) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             block(String(localized: "SAVED")) {
@@ -566,25 +535,22 @@ struct MaxEntrySheet: View {
         }
     }
 
-    /// What this max BUYS you, stated while you are still setting it: the low-intensity
-    /// band is the reason the number is being asked for at all.
+    /// What this max BUYS you, stated while you set it: the low-intensity band is why the
+    /// number is asked for at all.
     ///
-    /// **Also the disabled Save's only explanation.** Save disables on `kg <= 0`, and
-    /// `suggestedBand` returns nil for exactly that range — so before this an empty
-    /// "Add a max" sheet showed a dimmed Save with nothing on screen to say why.
+    /// **Also the disabled Save's only explanation**: Save disables on `kg <= 0`, exactly
+    /// where `suggestedBand` returns nil.
     private var bandCaption: String? {
         guard kg > 0 else { return String(localized: "Enter a max above zero to save it.") }
         guard let band = PlanMath.suggestedBand(maxKg: kg) else { return nil }
         return String(localized: "20–30 % of that is \(weightUnit.number(band.lowerBound))–\(weightUnit.number(band.upperBound)) \(weightUnit.symbol)")
     }
 
-    /// Append, never edit — so the sheet says so before you tap Save rather than leaving
-    /// you to discover a second row afterwards.
+    /// Append, never edit — said before Save rather than discovered as a second row.
     @ViewBuilder
     private var existingLine: some View {
-        // Keyed by grip AND hand: the record this save supersedes is the one for the
-        // SAME hand, and quoting the other hand's number here would read as a
-        // contradiction of what you are about to type.
+        // Keyed by grip AND hand: quoting the other hand's max here would read as a
+        // contradiction.
         if let existing = templates.currentMaxes[MaxTable.key(grip: grip.key, side: side)] {
             Text(String(localized: "Your current max on this grip\(side == .both ? "" : String(localized: " for that hand")) is \(weightUnit.number(existing.kg)) \(weightUnit.symbol), recorded \(existing.recordedAt.formatted(.relative(presentation: .named))). Saving adds a new one and keeps the old as history."))
                 .font(.system(.footnote))
@@ -593,8 +559,8 @@ struct MaxEntrySheet: View {
         }
     }
 
-    /// A rolled-back save leaves the sheet OPEN with the error inline — dismissing on
-    /// failure destroys the form and the number with it.
+    /// A rolled-back save leaves the sheet OPEN with the error inline; dismissing would
+    /// destroy the number with the form.
     private var errorLine: some View {
         Text("That couldn't be saved — nothing was recorded. Try again.")
             .font(.system(.footnote, weight: .medium))
@@ -602,10 +568,8 @@ struct MaxEntrySheet: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// Says which of the two this number IS, and keeps saying it as the number changes.
-    /// It used to read "Doigt does not measure it for you", which was load-bearing while
-    /// that was true and would be a lie the moment measuring shipped — so it moved with
-    /// the feature rather than being deleted by it.
+    /// Says which of the two this number IS, and keeps saying it as the number changes. Copy
+    /// that denied measuring had to move with the feature, not be deleted by it.
     private var provenanceLine: some View {
         Text("A number you entered. Check its value and units before using it for targets.")
             .font(.system(.footnote))
@@ -618,8 +582,7 @@ struct MaxEntrySheet: View {
     private func save() {
         guard kg > 0 else { return }
         failed = false
-        // Asked BEFORE the record lands — afterwards the old max is just history and
-        // the ratio it anchors is gone.
+        // Asked BEFORE the record lands; afterwards the ratio it anchors is gone.
         let previousMaxes = templates.maxTable
         guard templates.recordMax(kg, for: grip, source: .manual, side: side) else {
             failed = true
@@ -640,6 +603,5 @@ struct MaxEntrySheet: View {
 // Row chrome is `.houseListRow` in ScreenScaffold.swift — shared with History, which
 // wears the same cards-in-a-List shape for the same reason.
 
-// Deliberately no `#Preview`: this screen needs a `ModelContainer` for `@Query` and a
-// `TemplateStore` in the environment, and a preview that traps on launch is worse than
-// none. Same as every other screen in `Sources/UI` — previews live on the components.
+// No `#Preview`: this screen needs a `ModelContainer` and a `TemplateStore`,
+// and a preview that traps is worse than none. Previews live on components.

@@ -20,18 +20,15 @@ struct GripIslandPanel: View {
     private static let bottomRadius: CGFloat = 42
     /// Everything above this belongs to the hand.
     private static let handClearance: CGFloat = 148
-    /// On a regular-width screen the panel is a black TAB dropping from the top edge,
-    /// centred, with the hand centred on it — not a slab across a 13-inch display. Every
-    /// phone is narrower than this, so on a phone it is still the screen's own width,
-    /// flush with the island.
+    /// On a regular-width screen the panel is a centred black TAB from the top edge, not a
+    /// slab across a 13-inch display. Every phone is narrower, so there it is full width.
     private static let widthCap: CGFloat = 520
 
     var body: some View {
         GeometryReader { geo in
             let panelWidth = min(geo.size.width, Self.widthCap)
             ZStack(alignment: .top) {
-                // Darker than a normal scrim: the unselected fingers are BLACK, and they
-                // have to read against whatever routine is behind them.
+                // Darker than a normal scrim: the unselected fingers are BLACK.
                 Color.black
                     .opacity(shown ? 0.72 : 0)
                     .ignoresSafeArea()
@@ -54,11 +51,9 @@ struct GripIslandPanel: View {
             }
         }
         .ignoresSafeArea()
-        // HIDDEN, not re-themed. The panel runs to y = 0 and the clock would be dark text
-        // on black. `preferredColorScheme(.dark)` fixes that and propagates to the WINDOW —
-        // measured 2026-08-11, the builder sheet behind turned dark and STAYED dark after
-        // dismissal. Hiding the bar for the few seconds this is open costs nothing and
-        // leaks nothing; the island is hardware and stays black either way.
+        // HIDDEN, not re-themed: the clock would be dark text on black, and
+        // `preferredColorScheme(.dark)` propagates to the WINDOW (measured
+        // 2026-08-11: the builder turned dark and STAYED dark after dismissal).
         .statusBarHidden(true)
         .onAppear {
             withAnimation(Motion.state(reduceMotion)) { shown = true }
@@ -74,10 +69,9 @@ struct GripIslandPanel: View {
             IntValueRow(title: String(localized: "Edge"), unit: String(localized: "mm"), value: $grip.edgeMM,
                         range: 4...45, limit: GripSpec.edgeRange,
                         control: .dial([6, 10, 15, 20, 25, 30, 35, 45]))
-            // Said in words, mirroring `FingerPips` — the locked thumb bar dims and
-            // refuses taps with nothing else on screen to say why, and this is the
-            // primary place a grip gets edited. A control that looks live and refuses
-            // the tap is the exact failure the hit-target rule exists to prevent.
+            // Said in words, mirroring `FingerPips`: the locked thumb bar refuses taps,
+            // and a control that looks live and refuses with no reason on screen is the
+            // failure the hit-target rule exists to prevent.
             if grip.position == .pinch {
                 Text("A pinch always includes the thumb.")
                     .font(.system(.caption, weight: .medium))
@@ -99,14 +93,12 @@ struct GripIslandPanel: View {
                 .ignoresSafeArea(edges: .top)
         }
         .ignoresSafeArea(edges: .top)
-        // Scoped, NOT `preferredColorScheme`: every adaptive token resolves dark inside the
-        // card so `Accent.graphite` comes out near-white on black, and nothing leaks to the
-        // window behind it.
+        // Scoped, NOT `preferredColorScheme`: adaptive tokens resolve dark inside
+        // the card (`Accent.graphite` near-white on black) without touching the window.
         .environment(\.colorScheme, .dark)
     }
 
-    /// The grip, said in one line — the sentence that proves the hand above means what you
-    /// think it does.
+    /// The grip in one line — proof the hand above means what you think.
     private var name: some View {
         Text("\(grip.edgeMM) mm · \(grip.fingers.name) · \(grip.position.name)")
             .font(.system(.headline, weight: .semibold))
@@ -142,8 +134,8 @@ struct GripIslandPanel: View {
 
     private func close() {
         guard shown else { return }
-        // Follow the shared transition's completion instead of a separately timed
-        // sleep. Repeated taps must not queue extra closes into the next presentation.
+        // Follow the transition's completion, not a timed sleep; repeated taps
+        // must not queue closes into the next presentation.
         withAnimation(Motion.state(reduceMotion), completionCriteria: .logicallyComplete) {
             shown = false
         } completion: {
@@ -154,15 +146,12 @@ struct GripIslandPanel: View {
 
 // MARK: - The hand
 
-/// A white palm around the island, with tappable fingers hanging off it.
+/// The island as the palm, with tappable fingers hanging off it.
 ///
-/// The geometry MIRRORS `IslandHand` and has to: the island is 126 × 37.33 pt, 11 pt from
-/// the top, on every device that has one, and there is no public API for its frame. What
-/// differs is the finger PITCH. The runner keeps its bars inside the island's own width
-/// with an 8 pt gap, which is right for a drawing nobody touches — but a 30 pt pitch is an
-/// illegal tap target. These sit at 44 pt centres so each finger is a control, and the palm
-/// widens to match. Everything else — the capsule radius, the hand's length ratios — is the
-/// same object the runner draws.
+/// The geometry MIRRORS `IslandHand`: the island is 126 × 37.33 pt, 11 pt from the top,
+/// on every device that has one, with no public API for its frame. What differs is the
+/// finger PITCH: the runner's 30 pt pitch is right for a drawing and an illegal tap
+/// target, so these sit at 44 pt centres. Capsule radius and length ratios are the same.
 private struct IslandHandPicker: View {
     @Binding var fingers: FingerSet
     var position: GripPosition
@@ -170,34 +159,29 @@ private struct IslandHandPicker: View {
 
     @State private var tapTick = 0
 
-    // The island, as Apple builds it. Not discoverable at runtime; measured. See
-    // `IslandHand`, which must agree with these.
+    // The island, measured (not discoverable at runtime). `IslandHand` must agree.
     private static let islandWidth: CGFloat = 126
     private static let islandTop: CGFloat = 11
     private static let islandHeight: CGFloat = 37.33
 
-    /// **The island IS the palm.** The panel behind it is black and runs to the top of the
-    /// screen, so the cutout and the panel are one object and the fingers hang straight off
-    /// it — exactly what `IslandHand` does during a session. A white lozenge drawn around
-    /// the island was tried first and thrown out (Nuri, 2026-08-11: "kinda looks like
-    /// shit"): it cut the black in half at precisely the point the eye needs it continuous.
+    /// **The island IS the palm.** The black panel runs to the top, so cutout and panel are
+    /// one object with the fingers hanging off it, as in `IslandHand`. A white lozenge palm
+    /// was thrown out (Nuri, 2026-08-11): it cut the black exactly where the eye needs it
+    /// continuous.
     private static var palmBottom: CGFloat { islandTop + islandHeight }
 
     private static let barWidth: CGFloat = 26
-    /// 44 pt centres. The hit target IS the pitch, so the fingers cannot overlap and none
-    /// of them is under the floor.
+    /// 44 pt centres: the hit target IS the pitch, so no finger overlaps or falls under the
+    /// floor.
     private static let pitch: CGFloat = 44
     private static let baseLength: CGFloat = 46
     /// The clearance every part of the hand keeps from the palm.
     private static let gap: CGFloat = 6
 
-    /// **The thumb is a HORIZONTAL BAR under the fingers**, spanning about two columns —
-    /// the same shape `FingerPips` draws, for the reason already written down there: a
-    /// thumb drawn vertical is just a short fifth finger, and it sits under the hand,
-    /// where a thumb goes when a hand pinches. The first build angled it off the palm's
-    /// side like the runner's, which reads as a hand only when it is ATTACHED to the
-    /// island — out here at a 44 pt finger pitch the hand is wider than the palm, so the
-    /// thumb ended up floating clear of everything and looked like a stray pill.
+    /// **The thumb is a HORIZONTAL BAR under the fingers**, about two columns wide, as in
+    /// `FingerPips`. Angled off the palm like the runner's, it only reads as a hand when
+    /// ATTACHED to the island; at a 44 pt pitch the hand is wider than the palm, and the
+    /// thumb floated like a stray pill.
     private static let thumbWidth: CGFloat = 70
     private static let thumbThickness: CGFloat = 26
     private static var thumbTop: CGFloat { fingersTop + rowHeight + 6 }
@@ -237,13 +221,11 @@ private struct IslandHandPicker: View {
         return Button {
             toggle(FingerSet.allFingers[index])
         } label: {
-            // TOP-ALIGNED, and every box the same height: fingers HANG from a palm, so
-            // they share a top edge and differ at the tip. Centring each capsule in its
-            // own hit box (the first build) floated the little finger in mid-air and read
-            // as four unrelated pills rather than a hand.
+            // TOP-ALIGNED, every box the same height: fingers HANG from a palm, sharing
+            // a top edge. Centred per box, the little finger floated and the four read
+            // as unrelated pills.
             ZStack(alignment: .top) {
-                // The hit area is the PITCH, not the bar — a 26 pt capsule is a drawing,
-                // not a target.
+                // The hit area is the PITCH, not the 26 pt capsule.
                 Color.clear.frame(width: Self.pitch, height: Self.rowHeight)
                 Capsule()
                     .fill(isOn ? Color.white : Color.black)
@@ -290,9 +272,8 @@ private struct IslandHandPicker: View {
         .accessibilityAddTraits(isOn ? [.isSelected] : [])
     }
 
-    /// A set with no fingers on the edge is not a grip, so tapping the last engaged bar is
-    /// a no-op — and gets no tick either, because confirming a refusal is how feedback
-    /// stops meaning anything.
+    /// No fingers on the edge is not a grip, so tapping the last engaged bar is a no-op,
+    /// with no tick: confirming a refusal is how feedback stops meaning anything.
     private func toggle(_ finger: FingerSet) {
         let next = FingerSelection.toggling(finger, in: fingers)
         guard next != fingers else { return }

@@ -6,62 +6,51 @@ import SwiftUI
 /// A grip drawn as four BARS — index to little, filled when that finger is on the edge
 /// and hairline when it is not.
 ///
-/// Bars, not dots, and that is the whole point. As squares with a full corner radius
-/// these rendered as literal CIRCLES at open hand and drag — indistinguishable from the
-/// session dots one row above them and the consistency strip below, so a card that
-/// meant three different things looked like circles all the way down. A finger is
-/// taller than it is wide; drawing it that way makes the collision impossible rather
-/// than merely unlikely, and it matches the app icon, which is this same mark.
+/// Bars, not dots: as full-radius squares these rendered as CIRCLES, indistinguishable
+/// from the session dots above and the consistency strip below. A finger is taller than
+/// wide; drawing it so makes the collision impossible, and matches the app icon.
 ///
-/// Under the no-emoji rule this is the app's only iconography, and it is **the same
-/// drawing as the hand hanging off the Dynamic Island** — see `radius`.
+/// The app's only iconography under the no-emoji rule, and **the same drawing as the
+/// hand hanging off the Dynamic Island** — see `radius`.
 struct FingerGlyph: View {
     let fingers: FingerSet
     var position: GripPosition = .halfCrimp
-    /// `@ScaledMetric` so the glyph grows with the text it sits beside instead of
-    /// shrinking into a speck at accessibility sizes. Callers still pass a plain point
-    /// size (`dot: 12`) and get it scaled; the declared size stays the design size.
+    /// `@ScaledMetric`, so the glyph grows with its text instead of shrinking to a speck.
+    /// Callers pass the design size (`dot: 12`) and get it scaled.
     @ScaledMetric(relativeTo: .caption) var dot: CGFloat = 5.5
     @ScaledMetric(relativeTo: .caption) var gap: CGFloat = 3
     var tint: Color = Accent.graphite
 
-    /// Fingers are taller than they are wide — see `HandGeometry.barAspect`, which is
-    /// the ratio that stops a bar ever reading as a dot, at any size.
+    /// Taller than wide — `HandGeometry.barAspect` stops a bar ever reading as a dot.
     private var barHeight: CGFloat { dot * HandGeometry.barAspect }
 
-    /// **A FULL CAPSULE — byte-for-byte the island hand's rule** (`IslandHand.radius`),
-    /// asked for twice by Nuri (2026-08-09: *"they need to have the identical radii so
-    /// it's clear that they're the same fingers"*).
+    /// **A FULL CAPSULE — the island hand's rule exactly** (`IslandHand.radius`; Nuri,
+    /// 2026-08-09: "identical radii so it's clear that they're the same fingers").
     ///
-    /// It used to be scaled by `GripPosition.closure`, so the bar squared off as the hand
-    /// closed — a genuine extra signal that separated the two front-2 sets at a glance in
-    /// a truncated row. That is now spent: half a radius is a subtler difference than
-    /// "same mark or not", and one mark drawn one way across the island, the builder, the
-    /// widget and every thumbnail is worth more than a hint only its author could read.
-    /// The POSITION is still spoken in words everywhere the glyph appears.
+    /// It used to square off with `GripPosition.closure`, which separated the two front-2
+    /// sets at a glance. That signal is spent on purpose: one mark drawn one way everywhere
+    /// beats a hint only its author could read. The position is spoken in words wherever
+    /// the glyph appears.
     private var radius: CGFloat { dot / 2 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: max(1.5, gap * 0.6)) {
-            // BOTTOM-aligned, so the varying lengths hang from a common knuckle line
-            // the way fingers do — top-aligned they splay downward and read as a chart.
+            // BOTTOM-aligned from a common knuckle line, like fingers; top-aligned they
+            // read as a chart.
             HStack(alignment: .bottom, spacing: gap) {
                 ForEach(Array(fingers.occupied.indices), id: \.self) { index in
                     pip(on: fingers.occupied[index], index: index)
                 }
             }
             if fingers.hasThumb {
-                // The thumb bar: horizontal, under the index side, because that is
-                // where a thumb sits when a hand pinches. Nuri asked for exactly this
-                // ("a little rectangle under the 4"), and it keeps the shape grammar —
-                // BARS are fingers; this one just lies down.
+                // The thumb: horizontal, under the index side, where a pinching thumb sits
+                // (Nuri: "a little rectangle under the 4"). BARS are digits; this one lies down.
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .fill(tint)
                     .frame(width: dot * 2 + gap, height: dot * 0.62)
             }
         }
-        // The parent always speaks the whole grip as one sentence (`GripSpec.spoken`).
-        // Four unlabelled dots would be four meaningless VoiceOver stops.
+        // The parent speaks the whole grip as one sentence (`GripSpec.spoken`).
         .accessibilityHidden(true)
     }
 
@@ -72,13 +61,10 @@ struct FingerGlyph: View {
             if on {
                 shape.fill(tint)
             } else {
-                // Stroked rather than a lighter fill: fill-vs-outline survives
-                // greyscale, Reduce Transparency and colourblindness; a tint step
-                // does not.
-                // FULL tertiary, no opacity — measured: 0.45 gave 2.3:1 and even 0.7
-                // only 2.6:1 on the dark well, because a 1 pt hairline is nearly all
-                // antialiased edge. Which fingers are OFF is half the grip's meaning,
-                // and it has to clear the 3:1 graphics floor, not flirt with it.
+                // Stroked, not a lighter fill: fill-vs-outline survives greyscale, Reduce
+                // Transparency and colourblindness. FULL tertiary, measured: 0.45 gave 2.3:1
+                // and 0.7 only 2.6:1 on the dark well, since a 1 pt hairline is nearly all
+                // antialiased edge. Which fingers are OFF is half the grip; it must clear 3:1.
                 shape.strokeBorder(Ink.tertiary, lineWidth: 1)
             }
         }

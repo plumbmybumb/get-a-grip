@@ -104,9 +104,8 @@ struct AnalysisExportSheet: View {
                     Button("Close") { onClose() }
                 }
             }
-            // In the safe area rather than at the foot of the document — at the `.medium`
-            // detent this opens on, an in-document button sits inside the home-indicator
-            // strip and dragging toward it resizes the sheet instead of scrolling.
+            // In the safe area: at the `.medium` detent an in-document button sits in the
+            // home-indicator strip and dragging toward it resizes the sheet.
             .safeAreaInset(edge: .bottom) { actions }
         }
         .presentationDetents([.medium, .large])
@@ -121,14 +120,13 @@ struct AnalysisExportSheet: View {
         }
     }
 
-    /// Nothing at all when there is nothing to export — a disabled Share button on an
-    /// empty history is a dead control explaining itself with grey.
+    /// Nothing at all when there is nothing to export: a disabled Share button is a dead
+    /// control explaining itself with grey.
     @ViewBuilder
     private var actions: some View {
         if let document, !document.isEmpty {
             VStack(spacing: 10) {
-                // Glass is allowed: a sheet is its own presentation and carries no
-                // `.contextMenu`, so nothing here is ever lifted out from under it.
+                // Glass is allowed: a sheet carries no `.contextMenu`, so nothing is lifted.
                 ShareLink(
                     item: AnalysisExportFile(text: document.text, filename: document.filename),
                     preview: SharePreview("Get a Grip — training export")
@@ -155,9 +153,7 @@ struct AnalysisExportSheet: View {
         }
     }
 
-    /// `prominent` picks the ink: the INVERSE ink is correct only over
-    /// `.glassProminent`'s opaque graphite fill — on plain glass it renders white on the
-    /// light slate field, the white-on-white trap one colour scheme over.
+    /// `prominent` picks the ink — see `RoutineShareSheet.actionLabel`.
     private func actionLabel(_ title: String, systemImage: String?,
                              prominent: Bool) -> some View {
         HStack(spacing: 8) {
@@ -168,8 +164,7 @@ struct AnalysisExportSheet: View {
         .foregroundStyle(prominent
                          ? Color.adaptive(Color(hex: "FFFFFF"), Color(hex: "1B1F25"))
                          : Accent.graphite)
-        // Full-width and padded, so the drawn label is nowhere near the hit area SwiftUI
-        // would infer from it on its own.
+        // Full-width and padded: the drawn label is not the hit area.
         .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
         .contentShape(.rect)
     }
@@ -185,10 +180,9 @@ struct AnalysisExportFile: Transferable, Sendable {
             Data(item.text.utf8)
         }
         .suggestedFileName { $0.filename }
-        // The belt to the file's braces: receivers that read TEXT (message fields,
-        // assistant apps) take the whole document as a string and can never end up
-        // holding a path into a sandbox they cannot read. File-capable destinations
-        // still prefer the named file above.
+        // Belt and braces: text receivers (message fields, assistants) take the
+        // document as a string and never get a sandbox path they cannot read.
+        // File-capable destinations still prefer the named file.
         ProxyRepresentation(exporting: \.text)
     }
 }

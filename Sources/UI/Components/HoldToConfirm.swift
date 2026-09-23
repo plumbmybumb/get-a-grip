@@ -3,27 +3,22 @@
 
 import SwiftUI
 
-/// The press-and-hold gesture behind every "this cannot be undone" control — ending a
-/// session, discarding one on the phone, discarding one on the wrist. One implementation,
-/// so the three cannot drift apart in how long a hold takes, what cancels it, or what
-/// VoiceOver does with it; each button keeps its own look, words and feedback.
+/// The press-and-hold gesture behind every "this cannot be undone" control (ending a
+/// session, discarding one on phone or wrist) — one implementation, so hold length,
+/// cancellation and VoiceOver cannot drift; each button keeps its own look and words.
 ///
-/// The label is drawn by the caller from two values: `isHolding`, which flips OUTSIDE any
-/// animation, and `progress`, which the hold animates from 0 to 1. They are separate on
-/// purpose. A label that read `progress > 0` would change INSIDE the fill's animation, and
-/// SwiftUI cross-fades a Text whose content changes under one — two strings of different
-/// widths, both half-opaque, on top of each other for the whole hold.
+/// The caller draws the label from `isHolding`, which flips OUTSIDE any animation, and
+/// `progress`, which animates 0 → 1. A label reading `progress > 0` would change INSIDE
+/// the fill's animation, and SwiftUI would cross-fade two strings over each other for
+/// the whole hold.
 struct HoldToConfirm<Label: View>: View {
     /// How a hold decides the finger has stopped meaning it.
     enum Cancel {
-        /// Movement past this many points, measured in GLOBAL space. A holding finger is
-        /// still and a scrolling one moves — and a page scrolling under a parked finger
-        /// moves it through the window while leaving it on the control's own
-        /// coordinates, so only global space sees it. For a hold that lives in a scroll
-        /// view. 10 pt is the slop `RepeatingStep` cancels at.
+        /// Movement past this many points in GLOBAL space. A page scrolling under a parked finger
+        /// moves it through the window but not across the control's own coordinates, so only
+        /// global space sees it — for holds inside a scroll view. 10 pt matches `RepeatingStep`.
         case drift(CGFloat)
-        /// Leaving the control's own frame, grown by this much. A thumb may wander while
-        /// it holds, as long as it stays on the button.
+        /// Leaving the control's frame, grown by this much: a thumb may wander while on the button.
         case leavingBounds(slop: CGFloat)
     }
 
@@ -60,8 +55,8 @@ struct HoldToConfirm<Label: View>: View {
             .accessibilityLabel(accessibilityLabel)
             .accessibilityHint(accessibilityHint)
             .accessibilityAddTraits(.isButton)
-            // VoiceOver cannot express a hold, so an activation confirms outright — the
-            // gesture is the safeguard for a thumb, not a substitute for the action.
+            // VoiceOver cannot express a hold, so an activation confirms outright; the
+            // gesture guards a thumb, it is not the safeguard itself.
             .accessibilityAction { if isEnabled { action() } }
     }
 
@@ -96,12 +91,10 @@ struct HoldToConfirm<Label: View>: View {
         guard holdTask == nil else { return }
         // OUTSIDE the animation, deliberately — see the type's note.
         isHolding = true
-        // UNCONDITIONAL — deliberately not gated on `reduceMotion`. The fill is the
-        // functional progress readout for the hold — how much longer to keep holding —
-        // not decorative motion; snapping straight to a full bar under Reduce Motion
-        // would remove the one signal that the hold is registering at all, while the
-        // gesture itself still takes exactly as long either way. It also has to match
-        // `holdTask`'s real sleep, which no token can express.
+        // UNCONDITIONAL, not gated on `reduceMotion`: the fill is the functional
+        // "how much longer" readout, not decoration, and snapping it full would
+        // hide that the hold is registering. It must also match `holdTask`'s real
+        // sleep, which no token can express.
         withAnimation(.linear(duration: seconds)) { progress = 1 }
         holdTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(seconds))

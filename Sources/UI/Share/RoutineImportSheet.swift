@@ -3,9 +3,8 @@
 
 import SwiftUI
 
-/// A routine decoded from a `getagrip://` link, waiting to be looked at. `Identifiable`
-/// because `.sheet(item:)` is what presents it, with a fresh `id` per claim from the
-/// store's inbox.
+/// A routine decoded from a `getagrip://` link, waiting to be looked at. Presented by
+/// `.sheet(item:)`, with a fresh `id` per claim from the store's inbox.
 struct ImportRequest: Identifiable {
     let id = UUID()
     let draft: RoutineDraft
@@ -14,53 +13,42 @@ struct ImportRequest: Identifiable {
 /// The other side of a QR code: somebody else's routine, read out in full, before it is
 /// yours.
 ///
-/// It is a PREVIEW, not an editor. Nothing here is adjustable, and that is the honest
-/// shape — a routine you have not accepted yet is not a routine you can edit, and fields
-/// would be asking a stranger's plan to be corrected before it has been read. Everything
-/// in it is one tap from editable the moment it lands: the card it becomes opens the
-/// builder on its own plan row.
+/// A PREVIEW, not an editor: a routine you have not accepted is not one you can edit.
+/// Once it lands, the card it becomes opens the builder in one tap.
 ///
-/// **Percentage targets are deliberately NOT translated.** They resolve against the
-/// READER's maxes, per hand, at the moment a session starts — which is the entire reason
-/// this app prescribes fractions rather than kilograms, and it means the same code
-/// prescribes the right load for two people with very different fingers. The two
-/// footnotes exist for the cases where that is not the whole story.
+/// **Percentage targets are NOT translated.** They resolve against the READER's maxes,
+/// per hand, when a session starts — the reason the app prescribes fractions, so one
+/// code prescribes the right load for two very different people. The footnotes cover
+/// where that is not the whole story.
 struct RoutineImportSheet: View {
     @Environment(\.weightUnit) private var weightUnit
-    /// NORMALIZED at init — see the initializer. Read as a value; the sheet observes no
-    /// store except for the one save it performs.
+    /// NORMALIZED at init. Read as a value; the sheet observes no store beyond its one save.
     let draft: RoutineDraft
 
     @Environment(TemplateStore.self) private var templates
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// Whether THIS sheet's add failed — a local flag, not a read of
-    /// `templates.saveError`: keyed to the store field, the sheet opened already
-    /// wearing the accusation whenever an earlier, unrelated write had failed and its
-    /// alert had not been read yet.
+    /// Whether THIS sheet's add failed. Local, not `templates.saveError`: keyed to the store
+    /// field, the sheet opened already accusing whenever an earlier, unrelated write failed.
     @State private var saveFailed = false
 
-    /// Folded ONCE, not per body evaluation: `RoutineSummary(previewing:)` walks the
-    /// whole rep sequence three times, and it also mints an id, so a computed property
-    /// would re-fold a fifty-set routine on every scroll frame and change identity while
-    /// doing it.
+    /// Folded ONCE: `RoutineSummary(previewing:)` walks the rep sequence three times and
+    /// mints an id, so a computed property would re-fold per scroll frame and change
+    /// identity doing it.
     private let summary: RoutineSummary
 
     init(draft: RoutineDraft) {
-        // Normalized HERE so the preview shows the routine that will actually land: an
-        // empty name becomes the house default on the way in, an emptied set is dropped,
-        // and inheritance is consolidated. Previewing the raw draft and saving the
-        // normalized one is exactly how a preview and the card it becomes disagree.
-        // `normalized` is idempotent, so the store's own pass costs nothing.
+        // Normalized HERE so the preview shows what will land (default name, emptied
+        // sets dropped, inheritance consolidated); previewing raw and saving
+        // normalized is how a preview and its card disagree. Idempotent.
         let clean = draft.normalized
         self.draft = clean
         self.summary = RoutineSummary(previewing: clean)
     }
 
     private var plan: SessionPlan { draft.plan }
-    /// `executable`, like every other fold in the app: a set with no pulls in it is a row
-    /// the author emptied out, not a rest.
+    /// `executable`, like every other fold: a set with no pulls was emptied, not a rest.
     private var sets: [SetPlan] { draft.plan.executable.sets }
 
     var body: some View {
@@ -84,9 +72,8 @@ struct RoutineImportSheet: View {
             .scrollEdgeEffectStyle(.soft, for: .bottom)
             .navigationTitle("Shared routine")
             .navigationBarTitleDisplayMode(.inline)
-            // The decision lives in the safe area rather than at the foot of the
-            // document: the payload allows fifty sets, and a primary action that has to
-            // be scrolled to is a primary action people do not find.
+            // The decision lives in the safe area: with up to fifty sets, a primary
+            // action that must be scrolled to is not found.
             .safeAreaInset(edge: .bottom) { actions }
         }
     }
@@ -94,18 +81,16 @@ struct RoutineImportSheet: View {
     // MARK: - Identity
 
     /// The name this routine will actually LAND under. The store deconflicts on save
-    /// (`uniqueName`), and two people keeping the shipped default name is the common
-    /// case for a shared routine — a preview promising "Daily no-hangs" four seconds
-    /// before the card says "Daily no-hangs 2" is the preview and the card disagreeing.
-    /// Computed per body pass, so a routine created behind the sheet is still counted.
+    /// (`uniqueName`), and two people keeping the default name is the common case — a
+    /// preview saying "Daily no-hangs" before the card says "Daily no-hangs 2" is a
+    /// disagreement. Per body pass, so a routine created behind the sheet still counts.
     private var landingName: String {
         templates.plannedImportName(for: summary.name)
     }
 
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
-            // The same derived mark Today's card wears, so the routine is recognisable
-            // before and after it is yours.
+            // The mark Today's card wears, recognisable before and after it is yours.
             EdgeMark(fingers: summary.signatureFingers ?? .four,
                      rungTint: PlanMath.IntensityBand.band(for: summary.peakIntensity).tint)
                 .padding(.top, 4)
@@ -124,8 +109,7 @@ struct RoutineImportSheet: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(landingName)
-        // The rung's colour is invisible to VoiceOver and to greyscale, so the number
-        // it stands for is spoken — the same pairing `RoutineCard` makes.
+        // The rung's colour is invisible to VoiceOver and greyscale — see `RoutineCard`.
         .accessibilityValue(summary.metaLine + intensitySuffix)
     }
 
@@ -150,11 +134,9 @@ struct RoutineImportSheet: View {
         }
     }
 
-    /// Two layouts, forked at `.accessibility1` — the same fork `RoutineCard`'s plan
-    /// row makes, and for the same measured reason: side by side, the scaled glyph plus
-    /// a priority-protected count left the grip sentence ~22 pt of a 330 pt row at the
-    /// app's type ceiling, on the one screen whose job is stating the grip. Big text is
-    /// served by words stacked in full width; the glyph is decoration it can spare.
+    /// Two layouts, forked at `.accessibility1` like `RoutineCard`'s plan row: side by side
+    /// at the type ceiling, the grip sentence got ~22 pt of a 330 pt row, on the screen whose
+    /// job is stating the grip. Big text gets words at full width; the glyph is spared.
     @ViewBuilder
     private func setRow(_ set: SetPlan) -> some View {
         if typeSize >= .accessibility1 {
@@ -183,8 +165,7 @@ struct RoutineImportSheet: View {
                     Text(set.grip.line)
                         .font(.system(.subheadline, weight: .semibold))
                         .foregroundStyle(Ink.primary)
-                        // No line limit: this sentence is what the screen exists to
-                        // state, so it wraps rather than truncates.
+                        // No line limit: the sentence the screen exists for wraps, never truncates.
                         .fixedSize(horizontal: false, vertical: true)
                     setDetail(set)
                 }
@@ -202,11 +183,9 @@ struct RoutineImportSheet: View {
         }
     }
 
-    /// What this set does DIFFERENTLY — its own timing, its own load. A stranger's
-    /// routine owes you these before you accept it: a typed 40 kg band you meet for the
-    /// first time in the runner is exactly the surprise this sheet exists to prevent,
-    /// and a per-set 3 s hold explains why the estimate above disagrees with the rhythm
-    /// line below. Nothing renders for the common set that inherits everything.
+    /// What this set does DIFFERENTLY — its own timing, its own load. A stranger's routine
+    /// owes you these before you accept: a typed 40 kg band first met in the runner is the
+    /// surprise this sheet prevents. Nothing renders for a set that inherits everything.
     @ViewBuilder
     private func setDetail(_ set: SetPlan) -> some View {
         if let line = setDetailLine(set) {
@@ -238,10 +217,9 @@ struct RoutineImportSheet: View {
         return label
     }
 
-    /// "6 per side" when the hands take turns, "6 pulls" when they are on the edge
-    /// together. The pull count comes from `PlanMath.repCount` rather than a
-    /// `× sideCount` written here — that multiplication has exactly one home in the app,
-    /// and this is the screen where a silent factor of two would be believed.
+    /// "6 per side" when hands take turns, "6 pulls" when together. The count comes from
+    /// `PlanMath.repCount`, the one home of that multiplication — a silent factor of two
+    /// would be believed here.
     private func repText(_ set: SetPlan) -> String {
         guard plan.handMode.sideCount == 1 else { return String(localized: "\(set.repsPerSide) per side") }
         let pulls = PlanMath.repCount(set, mode: plan.handMode)
@@ -277,21 +255,19 @@ struct RoutineImportSheet: View {
         }
     }
 
-    /// The ROUTINE's rhythm — the values every set inherits unless it overrides. A set
-    /// that overrides is already folded into the pull counts and the estimate above.
+    /// The ROUTINE's rhythm, inherited unless overridden; overrides are already folded into
+    /// the pull counts and estimate above.
     private var rhythmLine: String {
         var parts = [String(localized: "\(PlanMath.durationText(plan.holdSeconds)) hold"),
                      String(localized: "\(PlanMath.durationText(plan.restSeconds)) rest")]
-        // A break "between sets" is a constant dressed as information when there is only
-        // one set — the Live Activity drops "Set 1 of 1" for the same reason.
+        // A break "between sets" with one set is a constant dressed as information.
         if summary.setCount > 1 {
             parts.append(String(localized: "\(PlanMath.durationText(plan.setBreakSeconds)) between sets"))
         }
         return parts.joined(separator: " · ")
     }
 
-    /// A WHENEVER routine has no daily target and is never owed, so it says so instead
-    /// of quoting a number it does not mean.
+    /// A WHENEVER routine is never owed, so it says so instead of quoting a number.
     private var cadenceLine: String {
         if draft.isOnDemand { return String(localized: "Whenever you're fresh") }
         switch max(1, draft.sessionsPerDay) {
@@ -303,13 +279,11 @@ struct RoutineImportSheet: View {
 
     // MARK: - The two honesty notes
 
-    /// Both are shown only when they are TRUE of this routine — a footnote about
-    /// kilograms under a routine that carries none is noise, and noise is what teaches
-    /// people to stop reading footnotes.
+    /// Each shown only when TRUE of this routine: irrelevant footnotes teach people to stop
+    /// reading footnotes.
     @ViewBuilder private var notes: some View {
-        // Guarded around the STACK, not just inside it: an empty VStack is still a view,
-        // and the document's 18 pt spacing would leave a block of nothing under a routine
-        // that prescribes no load at all — which is most of them.
+        // Guarded around the STACK: an empty VStack still takes the 18 pt spacing,
+        // under most routines, which prescribe no load.
         if hasPercentTargets || hasKilogramTargets {
             VStack(alignment: .leading, spacing: 8) {
                 if hasPercentTargets {
@@ -330,8 +304,8 @@ struct RoutineImportSheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// `PlanMath.targetBand`'s precedence, read as a predicate: a set carrying typed
-    /// kilograms never reaches its percentage, so it is not a percentage set.
+    /// `PlanMath.targetBand`'s precedence as a predicate: a set with typed kilograms never
+    /// reaches its percentage.
     private var hasPercentTargets: Bool {
         sets.contains { $0.targetBand == nil && PlanMath.targetPercent($0, in: plan) != nil }
     }
@@ -345,9 +319,8 @@ struct RoutineImportSheet: View {
     private var actions: some View {
         VStack(spacing: 4) {
             if saveFailed {
-                // The sheet STAYS OPEN on a rollback: dismissing on failure loses the
-                // code as well as the routine, and rescanning is somebody else's phone
-                // away. Same inline treatment the builder gives its own failed save.
+                // STAYS OPEN on a rollback: dismissing loses the code too, and rescanning
+                // is somebody else's phone away. Same as the builder's failed save.
                 Text("That routine couldn't be saved just now — nothing was added. Try again.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Accent.alarm)
@@ -362,15 +335,13 @@ struct RoutineImportSheet: View {
                 add()
             }
 
-            // Quiet, and never destructive-looking: declining a routine costs nothing
-            // and undoes nothing.
+            // Quiet, never destructive-looking: declining costs and undoes nothing.
             Button("Not now") { dismiss() }
                 .buttonStyle(PressFeedbackButtonStyle())
                 .font(.system(.footnote, weight: .semibold))
                 .foregroundStyle(Accent.graphite)
-                // Drawn as one line of footnote, hit as 44 — and `contentShape` is
-                // mandatory rather than tidy, since padding contributes nothing to
-                // SwiftUI's default hit area.
+                // One footnote line drawn, 44 hit; `contentShape` is mandatory since
+                // padding is not hit-tested.
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .contentShape(.rect)
         }
@@ -380,13 +351,12 @@ struct RoutineImportSheet: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// The new card appears on Today by itself — the routine list there is a `@Query`,
-    /// so nothing has to be handed back through the presentation.
+    /// The new card appears on Today by itself (its list is a `@Query`).
     private func add() {
         guard templates.importRoutine(draft) != nil else {
-            // Surfaced INLINE, and the store's copy of the failure is consumed — the
-            // global "Couldn't save" alert watches the same field from the very view
-            // presenting this sheet, and one rollback stated twice reads as two.
+            // INLINE, and the store's copy is consumed: the global "Couldn't save"
+            // alert watches the same field from the presenting view, and one rollback
+            // stated twice reads as two.
             saveFailed = true
             templates.saveError = nil
             return

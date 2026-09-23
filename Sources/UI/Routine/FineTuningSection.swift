@@ -3,27 +3,25 @@
 
 import SwiftUI
 
-/// FINE TUNING — the two settings that are not one of the things setup asks about,
-/// folded away behind a row that still says out loud that they exist.
+/// FINE TUNING — the settings setup does not ask about, folded behind a row that still
+/// says they exist.
 ///
-/// Collapsed on EVERY open and never persisted: the Schengen "What this counts"
-/// discipline, which hides the WORDS rather than the fact that there is a setting. That
-/// is why the row keeps a title and a summary line on its face instead of being a bare
-/// chevron — someone who has never opened it still knows what is in there.
+/// Collapsed on EVERY open and never persisted: it hides the WORDS, not the fact that
+/// there is a setting, so the row keeps a title and summary on its face rather than being
+/// a bare chevron.
 struct FineTuningSection: View, Equatable {
     @Environment(\.weightUnit) private var weightUnit
     /// The write path. Everything drawn comes from `defaults` — see `BuilderInputs`.
     let access: DraftAccess
-    /// `plan.routineLevel`, as a value, so the card compares itself on what it shows
-    /// (`fineTuningKey`). This is the one card that shows the pull threshold.
+    /// `plan.routineLevel`, as a value, so the card compares on what it shows
+    /// (`fineTuningKey`). The one card that shows the pull threshold.
     let defaults: SessionPlan
 
     nonisolated static func == (a: Self, b: Self) -> Bool {
         a.defaults.fineTuningKey == b.defaults.fineTuningKey
     }
 
-    /// View-local and unpersisted BY CONSTRUCTION — the sheet builds a fresh section
-    /// every time it opens, so "collapsed on every open" needs no resetting logic.
+    /// Unpersisted BY CONSTRUCTION: the sheet builds a fresh section each open.
     @State private var isOpen = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -77,8 +75,7 @@ struct FineTuningSection: View, Equatable {
                     .foregroundStyle(Ink.tertiary)
                     .rotationEffect(.degrees(isOpen ? 180 : 0))
             }
-            // The label holds a Spacer and draws full-width, so its hit area is the
-            // opaque text unless the shape is declared.
+            // Full-width with a Spacer, so the shape must be declared.
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
@@ -119,11 +116,10 @@ struct FineTuningSection: View, Equatable {
 
     /// Whether leaving the target range pauses the rep.
     ///
-    /// Sits between the threshold and the lead-in on purpose: all three answer "what
-    /// counts as a pull", and this one is the range's half of that question where the
-    /// threshold above is the floor's half. Phrased as the thing you'd turn ON — nobody
-    /// looks for "pausesOutsideTargetBand" — with the consequence said underneath either
-    /// way, because a switch whose off-state is silent makes you flip it to find out.
+    /// Between the threshold and the lead-in: all three answer "what counts as a pull", and
+    /// this is the range's half where the threshold is the floor's. Phrased as the thing
+    /// you'd turn ON, with the consequence said either way — a switch whose off-state is
+    /// silent makes you flip it to find out.
     private var bandGateBlock: some View {
         VStack(alignment: .leading, spacing: 6) {
             Toggle("Pause when I'm out of range",
@@ -169,12 +165,10 @@ struct FineTuningSection: View, Equatable {
 
 // MARK: - The one place the builder touches BLE
 
-/// A live force bar with the threshold marked, so "2 kg" can be FELT instead of
-/// guessed at.
+/// A live force bar with the threshold marked, so "2 kg" can be FELT, not guessed.
 ///
-/// Deliberately its own small view: this is the only Bluetooth in the whole builder,
-/// and keeping it in one place means it can be deleted or moved without opening the
-/// document. Everything else in the sheet is pure editing of a value type.
+/// Its own small view: the only Bluetooth in the builder, deletable or movable without
+/// opening the document.
 private struct ThresholdGaugeStrip: View {
     var thresholdKg: Double
 
@@ -183,21 +177,17 @@ private struct ThresholdGaugeStrip: View {
     @State private var checking = false
     @State private var countdown: Task<Void, Never>?
 
-    /// Long enough to take the load, let go and try again; short enough that a
-    /// forgotten check cannot flatten the gauge's battery.
+    /// Long enough to load, let go and retry; short enough that a forgotten check cannot
+    /// flatten the battery.
     private static let checkSeconds = 15
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if device.state.isConnected {
                 if checking {
-                    // LEAVES, deliberately — see `ThresholdReadout`/`ThresholdBar`.
-                    // `isOver`/`readout`/`bar` used to be computed properties of THIS
-                    // struct, which meant reading `device.currentKg` for any of them
-                    // re-evaluated this whole body — the Stop button and the static
-                    // caption included — at sample rate for the 15 s a check runs. The
-                    // same miss `GaugeView` documents having fixed at its own
-                    // `GaugeHero`/`GaugeTrace`, applied everywhere except here.
+                    // LEAVES — see `ThresholdReadout`/`ThresholdBar`. As computed properties
+                    // here, reading `device.currentKg` re-ran this whole body at sample rate
+                    // for the 15 s of a check (the miss `GaugeView` fixed in its own leaves).
                     ThresholdReadout(thresholdKg: thresholdKg)
                     ThresholdBar(thresholdKg: thresholdKg)
                     Text("Pull — anything above the line counts.")
@@ -212,8 +202,7 @@ private struct ThresholdGaugeStrip: View {
                                          systemImage: "waveform.path.ecg") { start() }
                 }
             } else {
-                // SHOWN, not a disabled button: a control you cannot use teaches
-                // nothing, and the reason plus the reassurance is the whole content.
+                // SHOWN, not a disabled button: a control you cannot use teaches nothing.
                 Text("Connect your gauge to try it — you can change this any time.")
                     .font(.system(.caption, weight: .medium))
                     .foregroundStyle(Ink.tertiary)
@@ -221,9 +210,9 @@ private struct ThresholdGaugeStrip: View {
             }
         }
         .onDisappear {
-            // UNCONDITIONAL, and gated on the DEVICE's own truth rather than on
-            // `checking`: a Progressor left streaming behind a dismissed sheet is a dead
-            // battery the user blames on the app. Same precedent as GaugeView.
+            // UNCONDITIONAL, gated on the DEVICE's own truth rather than `checking`: a
+            // Progressor streaming behind a dismissed sheet is a dead battery blamed on
+            // the app.
             countdown?.cancel()
             countdown = nil
             checking = false
@@ -235,8 +224,7 @@ private struct ThresholdGaugeStrip: View {
 
     private func start() {
         guard device.state.isConnected else { return }
-        // The bar's scale is peak-relative, so a peak left over from an earlier check
-        // would otherwise draw this pull as a stub.
+        // The bar is peak-relative; a stale peak would draw this pull as a stub.
         device.resetPeak()
         device.startStreaming(cause: .manualMeasurement)
         checking = true
@@ -249,9 +237,8 @@ private struct ThresholdGaugeStrip: View {
         }
     }
 
-    /// The cause travels from the TRIGGER: this is reached from the Stop button and from
-    /// the countdown running out, and labelling both the same would put a timeout in the
-    /// log for a pull the user ended deliberately.
+    /// The cause travels from the TRIGGER (Stop button or countdown), or a deliberate stop
+    /// would be logged as a timeout.
     private func stop(cause: StreamStopCause) {
         countdown?.cancel()
         countdown = nil
@@ -260,21 +247,18 @@ private struct ThresholdGaugeStrip: View {
     }
 }
 
-/// The live numeral and Counting/Stopped word. Its own leaf so `device.currentKg`
-/// invalidates only this, not the Stop button and static caption beside it — see
-/// `ThresholdGaugeStrip.body`.
+/// The live numeral and Counting/Stopped word, a leaf so `device.currentKg` invalidates
+/// only this.
 private struct ThresholdReadout: View {
     @Environment(\.weightUnit) private var weightUnit
     var thresholdKg: Double
 
     @Environment(DeviceStore.self) private var device
 
-    /// HYSTERETIC, not a bare `>=`. The whole point of this check is to park a load AT
-    /// the threshold, which is exactly where sensor noise flips a bare comparison many
-    /// times a second — a continuous buzz from the haptic and a flickering word. Same
-    /// remedy as the runner's release band ("so hovering cannot chatter it on and
-    /// off"): crossing up happens at the threshold, crossing back down only 5 % below
-    /// it, clamped 0.5–2.0 kg.
+    /// HYSTERETIC, not a bare `>=`: the check parks a load AT the threshold, where noise
+    /// flips a bare comparison many times a second (a buzzing haptic, a flickering word).
+    /// The runner's release-band remedy: cross up at the threshold, back down only 5 %
+    /// below, clamped 0.5–2.0 kg.
     @State private var crossed = false
 
     private func updateCrossing(_ kg: Double) {
@@ -300,18 +284,15 @@ private struct ThresholdReadout: View {
             CapsLabel(crossed ? String(localized: "Counting") : String(localized: "Stopped"),
                       tint: crossed ? StatusTint.engaged : Ink.tertiary)
         }
-        // A numeral changing 80×/sec is unusable under VoiceOver; the crossing itself
-        // is felt instead — a VoiceOver user checking the threshold has no other
-        // channel to learn whether a pull crossed the line, since nothing here fires
-        // an audio/haptic cue the way the runner does.
+        // A numeral changing 80×/sec is unusable under VoiceOver; the crossing is
+        // felt instead — the only channel here, since no audio cue fires.
         .accessibilityHidden(true)
         .sensoryFeedback(.selection, trigger: crossed)
         .onChange(of: device.currentKg) { _, kg in updateCrossing(kg) }
     }
 }
 
-/// The live force bar with the threshold marked. Its own leaf for the same
-/// invalidation reason as `ThresholdReadout`.
+/// The live force bar with the threshold marked; a leaf, like `ThresholdReadout`.
 private struct ThresholdBar: View {
     var thresholdKg: Double
 
@@ -320,9 +301,8 @@ private struct ThresholdBar: View {
 
     private var isOver: Bool { device.currentKg >= thresholdKg }
 
-    /// Peak-relative, and PEAK is monotonic within one check, so the scale only ever
-    /// settles outward — a ceiling keyed to the live reading would jitter the threshold
-    /// marker on every sample, which is the one thing on screen that must hold still.
+    /// Peak-relative, and PEAK only grows within a check, so the scale only settles outward;
+    /// keyed to the live reading it would jitter the threshold marker, which must hold still.
     private var ceiling: Double {
         max(10, device.peakKg * 1.25, thresholdKg * 1.6)
     }
@@ -334,11 +314,9 @@ private struct ThresholdBar: View {
 
             ZStack(alignment: .leading) {
                 Capsule().fill(Ink.tertiary.opacity(0.18))
-                // A full-bleed capsule MASKED to the fraction, not a second capsule at
-                // partial width — same fix as the hold-to-end fill (2026-08-17): a
-                // width-constrained capsule degenerates to a blob at small fractions
-                // and its advancing edge is rounded like an end, so the fill reads as
-                // a different shape than the track it sits in.
+                // A full-bleed capsule MASKED to the fraction, not a narrower capsule (as
+                // with the hold-to-end fill): a width-constrained capsule degenerates to a
+                // blob at small fractions and reads as a different shape from the track.
                 Capsule()
                     .fill(isOver ? StatusTint.engaged : StatusTint.calm)
                     .mask(alignment: .leading) {
@@ -346,8 +324,7 @@ private struct ThresholdBar: View {
                             .frame(width: max(2, fraction * geo.size.width))
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                // The line itself, drawn over the fill so it stays visible once the
-                // pull has passed it.
+                // Over the fill, so it stays visible once passed.
                 Rectangle()
                     .fill(Ink.primary.opacity(0.8))
                     .frame(width: 2)
