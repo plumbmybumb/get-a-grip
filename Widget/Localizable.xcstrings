@@ -860,6 +860,16 @@
         }
       }
     },
+    "Open Get a Grip" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir Get a Grip"
+          }
+        }
+      }
+    },
     "Paused" : {
       "localizations" : {
         "fr" : {

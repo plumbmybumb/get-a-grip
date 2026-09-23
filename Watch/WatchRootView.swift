@@ -41,6 +41,9 @@ struct WatchRootView: View {
                     .navigationBarBackButtonHidden(true)
             }
         }
+        // A session that finished on the wrist but was never saved or discarded — the
+        // watch came off, the battery went — is offered back once, at launch.
+        .watchUnsavedSessionRecovery()
     }
 }
 

@@ -87,7 +87,13 @@ struct RunnerView: View {
                                        reps: session.runner.results,
                                        startedAt: session.startedAt,
                                        finishedAt: session.finishedAt ?? session.startedAt,
-                                       didAnyWork: session.runner.didAnyWork) { dismiss() }
+                                       didAnyWork: session.runner.didAnyWork) {
+                        // Saved or discarded — the summary's only two ways out, and a
+                        // failed save never gets here. Either way there is nothing left
+                        // to offer back at the next launch.
+                        session.clearDraft()
+                        dismiss()
+                    }
                         .transition(.opacity)
                 } else {
                     live(session)
@@ -185,8 +191,11 @@ struct RunnerView: View {
             #endif
             // The maxes are read ONCE, here — a session's targets must not move under
             // the climber because a max was recorded on another device mid-workout.
+            // `.standard` drafts: a finished session is on disk until it is saved or
+            // discarded, so a process that dies behind the summary does not take it along.
             let new = RunnerSession(template: template, device: device,
-                                    maxes: templates.maxTable, timerOnly: timerOnly)
+                                    maxes: templates.maxTable, timerOnly: timerOnly,
+                                    draftStore: .standard)
             new.weightUnit = weightUnit
             session = new
             new.begin()

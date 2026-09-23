@@ -2,6 +2,7 @@
 // Original contributions Copyright 2026 Nuri Bruner.
 
 import SwiftUI
+import WatchKit
 
 /// What the session came to, and the one decision that matters on a wrist: keep it or
 /// not. Save writes through `SessionLedger` — the phone's own write path — so the log
@@ -15,6 +16,10 @@ struct WatchSummaryView: View {
 
     @Environment(SessionLedger.self) private var ledger
     @State private var saveFailed = false
+    /// Set for the length of a save, so a second tap — easy with a wet fingertip on a
+    /// small screen — cannot write the session twice. The phone's summary has the same
+    /// guard (`saved`).
+    @State private var saving = false
 
     private var reps: [RepSummary] { session.runner.results }
     private var completed: Int { reps.filter { $0.outcome == .completed }.count }
@@ -40,12 +45,12 @@ struct WatchSummaryView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(StatusTint.engaged)
+                    .disabled(saving)
                     .accessibilityIdentifier("watch.save")
-                    Button(role: .destructive) {
-                        onDone()
-                    } label: {
-                        Text("Discard").frame(maxWidth: .infinity)
-                    }
+                    // A HOLD, like the phone's: a single tap sat one row under Save, and
+                    // a bump there threw away a whole session with no way back.
+                    WatchHoldToDiscardButton { onDone() }
+                        .disabled(saving)
                 } else {
                     Button {
                         onDone()
@@ -82,14 +87,112 @@ struct WatchSummaryView: View {
     }
 
     private func save() {
+        guard !saving else { return }
+        saving = true
         let saved = ledger.recordSession(plan: session.plan, template: template, reps: reps,
                                          startedAt: session.startedAt,
                                          finishedAt: session.finishedAt ?? .now,
                                          rpe: nil)
         if saved != nil {
+            // `saving` stays set: the screen is leaving, and a tap during the pop must
+            // not find an enabled Save.
             onDone()
         } else {
+            saving = false
             saveFailed = true
         }
+    }
+}
+
+/// Discarding takes a deliberate HOLD — the phone's `HoldToDiscardButton`, sized for a
+/// wrist. Same 0.9 s, same "cannot be undone" vocabulary, and the same escape: lifting or
+/// sliding off early cancels for free. VoiceOver cannot express a hold, so an
+/// accessibility activation discards outright; the gesture guards a thumb, it is not the
+/// safeguard itself.
+private struct WatchHoldToDiscardButton: View {
+    var action: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var progress: Double = 0
+    @State private var holdTask: Task<Void, Never>?
+    @State private var slidOff = false
+
+    private static let holdSeconds: Double = 0.9
+    /// A holding finger is still; a scrolling one moves. The phone's slop.
+    private static let holdDriftSlop: CGFloat = 10
+
+    var body: some View {
+        ZStack {
+            // Both labels reserve their width, so the button does not resize mid-hold.
+            Text("Keep holding…").hidden().accessibilityHidden(true)
+            Text("Hold to discard").hidden().accessibilityHidden(true)
+            Text(holdTask != nil ? "Keep holding…" : "Hold to discard")
+                .foregroundStyle(StatusTint.alarm)
+        }
+        .font(.body.weight(.semibold))
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .background {
+            GeometryReader { geo in
+                ZStack {
+                    Capsule().fill(StatusTint.alarm.opacity(0.16))
+                    Capsule()
+                        .fill(StatusTint.alarm.opacity(0.4))
+                        .mask(alignment: .leading) {
+                            Rectangle()
+                                .frame(width: geo.size.width * progress)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                }
+            }
+        }
+        .opacity(isEnabled ? 1 : 0.4)
+        .contentShape(.capsule)
+        // Simultaneous, so a drag that starts here still scrolls the summary; global
+        // space, so the page moving under a parked finger reads as movement and cancels.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                .onChanged { value in
+                    guard isEnabled, !slidOff else { return }
+                    guard abs(value.translation.width) <= Self.holdDriftSlop,
+                          abs(value.translation.height) <= Self.holdDriftSlop else {
+                        slidOff = true
+                        cancelHold()
+                        return
+                    }
+                    beginHold()
+                }
+                .onEnded { _ in
+                    cancelHold()
+                    slidOff = false
+                }
+        )
+        .onDisappear { cancelHold() }
+        .accessibilityElement()
+        .accessibilityLabel("Discard this session")
+        .accessibilityHint("Press and hold. Nothing is saved.")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { if isEnabled { action() } }
+    }
+
+    private func beginHold() {
+        guard holdTask == nil else { return }
+        // UNCONDITIONAL, as on the phone: the fill is functional progress for the hold,
+        // not decoration, and it must match the task's real sleep.
+        withAnimation(.linear(duration: Self.holdSeconds)) { progress = 1 }
+        holdTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(Self.holdSeconds))
+            guard !Task.isCancelled else { return }
+            WKInterfaceDevice.current().play(.failure)
+            action()
+        }
+    }
+
+    private func cancelHold() {
+        holdTask?.cancel()
+        holdTask = nil
+        withAnimation(Motion.state(reduceMotion)) { progress = 0 }
     }
 }

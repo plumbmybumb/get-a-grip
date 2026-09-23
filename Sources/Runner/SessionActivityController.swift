@@ -38,9 +38,13 @@ final class SessionActivityController {
         let attributes = SessionActivity(routineName: routineName,
                                          plannedReps: plannedReps,
                                          setCount: setCount)
+        // A stale date on EVERY request and update — see `ContentState.staleDate`. With
+        // nil, a card whose app was killed mid-session read "Pull" on the lock screen for
+        // hours, because nothing was ever going to push the end.
         // Keep only the Sendable ID, never a handle across actor boundaries.
         guard let activity = try? Activity.request(attributes: attributes,
-                                                   content: .init(state: state, staleDate: nil))
+                                                   content: .init(state: state,
+                                                                  staleDate: state.staleDate()))
         else { return }
         activityID = activity.id
         isRunning = true
@@ -77,8 +81,9 @@ final class SessionActivityController {
     nonisolated private static func pushToLiveActivity(
         _ state: SessionActivity.ContentState, id: String
     ) async {
+        let staleDate = state.staleDate()
         for activity in Activity<SessionActivity>.activities where activity.id == id {
-            await activity.update(.init(state: state, staleDate: nil))
+            await activity.update(.init(state: state, staleDate: staleDate))
         }
     }
 

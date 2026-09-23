@@ -40,7 +40,10 @@ final class RunnerActivityLifecycleTests: XCTestCase {
         client.setState(.connected)
         let activity = Recorder()
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
-                                    device: device, liveActivity: activity)
+                                    device: device, liveActivity: activity,
+                                    // These read the FIRST card synchronously; the delayed
+                                    // start has its own tests.
+                                    activityStartDelay: nil)
         session.begin()
         defer { session.end() }
         for index in 1...120 {
@@ -92,7 +95,10 @@ final class RunnerActivityLifecycleTests: XCTestCase {
         client.setState(.connected)
         let activity = Recorder()
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
-                                    device: device, liveActivity: activity)
+                                    device: device, liveActivity: activity,
+                                    // These read the FIRST card synchronously; the delayed
+                                    // start has its own tests.
+                                    activityStartDelay: nil)
         session.weightUnit = .lb
         session.begin()
         defer { session.end() }

@@ -20,13 +20,19 @@ final class WatchForceReadout {
 
     @ObservationIgnored private var task: Task<Void, Never>?
 
+    /// Once a second instead of five times: set while the face is dimmed. Always On redraws
+    /// the screen once a second, so the other four reads bought nothing but wake-ups. Read
+    /// by the loop on every pass, so a change takes effect within one interval.
+    @ObservationIgnored var pollsSlowly = false
+
     /// Read the store on a timer, OFF the view's body, so the view depends on this
     /// class's `kg` alone and never on the sample stream.
     func begin(reading device: DeviceStore) {
         task?.cancel()
         task = Task { [weak self, weak device] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(200))
+                let interval: Duration = (self?.pollsSlowly ?? false) ? .seconds(1) : .milliseconds(200)
+                try? await Task.sleep(for: interval)
                 guard let self, let device else { return }
                 let next = (device.currentKg * 10).rounded() / 10
                 if next != self.kg { self.kg = next }

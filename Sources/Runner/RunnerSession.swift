@@ -162,6 +162,17 @@ final class RunnerSession {
     @ObservationIgnored private var hasStarted = false
     @ObservationIgnored private var hasBegun = false
     @ObservationIgnored private var hasEnded = false
+    /// Everything that only a LIVE workout needs has been let go — see `quiesce`. Set once,
+    /// at the finish, or by `end()` for a session left before it finished.
+    @ObservationIgnored private var isQuiesced = false
+    /// The cue engines' deferred shutdown, so the finish chord is not cut off mid-note.
+    @ObservationIgnored private var cueShutdown: Task<Void, Never>?
+    @ObservationIgnored private var cuesEnded = false
+    @ObservationIgnored private var activityStart: Task<Void, Never>?
+    @ObservationIgnored private let activityStartDelay: Duration?
+    @ObservationIgnored private let draftStore: UnsavedSessionDraftStore?
+    /// Names this session's on-disk draft — see `UnsavedSessionDraft`.
+    let sessionID = UUID()
     @ObservationIgnored private var streamWatchdog: Task<Void, Never>?
     @ObservationIgnored private var lastSampleAt: TimeInterval = 0
     @ObservationIgnored private var staleBatchHealArmedAt: TimeInterval?
@@ -184,15 +195,25 @@ final class RunnerSession {
     /// connect, no stream, no sample callback, no watchdog. The store is still held
     /// because the screen shares one view, and because a session started without a gauge
     /// must not start quietly using one that happens to be connected.
+    ///
+    /// `draftStore` is where a finished-but-unsaved session is kept until Save or Discard.
+    /// nil — the default, which tests and the in-memory previews get — writes nothing.
+    ///
+    /// `activityStartDelay` holds the Live Activity back off the presenting frame; nil
+    /// starts it inside `begin()`, which is what tests that read the first card use.
     init(template: SessionTemplate, device: DeviceStore, maxes: MaxTable = MaxTable(),
          timerOnly: Bool = false,
          liveActivity: any RunnerActivityPublishing = RunnerSession.defaultLiveActivity(),
-         cues: any RunnerCuePlaying = RunnerSession.defaultCues()) {
+         cues: any RunnerCuePlaying = RunnerSession.defaultCues(),
+         draftStore: UnsavedSessionDraftStore? = nil,
+         activityStartDelay: Duration? = RunnerSession.liveActivityStartDelay) {
         self.template = template
         self.plan = template.plan
         self.device = device
         self.liveActivity = liveActivity
         self.cues = cues
+        self.draftStore = draftStore
+        self.activityStartDelay = activityStartDelay
         self.timerOnly = timerOnly
         // Read ONCE, like the timing policy below: what this session is driving must not
         // change under it because a different gauge was selected in Settings mid-workout.
@@ -289,8 +310,10 @@ final class RunnerSession {
         // running them inside `onAppear` put that delay between tapping Start and the
         // runner appearing — the one tap in the app that must feel instant. The first
         // cue is at most a runloop turn late; nothing audible is due for five seconds.
+        // (`CuePlayer.begin()` also moves the audio-session activation off the main
+        // thread entirely — see there.)
         Task { @MainActor [weak self] in
-            guard let self, !self.hasEnded else { return }
+            guard let self, !self.hasEnded, !self.isQuiesced else { return }
             self.cues.begin()
         }
         if !timerOnly {
@@ -332,12 +355,40 @@ final class RunnerSession {
 
         // Best-effort and deliberately last: a Live Activity that cannot start (setting
         // off, budget spent) must never disturb a workout that is already under way.
-        if let grip = runner.displaySlot?.grip ?? plan.executable.sets.first?.grip {
-            liveActivity.start(routineName: template.name,
-                               plannedReps: runner.plannedRepCount,
-                               setCount: runner.setCount,
-                               state: activityState(grip: grip))
+        //
+        // **And OFF the presenting frame.** `Activity.request` is an IPC round trip to
+        // the system, and made inside the cover's `onAppear` it sat between tapping Start
+        // and the runner appearing. Nobody reads the lock screen in the first 300 ms of a
+        // session. The card is built when the task FIRES, from the snapshot as it is then,
+        // so a phase that changed in the meantime is not announced stale.
+        if let activityStartDelay {
+            activityStart = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: activityStartDelay)
+                guard !Task.isCancelled else { return }
+                self?.startLiveActivity()
+            }
+        } else {
+            startLiveActivity()
         }
+    }
+
+    /// How long the Live Activity waits after `begin()` — long enough to clear the
+    /// cover's presentation, short enough that nobody who swipes home ever sees no card.
+    static let liveActivityStartDelay: Duration = .milliseconds(300)
+
+    private func startLiveActivity() {
+        activityStart = nil
+        // A session already over by the time the delay ran out gets no card at all: it
+        // would only be ended again on the next line of somebody's lock screen.
+        guard !hasEnded, !isQuiesced, !runner.isFinished,
+              let grip = runner.displaySlot?.grip ?? plan.executable.sets.first?.grip else { return }
+        let state = activityState(grip: grip)
+        liveActivity.start(routineName: template.name,
+                           plannedReps: runner.plannedRepCount,
+                           setCount: runner.setCount,
+                           state: state)
+        // The card just went out with exactly this; the next publish must not re-push it.
+        lastActivitySignature = activitySignature(grip: grip)
     }
 
     func end() {
@@ -346,20 +397,96 @@ final class RunnerSession {
         // session, which looks exactly like a dead gauge.
         guard hasBegun, !hasEnded else { return }
         hasEnded = true
+        // A finished session already let go of everything live at the finish; this only
+        // undoes what is left — at most the cue engines' deferred shutdown, brought
+        // forward. A session left BEFORE it finished gets the whole teardown here.
+        quiesce(cueTail: nil)
+    }
 
-        ticker?.cancel()
-        ticker = nil
-        streamWatchdog?.cancel()
-        streamWatchdog = nil
-        device.onSample = nil
-        // Never leave the gauge streaming behind us: it drains its own battery for ten
-        // minutes and the user blames the app.
-        if device.isStreaming { device.stopStreaming(cause: .sessionEnded) }
-        // Ended with the session, not left to expire: a card still saying "Pull" on the
-        // lock screen after you have finished is worse than no card at all.
-        Task { await liveActivity.end() }
+    /// **Let go of everything that only a LIVE workout needs, the moment it stops being
+    /// one.** Called once at the finish, and by `end()` for a session left unfinished.
+    ///
+    /// It used to wait for the view to disappear, and the summary is a view that can sit
+    /// open for minutes. All that time the gauge kept streaming, the watchdog kept
+    /// re-kicking it, the 10 Hz ticker kept running and the screen never slept — and
+    /// because `isStreaming` stayed true, `DeviceStore.beginBackgroundGrace` never
+    /// disconnected, so `bluetooth-central` kept the app alive in a pocket, draining the
+    /// phone and the gauge for a workout that was already over.
+    ///
+    /// `cueTail` delays only the cue engines' shutdown, so the finish chord that the same
+    /// event just queued is heard in full; nil ends them now. Idempotent: everything else
+    /// happens once, and a second call can only bring a pending cue shutdown forward.
+    private func quiesce(cueTail: Duration?) {
+        // A session driven without `begin()` — the engine tests do this — acquired
+        // nothing, so it has nothing to let go of; releasing the idle lock here would
+        // unbalance somebody else's.
+        guard hasBegun else { return }
+        if !isQuiesced {
+            isQuiesced = true
+            activityStart?.cancel()
+            activityStart = nil
+            ticker?.cancel()
+            ticker = nil
+            streamWatchdog?.cancel()
+            streamWatchdog = nil
+            device.onSample = nil
+            // Never leave the gauge streaming behind us: it drains its own battery for ten
+            // minutes and the user blames the app. Stopping it here is also what lets the
+            // background grace disconnect a gauge nobody is using any more.
+            if device.isStreaming { device.stopStreaming(cause: .sessionEnded) }
+            // Ended with the session, not left to expire: a card still saying "Pull" on
+            // the lock screen after you have finished is worse than no card at all.
+            Task { await liveActivity.end() }
+            IdleTimerLock.release()
+        }
+        guard !cuesEnded else { return }
+        cueShutdown?.cancel()
+        cueShutdown = nil
+        guard let cueTail else {
+            endCues()
+            return
+        }
+        // The player strongly as well as `self` weakly: a session released during the
+        // tail must still let its player go, rather than leave an audio session active.
+        let cues = self.cues
+        cueShutdown = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: cueTail)
+            guard !Task.isCancelled else { return }
+            if let self { self.endCues() } else { cues.end() }
+        }
+    }
+
+    private func endCues() {
+        guard !cuesEnded else { return }
+        cuesEnded = true
+        cueShutdown = nil
         cues.end()
-        IdleTimerLock.release()
+    }
+
+    /// Long enough for `sessionCompleted`, the longest cue in the app (~0.5 s), to sound
+    /// out before the audio session is released.
+    static let finishCueTail: Duration = .seconds(1)
+
+    // MARK: - The unsaved-session draft
+
+    /// Write the finished session to disk, BEFORE anybody is asked whether to keep it.
+    /// Only when there is something to keep — a session with no work shows no Save.
+    private func writeDraft() {
+        guard hasBegun, let draftStore, runner.didAnyWork, let finishedAt else { return }
+        let draft = UnsavedSessionDraft(id: sessionID, plan: plan, reps: runner.results,
+                                        startedAt: startedAt, finishedAt: finishedAt,
+                                        templateID: template.id, templateName: template.name)
+        // Best-effort: a draft that cannot be written costs the recovery, never the
+        // summary in front of you, whose Save does not depend on it.
+        guard (try? draftStore.write(draft)) != nil else { return }
+        LiveSessionDrafts.insert(sessionID)
+    }
+
+    /// The summary was answered — saved or discarded — so there is nothing to recover.
+    /// Called on BOTH, and only after a save that landed: a failed save keeps the draft.
+    func clearDraft() {
+        draftStore?.delete(id: sessionID)
+        LiveSessionDrafts.remove(sessionID)
     }
 
     /// The session's real first phase is connect-and-tare, which is why Start on Today
@@ -532,9 +659,13 @@ final class RunnerSession {
         let emitted = runner.handle(event, at: now, recordedAt: ProcessInfo.processInfo.systemUptime)
         if runner.isFinished, finishedAt == nil {
             finishedAt = startedAt.addingTimeInterval(runner.finishedElapsedSeconds ?? 0)
+            // On disk FIRST, so there is no instant in which the result exists only in
+            // memory behind a summary that has not been answered.
+            writeDraft()
             // The summary may stay open for minutes. Its unfinished save is not a live
-            // workout, and must not leave a lock-screen countdown running behind it.
-            Task { await liveActivity.end() }
+            // workout: no lock-screen countdown, no stream, no ticker, no awake screen.
+            // The cues below still play — the tail keeps the engines up for the chord.
+            quiesce(cueTail: Self.finishCueTail)
         }
         publish()
         if let id = runner.newGripID, announcedGrips.insert(id).inserted {
@@ -599,12 +730,7 @@ final class RunnerSession {
     /// number would spend ActivityKit's budget on frames it would have drawn anyway.
     private func pushActivity() {
         guard !snapshot.isFinished, liveActivity.isRunning, let grip = snapshot.grip else { return }
-        let signature = ActivitySignature(grip: grip,
-                                          side: snapshot.side ?? .both,
-                                          phase: activityPhase,
-                                          setNumber: snapshot.setNumber ?? 1,
-                                          repPosition: snapshot.pullPosition,
-                                          weightUnit: weightUnit)
+        let signature = activitySignature(grip: grip)
         // **Compared WITHOUT `endsAt`, and that is the whole point.** `endsAt` is
         // `now + secondsRemaining`, so it drifts by fractions of a second on every one of
         // the ten publishes a second — comparing it would push ten times a second and
@@ -621,6 +747,12 @@ final class RunnerSession {
 
     /// Everything that should force a push. Deliberately excludes the clock and the live
     /// load: both move continuously and neither is something the widget needs told.
+    ///
+    /// **`clockStopped` is in it**, because a hold clock standing still IS a change of
+    /// state — and it used to be missing. Coming off the edge mid-hold stops the rep's
+    /// clock (RE-GRIP; EASE OFF over a band; a lost link), but the card had already been
+    /// handed a deadline and `Text(timerInterval:)` counted on to zero regardless: the lock
+    /// screen said the hold was over while the app was still waiting for it.
     private struct ActivitySignature: Equatable {
         var grip: GripSpec
         var side: Side
@@ -628,13 +760,27 @@ final class RunnerSession {
         var setNumber: Int
         var repPosition: Int
         var weightUnit: WeightUnit
+        var clockStopped: Bool
+    }
+
+    private func activitySignature(grip: GripSpec) -> ActivitySignature {
+        ActivitySignature(grip: grip,
+                          side: snapshot.side ?? .both,
+                          phase: activityPhase,
+                          setNumber: snapshot.setNumber ?? 1,
+                          repPosition: snapshot.pullPosition,
+                          weightUnit: weightUnit,
+                          clockStopped: snapshot.holdClockIsStopped)
     }
 
     private func activityState(grip: GripSpec) -> SessionActivity.ContentState {
         let phase = activityPhase
-        // ARMED runs no clock — it waits on you, with no timeout, by design. So the
-        // deadline goes out nil and the hold LENGTH goes out instead; see `pendingSeconds`.
-        let isArmed = phase == .armed
+        // ARMED runs no clock — it waits on you, with no timeout, by design — and neither
+        // does a hold whose clock has STOPPED. Both send the deadline nil and the seconds
+        // the screen shows instead, drawn dimmed; see `pendingSeconds`. A stopped hold's
+        // number is what is still owed, frozen, and the push that restarts the clock
+        // brings a fresh deadline with it.
+        let showsPending = phase == .armed || snapshot.holdClockIsStopped
         let remainingInterval = runner.countdownRemainingInterval(
             at: ProcessInfo.processInfo.systemUptime) ?? Double(snapshot.secondsShown)
         return SessionActivity.ContentState(
@@ -647,10 +793,10 @@ final class RunnerSession {
             targetHiKg: snapshot.targetBand?.upperBound,
             // An ABSOLUTE deadline, recomputed from the same countdown the screen shows.
             // Converting to a Date here is what lets the widget tick without us.
-            endsAt: phase.runsCountdown && remainingInterval > 0
+            endsAt: phase.runsCountdown && !showsPending && remainingInterval > 0
                 ? Date.now.addingTimeInterval(remainingInterval)
                 : nil,
-            pendingSeconds: isArmed ? snapshot.secondsShown : nil,
+            pendingSeconds: showsPending ? snapshot.secondsShown : nil,
             displayWeightUnit: weightUnit)
     }
 
@@ -753,4 +899,12 @@ struct RunnerSnapshot: Equatable {
     /// 1 because "Pull 0 of 12" says a session has not started, and by the time anyone
     /// can read it, it has.
     var pullPosition: Int { max(1, min(completedRepCount + 1, plannedRepCount)) }
+
+    /// A rep is under way but its clock is NOT running: off the edge (RE-GRIP), over the
+    /// band (EASE OFF), or the link gone. Only ever while working — a rest runs on the wall
+    /// clock whatever the gauge is doing, and armed never had a clock to stop.
+    var holdClockIsStopped: Bool {
+        guard case .working = phase else { return false }
+        return isDropped || isOverTarget || linkIsDown
+    }
 }

@@ -76,7 +76,12 @@ struct WatchRunnerView: View {
         Group {
             if let session {
                 if session.isFinished {
-                    WatchSummaryView(session: session, template: template) { dismiss() }
+                    WatchSummaryView(session: session, template: template) {
+                        // Saved or discarded; a failed save never gets here. Nothing is
+                        // left to offer back at the next launch.
+                        session.clearDraft()
+                        dismiss()
+                    }
                 } else {
                     TabView {
                         face(session)
@@ -92,12 +97,17 @@ struct WatchRunnerView: View {
             guard session == nil else { return }
             // The maxes are read ONCE, here — a session's targets must not move under
             // the climber because a max was recorded on the phone mid-workout.
+            // `.standard` drafts, as on the phone: a finished session is on disk until it
+            // is saved or discarded, so a watch taken off behind the summary keeps it.
             let new = RunnerSession(template: template, device: device,
                                     maxes: maxRecords.maxTable(), timerOnly: timerOnly,
-                                    cues: WatchCuePlayer())
+                                    cues: WatchCuePlayer(), draftStore: .standard)
             session = new
             new.begin()
-            if !timerOnly { readout.begin(reading: device) }
+            if !timerOnly {
+                readout.pollsSlowly = dimmed
+                readout.begin(reading: device)
+            }
             #if DEBUG
             // Headless verification: the watch simulator cannot answer the Health
             // permission sheet a workout session raises, so `-noWorkoutSession` runs
@@ -111,15 +121,37 @@ struct WatchRunnerView: View {
             keeper.end()
             readout.end()
         }
+        // **The finish lets go of the wrist too**, not the screen's disappearance. The
+        // summary can sit there with the watch on a bench for as long as it likes; the
+        // workout session was keeping the app awake — and a workout running in Fitness —
+        // for a session that was already over. `RunnerSession` quiesces the gauge and the
+        // ticker at the same instant; see `RunnerSession.quiesce`.
+        .onChange(of: session?.isFinished ?? false) { _, finished in
+            guard finished else { return }
+            keeper.end()
+            readout.end()
+        }
+        // Always On redraws once a second, so reading the gauge five times a second for
+        // it is four reads nobody sees.
+        .onChange(of: dimmed) { _, dimmed in readout.pollsSlowly = dimmed }
         .onChange(of: device.state.isConnected) { _, connected in
             session?.connectionChanged(isConnected: connected)
         }
         .onChange(of: scenePhase) { _, phase in
-            // NO pause on leaving the foreground, unlike the phone: the workout session
+            // NO pause on leaving the foreground while a workout session is RUNNING: it
             // keeps the process and the stream alive with the wrist down, so a rep keeps
             // counting. Coming back re-kicks the stream for the same reason the phone
             // does — the burst the radio buffered while the screen slept.
             if phase == .active { session?.startIfReady(cause: .foreground) }
+            // **Without one, the phone's rule** (`BackgroundPausePolicy`): Health refused,
+            // unavailable, still starting, or ended by the system — nothing keeps the app
+            // alive, watchOS suspends it, the ticker and the samples stop, and a rep would
+            // stall silently at whatever it had accrued. Pausing says so, and a pause needs
+            // a deliberate tap to come back from. Gauge or no gauge: on the wrist it is the
+            // workout session, not the Bluetooth link, that buys background time.
+            if phase == .background, keeper.state != .running, session?.isFinished == false {
+                session?.send(.pause)
+            }
         }
     }
 
@@ -168,11 +200,14 @@ struct WatchRunnerView: View {
             // unreadable from a bench (Nuri, 2026-09-19).
             HStack(alignment: .lastTextBaseline, spacing: 10) {
                 if !timerOnly {
-                    hero(WeightUnit.kg.number(readout.kg), unit: WeightUnit.kg.symbol,
-                         ink: snapshot.hasSignal ? ink : quiet, quiet: quiet, rolls: false)
+                    // A LEAF: it reads `readout.kg` itself, so a changing load redraws
+                    // this numeral and nothing else. Read here, the whole face — fill,
+                    // prompt, hand, counters — re-evaluated five times a second.
+                    WatchLoadHero(readout: readout, heroSize: heroSize,
+                                  ink: snapshot.hasSignal ? ink : quiet, quiet: quiet)
                 }
-                hero("\(snapshot.secondsShown)", unit: String(localized: "s"),
-                     ink: ink, quiet: quiet, rolls: clockRolls)
+                WatchHeroNumeral(value: "\(snapshot.secondsShown)", unit: String(localized: "s"),
+                                 heroSize: heroSize, ink: ink, quiet: quiet, rolls: clockRolls)
             }
             if let grip = snapshot.grip {
                 HStack(spacing: 8) {
@@ -208,27 +243,6 @@ struct WatchRunnerView: View {
             }
         }
         .padding(.horizontal, 4)
-    }
-
-    /// A numeral and its unit. `rolls` is the difference between a CLOCK and a
-    /// MEASUREMENT, the phone's rule: the countdown rolls, the load snaps — and a clock
-    /// stops rolling too once the face is dimmed or the battery rationed (`NumeralRoll`).
-    private func hero(_ value: String, unit: String, ink: Color, quiet: Color, rolls: Bool) -> some View {
-        HStack(alignment: .lastTextBaseline, spacing: 2) {
-            // Rolls without `.numericText()` — see `RollingNumeral`; on the wrist the
-            // blur that transition renders on the CPU would be paid out of the battery.
-            RollingNumeral(value: value, countsDown: true, rolls: rolls, shift: heroSize * 0.25) { value in
-                Text(value)
-                    .font(.system(size: heroSize, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-            }
-                .foregroundStyle(ink)
-            Text(unit)
-                .font(.caption2)
-                .foregroundStyle(quiet)
-        }
     }
 
     /// The next hand replaces the word during a rest — the wrist has room for one
@@ -364,5 +378,49 @@ struct WatchRunnerView: View {
                 .accessibilityIdentifier("watch.end")
             }
         }
+    }
+}
+
+/// A numeral and its unit. `rolls` is the difference between a CLOCK and a MEASUREMENT,
+/// the phone's rule: the countdown rolls, the load snaps — and a clock stops rolling too
+/// once the face is dimmed or the battery rationed (`NumeralRoll`).
+private struct WatchHeroNumeral: View {
+    let value: String
+    let unit: String
+    let heroSize: CGFloat
+    let ink: Color
+    let quiet: Color
+    let rolls: Bool
+
+    var body: some View {
+        HStack(alignment: .lastTextBaseline, spacing: 2) {
+            // Rolls without `.numericText()` — see `RollingNumeral`; on the wrist the
+            // blur that transition renders on the CPU would be paid out of the battery.
+            RollingNumeral(value: value, countsDown: true, rolls: rolls, shift: heroSize * 0.25) { value in
+                Text(value)
+                    .font(.system(size: heroSize, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
+                .foregroundStyle(ink)
+            Text(unit)
+                .font(.caption2)
+                .foregroundStyle(quiet)
+        }
+    }
+}
+
+/// The live load, as its own view so its observation of `WatchForceReadout.kg` stops
+/// here. The phone's leaf-view rule (`LiveForceReadout`), on the wrist.
+private struct WatchLoadHero: View {
+    let readout: WatchForceReadout
+    let heroSize: CGFloat
+    let ink: Color
+    let quiet: Color
+
+    var body: some View {
+        WatchHeroNumeral(value: WeightUnit.kg.number(readout.kg), unit: WeightUnit.kg.symbol,
+                         heroSize: heroSize, ink: ink, quiet: quiet, rolls: false)
     }
 }
