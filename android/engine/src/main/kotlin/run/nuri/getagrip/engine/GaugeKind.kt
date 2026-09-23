@@ -33,11 +33,9 @@ data class GaugeReading(
 /// malformed input must stop the walk cleanly and return whatever decoded whole;
 /// real BLE delivers short reads.
 ///
-/// TRANSLATION NOTE: Swift declares this as a protocol with `mutating func ingest`,
-/// which value types adopt; Kotlin has no mutating-method concept, so every conformer
-/// is a mutable CLASS and the client mints a fresh instance per link exactly as Swift
-/// mints a fresh struct. The protocol extension's `batteryFraction { nil }` default
-/// becomes the interface property's default getter.
+/// TRANSLATION NOTE: Swift's struct conformers with `mutating func ingest` are mutable
+/// CLASSES here, minted fresh per link just the same. The protocol extension's
+/// `batteryFraction { nil }` default is the interface property's default getter.
 interface GaugeFrameDecoder {
     fun ingest(data: ByteArray): List<GaugeReading>
 
@@ -68,10 +66,8 @@ object SyntheticSampleClock {
 /// `Shared/`, which must never import CoreBluetooth. `CBUUID` conversion happens
 /// in `Sources/BLE`.
 ///
-/// TRANSLATION NOTE: `equals`/`hashCode` are hand-written because Kotlin's generated
-/// data-class equality compares a `ByteArray` by REFERENCE, where Swift's `Data`
-/// compares by value. Two profiles built from the same bytes must be equal — the
-/// registry tests assert exactly that.
+/// TRANSLATION NOTE: hand-written `equals`/`hashCode`, because generated equality
+/// compares a `ByteArray` by REFERENCE where Swift's `Data` compares by value.
 data class GaugeGattProfile(
     val serviceUUID: String,
     val notifyCharacteristicUUID: String,
@@ -298,10 +294,9 @@ enum class GaugeKind(val rawValue: String) {
     /// (`requiresRemoteCalibration`). Nil for everything else: handing a coefficient to
     /// a gauge that reports kilograms would be a mistake with a name.
     ///
-    /// TRANSLATION NOTE: the tare count is a defaulted parameter here where Swift leaves
-    /// it to `Decoder`'s own default. Same value, one extra door — the shared codec
-    /// fixtures tare on nine samples rather than a hundred so a case is two frames long,
-    /// and they reach the decoder through this factory on both platforms.
+    /// TRANSLATION NOTE: the tare count is a defaulted parameter here (Swift leaves it to
+    /// `Decoder`'s default) so the shared fixtures can tare on nine samples through this
+    /// factory, keeping each case two frames long.
     fun makeCalibratedFrameDecoder(
         coefficient: Double,
         tareSampleCount: Int = FrezDynoCodec.defaultTareSampleCount,

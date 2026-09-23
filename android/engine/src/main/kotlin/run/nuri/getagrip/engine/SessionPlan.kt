@@ -13,12 +13,9 @@ import java.time.format.FormatStyle
 import java.util.Locale
 import java.util.UUID
 
-// The routine, as value types. Everything here is what the runner executes, what the
-// builder edits and what a log freezes — one vocabulary, no DTO layer, no separate
-// "template model" that has to be kept in step.
-//
-// Vocabulary note that runs through the whole app: the MODEL says rep, the UI says
-// pull. One rep IS one pull; nothing counts halves.
+// The routine, as value types: what the runner executes, the builder edits and a log
+// freezes — one vocabulary, no DTO layer. The MODEL says rep, the UI says pull; one rep
+// IS one pull, and nothing counts halves.
 //
 // TRANSLATION NOTE (from Shared/Engine/SessionPlan.swift): Swift's `var name: String`
 // on an enum cannot survive — `name` is final on Kotlin's `Enum` — so every enum's
@@ -47,8 +44,7 @@ enum class Side(val rawValue: String) {
             both -> L10n.tr("Both")
         }
 
-    /// Set in caps because it is read at arm's length, mid-set, by someone whose eyes
-    /// are on a fingerboard rather than on the phone.
+    /// Caps: read at arm's length, mid-set, by eyes on a fingerboard.
     val prompt: String
         get() = when (this) {
             left -> L10n.tr("LEFT")
@@ -112,9 +108,8 @@ enum class HandMode(val rawValue: String) {
     companion object {
         fun fromRaw(raw: String): HandMode? = entries.firstOrNull { it.rawValue == raw }
 
-        /// The decode door. A mode written by a newer build lands here as an unknown raw
-        /// and becomes the default rather than throwing — the routine survives, one field
-        /// is wrong, and `SessionTemplate.handModeRaw` still holds the original verbatim.
+        /// The decode door: a newer build's unknown mode becomes the default rather than
+        /// throwing, while `SessionTemplate.handModeRaw` keeps the original verbatim.
         fun fallback(raw: String): HandMode = fromRaw(raw) ?: alternateEachRep
     }
 }
@@ -154,9 +149,8 @@ data class SetPlan(
     val hasTarget: Boolean get() = targetLoKg != null || targetHiKg != null
     val hasPercentTarget: Boolean get() = targetLoPercent != null || targetHiPercent != null
 
-    /// Normalized on the way out: an upside-down band is never STORED, and is never
-    /// returned either. One endpoint alone gives a degenerate range — a target line
-    /// rather than a band, which is exactly what one endpoint means.
+    /// Normalized on the way out, so an upside-down band is never returned. One endpoint
+    /// alone is a degenerate range — a target line, which is what one endpoint means.
     val targetBand: ClosedFloatingPointRange<Double>? get() = band(targetLoKg, targetHiKg)
 
     /// This set's own percentage band, ignoring the routine's.
@@ -190,9 +184,8 @@ data class SetPlan(
         val holdRange = 1..120
         val restRange = 0..600
 
-        /// 1 %…100 %. The ceiling is 100 rather than something "sensible" like 60 because a
-        /// max-effort routine is a legitimate thing to author, and the floor is above zero
-        /// because a 0 % target is a target of nothing.
+        /// 1 %…100 %: a max-effort routine is legitimate to author, and a 0 % target is a
+        /// target of nothing.
         val percentRange = 0.01..1.0
 
         /// The one place two optional endpoints become a range, shared with `SessionPlan` so
@@ -239,9 +232,8 @@ data class SetPlan(
 
 // MARK: - The routine
 
-/// What the runner executes and what a log freezes. Deliberately carries NO
-/// scheduling: reminders and sessions-a-day are things a person arranges, not things a
-/// session does, and mixing them in is how a "session" grows into Frez's three layers.
+/// What the runner executes and a log freezes. Carries NO scheduling: reminders and
+/// sessions-a-day are arranged by a person, not done by a session.
 data class SessionPlan(
     val name: String = L10n.tr("Daily no-hangs"),
     val sets: List<SetPlan> = emptyList(),
@@ -260,9 +252,8 @@ data class SessionPlan(
     /// "Get ready" before the FIRST rep of each set, not before every rep.
     val leadInSeconds: Int = 5,
 
-    /// Engagement DETECTOR, not intensity: "you have taken the load". One value for the
-    /// whole routine because ~2 kg sits below every set's working load. Intensity lives
-    /// in each set's target band.
+    /// Engagement DETECTOR, not intensity: "you have taken the load". One value because
+    /// ~2 kg sits below every set's working load; intensity lives in the target band.
     val thresholdKg: Double = 2.0,
 
     /// Hold the rest countdown until you are actually OFF the edge. Default ON, even for
@@ -340,10 +331,8 @@ data class SessionPlan(
         fun fromJson(o: JsonObject): SessionPlan = SessionPlan(
             name = o.stringOr("name", L10n.tr("Daily no-hangs")),
             sets = o.valueOr("sets", emptyList()) { setsFromJson(it) },
-            // Falls back rather than throwing, and that is SAFE here only because a
-            // SessionPlan blob lives inside a write-once WorkoutLog. The LIVE routine keeps
-            // its mode in SessionTemplate.handModeRaw verbatim, so a mode from a newer
-            // build is never rewritten by this build reading it.
+            // Falling back is SAFE only because this blob is a write-once WorkoutLog's;
+            // the LIVE routine keeps its raw mode in SessionTemplate.handModeRaw.
             handMode = HandMode.fallback(
                 o.stringOr("handMode", HandMode.alternateEachRep.rawValue)
             ),
@@ -361,8 +350,7 @@ data class SessionPlan(
             thresholdKg = thresholdRange.clamping(o.doubleOr("thresholdKg", 2.0)),
             // Absent key → true, so an existing routine GAINS the behaviour (see the property).
             waitForReleaseBeforeRest = o.boolOr("waitForReleaseBeforeRest", true),
-            // Absent key → true, so every routine written before this existed keeps the
-            // behaviour it was authored under.
+            // Absent key → true: older routines keep the behaviour they were authored under.
             pausesOutsideTargetBand = o.boolOr("pausesOutsideTargetBand", true),
             targetLoPercent = o.optionalDouble("targetLoPercent")
                 ?.let { SetPlan.percentRange.clamping(it) },
@@ -443,9 +431,8 @@ class ReminderTime(minutesFromMidnight: Int) : Comparable<ReminderTime>, JsonEnc
 
 // MARK: - The draft
 
-/// The wizard's working copy — and, because the wizard IS the editor, the ONE type
-/// that "new routine", "prefill" and "edit what I have" all produce. There is no
-/// separate create path to keep in step with a separate edit path.
+/// The editor's working copy — the ONE type that new, prefilled and edited routines
+/// all produce, so no create path drifts from an edit path.
 data class RoutineDraft(
     /// null = this routine does not exist yet.
     val templateID: UUID? = null,
@@ -458,9 +445,8 @@ data class RoutineDraft(
     val parkedReminders: List<ReminderTime> = emptyList(),
     val remindersEnabled: Boolean = true,
 
-    /// A WHENEVER routine (Nuri, 2026-08-10): no daily target, no reminders, never
-    /// owed — a max day is something you do when you're fresh, not a ritual you break.
-    /// Sessions still log honestly; the routine just never asks for one.
+    /// A WHENEVER routine (Nuri, 2026-08-10): no daily target, no reminders, never owed —
+    /// a max day is done when you're fresh, not a ritual you break.
     val isOnDemand: Boolean = false,
 ) : JsonEncodable {
 
@@ -479,10 +465,9 @@ data class RoutineDraft(
             return null
         }
 
-    /// The shape that is safe to persist: name trimmed (empty → the house default),
-    /// reminders sorted and deduped, target bands the right way up, dead sets dropped,
-    /// sessions clamped. Called on the way INTO the store, never on the way out — a
-    /// normalize-on-read would rewrite a blob nobody edited and sync a no-op.
+    /// The shape that is safe to persist (trimmed name, tidy reminders, bands the right
+    /// way up, dead sets dropped). Applied INTO the store, never on read — that would
+    /// rewrite a blob nobody edited and sync a no-op.
     val normalized: RoutineDraft
         get() {
             val trimmed = plan.name.trim()
@@ -505,9 +490,7 @@ data class RoutineDraft(
                         s.copy(note = s.note.trim())
                     }
             )
-            // The routine's own band gets the same treatment: dragging "From" past "To" is
-            // one gesture in the builder, and an inverted band would resolve to an inverted
-            // kilogram range on every set that inherits it.
+            // The routine's own band too: an inverted one would invert every inheriting set.
             val planLo = outPlan.targetLoPercent
             val planHi = outPlan.targetHiPercent
             if (planLo != null && planHi != null && planLo > planHi) {
@@ -546,9 +529,8 @@ data class RoutineDraft(
             return if (out.isOnDemand) out.copy(remindersEnabled = false) else out
         }
 
-    /// The ONE mutator that parks and restores reminder times. Anything that sets
-    /// `sessionsPerDay` directly loses the user's times the first time they try two a
-    /// day, change their mind, and change it back.
+    /// The ONE mutator that parks and restores reminder times; setting `sessionsPerDay`
+    /// directly loses the user's times on the first 2 → 1 → 2.
     ///
     /// TRANSLATION NOTE: Swift's `mutating func setSessionsPerDay(_:)`. A Kotlin value
     /// cannot mutate itself, so this RETURNS the updated draft; the name is kept so the
@@ -750,12 +732,10 @@ data class RoutineDraft(
             ),
         )
 
-        /// The C4 max-testing ladder (camp4humanperformance.com/blog/progressor), as a
-        /// one-tap prefill: 3 s pulls, 5 s rests, one hand at a time, one grip ramped over
-        /// three sets to a final two-rep max effort. The ramp sets carry percent bands; the
-        /// final set deliberately carries NONE — a band gates the rep clock, and pausing a
-        /// max attempt the instant it fades below 95 % is exactly wrong. A WHENEVER routine
-        /// by construction: nobody maxes daily.
+        /// The C4 max-testing ladder (camp4humanperformance.com/blog/progressor): 3 s pulls,
+        /// 5 s rests, one hand at a time, one grip ramped over three sets to a two-rep max.
+        /// The final set carries NO band: a band gates the clock, and pausing a max attempt
+        /// as it fades below 95 % is exactly wrong. A WHENEVER routine: nobody maxes daily.
         /// Computed for the same reason as `starter`.
         val maxDay: RoutineDraft
             get() {

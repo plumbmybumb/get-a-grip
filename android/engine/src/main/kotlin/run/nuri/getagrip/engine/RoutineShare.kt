@@ -137,8 +137,8 @@ object RoutineShare {
         val document = BlobCodec.parse(String(inflated, Charsets.UTF_8))
             ?: throw RoutineShareError.unreadable
 
-        // Version BEFORE the full decode: a future format may reshape the plan, and must
-        // read as "update the app", not "damaged" — the strict plan decode would answer first.
+        // Version BEFORE the full decode: a future format may reshape the plan and must
+        // read as "update the app", not "damaged", which the strict plan decode would say.
         val probe = VersionProbe.fromJson(document) ?: throw RoutineShareError.unreadable
         if (probe.v < 1) throw RoutineShareError.unreadable
         if (probe.v > currentVersion) throw RoutineShareError.newerVersion

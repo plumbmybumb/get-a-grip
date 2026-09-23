@@ -11,7 +11,8 @@ package run.nuri.getagrip.engine
 // The one gauge with NO CONNECTION AT ALL: the scale shouts its reading in the
 // manufacturer data of every advertisement, so there is no GATT profile or frame
 // decoder. The client scans with duplicates allowed and hands each frame to
-// `kilogramsFromManufacturerData`. "Connected" means "advertisements are arriving", so silence ends the link.
+// `kilogramsFromManufacturerData`. "Connected" means "advertisements are arriving", so
+// silence ends the link.
 //
 // The weight field is BIG-ENDIAN, unlike the Progressor and BLE's own headers. Read
 // backwards, a 26 kg pull reports 102.5 kg — plausible, hence a test of both orders.

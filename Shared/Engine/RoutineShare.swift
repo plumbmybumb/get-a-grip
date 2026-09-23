@@ -112,8 +112,8 @@ enum RoutineShare {
         let json = inflated as Data
         guard json.count <= maxDecompressedBytes else { throw RoutineShareError.unreadable }
 
-        // Version BEFORE the full decode: a future format may reshape the plan, and must
-        // read as "update the app", not "damaged" — the strict plan decode would answer first.
+        // Version BEFORE the full decode: a future format may reshape the plan and must
+        // read as "update the app", not "damaged", which the strict plan decode would say.
         guard let probe = try? decoder.decode(VersionProbe.self, from: json) else {
             throw RoutineShareError.unreadable
         }

@@ -20,12 +20,10 @@ package run.nuri.getagrip.engine
 //   7 bytes  `05 80 <opcode> .. .. .. ck` typed reply to a query (battery, temperature)
 //   7 bytes  `05 <b1> w3 w2 w1 w0 ck`     weight upload, big-endian centi-kilograms
 //
-// TRANSLATION NOTE: every `[UInt8]` here becomes an `IntArray` of UNSIGNED byte
-// values (0…255), and every `UInt8` an `Int` in the same range. Kotlin's `Byte` is
-// signed, so `frame[1] != responseFlag` against a raw `Byte` would compare 0x80 to
-// −128 and quietly misclassify exactly the frames this file exists to tell apart.
-// The narrowing to real bytes happens once, in `command`, and the widening once, in
-// `Decoder.ingest`.
+// TRANSLATION NOTE: every `[UInt8]` is an `IntArray` of UNSIGNED byte values (0…255).
+// Kotlin's `Byte` is signed, so comparing 0x80 against a raw `Byte` (−128) would
+// misclassify exactly the frames this file tells apart. Narrowing happens once, in
+// `command`; widening once, in `Decoder.ingest`.
 
 object CTS500Codec {
 
@@ -112,9 +110,7 @@ object CTS500Codec {
 
     /// `05 <opcode> p0 p1 p2 ck`. The reference's `buildCommand`, port for port.
     ///
-    /// TRANSLATION NOTE: Swift's defaulted 3-tuple payload becomes three defaulted
-    /// parameters — Kotlin has no tuple, and a `Triple` would read worse at every
-    /// call site than the three bytes it stands for.
+    /// TRANSLATION NOTE: Swift's defaulted 3-tuple payload is three defaulted parameters.
     fun command(opcode: Int, p0: Int = 0x00, p1: Int = 0x00, p2: Int = 0x00): ByteArray {
         val body = intArrayOf(header, opcode, p0, p1, p2)
         return (body + checksum(body)).map { it.toByte() }.toByteArray()
@@ -178,9 +174,7 @@ object CTS500Codec {
     /// neighbours, the kind of detail that yields a plausible wrong number, hence a test
     /// whose two byte orders differ by six orders of magnitude.
     ///
-    /// TRANSLATION NOTE: Swift's argument label folds into the name here —
-    /// `kilograms(fromWeightFrame:)` becomes `kilogramsFromWeightFrame`, since Kotlin
-    /// has no labels and a bare `kilograms(frame)` would lose which frame kind it takes.
+    /// TRANSLATION NOTE: Swift's `kilograms(fromWeightFrame:)`, its label folded into the name.
     fun kilogramsFromWeightFrame(frame: IntArray): Double? {
         if (!isWeightFrame(frame)) return null
         val centi = (frame[2].toUInt() shl 24) or

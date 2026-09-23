@@ -100,9 +100,8 @@ sealed interface RunnerEvent {
     data object Abort : RunnerEvent
 }
 
-/// What the session wants the app to say or do. Returned from `handle`, never played
-/// by the engine — which is what lets a test assert the entire cue schedule of a
-/// workout without an audio session existing.
+/// What the session wants the app to say or do. Returned, never played, so a test can
+/// assert a workout's whole cue schedule without an audio session.
 sealed interface RunnerCue {
     data class LeadInTick(val secondsRemaining: Int) : RunnerCue
     data class Armed(val side: Side) : RunnerCue
@@ -164,9 +163,8 @@ class SessionRunner(
         // Skip is the only way to end a rep early; a dropped connection likewise waits for
         // the gauge rather than abandoning work somebody actually did.
 
-        /// Release sits BELOW engage by this band, so force hovering exactly at the
-        /// threshold cannot chatter the rep on and off. 5% of the threshold, clamped to
-        /// something a hand can actually feel.
+        /// Release sits BELOW engage by this band so force hovering at the threshold cannot
+        /// chatter the rep on and off: 5% of the threshold, clamped to what a hand can feel.
         fun releaseBand(thresholdKg: Double): Double = min(2.0, max(0.5, thresholdKg * 0.05))
     }
 
@@ -218,9 +216,8 @@ class SessionRunner(
     /// keeps Swift's spelling (`SessionRunner(plan = …, maxes = …)`).
     val plan: SessionPlan = plan.executable
 
-    /// The session as a flat list of fully-resolved reps. `PlanMath.sequence` is the
-    /// single source of truth for what happens in what order, so the runner cannot
-    /// drift from the duration the routine advertised.
+    /// The session as a flat list of fully-resolved reps from `PlanMath.sequence`, so
+    /// the runner cannot drift from the duration the routine advertised.
     ///
     /// `maxes` is read ONCE here, which freezes the session's loads: percentage targets
     /// become kilograms per rep, per hand, so a max recorded next month cannot rewrite
@@ -258,9 +255,8 @@ class SessionRunner(
     var heldSeconds: Double = 0.0
         private set
 
-    /// True while a rep is alive but its clock is stopped because force fell below the
-    /// release threshold. The screen has to SAY this — a timer that silently stops
-    /// looks broken, and the climber's instinct is to pull harder rather than re-grip.
+    /// A rep is alive but its clock stopped because force fell below release. The screen
+    /// must SAY so: a silently stopped timer looks broken and provokes pulling harder.
     var isDropped: Boolean = false
         private set
 
@@ -278,8 +274,7 @@ class SessionRunner(
     /// fraction. Replaced whenever `countdownEndsAt` is.
     private var countdownDuration: Double = 0.0
 
-    /// Last value announced by a countdown cue, so a tick only speaks when the number
-    /// on screen actually changes.
+    /// Last second a countdown cue announced, so a tick speaks only when the number changes.
     private var lastAnnouncedSecond: Int = -1
     private var pausedAt: Double = 0.0
 
@@ -287,9 +282,9 @@ class SessionRunner(
     /// (pause, reconnect, tare) so an outage is never credited as hang time.
     private var lastSample: ForceSample? = null
 
-    /// Last accepted device timestamp. A notification beginning at or behind this mark
-    /// is a retransmission and is rejected as a unit. Cleared only by an explicit
-    /// timeline break; stale data can never authorize a new epoch by itself.
+    /// Last accepted device timestamp. A notification starting at or behind it is a
+    /// retransmission, rejected as a unit. Cleared only by an explicit timeline break,
+    /// so stale data can never authorize a new epoch.
     private var highWaterMicros: UInt? = null
     private var rejectingBatch = false
 
@@ -376,9 +371,8 @@ class SessionRunner(
         return arm(index, t)
     }
 
-    /// Hand the rep over to the climber. With a gauge that means WAITING for the load;
-    /// without one there is nothing to wait for, so the hold starts on the same beat —
-    /// which is exactly what a count-in is for.
+    /// Hand the rep over. With a gauge that means WAITING for the load; without one the
+    /// hold starts on the same beat, which is what a count-in is for.
     private fun arm(index: Int, t: Double): List<RunnerCue> {
         if (!timerOnly) {
             phase = RunnerPhase.Armed(index)
@@ -405,8 +399,8 @@ class SessionRunner(
         RunnerPhase.Idle, RunnerPhase.Finished -> null
     }
 
-    /// Record the current rep and move on. The ONE place a rep is closed, so every
-    /// outcome — completed, early, skipped, aborted — books the same fields.
+    /// Record the current rep and move on — the ONE place a rep is closed, so every
+    /// outcome books the same fields.
     private fun endCurrentRep(outcome: RepOutcome, t: Double): List<RunnerCue> {
         val index = pending(phase) ?: return emptyList()
         if (phase.isPaused) return emptyList()
@@ -439,8 +433,7 @@ class SessionRunner(
         )
     }
 
-    /// Move past `index`: rest if the slot calls for one, otherwise straight into the
-    /// next rep; finish if there is none.
+    /// Move past `index`: rest if the slot calls for one, else the next rep, else finish.
     private fun advance(index: Int, t: Double): List<RunnerCue> {
         val cues = mutableListOf<RunnerCue>()
         if (slots[index].isLastOfSet) {
@@ -472,8 +465,8 @@ class SessionRunner(
         return cues
     }
 
-    /// Force has dropped off the edge after a completed hold — start the rest that was
-    /// waiting for it. Also the path taken when the link dies mid-wait.
+    /// Start the rest a completed hold was waiting for: force dropped off the edge, or
+    /// the link died mid-wait.
     private fun beginRest(afterIndex: Int, t: Double): List<RunnerCue> {
         phase = RunnerPhase.Resting(afterIndex)
         return beginCountdown(slots[afterIndex].restAfter, t) { RunnerCue.RestTick(it) }
@@ -633,9 +626,8 @@ class SessionRunner(
     }
 
     private fun armedSample(sample: ForceSample, index: Int, t: Double): List<RunnerCue> {
-        // INSIDE the gate, not merely above its floor: with a target band the rep does
-        // not start until the load is actually in range, so blowing straight through the
-        // ceiling on the way up never banks the first tenth of a second at the wrong load.
+        // INSIDE the gate, not merely above its floor: blowing through a band's ceiling
+        // on the way up never banks the first tenth of a second at the wrong load.
         if (!gate(slots[index]).admits(sample.kg)) {
             engagedSince = null
             return emptyList()
@@ -683,10 +675,9 @@ class SessionRunner(
             warnedThisDip = false
             isDropped = false
             isOverTarget = false
-            // Accrue ONLY from sample-timestamp deltas, never from arrival time: arrival
-            // is subject to BLE batching and UI hitches, and crediting it would let a
-            // stalled phone invent hang time nothing measured. How much of one delta may
-            // be banked is `creditableDelta`, and it differs by which clock stamped it.
+            // Accrue ONLY from sample-timestamp deltas, never arrival time, which BLE
+            // batching and UI hitches distort. How much one delta may bank depends on
+            // which clock stamped it — see `creditableDelta`.
             val previous = lastSample
             if (previous != null && !linkIsDown) {
                 val credited = creditableDelta(sample.microsSince(previous).toULong())
@@ -706,9 +697,8 @@ class SessionRunner(
             return cues
         }
 
-        // Outside the gate: the clock stops and the rep STAYS ALIVE, for as long as it
-        // takes. A stall costs exactly the seconds it costs and nothing else — the same
-        // contract whether you came off the edge or went over the top of the range.
+        // Outside the gate: the clock stops and the rep STAYS ALIVE for as long as it
+        // takes, whether you came off the edge or went over the range.
         mustReengage = true
         isDropped = sample.kg < repGate.releaseLo
         isOverTarget = !isDropped
@@ -754,9 +744,8 @@ class SessionRunner(
         linkIsDown = true
         currentKg = 0.0
         breakTimeline()
-        // A rep waits for the gauge to come back; a REST does not. Waiting for a release
-        // nobody can observe would strand the session on a phase that has no clock and
-        // no way out but Skip — so the rest starts now and the countdown is honest.
+        // A rep waits for the gauge; a REST does not. Waiting for a release nobody can
+        // observe would strand the session with no clock and no way out but Skip.
         val current = phase
         if (current is RunnerPhase.Releasing) {
             return listOf(RunnerCue.ConnectionLost) + beginRest(current.slot, t)
@@ -799,9 +788,8 @@ class SessionRunner(
         return emptyList()
     }
 
-    /// Forget the previous sample so the next delta is not measured across a gap.
-    /// Called for every explicit discontinuity: pause, resume, disconnect, reconnect,
-    /// tare, and a watchdog-driven stream restart.
+    /// Forget the previous sample so no delta spans a gap: pause, resume, disconnect,
+    /// reconnect, tare and a watchdog stream restart.
     private fun breakTimeline() {
         lastSample = null
         highWaterMicros = null
@@ -886,8 +874,7 @@ class SessionRunner(
             return slots[next].grip != slots[resting.slot].grip
         }
 
-    /// The phase with any `.paused` wrapper removed — a paused rest is still a rest for
-    /// every purpose the screen has.
+    /// The phase without its `.paused` wrapper: a paused rest is still a rest on screen.
     private val unpaused: RunnerPhase
         get() {
             val current = phase
@@ -970,9 +957,8 @@ class SessionRunner(
     val completedRepCount: Int get() = _results.size
     val plannedRepCount: Int get() = slots.size
 
-    /// 1-based set position, for "SET 2 OF 6". Reads `displaySlot`, so a set break says
-    /// the set you are about to start rather than the one you just finished — the same
-    /// forward tense as the grip line and the pull count beside it.
+    /// 1-based set position, for "SET 2 OF 6". Reads `displaySlot`, so a set break names
+    /// the set you are about to start, in the same forward tense as the grip line.
     val setNumber: Int? get() = displaySlot?.let { it.setIndex + 1 }
 
     /// STORED, not computed: `RunnerSession.publish()` reads it on EVERY sample, where
@@ -990,9 +976,8 @@ class SessionRunner(
 
     val isFinished: Boolean get() = phase is RunnerPhase.Finished
 
-    /// A notification began at or behind the accepted device-time high-water mark, so
-    /// its whole batch is being rejected fail-closed. RunnerSession mirrors this into
-    /// its snapshot for the explicitly armed foreground recovery path.
+    /// A batch is being rejected fail-closed (it began at or behind the high-water mark).
+    /// RunnerSession mirrors this for the explicitly armed foreground recovery.
     val isRejectingStaleBatches: Boolean get() = rejectingBatch
 
     /// Any rep actually held — what decides whether a log is worth writing.

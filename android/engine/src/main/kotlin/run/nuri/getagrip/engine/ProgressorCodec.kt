@@ -34,9 +34,8 @@ object ProgressorGATT {
 
 // MARK: - Commands
 
-/// TRANSLATION NOTE: Swift's raw type is `UInt8`; Kotlin carries the opcode as an
-/// `Int` in 0…255 and narrows once, at the byte boundary in `encoded`. Every
-/// comparison in this file then reads as arithmetic instead of as a cast.
+/// TRANSLATION NOTE: Swift's `UInt8` raw type is an `Int` in 0…255 here, narrowed once
+/// at the byte boundary in `encoded`.
 enum class ProgressorCommand(val rawValue: Int) {
     tare(100),
     startWeightMeasurement(101),
@@ -73,10 +72,8 @@ enum class ProgressorCommand(val rawValue: Int) {
         /// could corrupt a device's calibration table. Confirm the exact layout against
         /// Tindeq's own tables before exposing any calibration UI.
         ///
-        /// TRANSLATION NOTE: named `addCalibrationPointPayload`, not
-        /// `addCalibrationPoint`, because Kotlin puts an enum entry and a companion
-        /// function of the same name in one lookup scope — Swift's `static func` and
-        /// `case` of the same name do not collide, Kotlin's would.
+        /// TRANSLATION NOTE: `addCalibrationPointPayload`, because a Kotlin enum entry and
+        /// a companion function of the same name collide where Swift's do not.
         fun addCalibrationPointPayload(knownWeightKg: Float): ByteArray {
             val bits = knownWeightKg.toRawBits()
             return byteArrayOf(

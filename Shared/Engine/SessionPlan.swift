@@ -3,12 +3,9 @@
 
 import Foundation
 
-// The routine, as value types. Everything here is what the runner executes, what the
-// builder edits and what a log freezes — one vocabulary, no DTO layer, no separate
-// "template model" that has to be kept in step.
-//
-// Vocabulary note that runs through the whole app: the MODEL says rep, the UI says
-// pull. One rep IS one pull; nothing counts halves.
+// The routine, as value types: what the runner executes, the builder edits and a log
+// freezes — one vocabulary, no DTO layer. The MODEL says rep, the UI says pull; one rep
+// IS one pull, and nothing counts halves.
 
 // MARK: - Sides
 
@@ -31,8 +28,7 @@ enum Side: String, Codable, Hashable, Sendable, CaseIterable {
         }
     }
 
-    /// Set in caps because it is read at arm's length, mid-set, by someone whose eyes
-    /// are on a fingerboard rather than on the phone.
+    /// Caps: read at arm's length, mid-set, by eyes on a fingerboard.
     var prompt: String {
         switch self {
         case .left:  String(localized: "LEFT")
@@ -98,9 +94,8 @@ enum HandMode: String, Codable, Hashable, Sendable, CaseIterable {
         }
     }
 
-    /// The decode door. A mode written by a newer build lands here as an unknown raw
-    /// and becomes the default rather than throwing — the routine survives, one field
-    /// is wrong, and `SessionTemplate.handModeRaw` still holds the original verbatim.
+    /// The decode door: a newer build's unknown mode becomes the default rather than
+    /// throwing, while `SessionTemplate.handModeRaw` keeps the original verbatim.
     init(fallback raw: String) {
         self = HandMode(rawValue: raw) ?? .alternateEachRep
     }
@@ -139,9 +134,8 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
     // Match the hold dial: positive whole seconds, including short 1–2 s pulls.
     static let holdRange = 1...120
     static let restRange = 0...600
-    /// 1 %…100 %. The ceiling is 100 rather than something "sensible" like 60 because a
-    /// max-effort routine is a legitimate thing to author, and the floor is above zero
-    /// because a 0 % target is a target of nothing.
+    /// 1 %…100 %: a max-effort routine is legitimate to author, and a 0 % target is a
+    /// target of nothing.
     static let percentRange = 0.01...1.0
 
     var overridesTiming: Bool { holdSeconds != nil || restSeconds != nil }
@@ -151,9 +145,8 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
     var hasTarget: Bool { targetLoKg != nil || targetHiKg != nil }
     var hasPercentTarget: Bool { targetLoPercent != nil || targetHiPercent != nil }
 
-    /// Normalized on the way out: an upside-down band is never STORED, and is never
-    /// returned either. One endpoint alone gives a degenerate range — a target line
-    /// rather than a band, which is exactly what one endpoint means.
+    /// Normalized on the way out, so an upside-down band is never returned. One endpoint
+    /// alone is a degenerate range — a target line, which is what one endpoint means.
     var targetBand: ClosedRange<Double>? { Self.band(lo: targetLoKg, hi: targetHiKg) }
 
     /// This set's own percentage band, ignoring the routine's.
@@ -201,9 +194,8 @@ extension SetPlan {
 
 // MARK: - The routine
 
-/// What the runner executes and what a log freezes. Deliberately carries NO
-/// scheduling: reminders and sessions-a-day are things a person arranges, not things a
-/// session does, and mixing them in is how a "session" grows into Frez's three layers.
+/// What the runner executes and a log freezes. Carries NO scheduling: reminders and
+/// sessions-a-day are arranged by a person, not done by a session.
 struct SessionPlan: Hashable, Sendable, Codable {
     var name: String = String(localized: "Daily no-hangs")
     var sets: [SetPlan] = []
@@ -218,9 +210,8 @@ struct SessionPlan: Hashable, Sendable, Codable {
     var setBreakSeconds: Int = 60
     /// "Get ready" before the FIRST rep of each set, not before every rep.
     var leadInSeconds: Int = 5
-    /// Engagement DETECTOR, not intensity: "you have taken the load". One value for the
-    /// whole routine because ~2 kg sits below every set's working load. Intensity lives
-    /// in each set's target band.
+    /// Engagement DETECTOR, not intensity: "you have taken the load". One value because
+    /// ~2 kg sits below every set's working load; intensity lives in the target band.
     var thresholdKg: Double = 2.0
     /// Hold the rest countdown until you are actually OFF the edge. Default ON, even for
     /// older routines: starting the clock when the hold completes charges the rest for
@@ -277,10 +268,8 @@ extension SessionPlan {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.name = c.value(.name, or: String(localized: "Daily no-hangs"))
         self.sets = c.value(.sets, or: [])
-        // Falls back rather than throwing, and that is SAFE here only because a
-        // SessionPlan blob lives inside a write-once WorkoutLog. The LIVE routine keeps
-        // its mode in SessionTemplate.handModeRaw verbatim, so a mode from a newer
-        // build is never rewritten by this build reading it.
+        // Falling back is SAFE only because this blob is a write-once WorkoutLog's;
+        // the LIVE routine keeps its raw mode in SessionTemplate.handModeRaw.
         self.handMode = HandMode(fallback: c.value(.handMode, or: HandMode.alternateEachRep.rawValue))
         // Left for every blob written before the field existed, and for a raw this build
         // does not know — `both` included, which is not a hand to start on.
@@ -294,8 +283,7 @@ extension SessionPlan {
         self.thresholdKg = Self.thresholdRange.clamping(c.value(.thresholdKg, or: 2.0))
         // Absent key → true, so an existing routine GAINS the behaviour (see the property).
         self.waitForReleaseBeforeRest = c.value(.waitForReleaseBeforeRest, or: true)
-        // Absent key → true, so every routine written before this existed keeps the
-        // behaviour it was authored under.
+        // Absent key → true: older routines keep the behaviour they were authored under.
         self.pausesOutsideTargetBand = c.value(.pausesOutsideTargetBand, or: true)
         self.targetLoPercent = c.optional(.targetLoPercent).map { SetPlan.percentRange.clamping($0) }
         self.targetHiPercent = c.optional(.targetHiPercent).map { SetPlan.percentRange.clamping($0) }
@@ -390,9 +378,8 @@ extension ReminderTime {
 
 // MARK: - The draft
 
-/// The wizard's working copy — and, because the wizard IS the editor, the ONE type
-/// that "new routine", "prefill" and "edit what I have" all produce. There is no
-/// separate create path to keep in step with a separate edit path.
+/// The editor's working copy — the ONE type that new, prefilled and edited routines
+/// all produce, so no create path drifts from an edit path.
 struct RoutineDraft: Hashable, Sendable, Codable {
     /// nil = this routine does not exist yet.
     var templateID: UUID? = nil
@@ -403,9 +390,8 @@ struct RoutineDraft: Hashable, Sendable, Codable {
     /// the user's own 19:00 rather than a default.
     var parkedReminders: [ReminderTime] = []
     var remindersEnabled: Bool = true
-    /// A WHENEVER routine (Nuri, 2026-08-10): no daily target, no reminders, never
-    /// owed — a max day is something you do when you're fresh, not a ritual you break.
-    /// Sessions still log honestly; the routine just never asks for one.
+    /// A WHENEVER routine (Nuri, 2026-08-10): no daily target, no reminders, never owed —
+    /// a max day is done when you're fresh, not a ritual you break.
     var isOnDemand: Bool = false
 
     static let sessionsRange = 1...4
@@ -422,10 +408,9 @@ struct RoutineDraft: Hashable, Sendable, Codable {
         return nil
     }
 
-    /// The shape that is safe to persist: name trimmed (empty → the house default),
-    /// reminders sorted and deduped, target bands the right way up, dead sets dropped,
-    /// sessions clamped. Called on the way INTO the store, never on the way out — a
-    /// normalize-on-read would rewrite a blob nobody edited and sync a no-op.
+    /// The shape that is safe to persist (trimmed name, tidy reminders, bands the right
+    /// way up, dead sets dropped). Applied INTO the store, never on read — that would
+    /// rewrite a blob nobody edited and sync a no-op.
     var normalized: RoutineDraft {
         var out = self
         let trimmed = out.plan.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -445,9 +430,7 @@ struct RoutineDraft: Hashable, Sendable, Codable {
                 s.note = s.note.trimmingCharacters(in: .whitespacesAndNewlines)
                 return s
             }
-        // The routine's own band gets the same treatment: dragging "From" past "To" is
-        // one gesture in the builder, and an inverted band would resolve to an inverted
-        // kilogram range on every set that inherits it.
+        // The routine's own band too: an inverted one would invert every inheriting set.
         if let lo = out.plan.targetLoPercent, let hi = out.plan.targetHiPercent, lo > hi {
             out.plan.targetLoPercent = hi
             out.plan.targetHiPercent = lo
@@ -521,9 +504,8 @@ struct RoutineDraft: Hashable, Sendable, Codable {
         return sets.allSatisfy { value($0) == first } ? first : nil
     }
 
-    /// The ONE mutator that parks and restores reminder times. Anything that sets
-    /// `sessionsPerDay` directly loses the user's times the first time they try two a
-    /// day, change their mind, and change it back.
+    /// The ONE mutator that parks and restores reminder times; setting `sessionsPerDay`
+    /// directly loses the user's times on the first 2 → 1 → 2.
     mutating func setSessionsPerDay(_ n: Int) {
         let target = Self.sessionsRange.clamping(n)
         reminders = Self.tidy(reminders)
@@ -649,12 +631,10 @@ extension RoutineDraft {
         return d
     }
 
-    /// The C4 max-testing ladder (camp4humanperformance.com/blog/progressor), as a
-    /// one-tap prefill: 3 s pulls, 5 s rests, one hand at a time, one grip ramped over
-    /// three sets to a final two-rep max effort. The ramp sets carry percent bands; the
-    /// final set deliberately carries NONE — a band gates the rep clock, and pausing a
-    /// max attempt the instant it fades below 95 % is exactly wrong. A WHENEVER routine
-    /// by construction: nobody maxes daily.
+    /// The C4 max-testing ladder (camp4humanperformance.com/blog/progressor): 3 s pulls,
+    /// 5 s rests, one hand at a time, one grip ramped over three sets to a two-rep max.
+    /// The final set carries NO band: a band gates the clock, and pausing a max attempt
+    /// as it fades below 95 % is exactly wrong. A WHENEVER routine: nobody maxes daily.
     /// Computed for the same reason as `.starter`.
     static var maxDay: RoutineDraft {
         let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
