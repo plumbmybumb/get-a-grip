@@ -23,11 +23,9 @@ sealed interface DiagnosticBreadcrumb {
     data class StreamStartDeferred(val cause: StreamStartCause) : DiagnosticBreadcrumb
     data class StreamStartWritten(val cause: StreamStartCause) : DiagnosticBreadcrumb
 
-    /// **Without this, "Signal became stale" is ambiguous** — it reads identically whether
-    /// the gauge went quiet on its own or the app deliberately stopped it at the end of a
-    /// session. Reading the first hardware logs, that ambiguity was the one question the
-    /// ring could not answer, and it is the difference between a real stall and normal
-    /// behaviour.
+    /// **Without this, "Signal became stale" is ambiguous** between the gauge going quiet
+    /// and the app stopping it at session end — the one question the first hardware logs
+    /// could not answer.
     data class StreamStopped(val cause: StreamStopCause) : DiagnosticBreadcrumb
 
     data object BackgroundDisconnectScheduled : DiagnosticBreadcrumb
@@ -37,9 +35,9 @@ sealed interface DiagnosticBreadcrumb {
     /// string is a fixed phase description — never the serial, per the rule above.
     data class Calibration(val phase: String) : DiagnosticBreadcrumb
 
-    /// The cue player's output, and whether OTHER media was playing either side of it. The
-    /// design rule is that a session never stops the user's podcast or video; this is the
-    /// evidence for whether it did, read from the phone rather than argued about.
+    /// The cue player's output, and whether OTHER media was playing either side of it:
+    /// evidence, read from the phone, that a session never stops the user's podcast or
+    /// video.
     data class Audio(val event: String) : DiagnosticBreadcrumb
 
     val text: String
@@ -66,21 +64,20 @@ sealed interface DiagnosticBreadcrumb {
 
 data class DiagnosticBreadcrumbEntry(
     val id: UUID,
-    /// Seconds on `HostClock.wallSeconds`, not a `java.time.Instant`: the ring is
-    /// in-memory evidence read beside the trace, and the trace's own timeline is that
-    /// same clock.
+    /// Seconds on `HostClock.wallSeconds`, the trace's own timeline, since the ring is read
+    /// beside it.
     val at: Double,
     val event: DiagnosticBreadcrumb,
 ) {
     val text: String get() = event.text
 }
 
-/// A bounded, newest-last ring for the evidence needed after a session. Trace flushes are
-/// coalesced only while consecutive: a long backlog must not evict the connection
-/// transition that tells us whether the link itself actually changed.
+/// A bounded, newest-last ring of post-session evidence. Trace flushes coalesce only while
+/// consecutive, so a long backlog cannot evict the connection transition that shows whether
+/// the link changed.
 ///
-/// TRANSLATION NOTE: Swift's `struct` becomes a class, per the house type mapping — one
-/// store owns exactly one ring and appends to it, so there was never a copy to preserve.
+/// TRANSLATION NOTE: Swift's `struct` becomes a class; one store owns one ring, so there
+/// was never a copy to preserve.
 class DiagnosticBreadcrumbRing {
     companion object {
         const val capacity = 64
@@ -90,9 +87,8 @@ class DiagnosticBreadcrumbRing {
 
     val entries: List<DiagnosticBreadcrumbEntry> get() = storage.toList()
 
-    /// True when the ring gained an entry; false when the event was dropped as a repeat or
-    /// merged into the last one. `DeviceStore` republishes only on true — see
-    /// `diagnosticEntries`.
+    /// True when the ring gained an entry; false when dropped as a repeat or merged.
+    /// `DeviceStore` republishes only on true.
     fun append(event: DiagnosticBreadcrumb, at: Double = 0.0): Boolean {
         // Repeated watchdog no-ops must not evict the transition that explains a stall.
         // Keep the first timestamp; a different event starts a new entry as usual.

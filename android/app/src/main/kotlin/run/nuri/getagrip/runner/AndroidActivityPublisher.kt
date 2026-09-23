@@ -19,23 +19,18 @@ import run.nuri.getagrip.engine.Side
 
 /// The real `ActivityPublisher`: the Live Update, as an ongoing notification.
 ///
-/// TRANSLATION NOTE (from Sources/Runner/SessionActivityController.swift): iOS requests an
-/// `ActivityKit.Activity` and updates it; here the same three calls post, re-post and
-/// cancel one notification. The three rules that make the iOS controller work are carried
-/// over unchanged, because they are about the SESSION rather than about ActivityKit:
+/// TRANSLATION NOTE (Sources/Runner/SessionActivityController.swift): iOS requests and
+/// updates an `ActivityKit.Activity`; here the same calls post, re-post and cancel one
+/// notification. The controller's three SESSION rules carry over unchanged:
 ///
-/// - **Publish BEFORE starting.** `RunnerSession.begin()` calls `publish()` first, so the
-///   snapshot the first card reads is the real one. Without it the very first card went
-///   out saying "Pull 0 of 12" with no countdown and sat there until the next phase change.
-/// - **Dedupe.** An update that would draw the same card is dropped rather than spent.
-/// - **End immediately.** A card still saying "Pull" after you have finished is worse than
-///   no card at all.
+/// - **Publish BEFORE starting.** `RunnerSession.begin()` publishes first, or the first
+///   card says "Pull 0 of 12" with no countdown.
+/// - **Dedupe.** An update that draws the same card is dropped.
+/// - **End immediately.** A card saying "Pull" after you finished is worse than none.
 ///
-/// Everything here is best-effort: a card that cannot be posted (notifications off, the
-/// permission never granted) must never disturb a workout that is already under way. Note
-/// that `isRunning` deliberately does NOT track whether the notification is VISIBLE — the
-/// foreground service needs a current card to run in whether or not the user can see it,
-/// and a session whose notifications are off still has to keep streaming.
+/// Best-effort: a card that cannot post (notifications off or never permitted) must not
+/// disturb the workout. `isRunning` does NOT track VISIBILITY — the foreground service
+/// needs a current card either way, and the session must keep streaming.
 class AndroidActivityPublisher(context: Context) : ActivityPublisher {
 
     private val appContext = context.applicationContext
@@ -47,13 +42,9 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
     private var plannedReps: Int = 0
     private var setCount: Int = 0
 
-    /// The last card actually posted, compared WITHOUT its deadline. `RunnerSession`
-    /// already dedupes on its own signature, and this is the second gate for the same
-    /// reason iOS keeps `lastPushed`: `endsAtEpochMillis` is `now + remaining`, so it
-    /// drifts on every publish, and a comparison that included it would repost ten times a
-    /// second and spend a whole session's budget in the first minute. Recomputing the
-    /// deadline only when the phase or the rep actually moved is also the CORRECT moment —
-    /// that is exactly when a new countdown should start.
+    /// The last card posted, compared WITHOUT its deadline — the second gate after
+    /// `RunnerSession`'s own signature, as iOS keeps `lastPushed`. See `ActivityPublisher`
+    /// for why the drifting deadline must be excluded.
     private var lastPosted: Signature? = null
     private var latestState: SessionActivityState? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -93,9 +84,9 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
         notifications.cancel(LiveUpdateNotification.NOTIFICATION_ID)
     }
 
-    /// "Session done — open to save it", silent and without a clock. It replaces the live
-    /// card under the SAME id, so the foreground service keeps running in it (see
-    /// `SessionForegroundService.pending`) until the summary's Save or Discard ends both.
+    /// "Session done — open to save it", silent, no clock. Replaces the live card under the
+    /// SAME id, so the foreground service keeps running in it
+    /// (`SessionForegroundService.pending`) until Save or Discard ends both.
     override fun showFinished(routineName: String) {
         if (!isRunning) return
         unitObservation?.cancel()
@@ -119,18 +110,16 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
             nowMillis = System.currentTimeMillis(),
         )
         val notification = LiveUpdateNotification.build(appContext, content)
-        // Stashed BEFORE posting, so a foreground service starting in the same turn adopts
-        // this card rather than flashing a placeholder — see `SessionForegroundService`.
+        // Stashed BEFORE posting, so a service starting in the same turn adopts this card —
+        // see `SessionForegroundService`.
         SessionForegroundService.pending = notification
-        // Silently dropped by the system when `POST_NOTIFICATIONS` was never granted. That
-        // is the correct failure: the session goes on, the service goes on, and only the
-        // card is missing.
+        // Silently dropped without `POST_NOTIFICATIONS` — the correct failure: session and
+        // service go on, only the card is missing.
         notifications.notify(LiveUpdateNotification.NOTIFICATION_ID, notification)
     }
 
-    /// Everything that changes the card, and nothing that moves continuously. The deadline
-    /// is excluded on purpose (see `lastPosted`); the live load never reaches this surface
-    /// at all, because the platform coalesces and the gauge produces ~80 samples a second.
+    /// Everything that changes the card, nothing that moves continuously: no deadline (see
+    /// `lastPosted`), no live load.
     private data class Signature(
         val unit: WeightUnit,
         val grip: GripSpec,
@@ -141,8 +130,8 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
         val targetLoKg: Double?,
         val targetHiKg: Double?,
         val pendingSeconds: Int?,
-        /// Whether a clock is running at all. A phase change already implies it, but a rep
-        /// that ends with no rest owed goes from a deadline to none inside one phase.
+        /// Whether a clock runs at all: a rep ending with no rest owed goes from a deadline
+        /// to none within one phase.
         val hasDeadline: Boolean,
     ) {
         constructor(state: SessionActivityState) : this(

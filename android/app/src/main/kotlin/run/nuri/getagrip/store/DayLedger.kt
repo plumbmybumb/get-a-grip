@@ -9,22 +9,19 @@ import run.nuri.getagrip.engine.SessionKind
 
 /// The month grid's day-fill rule.
 ///
-/// TRANSLATION NOTE (`HistoryView.DayLedger` in Sources/UI/HistoryView.swift): it is a
-/// nested type on the iOS view, but it is PURE — logs in, four questions out — so on
-/// Android it lives in `store/` beside the other folds and History composes it rather
-/// than owning it.
+/// TRANSLATION NOTE (`HistoryView.DayLedger`, Sources/UI/HistoryView.swift): a nested type
+/// on iOS, but PURE, so here it lives in `store/` beside the other folds.
 ///
-/// It used to live in `HistoryView.fraction(on:)` as a filter over every log, run once
-/// per cell. Folding it in here made the screen O(logs) instead of O(days × logs) — but
-/// it also meant rewriting the rule, and a grid that silently changed what a filled
-/// square means would be a worse bug than the slowness it fixed.
+/// Folded once instead of filtering every log per cell: O(logs), not O(days × logs) — with
+/// the rule itself unchanged, since silently changing what a filled square means would be
+/// worse than the slowness.
 class DayLedger(logs: List<WorkoutLogEntity>, today: DayStamp, trackingSince: DayStamp? = null) {
 
     /// What happened on one day, in the four terms the grid asks about.
     private data class Day(
         var hangs: Int = 0,
         /// The target frozen INTO the logs, not today's setting: a day trained under a
-        /// once-a-day routine was a full day, even if the routine now asks for two.
+        /// once-a-day routine was full.
         var target: Int = 1,
         var settled: Boolean = false,
         var climbed: Boolean = false,
@@ -33,10 +30,8 @@ class DayLedger(logs: List<WorkoutLogEntity>, today: DayStamp, trackingSince: Da
 
     private val days = HashMap<Int, Day>()
 
-    /// The first day there is any evidence of. Days before it are not missed days —
-    /// nobody can fail on a day they did not own the app, and drawing them as empty
-    /// boxes indistinguishable from a skipped session is the screen quietly lying about
-    /// a habit it never observed.
+    /// The first day with any evidence. Earlier days are not missed days: drawing them as
+    /// empty boxes would lie about a habit never observed.
     val trackingSince: DayStamp
 
     init {
@@ -47,9 +42,8 @@ class DayLedger(logs: List<WorkoutLogEntity>, today: DayStamp, trackingSince: Da
             day.target = maxOf(day.target, log.sessionsPerDayTarget)
             if (log.kind.countsAsHang) day.hangs += 1
             if (log.kind.settlesDay) day.settled = true
-            // `isClimb` is the same predicate `Collection.climb(on:)` filters on; only
-            // its hardest-first PRECEDENCE is dropped, and no caller here asks which
-            // climb it was — the cell and the legend both want a yes or no.
+            // The same predicate `Collection.climb(on:)` filters on, minus its
+            // hardest-first PRECEDENCE: cell and legend only need yes or no.
             if (log.kind.isClimb) day.climbed = true
             if (log.kind == SessionKind.benchmark) day.benchmarked = true
         }
@@ -58,13 +52,12 @@ class DayLedger(logs: List<WorkoutLogEntity>, today: DayStamp, trackingSince: Da
 
     fun fraction(on: DayStamp): Double {
         val d = days[on.raw] ?: return 0.0
-        // A climb — or a benchmark — FILLS the day: both complete it outright, so a
-        // half-height bar would contradict the sentence on Today. The notch drawn over
-        // the fill stays climb-only.
+        // A climb or a benchmark FILLS the day; a half bar would contradict Today's
+        // sentence. The notch stays climb-only.
         if (d.settled) return 1.0
-        // `target` starts at 1 and only ever grows, and `WorkoutLogEntity.from` already
-        // clamps the column with `max(1, …)`, so there is no divide-by-zero to guard —
-        // that is what makes a log written with a target of 0 fill its day exactly once.
+        // `target` starts at 1 and only grows, and `WorkoutLogEntity.from` clamps the
+        // column with `max(1, …)`: no divide-by-zero, and a target-0 log fills its day
+        // exactly once.
         return minOf(1.0, d.hangs.toDouble() / d.target.toDouble())
     }
 

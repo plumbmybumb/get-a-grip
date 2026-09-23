@@ -26,8 +26,8 @@ internal interface CueAudioOutput {
     fun write(buffer: FloatArray, offset: Int, count: Int): Int
     fun close()
 
-    /// Frames written but not yet played, or null when the output cannot say — the
-    /// keep-alive feed is then skipped rather than guessed at.
+    /// Frames written but not yet played, or null when unknown — the keep-alive is then
+    /// skipped, not guessed.
     fun queuedFrames(): Int? = null
 }
 
@@ -47,15 +47,14 @@ internal interface CueAudioOutput {
 internal class CueKeepAlive(
     /// One chunk of silence, written whenever the queued lead drops below [lowWaterFrames].
     val silence: FloatArray,
-    /// The lead kept queued while idle. Small, because a cue queues BEHIND it: this is
-    /// the latency added to every cue, so it is tens of milliseconds, not hundreds.
+    /// The lead kept queued while idle. Small, because every cue queues BEHIND it: tens of
+    /// milliseconds, not hundreds.
     val lowWaterFrames: Int,
-    /// How often an idle output is checked. A cue never waits for this: it wakes the
-    /// worker the moment it is queued.
+    /// How often an idle output is checked; a queued cue wakes the worker at once.
     val pollMillis: Long,
 ) {
-    /// An empty chunk has nothing to feed, so the worker never wakes for it and waits on
-    /// cues alone — the shape the queue's own tests use.
+    /// An empty chunk feeds nothing, so the worker waits on cues alone (the queue tests'
+    /// shape).
     val feeds: Boolean get() = silence.isNotEmpty() && pollMillis > 0
 }
 
@@ -73,8 +72,8 @@ internal class CueAudioQueue(
         if (queue != null) return
         val channel = Channel<ToneSynth.Tone>(16, BufferOverflow.DROP_OLDEST)
         queue = channel
-        // A new worker per session: the native handle is never shared with callers or with
-        // a subsequent session.
+        // A new worker per session: the native handle is never shared with callers or a
+        // later session.
         val owner = Worker(channel, enabled, render, open, keepAlive)
         worker = CoroutineScope(dispatcher).launch { owner.run() }
     }
@@ -99,14 +98,12 @@ internal class CueAudioQueue(
     ) {
         private var output: CueAudioOutput? = null
 
-        /// Polls to skip before trying to open again after a failed open: with no usable
-        /// route, retrying every poll would be a hundred native calls a second. Two seconds
-        /// matches the iPhone's retry of a dead engine.
+        /// Polls to skip before reopening after a failed open, so a dead route is not a
+        /// hundred native calls a second. Two seconds, the iPhone's dead-engine retry.
         private var openBackoff = 0
 
-        /// ONE loop: wait for a cue or for the poll to elapse, whichever comes first. A
-        /// queued cue wakes it at once — never a poll interval later — and an idle output is
-        /// topped up on every poll.
+        /// ONE loop: wait for a cue or the poll, whichever first. A cue wakes it at once;
+        /// an idle output is topped up each poll.
         @OptIn(ExperimentalCoroutinesApi::class)
         suspend fun run() {
             try {
@@ -129,8 +126,8 @@ internal class CueAudioQueue(
             }
         }
 
-        /// One tone, written in full. Partial writes are completed; a failed route is
-        /// rebuilt once and the samples already written are kept.
+        /// One tone, written in full: partial writes completed, a failed route rebuilt
+        /// once, samples already written kept.
         private suspend fun writeTone(tone: ToneSynth.Tone) {
             val buffer = render(tone)
             var offset = 0
@@ -156,9 +153,8 @@ internal class CueAudioQueue(
             }
         }
 
-        /// Idle: top the lead up with silence. One nonblocking attempt — a short write of
-        /// silence is simply less silence, and a failing route closes so the next pass (or
-        /// cue) opens a fresh one.
+        /// Idle: top the lead up with silence. One nonblocking attempt (a short write is
+        /// just less silence); a failing route closes so the next pass opens a fresh one.
         private fun topUp() {
             if (!enabled()) return
             if (output == null) {

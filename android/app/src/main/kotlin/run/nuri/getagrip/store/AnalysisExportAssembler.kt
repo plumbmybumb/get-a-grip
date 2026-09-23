@@ -11,27 +11,22 @@ import run.nuri.getagrip.engine.RepSummary
 import run.nuri.getagrip.engine.SessionKind
 import java.time.ZoneId
 
-/// Rows → the values `AnalysisExport` consumes, and nothing else.
+/// Rows → the values `AnalysisExport` consumes, and nothing else. Here rather than
+/// `:engine` because it is the only half that sees database rows, which keeps the formatter
+/// pure.
 ///
-/// It lives here rather than in `:engine` because it is the only half of the feature that
-/// has to see the database rows; the formatter downstream of it is pure, deterministic
-/// and testable precisely because this file exists.
-///
-/// **It never decodes a rep blob itself.** `WorkoutLogEntity.resultsData` is write-once,
-/// and History already keeps a decoded copy of every log it has drawn, so the caller
-/// hands its own accessor in. Re-decoding here would put a JSON walk over the whole
-/// history on a tap path that gets slower every week somebody trains — the house rule
-/// this parameter exists to obey.
+/// **It never decodes a rep blob itself**: the caller hands in History's cached decode,
+/// since re-decoding would put a whole-history JSON walk on a tap path that slows every
+/// week somebody trains.
 object AnalysisExportAssembler {
 
-    /// - logs: every session, in any order — the formatter sorts.
-    /// - maxRecords: every `MaxRecordEntity` ever written, in any order.
+    /// - logs: every session, any order — the formatter sorts.
+    /// - maxRecords: every `MaxRecordEntity` ever written, any order.
     /// - reps: the caller's cached decode, one entry per log.
-    /// - displayName: the routine's live name where it still exists, falling back to the
-    ///   name frozen into the log. Same resolution History's own list uses, passed in for
-    ///   the same reason as `reps`.
-    /// - today: from `DayClock`, never `Instant.now()` — the 8-week boundary is measured
-    ///   from the day the user is living through.
+    /// - displayName: the live routine name, falling back to the frozen one (History's
+    ///   resolution; passed in like `reps`).
+    /// - today: from `DayClock`, never `Instant.now()` — the 8-week boundary is from the
+    ///   day being lived.
     fun input(
         logs: List<WorkoutLogEntity>,
         maxRecords: List<MaxRecordEntity>,
@@ -75,9 +70,8 @@ object AnalysisExportAssembler {
             )
         }
 
-        // Frozen per session, so the CURRENT figure is whatever the newest session was
-        // logged under. Stating the newest rather than reading today's routine setting
-        // keeps this file free of the routine table entirely.
+        // Frozen per session, so the CURRENT figure is the newest session's, keeping this
+        // file free of the routine table.
         val newestTarget = logs.maxByOrNull { it.startedAt }?.sessionsPerDayTarget
 
         return AnalysisExport.Input(
@@ -89,15 +83,12 @@ object AnalysisExportAssembler {
         )
     }
 
-    /// `WorkoutLogEntity` carries no "was there a gauge" column, so it is INFERRED — and
-    /// the inference is stated in the document's legend rather than presented as a fact
-    /// the schema recorded.
+    /// No column records "was there a gauge", so it is INFERRED, and the document's legend
+    /// says so.
     ///
-    /// A session logged after the fact has no reps at all. A runner session that ran
-    /// without a gauge (`SessionRunner(timerOnly:)`) records real reps and real held
-    /// seconds off the wall clock, and every one of its kilogram fields is exactly zero —
-    /// which is what separates it from a measured session, where at least one pull
-    /// registered some load.
+    /// A hand-logged session has no reps. A gauge-free runner session
+    /// (`SessionRunner(timerOnly:)`) has real reps and held seconds but every kilogram
+    /// field exactly zero, unlike a measured session, where some pull registered load.
     private fun timing(
         log: WorkoutLogEntity,
         reps: List<RepSummary>,
