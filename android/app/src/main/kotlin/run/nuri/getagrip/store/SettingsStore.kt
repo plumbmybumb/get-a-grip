@@ -21,6 +21,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -112,6 +113,13 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 /// DataStore does not. One small file, once, at launch; everything afterwards is served
 /// from the in-memory cache and every write is fire-and-forget. Reads are Compose state,
 /// so a screen re-reads by observing rather than by polling.
+///
+/// **Fire-and-forget, but IN ORDER.** Each write used to be its own `launch` on the
+/// multi-threaded IO pool, so two writes a millisecond apart raced to `edit` and the older
+/// one could land last: a stale draft stash came back after Save had cleared it, and a
+/// replan's reminder-id list could be overwritten by the plan before it — the list the NEXT
+/// replan cancels from. Writes now go through ONE `SerialWriteLane`, which persists them in
+/// the order they were made.
 @Stable
 class SettingsStore(
     context: Context,
@@ -151,15 +159,13 @@ class SettingsStore(
 
     init { WeightUnits.current = WeightUnit.fromRaw(loaded[weightUnitKey]) }
 
-    private val weightWriteGeneration = java.util.concurrent.atomic.AtomicLong()
     val weightUnit: WeightUnit get() = WeightUnits.current
 
     fun setWeightUnit(value: WeightUnit) {
         WeightUnits.current = value
-        val generation = weightWriteGeneration.incrementAndGet()
-        // The shared IO scope may enqueue rapid toggles out of order. An older write
-        // cannot replace the latest visible choice after the app next launches.
-        write { if (generation == weightWriteGeneration.get()) it[weightUnitKey] = value.rawValue }
+        // Rapid toggles need no generation guard any more: the lane persists them in the
+        // order they were made, so the last one written is the last one chosen.
+        write { it[weightUnitKey] = value.rawValue }
     }
 
     private var cachedGaugeKind: String? = loaded[gaugeKindKey]
@@ -318,8 +324,46 @@ class SettingsStore(
         write { it[gaugeKindKey] = kind.rawValue }
     }
 
+    private val lane = SerialWriteLane<(MutablePreferences) -> Unit>(scope) { batch ->
+        dataStore.edit { prefs -> batch.forEach { it(prefs) } }
+    }
+
     private fun write(block: (MutablePreferences) -> Unit) {
-        scope.launch { dataStore.edit(block) }
+        lane.submit(block)
+    }
+}
+
+/// **One consumer, in submission order.** The fix for fire-and-forget writes that raced each
+/// other on a multi-threaded pool — see `SettingsStore`.
+///
+/// Not `limitedParallelism(1)`: a lane of one THREAD still interleaves at every suspension
+/// point, and `DataStore.edit` suspends, so two launched writes could still commit out of
+/// order. A channel drained by a single coroutine cannot: the second write is not even
+/// looked at until the first one's `apply` has returned.
+///
+/// Whatever queued up while one batch was being written is applied as the NEXT batch, in
+/// order — so a burst (a draft stash per keystroke) costs one file write rather than one
+/// per change, and the file still ends up holding the last value written.
+internal class SerialWriteLane<T>(
+    scope: CoroutineScope,
+    private val apply: suspend (List<T>) -> Unit,
+) {
+    private val pending = Channel<T>(Channel.UNLIMITED)
+
+    init {
+        scope.launch {
+            for (first in pending) {
+                val batch = mutableListOf(first)
+                while (true) batch.add(pending.tryReceive().getOrNull() ?: break)
+                // A failed write must not take the lane down with it: every later write
+                // would then be silently dropped for the life of the process.
+                runCatching { apply(batch) }
+            }
+        }
+    }
+
+    fun submit(value: T) {
+        pending.trySend(value)
     }
 }
 
