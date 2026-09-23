@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import run.nuri.getagrip.data.LogDayStamp
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.data.WorkoutLogEntity
@@ -29,6 +30,7 @@ import run.nuri.getagrip.store.StoreGateway
 import run.nuri.getagrip.store.StoreWriter
 import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.ui.theme.GetAGripTheme
+import java.time.Instant
 import java.util.UUID
 
 /// A whole world for the `@Preview`s of History and Maxes — theme, clock, store and feed —
@@ -85,6 +87,11 @@ private class PreviewGateway(
     override suspend fun logsFrom(dayKey: Int) = logs.filter { it.dayKey >= dayKey }
     override suspend fun allLogs() = logs
     override suspend fun allMaxes() = maxes
+    override suspend fun log(id: UUID) = logs.firstOrNull { it.id == id }
+    override suspend fun logsFor(templateID: UUID) = logs.filter { it.templateID == templateID }
+    override suspend fun dayStamps(before: Instant) = logs.filter { it.startedAt.isBefore(before) }.map {
+        LogDayStamp(it.id, it.startedAt, it.finishedAt, it.dayKey, it.kindRaw)
+    }
     override suspend fun write(work: suspend (StoreWriter) -> Unit) = Unit
 
     fun asPreviewSource(): HistorySource = object : HistorySource {

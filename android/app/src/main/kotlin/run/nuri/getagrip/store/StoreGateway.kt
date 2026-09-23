@@ -40,20 +40,16 @@ interface StoreGateway {
     suspend fun allMaxes(): List<MaxRecordEntity>?
 
     /// One session by id. Null when it is absent OR the read failed — every caller treats
-    /// the two alike (there is nothing to delete either way). Defaulted through `allLogs`
-    /// so a test double need not care; Room answers it with an indexed point read.
-    suspend fun log(id: UUID): WorkoutLogEntity? = allLogs()?.firstOrNull { it.id == id }
+    /// the two alike (there is nothing to delete either way). A point read: no path that
+    /// touches one session may read the whole history.
+    suspend fun log(id: UUID): WorkoutLogEntity?
 
     /// A routine's sessions. Null when the read FAILED, as everywhere here.
-    suspend fun logsFor(templateID: UUID): List<WorkoutLogEntity>? =
-        allLogs()?.filter { it.templateID == templateID }
+    suspend fun logsFor(templateID: UUID): List<WorkoutLogEntity>?
 
     /// The day-filing columns of every session started before `before` — the repair's only
     /// read, and a projection so it never decodes a blob. Null when the read failed.
-    suspend fun dayStamps(before: Instant): List<LogDayStamp>? =
-        allLogs()?.filter { it.startedAt.isBefore(before) }?.map {
-            LogDayStamp(it.id, it.startedAt, it.finishedAt, it.dayKey, it.kindRaw)
-        }
+    suspend fun dayStamps(before: Instant): List<LogDayStamp>?
 
     /// One atomic unit of work. It THROWS when it could not be committed — the caller
     /// (`TemplateStore.persistAndSync`) is the one place that turns that into a
