@@ -547,23 +547,14 @@ class DeviceStore(
     // MARK: - The background grace period
 
     /// **On leaving the app, unless a session is streaming, the link is dropped — after a
-    /// 45 s GRACE, never at once.**
+    /// 45 s GRACE, never at once.** The rule and its reasons are `BackgroundGracePolicy`;
+    /// this realises it. Called by `GetAGripApplication`'s `ProcessLifecycleOwner` observer
+    /// when the PROCESS leaves the foreground, not when one Activity pauses.
     ///
-    /// Immediate teardown could not tell a two-second voice-assistant call from a phone put
-    /// in a bag and charged both a 5–6 s reconnect: the "weird Bluetooth drops" Nuri
-    /// reported. The rule is `BackgroundGracePolicy`; `GetAGripApplication`'s
-    /// `ProcessLifecycleOwner` observer calls this when the PROCESS leaves the foreground,
-    /// not when one Activity pauses.
-    ///
-    /// TRANSLATION NOTE: iOS holds the window with a `beginBackgroundTask` assertion whose
-    /// expiration handler disconnects, because a suspended process keeps its link alive.
-    /// **Android has the same hazard:** a KILLED process takes its GATT link with it, but a
-    /// FROZEN one (the cached-apps freezer) keeps the link up while this timer stands
-    /// still, so the worst case is a gauge left awake indefinitely. Hence two arms: this
-    /// coroutine and a `BackgroundGraceBackstop` alarm delivered to a frozen app; whichever
-    /// fires first disconnects. (A session that must survive backgrounding runs the
-    /// `connectedDevice` foreground service — `SessionForegroundService` — and is
-    /// streaming, so takes the `none` branch.)
+    /// Armed twice, because a FROZEN process keeps its link up while this timer stands
+    /// still (the Android twin of iOS's suspended process): this coroutine, and a
+    /// `BackgroundGraceBackstop` alarm. Whichever fires first disconnects. A streaming
+    /// session (kept alive by `SessionForegroundService`) takes the `none` branch.
     fun beginBackgroundGrace() {
         isInBackground = true
         when (

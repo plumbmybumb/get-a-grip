@@ -11,25 +11,22 @@ import android.content.Intent
 import android.os.SystemClock
 import run.nuri.getagrip.GetAGripApplication
 
-/// What leaving the foreground should do to the gauge's link — the rule on its own, with
-/// no store, no coroutine and no radio behind it.
+/// What leaving the foreground should do to the gauge's link — the rule alone, with no
+/// store, coroutine or radio.
 ///
-/// TRANSLATION NOTE (from `DeviceStore.beginBackgroundGrace` on iOS): the Swift version
-/// interleaves the decision with a `beginBackgroundTask` assertion and a sleeping `Task`.
-/// Splitting the decision out is what makes it testable here, and the three outcomes are
-/// exactly the three branches that file has.
+/// TRANSLATION NOTE (iOS `DeviceStore.beginBackgroundGrace`): Swift interleaves this with a
+/// `beginBackgroundTask` assertion and a sleeping `Task`; split out it is testable, and the
+/// three outcomes are that file's three branches.
 enum class BackgroundGraceAction {
-    /// A session is streaming (or nothing is connected): leave the link alone. On Android
-    /// what actually keeps such a session alive is `SessionForegroundService`; the grace is
-    /// for the OTHER case, an idle gauge left connected by a screen you walked away from.
+    /// A session is streaming (or nothing is connected): leave the link alone.
+    /// `SessionForegroundService` keeps such a session alive; the grace is for an idle
+    /// gauge left connected.
     none,
 
-    /// **A gauge that cannot stream in the background gets no grace at all.** For a
-    /// broadcast scale the "link" is an unfiltered all-matches scan — the most power-hungry
-    /// BLE mode there is — and the OS silences it the moment we background whatever we ask
-    /// for. Reacquiring costs about a second of rescan, so the grace was buying nothing on
-    /// either side of the trade. The caller arms the scan to stand itself back up on the
-    /// way in.
+    /// **A gauge that cannot stream in the background gets no grace.** A broadcast scale's
+    /// "link" is an unfiltered all-matches scan (the most power-hungry BLE mode), which the
+    /// OS silences on background anyway, and reacquiring costs about a second of rescan.
+    /// The caller arms the scan to restart on the way back.
     disconnectNow,
 
     /// The 45 s window. Firing at once could not tell a two-second "hey Siri" from a phone
@@ -40,9 +37,8 @@ enum class BackgroundGraceAction {
 
 object BackgroundGracePolicy {
 
-    /// 45 seconds, the same window iOS opens. Long enough that an app switch is free, short
-    /// enough that a phone in a bag does not leave the gauge awake for the ten minutes it
-    /// takes to self-sleep after a disconnect.
+    /// 45 seconds, iOS's window: an app switch is free, and a phone in a bag does not keep
+    /// the gauge awake (it self-sleeps only ten minutes AFTER a disconnect).
     const val graceSeconds = 45L
 
     fun onLeavingForeground(
@@ -51,9 +47,8 @@ object BackgroundGracePolicy {
         isStreaming: Boolean,
         sustainsBackgroundStreaming: Boolean,
     ): BackgroundGraceAction {
-        // `isBusy` is in the guard on purpose — scanning and connecting are exactly the
-        // states this has to catch, because by the time anything looks at a broadcast
-        // gauge's link the scan has usually already re-armed itself.
+        // `isBusy` in the guard: scanning and connecting are exactly the states to catch,
+        // since a broadcast gauge's scan has usually re-armed itself by now.
         if (!sustainsBackgroundStreaming && (isConnected || isBusy)) {
             return BackgroundGraceAction.disconnectNow
         }
@@ -64,19 +59,15 @@ object BackgroundGracePolicy {
 
 /// **The grace's second clock — one that survives the process being FROZEN.**
 ///
-/// The 45 s window is a coroutine `delay`, and a delay only elapses while the process runs.
-/// Android's cached-apps freezer stops a backgrounded app's threads within seconds of it
-/// leaving the screen (no service, no visible Activity), and a frozen process's GATT client
-/// stays registered with the Bluetooth stack: the link stays UP, the timer never fires, and
-/// the gauge — which only self-sleeps ten minutes after a DISCONNECT — stays awake until the
-/// user comes back or its battery goes. That is the failure the whole grace exists to
-/// prevent, reached by the one path the old comment ruled out.
+/// A coroutine `delay` elapses only while the process runs. Android's cached-apps freezer
+/// stops a backgrounded app's threads within seconds, but its GATT client stays registered:
+/// the link stays UP, the timer never fires, and the gauge stays awake until the user
+/// returns or its battery dies — the failure the grace exists to prevent.
 ///
-/// So the window is armed twice: the coroutine for the ordinary case, and an `AlarmManager`
-/// alarm the system delivers even to a frozen app, thawing it to run the receiver. Whichever
-/// fires first disconnects (both re-check that the app is still backgrounded and nothing is
-/// streaming); coming back to the foreground cancels both. An interface so the store stays
-/// JVM-testable — the app's is `AlarmGraceBackstop`.
+/// So the window is armed twice: the coroutine, and an `AlarmManager` alarm the system
+/// delivers even to a frozen app. Whichever fires first disconnects (both re-check
+/// background and streaming); returning to the foreground cancels both. An interface so the
+/// store stays JVM-testable — the app's is `AlarmGraceBackstop`.
 interface BackgroundGraceBackstop {
     fun arm(afterMillis: Long)
     fun cancel()
@@ -88,11 +79,9 @@ object NoGraceBackstop : BackgroundGraceBackstop {
     override fun cancel() = Unit
 }
 
-/// `setAndAllowWhileIdle` on the elapsed-realtime clock: inexact, so it needs no
-/// `SCHEDULE_EXACT_ALARM` (Play gates that to alarm-clock apps), and allowed in Doze, so a
-/// phone put face-down in a bag still gets it. Inexact means it may land minutes late under
-/// Doze's own batching: a grace that runs LONG, never one that never ends, which is the
-/// property that matters.
+/// `setAndAllowWhileIdle` on elapsed realtime: inexact, so no `SCHEDULE_EXACT_ALARM` (Play
+/// gates it to alarm-clock apps), and allowed in Doze. It may land minutes late: a grace
+/// that runs LONG, never one that never ends.
 class AlarmGraceBackstop(context: Context) : BackgroundGraceBackstop {
     private val app = context.applicationContext
     private val alarms = app.getSystemService(AlarmManager::class.java)
@@ -122,8 +111,8 @@ class AlarmGraceBackstop(context: Context) : BackgroundGraceBackstop {
     }
 }
 
-/// Delivered by the backstop alarm. If the process died meanwhile there is no store and no
-/// link — a dead process takes its GATT client with it — so there is nothing to do.
+/// Delivered by the backstop alarm. A process that died meanwhile took its GATT client with
+/// it, so there is nothing to do.
 class BackgroundGraceReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != AlarmGraceBackstop.ACTION) return

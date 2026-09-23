@@ -128,10 +128,8 @@ class GetAGripApplication : Application() {
         // Before anything asks a grip for its name: `:engine` owns no resources, so this
         // gives it the app's — see `L10n`.
         installStringLookup()
-        // **A process that has just started cannot have a session running.** A session
-        // killed mid-workout (force-stop, OEM battery manager) never ran
-        // `RunnerSession.end()`, so its card would still say "Holding" on the lock screen.
-        // This is the one moment sure it is stale.
+        // A fresh process cannot have a session running — see
+        // `SessionForegroundService.cancelStaleCard`.
         SessionForegroundService.cancelStaleCard(this)
     }
 

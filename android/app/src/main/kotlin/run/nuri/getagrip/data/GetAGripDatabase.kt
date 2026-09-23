@@ -20,11 +20,9 @@ import java.util.UUID
 
 /// How the three value types cross the SQLite boundary.
 ///
-/// **UUIDs are TEXT, uppercase**, and dates are epoch MILLIS — the same shapes the iOS
-/// blobs use, so a routine id in a `SessionTemplate` row and the same id inside an
-/// exported `RoutineDraft` blob are the same characters. Decoding accepts either case,
-/// because a row written by hand or by a future import may not be uppercase and losing a
-/// routine over a letter case is not a trade anybody would make.
+/// **UUIDs are uppercase TEXT and dates epoch MILLIS**, the iOS blob shapes, so an id in a
+/// row and inside an exported `RoutineDraft` blob are the same characters. Decoding accepts
+/// either case: losing a routine over letter case is no trade.
 object Converters {
     @TypeConverter
     fun uuidToText(value: UUID?): String? = value?.toString()?.uppercase(Locale.ROOT)
@@ -40,19 +38,14 @@ object Converters {
     fun instantFromMillis(value: Long?): Instant? = value?.let { Instant.ofEpochMilli(it) }
 }
 
-/// **Now, at the resolution the column can hold.**
-///
-/// `Instant.now()` is microsecond-resolution on a modern JDK and these columns are epoch
-/// MILLIS, so a row minted with `Instant.now()` and the same row read back are not equal —
-/// they differ by a few hundred microseconds. That breaks exactly the promise the undo
-/// path exists to make ("the row came back precisely as it was"), and it breaks it
-/// invisibly, because both values print as the same second. Every timestamp this app mints
-/// therefore comes from here.
+/// **Now, at the resolution the column can hold.** `Instant.now()` is
+/// microsecond-resolution and the columns are epoch MILLIS, so a minted row and its
+/// read-back differ invisibly (both print the same second) — breaking the undo promise that
+/// a row comes back exactly as it was. Every timestamp the app mints comes from here.
 fun storedNow(): Instant = Instant.ofEpochMilli(System.currentTimeMillis())
 
-/// Routines. Ordering is deliberately NOT expressed here — `TemplateStore.routineOrder`
-/// owns the total order, because the tiebreak runs off `id.toString()` and a SQL
-/// `ORDER BY` would have to duplicate a rule that exists in exactly one place.
+/// Routines. No ordering here: `TemplateStore.routineOrder` owns the total order (its
+/// `id.toString()` tiebreak), and an `ORDER BY` would duplicate it.
 @Dao
 interface SessionTemplateDao {
     @Query("SELECT * FROM SessionTemplate")
@@ -61,8 +54,8 @@ interface SessionTemplateDao {
     @Query("SELECT * FROM SessionTemplate WHERE id = :id")
     suspend fun byId(id: UUID): SessionTemplateEntity?
 
-    /// One method for insert AND update. A routine is a value here, so "apply a draft"
-    /// produces a whole new row and there is nothing to patch column by column.
+    /// Insert AND update: a routine is a value, so applying a draft produces a whole new
+    /// row.
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(row: SessionTemplateEntity)
 
@@ -73,8 +66,8 @@ interface SessionTemplateDao {
     suspend fun deleteAll()
 }
 
-/// Sessions. `dayKey` is an Int column precisely so the window is a cheap predicate
-/// rather than a calendar pass over every log ever written.
+/// Sessions. `dayKey` is an Int so the window is a cheap predicate, not a calendar pass
+/// over every log.
 @Dao
 interface WorkoutLogDao {
     @Query("SELECT * FROM WorkoutLog WHERE dayKey >= :earliest ORDER BY startedAt ASC")
@@ -94,8 +87,8 @@ interface WorkoutLogDao {
 
     // MARK: - Point reads
     //
-    // A delete needs ONE row and a routine's delete needs ITS rows; both used to load every
-    // session ever logged and filter in memory, a cost that grows with every week trained.
+    // Deleting a session or a routine's sessions reads only those rows; loading all history
+    // to filter in memory cost more every week trained.
 
     @Query("SELECT * FROM WorkoutLog WHERE id = :id")
     suspend fun byId(id: UUID): WorkoutLogEntity?
@@ -139,16 +132,14 @@ interface MaxRecordDao {
 
 /// The three tables, in the CloudKit-safe shape the iOS models froze.
 ///
-/// **The database file name is FROZEN as `getagrip`** for the same reason the application
-/// id is: it is where somebody's training history lives on their phone, and renaming it
-/// after the first install is an empty History tab with the old file still on disk. It is
-/// also named in `res/xml/data_extraction_rules.xml`, so the two must move together or
-/// Auto Backup silently starts backing up nothing.
+/// **The file name is FROZEN as `getagrip`**, like the application id: renaming it after
+/// install is an empty History with the old file still on disk. It is also named in
+/// `res/xml/data_extraction_rules.xml`; move them together or Auto Backup silently backs up
+/// nothing.
 ///
-/// `exportSchema = true` writes `app/schemas/…/<version>.json`, which is what a migration
-/// gets diffed against. Version 1 is the first shipped schema; every change after it is
-/// ADDITIVE — a new column with a default, never a rename, never a drop — which is
-/// exactly what Room's auto-migrations can write on their own from those two files.
+/// `exportSchema = true` writes `app/schemas/…/<version>.json` for migration diffs. Version
+/// 1 is the first shipped schema; every later change is ADDITIVE (a defaulted column, never
+/// a rename or drop), which Room auto-migrations write on their own.
 ///
 /// Version 2 (2026-09-18): `SessionTemplate.startingHandRaw`, defaulted `left`.
 @Database(

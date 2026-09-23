@@ -12,23 +12,20 @@ enum class AttemptRoute {
     /// is involved, so neither the quota nor a locked screen can stop it.
     direct,
 
-    /// Hand the remembered device to the OS to connect WHENEVER it is next in range
-    /// (`autoConnect`), with no timeout. The only way a link that dropped behind a locked
-    /// screen comes back: Android pauses unfiltered scans while the screen is off, so the
-    /// old scan-based retry ladder found nothing, spent its five attempts, and gave up —
-    /// leaving a session the foreground service was keeping alive waiting on a gauge
-    /// nothing was looking for any more.
+    /// Hand the remembered device to the OS to connect WHENEVER next in range
+    /// (`autoConnect`), with no timeout. The only way a link dropped behind a locked screen
+    /// comes back: Android pauses unfiltered scans with the screen off, so the old scan
+    /// ladder spent its five attempts and gave up on a session the foreground service was
+    /// keeping alive.
     awaitInRange,
 }
 
 /// Which route the next attempt takes — the rule on its own, so it can be asserted whole.
 object AttemptRouting {
-    /// - `recovering`: an ESTABLISHED link dropped while the user still wants it. Wait for
-    ///   that same device, however long it takes; a session waits for its gauge (a rep never
-    ///   ends itself, and neither does the wait for the link).
-    /// - `directTriesLeft`: an explicit Connect with a device remembered from earlier gets
-    ///   ONE quick direct try, then scans — the user may have picked up a different unit,
-    ///   and waiting forever on the old one would never find it.
+    /// - `recovering`: an ESTABLISHED link dropped while still wanted. Wait for that device
+    ///   however long it takes (a rep never ends itself, nor does the wait for the link).
+    /// - `directTriesLeft`: an explicit Connect with a remembered device gets ONE quick
+    ///   direct try, then scans — the user may have picked up a different unit.
     fun route(hasRemembered: Boolean, recovering: Boolean, directTriesLeft: Int): AttemptRoute = when {
         !hasRemembered -> AttemptRoute.scan
         recovering -> AttemptRoute.awaitInRange
@@ -38,34 +35,26 @@ object AttemptRouting {
 }
 
 /// **The remembered-device half of a connected client's reconnect**, shared by
-/// `LiveProgressorClient` and `GattGaugeClient` so the two cannot drift apart.
+/// `LiveProgressorClient` and `GattGaugeClient` so they cannot drift.
 ///
-/// A scan is the wrong tool for getting BACK a gauge a client has already held: the
-/// platform pauses unfiltered scans with the screen off and rations the rest (see
-/// `ScanStartBudget`), and the old ladder — five scans, then give up — ended a locked-screen
-/// session's wait for its gauge after about a minute. So the device the last ESTABLISHED
-/// link ran on is kept for the life of the client, and `AttemptRouting` decides how the next
-/// attempt uses it.
+/// A scan is the wrong tool for getting BACK a known gauge: unfiltered scans pause with the
+/// screen off and the rest are rationed (`ScanStartBudget`), so five scans then give-up
+/// ended a locked-screen session's wait after about a minute. The device of the last
+/// ESTABLISHED link is kept for the client's life, and `AttemptRouting` decides how to use
+/// it. Generic so the rule runs without a `BluetoothDevice`.
 ///
-/// Generic over the device so the rule can be driven without a `BluetoothDevice`.
+/// **Closing a lost autoConnect link — where the two clients differ, on purpose.** Nordic
+/// keeps a lost autoConnect GATT open and reconnects it alongside the client's next
+/// attempt, so `linkLost()` reports it and both clients close it. How the next attempt
+/// waits follows each client's cancellation discipline:
 ///
-/// **Closing a lost autoConnect link — the one place the two clients differ, on purpose.**
-/// Nordic keeps an autoConnect link's GATT open after a loss and reconnects it on its own,
-/// alongside the attempt the client is about to make, so `linkLost()` reports such a link
-/// and both clients close it. HOW the next attempt is held behind that close follows each
-/// client's cancellation discipline, not anything about link loss:
-///
-/// - `LiveProgressorClient` retires it into its QUARANTINE, as it does every cancelled
-///   link: the next attempt waits for the stack's terminal callback (or a 3 s fallback), so
-///   no callback from the old link can satisfy the new one. That is the Tindeq machinery
-///   earned on real hardware, alongside its serialized queries and tare latch.
-/// - `GattGaugeClient` disconnects and lets its ordinary one-second backoff hold the next
-///   attempt, which is the guard it uses for every cancellation: a superseded generation's
-///   terminal callback is ignored, and the backoff keeps a retry from racing the cancel it
-///   just issued. Its gauges are ports of a documented protocol nobody on this project has
-///   held, and it deliberately carries none of the Tindeq machinery (see its class comment)
-///   — giving the loss path alone a quarantine would make it the one path in that client
-///   with different cancellation rules.
+/// - `LiveProgressorClient` QUARANTINES it like every cancelled link: the next attempt
+///   waits for the terminal callback (or a 3 s fallback), so no old callback satisfies the
+///   new link — Tindeq machinery earned on hardware.
+/// - `GattGaugeClient` disconnects and lets its one-second backoff hold the next attempt,
+///   its guard for every cancellation (superseded generations are ignored). It carries none
+///   of the Tindeq machinery by design, and a quarantine on the loss path alone would give
+///   it two cancellation rules.
 class RememberedGauge<D : Any> {
     /// The device the last ESTABLISHED link ran on.
     var device: D? = null
@@ -111,16 +100,16 @@ class RememberedGauge<D : Any> {
         directTriesLeft = 0
     }
 
-    /// The link in flight went down. True when it was an autoConnect link, whose GATT the
-    /// caller has to close — see the class comment.
+    /// The link in flight went down. True for an autoConnect link, whose GATT the caller
+    /// must close — see the class comment.
     fun linkLost(): Boolean {
         val wasAutoConnect = linkUsesAutoConnect
         linkUsesAutoConnect = false
         return wasAutoConnect
     }
 
-    /// An ESTABLISHED link dropped while the user still wants it: the next attempts wait for
-    /// the same device rather than scanning for any.
+    /// An ESTABLISHED link dropped while still wanted: next attempts wait for the same
+    /// device instead of scanning.
     fun awaitReturn() {
         recovering = device != null
     }

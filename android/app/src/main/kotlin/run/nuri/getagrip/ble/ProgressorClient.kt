@@ -10,24 +10,20 @@ import run.nuri.getagrip.engine.ProgressorEvent
 
 /// What the app knows about the link to the gauge.
 ///
-/// TRANSLATION NOTE: Swift's `enum` with one associated-value case becomes a sealed
-/// interface, exactly as `ProgressorEvent` does in `:engine`. `Sendable, Equatable`
-/// has no Kotlin counterpart — `data object` / `data class` give structural equality
-/// for free, and thread confinement is a contract stated in `ProgressorClient` below
-/// rather than something the compiler checks.
+/// TRANSLATION NOTE: Swift's `enum` becomes a sealed interface (as `ProgressorEvent` in
+/// `:engine`). `data object`/`data class` give structural equality; thread confinement is a
+/// contract stated on `ProgressorClient`, not compiler-checked.
 sealed interface ProgressorConnectionState {
-    /// Nothing attempted yet — no scanner or GATT client exists, so no permission
-    /// prompt has been shown.
+    /// Nothing attempted yet — no scanner or GATT client, so no permission prompt shown.
     data object Idle : ProgressorConnectionState
 
     data object BluetoothOff : ProgressorConnectionState
 
     data object Unauthorized : ProgressorConnectionState
 
-    /// No BLE hardware. TRANSLATION NOTE: on iOS this is what the Simulator always
-    /// reports, which is why the mock client exists. An Android emulator has no
-    /// working BLE either, so the same rule applies and `MockProgressorClient` is
-    /// reached the same two ways.
+    /// No BLE hardware. TRANSLATION NOTE: what the iOS Simulator always reports; an Android
+    /// emulator has no working BLE either, so `MockProgressorClient` is reached the same
+    /// two ways.
     data object Unsupported : ProgressorConnectionState
 
     data object Scanning : ProgressorConnectionState
@@ -56,9 +52,8 @@ sealed interface ProgressorConnectionState {
         }
 }
 
-/// Why a stream start was requested. The cause stays attached if the write has to wait
-/// behind a tare, because a later write without its original reason makes the next
-/// hardware trace impossible to interpret.
+/// Why a stream start was requested. The cause stays attached if the write waits behind a
+/// tare; a start without its reason makes the next hardware trace uninterpretable.
 enum class StreamStartCause(val rawValue: String) {
     initial("initial"),
     reconnect("reconnect"),
@@ -67,9 +62,8 @@ enum class StreamStartCause(val rawValue: String) {
     tareRecovery("tareRecovery"),
     manualMeasurement("manualMeasurement"),
 
-    /// The human tapped Wake. Distinct from `watchdog` on purpose: attributing a manual
-    /// recovery to the automatic one would make the breadcrumb report lie about who
-    /// revived the stream, in the one log that exists to explain exactly that.
+    /// The human tapped Wake. Distinct from `watchdog`: crediting a manual recovery to the
+    /// automatic one would lie in the one log that explains who revived the stream.
     manualWake("manualWake");
 
     val label: String
@@ -84,12 +78,10 @@ enum class StreamStartCause(val rawValue: String) {
         }
 }
 
-/// Why a stream stopped. The counterpart to `StreamStartCause`, and the reason the
-/// breadcrumb ring can tell a genuine stall from the app doing exactly what it should.
-/// **Deliberately has no default anywhere it is taken.** A defaulted cause is a cause
-/// that is wrong at the call sites nobody revisited, and a diagnostic that quietly
-/// mislabels an automatic stop as "stopped by hand" is worse than one that says nothing:
-/// it sends whoever reads the log looking for a user who was never there.
+/// Why a stream stopped — lets the breadcrumb ring tell a genuine stall from the app doing
+/// what it should. **No default anywhere it is taken**: a defaulted cause is wrong at every
+/// call site nobody revisited, and mislabelling an automatic stop "stopped by hand" sends
+/// the reader looking for a user who was never there.
 enum class StreamStopCause(val rawValue: String) {
     sessionEnded("sessionEnded"),
     userStopped("userStopped"),
@@ -111,9 +103,8 @@ enum class StreamStopCause(val rawValue: String) {
         }
 }
 
-/// Client-side lifecycle facts that are not themselves connection-state changes.
-/// They let the store's in-memory breadcrumb ring include quarantine boundaries without
-/// passing Bluetooth objects out of the client.
+/// Client-side lifecycle facts that are not connection-state changes, so the breadcrumb
+/// ring can show quarantine boundaries without Bluetooth objects leaving the client.
 sealed interface ProgressorClientDiagnostic {
     /// A scanner lifecycle fact, never a device write or an advertisement payload.
     data class BroadcastScan(val event: String) : ProgressorClientDiagnostic
@@ -122,31 +113,25 @@ sealed interface ProgressorClientDiagnostic {
     data class StreamStartDeferred(val cause: StreamStartCause) : ProgressorClientDiagnostic
     data class StreamStartWritten(val cause: StreamStartCause) : ProgressorClientDiagnostic
 
-    /// Where a remotely calibrated gauge stands between "connected" and "produces
-    /// force". Only ever sent by a client whose kind `requiresRemoteCalibration`.
+    /// A remotely calibrated gauge's progress to producing force; only from a kind that
+    /// `requiresRemoteCalibration`.
     data class Calibration(val status: GaugeCalibrationStatus) : ProgressorClientDiagnostic
 }
 
 /// The seam between the app and the gauge.
 ///
-/// **Isolation.** On iOS this protocol is `@MainActor`, so isolation propagates to every
-/// conformer: the live client hands CoreBluetooth `queue: .main` and its delegate
-/// callbacks genuinely arrive on the main thread, with no boundary to cross anywhere in
-/// the stack. At ~10 notifications/sec of microsecond-cheap TLV decoding there is nothing
-/// to gain from a second isolation domain and plenty to lose.
+/// **Isolation.** On iOS this protocol is `@MainActor`: CoreBluetooth runs on
+/// `queue: .main`, so callbacks arrive on the main thread with no boundary to cross. At ~10
+/// notifications/sec of cheap TLV decoding a second isolation domain gains nothing.
 ///
-/// TRANSLATION NOTE: Kotlin has no actor isolation to propagate, so the same guarantee is
-/// a CONTRACT every implementation keeps by construction — Android's BLE callbacks arrive
-/// on a binder thread, so each client re-posts to `Dispatchers.Main.immediate` before it
-/// touches its own state or calls any of the three callbacks below. `immediate` and not
-/// `Dispatchers.Main`: a callback already on the main thread must run in the same turn,
-/// or a `connect()` that answers synchronously (the mock, and a reattach to a live link)
-/// would publish its state one frame after the caller looked.
+/// TRANSLATION NOTE: Kotlin has no isolation to propagate, so it is a CONTRACT: Android BLE
+/// callbacks arrive on a binder thread, and each client re-posts to
+/// `Dispatchers.Main.immediate` before touching state or calling back. `immediate` so a
+/// `connect()` that answers synchronously (the mock, a reattach) publishes in the same
+/// turn.
 ///
-/// Callback-style rather than Flow for the same reason as on iOS — the store wires
-/// `onEvent` the way the sibling apps wire their session callbacks, and every hop stays
-/// visible in one place. A flow per fact would fan the ~80 samples a second out through
-/// as many collectors as there are readers.
+/// Callbacks rather than Flow, as on iOS: every hop stays visible in one place, and a flow
+/// per fact would fan ~80 samples a second out through every collector.
 interface ProgressorClient {
     var onEvent: ((ProgressorEvent) -> Unit)?
     var onPacketBoundary: ((PacketBoundary) -> Unit)?
@@ -160,13 +145,9 @@ interface ProgressorClient {
     /// Advertised name of the connected unit, e.g. `Progressor_1234`.
     val deviceName: String?
 
-    /// Which physical device family this client drives. Capability gating — tare
-    /// behaviour, background streaming, timing source — reads `kind.capabilities`,
-    /// never the concrete client type.
-    ///
-    /// TRANSLATION NOTE: Swift puts the default in a protocol extension; Kotlin's
-    /// interface member default does the same job. It covers the two Tindeq clients
-    /// (live and mock); multi-device clients override it.
+    /// Which device family this client drives. Capability gating (tare, background
+    /// streaming, timing source) reads `kind.capabilities`, never the concrete client type.
+    /// Defaults to the Tindeq (live and mock); multi-device clients override it.
     val kind: GaugeKind get() = GaugeKind.progressor
 
     /// Scan for, and connect to, the first gauge found. Idempotent.
@@ -174,10 +155,8 @@ interface ProgressorClient {
 
     fun disconnect()
 
-    /// **`startWeightMeasurement` is REFUSED here, on every client.** Start writes carry
-    /// a cause through the one public start funnel; silently accepting an uncaused start
-    /// would make its later hardware breadcrumb a guess. Callers use
-    /// `startStreaming(cause:)` instead.
+    /// **`startWeightMeasurement` is REFUSED here, on every client**: starts carry a cause
+    /// through `startStreaming(cause:)`, so a hardware breadcrumb is never a guess.
     fun send(command: ProgressorCommand)
 
     fun startStreaming(cause: StreamStartCause)
@@ -194,9 +173,9 @@ interface ProgressorClient {
         send(ProgressorCommand.getBatteryVoltage)
     }
 
-    /// Ask the gauge to sleep and end this connection without allowing an automatic
-    /// reconnect to race the power-down command. Explicit power-down only; normal
-    /// session completion keeps the gauge available for the second daily session.
+    /// Sleep the gauge and end the connection without letting an automatic reconnect race
+    /// the power-down. Explicit power-down only; normal completion keeps the gauge
+    /// available for the second daily session.
     fun sleepDevice() {
         send(ProgressorCommand.enterSleep)
     }
