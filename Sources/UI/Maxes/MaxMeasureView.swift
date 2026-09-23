@@ -483,8 +483,7 @@ private struct MaxMeasurementHero: View {
     let measurement: MaxMeasurement
     let phase: MaxMeasurePhase
 
-    /// Scaled, never a bare point size — a fixed number renders pixel-identical at every
-    /// accessibility setting while everything around it grows.
+    /// Scaled, never a bare point size, or it stays fixed while everything else grows.
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 76
     @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 21
 
@@ -497,9 +496,8 @@ private struct MaxMeasurementHero: View {
                     .font(.system(size: heroSize, weight: .thin))
                     .displayTracking(heroSize)
                     .monospacedDigit()
-                    // A measurement SNAPS rather than rolling: a numeric transition on a
-                    // figure derived from a live signal reads as the app animating a
-                    // number it is unsure of.
+                    // SNAPS, not rolls: a numeric transition on a live-derived figure reads as
+                    // the app animating a number it is unsure of.
                     .contentTransition(.identity)
                 Text(weightUnit.symbol)
                     .font(.system(size: unitSize, weight: .regular))
@@ -593,10 +591,8 @@ private struct MaxMeasurementGuidance: View {
 
 // MARK: - The live number
 
-/// The instantaneous reading, isolated in its own view for ONE reason: `currentKg`
-/// changes ~80 times a second, so every view that reads it re-renders at that rate.
-/// Keeping it in a leaf means the hero, the controls and the guidance — none of which
-/// change during a pull — are not dragged along with it.
+/// The instantaneous reading, in a leaf because `currentKg` changes ~80×/s; the hero,
+/// controls and guidance are not dragged along.
 private struct LiveReadout: View {
     @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
@@ -626,11 +622,9 @@ private struct LiveReadout: View {
 
 /// Owns the `MaxAttempt` and publishes only what the screen draws.
 ///
-/// The attempt itself is `@ObservationIgnored` and the display values are written ONLY
-/// when they actually change. That matters more than it looks: samples arrive ~80 times
-/// a second, and holding the attempt in `@State` would invalidate the view on every one
-/// of them — the exact pattern that made the routine deck feel laggy. The peak climbs
-/// during the ramp and then holds still, so the screen settles the moment the pull does.
+/// The attempt is `@ObservationIgnored` and display values are written ONLY on change:
+/// samples arrive ~80×/s, and holding the attempt in `@State` would invalidate the view
+/// on each one. The peak climbs then holds, so the screen settles when the pull does.
 @Observable
 @MainActor
 final class MaxMeasurement {
@@ -639,8 +633,8 @@ final class MaxMeasurement {
 
     @ObservationIgnored private var attempt = MaxAttempt()
 
-    /// Mirrors `MaxAttempt.hasResult` off the same constant — a screen that offered to
-    /// save a number the engine does not consider a pull would be the two disagreeing.
+    /// Mirrors `MaxAttempt.hasResult` off the same constant, so the screen never offers to
+    /// save what the engine does not consider a pull.
     var hasResult: Bool { peakKg >= MaxAttempt.releaseKg }
 
     func receive(_ point: DeviceStore.TracePoint) {
@@ -659,9 +653,8 @@ final class MaxMeasurement {
         isComplete = false
     }
 
-    /// Equality-guarded: Observation fires on every SET, not on every CHANGE, so an
-    /// unguarded mirror would invalidate at the full sample rate and undo the whole
-    /// point of this class.
+    /// Equality-guarded: Observation fires on every SET, not every CHANGE, so an unguarded
+    /// mirror would invalidate at the full sample rate.
     private func publish() {
         if peakKg != attempt.peakKg { peakKg = attempt.peakKg }
         if isComplete != attempt.isComplete { isComplete = attempt.isComplete }

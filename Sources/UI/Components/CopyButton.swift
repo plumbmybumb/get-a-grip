@@ -3,17 +3,13 @@
 
 import SwiftUI
 
-/// Copies `text` to the pasteboard and acknowledges EVERY tap, not just the first: the
-/// label reads "Copied" for two seconds and then reverts, and a success haptic fires on
-/// each copy. The revert is the point — a diagnostics ring, a support address and an
-/// export document are all worth copying twice, and a label stuck on "Copied" from the
-/// first tap gave the second and third tap no acknowledgement at all.
+/// Copies `text` and acknowledges EVERY tap: the label reads "Copied" for two seconds
+/// then reverts, with a success haptic each time. The revert is the point — a label stuck
+/// on "Copied" gave the second and third copy no acknowledgement.
 ///
-/// The look is the caller's: `label` receives whether the copy just happened and draws
-/// whatever fits its surface (a footnote capsule in Settings, a full-width glass action
-/// in the export sheet), and a `.buttonStyle` applied outside reaches the button inside.
-/// `text` is a closure so a report assembled on demand is built on the tap, not on every
-/// body evaluation.
+/// The look is the caller's: `label` receives whether the copy just happened, and an
+/// outer `.buttonStyle` reaches the button inside. `text` is a closure, so an on-demand
+/// report is built on the tap, not per body evaluation.
 struct CopyButton<Label: View>: View {
     let text: () -> String
     let accessibilityLabel: LocalizedStringKey

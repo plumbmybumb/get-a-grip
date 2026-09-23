@@ -8,24 +8,20 @@ import SwiftUI
 /// The slate mesh field — a cool textured-stone backdrop that gives Liquid Glass
 /// something with tone to refract.
 ///
-/// STATIC, and it should stay that way. Measured on Schengen Slice: with the drift
-/// on, idle CPU sat at ~5% forever, and at 15fps it forced every glass surface to
-/// re-blur its backdrop 15× a second — which is what made interaction feel choppy.
-/// Glass needs a STABLE thing to sample. That matters even more here than there: a
-/// workout screen is on for minutes at a time with a live graph already redrawing.
+/// STATIC, and it must stay that way. Measured on Schengen Slice: animated, idle CPU sat
+/// at ~5% and every glass surface re-blurred 15× a second, which made interaction choppy.
+/// Glass needs a STABLE thing to sample — more so on a workout screen that is on for
+/// minutes with a live graph already redrawing.
 struct AppBackground: View {
     @Environment(\.colorScheme) private var scheme
 
     #if DEBUG
     /// DIAGNOSTIC: `-flatBackground` swaps this whole stack for one opaque fill.
     ///
-    /// Every `.regularMaterial` card and every `.glassEffect` surface in the app blurs
-    /// whatever is behind it, and behind them is FIVE layers — mesh, radial highlight,
-    /// mottle bitmap, grain bitmap, vignette. On a Mac GPU that is free, which is why the
-    /// simulator has never once shown the cost; on a phone it is paid per frame, per
-    /// blurring surface, and it is the first thing to rule in or out when a screen scrolls
-    /// badly on device. Add the argument to the scheme, run on the phone, and if the lag
-    /// vanishes the answer is compositing rather than SwiftUI.
+    /// Every material card and glass surface blurs what is behind it, and behind them are
+    /// FIVE layers (mesh, highlight, mottle, grain, vignette). Free on a Mac GPU, so the
+    /// simulator never shows the cost; on a phone it is paid per frame, per surface. If a
+    /// screen lags on device and this flag cures it, the problem is compositing, not SwiftUI.
     private static let isFlat = ProcessInfo.processInfo.arguments.contains("-flatBackground")
     #endif
 
@@ -45,8 +41,7 @@ struct AppBackground: View {
         ZStack {
             MeshGradient(width: 3, height: 3, points: Self.meshPoints, colors: Self.meshColors(scheme))
                 .overlay(
-                    // Whisper of top-left light for depth. Very low opacity so its
-                    // fade can't band into visible white rings.
+                    // Whisper of top-left light; low opacity so the fade cannot band into rings.
                     RadialGradient(colors: [.white.opacity(0.06), .clear],
                                    center: .init(x: 0.28, y: 0.12), startRadius: 8, endRadius: 520)
                 )
@@ -58,17 +53,15 @@ struct AppBackground: View {
             Image(uiImage: SlateTexture.grain)
                 .resizable(resizingMode: .tile)
                 .allowsHitTesting(false)
-            // A lit surface, not a flat fill: the corners fall off very slightly,
-            // which separates "premium material" from "grey rectangle". Also dithers
-            // the mesh, killing the banding OLEDs show on big flat washes.
+            // A lit surface: the corners fall off slightly ("material", not "grey
+            // rectangle"), and it dithers the mesh against OLED banding.
             RadialGradient(colors: [.clear, .black.opacity(scheme == .dark ? 0.20 : 0.085)],
                            center: .center, startRadius: 180, endRadius: 760)
                 .allowsHitTesting(false)
         }
         .clipped()
-        // ONE full-bleed escape for the whole background stack — per-child
-        // ignoresSafeArea inside the ZStack disturbs sibling layout (the screen title
-        // creeps under the status bar).
+        // ONE full-bleed escape for the whole stack — per-child ignoresSafeArea
+        // disturbs sibling layout (the title creeps under the status bar).
         .ignoresSafeArea()
         .id(scheme)
     }
@@ -81,9 +74,8 @@ struct AppBackground: View {
         SIMD2(0, 1),    SIMD2(0.48, 1.0),  SIMD2(1, 1),
     ]
 
-    /// The 9-colour grid for the 3×3 mesh — slate tones, light at the top settling
-    /// darker toward the bottom, with a faint cool-blue undertone so the gray never
-    /// reads as dead concrete.
+    /// The 9-colour grid for the 3×3 mesh: slate, light at the top settling darker, with a
+    /// faint cool-blue undertone so the gray never reads as dead concrete.
     private static func meshColors(_ scheme: ColorScheme) -> [Color] {
         if scheme == .dark {
             let topEdge = Color(hex: "2C323B")
@@ -104,21 +96,16 @@ struct AppBackground: View {
     }
 }
 
-/// Paper-slate texture: a FINE tooth layer over a soft blurred mottle — reads as
-/// pressed paper/stone rather than the dusty speckle a single white-noise pass gives.
-/// Generated once with CoreImage; the grain TILES (sharp at any size, ~256KB), the
-/// mottle is a stretched sheet (blur can't tile without seaming).
+/// Paper-slate texture: a FINE tooth layer over a soft blurred mottle, reading as
+/// pressed stone rather than digital speckle. Generated once with CoreImage; the grain
+/// TILES (~256KB), the mottle is a stretched sheet (blur cannot tile without seaming).
 ///
-/// **Nothing here force-unwraps, and the fallback is an EMPTY image.** These are lazy
-/// `static let`s, so the render runs inside whichever screen happens to touch the
-/// background first — and CoreImage can legitimately return nothing under memory
-/// pressure. A trap there would take the app down while drawing a texture; an empty
-/// `UIImage` simply omits the layer, leaving the mesh, the highlight and the vignette,
-/// which is a background nobody would notice was one short.
+/// **Nothing here force-unwraps; the fallback is an EMPTY image.** These lazy statics
+/// render inside whichever screen first draws the background, and CoreImage can return
+/// nothing under memory pressure. An empty `UIImage` just omits one layer.
 @MainActor
 private enum SlateTexture {
-    /// 1 texel = 1 DEVICE PIXEL, so fine grain actually reads as fine rather than as
-    /// a slightly blurred picture of a texture.
+    /// 1 texel = 1 DEVICE PIXEL, so fine grain reads as fine, not blurred.
     private static var pixelScale: CGFloat { max(2, UITraitCollection.current.displayScale) }
 
     private static func gray(_ image: CIImage, alpha: CGFloat) -> CIImage? {
@@ -137,9 +124,8 @@ private enum SlateTexture {
         guard let noise = CIFilter.randomGenerator().outputImage?.cropped(to: rect) else {
             return UIImage()
         }
-        // Two octaves: a sharp pass plus a half-pixel-blurred one. Pure white noise
-        // alone reads as digital speckle; the softer companion gives it the slight
-        // irregularity of a pressed surface.
+        // Two octaves, sharp plus half-pixel-blurred: pure white noise alone reads
+        // as digital speckle.
         let fine = gray(noise, alpha: 0.055)
         let soft = gray(noise.applyingGaussianBlur(sigma: 0.8).cropped(to: rect), alpha: 0.05)
         let composite = CIFilter.sourceOverCompositing()

@@ -7,20 +7,18 @@ import SwiftUI
 
 /// The ritual front door — the screen Nuri sees every single day, twice.
 ///
-/// What you do today is the first thing on screen and one tap from starting. There is
-/// no library to assemble. The card's plan row opens a preparation overview; its
-/// Edit action and the card menu lead to the existing builder.
+/// What you do today is the first thing on screen and one tap from starting; there is
+/// no library to assemble. The card's plan row opens a preparation overview; its Edit
+/// action and the card menu lead to the builder.
 ///
-/// Deliberately no footer disclaimer. Schengen's dashboard carries one because every
-/// number there is legally load-bearing; nothing here is. The Tindeq non-affiliation
-/// line lives in Settings › About.
+/// No footer disclaimer: nothing here is legally load-bearing. The Tindeq
+/// non-affiliation line lives in Settings › About.
 struct TodayView: View {
     var onShowHistory: () -> Void = {}
-    /// Sorted the same way `TemplateStore` sorts, so the two can never disagree about
-    /// which routine is primary. The `id` tiebreak is applied in `ordered` rather than
-    /// here because `UUID` is not `Comparable` and a SwiftData `SortDescriptor` cannot
-    /// express it — and without it, two devices that both reorder produce duplicate
-    /// `sortIndex` values over CloudKit and render in opposite orders.
+    /// Sorted the same way as `TemplateStore`, so the two never disagree about which
+    /// routine is primary. The `id` tiebreak lives in `ordered` because `UUID` is not
+    /// `Comparable` for a `SortDescriptor` — and without it, two devices that both reorder
+    /// produce duplicate `sortIndex` values over CloudKit and render in opposite orders.
     @Query(sort: [SortDescriptor(\SessionTemplate.sortIndex),
                   SortDescriptor(\SessionTemplate.createdAt)])
     private var routines: [SessionTemplate]
@@ -36,16 +34,14 @@ struct TodayView: View {
 
     @State private var chosenRoutineID: UUID?
     @State private var chosenOnDay: DayStamp?
-    /// Which card the deck is resting on. This is a MIRROR of the selection rungs, not
-    /// a fourth rung: programmatic moves (a new day, a deleted routine) write it from
-    /// `selected`, and only a settle on a card that ISN'T `selected` — i.e. a swipe a
-    /// person made — writes back into `chosenRoutineID`. That guard is what keeps the
-    /// old rail's semantics intact: a day change still re-asserts the primary without
-    /// the sync itself counting as "an explicit tap made today".
+    /// Which card the deck is resting on. A MIRROR of the selection rungs, not a fourth
+    /// rung: programmatic moves (a new day, a deleted routine) write it from `selected`,
+    /// and only a settle on a card that ISN'T `selected` — a person's swipe — writes back
+    /// into `chosenRoutineID`. So a day change still re-asserts the primary without the
+    /// sync counting as "an explicit tap made today".
     @State private var deckPosition: UUID?
-    /// The trailing "New routine" card's scroll identity. Static so the id survives the
-    /// view struct being recreated — an id that changed per render would drop the scroll
-    /// target out from under anyone parked on the card.
+    /// The trailing "New routine" card's scroll identity. Static so it survives the view
+    /// being recreated; a per-render id would drop the scroll target under the reader.
     private static let ghostID = UUID()
     @State private var builder: BuilderMode?
     @State private var overview: RoutineOverviewRequest?
@@ -53,45 +49,37 @@ struct TodayView: View {
     @Environment(TourController.self) private var tour
 
     @State private var running: SessionTemplate?
-    /// The live gauge, as a full-screen cover from the button on the bar. Some people
-    /// use the gauge and no routine at all (2026-09-20), so it is one tap from Today —
-    /// the same top-right door History and Maxes already have, wearing the icon the
-    /// Settings row uses for it.
+    /// The live gauge as a full-screen cover. Some people use the gauge and no routine
+    /// at all (2026-09-20), so it is one tap from Today, like History's and Maxes' doors.
     @State private var showingGauge = false
-    /// Whether the session being presented was started without a gauge. Not part of the
-    /// routine — the same routine is run both ways — so it rides alongside `running`.
+    /// Whether the presented session was started without a gauge. Not part of the
+    /// routine (the same routine runs both ways), so it rides alongside `running`.
     @State private var runningTimerOnly = false
-    /// Set when the builder finishes with "Save and start training" and consumed in the
-    /// sheet's `onDismiss` — presenting a full-screen cover in the same runloop turn as
-    /// a sheet's dismissal is routinely dropped, which would lose the one tap that
-    /// mattered most.
+    /// Set by "Save and start training", consumed in the sheet's `onDismiss`: a cover
+    /// presented in the same runloop turn as a sheet's dismissal is routinely dropped,
+    /// which would lose the one tap that mattered most.
     @State private var pendingStartID: UUID?
     @State private var startTick = 0
     @State private var selectTick = 0
     @State private var undoTick = 0
     @State private var loggingSession = false
-    /// FROZEN at tap time — see `RoutineShareRequest`. Holding the request rather than
-    /// the routine is what stops a swipe, an edit or a CloudKit merge changing the code
-    /// on screen out from under whoever is pointing a camera at it.
+    /// FROZEN at tap time — see `RoutineShareRequest` — so a swipe, edit or CloudKit merge
+    /// cannot change the code under a camera pointed at it.
     @State private var shareRequest: RoutineShareRequest?
     @State private var shareFailed = false
     @State private var scanningRoutine = false
     @State private var scannedRoutine: String?
-    /// The scanned routine currently ON SCREEN, claimed from the store's inbox by
-    /// `drainImportInbox()`. It lives here — not in `RootTabView`, where the link
-    /// actually arrives — because this is the one view that owns every presentation a
-    /// scan can collide with: presenting from the root while the builder or runner
-    /// cover was up tore the cover down (a session died unlogged; a dirty builder lost
-    /// its edits), so the inbox waits until this view can see that nothing else holds
-    /// the screen.
+    /// The scanned routine ON SCREEN, claimed from the store's inbox by
+    /// `drainImportInbox()`. Here, not in `RootTabView` where the link arrives, because
+    /// this view owns every presentation a scan can collide with: presenting from the root
+    /// over the builder or runner cover tore the cover down (a session died unlogged, a
+    /// dirty builder lost its edits).
     @State private var importPreview: ImportRequest?
     @State private var importError: String?
     @Namespace private var zoom
 
-    /// Nothing this view presents is up or about to be. `pendingStartID` counts as
-    /// "about to be": the builder's Save-and-start is consumed in its `onDismiss`, and
-    /// draining ahead of it would slide the import sheet in front of the one tap that
-    /// mattered most.
+    /// Nothing this view presents is up or about to be. `pendingStartID` counts as "about
+    /// to be": draining ahead of it would slide the import sheet in front of Save-and-start.
     private var canPresentImport: Bool {
         builder == nil && running == nil && pendingStartID == nil
             && overview == nil && pendingOverviewEditID == nil
@@ -100,15 +88,11 @@ struct TodayView: View {
     }
 
     /// The single door from the store's inbox to the screen, called on arrival and from
-    /// every presentation's `onDismiss` — the same deferral idiom as
-    /// `startPendingRoutine()`, and for the same reason: presenting in the runloop turn
-    /// that dismissed something else is routinely dropped.
+    /// every presentation's `onDismiss` — the same deferral as `startPendingRoutine()`.
     /// Once, on Today, after the fifth saved session has closed — see `ReviewRequestPolicy`.
-    /// Decided HERE, not in the summary: this is the settled screen the prompt lands on,
-    /// a beat after the cover is gone, never from a tap (it may show nothing), and the
-    /// summary stays free of a settings dependency it has no other use for. "The cover
-    /// just saved a session" is read off the store's save counter, so a discarded
-    /// session never counts.
+    /// Decided HERE, not in the summary: the settled screen, a beat after the cover is gone,
+    /// never from a tap (it may show nothing). Read off the store's save counter, so a
+    /// discarded session never counts.
     private func askForReviewIfDue() {
         guard templates.sessionsSavedThisLaunch > sessionSavesSeen else { return }
         sessionSavesSeen = templates.sessionsSavedThisLaunch
@@ -133,11 +117,8 @@ struct TodayView: View {
     var body: some View {
         // Folded ONCE per evaluation and handed down — see `TodaySelection`.
         let deck = makeDeck()
-        // spacing 16, not the house 22: three or four blocks that must land inside one
-        // screen without being as dense as Schengen's dashboard.
-        // 12 rather than the house 22, and rather than the 16 it carried before: Today has
-        // four blocks and the gaps between them were the easiest twelve points to find
-        // when the page had to fit under a large title without scrolling.
+        // 12 rather than the house 22: four blocks that must fit under a large
+        // title without scrolling, and the gaps were the easiest points to find.
         ScreenScaffold(title: String(localized: "Today"), subtitle: dateLine, spacing: 12,
                        fitsOnePage: true, gridsOnWideScreens: true) {
             header(deck)
@@ -154,31 +135,25 @@ struct TodayView: View {
                     }
                 }
 
-            // The deck exists the moment ANY routine does — with one routine its only
-            // neighbour is the ghost card, and that peek is honest: there genuinely is
-            // something behind the ritual (creating the next one). Without it a
-            // single-routine user had no swipe to the ghost at all and "New routine"
-            // lived only in the ⋯ menu (Nuri, 2026-08-10).
+            // The deck exists once ANY routine does: with one routine its neighbour is
+            // the ghost card, an honest peek, and otherwise "New routine" lived only in
+            // the ⋯ menu (Nuri, 2026-08-10).
             Group {
                 if deck.ordered.isEmpty {
                     emptyCard
                 } else if sizeClass == .regular {
-                    // A wide window shows the routines SIDE BY SIDE instead of paging:
-                    // the peek was the deck's answer to a screen that fits one card, and
-                    // a tablet fits two, so every card is simply there.
+                    // A wide window shows the routines SIDE BY SIDE: the peek answered a screen
+                    // that fits one card, and a tablet fits two.
                     routineGrid(deck)
                 } else {
                     routineDeck(deck)
                 }
             }
-            // Motion.state, not .snappy: a deck appearing is a state change nobody
-            // flicked, so it has earned no bounce — and the token already carries the
-            // Reduce Motion branch this line used to hand-retype.
+            // Motion.state: a deck appearing is a state change nobody flicked, so no bounce.
             .animation(Motion.state(reduceMotion), value: deck.ordered.count)
             .staggerIn(1)
 
-            // With no routine there is no ritual, and nothing the strip could honestly
-            // describe.
+            // With no routine there is no ritual for the strip to describe.
             if !deck.ordered.isEmpty {
                 ConsistencyCard(days: templates.consistency,
                                 onLogClimb: { loggingSession = true },
@@ -187,15 +162,13 @@ struct TodayView: View {
                     .staggerIn(2)
             }
         }
-        // FULL SCREEN, not a sheet. A sheet's top edge sits ~50 pt below the Dynamic
-        // Island, so the grip panel had to be a second presentation stacked on top of it
-        // just to reach the screen's top. Full screen collapses that layer, and buys back
-        // the 50 pt on the one screen in the app that is fighting for vertical space.
-        // Still a COVER and never a push: nothing here touches SwiftData until Save, so
+        // The builder is FULL SCREEN, not a sheet: a sheet's top edge sits ~50 pt below
+        // the Dynamic Island, which the grip panel must reach, and the builder needs the
+        // 50 pt. A COVER and never a push: nothing touches SwiftData until Save, so
         // Cancel IS undo and a back chevron would promise save-as-you-go.
         .sheet(item: $overview, onDismiss: {
             // Let the sheet finish dismissing before presenting the editor. A queued
-            // import waits until the edit has finished, just as it waits for a runner.
+            // import waits for the edit, as it waits for a runner.
             if let id = pendingOverviewEditID {
                 pendingOverviewEditID = nil
                 if ordered.contains(where: { $0.id == id }) { builder = .edit(id) }
@@ -223,40 +196,34 @@ struct TodayView: View {
             RunnerView(template: routine, timerOnly: runningTimerOnly)
                 .onAppear { templates.noteSessionStarted(routine) }
         }
-        // A COVER, like the runner it now resembles, not a push: the phone is on a bench
-        // and the graph wants the whole screen. Its own stack, for the inline title and
-        // the Done item.
+        // A COVER, like the runner, not a push: the phone is on a bench and the graph
+        // wants the whole screen. Its own stack, for the inline title and Done.
         .fullScreenCover(isPresented: $showingGauge, onDismiss: { drainImportInbox() }) {
             NavigationStack { GaugeView(presentedAsCover: true) }
         }
-        // `initial: true` so this is both the start trigger and the resume trigger. The
-        // routine list arrives through a `@Query`, so "is there a routine" is not knowable
-        // on the first frame — reading it once in `onAppear` would show the empty-handed
-        // act to somebody who has six routines.
+        // `initial: true`: both the start and the resume trigger. The routine list is a
+        // `@Query`, unknowable on the first frame, so `onAppear` would show the
+        // empty-handed act to somebody with six routines.
         .onChange(of: deck.ordered.count, initial: true) { _, _ in
             syncTour()
             #if DEBUG
-            // Headless verification: `-previewBuilder` opens the first routine's editor,
-            // because `simctl` cannot tap. Here rather than `onAppear` for the reason the
-            // tour is: the routine list is a `@Query`, unknowable on the first frame.
+            // Headless verification: `-previewBuilder` opens the first routine's editor
+            // (`simctl` cannot tap). Here, not `onAppear`, for the tour's reason above.
             if ProcessInfo.processInfo.arguments.contains("-previewBuilder"),
                builder == nil, let first = ordered.first {
                 builder = .edit(first.id)
             }
-            // `-startFirstRoutine`: the "Connect and start" tap, for a headless run —
-            // with `-mockDevice` that is a whole measured session through the real
-            // store and runner, which is how the trace was checked under bunched
-            // delivery (`-mockClumpMS`) on the iPad simulator (2026-09-19).
+            // `-startFirstRoutine`: the "Connect and start" tap for a headless run; with
+            // `-mockDevice`, a whole measured session through the real store and runner.
             if ProcessInfo.processInfo.arguments.contains("-startFirstRoutine"),
                running == nil, let first = ordered.first {
                 start(first)
             }
             #endif
         }
-        // ALSO when a session closes. Saving your first routine with "Save and start
-        // training" takes you straight into the runner, so the resume has to wait for you
-        // to come back — otherwise act two starts behind the cover, the session act is
-        // blocked by an act already running, and you get Today's tour over a live workout.
+        // ALSO when a session closes: "Save and start training" goes straight into
+        // the runner, so the resume must wait for you to come back, or Today's tour
+        // runs behind the cover over a live workout.
         .onChange(of: running?.id) { _, _ in syncTour() }
         .sheet(isPresented: $loggingSession, onDismiss: { drainImportInbox() }) {
             SessionLogSheet(onClose: { loggingSession = false })
@@ -265,8 +232,8 @@ struct TodayView: View {
             RoutineShareSheet(request: request) { shareRequest = nil }
         }
         .sheet(isPresented: $scanningRoutine, onDismiss: {
-            // Route only after the camera sheet has finished dismissing. The existing
-            // inbox owns validation, error messages and the import preview.
+            // Route only after the camera sheet has dismissed; the inbox owns
+            // validation, errors and the preview.
             if let raw = scannedRoutine {
                 scannedRoutine = nil
                 if let url = URL(string: raw) {
@@ -282,18 +249,16 @@ struct TodayView: View {
                 scanningRoutine = false
             }, onClose: { scanningRoutine = false })
         }
-        // The share alert fires when a routine cannot become a WORKING code — no pulls
-        // in it, or past the 50-set import ceiling. Rare, which is exactly why a silent
-        // no-op would be unreadable: a menu item that does nothing is indistinguishable
-        // from a tap that missed.
+        // Fires when a routine cannot become a WORKING code (no pulls, or past the
+        // 50-set import ceiling). Rare — which is why a silent no-op would read as a
+        // missed tap.
         .alert("Couldn't share", isPresented: $shareFailed) {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Couldn't build a share code for this routine.")
         }
-        // The import inbox's two outlets. Arrival is watched here; every presentation
-        // above drains again on dismissal, so a scan that landed mid-cover appears the
-        // moment the screen is free instead of being torn into or lost.
+        // The import inbox's two outlets. Every presentation above drains again on
+        // dismissal, so a scan that landed mid-cover appears once the screen is free.
         .sheet(item: $importPreview, onDismiss: { drainImportInbox() }) { request in
             RoutineImportSheet(draft: request.draft)
         }
@@ -312,18 +277,16 @@ struct TodayView: View {
         .onChange(of: templates.pendingImportError) { _, incoming in
             if incoming != nil { drainImportInbox() }
         }
-        // A link that cold-launched the app can land before the two observers above are
-        // in place; the appear pass sweeps whatever is already waiting.
+        // A cold-launch link can land before the observers above exist; sweep it.
         .onAppear { drainImportInbox() }
         .safeAreaInset(edge: .bottom) { undoBar }
         .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: startTick)
         .sensoryFeedback(.selection, trigger: selectTick)
         .sensoryFeedback(.success, trigger: undoTick)
         .onChange(of: scenePhase) { _, phase in
-            // A new day always re-asserts `upNext` — that is literally "this is what
-            // meets you every time you open the app". (Within a day, becoming active
-            // also refreshes which routine is calling, so answering a reminder lands on the
-            // routine that sent it even while yesterday's pin is long gone.)
+            // A new day always re-asserts `upNext` — "what meets you every time you
+            // open the app". (Within a day, becoming active refreshes which routine is
+            // calling, so answering a reminder lands on the routine that sent it.)
             guard phase == .active, chosenOnDay != clock.today else { return }
             chosenRoutineID = nil
             chosenOnDay = nil
@@ -347,10 +310,8 @@ struct TodayView: View {
         }
     }
 
-    /// "Monday 3 August". The M1 subtitle ("Gauge connected") duplicated the DeviceChip
-    /// thirty points below it; a daily-ritual screen says what day it is. Read off the
-    /// app's own `DayClock` rather than `Date.now` so it re-renders when the day rolls
-    /// under a phone that was left open.
+    /// "Monday 3 August" — a daily-ritual screen says what day it is. Read off `DayClock`,
+    /// not `Date.now`, so it re-renders when the day rolls under an open phone.
     private var dateLine: String {
         clock.today.date().formatted(.dateTime.weekday(.wide).day().month(.wide))
     }
@@ -360,10 +321,9 @@ struct TodayView: View {
     /// Size CLASS, never the idiom: an iPad in Slide Over is a phone and keeps the deck.
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    /// The regular-width layout: the same cards, the same ghost at the end, in a grid
-    /// two wide where the window allows. No pin and no settle — with every routine on
-    /// screen there is nothing to choose, and the up-next border still says which one
-    /// Today opens on.
+    /// The regular-width layout: the same cards and ghost, two wide where the window
+    /// allows. No pin and no settle — every routine is on screen, and the up-next border
+    /// still says which one Today opens on.
     private func routineGrid(_ deck: Deck) -> some View {
         CardGrid {
             ForEach(deck.cards) { card in
@@ -374,17 +334,12 @@ struct TodayView: View {
         }
     }
 
-    /// The routines as a PAGED DECK — Music's Top Picks, not a browse feed. The card
-    /// that used to sit under a rail of name-chips IS the chooser now: the next
-    /// routine peeks in from the trailing edge, swiping to a card chooses it (same
-    /// rung, same day-scoped pin as the old rail tap), and a new day — or a fresher
-    /// reminder — snaps the deck back to `upNext`, the card wearing the border. This
-    /// folds two controls that were pretending not to be one — the chip NAMED a
-    /// routine the card was already showing — and it makes the whole app speak the
-    /// builder deck's physics: cards slide sideways, the front card is live. The
-    /// honest cost, accepted: sibling NAMES aren't readable without a swipe. At the
-    /// two-or-three routines this app is built around, the peek plus each card's own
-    /// done-dots carry what the rail carried.
+    /// The routines as a PAGED DECK — Music's Top Picks, not a browse feed. The card IS the
+    /// chooser: the next routine peeks from the trailing edge, swiping to a card chooses it
+    /// (same rung, same day-scoped pin as the old rail tap), and a new day or a fresher
+    /// reminder snaps back to `upNext`, the card wearing the border. It replaced a rail of
+    /// name-chips that only NAMED the card already showing. Accepted cost: sibling names
+    /// need a swipe, which at two or three routines the peek and done-dots cover.
     private func routineDeck(_ deck: Deck) -> some View {
         ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: 8) {
@@ -392,60 +347,46 @@ struct TodayView: View {
                     routineCard(card, deck: deck)
                         .containerRelativeFrame(.horizontal)
                 }
-                // The quiet door at the end of the deck — the same grammar as the
-                // builder's spare grip card: the next thing waits BEHIND the things
-                // you have, so creating never sits at the same visual weight as the
-                // ritual (the rule the rail enforced by having no `+` at all).
+                // The quiet door at the end of the deck: the next thing waits BEHIND the
+                // things you have, so creating never weighs the same as the ritual.
                 newRoutineGhost
                     .containerRelativeFrame(.horizontal)
                     .id(Self.ghostID)
             }
             .scrollTargetLayout()
         }
-        // `.always`: one card per gesture, however hard the flick. Music's carousels
-        // let momentum carry you several items because they are browsing surfaces;
-        // this deck is a CHOOSER where every settle is a deliberate pick (a pin and a
-        // haptic), so it moves like the builder's pager — one card per swipe.
+        // `.always`: one card per gesture, however hard the flick. This is a CHOOSER
+        // where every settle is a pick (a pin and a haptic), not a browsing carousel.
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
-        // UNCLIPPED, for the long press. UIKit parents the context-menu lift — the card
-        // scaled up about 2.5 % with a soft shadow under it — inside the nearest scroll
-        // view, and this one is exactly one card tall. Clipped, the first half-second of
-        // every lift showed the card's corners sliced flat at the row's top and bottom
-        // and the shadow cut into a hard-edged band the width of the screen (Nuri's
-        // phone, 2026-09-19). Reproduced frame by frame on the pinned simulator with
-        // `LongPressLiftUITests` under `simctl io recordVideo`; the UIKit view dump
-        // behind `-dumpInteractions` showed the row's `HostingScrollView` as the only
-        // clipping view with the band's exact frame, and lifting the clip removed both
-        // the slice and the band in the next recording. Nothing else changes: the deck
-        // is full-bleed, so sideways there is no screen beyond it, and the row is the
-        // tallest card, so there is nothing to spill vertically.
+        // UNCLIPPED, for the long press. UIKit parents the context-menu lift (the
+        // card scaled ~2.5 % with a shadow) inside the nearest scroll view, which is
+        // one card tall; clipped, every lift sliced the card's corners flat and cut
+        // the shadow into a hard screen-wide band (Nuri's phone, 2026-09-19).
+        // Confirmed with `LongPressLiftUITests` + `simctl io recordVideo` and the
+        // `-dumpInteractions` view dump. Safe: the deck is full-bleed and the row is
+        // the tallest card, so nothing else can spill.
         .scrollClipDisabled()
         .scrollPosition(id: $deckPosition)
         .scrollIndicators(.hidden)
-        // Full-bleed: the deck escapes the column's padding so the neighbour peeks at
-        // the SCREEN edge (the Music carousel move), then the content margins put a
-        // settled card back on the house grid, aligned with the title above it. The
-        // trailing margin is deliberately 8 wider than the grid: peek = trailing
-        // margin − card gap, and 12 pt of neighbour was a hairline where 20 reads as
-        // a card. The last card still lands exactly on the grid — leading margin +
-        // card width + trailing margin is precisely the viewport.
+        // Full-bleed so the neighbour peeks at the SCREEN edge; content margins put a
+        // settled card back on the house grid. Trailing margin is 8 wider than the
+        // grid: peek = trailing margin − card gap, and 12 pt of neighbour read as a
+        // hairline where 20 reads as a card. The last card still lands on the grid.
         .padding(.horizontal, -Metrics.hPadding)
         .contentMargins(.leading, Metrics.hPadding, for: .scrollContent)
         .contentMargins(.trailing, Metrics.hPadding + 8, for: .scrollContent)
-        // Placed, never animated, on first layout — the deck must simply BE on the
-        // day's routine, not visibly travel there.
+        // Placed, never animated, on first layout.
         .onAppear { deckPosition = deck.selectedID }
-        // Programmatic re-selection: the day rolling over, a save landing, a CloudKit
-        // merge deleting the card under you. The swipe direction never loops through
-        // here — a settle on `selected` itself is filtered below, and pinning writes
-        // `chosenRoutineID`, which makes `selected` equal the settle target.
+        // Programmatic re-selection: a day rollover, a save, a CloudKit merge deleting
+        // the card. Never loops: a settle on `selected` is filtered below, and pinning
+        // makes `selected` equal the settle target.
         .onChange(of: deck.selectedID) { _, id in
             guard let id, deckPosition != id else { return }
             withAnimation(Motion.state(reduceMotion)) { deckPosition = id }
         }
-        // A settle on a card someone swiped to is the old rail tap. The `ordered`
-        // check keeps the ghost from being "chosen": parking on it is browsing, not
-        // picking a ritual, and it must not survive as a stale rung-1 pin.
+        // A settle on a swiped-to card is the old rail tap. The `ordered` check keeps
+        // the ghost from being "chosen" — parking on it is browsing, and must not
+        // survive as a stale rung-1 pin.
         .onChange(of: deckPosition) { _, id in
             guard let id, id != deck.selectedID,
                   deck.ordered.contains(where: { $0.id == id }) else { return }
@@ -455,9 +396,8 @@ struct TodayView: View {
         }
     }
 
-    /// Deliberately NOT a `MaterialCard`: a hairline outline against the material of
-    /// its neighbours is the same "provisional" reading as an unselected chip — this
-    /// is a routine that could exist, next to ones that do.
+    /// NOT a `MaterialCard`: a hairline outline reads as "provisional", like an unselected
+    /// chip — a routine that could exist, next to ones that do.
     private var newRoutineGhost: some View {
         VStack(spacing: 12) {
             Button { builder = .addAnother } label: {
@@ -506,17 +446,14 @@ struct TodayView: View {
 
     // MARK: - Cards
 
-    /// VALUE-COMPARED (`.equatable()`): the card takes eleven closures, so as a plain
-    /// view it never compared equal and every Today render — a swipe settling, the gauge
-    /// state ticking — re-ran every card's body. It compares on what it draws; the
-    /// closures only ever act on `routine`, which the summary's `id` pins.
+    /// VALUE-COMPARED (`.equatable()`): with eleven closures the card never compared equal,
+    /// so every Today render re-ran every card's body. See `RoutineCard.==`.
     private func routineCard(_ card: Deck.Card, deck: Deck) -> some View {
         let routine = card.routine
         return RoutineCard(
             summary: card.summary,
             completionText: templates.completionText(routine),
-            // The border only exists where there are siblings to distinguish — with one
-            // routine it would mark the only real card there is.
+            // Only where there are siblings to distinguish.
             isUpNext: deck.ordered.count > 1 && routine.id == deck.upNextID,
             deviceState: device.state,
             battery: device.batteryFraction,
@@ -529,9 +466,8 @@ struct TodayView: View {
             },
             onDuplicate: { _ = templates.duplicate(routine) },
             onShare: { share(routine) },
-            // `.addAnother` zooms out of the deck's ghost card when the deck exists;
-            // from the menu on a single-routine screen there is no source on screen
-            // and the zoom degrades to the standard sheet presentation, which is right.
+            // Zooms out of the ghost card when the deck exists; from the menu there is
+            // no source on screen and it degrades to the standard presentation.
             onNew: { builder = .addAnother },
             onMakePrimary: { templates.makePrimary(routine) },
             onDelete: { _ = templates.delete(routine) },
@@ -541,12 +477,10 @@ struct TodayView: View {
         .matchedTransitionSource(id: routine.id.uuidString, in: zoom)
     }
 
-    /// Exactly ONE button. No "start from a preset" second door: the builder opens BLANK
-    /// (Nuri, 2026-08-10 and 2026-08-19), so the line under the heading promises exactly
-    /// that and nothing more. It once described the six-set prefill the builder used to
-    /// open with, and it kept saying so for a month after the prefill left — through the
-    /// 1.0.3 App Store build (Nuri, 2026-09-18: "nothing is ready to go, it's blank").
-    /// Copy that describes a mechanism has to move with the mechanism.
+    /// Exactly ONE button. The builder opens BLANK (Nuri, 2026-08-10 and 2026-08-19), so the
+    /// line under the heading promises that and nothing more. It once described a six-set
+    /// prefill and kept saying so for a month after the prefill left, through the 1.0.3
+    /// App Store build. Copy that describes a mechanism has to move with the mechanism.
     private var emptyCard: some View {
         MaterialCard {
             VStack(alignment: .leading, spacing: 12) {
@@ -574,8 +508,7 @@ struct TodayView: View {
                 scanRoutineButton
 
                 if !device.state.isConnected {
-                    // Removes the "do I need the hardware in my hand first?" hesitation
-                    // at exactly the moment it occurs.
+                    // Answers "do I need the hardware first?" exactly when it occurs.
                     Text("You can connect your gauge later.")
                         .font(.system(.caption))
                         .foregroundStyle(Ink.tertiary)
@@ -598,16 +531,14 @@ struct TodayView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        // 8, not 4: the bar sat close enough to the tab bar that a reach for Undo
-        // could land on the tab strip instead.
+        // 8, not 4: a reach for Undo could land on the tab strip.
         .padding(.bottom, 8)
         .animation(Motion.state(reduceMotion),
                    value: templates.lastDeleted)
     }
 
-    /// The bar names the sessions because they are the part nobody expects to be on
-    /// the line: a routine's history goes with it (`TemplateStore.delete`), and
-    /// "Routine deleted" alone would be a true sentence about the smaller half.
+    /// Names the sessions because nobody expects them on the line: a routine's history
+    /// goes with it (`TemplateStore.delete`), and "Routine deleted" alone undersells it.
     private func undoMessage(sessions: Int) -> String {
         switch sessions {
         case 0: String(localized: "Routine deleted")
@@ -618,9 +549,8 @@ struct TodayView: View {
 
     // MARK: - Selection
 
-    /// The store's TOTAL order, re-applied here for the `id` tiebreak `@Query` cannot
-    /// express. Cheap: a handful of routines, and the alternative is the two disagreeing
-    /// about which one is primary.
+    /// The store's TOTAL order, re-applied for the `id` tiebreak `@Query` cannot express,
+    /// so the two never disagree about which one is primary.
     private var ordered: [SessionTemplate] {
         routines.sorted { a, b in
             // Rituals lead the deck; whenever-routines sit behind them (Nuri,
@@ -636,9 +566,8 @@ struct TodayView: View {
     private struct Deck {
         let ordered: [SessionTemplate]
         /// Rungs 2–4 — see `TodaySelection.upNextID`. Split from `selectedID` because the
-        /// border must ignore rung 1: swipe away to browse and the border stays put on
-        /// the called card, which is what makes it information ("this one is being
-        /// asked of you") rather than decoration on whatever is in front.
+        /// border ignores rung 1: swipe away to browse and the border stays on the called
+        /// card, which makes it information rather than decoration on whatever is in front.
         let upNextID: UUID?
         /// Four rungs, in order:
         /// 1. an explicit tap or swipe made TODAY — cleared by a day change, never
@@ -651,8 +580,8 @@ struct TodayView: View {
         /// Rung 4 is also what self-heals when a CloudKit merge deletes the chosen
         /// routine: rung 1 simply misses and the rule falls through.
         let selectedID: UUID?
-        /// One per routine, in `ordered`'s order, carrying its summary — each decodes the
-        /// plan and the reminders, so the card and the header share the one built here.
+        /// One per routine, in `ordered`'s order, with its summary (built once, shared by card
+        /// and header).
         let cards: [Card]
 
         struct Card: Identifiable {
@@ -666,18 +595,14 @@ struct TodayView: View {
         }
     }
 
-    /// "Calling" is computed from the SCHEDULE, deliberately not from the delivered-
-    /// notification list: the schedule is synchronous (the deck must not jump a frame
-    /// after appearing while an async query lands), it still works with notifications
-    /// off — at 13:05 it is Max o'clock whether or not a banner said so — and the
-    /// planner's suppression of already-trained days is mirrored by the
-    /// `isDoneForToday` filter: a routine you finished has been answered.
+    /// "Calling" is computed from the SCHEDULE, not the delivered-notification list: it is
+    /// synchronous (the deck must not jump a frame after appearing), it works with
+    /// notifications off, and the planner's suppression of trained days is mirrored by
+    /// the `isDoneForToday` filter — a finished routine has been answered.
     ///
-    /// Freshness rides on re-render: `scenePhase` is read by this view, so returning
-    /// to the app — the notification-tap path — recomputes this and the deck's sync
-    /// scroll animates over to whoever called. A crossing that happens while the app
-    /// sits open foregrounded is picked up on the next render, which is soon enough
-    /// for a heuristic about attention.
+    /// Freshness rides on re-render: this view reads `scenePhase`, so returning to the app
+    /// (the notification-tap path) recomputes it and the deck scrolls to whoever called. A
+    /// crossing while the app sits open is picked up on the next render.
     private func makeDeck() -> Deck {
         let ordered = self.ordered
         let candidates = ordered.map { routine in
@@ -712,9 +637,8 @@ struct TodayView: View {
         // Prepare the destination. The agreement gate records the start only when
         // it actually admits the runner; declining does not mark a routine started.
         startTick += 1
-        // Set BEFORE `running`, because assigning `running` is what presents the cover and
-        // builds the RunnerView — a flag written afterwards would arrive a frame late,
-        // which is a whole lead-in spent connecting to a gauge nobody asked for.
+        // Set BEFORE `running`, which presents the cover: a flag written afterwards
+        // arrives a frame late, a lead-in spent connecting to an unwanted gauge.
         runningTimerOnly = timerOnly
         running = routine
     }
@@ -728,12 +652,11 @@ struct TodayView: View {
 
     // MARK: - Sharing
 
-    /// Builds the code HERE, not in the sheet: the URL and the name beside it are read
-    /// off the same routine in the same turn, so the picture and the words on that sheet
-    /// cannot describe two different plans.
+    /// Builds the code HERE, not in the sheet: the URL and the name beside it come from
+    /// the same routine in the same turn, so they cannot describe two plans.
     ///
-    /// Reminders, `templateID` and everything else store-derived stay behind — the
-    /// payload is the plan and its cadence, nothing personal.
+    /// Reminders, `templateID` and everything store-derived stay behind — the payload is
+    /// the plan and its cadence, nothing personal.
     private func share(_ routine: SessionTemplate) {
         guard let url = RoutineShare.url(for: routine.draft) else {
             shareFailed = true

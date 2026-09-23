@@ -5,25 +5,21 @@ import Foundation
 
 /// Which door the routine document was opened through.
 ///
-/// There is only ONE builder view, because the wizard IS the editor. The mode changes
-/// exactly three things and nothing else: which draft seeds the document, whether the
-/// step-by-step guide starts at step 1 or retired, and whether the last block is the
-/// finish button or the delete row. Everything in between — name, rhythm, sets, every
-/// day, fine tuning — is byte-for-byte the same screen, which is what makes "you can
-/// change any of it later, this same screen is the editor" a fact about the code rather
-/// than a promise in a coach mark. It was four until the prefill chooser left the
-/// creating document (2026-08-19): both doors now open on the same first screenful.
+/// ONE builder view, because the wizard IS the editor. The mode changes exactly three
+/// things: which draft seeds the document, whether the guide starts at step 1 or
+/// retired, and whether the last block is the finish button or the delete row.
+/// Everything between is the same screen, so "this same screen is the editor" is a fact
+/// about the code, not a promise in a coach mark.
 enum BuilderMode: Identifiable, Hashable {
     /// No routine exists yet: blank document, guide on.
     case firstRun
-    /// A second (rest day, max day) routine — blank as well, and nothing is presumed
-    /// from the first one.
+    /// A second (rest day, max day) routine — blank too, presuming nothing from the first.
     case addAnother
     /// An existing routine, by id.
     case edit(UUID)
 
-    /// `.sheet(item:)` identity. Distinct per edited routine so opening a different
-    /// routine rebuilds the document rather than reusing the previous one's state.
+    /// `.sheet(item:)` identity, distinct per routine so a different one rebuilds the
+    /// document rather than reusing state.
     var id: String {
         switch self {
         case .firstRun:       "builder.firstRun"
@@ -42,8 +38,8 @@ enum BuilderMode: Identifiable, Hashable {
         }
     }
 
-    /// Create modes. The draft-rescue stash is scoped to these two: restoring a stale
-    /// draft into an EDIT could overwrite a CloudKit merge the user never saw.
+    /// Create modes. The draft-rescue stash is scoped to these: restoring a stale draft into
+    /// an EDIT could overwrite a CloudKit merge the user never saw.
     var isCreating: Bool {
         if case .edit = self { return false }
         return true
@@ -55,10 +51,8 @@ enum BuilderMode: Identifiable, Hashable {
     }
 }
 
-/// Scroll targets for the guide's `Next`.
-///
-/// Each one is attached to an ALWAYS-BUILT block wrapper, never to a lazily-created set
-/// row: a `scrollTo` that misses must degrade to "no auto-scroll", never to "broken".
+/// Scroll targets for the guide's `Next`, each on an ALWAYS-BUILT block wrapper, never a
+/// lazily-created row: a missed `scrollTo` must degrade to "no auto-scroll".
 enum BuilderAnchor: Hashable {
     case name, rhythm, sets, totals, everyDay, finish
 }

@@ -8,27 +8,20 @@ import UIKit
 /// vertical — the only way a full-width drag strip can live inside a vertical
 /// `ScrollView` without eating page scrolls.
 ///
-/// SwiftUI's `DragGesture` cannot express this. Its `minimumDistance` is a DISTANCE, not a
-/// direction, so any threshold still claims vertical moves and the page goes dead under
-/// the strip. Measured 2026-08-10: `highPriorityGesture(DragGesture(minimumDistance: 10))`
-/// did not restore scrolling, because a 10 pt vertical drag still crosses 10 pt.
+/// `DragGesture` cannot express this: `minimumDistance` is a DISTANCE, not a direction
+/// (measured 2026-08-10: `highPriorityGesture(DragGesture(minimumDistance: 10))` still
+/// killed scrolling). With the axis check in `gestureRecognizerShouldBegin`, a vertical
+/// touch belongs to the ScrollView from its first point, like a system `Slider`.
 ///
-/// With the axis check in `gestureRecognizerShouldBegin`, a vertical touch belongs to the
-/// ScrollView from its very first point, and a horizontal one adjusts the control without
-/// the scroll stealing it mid-drag — the same civility a system `Slider` shows.
-///
-/// Extracted from `BandTrimmer` 2026-08-11 when `DialTrack` needed the identical rule.
-/// **This is also the reason the set editor is a vertical list and not a horizontal
-/// pager**: the gate works because the two gestures are on DIFFERENT AXES. Inside a
-/// horizontal pager both want left-to-right, and no rule can tell them apart.
+/// Shared by `BandTrimmer` and `DialTrack`. **Also why the set editor is a vertical list,
+/// not a horizontal pager**: the gate works only because the two gestures are on
+/// DIFFERENT AXES.
 struct HorizontalPan: UIGestureRecognizerRepresentable {
     /// The touch-DOWN x, in the view's own space — recovered by subtracting the
     /// translation already accumulated when `.began` fires.
     var began: (CGFloat) -> Void
-    /// `(current x, translation x)`. A trimmer wants the translation so a grabbed band
-    /// keeps its offset; a dial wants the absolute position so the value lands under the
-    /// finger. Both are cheap to hand over, and neither can be derived from the other
-    /// without the caller storing state it should not have to.
+    /// `(current x, translation x)`: a trimmer wants the translation so a grabbed band keeps
+    /// its offset, a dial the absolute position so the value lands under the finger.
     var changed: (CGFloat, CGFloat) -> Void
     var ended: () -> Void
 

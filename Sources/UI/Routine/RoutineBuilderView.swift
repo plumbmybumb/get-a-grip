@@ -7,29 +7,24 @@ import UIKit
 
 /// THE DOCUMENT — one view, one scrollable document, zero pushes.
 ///
-/// The `NavigationStack` inside exists only to own the title, the live subtitle and the
-/// Cancel/Save toolbar; nothing ever pushes onto it. That is what makes "the wizard IS
-/// the editor" a literal identity rather than a discipline someone has to maintain: the
-/// first-run walkthrough and the 30th four-tap edit are the same screen in the same
-/// order, so there is no second surface to keep in sync.
+/// The `NavigationStack` inside only owns the title, the live subtitle and the
+/// Cancel/Save toolbar; nothing pushes onto it. That makes "the wizard IS the editor" a
+/// literal identity: the first-run walkthrough and the 30th edit are the same screen in
+/// the same order, with no second surface to keep in sync.
 ///
 /// Document order is NAME → RHYTHM → SETS → EVERY DAY → FINE TUNING → finish/danger.
-/// RHYTHM sits ABOVE the set list on purpose — constants above variables, expressed as
-/// vertical order instead of as screens — which is what makes changing every rest
-/// interval four taps: open, tap the row, tap a chip, Save.
+/// RHYTHM sits ABOVE the set list on purpose — constants above variables — which is what
+/// makes changing every rest interval four taps.
 struct RoutineBuilderView: View {
     let mode: BuilderMode
     var onFinish: (UUID, Bool) -> Void
-    /// Closing is the PRESENTER's job, deliberately — nothing in this file may read
-    /// `@Environment(\.dismiss)`. See `BuilderDocument`'s note: that one property was
-    /// costing a full rebuild of the document, every set row and the grip panel on every
-    /// single keystroke typed into any field here.
+    /// Closing is the PRESENTER's job: nothing in this file may read
+    /// `@Environment(\.dismiss)` — see `BuilderDocument.onClose`.
     var onClose: () -> Void
 
-    /// Looked up through the store rather than a `@Query`: a query here re-ran this
-    /// wrapper — and with it the whole document below — on every CloudKit merge that
-    /// touched ANY routine, while someone was typing. The seed is read once, so a fetch
-    /// that observes nothing is all it needs.
+    /// Through the store, not a `@Query`: a query here re-ran this wrapper and the whole
+    /// document on every CloudKit merge touching ANY routine, mid-typing. The seed is read
+    /// once, so a fetch that observes nothing is enough.
     @Environment(TemplateStore.self) private var templates
 
     init(mode: BuilderMode,
@@ -41,37 +36,31 @@ struct RoutineBuilderView: View {
     }
 
     var body: some View {
-        // The seed can only be resolved from the environment, and `@State`
-        // cannot be initialised from either. So the document is a CHILD view seeded
-        // through its `init`: SwiftUI keeps a child's `@State` across re-evaluations of
-        // this wrapper, so the draft is built exactly once and the sheet never renders a
-        // frame of the wrong routine before correcting itself.
+        // The seed needs the environment, and `@State` cannot be initialised from
+        // it, so the document is a CHILD seeded through its `init`: SwiftUI keeps a
+        // child's `@State` across re-evaluations, so the draft is built once and
+        // never renders a frame of the wrong routine.
         //
-        // ONE surface for creating and editing. The swipe-card setup deck was retired
-        // 2026-08-10 (Nuri: "I don't know if this swipe card thing while creating
-        // routines actually makes sense") — it modelled "many grips, one intensity",
-        // which fit the daily ritual and fought every protocol shaped like "one grip,
-        // many intensities". The document already states the skeleton first — name,
-        // kind, rhythm, hands — and the sets inherit it, which is how protocols are
-        // actually written. First-run guidance is the coach cards plus the tour.
+        // ONE surface for creating and editing. The swipe-card setup deck was
+        // retired 2026-08-10 (Nuri): it modelled "many grips, one intensity" and
+        // fought every protocol shaped like "one grip, many intensities". The
+        // document states the skeleton first and the sets inherit it, which is how
+        // protocols are written. First-run guidance is the coach cards plus the tour.
         BuilderDocument(mode: mode, seed: seed, onClose: onClose, onFinish: onFinish)
     }
 
     private var seed: RoutineDraft {
         switch mode {
         case .firstRun, .addAnother:
-            // BLANK, always (Nuri, 2026-08-10: "when creating a routine, I think it
-            // should start at blank"; 2026-08-19: "get rid of all the templates and just
-            // start with routine name"). Nothing is presumed and nothing is OFFERED
-            // either: the known protocols are still seeds in `SessionPlan` — DEBUG launch
-            // seeding, the tests and Duplicate all mint from them — but no screen proposes
-            // one any more. A chooser above the name field made the opening move "pick
-            // somebody's plan" on the one app whose pitch is that the plan is yours.
+            // BLANK, always (Nuri, 2026-08-10 and 2026-08-19). Nothing is presumed or
+            // OFFERED: the known protocols are still seeds in `SessionPlan` (DEBUG
+            // seeding, tests and Duplicate mint from them), but no screen proposes one.
+            // "Pick somebody's plan" is the wrong opening move for an app whose pitch is
+            // that the plan is yours.
             return .blank()
         case .edit(let id):
-            // Missing means a CloudKit merge deleted it while Today still showed it.
-            // A blank draft is the non-destructive answer: `store.save` will create
-            // rather than resurrect, and nothing the user typed is thrown away.
+            // Missing means a CloudKit merge deleted it while Today still showed it. A
+            // blank draft is non-destructive: `store.save` creates rather than resurrects.
             return templates.routine(id: id)?.draft ?? .blank()
         }
     }
@@ -83,39 +72,29 @@ private struct BuilderDocument: View {
     let mode: BuilderMode
     var onFinish: (UUID, Bool) -> Void
 
-    /// **Never `@Environment(\.dismiss)` here.** Measured 2026-08-11: reading it made a
-    /// single keypress in ANY field on this screen re-run this entire body — six
-    /// `SetRowView`s rebuilt from scratch, the grip panel recreated, and every `ValueRow`
-    /// inside them — twice. `_printChanges()` named it outright: `_dismiss changed` on
-    /// each keystroke, because the dismiss action's identity moves with the presentation
-    /// environment and focus is part of that. Nothing in the body reads it; it is a
-    /// stored property, and that is enough to invalidate the whole document.
-    ///
-    /// It is a plain closure now, supplied by whoever presented this. That also matches
-    /// how the screen already worked: `onFinish` was always the presenter's business.
+    /// **Never `@Environment(\.dismiss)` here.** Measured 2026-08-11: merely storing it made
+    /// a keypress in ANY field re-run this whole body twice — six `SetRowView`s, the grip
+    /// panel and every `ValueRow` rebuilt. `_printChanges()` showed `_dismiss changed` per
+    /// keystroke: the action's identity moves with the presentation environment, and focus
+    /// is part of that. So closing is a plain closure supplied by the presenter.
     var onClose: () -> Void
 
     @Environment(TemplateStore.self) private var templates
     @Environment(SettingsStore.self) private var settings
     @Environment(TourController.self) private var tour
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Read once per window shape, never per keystroke — the size class only changes
-    /// when the window does, so it costs the document nothing the way `dismiss` did.
+    /// Changes only when the window does, so unlike `dismiss` it costs the document nothing.
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    /// The document is a DRAFT VALUE. Nothing here touches SwiftData until Save, which
-    /// is what makes reordering, removing and experimenting free: Cancel IS undo, and a
-    /// held stepper cannot fire dozens of CloudKit writes.
+    /// The document is a DRAFT VALUE. Nothing touches SwiftData until Save: Cancel IS
+    /// undo, and a held stepper cannot fire dozens of CloudKit writes.
     @State private var draft: RoutineDraft
-    /// The seed, kept only to answer "is this dirty" — and the ONLY baseline there is,
-    /// now that nothing can replace the document wholesale. The prefill chips needed a
-    /// second one (a chip's own output, since `.starter` mints fresh set ids per call and
-    /// so never compares equal to itself); with them gone, dirty is one comparison again.
+    /// The seed, kept only to answer "is this dirty" — the one baseline, since nothing can
+    /// replace the document wholesale any more.
     @State private var initialDraft: RoutineDraft
 
-    /// At most ONE open set row, and at most one open rhythm row. The accordion is not
-    /// only a readability device: it is what guarantees exactly one dense chip cluster
-    /// can exist on screen at a time.
+    /// At most ONE open set row and one open rhythm row, which guarantees at most one dense
+    /// control cluster on screen at a time.
     @State private var expanded: UUID?
 
     /// 1…5 are the inline cards, 6 is the closing card, `retiredCoachStep` is off.
@@ -123,9 +102,8 @@ private struct BuilderDocument: View {
     /// Held with its ORIGINAL id and original index so Undo restores the same row
     /// rather than an equal-looking new one.
     @State private var removedSet: RemovedSet?
-    /// Which set's grip the island panel is editing. It lives HERE, not on the token:
-    /// the panel hangs off the Dynamic Island, and nothing inside a scrolling set row can
-    /// reach the top of the screen.
+    /// Which set's grip the island panel is editing. HERE, not on the token: nothing
+    /// inside a scrolling set row can reach the top of the screen.
     @State private var editingGrip: UUID?
     @State private var showDiscard = false
     @State private var undoTick = 0
@@ -156,23 +134,17 @@ private struct BuilderDocument: View {
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
-                // PROBE 4, resolved conservatively: `List` + `defaultMinListRowHeight: 0`
-                // + accordion rows + a bottom `safeAreaInset` INSIDE a sheet is the
-                // riskiest combination in this design, and a shipped-and-working simple
-                // layout beats an elegant one that mis-renders. What that costs is
-                // swipe-to-delete and `.onMove`, both of which already have guaranteed
-                // equivalents here (the expanded row's chevrons, the context menu, and
-                // the undo bar), so nothing is only reachable by a gesture.
+                // ScrollView + eager VStack, not a `List`: `List` + zero min row height +
+                // accordion rows + a bottom `safeAreaInset` in a sheet was the riskiest
+                // combination here. It costs swipe-to-delete and `.onMove`, both with
+                // guaranteed equivalents (expanded-row chevrons, context menu, undo bar).
                 //
-                // NOT `LazyVStack`: the guide's `scrollTo` has to find an anchor that may
-                // be a screenful below the fold, and a lazy stack has not built it yet.
-                // A routine is a dozen rows, not a feed, so eager layout is free.
+                // NOT `LazyVStack`: the guide's `scrollTo` must find anchors below the
+                // fold. A routine is a dozen rows, so eager layout is free.
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        // The first block is the NAME, in every mode (Nuri, 2026-08-19).
-                        // Creating and editing now open on the same first screenful, so
-                        // "this same screen is the editor" is true of the top of the page
-                        // as well as the rest of it.
+                        // The NAME first, in every mode (Nuri, 2026-08-19), so creating and
+                        // editing open on the same first screenful.
                         nameBlock(proxy)
                         rhythmBlock(proxy)
                         setsBlock(proxy)
@@ -185,31 +157,27 @@ private struct BuilderDocument: View {
                     .padding(.horizontal, Metrics.hPadding)
                     .padding(.top, 12)
                     .padding(.bottom, 28)
-                    // The document takes the regular-width column on an iPad: a 440 pt
-                    // set list centred in a full-screen cover is a phone in a frame.
+                    // The regular-width column on an iPad: a 440 pt set list centred in a
+                    // full-screen cover is a phone in a frame.
                     .frame(maxWidth: sizeClass == .regular ? Metrics.maxContentWidthRegular
                                                            : Metrics.maxContentWidth)
                     .frame(maxWidth: .infinity)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling
-                // it disturbs the ScrollView's safe-area layout.
+                // ALWAYS via `.background {}`, never a ZStack sibling, which disturbs the
+                // ScrollView's safe-area layout.
                 .background { AppBackground() }
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
-                // The price of every edit, always visible, for zero document space.
-                // PROBE 1: if this does not render under an inline title inside a sheet,
-                // flip `subtitleInNavigationBar` to false — the same line then draws in
-                // the bottom safe-area inset instead. That is the whole swap.
+                // The price of every edit, always visible, for zero document space. If this
+                // ever stops rendering under an inline title, flip `subtitleInNavigationBar`
+                // and the line draws in the bottom safe-area inset instead.
                 //
-                // **Doubles as the disabled Save's only NEARBY explanation.** The toolbar
-                // Save disables on `draft.validationIssue`, but its old explanation lived
-                // only in `finishBlock`, at the very bottom of a document that can run a
-                // dozen rows — and in edit mode `finishBlock` never even draws the primary
-                // button, so the toolbar control was the ONLY save path with its reason a
-                // screen away. `subtitleText` swaps to the issue the instant Save refuses,
-                // right next to the control that refused.
+                // **Also the disabled Save's only NEARBY explanation.** In edit mode
+                // `finishBlock` never draws a primary button, so the toolbar Save is the only
+                // save path, and `subtitleText` swaps to the validation issue the instant it
+                // refuses, right beside it.
                 .navigationSubtitle(Self.subtitleInNavigationBar ? subtitleText : "")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -220,10 +188,9 @@ private struct BuilderDocument: View {
                             .bold()
                             .disabled(draft.validationIssue != nil)
                     }
-                    // The keyboard gets its OWN Done (Nuri, 2026-08-10): a commit
-                    // button hovering over a keyboard reads as "stop typing", and
-                    // tapping it saved the routine mid-thought. This one only ends
-                    // editing.
+                    // The keyboard gets its OWN Done (Nuri, 2026-08-10): the toolbar's commit
+                    // button over a keyboard read as "stop typing" and saved mid-thought. This
+                    // one only ends editing.
                     ToolbarItemGroup(placement: .keyboard) {
                         Spacer()
                         Button("Done") {
@@ -238,27 +205,24 @@ private struct BuilderDocument: View {
                 .safeAreaInset(edge: .bottom) { bottomBar }
             }
         }
-        // An OVERLAY, not another presentation. The builder is a full-screen cover now,
-        // so it owns the top of the screen and the panel can hang off the island from
-        // inside it — which is what let the nested `fullScreenCover` (and its clear
-        // presentation background) go away entirely.
+        // An OVERLAY, not another presentation: as a full-screen cover the builder
+        // owns the top of the screen, so the panel can hang off the island from
+        // inside it.
         .overlay { gripPanel }
-        // The builder act of the first-run tour draws over THIS screen — hosted here
-        // since the deck it used to live on is gone.
+        // The builder act of the first-run tour draws over THIS screen.
         .tourHost(tour, act: .builder)
         .onAppear {
             if mode.isCreating { tour.builderOpened() }
             #if DEBUG
             // Headless verification: `-previewGripPanel` opens the first set's grip
-            // panel, the one control on this screen a screenshot cannot reach.
+            // panel, which a screenshot cannot otherwise reach.
             if ProcessInfo.processInfo.arguments.contains("-previewGripPanel"),
                let first = draft.plan.sets.first {
                 editingGrip = first.id
             }
             #endif
         }
-        // Only when there is something to lose: a swipe-down that discards six sets of
-        // authored intent has no undo, unlike everything else in this document.
+        // Only when there is something to lose: a swipe-down discard has no undo.
         .interactiveDismissDisabled(isDirty)
         .confirmationDialog("Discard this routine?", isPresented: $showDiscard,
                             titleVisibility: .visible) {
@@ -270,9 +234,9 @@ private struct BuilderDocument: View {
         .task { start() }
         // The rescue copy: create modes ONLY, and cleared on BOTH Save and Cancel.
         .onChange(of: draft) { _, _ in
-            // One pending write reads the current document. Dragging/typing must not
-            // allocate and cancel a task for every intermediate value, nor postpone
-            // crash recovery indefinitely while a control is held.
+            // One pending write reads the current document (coalesce, never
+            // cancel-and-restart): no task per intermediate value, and no postponing
+            // crash recovery while a control is held.
             guard mode.isCreating, stashTask == nil else { return }
             stashTask = Task {
                 try? await Task.sleep(for: .milliseconds(500))
@@ -281,8 +245,8 @@ private struct BuilderDocument: View {
                 stashTask = nil
             }
         }
-        // The guide advances on a real VALUE EDIT and on nothing else — not on scroll,
-        // not on expanding a row — so it can never run away from someone still reading.
+        // The guide advances on a real VALUE EDIT only — not on scroll or expanding
+        // a row — so it never runs away from someone still reading.
         .onChange(of: draft.plan.name) { noteEdit(reaching: 2) }
         .onChange(of: rhythmSignature) { noteEdit(reaching: 3) }
         .onChange(of: gripSignature) { noteEdit(reaching: 4) }
@@ -298,10 +262,8 @@ private struct BuilderDocument: View {
     @ViewBuilder
     private var gripPanel: some View {
         if let id = editingGrip, let index = draft.plan.sets.firstIndex(where: { $0.id == id }) {
-            // No palette any more (Nuri, 2026-08-11: "lets remove the grips you use from
-            // this view"). Losing it also drops a `templates.recentGrips` read from this
-            // body — an observation dependency that re-ran the whole document, every set
-            // row and the panel itself whenever the store resynced.
+            // No palette (Nuri, 2026-08-11). That also drops a `templates.recentGrips`
+            // read, which re-ran the whole document whenever the store resynced.
             GripIslandPanel(grip: $draft.plan.sets[index].grip) {
                 editingGrip = nil
             }
@@ -310,15 +272,12 @@ private struct BuilderDocument: View {
 
     // MARK: Blocks
 
-    /// THE DOCUMENT OPENS ON THE NAME (Nuri, 2026-08-19: "get rid of all the templates
-    /// and just start with routine name").
+    /// THE DOCUMENT OPENS ON THE NAME (Nuri, 2026-08-19).
     ///
-    /// A START FROM row of prefill chips used to sit above this — starter plan, max day,
-    /// blank, and a copy of your first routine. It cost the top of the first screenful to
-    /// ask a question that only has one honest answer for somebody who already knows what
-    /// they train, and answering it wrong replaced the document under you. Adding a set is
-    /// two taps; a routine you did not write is not a shortcut. The seeds themselves live
-    /// on in `SessionPlan` — nothing but the OFFER went away.
+    /// A START FROM row of prefill chips used to sit above this, spending the top of the
+    /// first screenful on a question with one honest answer, and answering it wrong
+    /// replaced the document under you. The seeds live on in `SessionPlan`; only the
+    /// OFFER went away.
     private func nameBlock(_ proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             coachCard(1, proxy)
@@ -335,9 +294,8 @@ private struct BuilderDocument: View {
         .id(BuilderAnchor.name)
     }
 
-    /// RHYTHM and LOAD share one anchor and one coach step, deliberately: they are the
-    /// same kind of thing — the defaults every set inherits — and splitting them would
-    /// add a sixth step to a setup whose whole pitch is that it is short.
+    /// RHYTHM and LOAD share one anchor and one coach step: both are the defaults every
+    /// set inherits, and splitting them would add a sixth step to a setup meant to be short.
     private func rhythmBlock(_ proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             coachCard(2, proxy)
@@ -358,14 +316,13 @@ private struct BuilderDocument: View {
         return VStack(alignment: .leading, spacing: 10) {
             coachCard(3, proxy)
             // A plain row, never a `Section` header: plain-style headers PIN, and
-            // content then scrolls illegibly behind a clear background.
+            // content then scrolls illegibly behind them.
             CapsLabel(String(localized: "SETS"))
             ForEach(Array(draft.plan.sets.enumerated()), id: \.element.id) { index, set in
-                // VALUES in, one binding to write through, and `.equatable()` so a row
-                // re-runs only when its own numbers change — `SetRowView` has the
-                // measurement. The actions are keyed on the set's ID, never on `index`:
-                // a row whose neighbour was removed keeps its old closures (nothing IT
-                // draws changed), and an index captured in them would point one row off.
+                // VALUES in, one write path, and `.equatable()` so a row re-runs only when
+                // its own numbers change (see `SetRowView`). Actions are keyed on the set's
+                // ID, never `index`: a row whose neighbour was removed keeps its old
+                // closures, and a captured index would point one row off.
                 SetRowView(set: set,
                            defaults: defaults,
                            isExpanded: expanded == set.id,
@@ -381,11 +338,9 @@ private struct BuilderDocument: View {
                            onDuplicate: { duplicate(set.id) },
                            onRemove: { remove(set.id) })
                     .equatable()
-                    // The context menu (with its compact preview) lives on the row's
-                    // HEADER inside `SetRowView` — chevrons in the expanded row still
-                    // cover reordering, so no drag gesture is load-bearing.
-                    // A scroll target per row, so adding a set can bring its TOP into
-                    // view — same id the ForEach keys identity on.
+                    // The context menu lives on the row's HEADER in `SetRowView`; chevrons
+                    // cover reordering, so no drag gesture is load-bearing. The id lets adding a
+                    // set scroll its TOP into view.
                     .id(set.id)
             }
             addSetRow(proxy)
@@ -452,9 +407,8 @@ private struct BuilderDocument: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if templates.saveError != nil {
-                // The sheet STAYS OPEN on a rollback: dismissing on failure destroys the
-                // form and the routine with it, and the traveller-facing sentence is the
-                // reassurance, not the store's `localizedDescription`.
+                // The sheet STAYS OPEN on a rollback: dismissing would destroy the routine
+                // with the form. The plain sentence reassures; `localizedDescription` would not.
                 Text("That change couldn't be saved — the routine is still here. Try again.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Accent.alarm)
@@ -464,9 +418,8 @@ private struct BuilderDocument: View {
                 deleteRow(id)
             } else {
                 if coachStep == Self.closingCoachStep { CoachClosingCard() }
-                // Saves and stops. Same rule as the deck: building a routine and doing one
-                // are two decisions, and Start lives on Today where you take it every
-                // other day (Nuri, 2026-08-09).
+                // Saves and stops: building a routine and doing one are two decisions, and
+                // Start lives on Today (Nuri, 2026-08-09).
                 PrimaryGlassButton(title: String(localized: "Save routine"),
                                    systemImage: "checkmark",
                                    tint: Accent.graphite) {
@@ -481,8 +434,7 @@ private struct BuilderDocument: View {
 
     private func deleteRow(_ id: UUID) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            // No confirmation dialog: Today arms a 10 s undo bar, and forgiveness beats
-            // a dialog people learn to dismiss blindly.
+            // No confirmation dialog: Today arms a 10 s undo bar.
             SecondaryGlassButton(title: String(localized: "Delete routine"), tint: Accent.alarm) {
                 deleteRoutine(id)
             }
@@ -493,14 +445,11 @@ private struct BuilderDocument: View {
         }
     }
 
-    /// Duplicates the previous set AND opens it, because editing the copy is
-    /// unambiguously the next thing you will do.
+    /// Duplicates the previous set AND opens it, because editing the copy is the next
+    /// thing you will do.
     ///
-    /// The RECENT rail that used to sit above this is gone (Nuri, 2026-08-11: "I don't
-    /// think I like the recent holds... makes it so cluttered"). It existed to make a
-    /// second grip cheap, and the island picker does that job now from inside the set
-    /// itself — two shelves of the same grips, one of which you had to scroll past every
-    /// time, was one too many.
+    /// The RECENT rail above this is gone (Nuri, 2026-08-11: too cluttered); the island
+    /// picker makes a second grip cheap from inside the set itself.
     private func addSetRow(_ proxy: ScrollViewProxy) -> some View {
         Button {
             addSet(proxy)
@@ -519,8 +468,8 @@ private struct BuilderDocument: View {
                     .strokeBorder(Ink.tertiary.opacity(0.45),
                                   style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
             }
-            // MANDATORY: the label holds a Spacer and draws full-width, and a stroked
-            // background contributes nothing to SwiftUI's default hit area.
+            // MANDATORY: a full-width label with a Spacer is otherwise not hit-tested
+            // outside its glyphs.
             .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         }
         .buttonStyle(PressFeedbackButtonStyle())
@@ -553,10 +502,9 @@ private struct BuilderDocument: View {
             .accessibleGlass(in: .capsule)
     }
 
-    /// The live totals, ordinarily — the validation reason instead, the moment Save
-    /// would refuse. See the `navigationSubtitle` comment: this is the one line both the
-    /// nav-bar subtitle and its bottom-bar fallback quote, so whichever PROBE 1 picks,
-    /// a disabled Save always has its explanation right beside it.
+    /// The live totals, or the validation reason the moment Save would refuse. Both the
+    /// nav-bar subtitle and its bottom-bar fallback quote this line, so a disabled Save
+    /// always has its explanation beside it.
     private var subtitleText: String {
         draft.validationIssue ?? PlanMath.subtitleLine(draft.plan)
     }
@@ -574,9 +522,9 @@ private struct BuilderDocument: View {
         }
     }
 
-    /// `Next` scrolls to the next section — that motion IS the step-by-step setup, with
-    /// no modal sequence and nothing that can trap a tap. The card draws inline at its
-    /// anchor regardless, so a `scrollTo` misfire degrades to "no auto-scroll".
+    /// `Next` scrolls to the next section — that motion IS the step-by-step setup, with no
+    /// modal sequence. The card draws at its anchor regardless, so a `scrollTo` misfire
+    /// degrades to "no auto-scroll".
     private func advanceCoach(to step: Int, proxy: ScrollViewProxy) {
         withAnimation(Motion.state(reduceMotion)) {
             coachStep = step
@@ -588,8 +536,8 @@ private struct BuilderDocument: View {
         withAnimation(Motion.state(reduceMotion)) {
             coachStep = Self.retiredCoachStep
         }
-        // Skipping is "not now and not next time". It stays a preference, not a one-way
-        // door: Settings › Show the setup guide again puts it back.
+        // "Not now and not next time" — but reversible: Settings › Show the setup
+        // guide again.
         settings.builderGuideDone = true
     }
 
@@ -615,22 +563,19 @@ private struct BuilderDocument: View {
     // MARK: Lifecycle
 
     private func start() {
-        // `@State` cannot read the environment in `init`, so the guide's starting step
-        // is set on the first frame instead — behind the sheet's own presentation
-        // animation, so nothing visibly pops in.
-        // CREATING only. The guide walks an empty document into a routine; opening it over
-        // one that already exists narrates work already done. By the time anyone edits it
-        // has been walked anyway — saving a routine sets `builderGuideDone`.
+        // `@State` cannot read the environment in `init`, so the starting step is
+        // set on the first frame, behind the presentation animation.
+        // CREATING only: over an existing routine the guide narrates work already
+        // done, and saving a routine sets `builderGuideDone` anyway.
         if mode.isCreating, !settings.builderGuideDone { coachStep = 1 }
 
-        // The rescue copy only exists if a previous session died mid-build: Save and
-        // Cancel both clear it. `initialDraft` deliberately stays at the seed, so the
-        // restored document counts as DIRTY and Cancel still asks before discarding it.
+        // The rescue copy exists only if a previous session died mid-build.
+        // `initialDraft` stays at the seed, so the restored document is DIRTY and
+        // Cancel still asks before discarding it.
         if mode.isCreating, let rescued = templates.restoreDraft(), rescued != draft {
             draft = BuilderDraftPreparation.editable(rescued)
-            // A rescued draft means this build was already under way in a previous
-            // session, so the walkthrough has been walked. Retiring it here also keeps
-            // the restore's own value changes from deciding which card to show.
+            // A rescued build was already under way, so the walkthrough has been walked;
+            // retiring it also keeps the restore's value changes from picking a card.
             coachStep = Self.retiredCoachStep
         }
     }
@@ -650,9 +595,8 @@ private struct BuilderDocument: View {
             draft.plan.sets.append(new)
             expanded = new.id
         }
-        // NEXT runloop, once the row exists to scroll to: the tap left you parked at
-        // the bottom of the list while the new set opened a screen above the button
-        // (Nuri, 2026-08-10) — bring its top under the title instead.
+        // NEXT runloop, once the row exists: otherwise you stay parked at the bottom
+        // while the new set opens a screen above (Nuri, 2026-08-10).
         Task { @MainActor in
             withAnimation(Motion.state(reduceMotion)) {
                 proxy.scrollTo(new.id, anchor: .top)
@@ -666,8 +610,7 @@ private struct BuilderDocument: View {
         draft.plan.sets.firstIndex { $0.id == id }
     }
 
-    /// The children's write path — a closure over the document's own state. `DraftAccess`
-    /// says why this is not a binding, and why the children never read through it.
+    /// The children's write path, a closure over the document's state — see `DraftAccess`.
     private var access: DraftAccess {
         DraftAccess(mutate: { change in
             var copy = draft
@@ -704,8 +647,8 @@ private struct BuilderDocument: View {
         }
     }
 
-    /// Removal holds the `SetPlan` WITH ITS ORIGINAL id and index: Undo has to put the
-    /// same row back where it was, not an equal-looking new one two places down.
+    /// Removal holds the `SetPlan` WITH ITS ORIGINAL id and index, so Undo puts the same
+    /// row back where it was.
     private func remove(_ id: UUID) {
         guard let index = index(of: id) else { return }
         let set = draft.plan.sets[index]
@@ -742,8 +685,8 @@ private struct BuilderDocument: View {
         guard let saved = templates.save(draft) else { return }
         // The guide has done its job the moment a routine exists.
         settings.builderGuideDone = true
-        // Cancel the pending stash write: without this a debounce armed half a second
-        // ago re-stashes the draft the save just cleared, and it comes back as a ghost.
+        // Cancel the pending stash write, or it re-stashes the draft the save just
+        // cleared and it comes back as a ghost.
         stashTask?.cancel()
         onClose()
         onFinish(saved.id, andStart)
@@ -755,15 +698,13 @@ private struct BuilderDocument: View {
 
     private func discard() {
         stashTask?.cancel()
-        // A stash that outlives an explicit Cancel returns as a ghost the next time the
-        // builder opens.
+        // Otherwise the stash returns as a ghost next time the builder opens.
         templates.clearDraft()
         onClose()
     }
 
     private func deleteRoutine(_ id: UUID) {
-        // Looked up at the tap, not held in a `@Query`: the only reader was this one
-        // button, and the query re-rendered the whole document on every CloudKit merge.
+        // Looked up at the tap, not a `@Query` — see `templates` above.
         guard let template = templates.routine(id: id) else {
             onClose()
             return
@@ -783,8 +724,8 @@ private struct BuilderDocument: View {
         mode.editingID == nil ? String(localized: "Your routine") : String(localized: "Edit routine")
     }
 
-    /// Cheap string signatures, because `onChange` needs one Equatable value per thing
-    /// the guide can react to and the draft as a whole changes on every keystroke.
+    /// Cheap string signatures: `onChange` needs one Equatable value per thing the guide
+    /// reacts to, and the draft as a whole changes on every keystroke.
     private var rhythmSignature: String {
         "\(draft.plan.setBreakSeconds)|\(draft.plan.handMode.rawValue)|\(draft.plan.waitForReleaseBeforeRest)"
     }
@@ -810,10 +751,8 @@ private struct BuilderDocument: View {
         let message: String
     }
 
-    /// Five cards, in document order. Card 1 was rewritten twice for the same reason —
-    /// it described a prefill (2026-08-10) and then a chooser (2026-08-19) that the
-    /// document no longer has. A card naming a control that is not on screen is
-    /// indistinguishable from a bug to the person reading it.
+    /// Five cards, in document order. Card 1 was rewritten twice after describing controls
+    /// the document no longer had; a card naming a control not on screen reads as a bug.
     private static let script: [CoachScript] = [
         CoachScript(title: String(localized: "Name it first"),
                     message: String(localized: "This is what Today calls it. Everything else you build underneath, and nothing is saved until you tap Save.")),

@@ -5,12 +5,9 @@ import SwiftUI
 
 /// Logging a session after the fact — at the climbing gym or away from the gauge.
 ///
-/// There is deliberately nothing to start and nothing to time automatically. You are on
-/// the wall for two hours with the phone in a bag; the app cannot watch it, cannot measure it, and
-/// pretending otherwise would mean a timer running in your pocket that you have to
-/// remember to stop. So this is a record of something that already happened, which is
-/// also why it can name yesterday: the realistic moment to log Tuesday's session is
-/// Wednesday morning.
+/// Nothing to start and nothing timed: on the wall for two hours with the phone in a bag,
+/// the app cannot measure it, and a pocket timer is one more thing to remember to stop.
+/// A record of what happened — which is why it can name yesterday.
 ///
 /// Save stays enabled after two taps. Kind + day alone is a complete log; the strain
 /// axes are optional, because the fast path must cost exactly what it costs today.
@@ -19,9 +16,8 @@ struct SessionLogSheet: View {
 
     var onClose: () -> Void
 
-    /// No default. Volume and limit are genuinely different days and the app cannot
-    /// guess which you had — pre-selecting one would get it wrong half the time and
-    /// silently mis-describe the week, which is exactly what this feature exists to fix.
+    /// No default kind: volume and limit are different days, and a pre-selection would be
+    /// wrong half the time and silently mis-describe the week.
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showKindHelp = false
     @State private var kind: SessionKind?
@@ -66,9 +62,8 @@ struct SessionLogSheet: View {
                     Button("Save") { save() }
                         .bold()
                         .disabled(kind == nil)
-                        // The nearest explanation otherwise sits three sections down the
-                        // scroll (`consequenceCopy`'s "Choose a session kind to see how
-                        // it counts."); this puts the reason on the control itself.
+                        // The nearest explanation is three sections down the scroll; this puts the
+                        // reason on the control.
                         .accessibilityHint(kind == nil ? "Choose a session kind first" : "")
                 }
             }
@@ -91,9 +86,8 @@ struct SessionLogSheet: View {
                 .accessibilityLabel("About session types")
                 .accessibilityValue(showKindHelp ? "Expanded" : "Collapsed")
             }
-            // `ChipGrid`, not an `HStack`: a third chip is what tips this row over at
-            // accessibility sizes, and the grid wraps where a row would squeeze three
-            // labels past legibility.
+            // `ChipGrid`, not an `HStack`: a third chip tips this row over at
+            // accessibility sizes, and the grid wraps where a row would squeeze.
             ChipGrid(base: 3) {
                 ForEach([SessionKind.climbVolume, .climbLimit, .hangManual], id: \.self) { option in
                     Chip(title: option.shortName, isSelected: kind == option) {
@@ -102,9 +96,8 @@ struct SessionLogSheet: View {
                     .accessibilityLabel(option.name)
                 }
             }
-            // The explainer for the SELECTED one, or all while undecided — "volume" and
-            // "limit" are jargon somebody may only half-know, and a mis-picked chip
-            // quietly mis-describes the week this screen exists to describe honestly.
+            // The explainer for the SELECTED kind, or all while undecided: "volume" and
+            // "limit" are jargon, and a mis-picked chip mis-describes the week.
             if showKindHelp {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(kind.map { [$0] } ?? [.climbVolume, .climbLimit, .hangManual], id: \.self) { option in
@@ -119,9 +112,8 @@ struct SessionLogSheet: View {
         .sensoryFeedback(.selection, trigger: kind)
     }
 
-    /// Today or yesterday, and nothing further back. A full date picker would be the
-    /// heaviest control on this fast log to serve a case — logging Thursday's session on
-    /// Sunday — that barely happens and that History can already show is missing.
+    /// Today or yesterday only. A full date picker would be the heaviest control on a fast
+    /// log, for a case that barely happens.
     private var dayBlock: some View {
         let layout = typeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
@@ -147,19 +139,17 @@ struct SessionLogSheet: View {
                     .foregroundStyle(Ink.primary)
                     .contentTransition(.numericText())
             }
-            // Tap-to-type belongs on the row above. Two hours versus two hours fifteen
-            // is noise inside a five-point self-report, and a keyboard would cost the
-            // fast path this sheet is built around.
-            // `DialTrack` collapses to ONE element with children ignored, so without a
-            // label all three dials announce as an unnamed "adjustable" and the two
-            // strain ones are indistinguishable from each other.
+            // Tap-to-type belongs on the row above: 2:00 versus 2:15 is noise inside a
+            // five-point self-report, and a keyboard would cost the fast path.
+            // `DialTrack` is ONE element with children ignored, so without a label the
+            // three dials announce as indistinguishable unnamed "adjustable"s.
             DialTrack(value: $durationMinutes,
                       values: Self.durationStops,
                       format: { Self.durationLabel(Int($0)) },
                       spokenUnit: "")
                 .accessibilityLabel("How long the session was")
-            // Two hours is pre-filled: a close-enough duration is more useful to the
-            // load model than nil, and it is visible and one drag from right.
+            // Two hours pre-filled: close enough beats nil for the load model, and it is
+            // visible and one drag from right.
         }
     }
 
@@ -191,8 +181,8 @@ struct SessionLogSheet: View {
         }
     }
 
-    /// States the rule on the screen that invokes it. A climb settles the day; a manual
-    /// hang only fills one session share, so this copy must follow the selected kind.
+    /// States the rule where it applies: a climb settles the day, a manual hang fills one
+    /// session share, so the copy follows the selected kind.
     private var consequenceLine: some View {
         Text(consequenceCopy)
             .font(.system(.footnote))
@@ -228,8 +218,7 @@ struct SessionLogSheet: View {
                                             minutes: Int(durationMinutes),
                                             rpe: rpe,
                                             fingerStrain: fingerStrain) != nil else {
-            // The sheet STAYS OPEN on a rollback: dismissing on failure loses the two
-            // decisions and tells the user it worked.
+            // STAYS OPEN on a rollback: dismissing loses the input and claims success.
             failed = true
             return
         }

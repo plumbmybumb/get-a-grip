@@ -5,38 +5,26 @@ import SwiftUI
 
 /// A number chosen from a LADDER, not from a continuum.
 ///
-/// The control this replaces was a `Slider` with four preset chips underneath, and it was
-/// the wrong control twice over. Nielsen Norman is unusually blunt about the first: use a
-/// slider only when the precise value will not matter and only the approximate range will.
-/// Every number in a routine is exact — a 3 s hold, 4 pulls, a 5 s rest — so a continuum
-/// was never what any of them wanted, which is why each row needed chips bolted underneath
-/// to reach the values people actually use.
-///
-/// The second is arithmetic. A hold slider spanning 3…45 in steps of five can land on 3, 8,
-/// 13, 18 — so 5, 7, 10 and 12 were unreachable by dragging and existed only as chips, and
-/// a ladder of four chips can hold four numbers. The C4 protocol wants a 3 s hold, a 5 s
-/// rest and 4 pulls; not one of those was a chip, so every one of them fell through to a
-/// drag against a step it did not divide.
+/// It replaced a `Slider` plus four preset chips, wrong twice over. Nielsen Norman: use a
+/// slider only when the precise value will not matter. Every number in a routine is exact
+/// — a 3 s hold, 4 pulls, a 5 s rest. And arithmetically, a hold slider over 3…45 in fives
+/// lands on 3, 8, 13, 18, leaving 5, 7, 10 and 12 reachable only as chips; the C4
+/// protocol's 3 s hold, 5 s rest and 4 pulls were none of them.
 ///
 /// **The dial's positions are the ladder's INDICES, not the value's magnitude.** Detents
-/// are evenly spaced whatever the numbers are, so 3 and 30 are equally easy to hit, and the
-/// scale underneath states every value the control can produce. Tap-to-type stays on the
-/// row above and is not optional — Zwift's workout editor is drag-only and its own power
-/// users hand-edit exported XML to get values the graphical editor cannot express.
+/// are evenly spaced, so 3 and 30 are equally easy to hit, and the scale states every
+/// value the control can produce. Tap-to-type on the row above is not optional: Zwift's
+/// drag-only editor has power users hand-editing exported XML.
 struct DialTrack: View {
     @Binding var value: Double
-    /// Ascending, and FIXED — the same stops whatever `value` currently is.
-    ///
-    /// The caller used to splice the current value in so a typed number "kept its own
-    /// detent". Because positions come from the INDEX, that re-spaced every other stop the
-    /// moment you typed, and re-spaced them again on the first drag. The scale is now
-    /// immovable and an off-ladder value gets `offLadderMark` instead.
+    /// Ascending, and FIXED — the same stops whatever `value` is. Splicing the current value
+    /// in re-spaced every INDEX-positioned stop on typing and again on the first drag; an
+    /// off-ladder value gets `offLadderMark` instead.
     var values: [Double]
     var format: (Double) -> String
     var spokenUnit: String
-    /// An unanswered scale is a real state, not a value below the ladder. The caller
-    /// still supplies a binding for the drag to write into, but this flag keeps that
-    /// temporary value from drawing a misleading detent or off-ladder mark.
+    /// An unanswered scale is a real state, not a value below the ladder. The drag still
+    /// needs a binding; this flag keeps its placeholder value from drawing a detent or mark.
     var isUnset: Bool = false
 
     enum RenderingMark: Equatable {
@@ -44,18 +32,16 @@ struct DialTrack: View {
         case offLadder
     }
 
-    /// Fires the per-detent click. A tick has to name its cause, so it is bumped by a
-    /// LANDING, never by the value — a typed number is not a detent.
+    /// Fires the per-detent click, bumped by a LANDING, never by the value — a typed number
+    /// is not a detent.
     @State private var landings = 0
 
     /// What the ticks DRAW into.
     private static let trackHeight: CGFloat = 30
-    /// What the finger gets. The drawing is 30 pt and that is right — a taller tick reads
-    /// as a fence — but the live strip must clear the 44 pt floor, exactly as
-    /// `BandTrimmer` does ("≥44 pt of live edge each side"). Hit area LARGER than the
-    /// drawing is the safe direction; the reverse is the "four points is exactly the kind
-    /// of miss that reads as the tap didn't register" bug this codebase has already paid
-    /// for once, in `ValueRow`'s preset row.
+    /// What the finger gets. The drawing is 30 pt (taller ticks read as a fence), but the
+    /// strip must clear the 44 pt floor, as `BandTrimmer` does. A hit area LARGER than the
+    /// drawing is the safe direction; the reverse is the missed-tap bug `ValueRow`'s preset
+    /// row already paid for.
     private static let hitHeight: CGFloat = 44
 
     var body: some View {
@@ -76,12 +62,11 @@ struct DialTrack: View {
                     }
                 }
                 .frame(height: Self.hitHeight)
-                // The whole strip is live, not just the ticks: a 2 pt bar is not a target,
-                // and the gap between two of them is the most natural place to aim.
+                // The whole strip is live: a 2 pt bar is not a target, and the gap between
+                // two is where people aim.
                 .contentShape(.rect)
                 .onTapGesture { location in land(at: location.x, width: width) }
-                // Absolute tracking, not translation: on a ladder this short the value
-                // belongs under the finger, and there is no offset worth preserving.
+                // Absolute tracking, not translation: the value belongs under the finger.
                 .gesture(HorizontalPan(
                     began: { x in land(at: x, width: width) },
                     changed: { x, _ in land(at: x, width: width) },
@@ -92,8 +77,7 @@ struct DialTrack: View {
             scale
         }
         .sensoryFeedback(.selection, trigger: landings)
-        // ONE adjustable element rather than a mute picture, stepping the same detents the
-        // drag lands on.
+        // ONE adjustable element, stepping the detents the drag lands on.
         .accessibilityElement(children: .ignore)
         .accessibilityValue(isUnset ? String(localized: "Not set") : String(localized: "\(format(value)) \(spokenUnit)"))
         .accessibilityAdjustableAction { direction in
@@ -105,9 +89,8 @@ struct DialTrack: View {
     }
 
     private func detent(at index: Int, width: CGFloat) -> some View {
-        // Only when the value is EXACTLY here. Off the ladder, no detent is "current" and
-        // `offLadderMark` carries the reading instead — a highlighted 20 while the face
-        // says 22 is the control disagreeing with the number above it.
+        // Only when EXACTLY here; off the ladder `offLadderMark` carries it — a
+        // highlighted 20 under a face saying 22 would disagree with itself.
         let isCurrent = renderingMark == .detent(index)
         return Capsule()
             .fill(isCurrent ? Accent.graphite : Ink.tertiary.opacity(0.5))
@@ -116,10 +99,8 @@ struct DialTrack: View {
             .position(x: x(of: index, in: width), y: Self.hitHeight / 2)
     }
 
-    /// A typed value that is not on the ladder, drawn WHERE IT ACTUALLY FALLS — between
-    /// its two neighbouring stops, proportionally. Hollow rather than solid so it reads as
-    /// "here, but not a stop": the next drag will land on a detent, and the mark should
-    /// say so before it happens rather than after.
+    /// A typed off-ladder value, drawn WHERE IT FALLS between its neighbouring stops. Hollow,
+    /// reading "here, but not a stop" — the next drag will land on a detent.
     private func offLadderMark(at x: CGFloat) -> some View {
         Capsule()
             .strokeBorder(Accent.graphite, lineWidth: 1.5)
@@ -127,8 +108,7 @@ struct DialTrack: View {
             .position(x: x, y: Self.hitHeight / 2)
     }
 
-    /// The ladder, stated. It is what makes the control quotable — you can read every
-    /// value it will produce without touching it, which a slider never allowed.
+    /// The ladder, stated: every value the control can produce, readable without touching it.
     private var scale: some View {
         HStack(spacing: 0) {
             ForEach(values.indices, id: \.self) { index in
@@ -153,12 +133,8 @@ struct DialTrack: View {
     }
 
     /// **The single decision about what this dial draws** — the detent highlight, the
-    /// scale's bold label and the off-ladder mark all read it, so a test on this
-    /// property is a test of the real rendering path rather than a parallel copy of the
-    /// rule that could pass while the drawing regressed.
-    ///
-    /// The two marks are mutually exclusive, and both disappear while the answer is
-    /// unset.
+    /// scale's bold label and the off-ladder mark all read it, so a test of it tests the real
+    /// rendering path. The two marks are exclusive, and both vanish while unset.
     var renderingMark: RenderingMark? {
         guard !isUnset else { return nil }
         if let exactIndex { return .detent(exactIndex) }
@@ -177,13 +153,9 @@ struct DialTrack: View {
                           : values.lastIndex(where: { $0 < value })
     }
 
-    /// Where an off-ladder value falls, interpolated between its neighbours so the mark
-    /// lands in the gap it belongs to. nil when the value IS a detent, or sits outside the
-    /// ladder entirely — past either end there is no gap to interpolate into, so the mark
-    /// parks on the end stop rather than floating off the track.
-    ///
-    /// Pure GEOMETRY: whether the mark is drawn at all is `renderingMark`'s call, and
-    /// the caller has already made it.
+    /// Where an off-ladder value falls, interpolated between its neighbours. nil when the
+    /// value IS a detent or lies outside the ladder (the mark then parks on the end stop).
+    /// Pure GEOMETRY: whether to draw is `renderingMark`'s call.
     private func offLadderX(in width: CGFloat) -> CGFloat? {
         guard width > 0 else { return nil }
         guard let upper = values.firstIndex(where: { $0 > value }) else {

@@ -5,19 +5,15 @@ import SwiftUI
 
 /// The app's forgiveness bar: a glass capsule that undoes the last destructive edit.
 ///
-/// Used for the two deletions that have no confirmation dialog — a routine removed from
-/// Today, a set swiped out of the builder. A dialog in front of every delete is a tax on
-/// the 99 % of taps that meant it, and people learn to dismiss it blindly; a bar that
-/// hangs around for ten seconds costs the confident nothing and saves the wrong tap.
+/// For the deletions with no confirmation dialog. A dialog taxes the 99 % of taps that
+/// meant it and gets dismissed blindly; ten seconds of bar costs the confident nothing.
 ///
-/// **The WHOLE capsule undoes**, not the word at its right end: this is a bar-sized
-/// target reachable with a thumb, mid-session, without looking. Shaped like
-/// `GlassPillButton` — glass INSIDE the label, then `.contentShape`, then the button
-/// style outside; glass wrapped around a container that holds a Button swallows its
-/// touches.
+/// **The WHOLE capsule undoes**, not the word at its end: a bar-sized target for a thumb,
+/// mid-session, without looking. Shaped like `GlassPillButton` — glass INSIDE the label,
+/// then `.contentShape`, then the button style.
 ///
-/// The bar is dumb on purpose: the caller owns the ten-second timer and the transition,
-/// because the thing being restored lives in the store, not here.
+/// Dumb on purpose: the caller owns the timer and the transition, because what is
+/// restored lives in the store.
 struct UndoBar: View {
     var message: String
     var action: () -> Void
@@ -40,21 +36,17 @@ struct UndoBar: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 11)
-            // 44, not ~40. The bar is the ONLY reversal path for two destructive
-            // deletes on a 10 s deadline — the exact miss `ValueRow`'s presetRow
-            // comment already names ("the kind of miss that reads as 'the tap
-            // didn't register'"), here on the control that matters most.
+            // 44, not ~40: the ONLY reversal path for a delete on a 10 s deadline, where
+            // a near miss reads as "the tap didn't register".
             .frame(minHeight: 44)
-            // `.accessibleGlass`, never raw `.glassEffect`: this bar floats over a card
-            // or a list, and under Reduce Transparency it has to become genuinely
-            // opaque or the words sit on top of the content they cover.
+            // `.accessibleGlass`: floating over content, it must go genuinely opaque
+            // under Reduce Transparency.
             .accessibleGlass(nil, in: .capsule)
             .contentShape(.capsule)
         }
         .buttonStyle(PressFeedbackButtonStyle())
         .padding(.horizontal, Metrics.hPadding)
-        // One element, one sentence: the message and the word "Undo" are halves of the
-        // same statement and would otherwise be two stops that each say too little.
+        // One element: the message and "Undo" are halves of one statement.
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "Undo. \(message)"))
     }

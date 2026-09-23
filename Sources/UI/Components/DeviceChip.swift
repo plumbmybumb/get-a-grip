@@ -5,11 +5,8 @@ import SwiftUI
 
 /// The gauge's status, as a single glass pill: dot + name + battery.
 ///
-/// Tapping connects (or reconnects), or cancels an active broadcast search.
-/// It is a Button whose whole visual capsule is
-/// the hit target — glass INSIDE the label, then `.contentShape(.capsule)`, because
-/// glass wrapped around a container swallows the button's touches and padding alone
-/// contributes nothing to SwiftUI's default hit area.
+/// Tapping connects (or reconnects), or cancels an active broadcast search. The whole
+/// capsule is the hit target: glass INSIDE the label, then `.contentShape(.capsule)`.
 struct DeviceChip: View {
     @Environment(DeviceStore.self) private var device
 
@@ -41,12 +38,9 @@ struct DeviceChip: View {
                 }
 
                 if let fraction = device.batteryFraction {
-                    // No `.accessibilityLabel` here any more: an explicit label on the
-                    // enclosing Button REPLACES every synthesized child label rather than
-                    // merging with them, so this one never reached VoiceOver at all —
-                    // tapping the chip to refresh battery, its documented purpose while
-                    // connected, announced no result. The fact now travels in
-                    // `batterySuffix`, folded into the Button's own label below.
+                    // No `.accessibilityLabel` here: an explicit label on the enclosing Button
+                    // REPLACES synthesized child labels, so this one never reached VoiceOver.
+                    // The fact travels in `batterySuffix`, folded into the Button's label.
                     Image(systemName: batterySymbol(fraction))
                         .font(.system(.footnote))
                         .foregroundStyle(fraction < 0.15 ? Accent.alarm : Ink.tertiary)
@@ -65,8 +59,7 @@ struct DeviceChip: View {
         return device.state.isConnected ? String(localized: "Refresh battery") : String(localized: "Connect")
     }
 
-    /// The battery fact, folded into the outer label rather than left on the glyph — see
-    /// the comment where the glyph is built.
+    /// The battery fact, folded into the outer label — see where the glyph is built.
     private var batterySuffix: String {
         guard let fraction = device.batteryFraction else { return "" }
         return String(localized: ". Battery \(BatteryDisplay.percentage(fraction)) percent")
@@ -74,8 +67,8 @@ struct DeviceChip: View {
 
     private var title: String {
         if device.isMock && device.state.isConnected { return String(localized: "Demo device") }
-        // Fall back to the selected KIND's name, not a hardcoded "Progressor" — a
-        // WH-C06 that advertises namelessly must not be labelled as a Tindeq.
+        // The selected KIND's name, not a hardcoded "Progressor": a nameless WH-C06
+        // must not be labelled as a Tindeq.
         if device.state.isConnected { return device.deviceName ?? device.gaugeKind.displayName }
         return device.state.label
     }

@@ -22,9 +22,8 @@ struct RootTabView: View {
         return 0
     }()
 
-    /// The first-run tour. Hosted HERE rather than inside Today, because the scrim has to
-    /// cover the tab bar as well — a lit routine card above a live tab bar invites the one
-    /// tap that would walk you out of the tutorial.
+    /// The first-run tour, hosted HERE so the scrim covers the tab bar too — a live tab bar
+    /// invites the one tap that walks you out of the tutorial.
     @State private var tour = TourController()
 
     var body: some View {
@@ -33,11 +32,10 @@ struct RootTabView: View {
                 TodayView(onShowHistory: { selection = 1 })
             }
             Tab("History", systemImage: "chart.xyaxis.line", value: 1) { HistoryView() }
-            // The SOFT NUDGE: once the newest measured max is four weeks stale the
-            // icon pulses — the schedule-free version of a benchmark reminder (Nuri,
-            // 2026-08-10: "maybe after a while the menu icon pulses"). No badge, no
-            // notification; someone who has never measured is never nudged. Still
-            // under Reduce Motion: the tab's staleness subtitle carries the same fact.
+            // The SOFT NUDGE: once the newest measured max is four weeks stale the icon
+            // pulses (Nuri, 2026-08-10). No badge, no notification, never for someone
+            // who has not measured. Still under Reduce Motion; the tab's subtitle
+            // carries the same fact.
             Tab(value: 2) {
                 MaxesTab()
             } label: {
@@ -47,21 +45,17 @@ struct RootTabView: View {
             }
             Tab("Settings", systemImage: "gearshape.fill", value: 3) { SettingsView() }
         }
-        // Signature iOS 26: the bar collapses to a pill on scroll-down and returns on
-        // scroll-up, handing the content the full screen while it's being read.
+        // The bar collapses to a pill on scroll-down and returns on scroll-up.
         .tabBarMinimizeBehavior(.onScrollDown)
-        // On iPad the four tabs become the top tab bar that can expand into a sidebar;
-        // on iPhone this is the ordinary bar. One declaration, both idioms.
+        // iPad: the top tab bar that expands into a sidebar; iPhone: the ordinary bar.
         .tabViewStyle(.sidebarAdaptable)
-        // A rolled-back write is the one failure with nowhere else to surface. The
-        // builder renders `saveError` inline beside its own Save, but delete, undo,
-        // reorder and "make this the one Today opens on" all fire from a menu that is
-        // already gone by the time the store answers — silence there reads as "the tap
-        // did nothing", which is how data-loss bugs get discovered a week late.
+        // A rolled-back write with nowhere else to surface: the builder shows
+        // `saveError` inline, but delete, undo, reorder and "open on this one" fire
+        // from a menu already gone when the store answers, and silence reads as "the
+        // tap did nothing" — how data-loss bugs surface a week late.
         //
-        // `.constant(...)` would make this undismissable: the value it reads never
-        // changes, so the alert re-presents itself the instant it closes. Clearing the
-        // error in the setter is also what lets a SECOND failure alert again.
+        // Not `.constant(...)`: it would re-present the instant it closes. Clearing
+        // the error in the setter also lets a SECOND failure alert again.
         .alert("Couldn't save",
                isPresented: Binding(get: { templates.saveError != nil },
                                     set: { if !$0 { templates.saveError = nil } })) {
@@ -69,33 +63,29 @@ struct RootTabView: View {
         } message: {
             Text(templates.saveError ?? "")
         }
-        // A shared routine, arriving from outside the app. `isRoutineLink` is the cheap
-        // routing question — is this ours at all — and it is asked FIRST so a link
-        // belonging to some other handler is left alone rather than alerted about.
+        // A shared routine, arriving from outside. `isRoutineLink` is asked FIRST so
+        // a link for some other handler is left alone.
         //
-        // Everything else happens elsewhere, deliberately: the URL goes into the
-        // store's INBOX and `TodayView` presents it. Presenting from here was measured
-        // (2026-08-19, simulator) tearing down whichever full-screen cover a descendant
-        // had up — a running session died unlogged, a dirty builder lost its edits —
-        // because this view and TodayView resolve to the same presenting controller.
-        // Only TodayView can see its own covers, so only TodayView may present.
+        // The URL goes into the store's INBOX and `TodayView` presents it. Presenting
+        // from here tore down whichever full-screen cover a descendant had up (a
+        // running session died unlogged, a dirty builder lost its edits), because
+        // both views resolve to the same presenting controller; only TodayView can
+        // see its own covers.
         //
-        // Onto Today FIRST: the import lands there, so answering it while Settings is
-        // on screen would otherwise leave you on a page with no trace of what happened.
+        // Onto Today FIRST, where the import lands.
         .onOpenURL { url in
             guard RoutineShare.isRoutineLink(url) else { return }
             withAnimation(Motion.state(reduceMotion)) { selection = 0 }
             templates.receiveShareLink(url)
         }
-        // Ceiling only. Clamping the FLOOR forces anyone who has reduced their text
-        // size back up to Large; the ceiling stays because the runner's hero numeral
-        // is fixed-height. This is the app's ONE clamp — never re-clamp downstream.
+        // Ceiling only: clamping the FLOOR forces reduced text back up to Large; the
+        // ceiling protects the runner's fixed-height hero. The app's ONE clamp —
+        // never re-clamp downstream.
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         .tint(Accent.graphite)   // chrome is ink; bleu and red carry the signals
         .tourHost(tour, act: .intro)
-        // A step that names a tab MOVES you to it. The overlay lives above the TabView, so
-        // the anchors it reads are whichever tab is on screen — the switch has to happen
-        // before the spotlight can find anything.
+        // A step that names a tab MOVES you to it, before the spotlight looks for
+        // anchors on that tab.
         .onChange(of: tour.requestedTab) { _, tab in
             guard let tab else { return }
             withAnimation(Motion.state(reduceMotion)) { selection = tab }
@@ -105,8 +95,8 @@ struct RootTabView: View {
             guard let tab = step?.tab, tab != selection else { return }
             withAnimation(Motion.state(reduceMotion)) { selection = tab }
         }
-        // Started from Today rather than here: which act runs depends on whether a routine
-        // exists, and the routine list is a `@Query` that only Today holds.
+        // Started from Today: which act runs depends on the routine `@Query` only
+        // Today holds.
         .environment(tour)
         // A session that finished but was neither saved nor discarded before the app
         // died is offered back once, at launch — see `UnsavedSessionDraft`.
@@ -118,8 +108,7 @@ struct RootTabView: View {
                                     finishedAt: draft.finishedAt,
                                     rpe: nil) != nil
         }
-        // Deliberately NO scenePhase observer: DoigtApp owns the single one, and a
-        // second would run `clock.refresh()` + `refreshIfDayChanged()` twice per
-        // activation.
+        // NO scenePhase observer: DoigtApp owns the single one; a second would run
+        // `clock.refresh()` + `refreshIfDayChanged()` twice per activation.
     }
 }

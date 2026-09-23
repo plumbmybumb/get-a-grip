@@ -3,12 +3,11 @@
 
 import SwiftUI
 
-/// The real L R L R sequence the Hands choice produces for the first set — or R L R L,
-/// once the routine starts on the right.
+/// The real L R L R sequence the Hands choice produces for the first set — or R L R L
+/// when the routine starts on the right.
 ///
-/// Fill-vs-outline, never two hues: it has to survive Reduce Transparency and
-/// colourblindness, and a legend explaining which colour is which hand would be a
-/// legend for a control that exists to remove one.
+/// Fill-vs-outline, never two hues: it must survive Reduce Transparency and
+/// colourblindness, and a colour legend would defeat a control that exists to remove one.
 struct HandOrderStrip: View {
     let mode: HandMode
     var startingHand: Side = .left
@@ -17,13 +16,12 @@ struct HandOrderStrip: View {
     @ScaledMetric(relativeTo: .caption) private var capsuleWidth: CGFloat = 9
 
     var body: some View {
-        // Past twelve pulls a row of capsules stops being countable at a glance and
-        // becomes a texture, so the sentence takes over — and ViewThatFits still catches
-        // the case where twelve SCALED capsules overflow at accessibility3.
+        // Past twelve pulls capsules stop being countable and become texture, so a
+        // sentence takes over; ViewThatFits catches twelve SCALED capsules
+        // overflowing at accessibility3.
         //
-        // The count cases are split out rather than left as an `if` INSIDE ViewThatFits:
-        // an absent candidate measures zero, fits, and wins, which would draw nothing at
-        // all for a set with no pulls in it.
+        // Count cases are split out, not an `if` INSIDE ViewThatFits: an absent
+        // candidate measures zero, fits and wins, drawing nothing for an empty set.
         Group {
             if totalPulls == 0 || totalPulls > 12 {
                 sentenceText
@@ -34,8 +32,7 @@ struct HandOrderStrip: View {
                 }
             }
         }
-        // ONE element with one spoken sentence: twelve focusable capsules is twelve
-        // swipes to learn something a sentence says once.
+        // ONE element, one sentence, not twelve swipes.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(sentence)
     }
@@ -60,8 +57,8 @@ struct HandOrderStrip: View {
             Capsule().strokeBorder(Ink.tertiary.opacity(0.6), lineWidth: 1.5)
                 .frame(width: capsuleWidth, height: capsuleWidth * 2)
         case .both:
-            // One pull with two hands on the edge is ONE event, drawn wide rather than
-            // as a left and a right side by side — which would read as two pulls.
+            // Two hands on the edge is ONE event, drawn wide; side by side would read
+            // as two pulls.
             Capsule().fill(Accent.graphite)
                 .frame(width: capsuleWidth * 2.2, height: capsuleWidth * 2)
         }
@@ -81,9 +78,8 @@ struct HandOrderStrip: View {
         PlanMath.repCount(SetPlan(repsPerSide: max(0, repsPerSide)), mode: mode)
     }
 
-    /// A throwaway `SetPlan` so the count comes out of `PlanMath.repCount` — the single
-    /// ×2 resolver. Multiplying `repsPerSide` by `sideCount` here instead is exactly the
-    /// shortcut that makes a routine twice as long as its own summary claims.
+    /// A throwaway `SetPlan` so the count comes from `PlanMath.repCount`, the single ×2
+    /// resolver; multiplying here is how a routine grows twice as long as its summary.
     private var sequence: [Side] {
         var plan = SessionPlan()
         plan.handMode = mode
@@ -108,8 +104,7 @@ struct HandOrderStrip: View {
         }
     }
 
-    /// The frozen copy reads "{2k} pulls"; a one-pull set would otherwise be spoken
-    /// "1 pulls" in the one mode where that count can be odd.
+    /// Avoids "1 pulls" in the one mode where the count can be odd.
     private func pulls(_ n: Int) -> String {
         String(localized: "\(n) \(n == 1 ? String(localized: "pull") : String(localized: "pulls"))")
     }

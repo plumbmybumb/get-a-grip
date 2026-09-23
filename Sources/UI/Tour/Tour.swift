@@ -3,23 +3,18 @@
 
 import SwiftUI
 
-/// THE FIRST-RUN TOUR — a spotlight walked across the real screen, not a slideshow.
+/// THE FIRST-RUN TOUR — a spotlight walked across the real screen, not a slideshow
+/// (Nuri, 2026-08-09).
 ///
-/// Nuri asked for this (2026-08-09): *"I want all the features to be explained thoroughly
-/// in a tutorial on your first launch, where each thing gets highlighted, maybe even with
-/// a spotlight on the thing you need to focus on."*
+/// **It highlights the LIVE UI.** A carousel of screenshots would teach nothing: the card
+/// being described is the card you are looking at, where it will always be. Each step
+/// names a `TourTarget`, every target registers its frame through a preference, and the
+/// scrim punches a hole at it.
 ///
-/// **It highlights the LIVE UI.** A carousel of screenshots would be easier and would
-/// teach nothing: the point is that the card being described is the card you are looking
-/// at, in the place it will always be. So each step names a `TourTarget`, every target
-/// registers its own frame through a preference, and the scrim punches a hole at it.
-///
-/// **The scrim blocks touches, deliberately** — and that is the opposite of the app's rule
-/// about tips. `.popoverTip` on a control the tip is telling you to use is a trap because
-/// the first tap only dismisses it; the control looks pressed and does nothing. A tour has
-/// no such ambiguity: there is a Next button, nothing else is live, and the thing being
-/// described is lit rather than offered. The failure mode that rule exists to prevent
-/// cannot happen here because the tour never asks you to tap what it is pointing at.
+/// **The scrim blocks touches** (except on an interactive step — see `TourStep.interactive`).
+/// That does not break the app's rule against `.popoverTip` on the control it describes,
+/// where the first tap only dismisses the tip: a tour has a Next button, nothing else is
+/// live, and the described thing is lit rather than offered.
 enum TourTarget: String, Hashable, CaseIterable {
     case buildRoutine
     case routineCard
@@ -37,53 +32,45 @@ enum TourTarget: String, Hashable, CaseIterable {
     case maxesCurves
 }
 
-/// The three places the tour has something to say. Each is seen — or skipped — on its own,
-/// because they happen minutes or days apart and one Skip should not silently swallow the
-/// two you have not reached yet.
+/// The three places the tour has something to say. Each is seen or skipped on its own:
+/// they happen minutes or days apart, and one Skip must not swallow the two not reached.
 enum TourAct: String, Hashable {
     case intro
     case builder
     case session
 }
 
-/// One beat of the tour. `target` is nil for steps that are about the app rather than
-/// about a control, and those draw a plain centred card with no hole in the scrim.
+/// One beat of the tour. `target` is nil for steps about the app rather than a control;
+/// those draw a plain centred card with no hole in the scrim.
 struct TourStep: Identifiable, Hashable {
     var id: String { title }
     var target: TourTarget?
     var title: String
     var body: String
     /// **The lit control stays live for this step.** The scrim's hit shape is punched with
-    /// the same hole the scrim is, using an even-odd fill, so the tap lands on the button
-    /// rather than on a sheet of glass over it.
-    ///
-    /// This is the difference between a step that describes a control and a step that asks
-    /// you to use one, and getting it wrong is the exact failure the codebase already has
-    /// a rule about: a tip over a control it is telling you to press, where the first tap
+    /// the same hole, even-odd filled, so the tap lands on the button rather than on glass
+    /// over it. This is the difference between describing a control and asking you to use
+    /// one; getting it wrong is the tip-over-its-own-control failure, where the first tap
     /// only dismisses and the control looks broken.
     var interactive = false
-    /// The tab this step lives on. The tour SWITCHES to it rather than describing it from
-    /// Today — pointing at a tab bar icon and saying "History is over there" teaches less
-    /// than showing the calendar it contains (Nuri, 2026-08-09).
+    /// The tab this step lives on. The tour SWITCHES to it: showing the calendar teaches more
+    /// than pointing at a tab icon (Nuri, 2026-08-09).
     var tab: Int?
 }
 
 // MARK: - The script
 
 extension TourStep {
-    /// **Act one, on a phone with no routine yet.** The tour has to build one before it
-    /// can point at anything: on a genuine first launch Today is an empty state, and every
-    /// step about the card, the ladder and the Start button would be lighting a rectangle
-    /// that does not exist. So it hands you over to the builder and picks up again the
-    /// moment a routine is saved — which is also what Nuri asked for, a tutorial that
-    /// builds your first routine with you rather than describing one.
+    /// **Act one, on a phone with no routine yet.** On a genuine first launch Today is an
+    /// empty state, and every step about the card would light a rectangle that does not
+    /// exist. So it hands you to the builder and picks up again once a routine is saved — a
+    /// tutorial that builds your first routine with you.
     static let firstRun: [TourStep] = [
         TourStep(
             target: nil,
             title: String(localized: "Get a Grip runs your hangboard sessions"),
-            // No prefill to promise any more: the builder opens blank on the name field
-            // (2026-08-19), so a card saying "this is mostly saying yes" would be
-            // describing a screen nobody gets.
+            // The builder opens blank on the name field (2026-08-19); no prefill to
+            // promise.
             body: String(localized: "It counts you in, times every pull, and reads your force gauge so you know what you actually held. Start by making a routine — a name and one set is enough.")),
         TourStep(
             target: .buildRoutine,
@@ -92,19 +79,16 @@ extension TourStep {
             interactive: true),
     ]
 
-    /// Act two, once there is something to point at. Written in the app's own voice:
-    /// second person, present tense, concrete, no exclamation marks, and every step says
-    /// what the thing DOES rather than how good it is.
+    /// Act two, once there is something to point at. The app's own voice: second person,
+    /// present tense, concrete, no exclamation marks; each step says what the thing DOES.
     static let today: [TourStep] = [
-        // No opening card. Arriving here from the builder, the first useful thing is the
-        // routine lit up rather than a paragraph laid over the top of it — and a step with
-        // no target draws centred, which put the words on the card they were about.
+        // No opening card: arriving from the builder, the routine lit up is more
+        // useful than a paragraph over it.
         TourStep(
             target: .routineCard,
             title: String(localized: "This is your routine"),
-            // Short on purpose. This step lights the whole card, which is tall, so a
-            // four-line callout has nowhere to sit that does not cover the thing it is
-            // describing. Copy length is layout here.
+            // Short on purpose: this step lights the whole (tall) card, so a long
+            // callout has nowhere to sit that does not cover it. Copy length is layout.
             body: String(localized: "One card, one ritual. The dots are today's sessions, and a filled dot is one you have done.")),
         TourStep(
             target: .gripLadder,
@@ -140,13 +124,8 @@ extension TourStep {
     ]
 
     /// The routine DOCUMENT, top to bottom — the skeleton first, then the sets that
-    /// inherit it. (The old deck act walked one grip card control by control; the
-    /// document act walks the page's own order instead.)
-    ///
-    /// It opened on a "Start from a plan" step until the prefill chooser was removed
-    /// (2026-08-19). The name field above the rhythm block is deliberately not a step of
-    /// its own: the guide's first coach card sits on it inline, and a spotlight over a
-    /// text field says nothing the field does not already say.
+    /// inherit it. The name field is not a step: the guide's first coach card sits on it
+    /// inline, and a spotlight over a text field says nothing the field does not.
     static let builder: [TourStep] = [
         TourStep(
             target: .builderRhythm,
@@ -185,9 +164,8 @@ extension TourStep {
 
 /// Owns which step is showing, and whether the tour has ever finished.
 ///
-/// The "seen" flag is VERSIONED rather than a Bool: when the tour gains an act, a bumped
-/// version is what lets it run again for people who saw the old one, and a Bool would have
-/// no way to say that.
+/// The "seen" flag is VERSIONED, not a Bool, so a bumped version can run a grown tour
+/// again for people who saw the old one.
 @Observable
 @MainActor
 final class TourController {
@@ -195,10 +173,9 @@ final class TourController {
     private static let version = 1
     private static func seenKey(_ act: TourAct) -> String { "tour.seen.\(act.rawValue)" }
 
-    /// **"Take me to that tab."** Settings sits two tabs away from everything it can
-    /// restart, so a reset there looked like nothing had happened at all (Nuri,
-    /// 2026-08-09). The tab selection lives in `RootTabView`; this is how anything deeper
-    /// in the tree asks for it. Cleared by the observer once honoured.
+    /// **"Take me to that tab."** Settings sits two tabs from everything it can restart, so
+    /// a reset there looked like nothing happened (Nuri, 2026-08-09). Selection lives in
+    /// `RootTabView`; this is how deeper views ask for it. Cleared once honoured.
     var requestedTab: Int?
 
     private(set) var act: TourAct?
@@ -211,17 +188,16 @@ final class TourController {
     var current: TourStep? {
         guard index < steps.count else { return nil }
         var step = steps[index]
-        // Intro steps without an explicit tab live on Today. Back from History must
-        // restore it before the spotlight asks for Today's anchors again.
+        // Intro steps without a tab live on Today; coming back from History must
+        // restore it before the spotlight asks for Today's anchors.
         if act == .intro, step.tab == nil { step.tab = 0 }
         return step
     }
     var isRunning: Bool { current != nil }
     var progress: String { String(localized: "\(index + 1) of \(steps.count)") }
 
-    /// Start the tour unless it has already been finished or skipped once.
-    /// Idempotent, because callers are `onChange`/`onAppear` hooks that can fire more than
-    /// once — starting an act twice must not restart one already running.
+    /// Start the tour unless already finished or skipped. Idempotent: `onChange`/`onAppear`
+    /// hooks can fire more than once, and must not restart a running act.
     func beginIfUnseen(_ act: TourAct, hasRoutine: Bool = true) {
         guard !isRunning, !awaitingRoutine else { return }
         guard UserDefaults.standard.integer(forKey: Self.seenKey(act)) < Self.version else { return }
@@ -240,8 +216,8 @@ final class TourController {
         index = 0
     }
 
-    /// Replay everything from the beginning — the Settings row. Clearing the flags is what
-    /// lets the builder and session acts fire again the next time you reach them.
+    /// Replay everything — the Settings row. Clearing the flags lets the builder and
+    /// session acts fire again when reached.
     func replay(hasRoutine: Bool) {
         for act in [TourAct.intro, .builder, .session] {
             UserDefaults.standard.removeObject(forKey: Self.seenKey(act))
@@ -251,13 +227,11 @@ final class TourController {
         requestedTab = 0
     }
 
-    /// The setup deck opened while act one was waiting for a routine, so teach it. Runs
-    /// only in that window: opening the deck a month later to add a grip is not a moment
-    /// for a tutorial.
+    /// The builder opened while act one was waiting for a routine, so teach it — only in
+    /// that window, not when adding a grip a month later.
     func builderOpened() {
-        // Act one may still be RUNNING — its last step is the hand-off that opened this
-        // deck, and that step has now done its job. Guarding on `!isRunning` left the
-        // intro's "Build one now" card sitting over the builder it had just opened.
+        // Act one may still be RUNNING: its last step is the hand-off that opened
+        // the builder. Guarding on `!isRunning` left "Build one now" over it.
         guard awaitingRoutine, act == .intro || act == nil else { return }
         guard UserDefaults.standard.integer(forKey: Self.seenKey(.builder)) < Self.version
         else {
@@ -281,9 +255,8 @@ final class TourController {
 
     func advance() {
         guard index + 1 < steps.count else {
-            // The end of act one is not the end of the tour: step aside and wait for the
-            // builder rather than marking it seen, or saving your first routine would
-            // drop you back onto a screen nobody has explained.
+            // Act one ending is not the tour ending: wait for the builder rather than
+            // marking it seen, or saving your first routine lands on an unexplained screen.
             if act == .intro, awaitingRoutine {
                 steps = []
                 index = 0
@@ -298,12 +271,11 @@ final class TourController {
         index = max(0, index - 1)
     }
 
-    /// Skipping counts as seen. Being asked twice whether you want the tour you already
-    /// declined is worse than never offering it.
+    /// Skipping counts as seen: being re-offered a tour you declined is worse than never.
     func finish() {
         if let act { UserDefaults.standard.set(Self.version, forKey: Self.seenKey(act)) }
-        // Only the intro act owns `awaitingRoutine`. Finishing the BUILDER act must leave
-        // it standing, or saving the routine would not resume act one.
+        // Only the intro act owns `awaitingRoutine`; finishing the BUILDER act must
+        // leave it, or saving the routine would not resume act one.
         if act == .intro { awaitingRoutine = false }
         act = nil
         steps = []
@@ -313,23 +285,17 @@ final class TourController {
 
 // MARK: - Anchors
 
-/// Every target's frame, collected up the view tree as an `Anchor<CGRect>` so the overlay
-/// can convert it into its own coordinate space. `Anchor` rather than a `GeometryReader`
-/// per target: a reader would need one wrapper view around every control, and would report
-/// coordinates in whatever space its parent happened to be in.
+/// Every target's frame, collected as an `Anchor<CGRect>` so the overlay can convert it
+/// into its own space. Not a `GeometryReader` per target, which needs a wrapper around
+/// every control and reports in whatever space its parent is in.
 struct TourAnchorKey: PreferenceKey {
-    /// A LIST per target, not a single anchor — and that is the whole reason the
-    /// spotlight worked on buttons and not on the builder's controls.
+    /// A LIST per target, not a single anchor. With last-wins, the spotlight worked on
+    /// buttons and failed on the builder: the eager deck's off-screen spare card also
+    /// registered the target, won, and the hole was punched off the right edge. Unique
+    /// targets had one registrant and never showed it.
     ///
-    /// The setup deck is an eager `HStack` of pages: every grip card is alive at once,
-    /// including the off-screen spare. Each of them registered `.builderFingers`, the
-    /// merge kept the last one, and the hole was punched somewhere off to the right of
-    /// the screen. Unique targets — the Start button, the routine card — had exactly one
-    /// registrant and so were never affected, which is exactly the pattern Nuri spotted.
-    ///
-    /// Keeping all of them and letting the host pick the visible one also fixes the
-    /// general case: any list, pager or lazy stack can legitimately have two views
-    /// claiming one target, and only one of them is on screen.
+    /// Any list, pager or lazy stack can have two views claiming one target; the host picks
+    /// the visible one.
     static let defaultValue: [TourTarget: [Anchor<CGRect>]] = [:]
     static func reduce(value: inout [TourTarget: [Anchor<CGRect>]],
                        nextValue: () -> [TourTarget: [Anchor<CGRect>]]) {
@@ -345,12 +311,10 @@ extension EnvironmentValues {
 
 /// Registers a frame only while a tour is running.
 ///
-/// An `anchorPreference` recomputes its value on every frame the anchored view MOVES —
-/// a scroll, a deck swipe, a row expanding — and every new value re-ran the host's
-/// overlay and its `GeometryReader`, on every screen, with no tour anywhere. The
-/// modifier is always applied, so switching the flag never changes the view's
-/// identity; only its VALUE goes quiet, and an empty dictionary every frame is a
-/// preference that never changes.
+/// An `anchorPreference` recomputes on every frame the view MOVES (a scroll, a swipe, a
+/// row expanding), and each value re-ran the host's overlay and `GeometryReader` on
+/// every screen with no tour at all. The modifier is always applied, so the flag never
+/// changes identity; only its VALUE goes quiet (an empty dictionary never changes).
 private struct TourAnchorModifier: ViewModifier {
     let target: TourTarget
     @Environment(\.tourAnchorsLive) private var live
@@ -362,9 +326,8 @@ private struct TourAnchorModifier: ViewModifier {
     }
 }
 
-/// The overlay half of `tourHost`, as its own view so that only IT observes the
-/// controller: read from the host's caller, `tour.current` would re-evaluate the whole
-/// screen on every step.
+/// The overlay half of `tourHost`, its own view so only IT observes the controller;
+/// read from the caller, `tour.current` would re-evaluate the whole screen per step.
 private struct TourHostModifier: ViewModifier {
     let tour: TourController
     let act: TourAct
@@ -373,8 +336,7 @@ private struct TourHostModifier: ViewModifier {
         content
             .environment(\.tourAnchorsLive, tour.isRunning)
             .overlayPreferenceValue(TourAnchorKey.self) { anchors in
-                // Out before the GeometryReader: another act (or none) means this host
-                // draws nothing, and a reader built to draw nothing still lays out.
+                // Out before the GeometryReader: a reader built to draw nothing still lays out.
                 if tour.act == act, let step = tour.current {
                     GeometryReader { proxy in
                         TourOverlay(
@@ -403,20 +365,17 @@ extension View {
     /// Draw the tour over this container. Attach it at the ROOT of a screen, above the
     /// content whose anchors it reads.
     ///
-    /// `act` is a FILTER, and every host names one. Without it, a host draws whatever act
-    /// happens to be running — so Today's act, resumed the moment a routine was saved,
-    /// rendered its steps over the session that "Save and start training" had just opened.
-    /// A host only ever shows the act it belongs to.
+    /// `act` is a FILTER: without it Today's act, resumed when a routine was saved, drew
+    /// over the session "Save and start training" had just opened.
     func tourHost(_ tour: TourController, act: TourAct) -> some View {
         modifier(TourHostModifier(tour: tour, act: act))
     }
 }
 
-/// The registrant that is actually ON SCREEN, out of however many claimed this target.
+/// The registrant actually ON SCREEN, out of however many claimed this target.
 ///
-/// Scored by how much of it lands inside the host — a page waiting off to the right scores
-/// zero and loses to the one you are looking at. Zero-sized rects are dropped outright:
-/// a view that has not been laid out yet reports one, and it would beat nothing.
+/// Scored by how much lands inside the host, so an off-screen page scores zero.
+/// Zero-sized rects (not laid out yet) are dropped outright.
 @MainActor
 private func visibleRect(for target: TourTarget,
                          in anchors: [TourTarget: [Anchor<CGRect>]],
@@ -467,8 +426,7 @@ private struct TourOverlay: View {
     @State private var cardHeight: CGFloat = 0
     @AccessibilityFocusState private var focusCallout: Bool
 
-    /// Breathing room around the lit control, so the hole reads as "this thing" rather
-    /// than as a crop of it.
+    /// Breathing room, so the hole reads as "this thing" rather than a crop of it.
     private static let padding: CGFloat = 8
 
     /// The hole to leave OUT of the scrim's hit area, in the host's coordinates.
@@ -477,13 +435,11 @@ private struct TourOverlay: View {
         return spotlight.insetBy(dx: -Self.padding, dy: -Self.padding)
     }
 
-    /// An interactive step normally reaches its control through the punched hole, and
-    /// tap-anywhere is off so a stray tap cannot skip past the one instruction that
-    /// mattered. But `spotlight` can resolve to nil — the target scrolled off-screen,
-    /// not yet laid out — and without this the scrim still eats every touch with no
-    /// hole to let one through: the WHOLE screen goes dead, reachable only by the small
-    /// Next button in the card. A step describing something that is not actually lit
-    /// cannot demand the interaction it can't show.
+    /// An interactive step reaches its control through the hole, with tap-anywhere off so
+    /// a stray tap cannot skip the one instruction that mattered. But `spotlight` can be
+    /// nil (target off-screen or not laid out), and then the scrim would eat every touch
+    /// with no hole — the whole screen dead but for the small Next button. A step that
+    /// cannot show its control cannot demand the interaction.
     private var tapAnywhereAdvances: Bool { !step.interactive || spotlight == nil }
 
     var body: some View {
@@ -494,14 +450,10 @@ private struct TourOverlay: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        // The scrim eats every touch on purpose — except the lit control on an interactive
-        // step. A half-live screen under a tutorial is how people start a session by
-        // accident; a dead control the tutorial just told you to press is worse.
+        // Eats every touch except the lit control on an interactive step: a half-live
+        // screen under a tutorial starts sessions by accident.
         .contentShape(ScrimHitShape(hole: interactiveHole), eoFill: true)
-        // Tap anywhere to advance, but NOT while a step is asking you to press something
-        // it can actually show you: there, a stray tap would carry you past the one
-        // instruction that mattered. See `tapAnywhereAdvances` for the unresolved-target
-        // escape hatch.
+        // Tap anywhere to advance — see `tapAnywhereAdvances`.
         .onTapGesture { if tapAnywhereAdvances { onNext() } }
         .transition(.opacity)
         .animation(Motion.state(reduceMotion), value: step)
@@ -512,17 +464,14 @@ private struct TourOverlay: View {
             focusCallout = true
         }
         .accessibilityElement(children: .contain)
-        // Scoped to non-interactive steps only: `.isModal` hides every element outside
-        // this subtree from VoiceOver, including the real control an interactive step
-        // punches a touch-hole for — which lives in the tab content behind the overlay,
-        // not inside this card. On exactly the steps that ask you to press something, a
-        // VoiceOver user needs to reach past the "modal" to the thing being taught.
+        // Non-interactive steps only: `.isModal` hides everything outside this
+        // subtree from VoiceOver, including the real control an interactive step
+        // asks you to press, which lives in the content behind the overlay.
         .accessibilityAddTraits(step.interactive ? [] : .isModal)
     }
 
-    /// A dimmed sheet with the control punched out of it. `destinationOut` + a compositing
-    /// group is the only way to get a real hole; drawing four rectangles around the
-    /// control leaves seams at every corner as soon as the corner radius is not zero.
+    /// A dimmed sheet with the control punched out. `destinationOut` + a compositing group
+    /// makes a real hole; four rectangles leave seams at rounded corners.
     private var scrim: some View {
         Rectangle()
             .fill(Color.black.opacity(0.62))
@@ -579,9 +528,8 @@ private struct TourOverlay: View {
                 }
         }
         .padding(.horizontal, Metrics.hPadding)
-        // MEASURED, not estimated. A fixed guess was fine for a two-line step and ran the
-        // buttons off the bottom of the screen on a four-line one — and the step whose
-        // buttons you cannot reach is the step the tour stops at.
+        // MEASURED, not estimated: a fixed guess ran a four-line step's buttons off
+        // the screen, and the step you cannot leave is where the tour stops.
         .background {
             GeometryReader { proxy in
                 Color.clear.onAppear { cardHeight = proxy.size.height }
@@ -592,15 +540,13 @@ private struct TourOverlay: View {
         .offset(y: cardY(in: size))
     }
 
-    /// BELOW the lit control when there is room under it, above it when there is not, and
-    /// centred when nothing is lit. The card must never cover the thing it is describing,
-    /// which is the one job this arithmetic has.
+    /// BELOW the lit control when there is room, above it when not, centred when nothing is
+    /// lit. The card must never cover the thing it describes.
     private func cardY(in size: CGSize) -> CGFloat {
         let height = cardHeight > 0 ? cardHeight : 210
-        // Measured from the PHYSICAL edges, because the host ignores the safe area — it
-        // has to, so the scrim covers the status bar and the tab bar. 70 clears the
-        // Dynamic Island, 120 clears the tab bar and the home indicator. A card tucked
-        // under either is a card with unreachable buttons.
+        // From the PHYSICAL edges: the host ignores the safe area so the scrim
+        // covers the status and tab bars. 70 clears the Dynamic Island, 120 the tab
+        // bar and home indicator.
         let floor: CGFloat = 70
         let ceiling = max(floor, size.height - height - 120)
         guard let spotlight else { return min(ceiling, max(floor, (size.height - height) / 2)) }
@@ -620,8 +566,7 @@ private struct TourOverlay: View {
                 .background {
                     Capsule().fill(prominent ? Color.white : Color.white.opacity(0.14))
                 }
-                // The house rule: a label with padding and a background still hit-tests
-                // only its opaque content unless the shape is declared.
+                // A padded label hit-tests only its opaque content unless the shape is declared.
                 .contentShape(.capsule)
         }
         .buttonStyle(PressFeedbackButtonStyle())

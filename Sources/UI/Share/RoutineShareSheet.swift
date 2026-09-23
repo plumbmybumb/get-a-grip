@@ -7,33 +7,30 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
 
-/// A frozen share request, exactly like `ShareCalendarRequest`. The deck behind the sheet
-/// can keep moving — a swipe, a CloudKit merge, an edit landing — and what is on screen
-/// stays the routine whose menu was tapped. The sheet observes NO store for the same
-/// reason: the code it draws and the name beside it must describe one thing.
+/// A frozen share request, like `ShareCalendarRequest`: the deck behind the sheet can
+/// move (a swipe, a merge, an edit) and the screen still shows the routine whose menu was
+/// tapped. The sheet observes NO store, so the code and the name describe one thing.
 struct RoutineShareRequest: Identifiable {
     let id = UUID()
     let name: String
     let metaLine: String
     let signatureFingers: FingerSet?
-    /// Carried so the mark here wears the SAME rung colour as the card it was opened
-    /// from — bleu specifically means "nothing resolves", and a max-day routine whose
-    /// card burns red must not turn bleu one presentation later.
+    /// So the mark wears the SAME rung colour as the card it came from — bleu means "nothing
+    /// resolves", and a card burning red must not turn bleu here.
     let peakIntensity: Double?
     let url: URL
 }
 
-/// The routine as a QR code. The code IS the routine — there is no server, no account and
-/// no link that can rot: everything the recipient's app needs rides in the payload, and
-/// percentage targets resolve against THEIR maxes, which is the point of prescribing a
-/// fraction rather than a kilogram.
+/// The routine as a QR code. The code IS the routine: no server, no account, no link to
+/// rot. Everything rides in the payload, and percentage targets resolve against THEIR
+/// maxes — the point of prescribing a fraction.
 struct RoutineShareSheet: View {
     let request: RoutineShareRequest
     var onClose: () -> Void
 
     @State private var rendered: RenderedRoutineShare?
-    /// The one render attempt failed — terminal for this presentation, and said in
-    /// words: a permanently disabled "Preparing image…" is a spinner that lies.
+    /// The one render attempt failed — terminal, and said in words: a permanently disabled
+    /// "Preparing image…" is a spinner that lies.
     @State private var renderFailed = false
 
     private var payload: String { request.url.absoluteString }
@@ -68,10 +65,9 @@ struct RoutineShareSheet: View {
                     Button("Close") { onClose() }
                 }
             }
-            // In the safe area, not at the foot of the scroll — the import sheet's own
-            // rule, learned here the measured way: at the `.medium` detent this sheet
-            // opens on, an in-document button sat 33 pt into the home-indicator strip,
-            // and dragging the content resized the sheet instead of scrolling to it.
+            // In the safe area, not at the foot of the scroll: at the `.medium` detent
+            // an in-document button sat 33 pt into the home-indicator strip, and
+            // dragging resized the sheet instead of scrolling to it.
             .safeAreaInset(edge: .bottom) { shareAction }
         }
         .presentationDetents([.medium, .large])
@@ -83,8 +79,7 @@ struct RoutineShareSheet: View {
         }
     }
 
-    /// The card's own anatomy — mark, name, plan line — so the sheet reads as the card it
-    /// was opened from rather than as a second description of the same routine.
+    /// The card's own anatomy — mark, name, plan line — so the sheet reads as that card.
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
@@ -104,13 +99,11 @@ struct RoutineShareSheet: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
         }
-        // One VoiceOver stop, like the import sheet's twin of this header — same
-        // content, same shape under the rotor.
+        // One VoiceOver stop, like the import sheet's header.
         .accessibilityElement(children: .combine)
     }
 
-    /// Glass is allowed here: a sheet is its own presentation and carries no
-    /// `.contextMenu`, so nothing in this tree is ever lifted out from under it.
+    /// Glass is allowed here: a sheet carries no `.contextMenu`, so nothing is lifted.
     @ViewBuilder
     private var shareAction: some View {
         Group {
@@ -127,8 +120,8 @@ struct RoutineShareSheet: View {
                 .buttonStyle(.glassProminent)
                 .tint(Accent.graphite)
             } else if renderFailed {
-                // The on-screen QR above still works — only the PNG could not be baked,
-                // and a sentence beats a control that looks tappable and never will be.
+                // The on-screen QR still works; only the PNG failed. A sentence beats a
+                // control that looks tappable and never will be.
                 Text("Couldn't prepare a shareable image. The code above still scans.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
@@ -150,10 +143,9 @@ struct RoutineShareSheet: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// `prominent` picks the ink: the INVERSE ink is correct only over
-    /// `.glassProminent`'s opaque graphite fill — on plain glass it rendered white on
-    /// the light slate field — the same white-on-white trap `Accent.graphite` sets for
-    /// any fill that does not name its own label colour, one colour scheme over.
+    /// `prominent` picks the ink: INVERSE ink is right only over `.glassProminent`'s opaque
+    /// graphite fill — on plain glass it rendered white on the light field, the same
+    /// white-on-white trap `Accent.graphite` sets for any fill without its own label colour.
     private func actionLabel(_ title: String, systemImage: String?,
                              prominent: Bool) -> some View {
         HStack(spacing: 8) {
@@ -164,8 +156,7 @@ struct RoutineShareSheet: View {
         .foregroundStyle(prominent
                          ? Color.adaptive(Color(hex: "FFFFFF"), Color(hex: "1B1F25"))
                          : Accent.graphite)
-        // Full-width and padded, so the drawn label is nowhere near the tappable area
-        // SwiftUI would infer from it on its own.
+        // Full-width and padded: the drawn label is not the hit area.
         .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
         .contentShape(.rect)
     }
@@ -174,14 +165,12 @@ struct RoutineShareSheet: View {
         RoutineShareExportCard(name: request.name, payload: payload)
     }
 
-    /// Rendered once, once the sheet has settled — the request is frozen, so there is no
-    /// input that could change under it. `isOpaque = false` keeps the card's rounded
-    /// corners transparent instead of squaring the PNG off with white.
+    /// Rendered once the sheet has settled (the request is frozen). `isOpaque = false` keeps
+    /// the rounded corners transparent instead of squaring the PNG off with white.
     @MainActor
     private func renderImage() async {
-        // The QR must have drawn before the card is baked — a failed generation renders
-        // the fallback SENTENCE, and exporting a white card whose only content is an
-        // error message would hand a friend exactly that.
+        // The QR must have drawn before baking: a failed generation renders the
+        // fallback SENTENCE, and a card carrying only an error must not be shared.
         guard QRCodeView.canRender(payload) else {
             renderFailed = true
             return
@@ -213,11 +202,10 @@ private struct RenderedRoutineShare {
     let file: SharePNG
 }
 
-/// The shared asset. Every colour here is FIXED rather than adaptive: `ImageRenderer`
-/// resolves an adaptive colour against whatever trait collection it happens to inherit,
-/// and a card whose ink flipped with the sharer's appearance setting would export dark
-/// modules on a dark field. It is also the reason `EdgeMark` stays off this card — the
-/// mark draws in `Accent.graphite`, which inverts.
+/// The shared asset. Every colour is FIXED: `ImageRenderer` resolves adaptive colours
+/// against whatever traits it inherits, so ink could flip with the sharer's appearance
+/// and export dark modules on a dark field. Also why `EdgeMark` (in inverting
+/// `Accent.graphite`) stays off this card.
 private struct RoutineShareExportCard: View {
     static let width: CGFloat = 360
     static let height: CGFloat = 448
@@ -237,8 +225,8 @@ private struct RoutineShareExportCard: View {
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.6)
 
-            // The image travels on its own, to someone who may never have heard of the
-            // app. "GET A GRIP" alone names the sender, not the action.
+            // The image travels alone to people who may not know the app; "GET A GRIP"
+            // names the sender, not the action.
             Text("iPhone: Camera. Android: Get a Grip → Today menu → Scan a routine.")
                 .font(.system(.caption))
                 .multilineTextAlignment(.center)

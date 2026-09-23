@@ -3,23 +3,17 @@
 
 import SwiftUI
 
-/// **All time, in History between the trend deck and the sessions** (Nuri, 2026-09-20:
-/// "lifetime stats — number of routines done, total load lifetime, anything else?").
-/// Sessions, pulls, time under tension, volume, days trained, climbing days, the heaviest
-/// pull, and the date they count from. Nothing here is a chart or a trend — the two
-/// cards above it own those — this is the odometer, and it sits right over the sessions
-/// it adds up. It opened at the top of Settings for an hour; History is where the
-/// question is asked.
+/// **All time, in History between the trend deck and the sessions** (Nuri, 2026-09-20).
+/// Sessions, pulls, time under tension, volume, days trained, climbing days, heaviest
+/// pull and the start date. No chart or trend — the cards above own those; this is the
+/// odometer, sitting over the sessions it adds up.
 ///
-/// A LEDGER, not tiles. The first cut laid six numbers in a three-column grid, and on
-/// the phone it read as ragged: a "49" left a hole two numbers wide, "4 hr, 40 min"
-/// crowded the right edge, and the whole thing sat above a Device card drawn as
-/// label-left, value-right rows (Nuri: "spacing on this is kind of ugly"). Same rows as
-/// that neighbour now, so the two cards share one rhythm and every value lands on one
-/// right-hand axis.
+/// A LEDGER, not tiles: a three-column grid read as ragged ("49" left a hole, "4 hr,
+/// 40 min" crowded the edge). Label-left, value-right rows like the Device card put every
+/// value on one right-hand axis.
 ///
-/// Folded from denormalized columns (`Collection.lifetime`) off History's own query, so
-/// it costs a row per session, never a decode.
+/// Folded from denormalized columns (`Collection.lifetime`) off History's own query: a
+/// row per session, never a decode.
 struct LifetimeCard: View {
     var stats: LifetimeStats
     @Environment(\.weightUnit) private var weightUnit
@@ -62,8 +56,8 @@ struct LifetimeCard: View {
         return String(localized: "All time · since \(from)")
     }
 
-    /// The Device card's row, with the value in primary ink and a little weight: these
-    /// are facts about the person, not the link's status.
+    /// The Device card's row, value in primary ink with a little weight: facts about the
+    /// person, not the link's status.
     private func row(_ label: String, _ value: String) -> some View {
         LabeledContent(label) {
             Text(value)
@@ -73,16 +67,15 @@ struct LifetimeCard: View {
         }
     }
 
-    /// Hours and minutes once there are hours, minutes and seconds before — two units,
-    /// never three: "4 hr, 40 min" reads, "4 hr, 40 min, 12 sec" is a stopwatch.
+    /// Two units, never three: "4 hr, 40 min" reads; add seconds and it is a stopwatch.
     private var heldText: String {
         Duration.seconds(stats.heldSeconds)
             .formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated,
                               maximumUnitCount: 2))
     }
 
-    /// Tonnes once kilograms pass a thousand — "20.3 t" is the odometer reading, "20 300
-    /// kg" is a spreadsheet. Pounds stay pounds: a ton is two different weights in English.
+    /// Tonnes past a thousand kilograms ("20.3 t" is an odometer, "20 300 kg" a spreadsheet).
+    /// Pounds stay pounds: a ton is two different weights in English.
     private var volumeText: String {
         switch weightUnit {
         case .kg:

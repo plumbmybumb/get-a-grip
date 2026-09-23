@@ -5,24 +5,17 @@ import SwiftUI
 
 /// A grip, as ONE control.
 ///
-/// It replaces three stacked ones — an edge slider, the finger pad and a row of position
-/// chips, about 400 pt of the set editor — with a 60 pt row you tap. Measured on the
-/// pinned sim 2026-08-11: building the six-grip daily routine from blank spent roughly
-/// three interactions in five on constructing grips, and the EDGE slider came first in
-/// that stack even though the edge is 20 mm on every set of that routine and never
-/// changes. You scrolled past the one control you never touch, six times.
+/// It replaces an edge slider, the finger pad and position chips (~400 pt of the set
+/// editor) with a 60 pt row. Measured 2026-08-11: building the six-grip daily routine
+/// spent roughly three interactions in five on constructing grips, with the EDGE slider
+/// first although the edge never changed — the one control you never touch, six times.
 ///
-/// Constructing a grip is still possible — a grip is genuinely parametric and 22 mm has to
-/// stay expressible — it just happens in `GripIslandPanel` now, hanging off the Dynamic
-/// Island, rather than inline on the row. What moved is the DEFAULT: every other training
-/// app in this category treats the exercise as something you PICK from a list of the ones
-/// you use, and this was the only one that made you build it out of parameters on every
-/// row.
+/// Constructing is still possible (22 mm must stay expressible), in `GripIslandPanel`.
+/// What moved is the DEFAULT: other apps in this category let you PICK the exercise;
+/// this was the only one making you build it from parameters on every row.
 ///
-/// **It only DISPLAYS and asks.** The panel it opens hangs off the Dynamic Island, and
-/// nothing this deep in a scrolling set row can reach the top of the screen — so the panel
-/// is hoisted to the builder's root and this reports the tap upward. A plain value in, a
-/// callback out, which also keeps the row previewable.
+/// **It only DISPLAYS and asks.** Nothing this deep in a scrolling row can reach the top
+/// of the screen, so the panel is hoisted to the builder's root and this reports the tap.
 struct GripToken: View {
     let grip: GripSpec
     var onEdit: () -> Void
@@ -55,9 +48,7 @@ struct GripToken: View {
                 RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous)
                     .fill(Ink.tertiary.opacity(0.12))
             }
-            // MANDATORY: the label holds a Spacer and draws full width, and SwiftUI's
-            // default hit area is the label's OPAQUE content — the fill and the padding
-            // contribute nothing to it.
+            // MANDATORY: a full-width Spacer label hit-tests only its opaque content.
             .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
         }
         .buttonStyle(PressFeedbackButtonStyle())

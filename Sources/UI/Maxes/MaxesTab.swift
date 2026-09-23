@@ -7,16 +7,14 @@ import SwiftUI
 
 /// How strong you are at your limit, per grip, over time — the fourth tab.
 ///
-/// This is a different question from History's: History charts the WORKING load your
-/// sessions actually averaged; this charts the CEILING the gauge has seen you pull.
-/// `MaxRecord` is append-only precisely so this screen costs nothing — every max ever
-/// recorded is still there, and a card here is just one grip's rows drawn as a curve.
+/// History charts the WORKING load your sessions averaged; this charts the CEILING the
+/// gauge has seen you pull. `MaxRecord` is append-only, so every max is still there and a
+/// card is one grip's rows drawn as a curve.
 ///
-/// A grip has two direct actions: measure it again, or edit its hand values.
-/// Editing appends records; the chart and percentage targets keep their identities.
+/// A grip has two actions: measure again, or edit its hand values (which appends).
 ///
 /// The WORKING max is the NEWEST record, not the highest: a benchmark that tests lower
-/// honestly lowers your percentage targets too. Best-ever is shown beside it as the PR.
+/// honestly lowers your percentage targets. Best-ever is shown beside it as the PR.
 struct MaxesTab: View {
     @Environment(\.weightUnit) private var weightUnit
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -25,8 +23,8 @@ struct MaxesTab: View {
     /// Oldest first — each grip's slice is then already in chart order.
     @Query(sort: [SortDescriptor(\MaxRecord.recordedAt)])
     private var records: [MaxRecord]
-    /// Only to know whether routines exist — invitations for never-tested grips are
-    /// drawn from real routines, never from the seed palette a blank app would offer.
+    /// Only to know whether routines exist: invitations come from real routines, never the
+    /// seed palette.
     @Query private var routines: [SessionTemplate]
 
     @Environment(TemplateStore.self) private var templates
@@ -45,12 +43,10 @@ struct MaxesTab: View {
                        gridsOnWideScreens: true) {
             VStack(alignment: .leading, spacing: Metrics.spacing) {
                 if gripGroups.isEmpty && untestedInvitations.isEmpty {
-                    // The tour anchors the empty card too — a first-run tour arrives here
-                    // with no maxes, and a spotlight with nothing to light is a black scrim.
+                    // Anchored even when empty: a first-run tour arrives with no maxes.
                     emptyCard.tourAnchor(.maxesCurves).staggerIn(0)
                 } else if sizeClass == .regular {
-                    // Two grips to a row on a wide window: a max card is a chart and two
-                    // numbers, and one of them alone across a 13-inch screen was a banner.
+                    // Two per row on a wide window: one chart across a 13-inch screen is a banner.
                     CardGrid { cards(gripGroups, untestedInvitations) }
                 } else {
                     cards(gripGroups, untestedInvitations)
@@ -81,8 +77,8 @@ struct MaxesTab: View {
         }
     }
 
-    /// One card per tested grip, then one invitation per untested one — the same rows in
-    /// the phone's stack and the wide grid, so the two layouts cannot drift.
+    /// One card per tested grip, then one invitation per untested one — shared by the phone
+    /// stack and the wide grid.
     @ViewBuilder
     private func cards(_ gripGroups: [GripGroup], _ untestedInvitations: [GripSpec]) -> some View {
         ForEach(Array(gripGroups.enumerated()), id: \.element.id) { index, group in
@@ -132,14 +128,13 @@ struct MaxesTab: View {
             .map { GripGroup(key: $0.key, grip: $0.value.last!.grip, records: $0.value) }
             .sorted { a, b in
                 let (ta, tb) = (a.records.last!.recordedAt, b.records.last!.recordedAt)
-                // Date tie (same benchmark morning): key order, so two grips tested
-                // in one sitting don't swap places between launches.
+                // Date tie (same morning): key order, so grips don't swap between launches.
                 return ta == tb ? a.key < b.key : ta > tb
             }
     }
 
     /// Grips your routines train that have never seen a number — an invitation, not a
-    /// reproach, and only once routines exist at all.
+    /// reproach, and only once routines exist.
     private var invitations: [GripSpec] {
         guard !routines.isEmpty else { return [] }
         let tested = Set(records.map(\.gripKey))
@@ -232,9 +227,8 @@ struct MaxesTab: View {
         }
     }
 
-    /// The same footnote contract as History's: what this screen's numbers are and are
-    /// not. Percent targets follow the NEWEST number, including downward — worth one
-    /// honest line on the screen where a bad testing day becomes visible.
+    /// What this screen's numbers are and are not. Percent targets follow the NEWEST number,
+    /// including downward — worth one honest line where a bad testing day shows.
     private var footnote: some View {
         Text("Your working max is the newest test, best is your record. Percentage targets follow the newest number — up or down.")
             .font(.system(.footnote))
@@ -349,9 +343,8 @@ struct MaxesTab: View {
         group.records.last { $0.side == side }
     }
 
-    /// One line per hand, all in bleu — measured kilograms get the measurement colour
-    /// everywhere in this app. Hands differ by DASH, not hue (survives greyscale and
-    /// every colour vision); the wash under the curve appears only on a single-series
+    /// One line per hand, all bleu (measured kilograms get the measurement colour). Hands
+    /// differ by DASH, not hue, surviving greyscale; the wash appears only on a single-series
     /// chart, where it cannot smear two hands into one shape.
     private func chart(_ group: GripGroup, sides: [Side]) -> some View {
         VStack(alignment: .leading, spacing: 6) {

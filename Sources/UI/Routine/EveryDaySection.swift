@@ -5,19 +5,16 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
-/// EVERY DAY — how many sessions a day this routine asks for, and when Doigt should
-/// say something about it.
+/// EVERY DAY — how many sessions a day this routine asks for, and when to remind you.
 ///
-/// The whole scheduling story is these few rows, and the session count DRIVES the
-/// reminder rows underneath it: "twice a day" is expressed inline, in the document you
-/// are already editing, rather than behind a scheduling screen you have to go and find.
-/// There is deliberately no second surface where reminder times live.
+/// The session count DRIVES the reminder rows underneath it, so "twice a day" is set
+/// inline in the document, not on a scheduling screen. There is no second surface where
+/// reminder times live.
 struct EveryDaySection: View, Equatable {
     /// The write path. Everything drawn comes from `schedule` — see `BuilderInputs`.
     let access: DraftAccess
-    /// `draft.schedule` — the draft with its plan blanked — as a value, so this card
-    /// compares itself on the every-day fields alone and never re-runs its date pickers
-    /// for an edit inside a set.
+    /// `draft.schedule` (the plan blanked) as a value, so this card compares on the every-day
+    /// fields alone and an edit inside a set never re-runs its date pickers.
     let schedule: RoutineDraft
 
     nonisolated static func == (a: Self, b: Self) -> Bool { a.schedule == b.schedule }
@@ -25,20 +22,17 @@ struct EveryDaySection: View, Equatable {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Read from the notification centre, not from a store: nothing in the store layer
-    /// owns authorization, and the answer can change WHILE this sheet is open — the
-    /// user walks to iOS Settings, flips the switch and comes back.
+    /// From the notification centre, not a store: nothing there owns authorization, and it
+    /// can change WHILE this sheet is open (a trip to iOS Settings and back).
     @State private var authStatus: UNAuthorizationStatus = .notDetermined
 
-    /// A FIXED mid-January day carries the hour between `ReminderTime` and the
-    /// `DatePicker` — the same date `ReminderTime.displayText()` uses, so a DST
-    /// transition can never shift the hour under the picker.
+    /// A FIXED mid-January day carries the hour into the `DatePicker` — the date
+    /// `ReminderTime.displayText()` uses — so DST can never shift the hour.
     private static let referenceDay = DateComponents(year: 2001, month: 1, day: 15)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // A PLAIN row, never a `Section` header: plain-style headers pin, and the
-            // document then scrolls illegibly behind a clear background.
+            // A PLAIN row, never a `Section` header: plain-style headers pin.
             CapsLabel(String(localized: "HOW OFTEN"))
                 .padding(.leading, 6)
 
@@ -46,9 +40,8 @@ struct EveryDaySection: View, Equatable {
                 VStack(alignment: .leading, spacing: 18) {
                     kindBlock
                     if schedule.isOnDemand {
-                        // The whole scheduling story, declined in one sentence. The
-                        // times are KEPT in the draft — flipping back to a ritual
-                        // restores them — so nothing here is destroyed, only quiet.
+                        // The times are KEPT in the draft — flipping back to a ritual restores
+                        // them — so nothing is destroyed, only quiet.
                         Text("No daily target and no reminders — it waits on Today until you feel like it.")
                             .font(.system(.footnote))
                             .foregroundStyle(Ink.tertiary)
@@ -62,10 +55,9 @@ struct EveryDaySection: View, Equatable {
         }
         .animation(revealAnimation, value: schedule.isOnDemand)
         .onAppear {
-            // Repair, not normalization: a draft whose reminder list and session count
-            // disagree (an older stash, a merge from another device) would otherwise
-            // draw fewer rows than the count on its face promises. The guard keeps the
-            // common path from marking an untouched document dirty.
+            // Repair: a draft whose reminder list and count disagree (an older stash, a
+            // merge) would draw fewer rows than promised. The guard keeps an untouched
+            // document from turning dirty.
             if schedule.reminders.count != schedule.sessionsPerDay {
                 access.mutate { $0.setSessionsPerDay($0.sessionsPerDay) }
             }
@@ -78,9 +70,8 @@ struct EveryDaySection: View, Equatable {
 
     // MARK: - Kind
 
-    /// Ritual or whenever (Nuri, 2026-08-10: "it's not a routine quite as much as
-    /// something I want to do whenever I want"). A chip pair, not a toggle, because
-    /// the two are peers with names — not one thing switched off.
+    /// Ritual or whenever (Nuri, 2026-08-10). A chip pair, not a toggle: two named peers,
+    /// not one thing switched off.
     private var kindBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
             ChipGrid(base: 2) {
@@ -107,15 +98,13 @@ struct EveryDaySection: View, Equatable {
 
             IntChipRow(values: [1, 2, 3, 4], selection: sessionsBinding)
         }
-        // The chips speak as bare numerals, which means nothing on their own; the
-        // container label is what makes "2" a sentence when VoiceOver enters the group.
+        // The chips are bare numerals; the container label makes "2" a sentence.
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Sessions a day"))
     }
 
-    /// Never writes `sessionsPerDay` directly. `setSessionsPerDay` PARKS the times a
-    /// lower count removes, so going 2 → 1 → 2 restores the user's own 19:15 instead of
-    /// resetting it to the 19:00 default.
+    /// Never writes `sessionsPerDay` directly: `setSessionsPerDay` PARKS removed times, so
+    /// 2 → 1 → 2 restores the user's own 19:15, not the 19:00 default.
     private var sessionsBinding: Binding<Int> {
         Binding(get: { schedule.sessionsPerDay },
                 set: { new in access.mutate { $0.setSessionsPerDay(new) } })
@@ -130,9 +119,8 @@ struct EveryDaySection: View, Equatable {
                 .foregroundStyle(Ink.primary)
                 .tint(Accent.graphite)
 
-            // The times are what the toggle is about, so they follow it rather than
-            // sitting there inert while it is off. The values themselves are kept in
-            // the draft either way — turning reminders back on restores the schedule.
+            // The times follow the toggle rather than sitting inert; the draft keeps
+            // them either way, so turning reminders back on restores the schedule.
             if schedule.remindersEnabled {
                 ForEach(0..<rowCount, id: \.self) { index in
                     reminderRow(index)
@@ -147,8 +135,8 @@ struct EveryDaySection: View, Equatable {
         .animation(revealAnimation, value: rowCount)
     }
 
-    /// Bounded by the list itself, never by the count alone: a mismatched draft must
-    /// degrade to one row fewer, never to an index crash.
+    /// Bounded by the list, never the count alone: a mismatched draft loses a row, never
+    /// crashes.
     private var rowCount: Int {
         min(schedule.sessionsPerDay, schedule.reminders.count)
     }
@@ -166,9 +154,8 @@ struct EveryDaySection: View, Equatable {
         }
     }
 
-    /// Denied is a dead end for the notification, never for the setting: reminders stay
-    /// ON in the draft, so changing your mind in iOS Settings later just works without
-    /// coming back here to re-enable anything.
+    /// Denied is a dead end for the notification, not the setting: reminders stay ON in the
+    /// draft, so allowing them later in iOS Settings just works.
     private var deniedRow: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Notifications are off for Get a Grip.")
@@ -182,9 +169,8 @@ struct EveryDaySection: View, Equatable {
 
     // MARK: - Bridging ReminderTime ↔ Date
 
-    /// `ReminderTime` stores minutes from midnight; a `DatePicker` wants a `Date`. The
-    /// displayed string is always the picker's own locale-correct formatting — this
-    /// carries the hour across and nothing else.
+    /// `ReminderTime` stores minutes from midnight; a `DatePicker` wants a `Date`. Only the
+    /// hour crosses; display is the picker's own locale formatting.
     private func timeBinding(_ index: Int) -> Binding<Date> {
         Binding(
             get: {
@@ -194,9 +180,8 @@ struct EveryDaySection: View, Equatable {
             },
             set: { newDate in
                 let parts = Calendar.current.dateComponents([.hour, .minute], from: newDate)
-                // Deliberately NOT sorted or deduped here: re-ordering the array under
-                // the finger would swap the row being edited with the one below it.
-                // `RoutineDraft.normalized` tidies on the way into the store.
+                // NOT sorted or deduped here: reordering under the finger would swap the
+                // row being edited. `RoutineDraft.normalized` tidies on the way to the store.
                 access.mutate { draft in
                     guard index < draft.reminders.count else { return }
                     draft.reminders[index] = ReminderTime(hour: parts.hour ?? 0, minute: parts.minute ?? 0)
@@ -220,21 +205,13 @@ struct EveryDaySection: View, Equatable {
     }
 }
 
-/// The one control that needs `openURL`, and therefore the only view that may STORE it.
+/// The one control that needs `openURL`, and so the only view that may STORE it.
 ///
-/// `@Environment(\.openURL)` is a presentation-environment value, and its identity moves
-/// with the presentation the way `@Environment(\.dismiss)`'s does — which is the trap
-/// `BuilderDocument` already carries a warning about. Measured on the pinned sim
-/// (2026-08-18): while a number field in the builder had focus, `_printChanges()` named
-/// `EveryDaySection: _openURL changed` on every one of the three update passes a single
-/// keystroke costs, rebuilding the whole section — the kind chips, the reminder rows and
-/// their `DatePicker`s — to serve a button that is not even on screen unless
-/// notifications have been denied. Nothing in the section's body reads it; being a stored
-/// property was enough.
-///
-/// A leaf that holds it instead is the same answer the house rule gives for a
-/// high-frequency read: the blast radius becomes the one thing that actually depends on
-/// the value.
+/// `@Environment(\.openURL)`'s identity moves with the presentation, like `dismiss` (see
+/// `BuilderDocument`). Measured 2026-08-18: with a builder field focused, every keystroke
+/// logged `EveryDaySection: _openURL changed` three times, rebuilding the chips, reminder
+/// rows and `DatePicker`s for a button usually not even on screen. Held by a leaf, the
+/// blast radius is the one thing that depends on it.
 private struct OpenSettingsButton: View {
     @Environment(\.openURL) private var openURL
 

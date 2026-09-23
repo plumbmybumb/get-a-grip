@@ -4,19 +4,16 @@
 import SwiftUI
 
 /// The note Frez asks every app on its Dyno API to show ONCE, the first time someone
-/// picks the Dyno. A letter, so it reads as one: the words are Donghyun Kim's, verbatim,
-/// and stay in English in every locale — only the title, the footnote and the button
-/// are ours.
+/// picks the Dyno. The words are Donghyun Kim's, verbatim, in English in every locale;
+/// only the title, footnote and button are ours.
 ///
-/// It is set the way its author laid it out (Donghyun Kim, 2026-09-18, asking for "a few
-/// line breaks to improve readability"): every line he wrote is its own paragraph with a
-/// visible gap after it — a break that only shows when the line before happens to wrap is
-/// no break at all — and the salutation carries the card as a heading with the signature
-/// closing it, so a glance sees a letter, not a wall of terms.
+/// Laid out as its author asked (2026-09-18, "a few line breaks to improve
+/// readability"): every line its own paragraph with a visible gap (a break that only
+/// shows when the line wraps is no break), the salutation as heading and the signature
+/// closing it, so it reads as a letter.
 ///
-/// Next is the only way out. Swiping it away would leave the selection half-made, and
-/// the note is the maker's one ask for lending its calibration service; after Next the
-/// flag is persisted and the sheet never appears again on this device.
+/// Next is the only way out: swiping away would leave the selection half-made, and the
+/// note is the maker's one ask. After Next the flag persists and it never reappears.
 struct FrezIntroSheet: View {
     var onNext: () -> Void
 

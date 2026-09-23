@@ -5,62 +5,49 @@ import SwiftUI
 
 /// Four tappable bars — index to little — that say which fingers are on the edge.
 ///
-/// This is the control that settles the app's own worst ambiguity: "front 2" and
-/// "middle 2" are one word apart and two different grips, and a picture settles what a
-/// label flips a coin on. It beats a ten-chip grid on discoverability and on
-/// composability (any combination, no enumeration), and under the no-emoji rule it
-/// doubles as the app's iconography.
+/// "Front 2" and "middle 2" are one word apart and two grips; a picture settles what a
+/// label flips a coin on. It beats a ten-chip grid (any combination, no enumeration) and
+/// doubles as the app's iconography under the no-emoji rule.
 ///
-/// The bars are drawn as a hand — middle tallest, little shortest — but each one is
-/// TAPPED through a full-height container, so the target stays ≥44pt even where the bar
-/// is short.
+/// Drawn as a hand, but each bar is TAPPED through a full-height container, so the target
+/// stays ≥44pt where the bar is short.
 struct FingerPips: View {
     @Binding var fingers: FingerSet
     var position: GripPosition
-    /// Drops the name line. For the setup deck's grip card, where the navigation
-    /// subtitle already carries the full grip name and the card is fighting for every
-    /// point of height — two copies of "4 fingers" one above the other is the cheapest
-    /// 32 pt in the whole layout.
+    /// Drops the name line where a navigation subtitle already carries the grip name and
+    /// height is scarce.
     var showsName: Bool = true
 
-    /// **The DRAWN bar, at the island hand's proportions** — see `barLengthRatio`. Genuinely
-    /// fixed geometry, so it scales the sanctioned way rather than through a bare
-    /// `.system(size:)`. The compact width is for the setup deck's grip card, which is
-    /// fighting for every point of height.
+    /// **The DRAWN bar, at the island hand's proportions** — see `barLengthRatio`. Fixed
+    /// geometry, so it scales the sanctioned way rather than via a bare `.system(size:)`.
     ///
-    /// **CLAMPED**, the trap `ConsistencyCard`'s dot already fixed: four uncapped bars at
-    /// 10 pt spacing plus the thumb container (`hitWidth * 4 + 30`) demand roughly 350 pt
-    /// at accessibility3 against ~360 pt of usable width, on a screen (the max composer's
-    /// FINGERS block) with no horizontal fallback and no sentence escape. A picker that
-    /// overflows offscreen while building a custom grip is worse than one that stops
-    /// growing.
+    /// **CLAMPED**, like `ConsistencyCard`'s dot: uncapped, four bars plus the thumb
+    /// container (`hitWidth * 4 + 30`) want ~350 pt at accessibility3 against ~360 usable,
+    /// on the max composer with no horizontal fallback. A picker that stops growing beats
+    /// one that overflows offscreen.
     @ScaledMetric(relativeTo: .body) private var rawBarWidth: CGFloat = 34
     @ScaledMetric(relativeTo: .body) private var rawCompactBarWidth: CGFloat = 28
     private var barWidth: CGFloat { min(rawBarWidth, 48) }
     private var compactBarWidth: CGFloat { min(rawCompactBarWidth, 40) }
 
-    /// 22 pt wide × 38 pt long, straight off `IslandHand`. Matching the RADIUS RULE alone
-    /// was not enough: at the old 40 × 52 a full-capsule bar came out as a fat oval, which
-    /// is not the shape hanging off the island and not a finger either. A drawing is its
-    /// proportions as much as its corners.
+    /// 22 pt wide × 38 pt long, straight off `IslandHand`. The radius rule alone was not
+    /// enough: at 40 × 52 a full capsule was a fat oval. A drawing is its proportions as
+    /// much as its corners.
     private static let barLengthRatio: CGFloat = 38.0 / 22.0
 
     private var width: CGFloat { showsName ? barWidth : compactBarWidth }
     private var height: CGFloat { width * Self.barLengthRatio }
-    /// The tap target, which is NOT the drawing: a 34 pt bar is under the 44 pt floor, and
-    /// the transparent container around it is what makes the control legal.
+    /// The tap target, NOT the drawing: a 34 pt bar is under the 44 pt floor.
     private var hitWidth: CGFloat { max(44, width) }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Index, middle, ring, little — same order as `FingerSet.allFingers`, so the
-    /// drawing can never disagree with the token.
+    /// Same order as `FingerSet.allFingers`, so the drawing never disagrees with the token.
     private static let names = [String(localized: "Index"), String(localized: "Middle"),
                                  String(localized: "Ring"), String(localized: "Little")]
     var body: some View {
         VStack(alignment: .leading, spacing: showsName ? 8 : 6) {
-            // The canonical name, live: the same string every other surface in the app
-            // uses for this grip, so the picture and the words are never two answers.
+            // The canonical name, live, so the picture and the words are one answer.
             if showsName {
                 Text(fingers.name)
                     .font(.system(.subheadline, weight: .semibold))
@@ -70,8 +57,7 @@ struct FingerPips: View {
             }
 
             HStack(spacing: 10) {
-                // By index: the bit and its spoken NAME live in two parallel arrays that
-                // have to stay in step, and the index is what keeps them honest.
+                // By index: the bit and its spoken NAME are parallel arrays kept in step.
                 ForEach(FingerSet.allFingers.indices, id: \.self) { index in
                     pip(index: index, finger: FingerSet.allFingers[index])
                 }
@@ -80,10 +66,8 @@ struct FingerPips: View {
 
             thumbBar
 
-            // Said in words, because the locked bar cannot say it by drawing. A control
-            // that looks live and refuses the tap is the exact failure this codebase has
-            // a rule about; disabling it stops the false press feedback, and this line is
-            // what stops "disabled" reading as "broken".
+            // Said in words, because the locked bar cannot. Disabling stops the false
+            // press feedback; this line stops "disabled" reading as "broken".
             if locksThumb {
                 Text("A pinch always includes the thumb.")
                     .font(.system(.caption, weight: .medium))
@@ -91,13 +75,9 @@ struct FingerPips: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        // TRIGGERED BY THE TAP, not by the value.
-        //
-        // On `fingers`, one tap fired TWO haptics: choosing Pinch changes `position`
-        // (which `PositionChipRow` already ticks for) and the model then forces the thumb
-        // in, changing `fingers` and ticking again. A double tick for a single action is
-        // the feedback rule's own failure mode — a tick has to name its cause, and
-        // nothing here caused two.
+        // TRIGGERED BY THE TAP, not by the value: on `fingers`, choosing Pinch
+        // ticked twice (once for `position` in `PositionChipRow`, again when the
+        // model forces the thumb in). A tick names its cause, and one tap caused one.
         .sensoryFeedback(.selection, trigger: tapTick)
     }
 
@@ -116,8 +96,8 @@ struct FingerPips: View {
             toggle(finger)
         } label: {
             ZStack(alignment: .bottom) {
-                // The full-size container is the hit area; the bar inside is the
-                // drawing. Without this the little finger's target would be 42pt.
+                // The full-size container is the hit area; without it the little finger's
+                // target would be 42pt.
                 Color.clear
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(isOn ? Accent.graphite : Color.clear)
@@ -127,8 +107,7 @@ struct FingerPips: View {
                                 .strokeBorder(Ink.tertiary.opacity(0.45), lineWidth: 1)
                         }
                     }
-                    // A hand's proportions, not a bar chart's (`HandGeometry`).
-                    // Applied to the DRAWN bar only — the hit box stays square.
+                    // A hand's proportions (`HandGeometry`), on the DRAWN bar only.
                     .frame(width: width, height: height * HandGeometry.lengthFactor[index])
             }
             .frame(width: hitWidth, height: height)
@@ -139,25 +118,21 @@ struct FingerPips: View {
         .accessibilityAddTraits(isOn ? [.isSelected] : [])
     }
 
-    /// **A FULL CAPSULE, exactly like `FingerGlyph` and the island hand.** The bar you tap
-    /// while building a routine has to be the same object you see hanging off the island
-    /// while doing it (Nuri, 2026-08-09) — a builder control that draws its own dialect of
-    /// the app's only glyph is the thing that makes an interface feel assembled.
+    /// **A FULL CAPSULE, like `FingerGlyph` and the island hand.** The bar you tap while
+    /// building must be the object you see hanging off the island while training (Nuri,
+    /// 2026-08-09); a control with its own dialect of the app's only glyph feels assembled.
     private var cornerRadius: CGFloat { width / 2 }
 
     /// A set with no fingers on the edge is not a grip, so tapping the last engaged pip
     /// is a no-op rather than an empty state to recover from.
-    /// The thumb, as the horizontal bar it is — under the fingers, where a thumb sits
-    /// when a hand pinches. Its own control rather than a fifth column because a thumb
-    /// drawn vertical would just be a short fifth finger, and the whole point of the
-    /// glyph language is that you read the hand before you read a word.
+    /// The thumb, as a horizontal bar under the fingers, where a pinching thumb sits. Not a
+    /// fifth column: drawn vertical, a thumb is just a short fifth finger.
     private var thumbBar: some View {
         let isOn = fingers.hasThumb
         // Spans the first two columns — the side a thumb actually opposes from.
         let thumbLength = hitWidth * 2 + 10
-        // A thumb is the THICKEST digit, so it is drawn thicker than a finger rather than
-        // thinner — the same call `IslandHand` makes, where a slim tab beside four fat
-        // bars read as a mistake.
+        // The THICKEST digit, so thicker than a finger — as in `IslandHand`, where a
+        // slim tab beside four fat bars read as a mistake.
         let thumbThickness = width * 1.05
 
         return Button {
@@ -165,8 +140,7 @@ struct FingerPips: View {
         } label: {
             ZStack(alignment: .leading) {
                 Color.clear
-                // A `Capsule`, like the island's thumb and every finger here: its own
-                // half-height is the radius, whatever the length.
+                // A `Capsule`: its half-height is the radius, whatever the length.
                 Capsule()
                     .fill(isOn ? Accent.graphite : Color.clear)
                     .overlay {
@@ -176,8 +150,7 @@ struct FingerPips: View {
                     }
                     .frame(width: thumbLength, height: thumbThickness)
             }
-            // The full pip-row width is the hit area, 44pt tall — the drawn bar alone
-            // would be a sub-standard target and a leading-only one.
+            // The full pip-row width, 44pt tall: the drawn bar alone is too small a target.
             .frame(width: hitWidth * 4 + 30, height: max(44, thumbThickness), alignment: .leading)
             .contentShape(.rect)
         }

@@ -6,15 +6,14 @@ import SwiftUI
 
 /// What you have actually done, and whether it is going anywhere.
 ///
-/// Two different questions, and the screen answers them in that order: **did I show up**
-/// (the month grid, which is about the ritual) and **is it getting stronger** (the per-grip
-/// trend, which is about the training). Consistency comes first deliberately — for a
-/// twice-a-day habit, turning up is the whole game, and a load chart that creeps up while
-/// the grid is full of holes is telling you a comforting lie.
+/// Two questions, in this order: **did I show up** (the month grid, the ritual) and
+/// **is it getting stronger** (the per-grip trend, the training). Consistency comes
+/// first: for a twice-a-day habit, turning up is the whole game, and a load chart that
+/// creeps up while the grid is full of holes is telling you a comforting lie.
 ///
-/// Every number here comes from `WorkoutLog`, which freezes its plan and each rep's grip
-/// at save time. Editing or deleting a routine can therefore never rewrite what history
-/// says you DID. Its NAME is the one deliberate exception — see `WorkoutLog.displayName(in:)`.
+/// Every number comes from `WorkoutLog`, which freezes its plan and each rep's grip at
+/// save time, so editing or deleting a routine never rewrites what you DID. Its NAME is
+/// the one exception — see `WorkoutLog.displayName(in:)`.
 struct HistoryView: View {
     @Environment(\.weightUnit) private var weightUnit
     /// Newest first — the session you are most likely looking for is the one you just did.
@@ -31,9 +30,8 @@ struct HistoryView: View {
     /// Half of the wide-layout gate; the view's own aspect is the other half. See `body`.
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// The other half — wider than tall — and the width the wide layout divides. Written
-    /// by `onGeometryChange`, each only when ITS answer changes, where a screen-level
-    /// `GeometryReader` used to rebuild everything inside it on any geometry change at
-    /// all: the undo bar's inset arriving was one.
+    /// by `onGeometryChange` only when its answer changes; a screen-level `GeometryReader`
+    /// rebuilt everything inside it on any geometry change (the undo bar's inset, say).
     @State private var isLandscape = false
     @State private var viewWidth: CGFloat = 0
 
@@ -46,17 +44,13 @@ struct HistoryView: View {
 
     /// Decoded rep blobs, once per log EVER.
     ///
-    /// `WorkoutLog.resultsData` is write-once, so this cache never invalidates. Only the
-    /// session rows read it now — one leading grip per VISIBLE row — since the trend deck
-    /// decodes its own copy off the main actor (`TrendModel`); without the cache every
-    /// body evaluation re-decoded each visible row's JSON on the main thread.
+    /// `WorkoutLog.resultsData` is write-once, so this never invalidates. Only session rows
+    /// read it (one leading grip per visible row); the trend deck decodes its own copy off
+    /// the main actor (`TrendModel`). A reference type mutated during body, outside
+    /// observation — the same trick as ForceTraceView's AxisMemory.
     ///
-    /// A reference type mutated during body, deliberately outside observation — the same
-    /// trick as ForceTraceView's AxisMemory.
-    ///
-    /// A deleted log leaves its entry behind, which is deliberate rather than a leak:
-    /// undo re-inserts the SAME id carrying byte-identical `resultsData`, so the stale
-    /// entry is still the right answer and the restored row draws without re-decoding.
+    /// A deleted log's entry is left behind on purpose: undo re-inserts the SAME id with
+    /// byte-identical `resultsData`, so the stale entry is still the right answer.
     private final class RepsCache {
         var byID: [UUID: [RepSummary]] = [:]
     }
@@ -72,14 +66,12 @@ struct HistoryView: View {
     /// The column-only folds over the whole history — the month grid's ledger and the
     /// odometer — kept for as long as the query hands back the SAME rows.
     ///
-    /// They were rebuilt on every body evaluation, and this body re-runs for things that
-    /// change none of their inputs: "Show earlier", the undo bar, a sheet. The key is the
-    /// rows' IDENTITY (a pointer compare per row, touching no attribute — nothing is
-    /// faulted to answer it) plus the day and the tracking start. A new, deleted or
-    /// restored session is a different object, so the key cannot miss a change the
-    /// folds read; the one field edited in place on a saved log is its grade, which
-    /// neither fold reads. `generation` counts the rebuilds, which is what `TrendDeck`
-    /// compares itself on.
+    /// This body re-runs for things that change none of their inputs ("Show earlier", the
+    /// undo bar, a sheet). The key is the rows' IDENTITY (a pointer compare per row, so
+    /// nothing is faulted) plus the day and the tracking start. A new, deleted or restored
+    /// session is a different object, so the key cannot miss a change; the one field edited
+    /// in place on a saved log is its grade, which neither fold reads. `generation` counts
+    /// the rebuilds, which is what `TrendDeck` compares itself on.
     private final class DerivedCache {
         private var rows: [WorkoutLog] = []
         private var today: DayStamp?
@@ -110,9 +102,8 @@ struct HistoryView: View {
         NavigationStack {
             // TWO PANES when the window is regular-width AND wider than tall: an iPad in
             // landscape, or a foldable opened sideways. Size class and aspect, never the
-            // idiom — an iPad in portrait keeps the single column, and a Slide Over column
-            // is a phone. Apple's own guidance for the foldable says the same, and
-            // `RunnerView.live(_:)` gates its wide layout on exactly this expression.
+            // idiom — an iPad in portrait keeps one column, a Slide Over column is a phone.
+            // `RunnerView.live(_:)` gates its wide layout on the same expression.
             content(wide: sizeClass == .regular && isLandscape, width: viewWidth)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onGeometryChange(for: Bool.self, of: { $0.size.width > $0.size.height }) {
@@ -121,17 +112,15 @@ struct HistoryView: View {
                 .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { viewWidth = $0 }
                 .navigationTitle("History")
             .navigationSubtitle(subtitle)
-            // The screen-level action belongs on the screen's own bar: the month card's
-            // share button exports ONE five-week calendar as a picture, and this exports
-            // the whole ledger as a document. Two different scopes, so two different
-            // places — a second button on the card would read as a variant of the first.
+            // The screen-level action lives on the screen's bar: the month card's share
+            // button exports ONE calendar as a picture, this exports the whole ledger. A
+            // second button on the card would read as a variant of the first.
             .toolbar {
                 ToolbarItem(placement: .primaryAction) { exportButton }
             }
         }
-        // The stack, the title, the undo bar, the sheets and the feedback are declared
-        // ONCE and shared by both layouts. A pane that carried its own would give the
-        // wide window two undo bars and two copies of every sheet.
+        // Declared ONCE and shared by both layouts, or the wide window would get two
+        // undo bars and two copies of every sheet.
         .safeAreaInset(edge: .bottom) { undoBar }
         .sensoryFeedback(.success, trigger: undoTick)
         .sheet(item: $calendarShare) { request in
@@ -157,13 +146,12 @@ struct HistoryView: View {
                 emptyCard.houseListRow(top: 12, bottom: 10)
             }
             .historyList()
-            // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling it
-            // disturbs the safe-area layout and the title creeps under the status bar.
+            // ALWAYS via `.background {}`, never a ZStack sibling: as a sibling it disturbs
+            // the safe-area layout and the title creeps under the status bar.
             .background { AppBackground() }
         } else {
-            // Folded once per CHANGE to the rows, not per body evaluation, and handed
-            // down rather than each of the ~200 questions a card asks re-scanning the
-            // whole log array. See `DerivedCache` and `DayLedger`.
+            // Folded once per CHANGE to the rows, not per body evaluation, and handed down.
+            // See `DerivedCache` and `DayLedger`.
             let _ = derived.refresh(logs: logs, today: clock.today,
                                     trackingSince: templates.trackingSince)
             let ledger = derived.ledger ?? DayLedger(logs: logs, today: clock.today,
@@ -176,38 +164,31 @@ struct HistoryView: View {
         }
     }
 
-    /// The phone's History, unchanged: one `List`, the two summary blocks as rows above
-    /// the log.
+    /// The phone's History: one `List`, the two summary blocks as rows above the log.
     ///
-    /// A real `List` rather than `ScreenScaffold`'s ScrollView, for exactly the reason
-    /// Maxes is one: swipe-to-delete, the row-slide physics and the full-swipe commit all
-    /// come from UIKit, and a hand-rolled drag gesture never matches them. The summary
-    /// cards are just rows; nothing here needs `scrollTo`.
+    /// A real `List` rather than `ScreenScaffold`'s ScrollView, as on Maxes: swipe-to-delete,
+    /// the row-slide physics and the full-swipe commit come from UIKit, and a hand-rolled
+    /// drag never matches them.
     private func singleColumn(ledger: DayLedger, lifetime: LifetimeStats) -> some View {
         List {
             monthBlock(ledger).summaryListRow(top: 12, bottom: 6)
             trendBlock().summaryListRow(top: 6, bottom: 6)
-            // THIRD, above the log and below the two pictures (Nuri, 2026-09-20): the
-            // month says how often, the trend says how hard, the odometer says how much,
-            // all of it — and the sessions it adds up sit right under it.
+            // THIRD, above the log (Nuri, 2026-09-20): month says how often, trend how
+            // hard, the odometer how much — with the sessions it adds up right under it.
             lifetimeBlock(lifetime).summaryListRow(top: 6, bottom: 6)
             sessionRows
         }
         .historyList()
-        // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling it
-        // disturbs the safe-area layout and the title creeps under the status bar.
+        // `.background {}`, never a ZStack sibling — see `content(wide:width:)`.
         .background { AppBackground() }
     }
 
     /// An iPad in landscape: the summaries left, the log right.
     ///
-    /// Full-bleed, the one `List` ran the month grid's cells out to the size of coasters
-    /// and made every session row a metre wide. Splitting it is not a new screen — it is
-    /// the same two questions in the same order, turned ninety degrees, and the right
-    /// half stays a real `List` because the swipes are the whole reason it is one. The
-    /// summaries move to a plain ScrollView because nothing in them swipes, and because a
-    /// column that scrolls on its own is the point: the grid and the trend stay put while
-    /// years of sessions go past them.
+    /// Full-bleed, the one `List` grew the grid's cells to coasters and every session row a
+    /// metre wide. Same two questions in the same order, turned ninety degrees. The right
+    /// half stays a real `List` for the swipes; the summaries move to a plain ScrollView so
+    /// the grid and trend stay put while years of sessions scroll past them.
     private func twoPane(ledger: DayLedger,
                          lifetime: LifetimeStats,
                          width: CGFloat) -> some View {
@@ -229,59 +210,51 @@ struct HistoryView: View {
             List { sessionRows }
                 .historyList()
         }
-        // ONE field behind both panes rather than one each: the mesh, its highlight and
-        // the vignette are all relative to their own bounds, so two would seam down the
-        // divider. Still `.background {}` and never a ZStack sibling — as a sibling it
-        // disturbs the safe-area layout and the title creeps under the status bar.
+        // ONE field behind both panes: the mesh, highlight and vignette are relative to
+        // their own bounds, so two would seam down the divider. Still `.background {}`.
         .background { AppBackground() }
     }
 
     /// How wide the summaries stand.
     ///
-    /// A little under half the window, stopping at the house's regular-width column: past
-    /// 560 the five-week grid spaces its cells until a week stops reading as a row, and
-    /// the log is the longer thing, so it keeps the larger share. 420 is the floor the
-    /// cards were measured at — below it the trend chips wrap — and never more than half
-    /// the window, so a narrow regular-width landscape window cannot hand the sessions a
-    /// gutter to live in.
+    /// A little under half the window, capped at the regular-width column: past 560 the
+    /// five-week grid spaces its cells until a week stops reading as a row, and the log is
+    /// the longer thing. 420 is the floor the cards were measured at (below it the trend
+    /// chips wrap), and never more than half, so the sessions never get a gutter.
     private func summaryWidth(in total: CGFloat) -> CGFloat {
         min(max(total * 0.44, 420), Metrics.maxContentWidthRegular, total * 0.5)
     }
 
     // MARK: - The blocks both layouts are made of
 
-    /// One card per 5-WEEK WINDOW, swiped like every other deck (Nuri, 2026-08-10:
-    /// "swipable cards of previous windows") — and only a deck once a second window
-    /// exists to swipe to, the same honesty rule as Today's.
+    /// One card per 5-WEEK WINDOW, swiped like every other deck (Nuri, 2026-08-10), and
+    /// only a deck once a second window exists to swipe to — the same rule as Today's.
     ///
-    /// The block pads ITSELF rather than leaning on a row inset, because it has to sit in
-    /// two containers: the deck manages its own margins so the neighbour peeks at the
-    /// container's edge — the screen in one column, the left pane in two — and the lone
-    /// card sits on the house grid either way.
+    /// The block pads ITSELF rather than leaning on a row inset because it sits in two
+    /// containers: the deck manages its own margins so the neighbour peeks at the
+    /// container's edge (the screen in one column, the left pane in two).
     @ViewBuilder
     private func monthBlock(_ ledger: DayLedger, wide: Bool = false) -> some View {
         Group {
             if monthPageCount(ledger) > 1 {
-                // In the wide pane the neighbour must not peek: cut off by the pane's
-                // edge rather than the screen's, a sliver of card reads as a glitch
-                // (Nuri's scribble, 2026-09-19). The deck still pages; the indicator
-                // says so instead.
+                // In the wide pane the neighbour must not peek: cut off by the pane's edge
+                // rather than the screen's, a sliver of card reads as a glitch. The deck
+                // still pages; the indicator says so.
                 monthDeck(ledger, peeks: !wide)
             } else {
                 monthCard(0, ledger).padding(.horizontal, Metrics.hPadding)
             }
         }
         .tourAnchor(.historyMonth)
-        // Stagger stops at the cards, which are the only rows guaranteed to be on screen
-        // at load. A `List` is lazy, so a staggered session row would fade and rise as it
-        // scrolled under your thumb — an entrance animation replayed mid-scroll reads as
-        // the screen glitching.
+        // Stagger stops at the cards, the only rows guaranteed on screen at load. A
+        // `List` is lazy, so a staggered session row would replay its entrance
+        // mid-scroll and read as a glitch.
         .staggerIn(0)
     }
 
     /// One trend card per routine with measured pulls — see `TrendDeck`, which owns the
     /// grip selection and builds its model off the main actor, so a chip tap re-runs
-    /// that block alone and never this screen.
+    /// that block alone.
     private func trendBlock(wide: Bool = false) -> some View {
         TrendDeck(generation: derived.generation, logs: logs,
                   routineNames: templates.routineNames, wide: wide)
@@ -289,9 +262,8 @@ struct HistoryView: View {
             .staggerIn(1)
     }
 
-    /// Both summaries, in order, for the wide layout's left column. The single column
-    /// places the same two blocks as `List` rows — same views, same tour anchor, same
-    /// entrance — so the two layouts cannot drift apart.
+    /// Both summaries, in order, for the wide layout's left column — the same views the
+    /// single column places as `List` rows, so the two layouts cannot drift.
     @ViewBuilder
     private func summaryBlocks(ledger: DayLedger,
                                lifetime: LifetimeStats,
@@ -307,17 +279,15 @@ struct HistoryView: View {
             .padding(.horizontal, Metrics.hPadding)
     }
 
-    /// The log itself: the label, the sessions, the door to the rest, the footnote.
-    /// `List` rows in BOTH layouts — that is what keeps the swipes, and it is why the
-    /// right-hand pane is a `List` rather than another ScrollView.
+    /// The log itself: label, sessions, the door to the rest, the footnote. `List` rows
+    /// in BOTH layouts — that is what keeps the swipes.
     @ViewBuilder
     private var sessionRows: some View {
         // A plain row, never a `Section` header: plain-style headers PIN, and the
         // content then scrolls illegibly behind a clear background.
         CapsLabel(String(localized: "Sessions")).houseListRow(top: 10, bottom: 2)
 
-        // TEN, then a door (Nuri, 2026-08-10): the log grows forever, and a habit app's
-        // history would soon be a hundred rows of scroll under two cards. The recent ones
+        // TEN, then a door (Nuri, 2026-08-10): the log grows forever. The recent ones
         // are the ones you check; the rest are one tap away, not gone.
         ForEach(visibleLogs) { log in
             SessionRow(log: log,
@@ -345,9 +315,8 @@ struct HistoryView: View {
         footnote.houseListRow(top: 14, bottom: 24)
     }
 
-    /// Offered even with nothing logged — the sheet then says plainly that there is
-    /// nothing to export, which is a better answer than a toolbar item that is present
-    /// on some launches and missing on others.
+    /// Offered even with nothing logged — the sheet then says there is nothing to
+    /// export, better than a toolbar item present on some launches and not others.
     private var exportButton: some View {
         Button {
             analysisExport = makeExportRequest()
@@ -362,9 +331,8 @@ struct HistoryView: View {
         .accessibilityLabel("Export for analysis")
     }
 
-    /// Freeze an address at the tap — nothing here walks the history. The sheet opens
-    /// at once and its worker fetches the rows and their blobs off the main actor; this
-    /// used to copy both blob columns of every log before the sheet could appear.
+    /// Freeze an address at the tap — nothing here walks the history. The sheet opens at
+    /// once and its worker fetches rows and blobs off the main actor.
     private func makeExportRequest(workout: WorkoutLog? = nil) -> AnalysisExportRequest {
         let source = AnalysisExportAssembler.Source(
             container: modelContext.container,
@@ -396,19 +364,16 @@ struct HistoryView: View {
             .font(.system(.footnote, weight: .semibold))
             .foregroundStyle(Accent.graphite)
             .frame(maxWidth: .infinity, minHeight: 44)
-            // MANDATORY: a centred label in a full-width row — padding and clear
-            // background contribute nothing to SwiftUI's default hit area.
+            // MANDATORY: a centred label in a full-width row takes taps only on its glyphs.
             .contentShape(.rect)
         }
         .buttonStyle(PressFeedbackButtonStyle())
         .houseListRow(top: 2, bottom: 2)
     }
 
-    /// Full swipe is ON here, and that is the one place this screen departs from Maxes.
-    /// Maxes disables it because `recordMax` always stamps `recordedAt` as NOW, so
-    /// restoring a max would quietly move it to today. A `WorkoutLog` is frozen — undo
-    /// puts back the same id, the same dates and the same raw blobs — so the house
-    /// gesture applies: a short drag reveals the pill, carrying it through commits.
+    /// Full swipe is ON here, unlike Maxes, where `recordMax` stamps `recordedAt` as NOW
+    /// so restoring a max would move it to today. A `WorkoutLog` is frozen — undo puts back
+    /// the same id, dates and raw blobs — so the house gesture applies.
     private func deleteButton(_ log: WorkoutLog) -> some View {
         Button(role: .destructive) {
             _ = templates.deleteSession(log)
@@ -419,9 +384,8 @@ struct HistoryView: View {
         .accessibilityLabel(String(localized: "Delete this session, \(displayName(of: log)) on \(log.historyDate().formatted(.dateTime.weekday(.wide).day().month(.wide)))"))
     }
 
-    /// Delete carries no confirmation dialog — the same bargain as a deleted routine. A
-    /// dialog in front of every swipe is a tax on the taps that meant it, and people
-    /// learn to dismiss it blindly; ten seconds of Undo costs the confident nothing.
+    /// No confirmation dialog, same bargain as a deleted routine: a dialog taxes every
+    /// swipe that meant it and gets dismissed blindly; ten seconds of Undo costs nothing.
     @ViewBuilder
     private var undoBar: some View {
         VStack(spacing: 0) {
@@ -440,10 +404,9 @@ struct HistoryView: View {
                    value: templates.lastDeletedSession)
     }
 
-    /// What a delete here does and does not touch, said once at the foot of the list.
-    /// Deleting a session moves the month grid and the trend under it, and that is a
-    /// surprising amount of consequence for a swipe — so the screen states it rather
-    /// than letting the grid quietly change shape.
+    /// What a delete here does and does not touch, said once at the foot of the list:
+    /// deleting a session moves the month grid and the trend, which is a lot of
+    /// consequence for a swipe, so the screen says so.
     private var footnote: some View {
         Text("Deleting a session removes it from your streak and your trends too. Your routines are untouched.")
             .font(.system(.footnote))
@@ -477,21 +440,15 @@ struct HistoryView: View {
 
     /// The month grid's whole input, folded ONCE.
     ///
-    /// Every cell used to answer its own questions by scanning the entire log array:
-    /// `fraction`, `climb` and `benchmark` each filtered all of it, per day, and
-    /// `trackingSince` was a computed `min()` over every log READ FROM INSIDE two
-    /// per-day loops. One 35-day card cost on the order of two hundred whole-array
-    /// passes, rebuilt on every body evaluation — which, on a horizontal deck, means
-    /// during the swipe. Invisible at ninety sessions; not invisible at two years of
-    /// twice-daily training, which is exactly the person this screen is for.
+    /// Each cell used to scan the whole log array for itself (`fraction`, `climb`,
+    /// `benchmark`, and a `min()` for `trackingSince` inside per-day loops): ~200
+    /// whole-array passes per 35-day card, rebuilt during a deck swipe. Invisible at
+    /// ninety sessions, not at two years of twice-daily training.
     ///
-    /// Now: one pass over the logs, and every cell is a dictionary lookup. It is a
-    /// value built in `body` rather than a cache, deliberately — `logs` is a `@Query`
-    /// that gains and loses rows, and a cache over it needs an invalidation key that
-    /// `count` cannot honestly provide (delete one, add one).
-    /// Internal rather than private ONLY so `HistoryLedgerTests` can reach it: it now
-    /// owns the day-fill rule the grid draws, and rewriting that rule without a test
-    /// pinning it is how a calendar starts quietly lying.
+    /// Now one pass, and every cell is a dictionary lookup. A value built in `body`, not a
+    /// cache: `logs` is a `@Query` that gains and loses rows, and `count` is no honest
+    /// invalidation key (delete one, add one).
+    /// Internal ONLY so `HistoryLedgerTests` can pin the day-fill rule the grid draws.
     struct DayLedger {
         /// What happened on one day, in the four terms the grid asks about.
         private struct Day {
@@ -505,10 +462,8 @@ struct HistoryView: View {
         }
 
         private var days: [Int: Day] = [:]
-        /// The first day there is any evidence of. Days before it are not missed days —
-        /// nobody can fail on a day they did not own the app, and drawing them as empty
-        /// boxes indistinguishable from a skipped session is the screen quietly lying
-        /// about a habit it never observed.
+        /// The first day there is any evidence of. Days before it are not missed days:
+        /// drawing them as empty boxes would make a day without the app look skipped.
         let trackingSince: DayStamp
 
         init(logs: [WorkoutLog], today: DayStamp, trackingSince: DayStamp? = nil) {
@@ -519,9 +474,8 @@ struct HistoryView: View {
                 day.target = Swift.max(day.target, log.sessionsPerDayTarget)
                 if log.kind.countsAsHang { day.hangs += 1 }
                 if log.kind.settlesDay { day.settled = true }
-                // `isClimb` is the same predicate `Collection.climb(on:)` filters on;
-                // only its hardest-first PRECEDENCE is dropped, and no caller here asks
-                // which climb it was — the cell and the legend both want a yes or no.
+                // Same predicate `Collection.climb(on:)` filters on, minus its hardest-first
+                // precedence: the cell and the legend only want a yes or no.
                 if log.kind.isClimb { day.climbed = true }
                 if log.kind == .benchmark { day.benchmarked = true }
                 days[log.dayKey] = day
@@ -542,13 +496,11 @@ struct HistoryView: View {
         func benchmarked(on day: DayStamp) -> Bool { days[day.raw]?.benchmarked ?? false }
     }
 
-    /// Every 5-week window since tracking began, one card each, newest in front —
-    /// the same deck geometry and one-page-per-swipe physics as Today and the trend.
-    /// LAZY, unlike the other decks: the page count grows with the training history
-    /// and a two-year habit must not build seventy hidden grids at once.
-    /// `peeks` is the phone's 20 pt of neighbour at the screen edge; off in the wide
-    /// pane, where the edge is a seam rather than the screen and a page indicator
-    /// carries the "there is more" instead.
+    /// Every 5-week window since tracking began, one card each, newest in front, with the
+    /// same deck physics as Today and the trend. LAZY, unlike the other decks: the page
+    /// count grows with history and must not build seventy hidden grids at once.
+    /// `peeks` is the phone's 20 pt of neighbour; off in the wide pane, where a page
+    /// indicator carries the "there is more" instead.
     private func monthDeck(_ ledger: DayLedger, peeks: Bool = true) -> some View {
         ScrollView(.horizontal) {
             LazyHStack(alignment: .top, spacing: 8) {
@@ -615,8 +567,7 @@ struct HistoryView: View {
                     .monospacedDigit()
                     .foregroundStyle(Ink.tertiary)
 
-                // Shown only once there is a marked cell to explain. A legend for a
-                // glyph nobody has produced yet is clutter teaching nothing.
+                // Only once there is a marked cell to explain.
                 HStack(spacing: 14) {
                     if days.contains(where: { ledger.climbed(on: $0) }) {
                         HStack(spacing: 6) {
@@ -687,10 +638,8 @@ struct HistoryView: View {
         return String(localized: "\(trained) of \(tracked.count) days trained since you started")
     }
 
-    /// Folds the climb/benchmark counts in, so the "a climb completes the day"
-    /// distinction the grid's shape-coding carries has a spoken equivalent — the legend
-    /// that explains those glyphs is itself `.accessibilityHidden(true)`, so without this
-    /// the whole distinction had no accessible channel at all.
+    /// Folds the climb/benchmark counts in, so the distinction the grid's shape-coding
+    /// carries has a spoken equivalent — the legend is `.accessibilityHidden(true)`.
     private func monthSpokenSummary(_ days: [DayStamp], _ ledger: DayLedger) -> String {
         let tracked = days.filter { $0 >= ledger.trackingSince }
         let trained = tracked.filter { ledger.fraction(on: $0) > 0 }.count
@@ -718,9 +667,8 @@ struct HistoryView: View {
 // MARK: - Rows and lists shared by both layouts
 
 private extension View {
-    /// The house `List` treatment. Shared so the single column and the wide layout's
-    /// right-hand pane cannot drift. `AppBackground` is deliberately NOT here: one
-    /// column puts it on this list, the wide layout puts one field behind both panes.
+    /// The house `List` treatment, shared so both layouts cannot drift. `AppBackground`
+    /// is NOT here: one column puts it on this list, the wide layout behind both panes.
     func historyList() -> some View {
         self
             .listStyle(.plain)
@@ -743,9 +691,8 @@ private extension View {
 
 // MARK: - Day cell
 
-/// Shape-encoded, not colour-only: the fill RISES with how much of the day you did, and
-/// today carries a ring. It has to survive Reduce Transparency and colourblindness, and it
-/// speaks the same language as the strip on Today.
+/// Shape-encoded, not colour-only: the fill RISES with how much of the day you did,
+/// and today carries a ring — survives Reduce Transparency and colourblindness.
 private struct DayCell: View {
     let fraction: Double
     let isToday: Bool
@@ -754,12 +701,10 @@ private struct DayCell: View {
     var isTracked: Bool = true
     /// A day at the climbing gym — full, and notched. See `ClimbNotch`.
     var climbed: Bool = false
-    /// A max-testing day — full, BLEU, and bored (Nuri, 2026-08-10: "see your maxes"
-    /// across the five weeks at a glance). Bleu because these are the days the gauge
-    /// measured your ceiling — the one meaning bleu carries everywhere — and the bore
-    /// because colour alone must never carry a calendar state. A climb on the same day
-    /// wins the cell: the notch and graphite stay, matching the day-story precedence
-    /// everywhere else.
+    /// A max-testing day — full, BLEU, and bored (Nuri, 2026-08-10). Bleu because the
+    /// gauge measured your ceiling that day, the bore because colour alone must never
+    /// carry a calendar state. A climb on the same day wins the cell, matching the
+    /// day-story precedence everywhere else.
     var benchmarked: Bool = false
 
     private var showsBenchmark: Bool { benchmarked && !climbed }
@@ -802,35 +747,26 @@ private struct DayCell: View {
 // MARK: - Session row
 
 /// One past session, drawn as a MUSIC-APP ROW: artwork, two lines of text, a trailing
-/// accessory (Nuri, 2026-08-08 — *"make the list of old sessions look just like the
-/// Apple Music song list"*).
+/// accessory (Nuri, 2026-08-08).
 ///
-/// The anatomy is the point. Artwork identifies the item before you read anything, the
-/// title says what it was, the subtitle carries the detail, and the date sits right
-/// where Music puts its accessories. What it replaced — a material card per row, stats
-/// on their own line, the date floated top-right — made ten sessions read as ten
-/// documents and fitted four on a screen.
+/// Artwork identifies the item before you read, the title says what it was, the
+/// subtitle the detail, the date sits where Music puts its accessories. A material
+/// card per row made ten sessions read as ten documents and fitted four on a screen.
 private struct SessionRow: View {
     @Environment(\.weightUnit) private var weightUnit
     let log: WorkoutLog
-    /// Resolved by `WorkoutLog.displayName(in:)` — the routine's live name while it
-    /// exists, the log's frozen copy once it doesn't. Passed IN rather than read from
-    /// the store here so the row stays a dumb leaf with nothing to observe.
+    /// Resolved by `WorkoutLog.displayName(in:)`. Passed IN so the row stays a dumb leaf
+    /// with nothing to observe.
     let name: String
-    /// The session's first grip, for the artwork tile. Passed in from History's rep
-    /// cache rather than decoded here: `resultsData` is write-once and already decoded
-    /// once per log ever, and a row that re-parsed JSON would make the list slower every
-    /// week Nuri trains.
+    /// The session's first grip, for the artwork tile, from History's rep cache — a row
+    /// that re-parsed JSON would make the list slower every week of training.
     var leadingGrip: GripSpec?
 
-    /// Music's artwork is a rounded square you read before the words. Ours is the app's
-    /// own iconography — the grip you pulled, or a climber for a gym session.
+    /// The artwork tile: the grip you pulled, or a climber for a gym session.
     ///
-    /// **CLAMPED**, the `ConsistencyCard` dot's own fix: uncapped, this tile grows with
-    /// every row in the list, and `trailing`'s `.fixedSize(horizontal: true)` plus
-    /// `title`'s bare `.lineLimit(1)` (no shrink path, unlike `subtitle` beside it) meant
-    /// the routine name was squeezed hardest with nowhere left to give at accessibility
-    /// sizes.
+    /// CLAMPED, like the `ConsistencyCard` dot: uncapped it grows with every row, and
+    /// beside `trailing`'s fixed width the title (no shrink path) got squeezed hardest at
+    /// accessibility sizes.
     @ScaledMetric(relativeTo: .subheadline) private var rawArtwork: CGFloat = 44
     private var artwork: CGFloat { min(rawArtwork, 56) }
 
@@ -842,10 +778,8 @@ private struct SessionRow: View {
                     .font(.system(.subheadline, weight: .medium))
                     .foregroundStyle(Ink.primary)
                     .lineLimit(1)
-                    // Same shrink floor as `subtitle` below it: with no minimum scale
-                    // factor the routine name — the row's own title — was the one line
-                    // in this list with no path but truncation as it grows toward the
-                    // artwork tile's new ceiling.
+                    // Same shrink floor as `subtitle`: otherwise the title's only path as it
+                    // grows toward the artwork's ceiling is truncation.
                     .minimumScaleFactor(0.85)
                 Text(subtitle)
                     .font(.system(.footnote))

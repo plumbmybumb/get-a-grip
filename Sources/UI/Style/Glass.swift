@@ -5,16 +5,14 @@ import SwiftUI
 
 // MARK: - Glass styling (app-only)
 //
-// Ported from Schengen Slice (itself ported from Number Bubble) so the apps read as
-// siblings. Chrome (buttons, fields, pills) uses Apple's real Liquid Glass
-// (`.glassEffect`, `.glass` / `.glassProminent`) on iOS 26 — subtle and refractive,
-// not a custom "shiny" gradient. The background stays a custom content layer so the
-// glass has soft, shifting colour to refract. Widget-safe tokens (Ink, StatusTint,
-// Metrics, Color helpers) live in Shared/DesignTokens.swift — never redefined here.
+// Ported from Schengen Slice (via Number Bubble) so the apps read as siblings. Chrome
+// uses Apple's real Liquid Glass (`.glassEffect`, `.glass` / `.glassProminent`), not a
+// custom "shiny" gradient; the background stays a custom content layer for the glass to
+// refract. Widget-safe tokens (Ink, StatusTint, Metrics, Color helpers) live in
+// Shared/DesignTokens.swift — never redefined here.
 //
-// Split by concern: `AppBackground.swift` is the slate field the glass refracts,
-// this file is the glass itself (tints, Reduce Transparency, field chrome), and
-// `Buttons.swift` is every button built on it.
+// `AppBackground.swift` is the field, this file the glass (tints, Reduce Transparency,
+// field chrome), `Buttons.swift` every button built on it.
 
 // MARK: - Glass tint tokens
 
@@ -47,10 +45,8 @@ struct GlassTint {
 
 // MARK: - Accessible glass
 
-/// Liquid Glass that honours Reduce Transparency.
-///
-/// With the setting on, glass has to become genuinely opaque, not merely thicker —
-/// legibility over a busy backdrop drops below WCAG AA otherwise.
+/// Liquid Glass that honours Reduce Transparency: with it on, glass becomes genuinely
+/// opaque, not merely thicker, or legibility over a busy backdrop drops below WCAG AA.
 struct AccessibleGlass<S: Shape>: ViewModifier {
     var shape: S
     var tint: Color?
@@ -76,11 +72,10 @@ extension View {
 }
 
 extension View {
-    /// **A lit rim** — the glass vocabulary on a surface that cannot be glass. The
-    /// routine card stays a flat fill (Liquid Glass breaks the context-menu lift — see
-    /// `RoutineCard`), so it borrows glass's edge instead: a hairline that catches the
-    /// light at the top-leading corner and fades toward the bottom-trailing one. Ink in
-    /// light mode, where a white rim on a near-white card would vanish; light in dark.
+    /// **A lit rim** — glass's edge on a surface that cannot be glass (the routine card is
+    /// flat because glass breaks the context-menu lift; see `RoutineCard`). A hairline lit at
+    /// the top-leading corner, fading bottom-trailing. Ink in light mode, where a white rim
+    /// on a near-white card would vanish; light in dark.
     func glassRim(in shape: some InsettableShape) -> some View {
         modifier(GlassRim(shape: shape))
     }

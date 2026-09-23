@@ -3,17 +3,13 @@
 
 import SwiftUI
 
-/// A range set by DRAGGING A BAND — the clip-trimmer gesture everyone's hands already
-/// know: grab the middle to slide the whole band, grab an end to stretch it. Built
-/// because the previous custom entry was two steppers, and "80 to 90" cost a dozen
-/// taps with no hold-to-repeat (Nuri, 2026-08-10: "a huge pain") — here it is one drag
-/// with a detent click at every step, the picker-wheel vocabulary the dashboard bezel
-/// already speaks.
+/// A range set by DRAGGING A BAND — the clip-trimmer gesture: grab the middle to slide,
+/// an end to stretch. Replaced two steppers that made "80 to 90" a dozen taps (Nuri,
+/// 2026-08-10); now it is one drag with a detent click at every step.
 ///
-/// Values snap DURING the drag, never on release: what you see settle is what you get,
-/// and each snap fires a selection click so the control counts for you. The numbers
-/// ride on the band's face — quotable exactly, because the steps are the same 5 % /
-/// 0.5 kg resolution the app rounds targets to anyway.
+/// Values snap DURING the drag, never on release: what settles is what you get, and each
+/// snap clicks. The numbers ride on the band — quotable, since the steps are the 5 % /
+/// 0.5 kg resolution targets round to anyway.
 struct BandTrimmer: View {
     @Binding var lo: Double
     @Binding var hi: Double
@@ -26,8 +22,8 @@ struct BandTrimmer: View {
     /// Spoken unit for the two adjustable accessibility elements.
     var spokenUnit: String
 
-    /// Which part of the band the current drag owns — decided ONCE at first touch and
-    /// held, so a finger that drifts across an edge mid-drag cannot switch jobs.
+    /// Which part of the band the drag owns — decided ONCE at first touch, so a finger
+    /// drifting across an edge cannot switch jobs.
     private enum Grab { case lower, upper, whole }
     @State private var grab: Grab?
     @State private var startLo: Double = 0
@@ -39,9 +35,8 @@ struct BandTrimmer: View {
     private static let edgeGrabWidth: CGFloat = 44
     private static let trackHeight: CGFloat = 44
 
-    /// Whether the band can carry its own numbers. Fraction-of-scale, not pixels —
-    /// the decision has to be stable across widths without a geometry read outside
-    /// the track.
+    /// Whether the band can carry its own numbers. Fraction-of-scale, not pixels, so the
+    /// answer is stable across widths without a geometry read.
     private var bandIsNarrow: Bool {
         let span = scale.upperBound - scale.lowerBound
         guard span > 0 else { return true }
@@ -50,9 +45,9 @@ struct BandTrimmer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // RESERVED line for the numbers when the band is too narrow to carry them
-            // itself — floating the label above the track collided with whatever sat
-            // above the control. Always present so the layout never jumps mid-drag.
+            // RESERVED line for the numbers when the band is too narrow: a label
+            // floated above the track collided with whatever sat above. Always present
+            // so the layout never jumps mid-drag.
             Text(bandIsNarrow ? "\(format(lo))–\(format(hi))" : " ")
                 .font(.system(.caption, weight: .semibold))
                 .monospacedDigit()
@@ -71,14 +66,12 @@ struct BandTrimmer: View {
                             .frame(height: 10)
                             .frame(maxHeight: .infinity, alignment: .center)
 
-                        // The band. Graphite, not bleu — this is an instruction being
-                        // authored, not a measurement being taken.
+                        // Graphite, not bleu: an instruction being authored, not a measurement.
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(Accent.graphite.opacity(0.85))
                             .frame(width: max(hiX - loX, 24), height: Self.trackHeight - 12)
                             .overlay {
-                                // The two grab bars, drawn INSIDE the ends — the trimmer
-                                // affordance, readable at any band width.
+                                // The grab bars, INSIDE the ends — readable at any band width.
                                 HStack {
                                     grabBar
                                     Spacer(minLength: 0)
@@ -102,16 +95,13 @@ struct BandTrimmer: View {
                             .frame(maxHeight: .infinity, alignment: .center)
                     }
                     .contentShape(.rect)
-                    // Tap-to-jump keeps working without fighting anything: a tap is not a
-                    // drag, so the nearer edge snaps to the tapped value.
+                    // A tap is not a drag, so tap-to-jump snaps the nearer edge there.
                     .onTapGesture { location in
                         jumpNearestEdge(to: location.x, width: width)
                     }
-                    // See `HorizontalPan` for why this is a UIKit recognizer and not a
-                    // DragGesture. TRANSLATION rather than absolute position, because a
-                    // band grabbed by its middle has to keep the offset it was grabbed
-                    // at — jumping the band's centre under the finger would move it on
-                    // touch-down.
+                    // A UIKit recognizer, not a DragGesture — see `HorizontalPan`. TRANSLATION,
+                    // not absolute position: a band grabbed by its middle keeps its grab offset
+                    // instead of jumping its centre under the finger.
                     .gesture(HorizontalPan(
                         began: { startX in
                             grab = grabTarget(at: startX, loX: loX0(width), hiX: hiX0(width))
@@ -122,26 +112,19 @@ struct BandTrimmer: View {
                             drag(by: translation, width: width)
                         },
                         ended: { grab = nil }))
-                    // Hidden as a whole: VoiceOver drives the two handle proxies below
-                    // instead of this drawing, so the drag surface does not also
-                    // announce itself as an unlabelled stop.
+                    // Hidden as a whole: VoiceOver drives the two handle proxies below, so the
+                    // drag surface is not also an unlabelled stop.
                     .accessibilityHidden(true)
 
-                    // TWO INDEPENDENTLY ADJUSTABLE ELEMENTS, one per handle — because the
-                    // control's whole purpose is choosing a RANGE, and the single combined
-                    // element this replaces could only ever slide the band by applying one
-                    // delta to both ends, never widen or narrow it. Each sits at its own
-                    // handle's x so VoiceOver's focus lands where the drag would grab, and
-                    // steps by the same `step` the drag itself snaps to.
+                    // TWO INDEPENDENTLY ADJUSTABLE ELEMENTS, one per handle: the control
+                    // chooses a RANGE, and one combined element could only slide the band,
+                    // never widen or narrow it. Each sits at its handle's x, so focus lands
+                    // where a drag would grab, and steps by the drag's own `step`.
                     Color.clear
                         .frame(width: 44, height: Self.trackHeight)
                         .contentShape(.rect)
-                        // Accessibility-tree only. Hit-testable, these two proxies sat
-                        // ON TOP of the gesture layer as 44 pt opaque touch regions over
-                        // exactly the two grab bars — killing tap-to-jump and grabbing
-                        // by handle, i.e. the fix for "VoiceOver cannot resize the band"
-                        // breaking resizing the band by hand. Adjustable actions ride
-                        // the accessibility tree and are unaffected.
+                        // Accessibility-tree only. Hit-testable, these proxies sat over the two
+                        // grab bars as 44 pt touch regions and killed tap-to-jump and handle drags.
                         .allowsHitTesting(false)
                         .position(x: loX, y: Self.trackHeight / 2)
                         .accessibilityElement()
@@ -177,14 +160,9 @@ struct BandTrimmer: View {
             .accessibilityHidden(true)
         }
         .sensoryFeedback(.selection, trigger: snapTick)
-        // CONTAIN, not the old `.ignore` + one combined adjustable action: two
-        // independently adjustable VoiceOver elements now live inside the track above —
-        // one per handle, because the control's whole purpose is choosing a RANGE, and
-        // a single element applying the same delta to both ends could only ever slide
-        // the band, never widen or narrow it.
+        // CONTAIN: the two per-handle adjustable elements live in the track above.
         .accessibilityElement(children: .contain)
-        // The group needs a NAME or VoiceOver announces two bare "Lower bound"/"Upper
-        // bound" stops with nothing saying what they bound.
+        // The group needs a NAME, or "Lower bound"/"Upper bound" bound nothing.
         .accessibilityLabel(String(localized: "Target range"))
     }
 
@@ -212,8 +190,8 @@ struct BandTrimmer: View {
     private var startLoValue: Double { grab == nil ? lo : startLo }
     private var startHiValue: Double { grab == nil ? hi : startHi }
 
-    /// Edges win within their grab zone; the body wins between them; a tap on bare
-    /// track jumps THE NEARER EDGE there, which is what a tap on a trimmer means.
+    /// Edges win within their grab zone, the body between them; a tap on bare track jumps
+    /// THE NEARER EDGE there.
     private func grabTarget(at startX: CGFloat, loX: CGFloat, hiX: CGFloat) -> Grab {
         let nearLower = abs(startX - loX) <= Self.edgeGrabWidth / 2
         let nearUpper = abs(startX - hiX) <= Self.edgeGrabWidth / 2
@@ -239,8 +217,7 @@ struct BandTrimmer: View {
         case .upper:
             setHi(startHi + delta)
         case .whole:
-            // The band keeps its width against BOTH walls: sliding into an end
-            // compresses nothing and loses nothing.
+            // The band keeps its width against BOTH walls.
             let moved = BandTrimmerMath.translated(lower: startLo, upper: startHi,
                 delta: delta, scale: scale, step: step)
             apply(lo: moved.lowerBound, hi: moved.upperBound)
@@ -269,8 +246,8 @@ struct BandTrimmer: View {
         (value / step).rounded() * step
     }
 
-    /// A tap moves THE NEARER EDGE to the tapped value — what a tap on a trimmer
-    /// means. Taps inside the band do nothing; the band is moved by dragging it.
+    /// A tap moves THE NEARER EDGE to the tapped value. Taps inside the band do nothing;
+    /// the band moves by dragging.
     private func jumpNearestEdge(to x: CGFloat, width: CGFloat) {
         guard width > 0 else { return }
         let span = scale.upperBound - scale.lowerBound

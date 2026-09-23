@@ -5,23 +5,19 @@ import SwiftUI
 
 /// REST & HANDS — the parts of a session every set genuinely shares.
 ///
-/// Hold and rest used to live here as routine-level defaults, until the Max day
-/// protocol made the flaw obvious (Nuri, 2026-08-10: "what if for one pull you want
-/// 10 seconds and for the other 20?") — timing is a property of a SET, and it moved
-/// onto every set row. What is left here is only what cannot vary per set: the break
-/// between sets, how the hands share the work, and when a rest starts counting.
+/// Hold and rest moved onto every set row once the Max day protocol showed timing is a
+/// property of a SET (Nuri, 2026-08-10). What is left is what cannot vary per set: the
+/// break between sets, how the hands share the work, and when a rest starts counting.
 ///
-/// The label is a plain row, never a `Section` header — plain-style headers PIN, and
-/// content then scrolls illegibly behind a clear background.
+/// The label is a plain row, never a `Section` header: plain-style headers PIN.
 struct RhythmSection: View, Equatable {
-    /// The write path — every control here writes through it. Nothing is DRAWN from it:
-    /// see `defaults` and `==`, and `BuilderInputs` for why it is closures.
+    /// The write path. Nothing is DRAWN from it — see `defaults`, `==` and `BuilderInputs`.
     let access: DraftAccess
-    /// `plan.routineLevel`, as a value, so the card compares itself on what it shows and
-    /// sits out every edit that is not its own.
+    /// `plan.routineLevel`, as a value, so the card compares on what it shows and sits out
+    /// every edit that is not its own.
     let defaults: SessionPlan
-    /// The strip previews the first set's pulls — the one set-level number this card
-    /// reads, so it is the one set-level number it compares.
+    /// The strip previews the first set's pulls — the one set-level number read, so the one
+    /// compared.
     let firstSetReps: Int
 
     nonisolated static func == (a: Self, b: Self) -> Bool {
@@ -40,17 +36,14 @@ struct RhythmSection: View, Equatable {
                                 range: 0...240, limit: SessionPlan.setBreakRange,
                                 control: .dial([0, 30, 60, 90, 120, 180]))
 
-                    // Under the break rather than in Fine tuning: this decides when
-                    // every rest in the session actually STARTS, and a rest number
+                    // Here, not in Fine tuning: it decides when every rest STARTS, and a rest
                     // whose meaning is set two cards away cannot be trusted.
                     releaseToggle
 
                     rowDivider
 
-                    // Hands is a genuinely categorical choice, so it stays chips — and
-                    // it is ALWAYS expanded, because this control exists to be SEEN:
-                    // the strip under it is the only place the app shows what
-                    // "alternate each pull" actually does to a set.
+                    // Categorical, so chips — and ALWAYS expanded: the strip under it is the
+                    // only place the app shows what "alternate each pull" does to a set.
                     CapsLabel(String(localized: "HANDS"))
                         .padding(.top, 2)
                     HandModeChipRow(selection: access.binding(\.plan.handMode, current: defaults.handMode))
@@ -58,9 +51,8 @@ struct RhythmSection: View, Equatable {
                                    startingHand: defaults.startingHand,
                                    repsPerSide: firstSetReps)
                     if defaults.handMode.sideCount > 1 {
-                        // The strip is fill-vs-outline with no legend, so on its own it
-                        // cannot say which hand it starts on (Nuri, 2026-09-18: "I can't
-                        // tell what I'm swapping"). The sentence says it; the button swaps it.
+                        // The strip has no legend, so it cannot say which hand starts (Nuri,
+                        // 2026-09-18). The sentence says it; the button swaps it.
                         HStack(alignment: .center, spacing: 12) {
                             Text(defaults.startingHand == .right
                                  ? "Starts on the right hand"
@@ -79,11 +71,9 @@ struct RhythmSection: View, Equatable {
 
     /// Whether the rest clock waits for your hand to come off the edge.
     ///
-    /// ON by default, because the alternative silently shortens every rest you take: the
-    /// hold completes at exactly 10 s, but standing down off a 20 mm edge takes another
-    /// two or three, and those come out of the rest rather than out of the hang. Off is
-    /// still a real choice — a fixed cadence you pace yourself to, which is what a
-    /// metronome-style protocol wants.
+    /// ON by default: otherwise the two or three seconds of standing down off a 20 mm edge
+    /// come out of every rest. Off is a real choice — a fixed cadence you pace yourself to,
+    /// as metronome-style protocols want.
     private var releaseToggle: some View {
         VStack(alignment: .leading, spacing: 6) {
             Toggle("Start the rest when I let go",
@@ -105,14 +95,11 @@ struct RhythmSection: View, Equatable {
         Divider().overlay(Ink.tertiary.opacity(0.22))
     }
 
-    /// The strip draws the FIRST set's sequence, because that is the one the reader is
-    /// about to do; `executable` so an emptied-out row cannot decide it.
-    /// The one writer of `startingHand` (Nuri, 2026-09-18: "a lil swap button … so you
-    /// can start with right hand instead of left"). It sits beside the sentence that
-    /// names the current starting hand, under the strip that shows it: tap, and both
-    /// flip. Hidden under Both hands, where there is no first hand to swap. The spoken
-    /// label names the OUTCOME of the tap, which is what a toggle should tell a screen
-    /// reader.
+    /// The strip draws the FIRST set's sequence, the one about to be done; `executable` so an
+    /// emptied-out row cannot decide it.
+    /// The one writer of `startingHand` (Nuri, 2026-09-18), beside the sentence naming the
+    /// starting hand: tap, and both flip. Hidden under Both hands. The spoken label names
+    /// the tap's OUTCOME, as a toggle should.
     private var swapHandsButton: some View {
         let startsRight = defaults.startingHand == .right
         return Button {

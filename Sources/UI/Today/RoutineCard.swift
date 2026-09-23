@@ -6,34 +6,26 @@ import UIKit
 
 /// The routine you are committing to, as one card, in three ZONES: identity + today's
 /// status (tight), the plan as one line (opening its overview), and the one action.
-/// Spacing does the grouping — 6 pt inside a zone, 16 pt between zones — because
-/// proximity is how the eye assigns belonging: when every row sat a uniform 14 pt from
-/// its neighbour, title, dots, plan and button read as six unrelated things "slapped in"
-/// (Nuri's words, and he was right).
+/// Spacing does the grouping — 6 pt inside a zone, 16 pt between zones: at a uniform
+/// 14 pt, title, dots, plan and button read as six unrelated things "slapped in".
 ///
-/// **The grip ladder and the platter it sat in left this card on 2026-08-17** — the
-/// per-set finger diagrams read as clutter on a dashboard (Nuri's call). Today is a
-/// dashboard, not a document: what a card here owes you is which routine, how much of it
-/// you have done, what it costs and the way in. Which fingers on which edge is what the
-/// editor and the runner are for, and both are one tap away. Removing it also took the
-/// only reason the plan needed a platter with it — see `planRow`.
+/// **The grip ladder left this card on 2026-08-17** as dashboard clutter (Nuri's call).
+/// A card here owes you which routine, how much you have done, what it costs and the
+/// way in; which fingers on which edge is the editor's and runner's job, one tap away.
 ///
-/// Every input is a VALUE — `RoutineSummary` rather than a `SessionTemplate` — so the
-/// card previews and reasons without a `ModelContext`, and so every derived number is
-/// computed once in the store instead of in a body that runs on every frame of a
-/// scroll. `completionText` comes in from `TemplateStore` for the same reason it exists
-/// there: the spoken sentence and the "1 of 2" fragment beside it must never be able to
-/// drift apart, and rebuilding the sentence here would be a second source of truth.
+/// Every input is a VALUE (`RoutineSummary`, not a `SessionTemplate`), so the card
+/// previews without a `ModelContext` and every derived number is computed once in the
+/// store, not in a body that runs on every scroll frame. `completionText` comes from
+/// `TemplateStore` so the spoken sentence and the "1 of 2" fragment cannot drift apart.
 struct RoutineCard: View, Equatable {
     let summary: RoutineSummary
     /// `TemplateStore.completionText(_:)` — a whole sentence, which is what VoiceOver
     /// reads in place of the numeral fragment.
     let completionText: String
-    /// Marks the deck's HOME card — the routine the app would front on its own (the
-    /// last reminder to call, else the one mid-ritual, else the primary). One quiet
-    /// graphite line, so swiping away to browse and back still answers "which one is
-    /// being asked of me right now". Never set on a single-routine screen, where it
-    /// would distinguish the only thing there is.
+    /// Marks the deck's HOME card — the routine the app would front on its own (the last
+    /// reminder to call, else the one mid-ritual, else the primary) — so swiping away and
+    /// back still answers "which one is being asked of me now". Never set on a
+    /// single-routine screen.
     let isUpNext: Bool
     let deviceState: ProgressorConnectionState
     let battery: Double?
@@ -44,20 +36,19 @@ struct RoutineCard: View, Equatable {
     var onEdit: () -> Void
     var onOverview: () -> Void = {}
     var onDuplicate: () -> Void
-    /// Opens the QR sheet. The card hands the tap up rather than building the code
-    /// itself — encoding needs the draft, and this view only ever sees a summary VALUE.
+    /// Opens the QR sheet. Handed up because encoding needs the draft, and this view only
+    /// sees a summary VALUE.
     var onShare: () -> Void
     var onNew: () -> Void
     var onMakePrimary: () -> Void
     var onDelete: () -> Void
     var onDemo: () -> Void
 
-    /// Compared on what the card DRAWS, never on the closures — eleven of them, which
-    /// made the card unequal to itself on every Today render. Each closure acts on the
-    /// routine `summary.id` names, so two cards with equal values act identically. The
-    /// house pattern from the builder (`BuilderInputs`): values plus closures, no
-    /// `Binding`, `==` nonisolated over `let` Sendable inputs. A new drawn input has to
-    /// join this list the day the card starts reading it.
+    /// Compared on what the card DRAWS, never on its eleven closures, which made it unequal
+    /// to itself on every Today render. Each closure acts on `summary.id`, so equal values
+    /// act identically. The house pattern from `BuilderInputs`: values plus closures, no
+    /// `Binding`, nonisolated `==` over `let` Sendable inputs. A new drawn input must join
+    /// this list the day the card starts reading it.
     nonisolated static func == (a: Self, b: Self) -> Bool {
         a.summary == b.summary && a.completionText == b.completionText
             && a.isUpNext == b.isUpNext && a.deviceState == b.deviceState
@@ -65,29 +56,23 @@ struct RoutineCard: View, Equatable {
     }
 
     @Environment(\.openURL) private var openURL
-    /// Only consulted by `planRow`, to swap the glyphed stats for the plain sentence at
-    /// accessibility sizes — a row of pictograms cannot wrap, and someone who asked for
-    /// big text is served by words.
+    /// Only for `planRow`'s swap to the plain sentence at accessibility sizes: a row of
+    /// pictograms cannot wrap.
     @Environment(\.dynamicTypeSize) private var typeSize
-    /// The completion dots are the same ink vocabulary as the consistency strip and the
-    /// builder's Sessions-a-day row — a filled dot is a session that happened.
+    /// Completion dots: the same ink vocabulary as the consistency strip and the builder's
+    /// Sessions-a-day row — a filled dot is a session that happened.
     ///
-    /// 16, relative to `.body`, not `.caption`: at 9 pt a row of small round marks reads
-    /// as decoration rather than as a COUNT, and "two of these" is the entire message.
-    /// The size was won against the grip ladder that used to sit directly below — four
-    /// finger marks per set, one row away, at the same size — and it stays now the ladder
-    /// has gone, because the dots still have to read as a tally on their own.
+    /// 16, relative to `.body`, not `.caption`: at 9 pt a row of small round marks reads as
+    /// decoration rather than a COUNT, and "two of these" is the entire message.
     @ScaledMetric(relativeTo: .body) private var sessionDot: CGFloat = 16
 
     var body: some View {
-        // FLAT, not material. The long press lifts the card through a portal of its own
-        // layers, and a fill portals as exactly what it draws, where a backdrop blur is
-        // the one thing in a card that can come out differently in the copy. It is fitted
-        // to be indistinguishable from the material over this field (see `CardFill`), so
-        // the card gives up nothing for it. NOTE: the grey band poking past the corners
-        // during the lift (Nuri's phone, 2026-09-19) was NOT the material — it was the
-        // deck's scroll view clipping the scaled card and its shadow to the row. See
-        // `routineDeck`'s `.scrollClipDisabled()`; this line alone did not fix it.
+        // FLAT, not material: the long press lifts the card through a portal of its
+        // own layers, and a backdrop blur is the one thing that can come out
+        // differently in the copy. Fitted to match the material (see `CardFill`).
+        // The grey band past the corners during the lift was NOT the material but the
+        // deck's scroll view clipping the card — see `routineDeck`'s
+        // `.scrollClipDisabled()`.
         MaterialCard(surface: .flat) {
             cardContent
         }
@@ -95,10 +80,9 @@ struct RoutineCard: View, Equatable {
         .glassRim(in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         // Graphite, not bleu: bleu is the live-force signal, and "your next ritual"
         // is ink-family information like the done-dots. 1.5 pt at half strength sits
-        // one clear step above the ghost card's hairline (0.35 tertiary) — the ghost
-        // outline means "could exist", this means "is the one" — while staying far
-        // below an alarm. A STROKE, so it survives Reduce Transparency, greyscale and
-        // every colour vision; VoiceOver hears it on the title instead.
+        // a clear step above the ghost card's hairline ("could exist" vs "is the one")
+        // and far below an alarm. A STROKE, so it survives Reduce Transparency,
+        // greyscale and colour vision; VoiceOver hears it on the title.
         .overlay {
             if isUpNext {
                 RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
@@ -107,42 +91,35 @@ struct RoutineCard: View, Equatable {
             }
         }
         .tourAnchor(.routineCard)
-        // The same items as the `⋯` menu: free discoverability at zero hit-target cost,
-        // since a long press is not a gesture anything else on this screen wants.
+        // The same items as the `⋯` menu: free discoverability, since nothing else on
+        // this screen wants a long press.
         //
         // **The DEFAULT preview, with the lift SHAPE declared — and no glass in the
-        // subtree.** Three device-found failures shaped this line (all 2026-08-18,
-        // none reproducible in the Simulator, which composites glass differently):
-        // the default preview first rendered as one floating glass button, because
-        // Liquid Glass draws in its own pass and ignores the lift; an explicit solid
-        // preview fixed the end state but popped in after the source hid; and once
-        // the card was de-glassed (`SolidPrimaryButton`/`SolidSecondaryButton`), the
-        // now-healthy default morph clipped at the corners because the lift's shape
-        // defaulted to the bounds rectangle while its width fought the preview's
-        // hardcoded one. So: solid buttons make the source snapshot true, the
-        // `.contextMenuPreview` content shape gives the lift the card's own rounded
-        // rect, and the system's default morph — source-sized, seamless — needs no
-        // explicit preview at all.
+        // subtree.** Found on device 2026-08-18, none of it reproducible in the
+        // Simulator: Liquid Glass draws in its own pass and ignores the lift (the
+        // preview rendered as one floating glass button); an explicit solid preview
+        // popped in after the source hid; and the default morph clipped at the
+        // corners because the lift's shape defaulted to the bounds rectangle. So:
+        // solid buttons make the source snapshot true, the `.contextMenuPreview`
+        // content shape gives the lift the card's rounded rect, and the system's
+        // default morph needs no explicit preview.
         .contentShape(.contextMenuPreview,
                       RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .contextMenu { menuItems }
     }
 
-    /// The card's three zones, shared verbatim by the live card and the context-menu
-    /// preview — one body, so the preview cannot drift from the card it stands in for.
+    /// The card's three zones, shared by the live card and the context-menu preview so
+    /// the preview cannot drift.
     private var cardContent: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Zone 1 — identity and today's status. The dots are a SUBTITLE, locked
-            // to the name they qualify; letting them float equidistant between title
-            // and the plan was half of what made them read as loose parts.
+            // Zone 1 — identity and today's status. The dots are a SUBTITLE, locked to
+            // the name they qualify, not floating between title and plan.
             VStack(alignment: .leading, spacing: 6) {
                 titleRow
                 completionRow
             }
-            // Still `.gripLadder` to the tour: the target is a stable identifier in
-            // `TourTarget`, not a description, and this row is what took the ladder's
-            // place as the card's statement of the plan. The tour's copy for that step
-            // is written against the old rows and wants rewording.
+            // Still `.gripLadder` to the tour: a stable `TourTarget` identifier, and
+            // this row took the ladder's place. That step's copy wants rewording.
             planRow
                 .tourAnchor(.gripLadder)
             startBlock
@@ -153,27 +130,21 @@ struct RoutineCard: View, Equatable {
 
     private var titleRow: some View {
         HStack(spacing: 0) {
-            // The routine's SIGNATURE grip leads the name. When the grip ladder left,
-            // it took every drawn element on the card with it and the surface went
-            // typographic (Nuri, 2026-08-17: "bland and text heavy"); an identical
-            // badge on every card was the first fix and failed the same day ("I don't
-            // like how all routines have the same logo"). One derived mark per card:
-            // identity that differs exactly when the routines do, never the per-set
-            // inventory that was removed as clutter.
+            // The routine's SIGNATURE grip leads the name. Without the ladder the card
+            // went "bland and text heavy", and an identical badge on every card failed
+            // too (Nuri, 2026-08-17). One derived mark: identity that differs exactly
+            // when the routines do.
             EdgeMark(fingers: summary.signatureFingers ?? .four, rungTint: rungTint)
                 .padding(.trailing, 10)
 
-            // `.title2`, one notch up from the rest of the app's card titles: on the
-            // deck this card IS the chooser, and the name is the one thing a peeking
-            // or passing card must say. Music prints content names at hero size for
-            // the same reason. Still `.semibold` — the house weight ceiling holds.
+            // `.title2`, a notch above other card titles: on the deck this card IS the
+            // chooser, and the name is what a peeking card must say. Still `.semibold`.
             Text(summary.name)
                 .font(.system(.title2, weight: .semibold))
                 .foregroundStyle(Ink.primary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
-                // The border's spoken counterpart — a stroke is invisible to VoiceOver,
-                // and "which card is being asked of me" must not be sighted-only.
+                // The border's spoken counterpart: a stroke is invisible to VoiceOver.
                 .accessibilityLabel(isUpNext ? String(localized: "\(summary.name). Up next.") : summary.name)
 
             Spacer(minLength: 8)
@@ -181,9 +152,8 @@ struct RoutineCard: View, Equatable {
             Menu {
                 menuItems
             } label: {
-                // 44pt frame + content shape, and NO glass: glass inside a
-                // `.regularMaterial` card reads muddy, and a bare glyph's own opaque
-                // content is all SwiftUI would otherwise hit-test.
+                // 44pt frame + content shape, and NO glass (muddy inside a material card);
+                // otherwise only the glyph's opaque pixels hit-test.
                 Image(systemName: "ellipsis")
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(Ink.secondary)
@@ -198,16 +168,13 @@ struct RoutineCard: View, Equatable {
         }
     }
 
-    /// Nuri's intensity ladder for the rung (2026-08-17): the card should say how hard
-    /// the routine will be, at a glance, in the mark it already wears. Bleu when
-    /// nothing resolves (no targets anywhere, or kilogram bands with no max on file —
-    /// the identity state, and his own daily routine's state); moss at or under 30 %
-    /// of max; the armed orange between; alarm red from 80 % up. Two palette rules are
-    /// SPENT here deliberately: green's first appearance, and
-    /// red at rest — defensible because a near-max prescription is attention-family
-    /// information about somebody's fingers, not chrome. Colour is reinforcement, not
-    /// the only carrier: the plan row SPEAKS the percentage, and greyscale simply
-    /// degrades to the mark meaning "a routine", which it always meant.
+    /// Nuri's intensity ladder for the rung (2026-08-17): how hard the routine is, at a
+    /// glance, in the mark it already wears. Bleu when nothing resolves (no targets, or
+    /// kilogram bands with no max — the identity state); moss at or under 30 % of max;
+    /// armed orange between; alarm red from 80 %. Green's first appearance and red at rest
+    /// are both spent on purpose: a near-max prescription is attention-family information
+    /// about somebody's fingers. Colour only reinforces: the plan row SPEAKS the
+    /// percentage, and in greyscale the mark still means "a routine".
     private var rungTint: Color {
         PlanMath.IntensityBand.band(for: summary.peakIntensity).tint
     }
@@ -223,23 +190,17 @@ struct RoutineCard: View, Equatable {
         Button(action: onDuplicate) { Label("Duplicate", systemImage: "plus.square.on.square") }
         Button(action: onNew) { Label("New routine…", systemImage: "plus") }
         Button(action: onMakePrimary) { Label("Make this the one Today opens on", systemImage: "arrow.up.to.line") }
-        // The always-available door. The card only offers it in front when there is no
-        // gauge connected, but choosing to train unmeasured is legitimate at any time —
-        // a weight belt, someone else's board, a session you just don't want logged in kg.
+        // Always available here: the card only offers it in front with no gauge
+        // connected, but training unmeasured is legitimate at any time.
         Button(action: onStartTimerOnly) { Label("Start without a gauge", systemImage: "timer") }
-        // A plain `Label`, like every row here — the menu is rendered inside the same
-        // subtree the context-menu lift re-composites, so nothing in it may carry glass.
+        // A plain `Label`: the menu lives inside the subtree the context-menu lift
+        // re-composites, so nothing in it may carry glass.
         Button(action: onShare) { Label("Share routine…", systemImage: "qrcode") }
         Divider()
-        // A SUBMENU, not a flat destructive row. A tap meant for "Start without a gauge"
-        // landed one row low, on Delete, with only the Divider's hairline between them —
-        // and the only net was the 10 s Undo bar, which the same tap-miss then also
-        // failed to catch. This is not the house's banned confirmation DIALOG (no Yes/No
-        // prompt, no tax on the 99% of taps that mean it): it is ordinary menu navigation
-        // one level deeper, so a mis-tap that lands on "Delete routine…" opens a second
-        // small menu and does nothing — nobody's data is gone until they deliberately tap
-        // the destructive row inside it, at the SAME menu-row hit height as every other
-        // item here.
+        // A SUBMENU, not a flat destructive row: a tap meant for "Start without a
+        // gauge" landed one row low on Delete, and the same mis-tap missed the Undo
+        // bar too. Not the banned confirmation DIALOG — just menu navigation one
+        // level deeper, so a mis-tap opens a second small menu and deletes nothing.
         Menu {
             Button(role: .destructive, action: onDelete) { Label("Delete routine", systemImage: "trash") }
         } label: {
@@ -253,10 +214,9 @@ struct RoutineCard: View, Equatable {
         HStack(spacing: 8) {
             sessionDots
 
-            // A CLIMB DAY says what happened, not what didn't. "0 of 2 today" beside a
-            // checkmark is the card contradicting itself, and it is precisely the
-            // "you didn't train" reading this feature exists to stop — the tally counts
-            // hang sessions, and on this day the training was somewhere else.
+            // A CLIMB DAY says what happened, not what didn't: "0 of 2 today" beside a
+            // checkmark contradicts itself and says "you didn't train". The tally
+            // counts hang sessions; today the training was somewhere else.
             if let climb = summary.climbedToday {
                 Text(climb == .climbLimit ? "Limit session" : "Volume session")
                     .font(.system(.subheadline, weight: .semibold))
@@ -277,8 +237,7 @@ struct RoutineCard: View, Equatable {
                         .foregroundStyle(Ink.secondary)
                 }
             } else if summary.isOnDemand {
-                // No target, so no tally and NO GUILT — "not done yet today" is exactly
-                // the sentence a whenever routine exists to never say.
+                // No target, so no tally and NO GUILT.
                 Text(summary.completedToday > 0 ? "Done today" : "Whenever you're fresh")
                     .font(.system(.subheadline, weight: summary.completedToday > 0 ? .semibold : .medium))
                     .foregroundStyle(summary.completedToday > 0 ? Ink.primary : Ink.secondary)
@@ -294,8 +253,7 @@ struct RoutineCard: View, Equatable {
                         .foregroundStyle(Ink.secondary)
                 }
             } else {
-                // A "1 of 1" readout is silly, so the one-a-day routine says the thing
-                // the number was standing in for.
+                // "1 of 1" is silly; say what the number stood for.
                 Text(summary.completedToday > 0 ? "Done today" : "Not done yet today")
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(summary.completedToday > 0 ? Ink.primary : Ink.secondary)
@@ -304,8 +262,7 @@ struct RoutineCard: View, Equatable {
             Spacer(minLength: 8)
 
             if summary.targetMet {
-                // Graphite, never green: green is not in this palette, and filled ink
-                // already means "a session that happened" in the dots and the strip.
+                // Graphite, never green: filled ink already means "a session that happened".
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(Accent.graphite)
@@ -315,8 +272,8 @@ struct RoutineCard: View, Equatable {
         .accessibilityLabel(completionText)
     }
 
-    /// "at the gym", plus any hang rounds that happened anyway — said second, because
-    /// they are the extra on a day the training already counted.
+    /// "at the gym", plus any hang rounds anyway — said second, as the extra on a day
+    /// already counted.
     private var hangSuffix: String {
         switch summary.completedToday {
         case 0:  String(localized: "at the gym")
@@ -326,12 +283,11 @@ struct RoutineCard: View, Equatable {
     }
 
     private var sessionDots: some View {
-        // Spacing scales with the dot so the group stays legible as a COUNT — two
-        // touching circles read as a shape, two separated ones read as "two of these".
+        // Spacing scales with the dot: touching circles read as a shape, separated
+        // ones as "two of these".
         HStack(spacing: sessionDot * 0.45) {
-            // ONE notched dot on a climb day, not a row of empty rings: the rings count
-            // hang sessions owed, and nothing is owed. A benchmark day gets the same
-            // single dot, plain — the notch stays a climbing mark.
+            // ONE notched dot on a climb day, not empty rings: nothing is owed. A
+            // benchmark day gets a plain single dot — the notch is a climbing mark.
             if summary.climbedToday != nil {
                 Circle()
                     .fill(Accent.graphite)
@@ -342,8 +298,7 @@ struct RoutineCard: View, Equatable {
                     .fill(Accent.graphite)
                     .frame(width: sessionDot, height: sessionDot)
             } else if summary.isOnDemand {
-                // No slots owed, so no empty rings to fill — one dot appears only
-                // once a session happened.
+                // No slots owed, so no empty rings; a dot appears once a session happened.
                 if summary.completedToday > 0 {
                     Circle()
                         .fill(Accent.graphite)
@@ -355,8 +310,7 @@ struct RoutineCard: View, Equatable {
                 }
             }
         }
-        // The sentence beside them says the same thing; two readings of one fact is a
-        // duplicate swipe, not extra information.
+        // The sentence beside them says the same; reading both is a duplicate swipe.
         .accessibilityHidden(true)
     }
 
@@ -368,13 +322,10 @@ struct RoutineCard: View, Equatable {
                         .fill(Accent.graphite)
                         .frame(width: sessionDot, height: sessionDot)
                 } else {
-                    // 1.5 pt, not 2: the hollow ring has to sit at the same optical
-                    // weight as the filled dot beside it, or the pair looks accidental.
-                    // 0.85, measured twice on the dark screenshot: 0.5 hit 2.1:1 and
-                    // 0.75 still only 2.98:1 against the card, because a 1.5 pt ring is
-                    // mostly antialiased edge and its peak pixel never reaches the
-                    // stroke colour. Under the 3:1 floor a mark that MEANS something
-                    // ("not done yet") is decoration; this clears it with margin.
+                    // 1.5 pt, not 2: the hollow ring must match the filled dot's optical
+                    // weight. 0.85 opacity, measured on the dark screenshot: 0.5 hit 2.1:1 and
+                    // 0.75 only 2.98:1, because a thin ring is mostly antialiased edge. A mark
+                    // that MEANS "not done yet" must clear 3:1.
                     Circle()
                         .strokeBorder(Ink.tertiary.opacity(0.85), lineWidth: 1.5)
                         .frame(width: sessionDot, height: sessionDot)
@@ -385,55 +336,38 @@ struct RoutineCard: View, Equatable {
     // MARK: - 2 · The plan, in one line — and the line IS the editor entry
 
     /// What the routine costs — "20 mm · 6 sets · 36 pulls · ≈21 min" — and tapping it
-    /// opens the editor. The door to change the plan is still the plan itself, which is
-    /// the rule that retired the old chevron footnote stranded at the card's foot, three
-    /// rows away from the thing it edited. Editing is reachable three ways in all: this
-    /// row, the `⋯` menu, and the long-press mirror on the whole card.
+    /// opens the editor: the door to change the plan is the plan itself. Also reachable
+    /// from the `⋯` menu and the long-press mirror.
     ///
-    /// **No platter.** The inset well existed because the card had a DIAGRAM in it and a
-    /// diagram floating on the same surface as text reads as debris; with the ladder gone
-    /// there is nothing to frame, and a platter drawn around a single footnote makes a
-    /// sentence look like a text field. The chevron and the press feedback are what say
-    /// this row is a door.
+    /// **No platter.** The inset well framed a DIAGRAM; with the ladder gone there is
+    /// nothing to frame, and a platter around one line makes a sentence look like a text
+    /// field. The chevron and press feedback say this row is a door.
     ///
-    /// `summary.metaLine` rather than a line assembled here: it is the value's own
-    /// statement of itself, already covered by `TemplateStoreTests`, and the card having
-    /// its own second version of it is how two screens end up quoting different pull
-    /// counts. It carries the SET COUNT again — the well's line dropped it while six grip
-    /// clusters sat directly above saying the same thing in pictures, and now nothing
-    /// else on the card would say how many sets there are.
+    /// `summary.metaLine`, not a line assembled here: it is tested in `TemplateStoreTests`,
+    /// and a second version is how two screens end up quoting different pull counts. It
+    /// carries the SET COUNT, which nothing else on the card now states.
     private var planRow: some View {
         Button(action: onOverview) {
             HStack(spacing: 6) {
-                // Glyphed stats rather than one dotted sentence — the values carry the
-                // weight and the symbols give the row texture, which is the difference
-                // between a dashboard line and a caption. The SENTENCE remains the
-                // accessibility value and the fallback: a glyph row cannot wrap, and at
-                // accessibility sizes words serve better than pictograms anyway — the
-                // same trade the grip ladder made before it left.
+                // Glyphed stats rather than one dotted sentence: values carry the weight,
+                // symbols give texture. The SENTENCE stays the accessibility value and the
+                // fallback at accessibility sizes, since a glyph row cannot wrap.
                 if typeSize >= .accessibility1 {
                     Text(summary.metaLine)
                         .font(.system(.footnote))
                         .monospacedDigit()
                         .foregroundStyle(Ink.secondary)
-                        // At these sizes this is the ONLY statement of the plan on the
-                        // card, and truncating "≈21 min" off the end of it costs the
-                        // reader the fact this row exists for. The extra line only
-                        // ever appears on a screen that already scrolls.
+                        // At these sizes this is the ONLY statement of the plan, and truncating
+                        // "≈21 min" costs the fact the row exists for. The screen already scrolls.
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                 } else {
-                    // Three fits, in order: the full glyph row, a COMPACT glyph row,
-                    // and only then the plain sentence. The edge SPAN ("20–10 mm")
-                    // plus four symbols overflowed the card on hardware and truncated
-                    // its own stat ("20–10…"), and the first fix fell straight back to
-                    // the sentence — which threw away the icons on exactly the routine
-                    // the span exists for (Nuri: "the little icons being gone is sad").
-                    // The compact row keeps every symbol, drops only the count words
-                    // the symbol beside them already labels, and keeps the units that
-                    // disambiguate a bare number. Width-only choice on one row; the
-                    // page-level ViewThatFits trap (large-title proposal) does not
-                    // apply here.
+                    // Three fits, in order: the full glyph row, a COMPACT glyph row, then the
+                    // sentence. An edge SPAN ("20–10 mm") overflowed the card on hardware, and
+                    // falling straight back to the sentence lost the icons on exactly the
+                    // routine the span exists for (Nuri: "the little icons being gone is sad").
+                    // Width-only choice on one row, so the page-level ViewThatFits trap
+                    // (large-title proposal) does not apply.
                     ViewThatFits(in: .horizontal) {
                         statRow(compact: false)
                         statRow(compact: true)
@@ -450,41 +384,32 @@ struct RoutineCard: View, Equatable {
                     .font(.system(.caption, weight: .semibold))
                     .foregroundStyle(Ink.tertiary)
             }
-            // One line of footnote is about 20 pt tall, so the row has to be padded to a
-            // legal target rather than hit-tested as drawn — and `contentShape` is
-            // mandatory, not tidy: a `Spacer` and empty padding contribute nothing to
-            // SwiftUI's default hit area, which is the label's own opaque content.
+            // A footnote line is ~20 pt tall, so it is padded to a legal target, and
+            // `contentShape` is mandatory: a `Spacer` and padding are not hit-tested.
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .contentShape(.rect)
         }
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityLabel(String(localized: "Routine overview"))
         .accessibilityIdentifier("routine.overview.open")
-        // The card no longer draws the grips, so it must not speak them either — the
-        // value is exactly what is on screen. The overview speaks the ordered grips
-        // and timing, and offers an Edit action. `metaLine`, not the glyph row's
-        // fragments: the sentence and the glyphs state the same facts by construction
-        // (both read the summary's own fields), and the sentence is the spoken form.
-        // The intensity suffix rides here because the rung's colour is invisible to
-        // VoiceOver and to greyscale — the number is the fact, the colour the glance.
+        // The card no longer draws the grips, so it must not speak them — the
+        // overview speaks grips and timing, with an Edit action. `metaLine` states
+        // the same facts as the glyphs by construction. The intensity suffix rides
+        // here because the rung's colour is invisible to VoiceOver and greyscale.
         .accessibilityValue(summary.metaLine + intensitySuffix)
     }
 
     /// The plan's numbers with a symbol each — edge, sets, pulls, duration. The VALUE
-    /// carries the ink (`Ink.secondary`, medium); the symbol is quiet (`Ink.tertiary`,
-    /// deliberately decorative — each one sits beside the word that names it, so it
-    /// owes nothing to the 3:1 graphics floor). Numbers stay monospaced so the row
-    /// does not shimmer when an edit changes a digit.
+    /// carries the ink (`Ink.secondary`, medium); the symbol is `Ink.tertiary` decoration
+    /// (each sits beside the word that names it, so it owes nothing to the 3:1 floor).
+    /// Monospaced so an edit does not shimmer the row.
     ///
-    /// Compact keeps every symbol and sheds only what the symbol makes redundant: the
-    /// count words go ("6 sets" → "6" beside the stack the reader learned from the
-    /// full row, which is what every single-edge routine still shows), the units that
-    /// disambiguate a bare number stay, glued to it ("20–10mm", "≈11min").
+    /// Compact sheds only what the symbol makes redundant: count words go ("6 sets" → "6"),
+    /// units that disambiguate a bare number stay, glued on ("20–10mm", "≈11min").
     private func statRow(compact: Bool) -> some View {
         HStack(spacing: compact ? 10 : 13) {
-            // `edgeLine`, not `sharedEdgeMM`: a mixed ladder states its span in ladder
-            // order ("20–10 mm") — dropping the edge because sets disagree read as the
-            // app not knowing its own routine.
+            // `edgeLine`, not `sharedEdgeMM`: a mixed ladder states its span in order
+            // ("20–10 mm"); dropping the edge read as the app not knowing its routine.
             if let edge = summary.edgeLine {
                 stat("ruler", compact ? edge.replacingOccurrences(of: " mm", with: "mm") : edge)
             }
@@ -511,9 +436,8 @@ struct RoutineCard: View, Equatable {
                 .monospacedDigit()
                 .foregroundStyle(Ink.secondary)
                 .lineLimit(1)
-                // The four stats must fit one row through the ordinary size ramp;
-                // the accessibility threshold above swaps to the sentence before
-                // scaling could make a numeral dishonest.
+                // Must fit one row through the ordinary ramp; the accessibility threshold
+                // swaps to the sentence before scaling could make a numeral dishonest.
                 .minimumScaleFactor(0.85)
         }
     }
@@ -522,22 +446,18 @@ struct RoutineCard: View, Equatable {
 
     @ViewBuilder private var startBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // SOLID buttons, not the glass ones, everywhere inside this card — it is
-            // the one subtree the context-menu lift re-composites, and Liquid Glass
-            // ghosts through the lift (see `SolidPrimaryButton`'s comment).
+            // SOLID buttons, not glass, everywhere in this card: Liquid Glass ghosts
+            // through the context-menu lift (see `SolidPrimaryButton`).
             if summary.targetMet {
-                // Demoted, never gone: a bonus session must stay possible, and nagging
-                // must not.
+                // Demoted, never gone: a bonus session stays possible, nagging does not.
                 SolidSecondaryButton(title: String(localized: "Start another"), systemImage: "play.fill", action: onStart)
                     .frame(maxWidth: .infinity)
                     .accessibilityHint(hint)
                     .tourAnchor(.startButton)
             } else {
-                // Graphite, not bleu — bleu is the live-force signal and is spent the
-                // moment the runner opens. And ALWAYS enabled: the runner's first phase
-                // is connect-and-tare, so tapping while disconnected is the common path.
-                // Disabling the ritual's one button because a peripheral has not been
-                // asked for yet turns the ritual into a chore.
+                // Graphite, not bleu (bleu is spent once the runner opens). ALWAYS enabled:
+                // the runner's first phase is connect-and-tare, so tapping while
+                // disconnected is the common path, and disabling it turns a ritual into a chore.
                 SolidPrimaryButton(title: startTitle, systemImage: "play.fill",
                                    tint: Accent.graphite, action: onStart)
                     .accessibilityHint(hint)
@@ -547,11 +467,9 @@ struct RoutineCard: View, Equatable {
             if let note = connectionNote { noteRow(note) }
             if let note = batteryNote { noteRow(note) }
 
-            // **Only while there is no gauge on the line.** Flat battery, left at home,
-            // Bluetooth off — the cases where the ritual would otherwise just not happen
-            // (Nuri, 2026-08-09). Offering it beside a connected Progressor would be
-            // offering to throw the measurement away, which nobody wants at 8 a.m.; it
-            // stays reachable there through the ⋯ menu.
+            // **Only while there is no gauge on the line** — flat battery, left at
+            // home, Bluetooth off (Nuri, 2026-08-09). Beside a connected Progressor it
+            // would offer to throw the measurement away; the ⋯ menu still has it.
             if !deviceState.isConnected {
                 Button(action: onStartTimerOnly) {
                     Text("Start without a gauge")
@@ -561,9 +479,8 @@ struct RoutineCard: View, Equatable {
                         .contentShape(.rect)
                 }
                     .buttonStyle(PressFeedbackButtonStyle())
-                    // 44 tall for the target, but pulled up tight against the note above
-                    // it: the row's own height is the floor, and the 10 pt stack gap on
-                    // top of it was pure spend on a page that has to fit.
+                    // 44 tall for the target, pulled up tight under the note: the stack gap on
+                    // top was pure spend on a page that has to fit.
                     .padding(.top, -6)
                     .accessibilityHint(String(localized: "Runs the timers and hand prompts only. Nothing is measured."))
                     .tourAnchor(.startWithoutGauge)
@@ -584,9 +501,8 @@ struct RoutineCard: View, Equatable {
         }
     }
 
-    /// The ordinal drops out entirely once disconnected: "Connect and start second
-    /// session" is thirty characters, and the line above already says which session
-    /// this is.
+    /// No ordinal once disconnected: "Connect and start second session" is too long, and
+    /// the line above already says which session.
     private var startTitle: String {
         guard deviceState.isConnected else { return String(localized: "Connect and start") }
         guard summary.sessionsPerDay > 1 else { return String(localized: "Start session") }
@@ -599,10 +515,8 @@ struct RoutineCard: View, Equatable {
         }
     }
 
-    /// A note under the button is the reason the button says what it says, so it travels
-    /// with the button for VoiceOver rather than sitting in a separate element below it.
-    /// Empty when there is no note — an empty hint is no hint, and `accessibilityHint`
-    /// has no Optional overload to hand it.
+    /// The note under the button explains its title, so it travels with the button for
+    /// VoiceOver. Empty when there is none — `accessibilityHint` has no Optional overload.
     private var hint: String {
         [connectionNote?.text, batteryNote?.text]
             .compactMap { $0 }

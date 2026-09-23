@@ -5,19 +5,14 @@ import SwiftUI
 
 /// The live force gauge — the runner's screen with no routine on it.
 ///
-/// Some people use nothing else (feedback relayed by Nuri, 2026-09-20), so it has to be
-/// one tap from Today and look like the app's working screen rather than the M1 proof
-/// of hardware it started as. Same anatomy as `RunnerView`'s stacked layout, on purpose:
-/// the trace IS the screen, the numbers sit on one Liquid Glass panel over a wash that
-/// takes the colour of the state — bleu while reading, steel otherwise — and the actions
-/// share one glass dock. It still shows the raw truth (current, peak, the one-second
-/// mean, battery) because this is also the screen that retires every hardware risk in
-/// the project.
+/// Some people use nothing else (2026-09-20), so it is one tap from Today and looks like
+/// the app's working screen. Same anatomy as `RunnerView`'s stacked layout: the trace IS
+/// the screen, numbers on one Liquid Glass panel over a state-coloured wash (bleu while
+/// reading, steel otherwise), actions in one glass dock. It still shows the raw truth
+/// (current, peak, one-second mean, battery): this screen retires every hardware risk.
 ///
-/// Reached from the gauge button on Today's bar, as a full-screen cover —
-/// `presentedAsCover` is what adds the Done item. The Settings row it used to sit behind
-/// is gone (Nuri, 2026-09-20): one door, on the screen that opens every day. The DEBUG
-/// `-previewGauge` launch still pushes it bare for screenshots.
+/// A full-screen cover from Today's bar; `presentedAsCover` adds Done. The DEBUG
+/// `-previewGauge` launch pushes it bare for screenshots.
 struct GaugeView: View {
     var presentedAsCover = false
 
@@ -26,22 +21,19 @@ struct GaugeView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// Scaled, never a bare point size: a fixed number renders pixel-identical at
-    /// every accessibility setting while the controls around it grow.
+    /// Scaled, never a bare point size, or it stays fixed while the controls around it grow.
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 78
     @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 22
 
-    /// Bumped on each tare so `.sensoryFeedback` has a value to react to — the house
-    /// pattern, rather than calling a feedback generator by hand.
+    /// Bumped per tare so `.sensoryFeedback` has a value to react to — the house pattern.
     @State private var tareTick = 0
     @State private var promptedKg = 0.0
     @State private var promptedEpoch: UInt64 = 0
     @State private var showingTareConfirmation = false
-    /// Where the open graph and the canvas lie, so the wash can hang from the top of the
-    /// screen down to the graph's upper edge — the runner's own measurement.
+    /// Where the open graph and canvas lie, so the wash hangs down to the graph's upper edge.
     @State private var traceGeometry = BackgroundTraceGeometry()
-    /// Armed a beat after Start: a "Waiting for the gauge" that appeared the instant the
-    /// stream was asked for would flash on every tap before the first packet landed.
+    /// Armed a beat after Start, or "Waiting for the gauge" flashes on every tap before the
+    /// first packet.
     @State private var waitingForSignal = false
 
     private static let dockSpacing: CGFloat = 8
@@ -49,8 +41,7 @@ struct GaugeView: View {
     var body: some View {
         GeometryReader { geometry in
             if typeSize.isAccessibilitySize {
-                // Keep every action reachable by scrolling rather than clipping labels
-                // or shrinking the chosen type — the runner's rule.
+                // Scroll rather than clip labels or shrink type — the runner's rule.
                 ScrollView {
                     content.frame(minHeight: geometry.size.height, alignment: .top)
                 }
@@ -86,16 +77,15 @@ struct GaugeView: View {
             waitingForSignal = true
         }
         .onDisappear {
-            // Never leave the device streaming behind us: it drains its own battery
-            // and keeps the radio busy.
+            // Never leave the device streaming: it drains its battery and the radio.
             if device.isStreaming { device.stopStreaming(cause: .screenClosed) }
         }
     }
 
     // MARK: - The stacked layout: the graph is the screen, the numbers are glass
 
-    /// One `GlassEffectContainer` for the two glass surfaces, so Liquid Glass renders
-    /// them in a single pass rather than blurring the live canvas twice.
+    /// One `GlassEffectContainer` for both glass surfaces, so the live canvas is blurred in
+    /// one pass, not twice.
     private var content: some View {
         GlassEffectContainer(spacing: 24) {
             VStack(spacing: 12) {
@@ -113,8 +103,8 @@ struct GaugeView: View {
         .background { wash }
     }
 
-    /// The state colour under the glass, from the top of the screen down to the open
-    /// graph — measured INSIDE `ignoresSafeArea`, as the runner's is.
+    /// The state colour under the glass, from the screen's top to the open graph — measured
+    /// INSIDE `ignoresSafeArea`, as the runner's is.
     private var wash: some View {
         PhaseWash(tint: tint, edge: .top, length: traceGeometry.regionTopInCanvas)
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
@@ -124,26 +114,23 @@ struct GaugeView: View {
             .allowsHitTesting(false)
     }
 
-    /// Bleu while a reading is live, steel otherwise. Never alarm: a gauge that is not
-    /// connected on the screen you connect it from is the starting state, not a fault.
+    /// Bleu while a reading is live, steel otherwise. Never alarm: not connected is the
+    /// starting state here, not a fault.
     private var tint: Color {
         device.isStreaming ? StatusTint.engaged : StatusTint.calm
     }
 
-    /// **The information panel** — hero, state, the three readouts and the calibration
-    /// line on one glass surface. `accessibleGlass`, never raw `.glassEffect`: under
-    /// Reduce Transparency it becomes an opaque card, the only way the numbers stay
-    /// legible over a live curve.
+    /// **The information panel** — hero, state, three readouts and the calibration line on
+    /// one glass surface. `accessibleGlass`, never raw `.glassEffect`: under Reduce
+    /// Transparency it goes opaque, the only way the numbers stay legible over a live curve.
     private var infoPanel: some View {
         VStack(spacing: 14) {
-            // LEAVES, deliberately. `currentKg`, `peakKg` and `trace` all mutate on every
-            // sample, and read from THIS body they would invalidate the whole screen
-            // 80×/second — both glass surfaces included.
+            // LEAVES: `currentKg`, `peakKg` and `trace` mutate per sample, and read from
+            // THIS body would invalidate the whole screen 80×/second.
             GaugeHero(heroSize: heroSize, unitSize: unitSize)
             GaugeReadouts()
-            // A remotely calibrated gauge can be connected and still have no force to
-            // show. Frez's rule is to say why rather than display a guess, and this is
-            // the one line that does so — only for the gauge that has a why.
+            // A remotely calibrated gauge can be connected with no force to show.
+            // Frez's rule is to say why rather than guess.
             if let calibrationNote {
                 Text(calibrationNote)
                     .font(.system(.footnote))
@@ -164,10 +151,9 @@ struct GaugeView: View {
         .accessibilityIdentifier("gauge.panel")
     }
 
-    /// **The open graph** — the stretch between the panel and the dock where the curve
-    /// runs in the clear, edge to edge sideways. It draws nothing itself beyond the two
-    /// notices that belong on a graph: what to do when nothing is connected, and the
-    /// warning when a connected gauge is not sending.
+    /// **The open graph** — between panel and dock, the curve runs in the clear. It draws
+    /// only the two notices that belong on a graph: what to do when nothing is connected,
+    /// and the warning when a connected gauge is silent.
     private var graphRegion: some View {
         ZStack {
             Color.clear
@@ -201,11 +187,9 @@ struct GaugeView: View {
 
     // MARK: - The dock
 
-    /// **The dock** — every action on ONE glass surface, each in a quiet ink well, with
-    /// the single tinted item the primary one: Start measuring in bleu, Stop in alarm,
-    /// Connect in bleu while nothing is connected. Glass on glass is the one layering
-    /// Liquid Glass asks you not to do, which is why the old `PrimaryGlassButton` is not
-    /// in here.
+    /// **The dock** — every action on ONE glass surface, each in a quiet ink well, the
+    /// primary one tinted (Start in bleu, Stop in alarm, Connect in bleu). No
+    /// `PrimaryGlassButton` in here: glass on glass is the layering Liquid Glass forbids.
     private var dock: some View {
         VStack(spacing: Self.dockSpacing) {
             if device.state.isConnected {
@@ -229,8 +213,7 @@ struct GaugeView: View {
                 .accessibilityIdentifier("gauge.measure")
             } else {
                 // A broadcast search can wait for the scale to wake, so it stays
-                // cancellable here as everywhere connection is offered; every other
-                // attempt keeps its busy state.
+                // cancellable; every other attempt keeps its busy state.
                 DockTintedButton(connectTitle,
                                  systemImage: device.canCancelBroadcastSearch ? "xmark" : "dot.radiowaves.left.and.right",
                                  tint: .bleu,
@@ -245,9 +228,8 @@ struct GaugeView: View {
                 .accessibilityValue(device.canCancelBroadcastSearch ? device.state.label : "")
                 .accessibilityIdentifier("gauge.connectionAction")
 
-                // Always compiled in, never DEBUG-only: without hardware — in the
-                // Simulator, or in App Review — this is the only way to see the app
-                // actually work.
+                // Always compiled in, never DEBUG-only: without hardware (Simulator, App
+                // Review) this is the only way to see the app work.
                 DockButton(device.isMock ? String(localized: "Leave demo mode") : String(localized: "Try demo mode"),
                            tint: Ink.secondary) {
                     device.useMockDevice(!device.isMock)
@@ -267,8 +249,8 @@ struct GaugeView: View {
         .padding(Self.dockSpacing)
         .accessibleGlass(nil, in: RunnerGlass.surfaceShape)
         .runnerFloatingShadow()
-        // `.contain`, explicitly: an identifier on a bare container makes SwiftUI
-        // COMBINE its children into one element — the runner's dock learned this.
+        // `.contain`, explicitly: an identifier on a bare container COMBINES its
+        // children into one element.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("gauge.dock")
     }
@@ -278,8 +260,8 @@ struct GaugeView: View {
         return device.state.isBusy ? device.state.label : String(localized: "Connect gauge")
     }
 
-    /// Nil for every gauge that reports kilograms itself, and for a calibrated one once
-    /// its coefficient is in hand — the readout is the answer then.
+    /// Nil for gauges that report kilograms, and for a calibrated one once its coefficient
+    /// is in hand.
     private var calibrationNote: String? {
         switch device.calibrationStatus {
         case .notRequired, .ready:
@@ -353,24 +335,21 @@ private struct GaugeHero: View {
             }
             .foregroundStyle(device.isStreaming ? StatusTint.engaged : Ink.primary)
             .animation(Motion.live, value: device.currentKg)
-            // A monospaced decimal has no whitespace to wrap on, so at accessibility3 it
-            // clipped rather than shrinking without this floor.
+            // A monospaced decimal cannot wrap, so without this floor it clipped at AX3.
             .lineLimit(1)
             .minimumScaleFactor(0.6)
 
             CapsLabel(device.isStreaming ? String(localized: "Live") : String(localized: "Idle"))
         }
         .frame(maxWidth: .infinity)
-        // A numeral changing 80×/sec is unusable under VoiceOver; the accessible
-        // channel is the summary below, which announces on demand.
+        // A numeral changing 80×/sec is unusable under VoiceOver; the summary below
+        // is the accessible channel.
         .accessibilityHidden(true)
     }
 }
 
-/// The trace. `device.trace` grows on every sample; nothing else here does. Drawn LIT,
-/// as the runner's is: on an open screen a flat line and dashed rules read as chart
-/// furniture, and a curve you look at while you pull should look like the thing being
-/// measured.
+/// The trace. `device.trace` grows per sample; nothing else here does. Drawn LIT, like
+/// the runner's — see `ForceTraceView.lit`.
 private struct GaugeTrace: View {
     @Environment(DeviceStore.self) private var device
     var plot: ForceTraceView.PlotInsets
@@ -385,15 +364,14 @@ private struct GaugeTrace: View {
     }
 }
 
-/// Peak, the one-second mean and battery, as three quiet columns inside the panel. The
-/// mean walks the whole trace, so it very much wants to be alone in here.
+/// Peak, one-second mean and battery, as three quiet columns. The mean walks the whole
+/// trace, so it wants to be alone in here.
 private struct GaugeReadouts: View {
     @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
 
-    /// Rolling one-second average of the live stream — the number you actually read
-    /// when checking a steady hold. nil when idle, so the column shows "—" rather than
-    /// a stale mean frozen from the last stream.
+    /// Rolling one-second average — the number you read when checking a steady hold. nil
+    /// when idle, so the column shows "—" rather than a stale mean.
     private var averageKg: Double? {
         guard device.isStreaming, let newest = device.trace.last else { return nil }
         var sum = 0.0, count = 0.0
@@ -410,10 +388,8 @@ private struct GaugeReadouts: View {
         let average = averageKg
         return HStack(spacing: 8) {
             readout(String(localized: "Peak"), value: weightUnit.number(device.peakKg), unit: weightUnit.symbol)
-            // The one-second mean is the reading the flickering hero number can't give
-            // you: hang steady, read the average. (The firmware version used to sit here
-            // — diagnostics trivia on a screen you open to MEASURE things; it still lives
-            // in Settings.)
+            // The reading the flickering hero can't give: hang steady, read the
+            // average. (Firmware version lives in Settings.)
             readout(String(localized: "Average"),
                     value: average.map { weightUnit.number($0) } ?? "—",
                     unit: average == nil ? "" : weightUnit.symbol)
