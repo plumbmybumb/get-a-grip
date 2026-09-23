@@ -52,21 +52,18 @@ import run.nuri.getagrip.ui.theme.Metrics
 
 // The app's ONE selection control, ported from Sources/UI/Components/Chips.swift.
 //
-// Chips survive exactly where the choice is genuinely CATEGORICAL — position, hand mode,
-// sessions a day, ritual-or-whenever. Every QUANTITY moved to `ValueRow` and its dial
-// (Nuri, 2026-08-03: "a lot of buttons instead of something you can just enter or drag"),
-// because a menu of nine edge sizes is an arbitrary list that still cannot express 22 mm.
+// Chips survive only where the choice is CATEGORICAL (position, hand mode, sessions a day,
+// ritual-or-whenever). Every QUANTITY moved to `ValueRow` (Nuri, 2026-08-03): nine edge
+// chips still cannot express 22 mm.
 
 /// One capsule option.
 ///
-/// Selected is a tonal graphite wash; unselected is a hairline capsule with no fill at
-/// all. That asymmetry is load-bearing rather than cosmetic: fill-vs-outline survives
-/// greyscale, Reduce Transparency and colourblindness, where a tint step does not.
+/// Selected is a tonal graphite wash; unselected a hairline capsule with no fill. The
+/// asymmetry is load-bearing: fill-vs-outline survives greyscale, Reduce Transparency and
+/// colourblindness, where a tint step does not.
 ///
-/// TRANSLATION NOTE: iOS draws the selected state as one glass surface and says so is
-/// deliberate — an expanded set row carries twenty-plus chips and every glass surface
-/// re-blurs its backdrop. Android has no glass, so the tonal wash IS the surface and the
-/// cost that rule was managing does not exist here.
+/// TRANSLATION NOTE: iOS limits glass for re-blur cost across twenty-plus chips; Android has
+/// no glass, so the tonal wash IS the surface.
 @Composable
 fun Chip(
     title: String,
@@ -112,26 +109,21 @@ fun Chip(
     }
 }
 
-/// The house hit-target floor. `Chip` has always used 44 and the preset row once sat four
-/// points under it — exactly the kind of miss that reads as "the tap didn't register".
-/// (Named `chipMinHeight` rather than `CHIP_HEIGHT`, which `DeviceChip` already owns in
-/// this package for the DRAWN pill — a 40 dp status capsule inside a 44 dp target.)
+/// The house hit-target floor; the preset row once sat four points under it and taps read as
+/// unregistered. (Not `CHIP_HEIGHT`: `DeviceChip` owns that for its 40 dp drawn pill.)
 val chipMinHeight: Dp = 44.dp
 
 // MARK: - Layout
 
 /// The shared chip layout: cells of at least `minimumChipWidth`, sharing the row equally.
 ///
-/// **Chip density is content-driven, never a fixed column count.** A frozen six-column
-/// grid squeezed cells to about 48 dp and the edge row rendered "10…, 12…, 15…, 18…" —
-/// four different edges made indistinguishable, which is worse than useless. `base` is the
-/// comfortable count for THIS row's labels: six for "20 s", three for "Half crimp", two
-/// for "Alternate each pull", which cannot survive a narrow cell at any text size.
+/// **Chip density is content-driven, never a fixed column count.** A six-column grid
+/// squeezed cells to ~48 dp and the edge row read "10…, 12…, 15…, 18…" — four edges made
+/// indistinguishable.
 ///
-/// TRANSLATION NOTE: SwiftUI's `LazyVGrid(.adaptive(minimum:))` computes the column count
-/// from the proposed width and then shares it equally. `BoxWithConstraints` plus eager
-/// rows reproduces that exactly — and eagerly, which the builder wants anyway: the coach's
-/// scroll-to has to find anchors that a lazy grid has not built yet.
+/// TRANSLATION NOTE: SwiftUI's `LazyVGrid(.adaptive(minimum:))`, reproduced with
+/// `BoxWithConstraints` and eager rows — eager because the coach's scroll-to needs anchors a
+/// lazy grid has not built.
 @Composable
 fun ChipGrid(
     base: Int,
@@ -147,9 +139,7 @@ fun ChipGrid(
             content.chunked(columns).forEach { row ->
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(spacing)) {
                     row.forEach { cell -> cell(Modifier.weight(1f).fillMaxHeight()) }
-                    // The last row keeps the grid's column WIDTH rather than stretching
-                    // two chips across six columns' worth of space — a row of chips that
-                    // change size between lines reads as two different controls.
+                    // The last row keeps the column WIDTH: chips changing size between lines read as two controls.
                     repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
@@ -157,22 +147,19 @@ fun ChipGrid(
     }
 }
 
-/// How many cells of at least `minimum` fit in `available`. At least one, always: a phone
-/// narrower than one chip still has to draw the chip.
+/// Cells of at least `minimum` that fit. At least one: a phone narrower than a chip still draws it.
 internal fun chipColumns(available: Dp, minimum: Dp, spacing: Dp): Int {
     if (available <= 0.dp) return 1
     val n = ((available + spacing).value / (minimum + spacing).value).toInt()
     return maxOf(1, n)
 }
 
-/// `base` is the row's intended column count at standard text, and it carries the caller's
-/// real information: a numeric row (6) wants narrow cells, "Half crimp" (3) and "Alternate
-/// each pull" (2) need wide ones. It sets a MINIMUM width rather than a hard count, so the
-/// row keeps its intended density and wraps a chip instead of truncating one.
+/// `base` is the row's column count at standard text: numeric rows (6) want narrow cells,
+/// "Half crimp" (3) and "Alternate each pull" (2) wide ones. It sets a MINIMUM width, so the
+/// row wraps a chip rather than truncating one.
 ///
-/// TRANSLATION NOTE: iOS steps the minimum on `dynamicTypeSize >= .accessibility1` and
-/// `>= .accessibility3`. Android's equivalent is the font scale, whose accessibility range
-/// runs to 2.0; 1.3 and 1.6 are the two rungs that land in the same places.
+/// TRANSLATION NOTE: iOS steps at `.accessibility1` and `.accessibility3`; font scales 1.3
+/// and 1.6 land in the same places.
 @Composable
 private fun minimumChipWidth(base: Int): Dp {
     val standard: Dp = when {
@@ -235,9 +222,8 @@ fun PositionChipRow(
 ) {
     val haptics = LocalHapticFeedback.current
 
-    /// A position written by a newer build is not in `known`, and it still gets a chip —
-    /// showing it selected is the whole reason `GripPosition` is an open value class
-    /// rather than an enum. Dropping it here would let this build silently rewrite the set.
+    /// A position from a newer build still gets a (selected) chip — why `GripPosition` is an
+    /// open value class. Dropping it would silently rewrite the set.
     val options = if (GripPosition.known.contains(selection)) {
         GripPosition.known
     } else {

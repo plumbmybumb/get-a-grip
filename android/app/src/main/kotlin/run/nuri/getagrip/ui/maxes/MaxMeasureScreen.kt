@@ -169,8 +169,8 @@ fun MaxMeasureScreen(
         keptPreviousAfterRetry = false
         saveFailed = false
         device.resetPeak()
-        // The callback owns this attempt object, never the changing selected-hand lookup.
-        // Playback time remains the clock for release detection across reconnects/tare.
+        // The callback owns this attempt, never the selected-hand lookup. Playback time is the
+        // release clock across reconnects and tare.
         device.onTracePoint = { point -> attempt.receive(point) }
         device.startStreaming(StreamStartCause.manualMeasurement)
         phase = MaxMeasurePhase.measuring
@@ -260,10 +260,8 @@ fun MaxMeasureScreen(
         return
     }
 
-    // Hosted at the ROOT (RootTabView returns this screen in place of the tabs), so unlike the
-    // four tab screens nothing above it pads the system bars: the Scaffold and its TopAppBar
-    // keep the Material defaults (status bar over the title, navigation bar under the button),
-    // the same as MaxesFlowScaffold and the builder. Zeroing them drew the title under the clock.
+    // Hosted at the ROOT, so nothing above pads the system bars: keep the Material defaults
+    // (as MaxesFlowScaffold and the builder). Zeroing them drew the title under the clock.
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = modifier,
@@ -430,10 +428,7 @@ fun MaxMeasureScreen(
 
     val prompted = promptedKg
     if (prompted != null) {
-        // Taring under load can corrupt every reading after it, so a meaningful load is
-        // confirmed with the actual number rather than silently refused — and the
-        // confirmation revalidates the epoch, the phase and the signed load delta before
-        // anything is written.
+        // Taring under load — see the confirmation in `GaugeScreen`; same revalidation.
         AlertDialog(
             onDismissRequest = { promptedKg = null },
             title = { Text(tr("Zero the gauge?")) },
@@ -468,8 +463,7 @@ fun MaxMeasureScreen(
                             device.tare()
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
-                        // The load moved while the alert was open, so the number it quoted is
-                        // no longer true — ask again with the one that is.
+                        // The load moved while the alert was open: ask again with the true number.
                         TareConfirmationDecision.reask -> {
                             promptedKg = device.currentKg
                             promptedEpoch = device.connectionEpoch
@@ -528,10 +522,9 @@ private val TRACE_HEIGHT = 168.dp
 private val HERO_SIZE = 76.sp
 private val HERO_UNIT_SIZE = 21.sp
 
-/// The measured peak climbs and then holds still; corrected working values live in the hand tiles. The live
-/// reading stays demoted to the line underneath: it falls away the instant you ease off, and
-/// watching the figure you are about to record drop back toward zero is not what anyone
-/// wants at the end of a max effort.
+/// The measured peak climbs then holds; corrected working values live in the hand tiles. The
+/// live reading is demoted beneath: watching the figure you are about to record fall toward
+/// zero is not what anyone wants after a max effort.
 @Composable
 private fun Hero(measurement: MaxMeasurement, phase: MaxMeasurePhase) {
     val palette = LocalGripPalette.current
@@ -557,8 +550,7 @@ private fun Hero(measurement: MaxMeasurement, phase: MaxMeasurePhase) {
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontSize = HERO_SIZE,
                     fontFeatureSettings = "tnum",
-                    // Display numerals carry negative tracking — letterforms read further
-                    // apart as they grow.
+                    // Display numerals carry negative tracking.
                     letterSpacing = (-0.02).em,
                 ),
                 fontWeight = FontWeight.Light,
@@ -575,18 +567,15 @@ private fun Hero(measurement: MaxMeasurement, phase: MaxMeasurePhase) {
     }
 }
 
-/// The instantaneous reading, isolated in its own composable for ONE reason: `currentKg`
-/// changes ~80 times a second, so every composable that reads it recomposes at that rate.
-/// Keeping it in a leaf means the hero, the controls and the guidance — none of which change
-/// during a pull — are not dragged along with it.
+/// The instantaneous reading, in a leaf: `currentKg` changes ~80 times a second, and the hero,
+/// controls and guidance must not recompose with it.
 @Composable
 private fun LiveReadout() {
     val device = LocalDeviceStore.current
     val isLive = device.isStreaming && device.isSignalFresh
     val palette = LocalGripPalette.current
     Row(
-        // A numeral changing 80×/sec is unusable under TalkBack; the hero carries the
-        // accessible summary.
+        // 80×/sec is unusable under TalkBack; the hero carries the summary.
         modifier = Modifier.clearAndSetSemantics {},
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.Bottom,
@@ -597,9 +586,7 @@ private fun LiveReadout() {
             color = palette.inkTertiary,
         )
         Text(
-            // **Clocks roll, measurements SNAP.** No numeric transition and no animation on
-            // this figure: on a readout that changes ten times a second the same animation
-            // turns the number you are trying to read mid-pull into a permanent blur.
+            // **Clocks roll, measurements SNAP**: no transition on a figure changing ten times a second.
             if (isLive) WeightUnits.number(device.currentKg, 1) else "—",
             style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"),
             fontWeight = FontWeight.SemiBold,
@@ -609,8 +596,7 @@ private fun LiveReadout() {
     }
 }
 
-/// No peak-versus-held footnote any more: with the result BEING the peak there is no gap
-/// left to explain, and the line that explained it went with the rule.
+/// With the result BEING the peak, there is no peak-versus-held gap left to footnote.
 private fun guidance(measurement: MaxMeasurement, phase: MaxMeasurePhase): String = when (phase) {
     MaxMeasurePhase.ready ->
         L10n.tr("Build force gradually and stop if it hurts. This measures a peak, not a safe training limit.")
@@ -625,9 +611,8 @@ private fun guidance(measurement: MaxMeasurement, phase: MaxMeasurePhase): Strin
 
 /// The attempt's timing, as pure numbers, so the deadline can be asserted without a screen.
 object MaxMeasureTiming {
-    /// Long enough for a full attempt including a slow set-up on the edge; short enough that
-    /// a screen left open cannot flatten the gauge's battery. The same guard the builder's
-    /// threshold check uses, sized for a longer job.
+    /// Long enough for a slow set-up on the edge; short enough that a forgotten screen cannot
+    /// flatten the gauge (the builder's threshold-check guard, sized for a longer job).
     const val TIMEOUT_SECONDS: Double = 45.0
 
     fun hasTimedOut(secondsSinceStart: Double): Boolean = secondsSinceStart >= TIMEOUT_SECONDS
@@ -635,18 +620,13 @@ object MaxMeasureTiming {
 
 /// Owns the `MaxAttempt` and publishes ONLY what the screen draws.
 ///
-/// The attempt itself is a plain field — not observable — and the display values are written
-/// only when they actually CHANGE. That matters more than it looks: samples arrive ~80 times
-/// a second, and a mirror that wrote unconditionally would invalidate the view on every one
-/// of them, which is the exact pattern that made the routine deck feel laggy. The peak climbs
-/// during the ramp and then holds still, so the screen settles the moment the pull does.
+/// The attempt is a plain field and display values are written only when they CHANGE: at ~80
+/// samples a second an unconditional mirror invalidates the view per sample (what made the
+/// routine deck laggy). The peak holds still after the ramp, so the screen settles with the pull.
 ///
-/// TRANSLATION NOTE: iOS marks the attempt `@ObservationIgnored` inside an `@Observable`
-/// class and guards each write with `if x != y`. Compose's `mutableStateOf` already skips a
-/// write of an equal value — but only for the STRUCTURAL equality it can see, and relying on
-/// that leaves the rule undocumented and untestable. So the guard is explicit, and
-/// `publishes` counts the writes that got through: it is the only way a JVM test can assert
-/// "80 identical samples published once", which is the whole point of this class.
+/// TRANSLATION NOTE: iOS uses `@ObservationIgnored` and `if x != y` guards. `mutableStateOf`
+/// already skips equal writes, but implicitly; the explicit guard plus `publishes` lets a JVM
+/// test assert "80 identical samples published once".
 class MaxMeasurement {
     var peakKg: Double by mutableDoubleStateOf(0.0)
         private set
@@ -654,15 +634,13 @@ class MaxMeasurement {
     var isComplete: Boolean by mutableStateOf(false)
         private set
 
-    /// How many times a value actually changed. A TEST SEAM and nothing else — see the note
-    /// above.
+    /// A TEST SEAM and nothing else.
     var publishes: Int = 0
         private set
 
     private var attempt = MaxAttempt()
 
-    /// Mirrors `MaxAttempt.hasResult` off the SAME constant — a screen that offered to save a
-    /// number the engine does not consider a pull would be the two disagreeing.
+    /// Off the SAME constant as `MaxAttempt.hasResult`, so the screen never offers a non-pull.
     val hasResult: Boolean get() = peakKg >= MaxAttempt.releaseKg
 
     fun receive(point: DeviceStore.TracePoint) {
@@ -700,9 +678,8 @@ class MaxMeasurement {
 @Preview(name = "MaxMeasure", showBackground = true, widthDp = 400, heightDp = 860)
 @Composable
 private fun MaxMeasurePreview() {
-    // A real `DeviceStore` over the MOCK client — it needs no Context and touches no radio
-    // until `connect()`, so a preview renders the DISCONNECTED face. That is the one worth
-    // checking by eye anyway: the live faces are a number and a curve.
+    // A real `DeviceStore` over the MOCK client (no Context, no radio until `connect()`), so the
+    // preview shows the DISCONNECTED face — the one worth checking by eye.
     val scope = rememberCoroutineScope()
     val device = remember(scope) {
         DeviceStore(

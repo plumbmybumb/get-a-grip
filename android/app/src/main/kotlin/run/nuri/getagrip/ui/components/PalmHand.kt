@@ -55,25 +55,22 @@ fun cameraHandOffset(): Dp {
     return PalmGeometry.additionalTopInsetDp(cutoutBottom).dp
 }
 
-/// Fingers clear the reported camera cutout, falling back to a centred position without one.
-/// Android draws no artificial notch, capsule or plate around it. The same centred position
-/// remains useful on phones with an off-centre camera and on screens without a cutout.
-/// Pure black preserves the cutout relationship; ghost fingers keep a dark-mode hairline.
+/// Fingers clear the reported camera cutout, falling back to a centred position without one
+/// (also right for off-centre cameras). No drawn notch or plate. Pure black preserves the
+/// cutout relationship; ghost fingers keep a dark-mode hairline.
 @Composable
 fun PalmHand(
     grip: GripSpec,
     /// Which hand is pulling. **The whole hand mirrors with it** — see `PalmGeometry.isMirrored`.
     side: Side,
     modifier: Modifier = Modifier,
-    /// Dimmed while resting, so the hand says "this is what's COMING" rather than "pull this
-    /// now".
+    /// Dimmed while resting: this is what's COMING, not "pull this now".
     isActive: Boolean = true,
     newGripID: String? = null,
     holdsGripCueForRest: Boolean = false,
     /// A small, drawn-only lift while the long-rest header prepares the next pull.
     restFocus: Boolean = false,
-    /// The spotlight tour's anchor. Passed IN rather than read from a composition local, so
-    /// this drawing still knows nothing about a tour and stays previewable.
+    /// The tour's anchor, passed IN so this drawing knows nothing of the tour.
     tourAnchor: Modifier = Modifier,
 ) {
     val reduceMotion = rememberReduceMotion()
@@ -90,11 +87,9 @@ fun PalmHand(
     /// 0 = thumb fully out, 1 = fully drawn into the palm.
     val retract = remember { Animatable(0f) }
 
-    // THE HAND SWAP: the thumb draws into the palm, the hand mirrors while it is hidden, and
-    // it grows back out of the other side. Hiding the mirror inside the retraction is what
-    // stops four bars visibly sliding past each other — the fingers are symmetric in
-    // outline, so with the thumb gone the flip is invisible and the whole change reads as
-    // one gesture.
+    // THE HAND SWAP: the thumb draws into the palm, the hand mirrors while it is hidden, and it
+    // grows out the other side. Fingers are symmetric in outline, so without the thumb the flip
+    // is invisible and bars never visibly slide past each other.
     LaunchedEffect(side, reduceMotion) {
         if (shown == side) return@LaunchedEffect
         if (reduceMotion) {
@@ -108,9 +103,8 @@ fun PalmHand(
     }
 
     val mirrored = PalmGeometry.isMirrored(shown)
-    // STAGGERED from the thumb side inward, so a grip change ripples across the hand instead
-    // of all four bars blinking at once. 45 ms is enough to read as a sequence and short
-    // enough that the last finger is not visibly late.
+    // STAGGERED from the thumb side inward so a grip change ripples; 45 ms reads as a sequence
+    // without the last finger looking late.
     val onness = (0 until 4).map { slot ->
         val anatomical = PalmGeometry.anatomical(slot, shown)
         val on = grip.fingers.contains(FingerSet.allFingers[anatomical])
@@ -142,8 +136,7 @@ fun PalmHand(
             .padding(top = cameraHandOffset())
             .height(PalmGeometry.TOTAL_HEIGHT.dp)
             .then(tourAnchor)
-            // Decoration over the status bar: it must never eat a touch, and TalkBack already
-            // hears the grip from the runner's own line.
+            // Decoration: never eats a touch, and TalkBack hears the grip from the runner's line.
             .clearAndSetSemantics {},
     ) {
         val barWidth = PalmGeometry.BAR_WIDTH.dp.toPx()
@@ -163,9 +156,8 @@ fun PalmHand(
             val x = originX + slot * pitch
             val radius = CornerRadius(barWidth / 2f)
             val fill = onness[slot].value
-            // ON is solid ink (orange during a change); OFF retains its 0.12 ghost. In DARK mode that
-            // ghost is invisible against the field, so it also takes a quiet hairline —
-            // which fingers are OFF is half the grip's meaning and has to survive the scheme.
+            // ON is solid ink (orange during a change); OFF keeps its 0.12 ghost plus, in DARK mode, a
+            // hairline — which fingers are OFF is half the grip's meaning.
             val alpha = PalmGeometry.OFF_ALPHA + fill * (1f - PalmGeometry.OFF_ALPHA)
             drawRoundRect(
                 color = ink.copy(alpha = alpha * activeAlpha),
@@ -200,13 +192,9 @@ fun PalmHand(
     }
 }
 
-/// The thumb: a bar of the same thickness as a finger, hanging off the palm's side at 26°.
-///
-/// **Sized against a FINGER rather than as a stub** — a thumb is the thickest digit on a
-/// hand, so a thin tab beside four fat bars reads as a mistake. **Shallow, not diagonal**:
-/// a steeper thumb read as a detached pill lying at an angle. DETACHED, with the same 6 dp
-/// clearance the fingers have — a thumb welded to the palm is the one part of a hand nobody
-/// draws that way.
+/// The thumb: a finger-thick bar hanging off the palm's side at 26°. Finger-sized (a thin tab
+/// reads as a mistake), shallow (steeper read as a detached pill), and DETACHED by the
+/// fingers' 6 dp clearance.
 private fun DrawScope.drawThumb(
     handLeft: Float,
     handWidth: Float,
@@ -224,9 +212,8 @@ private fun DrawScope.drawThumb(
     val pivotY = PalmGeometry.THUMB_PIVOT_Y.dp.toPx()
     val degrees = PalmGeometry.thumbAngleDegrees(mirrored)
 
-    // Anchored at the palm end so the rotation swings the TIP away and the root stays where
-    // the geometry above put it; scaling along its own length toward that root is what makes
-    // it disappear at the knuckle on a hand swap rather than shrinking to a dot.
+    // Pivoted at the palm end, so the TIP swings and the thumb retracts into the knuckle on a
+    // swap rather than shrinking to a dot.
     rotate(degrees = degrees, pivot = Offset(pivotX, pivotY)) {
         val left = if (mirrored) pivotX else pivotX - length
         drawRoundRect(
@@ -247,25 +234,23 @@ private fun DrawScope.drawThumb(
     }
 }
 
-/// The hand's arithmetic, with no Canvas in it — so mirroring, the finger positions and the
-/// thumb's angle can be asserted in a JVM test.
+/// The hand's arithmetic, with no Canvas, so mirroring, finger positions and thumb angle are
+/// JVM-testable.
 ///
-/// **All dp, all measured against `IslandHand`** and deliberately kept in step with it: the
-/// same 22 × 38 capsule, the same index-to-little length ratios, the same full-capsule
-/// radius, the same 6 dp clearance, the same 26° thumb.
+/// **All dp, kept in step with `IslandHand`**: 22 × 38 capsule, index-to-little ratios,
+/// full-capsule radius, 6 dp clearance, 26° thumb.
 object PalmGeometry {
 
     const val BAR_WIDTH = 22f
     const val BAR_LENGTH = 38f
 
-    /// 22 + 8, the island hand's own gap. This is the RUNNER's hand — a drawing nobody
-    /// touches — so it keeps the tight pitch. `GripIslandPanel`'s interactive twin uses 44,
-    /// because a control needs a legal tap target and a drawing does not.
+    /// 22 + 8, the island hand's gap: the RUNNER's hand is a drawing nobody touches. The grip
+    /// panel uses a 44 pitch because a control needs a legal tap target.
     const val BAR_GAP = 8f
     const val PITCH = BAR_WIDTH + BAR_GAP
 
-    /// Reserve a small top-centre camera region, with the fingers starting at 36dp.
-    /// This is a shared placement, not a claim about one phone's exact cutout geometry.
+    /// Reserve a small top-centre camera region, fingers starting at 36 dp — a shared placement,
+    /// not one phone's exact cutout.
     const val FINGER_TOP = 36f
 
     const val CAMERA_GAP = 6f
@@ -278,12 +263,10 @@ object PalmGeometry {
     const val THUMB_ANGLE = 26f
     const val THUMB_PIVOT_Y = FINGER_TOP + 4f
 
-    /// A hand's proportions, INDEX → LITTLE. Mirrored along with the fingers, so the middle
-    /// finger is longest whichever way round the hand is drawn.
+    /// INDEX → LITTLE, mirrored with the fingers, so the middle is longest either way round.
     val LENGTH_FACTOR = listOf(0.86f, 1.0f, 0.94f, 0.80f)
 
-    /// How far down the screen the longest finger reaches — the clearance the runner's
-    /// content has to start below. 36 + 38 = 74.
+    /// Where the longest finger ends: runner content starts below. 36 + 38 = 74.
     const val TOTAL_HEIGHT = FINGER_TOP + BAR_LENGTH
 
     const val OFF_ALPHA = 0.12f
@@ -298,13 +281,9 @@ object PalmGeometry {
 
     fun handWidthDp(): Float = BAR_WIDTH * 4 + BAR_GAP * 3
 
-    /// **Facing a LEFT palm, the thumb is on the right — and so the index finger is the
-    /// RIGHTMOST bar, not the leftmost.** Moving only the thumb was the bug: with the thumb
-    /// switched but the fingers left alone, a front-2 grip rendered on the little side and
-    /// read as back-2 (Nuri spotted it, 2026-08-09). The whole hand mirrors.
-    ///
-    /// `both` mirrors too, matching iOS: a two-handed pull is drawn as a left palm rather
-    /// than left blank.
+    /// **Facing a LEFT palm the thumb is on the right, so the index is the RIGHTMOST bar.**
+    /// Moving only the thumb made a front-2 grip render on the little side, reading as back-2
+    /// (Nuri, 2026-08-09). The whole hand mirrors. `both` mirrors too, as on iOS.
     fun isMirrored(side: Side): Boolean = side != Side.right
 
     /// `slot` is the position ON SCREEN, left to right. Which finger lives there depends on
@@ -313,8 +292,7 @@ object PalmGeometry {
 
     fun fingerLengthDp(anatomical: Int): Float = BAR_LENGTH * LENGTH_FACTOR[anatomical]
 
-    /// Positive swings the tip clockwise — away from a palm whose thumb is on the RIGHT,
-    /// which is the mirrored (left-hand) case.
+    /// Positive swings the tip clockwise, away from a right-thumbed (mirrored, left-hand) palm.
     fun thumbAngleDegrees(mirrored: Boolean): Float = if (mirrored) THUMB_ANGLE else -THUMB_ANGLE
 
     fun thumbAngleDegrees(side: Side): Float = thumbAngleDegrees(isMirrored(side))

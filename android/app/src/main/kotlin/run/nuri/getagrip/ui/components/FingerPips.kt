@@ -49,54 +49,42 @@ import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
-/// Four tappable bars — index to little — that say which fingers are on the edge, plus the
+/// Four tappable bars — index to little — saying which fingers are on the edge, plus the
 /// thumb's horizontal bar underneath.
 ///
-/// This is the control that settles the app's own worst ambiguity: "front 2" and "middle 2"
-/// are one word apart and two different grips, and a picture settles what a label flips a
-/// coin on. It beats a ten-chip grid on discoverability and on composability (any
-/// combination, no enumeration), and under the no-emoji rule it doubles as the app's
-/// iconography.
+/// It settles the app's worst ambiguity: "front 2" and "middle 2" are one word apart and two
+/// grips, and a picture settles what a label flips a coin on. It composes any combination,
+/// and under the no-emoji rule doubles as the app's iconography.
 ///
-/// **ONE GLYPH, ONE RULE: full capsule at 22 : 38.** The same proportions and the same
-/// radius rule `FingerGlyph` and `PalmHand` draw — the bar you tap while building a routine
-/// has to be the same object you see hanging over the runner while doing it (Nuri,
-/// 2026-08-09). A builder control that draws its own dialect of the app's only glyph is the
-/// thing that makes an interface feel assembled.
+/// **ONE GLYPH, ONE RULE: full capsule at 22 : 38**, as `FingerGlyph` and `PalmHand` draw it —
+/// the bar you tap while building must be the one hanging over the runner (Nuri, 2026-08-09).
 @Composable
 fun FingerPips(
     fingers: FingerSet,
     position: GripPosition,
     modifier: Modifier = Modifier,
-    /// Drops the name line, where the surface above already carries the full grip name and
-    /// height is scarce — two copies of "4 fingers" one above the other is cheap height.
+    /// Drops the name line where the surface above already carries the grip name.
     showsName: Boolean = true,
     onChange: (FingerSet) -> Unit,
 ) {
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
 
-    // CLAMPED, the trap `ConsistencyCard`'s dot already fixed on iOS: four uncapped bars
-    // plus the thumb container demand roughly a whole phone's width at the largest
-    // accessibility scale. A picker that overflows offscreen while building a grip is worse
-    // than one that stops growing.
+    // CLAMPED, the `ConsistencyCard` trap: uncapped, four bars plus the thumb want a whole
+    // phone's width at the largest accessibility scale.
     val scale = LocalDensity.current.fontScale.coerceAtMost(1.4f)
     val width: Dp = (if (showsName) 34.dp else 28.dp) * scale
     val height: Dp = width * BAR_LENGTH_RATIO
-    /// The tap target, which is NOT the drawing: a 34 dp bar is under the 44 dp floor, and
-    /// the transparent container around it is what makes the control legal.
+    /// The tap target, not the drawing: a 34 dp bar is under the 44 dp floor.
     val hitWidth: Dp = maxOf(44.dp, width)
 
-    /// A pinch IS thumb opposition, so under it the thumb is not a choice — `GripSpec`
-    /// enforces the same rule in the model, which is where a rule belongs: one living in a
-    /// view is a rule the next view forgets.
+    /// A pinch IS thumb opposition, so the thumb is not a choice. `GripSpec` enforces it in the
+    /// model, where a rule belongs: one living in a view is one the next view forgets.
     val locksThumb = position == GripPosition.pinch
 
-    /// **The tick is TRIGGERED BY THE TAP, not by the value.** Keyed on `fingers`, one tap
-    /// fired TWO haptics: choosing Pinch changes the position (already ticked by
-    /// `PositionChipRow`) and the model then forces the thumb in, changing `fingers` and
-    /// ticking again. A double tick for a single action is the feedback rule's own failure
-    /// mode — a tick has to name its cause, and nothing here caused two.
+    /// **The tick is TRIGGERED BY THE TAP, not by the value.** Keyed on `fingers`, choosing Pinch
+    /// ticked twice: once in `PositionChipRow`, again when the model forced the thumb in. A tick
+    /// has to name its cause.
     fun toggle(finger: FingerSet) {
         val next = FingerSelection.toggling(finger, fingers)
         if (next == fingers) return
@@ -106,10 +94,8 @@ fun FingerPips(
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(if (showsName) 8.dp else 6.dp)) {
         if (showsName) {
-            // The canonical name, live: the same string every other surface in the app uses
-            // for this grip, so the picture and the words are never two answers.
-            // The label swap is a STATE change, so it takes the ladder's default curve — and under
-    // Reduce Motion it takes `Motion`'s flat one rather than Compose's unguarded 400 ms tween.
+            // The canonical name, live, so picture and words are never two answers. A STATE change,
+            // so `Motion.state` — see `Motion`.
     Crossfade(
         fingers.name,
         animationSpec = Motion.state(rememberReduceMotion()),
@@ -145,8 +131,7 @@ fun FingerPips(
                         )
                             selected = isOn
                         },
-                    // BOTTOM-aligned, so the varying lengths meet at a common fingertip
-                    // line — the tips are what is ON the edge below.
+                    // BOTTOM-aligned: the tips, which are ON the edge, share a line.
                     contentAlignment = Alignment.BottomCenter,
                 ) {
                     Box(
@@ -157,8 +142,7 @@ fun FingerPips(
                                 if (isOn) {
                                     Modifier.background(palette.graphite, shape)
                                 } else {
-                                    // Stroked rather than tinted lighter: fill-vs-outline
-                                    // survives greyscale and Reduce Transparency.
+                                    // Stroked, not tinted: fill-vs-outline survives greyscale and Reduce Transparency.
                                     Modifier.border(1.dp, palette.inkTertiary.copy(alpha = 0.45f), shape)
                                 },
                             ),
@@ -167,21 +151,16 @@ fun FingerPips(
             }
         }
 
-        // The thumb, as the horizontal bar it is — under the fingers, where a thumb sits
-        // when a hand pinches. Its own control rather than a fifth column because a thumb
-        // drawn vertical would just be a short fifth finger, and the whole point of the
-        // glyph language is that you read the hand before you read a word.
+        // The thumb as a horizontal bar under the fingers, where it sits in a pinch. Drawn vertical
+        // it would be a short fifth finger, and the glyph must be read before any word.
         val thumbOn = fingers.hasThumb
-        // A thumb is the THICKEST digit, so it is drawn thicker than a finger rather than
-        // thinner — the same call the palm makes, where a slim tab beside four fat bars
-        // read as a mistake.
+        // The THICKEST digit, so thicker than a finger (a slim tab read as a mistake on the palm).
         val thumbThickness = width * 1.05f
         val thumbLength = hitWidth * 2 + 10.dp
         val thumbShape = RoundedCornerShape(thumbThickness / 2)
         Box(
             Modifier
-                // The full pip-row width is the hit area — the drawn bar alone would be a
-                // sub-standard target and a leading-only one.
+                // The full pip-row width is the hit area.
                 .size(hitWidth * 4 + 30.dp, maxOf(44.dp, thumbThickness))
                 .then(
                     if (locksThumb) {
@@ -219,10 +198,8 @@ fun FingerPips(
             )
         }
 
-        // **Said in WORDS, because the locked bar cannot say it by drawing.** A control
-        // that looks live and refuses the tap is the exact failure the hit-target rule
-        // exists to prevent; disabling it stops the false press feedback, and this line is
-        // what stops "disabled" reading as "broken".
+        // **Said in WORDS**: the locked bar cannot say it by drawing. Disabling stops false press
+        // feedback; this line stops "disabled" reading as "broken".
         if (locksThumb) {
             Text(
                 tr("A pinch always includes the thumb."),
@@ -234,10 +211,8 @@ fun FingerPips(
     }
 }
 
-/// 22 dp wide × 38 dp long, straight off the palm. Matching the RADIUS rule alone was not
-/// enough on iOS: at the old 40 × 52 a full-capsule bar came out as a fat oval, which is not
-/// the shape hanging over the runner and not a finger either. A drawing is its proportions
-/// as much as its corners.
+/// 22 × 38 dp, straight off the palm. The radius rule alone was not enough: at the old 40 × 52
+/// a full capsule came out a fat oval. A drawing is its proportions as much as its corners.
 private const val BAR_LENGTH_RATIO = 38f / 22f
 
 /// Both hand pickers keep a real finger on the edge; the thumb cannot replace it.
@@ -251,10 +226,8 @@ internal object FingerSelection {
 /// A hand's proportions, not a bar chart's. Applied to the DRAWN bar only.
 private val LENGTH_FACTOR = listOf(0.86f, 1.0f, 0.94f, 0.80f)
 
-/// Index, middle, ring, little — same order as `FingerSet.allFingers`, so the drawing can
-/// never disagree with the token.
-/// A `get()`, not a stored list: a top-level `val` is initialised once when the file's class
-/// loads and would keep the language it was born in.
+/// Index, middle, ring, little — `FingerSet.allFingers` order, so drawing and token agree.
+/// A `get()`, not a stored list — see `Tab`.
 private val NAMES: List<String>
     get() = listOf(L10n.tr("Index"), L10n.tr("Middle"), L10n.tr("Ring"), L10n.tr("Little"))
 

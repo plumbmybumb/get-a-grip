@@ -80,13 +80,11 @@ import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
-/// FINE TUNING — the settings that are not one of the things setup asks about, folded away
-/// behind a row that still says out loud that they exist.
+/// FINE TUNING — settings setup does not ask about, folded behind a row that still says they
+/// exist.
 ///
-/// Collapsed on EVERY open and never persisted: the discipline is to hide the WORDS rather
-/// than the fact that there is a setting. That is why the row keeps a title and a summary
-/// line on its face instead of being a bare chevron — someone who has never opened it still
-/// knows what is in there.
+/// Collapsed on EVERY open, never persisted: hide the WORDS, not the fact of a setting. So the
+/// row keeps a title and summary instead of a bare chevron.
 @Composable
 fun FineTuningSection(
     /// Only what this card draws — see `FineTuningValues`.
@@ -97,9 +95,8 @@ fun FineTuningSection(
     val palette = LocalGripPalette.current
     fun edit(transform: (SessionPlan) -> SessionPlan) = update { it.copy(plan = transform(it.plan)) }
     val reduceMotion = rememberReduceMotion()
-    /// View-local and unpersisted BY CONSTRUCTION — a fresh section is built every time the
-    /// builder opens, so "collapsed on every open" needs no resetting logic. Saved only across
-    /// a rotation, which is not an open.
+    /// Unpersisted BY CONSTRUCTION: each builder open builds a fresh section. Saved only across
+    /// rotation, which is not an open.
     var isOpen by rememberSaveable { mutableStateOf(false) }
     val chevron by animateFloatAsState(
         targetValue = if (isOpen) 180f else 0f,
@@ -160,9 +157,7 @@ fun FineTuningSection(
                 )
             }
 
-            // A disclosure is the ladder's DEFAULT motion — critically damped, and flat under
-        // Reduce Motion. Compose's own default here is an unguarded 400 ms tween nothing in
-        // this app chose.
+            // `Motion.state`, not Compose's unguarded 400 ms default — see `Motion`.
         AnimatedVisibility(
             visible = isOpen,
             enter = expandVertically(Motion.state(rememberReduceMotion())) +
@@ -192,9 +187,8 @@ fun FineTuningSection(
                         ThresholdGaugeStrip(values.thresholdKg)
                     }
 
-                    // Sits between the threshold and the lead-in on purpose: all three
-                    // answer "what counts as a pull", and this is the RANGE's half of that
-                    // question where the threshold above is the floor's half.
+                    // Between threshold and lead-in: all three answer "what counts as a pull", and this is the
+                    // RANGE's half where the threshold is the floor's.
                     ToggleRow(
                         title = tr("Pause when I'm out of range"),
                         checked = values.pausesOutsideTargetBand,
@@ -231,39 +225,34 @@ fun FineTuningSection(
 
 /// **THE ONE PLACE THE BUILDER TOUCHES BLUETOOTH.**
 ///
-/// A live force bar with the threshold marked, so "2 kg" can be FELT instead of guessed at.
-/// Deliberately its own small composable: everything else in the builder is pure editing of
-/// a value type, and keeping the radio in one place means it can be deleted or moved without
-/// opening the document.
+/// A live force bar with the threshold marked, so "2 kg" is FELT, not guessed. Its own
+/// composable, so the radio can be moved or deleted without opening the document.
 @Composable
 private fun ThresholdGaugeStrip(thresholdKg: Double) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
     var checking by remember { mutableStateOf(false) }
 
-    // UNCONDITIONAL, and gated on the DEVICE's own truth rather than on `checking`: a gauge
-    // left streaming behind a dismissed screen is a dead battery the user blames on the app.
+    // UNCONDITIONAL, gated on the DEVICE's truth, not `checking`: a gauge left streaming behind
+    // a dismissed screen is a dead battery blamed on the app.
     DisposableEffect(device) {
         onDispose {
             if (device.isStreaming) device.stopStreaming(StreamStopCause.screenClosed)
         }
     }
 
-    // Long enough to take the load, let go and try again; short enough that a forgotten
-    // check cannot flatten the gauge's battery.
+    // Long enough to load, let go and retry; short enough not to flatten a forgotten gauge.
     LaunchedEffect(checking) {
         if (!checking) return@LaunchedEffect
         delay(CHECK_SECONDS * 1000L)
         checking = false
-        // The cause travels from the TRIGGER: labelling a timeout the same as a deliberate
-        // Stop would put the wrong reason in the log.
+        // The cause comes from the TRIGGER: a timeout is not a deliberate Stop in the log.
         if (device.isStreaming) device.stopStreaming(StreamStopCause.timedOut)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (!device.state.isConnected) {
-            // SHOWN, not a disabled button: a control you cannot use teaches nothing, and
-            // the reason plus the reassurance is the whole content.
+            // SHOWN, not a disabled button: the reason plus the reassurance is the content.
             Text(
                 tr("Connect your gauge to try it — you can change this any time."),
                 style = MaterialTheme.typography.bodySmall,
@@ -271,9 +260,8 @@ private fun ThresholdGaugeStrip(thresholdKg: Double) {
                 color = palette.inkTertiary,
             )
         } else if (checking) {
-            // LEAVES, deliberately: `currentKg` changes on every sample, and read from this
-            // body it would re-evaluate the Stop button and the static caption beside it at
-            // sample rate for the whole fifteen seconds.
+            // LEAVES: `currentKg` changes per sample, and here it would redraw Stop and the caption at
+            // sample rate for fifteen seconds.
             ThresholdReadout(thresholdKg)
             ThresholdBar(thresholdKg)
             Text(
@@ -288,8 +276,7 @@ private fun ThresholdGaugeStrip(thresholdKg: Double) {
             }
         } else {
             SecondaryButton(tr("Check on the gauge"), icon = Icons.Outlined.MonitorHeart) {
-                // The bar's scale is peak-relative, so a peak left over from an earlier
-                // check would otherwise draw this pull as a stub.
+                // Peak-relative scale: a leftover peak would draw this pull as a stub.
                 device.resetPeak()
                 device.startStreaming(StreamStartCause.manualMeasurement)
                 checking = true
@@ -307,15 +294,12 @@ private fun ThresholdReadout(thresholdKg: Double) {
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
 
-    /// HYSTERETIC, not a bare `>=`. The whole point of this check is to park a load AT the
-    /// threshold, which is exactly where sensor noise flips a bare comparison many times a
-    /// second — a continuous buzz and a flickering word. Same remedy as the runner's release
-    /// band: crossing UP happens at the threshold, crossing back down only 5 % below it,
-    /// clamped 0.5–2.0 kg.
+    /// HYSTERETIC, not a bare `>=`: this check parks a load AT the threshold, where noise flips a
+    /// bare comparison many times a second. The runner's release band: up at the threshold,
+    /// down 5 % below it, clamped 0.5–2.0 kg.
     var crossed by remember { mutableStateOf(false) }
-    // ONE coroutine for the life of the strip, fed by a snapshot flow — not a
-    // `LaunchedEffect` keyed on the reading, which would cancel and relaunch a coroutine
-    // on every one of the ~80 samples a second.
+    // ONE coroutine fed by a snapshot flow, not a `LaunchedEffect` keyed on the reading, which
+    // would relaunch ~80 times a second.
     LaunchedEffect(Unit) {
         snapshotFlow { device.currentKg to thresholdKg }.collect { (kg, threshold) ->
             val band = (threshold * 0.05).coerceIn(0.5, 2.0)
@@ -335,8 +319,7 @@ private fun ThresholdReadout(thresholdKg: Double) {
     Row(
         Modifier
             .fillMaxWidth()
-            // A numeral changing 80×/sec is unusable under TalkBack; the crossing is felt
-            // instead, since nothing here fires the runner's audio cues.
+            // 80×/sec is unusable under TalkBack; the crossing is felt instead.
             .clearAndSetSemantics {},
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -357,17 +340,15 @@ private fun ThresholdReadout(thresholdKg: Double) {
     }
 }
 
-/// The live force bar with the threshold marked. Its own leaf for the same invalidation
-/// reason as the readout.
+/// The live force bar with the threshold marked, a leaf like the readout.
 @Composable
 private fun ThresholdBar(thresholdKg: Double) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
     val kg = device.currentKg
     val isOver = kg >= thresholdKg
-    /// PEAK-relative, and peak is monotonic within one check, so the scale only ever settles
-    /// outward — a ceiling keyed to the live reading would jitter the threshold marker on
-    /// every sample, which is the one thing on screen that must hold still.
+    /// PEAK-relative, and peak only grows within a check, so the scale settles outward; a live
+    /// ceiling would jitter the threshold marker, which must hold still.
     val ceiling = maxOf(10.0, device.peakKg * 1.25, thresholdKg * 1.6)
     val fraction = (kg.coerceAtLeast(0.0) / ceiling).coerceAtMost(1.0).toFloat()
     val markerFraction = (thresholdKg / ceiling).coerceIn(0.0, 1.0).toFloat()
@@ -379,10 +360,8 @@ private fun ThresholdBar(thresholdKg: Double) {
             size = size,
             cornerRadius = radius,
         )
-        // A full-bleed capsule CLIPPED to the fraction, not a second capsule at partial
-        // width: a width-constrained capsule degenerates to a blob at small fractions and
-        // its advancing edge is rounded like an end, so the fill reads as a different shape
-        // than the track it sits in.
+        // A full-bleed capsule CLIPPED to the fraction: a narrow capsule degenerates to a blob with
+        // a rounded advancing edge, a different shape from its track.
         clipRect(right = maxOf(2f, fraction * size.width)) {
             drawRoundRect(
                 color = if (isOver) palette.bleu else palette.calm,
@@ -390,8 +369,7 @@ private fun ThresholdBar(thresholdKg: Double) {
                 cornerRadius = radius,
             )
         }
-        // The line itself, drawn over the fill so it stays visible once the pull has passed
-        // it.
+        // Over the fill, so it stays visible once the pull passes it.
         drawRoundRect(
             color = palette.inkPrimary.copy(alpha = 0.8f),
             topLeft = Offset(markerFraction * size.width - 1.dp.toPx(), 0f),
