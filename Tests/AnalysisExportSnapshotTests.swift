@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
+import SwiftData
 import XCTest
 @testable import Doigt
 
@@ -72,5 +73,86 @@ final class AnalysisExportSnapshotTests: XCTestCase {
                 XCTAssertEqual(result.sessionCount, scope == .all ? 2 : 1)
             }
         }
+    }
+
+    // MARK: - The store-backed path the History screen uses
+
+    private func makeContainer() throws -> ModelContainer {
+        let config = ModelConfiguration("Doigt", schema: TestFixtures.schema,
+                                        isStoredInMemoryOnly: true, allowsSave: true,
+                                        cloudKitDatabase: .none)
+        return try ModelContainer(for: TestFixtures.schema, configurations: [config])
+    }
+
+    private func hangLog(named name: String, templateID: UUID?, day: DayStamp,
+                         avgKg: Double) -> WorkoutLog {
+        var rep = RepSummary()
+        rep.peakKg = avgKg + 4
+        rep.avgKg = avgKg
+        rep.heldSeconds = 10
+        return WorkoutLog(plan: SessionPlan(), templateID: templateID, templateName: name,
+            sessionsPerDayTarget: 2, reps: [rep], startedAt: day.date(),
+            finishedAt: day.date().addingTimeInterval(30), day: day)
+    }
+
+    /// The tap now freezes an address, not the rows — so the worker's own fetch has to
+    /// produce byte-for-byte the document the old main-actor snapshot did.
+    func testStoreBackedWorkerMatchesTheMainActorSnapshot() async throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let today = DayStamp(raw: 20_000)
+        let routine = UUID()
+        let logs = [
+            hangLog(named: "Old name", templateID: routine, day: today, avgKg: 15),
+            hangLog(named: "Old name", templateID: routine, day: today - 3, avgKg: 14),
+            hangLog(named: "Deleted routine", templateID: UUID(), day: today - 9, avgKg: 12),
+            WorkoutLog(logged: .climbVolume, day: today - 1, at: (today - 1).date(),
+                       sessionsPerDayTarget: 2),
+        ]
+        logs.forEach(context.insert)
+        context.insert(MaxRecord(grip: RepSummary().grip, kg: 30, source: .manual,
+                                 recordedAt: (today - 5).date()))
+        try context.save()
+
+        let names = [routine: "Renamed"]
+        let displayName: (WorkoutLog) -> String = { log in
+            log.templateID.flatMap { names[$0] } ?? log.templateName
+        }
+        let sorted = logs.sorted { $0.startedAt > $1.startedAt }
+        let maxes = try context.fetch(FetchDescriptor<MaxRecord>())
+        let expected = try AnalysisExportAssembler.snapshot(
+            logs: sorted, maxRecords: maxes, displayName: displayName, today: today).input()
+
+        let worker = AnalysisExportWorker(source: .init(
+            container: container, workoutID: nil, routineNames: names, today: today))
+        for scope in [AnalysisExport.CSVScope.recent, .all] {
+            for detail in [AnalysisExport.CSVDetail.summary, .pulls] {
+                let result = try await worker.document(scope: scope, detail: detail)
+                XCTAssertEqual(result.text, AnalysisExport.csv(expected, scope: scope, detail: detail).text)
+            }
+        }
+        let all = try await worker.document(scope: .all, detail: .summary)
+        XCTAssertEqual(all.sessionCount, 4)
+        XCTAssertEqual(all.maxCount, 1)
+        XCTAssertTrue(all.text.contains("Renamed"), "a live routine exports under its live name")
+        XCTAssertTrue(all.text.contains("Deleted routine"), "a gone routine keeps its frozen name")
+        XCTAssertFalse(all.text.contains("Old name"))
+    }
+
+    func testStoreBackedWorkoutExportFetchesOnlyThatSession() async throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let today = DayStamp(raw: 20_000)
+        let wanted = hangLog(named: "Wanted", templateID: nil, day: today, avgKg: 15)
+        context.insert(wanted)
+        context.insert(hangLog(named: "Other", templateID: nil, day: today - 1, avgKg: 14))
+        try context.save()
+
+        let worker = AnalysisExportWorker(source: .init(
+            container: container, workoutID: wanted.id, routineNames: [:], today: today))
+        let result = try await worker.document(scope: .workout, detail: .pulls)
+        XCTAssertEqual(result.sessionCount, 1)
+        XCTAssertTrue(result.text.contains("Wanted"))
+        XCTAssertFalse(result.text.contains("Other"))
     }
 }

@@ -22,12 +22,9 @@ struct HistoryView: View {
     @Query(sort: [SortDescriptor(\WorkoutLog.startedAt, order: .reverse)])
     private var logs: [WorkoutLog]
 
-    /// Every max ever written, oldest first — the export's MAX HISTORY section is the
-    /// progression itself, so it needs the whole append-only ledger rather than the
-    /// store's newest-per-grip fold. Nothing else on this screen reads it; a `@Query`
-    /// costs nothing until something does.
-    @Query(sort: [SortDescriptor(\MaxRecord.recordedAt)])
-    private var maxRecords: [MaxRecord]
+    /// The export's worker fetches from this container on a context of its own — see
+    /// `AnalysisExportAssembler.Source`.
+    @Environment(\.modelContext) private var modelContext
 
     @Environment(DayClock.self) private var clock
     @Environment(TemplateStore.self) private var templates
@@ -378,15 +375,18 @@ struct HistoryView: View {
         .accessibilityLabel("Export for analysis")
     }
 
-    /// Freeze cheap model fields at the tap; the sheet decodes blobs and formats
-    /// them on a worker, keeping long-history exports off the interaction path.
+    /// Freeze an address at the tap — nothing here walks the history. The sheet opens
+    /// at once and its worker fetches the rows and their blobs off the main actor; this
+    /// used to copy both blob columns of every log before the sheet could appear.
     private func makeExportRequest(workout: WorkoutLog? = nil) -> AnalysisExportRequest {
-        let snapshot = AnalysisExportAssembler.snapshot(
-            logs: workout.map { [$0] } ?? logs,
-            maxRecords: maxRecords,
-            displayName: { displayName(of: $0) },
+        let source = AnalysisExportAssembler.Source(
+            container: modelContext.container,
+            workoutID: workout?.id,
+            routineNames: templates.routineNames,
             today: clock.today)
-        return AnalysisExportRequest(snapshot: snapshot, isWorkout: workout != nil)
+        return AnalysisExportRequest(
+            source: source,
+            workout: workout.map { .init(name: displayName(of: $0), day: $0.day) })
     }
 
     private static let recentSessionLimit = 10
