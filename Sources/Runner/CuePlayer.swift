@@ -29,10 +29,18 @@ final class CuePlayer {
     /// Mono Float32. The mixer converts to whatever the route actually wants, so the
     /// buffers never have to be rebuilt when AirPods appear.
     private let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)
-    private let engine = AVAudioEngine()
-    private let player = AVAudioPlayerNode()
+    /// `var`, because a media-services reset invalidates every AVAudio object the app
+    /// holds: the only recovery is new ones — see `handleMediaServicesReset`.
+    private var engine = AVAudioEngine()
+    private var player = AVAudioPlayerNode()
     private var tones: [CueTone: AVAudioPCMBuffer] = [:]
     private var audioReady = false
+    /// An activation is in flight on `sessionQueue`; a second one would only queue behind.
+    private var audioStarting = false
+    /// When audio was last (re)started, so a cue arriving to a dead engine can retry
+    /// without turning every tick of a rest into an audio-session round trip.
+    private var lastAudioAttempt: TimeInterval = -.infinity
+    private static let audioRetryInterval: TimeInterval = 2
 
     // MARK: Haptics
 
@@ -46,12 +54,19 @@ final class CuePlayer {
 
     private var isRunning = false
     private var observers: [NSObjectProtocol] = []
+    /// Separate from `observers`: it is bound to ONE engine object, and a media-services
+    /// reset replaces the engine it was registered against.
+    private var engineObserver: NSObjectProtocol?
 
     init() {}
 
     /// Activate the audio session and prepare both engines. Called ONCE per session:
     /// starting an `AVAudioEngine` costs tens of milliseconds and doing it per cue
     /// would put that latency between "go" and the first pull.
+    ///
+    /// The audio-session half runs OFF the main thread (`startAudio`): `setCategory` and
+    /// `setActive` are synchronous round trips to the audio server, and this is called
+    /// while the runner's cover is still presenting.
     func begin() {
         guard !isRunning else { return }
         isRunning = true
@@ -129,49 +144,93 @@ final class CuePlayer {
         }
     }
 
-    /// A short contrasting interval, gated by the same live sound preference.
-    /// Separate from the engine's measurement cues; one announcement per transition.
+    /// A short contrasting interval, separate from the engine's measurement cues; one
+    /// announcement per transition. The app has NO sound preference to gate it on (this
+    /// used to claim one): every cue follows the same two rules instead — mixed with
+    /// whatever else is playing and never ducking it, and silent rather than failing.
     func gripChanged() { sound(.gripChange) }
 
     // MARK: - Audio session and graph
 
-    @discardableResult
-    private func startAudio() -> Bool {
+    /// Activate the session, then start the engine — the first half off the main thread.
+    ///
+    /// The session calls go through ONE serial queue (`sessionQueue`), activation and
+    /// deactivation alike, so a session ended and a new one begun in quick succession can
+    /// never deactivate the new one: the queue runs them in the order they were asked for.
+    /// The engine itself stays on the main actor, where every other use of it is.
+    private func startAudio() {
+        guard isRunning, !audioStarting else { return }
+        audioStarting = true
+        lastAudioAttempt = ProcessInfo.processInfo.systemUptime
+        Task { @MainActor [weak self] in
+            let active = await Self.activateSession()
+            guard let self else { return }
+            self.audioStarting = false
+            // Ended while the session was activating: `end()` has already queued the
+            // deactivation behind us, and starting the engine now would outlive it.
+            guard self.isRunning else { return }
+            guard active else {
+                // Haptics-only until a later cue retries. The session keeps running.
+                self.audioReady = false
+                return
+            }
+            self.startEngine()
+        }
+    }
+
+    private func startEngine() {
         do {
-            // `.playback`, NOT `.ambient`: `.ambient` obeys the mute switch, and a
-            // phone face-down and muted on a mat is exactly where this app is used.
-            // `.mixWithOthers` and NOT `.duckOthers`. Ducking would dip whatever the
-            // user is listening to on every cue — roughly one cue every five seconds
-            // across a 21-minute session, which is a video that pulses for the entire
-            // workout. The complaint that motivated this ("Frez pauses my YouTube") is
-            // about background audio being disturbed, and a constant dip is a smaller
-            // version of the same disturbance. Our cues are short, distinct tones and
-            // carry over music at normal volume; the runner screen and the haptics say
-            // the same things anyway.
-            try AVAudioSession.sharedInstance().setCategory(
-                .playback, mode: .default, options: [.mixWithOthers]
-            )
-            try AVAudioSession.sharedInstance().setActive(true)
-            try engine.start()
+            if !engine.isRunning { try engine.start() }
         } catch {
-            // Haptics-only from here. The session keeps running.
             audioReady = false
-            return false
+            return
         }
         if !player.isPlaying { player.play() }
         audioReady = true
-        return true
+    }
+
+    /// The audio-session queue. `nonisolated` so the static can be reached off the actor;
+    /// a `DispatchQueue` is Sendable, so there is nothing to protect.
+    nonisolated private static let sessionQueue = DispatchQueue(
+        label: "run.nuri.getagrip.cue-audio-session", qos: .userInitiated)
+
+    nonisolated private static func activateSession() async -> Bool {
+        await withCheckedContinuation { continuation in
+            sessionQueue.async {
+                do {
+                    // `.playback`, NOT `.ambient`: `.ambient` obeys the mute switch, and a
+                    // phone face-down and muted on a mat is exactly where this app is used.
+                    // `.mixWithOthers` and NOT `.duckOthers`. Ducking would dip whatever the
+                    // user is listening to on every cue — roughly one cue every five seconds
+                    // across a 21-minute session, which is a video that pulses for the entire
+                    // workout. The complaint that motivated this ("Frez pauses my YouTube") is
+                    // about background audio being disturbed, and a constant dip is a smaller
+                    // version of the same disturbance. Our cues are short, distinct tones and
+                    // carry over music at normal volume; the runner screen and the haptics say
+                    // the same things anyway.
+                    let session = AVAudioSession.sharedInstance()
+                    try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+                    try session.setActive(true)
+                    continuation.resume(returning: true)
+                } catch {
+                    continuation.resume(returning: false)
+                }
+            }
+        }
     }
 
     private func stopAudio() {
         player.stop()
         engine.stop()
         audioReady = false
-        // `.notifyOthersOnDeactivation` is what un-ducks the user's music at the end
-        // of the session rather than whenever the system next happens to notice.
-        try? AVAudioSession.sharedInstance().setActive(
-            false, options: .notifyOthersOnDeactivation
-        )
+        // `.notifyOthersOnDeactivation` is what tells other audio apps the session is
+        // over rather than leaving them to notice whenever the system next looks. On
+        // the session queue, behind any activation still in flight.
+        Self.sessionQueue.async {
+            try? AVAudioSession.sharedInstance().setActive(
+                false, options: .notifyOthersOnDeactivation
+            )
+        }
     }
 
     /// Idempotent — `player.engine` is non-nil once attached, and re-`connect` on an
@@ -192,7 +251,20 @@ final class CuePlayer {
     }
 
     private func sound(_ tone: CueTone) {
-        guard audioReady, engine.isRunning, let buffer = tones[tone] else { return }
+        guard isRunning else { return }
+        guard audioReady, engine.isRunning else {
+            // **A dead engine is retried, not left for the rest of the session.** Audio
+            // used to come back only when an interruption ended WITH `.shouldResume` —
+            // which a Siri request, an alarm or another app taking the session often does
+            // not send — so one phone call could silence a workout for good. This cue is
+            // lost; the next one, at most two seconds on, has a live engine.
+            if !audioStarting,
+               ProcessInfo.processInfo.systemUptime - lastAudioAttempt >= Self.audioRetryInterval {
+                startAudio()
+            }
+            return
+        }
+        guard let buffer = tones[tone] else { return }
         // Queued, NOT `.interrupts`: the runner returns cues in batches (a final rep
         // yields rep-end, set-end and session-end together) and interrupting would
         // leave only the last one audible.
@@ -218,18 +290,36 @@ final class CuePlayer {
             Task { @MainActor in self?.handleInterruption(typeRaw: type, optionsRaw: options) }
         })
 
+        // The audio server restarted (it happens: a crash in mediaserverd, a route
+        // storm). Every AVAudio object from before is now a husk, and without this the
+        // session ran the rest of the workout in silence with nothing on screen to say so.
         observers.append(center.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.handleMediaServicesReset() }
+        })
+
+        installEngineObserver()
+    }
+
+    private func installEngineObserver() {
+        guard engineObserver == nil else { return }
+        engineObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange,
             object: engine,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in self?.handleConfigurationChange() }
-        })
+        }
     }
 
     private func removeObservers() {
         for token in observers { NotificationCenter.default.removeObserver(token) }
         observers.removeAll()
+        if let engineObserver { NotificationCenter.default.removeObserver(engineObserver) }
+        engineObserver = nil
     }
 
     private func handleInterruption(typeRaw: UInt?, optionsRaw: UInt?) {
@@ -258,6 +348,22 @@ final class CuePlayer {
     private func handleConfigurationChange() {
         guard isRunning else { return }
         buildGraph()
+        startAudio()
+    }
+
+    /// Apple's documented recovery: throw every audio object away and build new ones. The
+    /// tones are plain PCM buffers and survive; the engine, the player and the session
+    /// configuration do not. The haptic engine has its own `resetHandler`.
+    private func handleMediaServicesReset() {
+        guard isRunning else { return }
+        if let engineObserver { NotificationCenter.default.removeObserver(engineObserver) }
+        engineObserver = nil
+        engine = AVAudioEngine()
+        player = AVAudioPlayerNode()
+        audioReady = false
+        audioStarting = false
+        buildGraph()
+        installEngineObserver()
         startAudio()
     }
 
