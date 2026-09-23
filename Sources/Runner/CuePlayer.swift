@@ -35,8 +35,15 @@ final class CuePlayer {
     private var player = AVAudioPlayerNode()
     private var tones: [CueTone: AVAudioPCMBuffer] = [:]
     private var audioReady = false
-    /// An activation is in flight on `sessionQueue`; a second one would only queue behind.
+    /// An activation is in flight on `CueAudioSession`'s queue; a second one would only
+    /// queue behind.
     private var audioStarting = false
+    /// Which activation is the CURRENT one. Bumped whenever an in-flight activation stops
+    /// being wanted (a media-services reset, `end()`), so its completion — which still
+    /// arrives — is ignored instead of clearing `audioStarting` for a newer activation or
+    /// starting an engine nobody asked for. Two overlapping activations are otherwise
+    /// indistinguishable when they land.
+    private var audioGeneration = 0
     /// When audio was last (re)started, so a cue arriving to a dead engine can retry
     /// without turning every tick of a rest into an audio-session round trip.
     private var lastAudioAttempt: TimeInterval = -.infinity
@@ -90,6 +97,9 @@ final class CuePlayer {
         guard isRunning else { return }
         isRunning = false
         removeObservers()
+        // An activation still in flight belongs to the session that just ended.
+        audioGeneration += 1
+        audioStarting = false
         stopAudio()
         hapticEngine?.stop()
         hapticEngineRunning = false
@@ -151,26 +161,26 @@ final class CuePlayer {
     }
 
     /// A short contrasting interval, separate from the engine's measurement cues; one
-    /// announcement per transition. The app has NO sound preference to gate it on (this
-    /// used to claim one): every cue follows the same two rules instead — mixed with
-    /// whatever else is playing and never ducking it, and silent rather than failing.
+    /// announcement per transition. The app has NO sound preference to gate it on: every
+    /// cue follows the same two rules instead — mixed with whatever else is playing and
+    /// never ducking it, and silent rather than failing.
     func gripChanged() { sound(.gripChange) }
 
     // MARK: - Audio session and graph
 
-    /// Activate the session, then start the engine — the first half off the main thread.
-    ///
-    /// The session calls go through ONE serial queue (`sessionQueue`), activation and
-    /// deactivation alike, so a session ended and a new one begun in quick succession can
-    /// never deactivate the new one: the queue runs them in the order they were asked for.
-    /// The engine itself stays on the main actor, where every other use of it is.
+    /// Activate the session, then start the engine — the first half off the main thread,
+    /// through `CueAudioSession`'s serial queue.
     private func startAudio() {
         guard isRunning, !audioStarting else { return }
         audioStarting = true
+        audioGeneration += 1
+        let generation = audioGeneration
         lastAudioAttempt = ProcessInfo.processInfo.systemUptime
         Task { @MainActor [weak self] in
-            let report = await Self.activateSession()
-            guard let self else { return }
+            let report = await CueAudioSession.activate()
+            // A stale activation says nothing about the current one: the flag and the
+            // engine belong to whichever activation was started last.
+            guard let self, generation == self.audioGeneration else { return }
             self.audioStarting = false
             self.onDiagnostic?(report.summary)
             // Ended while the session was activating: `end()` has already queued the
@@ -194,32 +204,10 @@ final class CuePlayer {
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(2))
             guard let self, self.isRunning else { return }
-            let still = await Self.otherAudioPlaying()
+            let still = await CueAudioSession.otherAudioPlaying()
             self.onDiagnostic?(still
                 ? "other audio still playing 2 s after start"
                 : "other audio STOPPED within 2 s of start")
-        }
-    }
-
-    nonisolated private static func otherAudioPlaying() async -> Bool {
-        await withCheckedContinuation { continuation in
-            sessionQueue.async {
-                continuation.resume(returning: AVAudioSession.sharedInstance().isOtherAudioPlaying)
-            }
-        }
-    }
-
-    /// What activation found and did — plain values, so it can cross off the session queue.
-    private struct ActivationReport: Sendable {
-        var active: Bool
-        var otherAudioBefore: Bool
-        var mixable: Bool
-        var error: String?
-
-        var summary: String {
-            guard active else { return "session failed to activate (\(error ?? "unknown"))" }
-            return "session active, " + (mixable ? "mixable" : "NOT MIXABLE")
-                + ", other audio " + (otherAudioBefore ? "playing" : "silent") + " at start"
         }
     }
 
@@ -234,53 +222,11 @@ final class CuePlayer {
         audioReady = true
     }
 
-    /// The audio-session queue. `nonisolated` so the static can be reached off the actor;
-    /// a `DispatchQueue` is Sendable, so there is nothing to protect.
-    nonisolated private static let sessionQueue = DispatchQueue(
-        label: "run.nuri.getagrip.cue-audio-session", qos: .userInitiated)
-
-    nonisolated private static func activateSession() async -> ActivationReport {
-        await withCheckedContinuation { continuation in
-            sessionQueue.async {
-                let otherBefore = AVAudioSession.sharedInstance().isOtherAudioPlaying
-                do {
-                    // `.playback`, NOT `.ambient`: `.ambient` obeys the mute switch, and a
-                    // phone face-down and muted on a mat is exactly where this app is used.
-                    // `.mixWithOthers` and NOT `.duckOthers`. Ducking would dip whatever the
-                    // user is listening to on every cue — roughly one cue every five seconds
-                    // across a 21-minute session, which is a video that pulses for the entire
-                    // workout. The complaint that motivated this ("Frez pauses my YouTube") is
-                    // about background audio being disturbed, and a constant dip is a smaller
-                    // version of the same disturbance. Our cues are short, distinct tones and
-                    // carry over music at normal volume; the runner screen and the haptics say
-                    // the same things anyway.
-                    let session = AVAudioSession.sharedInstance()
-                    try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-                    try session.setActive(true)
-                    continuation.resume(returning: ActivationReport(
-                        active: true, otherAudioBefore: otherBefore,
-                        mixable: session.categoryOptions.contains(.mixWithOthers)))
-                } catch {
-                    continuation.resume(returning: ActivationReport(
-                        active: false, otherAudioBefore: otherBefore, mixable: false,
-                        error: (error as NSError).localizedDescription))
-                }
-            }
-        }
-    }
-
     private func stopAudio() {
         player.stop()
         engine.stop()
         audioReady = false
-        // `.notifyOthersOnDeactivation` is what tells other audio apps the session is
-        // over rather than leaving them to notice whenever the system next looks. On
-        // the session queue, behind any activation still in flight.
-        Self.sessionQueue.async {
-            try? AVAudioSession.sharedInstance().setActive(
-                false, options: .notifyOthersOnDeactivation
-            )
-        }
+        CueAudioSession.deactivate()
     }
 
     /// Idempotent — `player.engine` is non-nil once attached, and re-`connect` on an
@@ -412,8 +358,12 @@ final class CuePlayer {
         engine = AVAudioEngine()
         player = AVAudioPlayerNode()
         audioReady = false
+        // Whatever activation was in flight was talking to the dead server: retire it, so
+        // its completion can neither clear the flag for the one started below nor start an
+        // engine that no longer exists. No `buildGraph()` here — `startAudio` builds the
+        // graph once the session is configured again, the same order as `begin()`.
+        audioGeneration += 1
         audioStarting = false
-        buildGraph()
         installEngineObserver()
         startAudio()
     }
