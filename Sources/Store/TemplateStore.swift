@@ -27,33 +27,27 @@ final class TemplateStore {
     /// instead of asserting iCloud unconditionally.
     let storageMode: StorageMode
 
-    /// Sessions logged today, keyed by routine. M2 writes no logs, so this is `[:]`
-    /// for everyone; the shape is what M3 fills in without touching a view.
+    /// Sessions logged today, keyed by routine.
     private(set) var completionsToday: [UUID: Int] = [:]
 
-    /// Hangs logged BY HAND today. They belong to no routine — you did not run one, so
-    /// there is nothing to attribute them to — but they are still one of the day's
-    /// sessions, so `completed(_:)` adds them to every routine's count. A climb settles
-    /// every routine's day on exactly the same principle.
+    /// Hangs logged BY HAND today. They belong to no routine but are still one of the
+    /// day's sessions, so `completed(_:)` adds them to every routine's count, the way a
+    /// climb settles every routine's day.
     ///
-    /// Without this the app contradicts itself on two screens at once: the consistency
-    /// grid folds on `countsAsHang` and draws "1 of 2", while Today's card reads the
-    /// routine-attributed map and says "0 of 2" — and the evening reminder still fires
-    /// on a night already trained, which is the one failure the whole rule exists to
-    /// prevent.
+    /// Without this the grid (folding on `countsAsHang`) draws "1 of 2" while Today's
+    /// card says "0 of 2", and the evening reminder fires on a night already trained.
     private(set) var unattributedHangsToday: Int = 0
 
     /// The climb logged today, if any — `nil` on an ordinary day. Its mere presence
     /// completes the day; see `isDoneForToday`.
     private(set) var climbToday: SessionKind?
     /// Whether a benchmark was logged today — set when the day's first MEASURED max
-    /// lands (see `recordMax`). Settles the day exactly like a climb; kept as its own
-    /// flag rather than folded into `climbToday` because the card copy and the grid
-    /// notch must not describe a max-testing morning as a trip to the gym.
+    /// lands (see `recordMax`). Settles the day like a climb; its own flag because the
+    /// card copy and the grid notch must not describe a max-testing morning as the gym.
     private(set) var benchmarkedToday = false
     /// When the newest gauge-MEASURED max was recorded, across every grip. The Maxes
     /// tab's staleness line and its icon's soft-nudge pulse both read this; manual
-    /// edits deliberately don't move it, because typing a number is not a test.
+    /// edits don't move it, because typing a number is not a test.
     private(set) var lastMeasuredMaxAt: Date?
     /// Exactly 14 entries, oldest first — the consistency strip's whole input.
     private(set) var consistency: [DayRecord] = []
@@ -62,15 +56,10 @@ final class TemplateStore {
 
     /// What each routine is called RIGHT NOW, by id.
     ///
-    /// History freezes a routine's name into every log at save time, which it must — a
-    /// deleted routine still has to have something to be called. But while the routine
-    /// still exists, the frozen copy is just a stale label: renaming "Daily no-hangs" to
-    /// "Morning ladder" left every past session filed under a name the app no longer used
-    /// anywhere else (Nuri, 2026-08-11). Displays resolve through this and fall back to
-    /// the frozen name, so the rename shows up everywhere at once and a deleted routine
-    /// keeps its history intact.
-    ///
-    /// Folded on the pass that already has the routines in hand, so it costs nothing.
+    /// History freezes a routine's name into every log, which it must — a deleted
+    /// routine still needs a name. But while the routine exists the frozen copy is a
+    /// stale label, so displays resolve through this and fall back to the frozen name:
+    /// a rename shows up everywhere at once and a deleted routine keeps its history.
     private(set) var routineNames: [UUID: String] = [:]
     /// Newest `MaxRecord` per canonical grip key. `MaxRecord` is append-only, so
     /// "current" is a fold, never a mutable row.
@@ -78,24 +67,21 @@ final class TemplateStore {
 
     /// The same maxes as the engine consumes them: by grip AND hand, in kilograms.
     ///
-    /// STORED and rebuilt on the same pass as `currentMaxes`, never computed per access.
-    /// The routine deck reads it inside a card body that re-evaluates on every frame of
-    /// a slider drag, and rebuilding a dictionary there would put an allocation on the
-    /// hot path for a value that only changes when a max is recorded.
+    /// STORED and rebuilt on the same pass as `currentMaxes`, never computed per access:
+    /// card bodies read it on every frame of a slider drag, and a value that only
+    /// changes when a max is recorded must not allocate on that hot path.
     private(set) var maxTable = MaxTable()
     /// The first day the app had anything to track. Days before it are hairlines in
     /// the strip, not missed sessions.
     private(set) var trackingSince: DayStamp?
 
     /// The last deleted routine, held briefly so the swipe can be taken back. Delete
-    /// carries no confirmation dialog — cheap undo is the forgiveness, and a routine
-    /// is six sets of authored intent, so losing one silently is expensive.
+    /// carries no confirmation dialog — cheap undo is the forgiveness.
     private(set) var lastDeleted: DeletedRoutine?
 
-    /// The same offer for a deleted session, on its own slot rather than sharing the
-    /// routine's. They live on different tabs and each screen shows its own bar, so one
-    /// shared slot would let a delete on History silently retract the Undo still on
-    /// offer on Today — and a session is unrepeatable in a way a routine is not.
+    /// The same offer for a deleted session, on its own slot: the two live on different
+    /// tabs, and one shared slot would let a delete on History silently retract the
+    /// Undo still on offer on Today.
     private(set) var lastDeletedSession: DeletedSession?
 
     /// Set when a save fails (disk full, store-level errors). The failed change has
@@ -123,27 +109,24 @@ final class TemplateStore {
         let remindersData: Data
         let parkedRemindersData: Data
         let remindersEnabled: Bool
-        /// Was missing until 2026-08-19 — undoing a deleted WHENEVER routine restored
-        /// it as a ritual, complete with a daily target it never had. Every column the
-        /// model grows must be added here or the undo silently rewrites it to the
-        /// default.
+        /// Every column the model grows must be added here, or the undo silently
+        /// rewrites it to the default (missing this one restored a whenever routine
+        /// as a ritual).
         let isOnDemand: Bool
         let sortIndex: Int
         let createdAt: Date
-        /// The routine's own sessions, deleted with it and restored with it (Nuri,
-        /// 2026-09-20). Raw columns, like everything else here — see `DeletedSession`.
+        /// The routine's own sessions, deleted and restored with it. Raw columns, like
+        /// everything else here — see `DeletedSession`.
         let sessions: [DeletedSession]
     }
 
     /// Everything needed to put a deleted session back EXACTLY as it happened — raw
     /// blobs and all, for the same reason `DeletedRoutine` carries them.
     ///
-    /// It carries the DENORMALIZED columns too (`peakKg`, `completedReps`, …), including
-    /// the two hand-log answers, rather than recomputing them from `resultsData` on
-    /// restore. `WorkoutLog`'s init derives those from the reps it is handed, so
-    /// re-deriving would quietly re-score a session under today's arithmetic — and a
-    /// session restored with different numbers than it was deleted with is worse than
-    /// one that stayed deleted.
+    /// It carries the DENORMALIZED columns too (`peakKg`, `completedReps`, …) rather
+    /// than recomputing them from `resultsData`: `WorkoutLog`'s init derives those from
+    /// the reps it is handed, so re-deriving would re-score a session under today's
+    /// arithmetic.
     struct DeletedSession: Identifiable, Sendable, Equatable {
         let id: UUID
         let startedAt: Date
@@ -163,9 +146,8 @@ final class TemplateStore {
         let fingerStrainRaw: Int?
         let durationMinutes: Int?
         let notes: String
-        /// Restored like every other raw column — without it, undoing a deleted climb
-        /// would put back a HANGBOARD session, and the day it completed would silently
-        /// go back to being incomplete.
+        /// Without it, undoing a deleted climb would put back a HANGBOARD session and
+        /// the day it completed would silently go back to incomplete.
         let kindRaw: String
 
         /// Captured as RAW columns, blobs included — see `undoDeleteSession()`.
@@ -197,15 +179,13 @@ final class TemplateStore {
     /// concluding the day is already handled. Bookkeeping, not state any view reads.
     @ObservationIgnored private var syncedDay: DayStamp
 
-    /// Every `MaxRecord` the last max fold saw, by identity — what lets a CloudKit import
-    /// that brought no max skip the one unbounded fetch (`syncAfterExternalChange`).
-    /// Identity is a complete signature because `MaxRecord` is append-only: a max is
-    /// inserted or deleted, never edited in place. nil until the first fold.
+    /// Every `MaxRecord` the last max fold saw, by identity — lets a CloudKit import
+    /// that brought no max skip the one unbounded fetch. Identity is a complete
+    /// signature because `MaxRecord` is append-only. nil until the first fold.
     @ObservationIgnored private var foldedMaxIDs: Set<PersistentIdentifier>?
     #if DEBUG
-    /// How many times the max history has been fetched and folded. A skipped fold looks
-    /// exactly like a fold that found nothing new, so the count is the only way a test can
-    /// tell them apart — and it has no reader in a release build.
+    /// How many times the max history has been fetched and folded — the only way a
+    /// test can tell a skipped fold from one that found nothing new.
     @ObservationIgnored private(set) var maxFoldCount = 0
     #endif
 
@@ -247,9 +227,6 @@ final class TemplateStore {
     /// Work that scales with HISTORY rather than with today, run once the first frame is
     /// up (`DoigtApp`'s root `.task`) instead of in `init`, which is on the launch path.
     /// Today: the one-shot training-day repair (`SessionLedger.repairTrainingDaysIfNeeded`).
-    /// It used to run in `init`, before the first derived world, over every log ever
-    /// written; now it is once per install and bounded, so drawing one frame from the
-    /// rows as they stand costs at most a cell that fills a moment later — once, ever.
     /// Recomputes only if a row actually moved.
     func runLaunchMaintenance(defaults: UserDefaults = AppGroup.defaults ?? .standard) {
         let moved = ledger.repairTrainingDaysIfNeeded(defaults: defaults)
@@ -295,13 +272,10 @@ final class TemplateStore {
         return Set(current) != folded
     }
 
-    /// From `.onChange(of: scenePhase)` and whenever the clock ticks: a phone left open
-    /// past midnight must flip 2/2 back to 0/2 without a relaunch. `clock.refresh()`
-    /// first because a device asleep across midnight may not deliver the time-change
-    /// notification until the app is active again.
-    /// Recompute if the day moved under us. Deliberately does NOT call `clock.refresh()`:
-    /// the store REACTS to the clock, it does not drive it. Pushing the clock from here
-    /// re-pins `today` to the system date on every call, which silently defeats
+    /// Recompute if the day moved under us, so a phone left open past midnight flips
+    /// 2/2 back to 0/2 without a relaunch. Does NOT call `clock.refresh()`: the store
+    /// REACTS to the clock, it does not drive it. Pushing the clock from here re-pins
+    /// `today` to the system date on every call, which silently defeats
     /// `DayClock.advance(to:)` — the seam that makes crossing midnight testable at all.
     /// The app refreshes the clock on foreground (see DoigtApp) and the clock refreshes
     /// itself on `significantTimeChange`; both paths land here afterwards.
@@ -317,30 +291,25 @@ final class TemplateStore {
     /// blank the consistency strip and, worse, hand `ReminderPlanner` an empty plan
     /// that deletes every scheduled reminder the user has.
     ///
-    /// `refoldingMaxes: false` skips the ONE fetch here that has no ceiling on it — see
-    /// `fetchMaxes` — and is the caller stating that no `MaxRecord` moved. It defaults to
-    /// true so the external triggers (launch, midnight, the notification-permission
-    /// callback) still refold unconditionally; the internal write path opts out where it
-    /// can prove it wrote no max, and a CloudKit import where the max identities did not
-    /// move (`syncAfterExternalChange`).
+    /// `refoldingMaxes: false` skips the ONE unbounded fetch (`fetchMaxes`) and is the
+    /// caller stating that no `MaxRecord` moved. It defaults to true so external
+    /// triggers (launch, midnight, the permission callback) refold unconditionally.
     func syncDerived(refoldingMaxes: Bool = true) {
         guard let routines = fetchRoutines() else { return }
         let today = clock.today
         let earliest = today - (Self.consistencyDays - 1)
         guard let logs = fetchLogs(from: earliest) else { return }
-        // Skipping the fetch and FAILING it are different things and must not collapse
-        // into one: a nil read still bails for the same reason the two above do, while a
-        // skip publishes the rest and leaves the three max-derived values standing.
+        // Skipping the fetch and FAILING it must not collapse: a nil read bails like the
+        // two above, a skip publishes the rest and leaves the max-derived values standing.
         var maxes: [MaxRecord]?
         if refoldingMaxes {
             guard let fetched = fetchMaxes() else { return }
             maxes = fetched
         }
 
-        // **Every published value is compared before it is assigned.** Observation fires
-        // on every SET, not on every change, and this runs after every save and every
-        // CloudKit import — so assigning unconditionally re-rendered every view reading
-        // any of these, on every tab, for writes that changed none of them.
+        // Every published value is compared before it is assigned: Observation fires on
+        // every SET, and this runs after every save and CloudKit import, so assigning
+        // unconditionally re-rendered every reader on every tab for no change.
         syncedDay = today
         publish(\.completionsToday, Self.completions(in: logs, on: today))
         publish(\.unattributedHangsToday, Self.unattributedHangs(in: logs, on: today))
@@ -367,23 +336,17 @@ final class TemplateStore {
             publish(\.lastMeasuredMaxAt, maxes.last { $0.source == .measured }?.recordedAt)
         }
 
-        // Recomputed here, on the same pass that recomputed the completion counts, so
-        // finishing a session re-plans the day's remaining reminders in the same breath
-        // that Today's "2 of 2" appears. `refreshIfDayChanged` runs this again at
-        // midnight, which is what restores tomorrow's full set.
-        // A device with reminders switched off contributes an EMPTY plan, which is the
-        // one path `ReminderPlanner.run` clears without asking for authorization — so
-        // flipping the switch off retires this device's pending reminders on the spot.
+        // Replanned on the same pass as the completion counts, so finishing a session
+        // re-plans the day's reminders as Today's "2 of 2" appears; midnight's run
+        // restores tomorrow's full set. A device with reminders off contributes an EMPTY
+        // plan, which `ReminderPlanner.run` clears without asking for authorization —
+        // so flipping the switch off retires this device's reminders on the spot.
         let inputs: [ReminderPlanner.RoutinePlanInput] = settings.remindsOnThisDevice ? routines.map { template in
-            // `completed(_:)`, not the raw map: a hang logged by hand has to silence the
-            // evening reminder too, and reading the map directly here is exactly how the
-            // card and the reminder drift apart.
+            // `completed(_:)`, not the raw map: a hand-logged hang must silence the
+            // evening reminder too, or the card and the reminder drift apart.
             let done = completed(template)
-            // A climb — or a benchmark — ZEROES the day's outstanding sessions, which
-            // is what stops the evening reminder firing on a night already spent at
-            // the gym or a morning spent testing maxes. That is the single most felt
-            // consequence of the rule: being told to hangboard after you have just
-            // trained is the app failing to notice.
+            // A climb or a benchmark ZEROES the day's outstanding sessions, so the
+            // evening reminder never fires on a day already trained.
             let outstanding = (climbToday != nil || benchmarkedToday)
                 ? 0
                 : max(0, max(1, template.sessionsPerDay) - done)
@@ -391,9 +354,8 @@ final class TemplateStore {
                 id: template.id,
                 name: template.name,
                 reminders: template.reminders,
-                // Whenever routines never remind. Normalization already forces their
-                // switch off on save; this is the belt for templates synced from a
-                // build that predates the rule.
+                // Whenever routines never remind. Normalization forces this off on save;
+                // this covers templates synced from an older build.
                 enabled: template.remindersEnabled && !template.isOnDemand,
                 outstandingToday: outstanding
             )
@@ -416,28 +378,24 @@ final class TemplateStore {
 
     // MARK: - Fetches
 
-    /// nil = the fetch FAILED, which is not the same as "no routines". The Optional
-    /// exists only to keep those two apart; every caller that would publish state on
-    /// the strength of the answer bails on nil.
+    /// nil = the fetch FAILED, which is not "no routines"; every caller that would
+    /// publish state on the strength of the answer bails on nil.
     private func fetchRoutines() -> [SessionTemplate]? {
         guard let fetched = try? context.fetch(FetchDescriptor<SessionTemplate>()) else { return nil }
         return fetched.sorted(by: Self.routineOrder)
     }
 
     /// The TOTAL order. Two devices that both reorder produce DUPLICATE `sortIndex`
-    /// values over CloudKit — there is no uniqueness constraint and there cannot be —
-    /// and a partial sort leaves the tie to fetch order, so the same two routines render
-    /// in opposite orders on the two phones. `id.uuidString` is the arbitrary-but-
-    /// identical tiebreak, applied in memory because `UUID` is not `Comparable` and a
-    /// SwiftData `SortDescriptor` cannot express it.
+    /// values over CloudKit, and a partial sort leaves the tie to fetch order, so two
+    /// phones render the same routines in opposite orders. `id.uuidString` is the
+    /// arbitrary-but-identical tiebreak, applied in memory because `UUID` is not
+    /// `Comparable` and a SwiftData `SortDescriptor` cannot express it.
     private static func routineOrder(_ a: SessionTemplate, _ b: SessionTemplate) -> Bool {
         if a.sortIndex != b.sortIndex { return a.sortIndex < b.sortIndex }
         if a.createdAt != b.createdAt { return a.createdAt < b.createdAt }
         return a.id.uuidString < b.id.uuidString
     }
 
-    /// `dayKey` is an Int column precisely so this is a cheap predicate rather than a
-    /// Calendar pass over every log ever written.
     /// How many sessions `recordSession` has saved since launch. Today compares it
     /// across a runner cover to know that the cover just SAVED a session, as opposed to
     /// discarding one — the moment the review prompt is allowed to consider itself.
@@ -453,6 +411,8 @@ final class TemplateStore {
         return (try? context.fetchCount(descriptor)) ?? 0
     }
 
+    /// `dayKey` is an Int column so this is a cheap predicate rather than a Calendar
+    /// pass over every log ever written.
     private func fetchLogs(from earliest: DayStamp) -> [WorkoutLog]? {
         let floor = earliest.raw
         let descriptor = FetchDescriptor<WorkoutLog>(
@@ -462,16 +422,11 @@ final class TemplateStore {
         return try? context.fetch(descriptor)
     }
 
-    /// The one UNBOUNDED fetch in the store, and deliberately so: `newestPerGrip` has to
-    /// see every grip ever tested, so a `fetchLimit` would silently drop the max for a
-    /// grip you last measured a year ago and every percent target on it with it. The
-    /// other two fetches have natural ceilings — a handful of routines, 14 days of logs —
-    /// but max records accumulate for the life of the app and are never pruned.
-    ///
-    /// Which is why it is gated rather than capped: `syncDerived(refoldingMaxes:)` runs
-    /// it only when a `MaxRecord` actually moved. It used to run on EVERY write, so
-    /// finishing an ordinary session refetched and refolded the entire measurement
-    /// history to recompute a table that could not have changed.
+    /// The one UNBOUNDED fetch in the store: `newestPerGrip` has to see every grip ever
+    /// tested, so a `fetchLimit` would silently drop the max (and every percent target)
+    /// for a grip last measured a year ago. Max records are never pruned, so this is
+    /// gated rather than capped: `syncDerived(refoldingMaxes:)` runs it only when a
+    /// `MaxRecord` actually moved.
     private func fetchMaxes() -> [MaxRecord]? {
         try? context.fetch(FetchDescriptor<MaxRecord>(sortBy: [SortDescriptor(\.recordedAt)]))
     }
@@ -487,10 +442,9 @@ final class TemplateStore {
         logs.hangCompletions(on: day)
     }
 
-    /// `.hangManual` ONLY, deliberately — not every log with a nil `templateID`. A
-    /// runner session whose routine was later deleted also has no id, and it is dropped
-    /// on purpose (see `completions`); crediting those here would retroactively change
-    /// how old days score. A hand-logged hang never had a routine to begin with.
+    /// `.hangManual` ONLY — not every log with a nil `templateID`. A runner session
+    /// whose routine was later deleted also has no id and is dropped on purpose;
+    /// crediting those here would retroactively rescore old days.
     private static func unattributedHangs(in logs: [WorkoutLog], on day: DayStamp) -> Int {
         logs.unattributedHangs(on: day)
     }
@@ -536,9 +490,7 @@ final class TemplateStore {
         }
     }
 
-    /// Newest-EDITED routine first. In M2 the only grips the app has ever seen are the
-    /// ones the user authored, so "recent" means "recently in a routine"; M3 can prepend
-    /// logged grips without changing the shape or the callers.
+    /// Newest-EDITED routine first: "recent" means "recently in a routine".
     private static func recentGrips(in routines: [SessionTemplate]) -> [GripSpec] {
         var grips: [GripSpec] = []
         var seen: Set<String> = []
@@ -549,10 +501,9 @@ final class TemplateStore {
                 if grips.count >= recentGripLimit { break outer }
             }
         }
-        // With no history at all the RECENT rail would be empty on the one screen where
-        // it helps most — a blank routine, where every set has to be built by hand. The
-        // seed palette is the common no-hang vocabulary, so the rail is a shortcut from
-        // the first tap rather than a feature that only appears once you no longer need it.
+        // With no history the RECENT rail would be empty on the screen where it helps
+        // most — a blank routine. The seed palette is the common no-hang vocabulary, so
+        // the rail is a shortcut from the first tap.
         return grips.isEmpty ? seedGrips : grips
     }
 
@@ -567,9 +518,7 @@ final class TemplateStore {
         GripSpec(edgeMM: 20, fingers: .four, position: .fullCrimp),
     ]
 
-    /// Newest per GRIP **AND HAND** — see `MaxRecord.maxKey`. Keyed on the grip alone,
-    /// recording a right-hand max would supersede the left-hand one you took a minute
-    /// earlier, and one of your two hands would silently lose its number.
+    /// Newest per GRIP **AND HAND** — see `MaxRecord.maxKey`.
     private static func newestPerGrip(_ records: [MaxRecord]) -> [String: MaxRecord] {
         // On `Collection where Element == MaxRecord` so the watch's runner resolves
         // loads against exactly the fold the phone's does.
@@ -590,9 +539,8 @@ final class TemplateStore {
 
     func plan(for template: SessionTemplate) -> SessionPlan { template.plan }
 
-    /// `nil` means "new", and a new routine is BLANK — never `.starter`. No screen
-    /// offers a prefill any more (the START FROM chips left 2026-08-19), so seeding one
-    /// here would silently put the full daily protocol under someone adding a rest day.
+    /// `nil` means "new", and a new routine is BLANK — never `.starter`, which would
+    /// silently put the full daily protocol under someone adding a rest day.
     func draft(editing template: SessionTemplate?) -> RoutineDraft {
         template.map(\.draft) ?? .blank()
     }
@@ -640,11 +588,9 @@ final class TemplateStore {
         (completionsToday[template.id] ?? 0) + unattributedHangsToday
     }
 
-    /// **A climb settles the day.** Bouldering at your limit is more finger load than
-    /// the routine it displaced, so scoring that day as a miss was the app lying about
-    /// the week (Nuri, 2026-08-05). Nothing is asked for afterwards — but the routine
-    /// stays startable, because after an easy volume evening an extra hang round is
-    /// perfectly reasonable. Offered, never demanded.
+    /// **A climb settles the day** — bouldering at your limit is more finger load than
+    /// the routine it displaced (Nuri, 2026-08-05). The routine stays startable: an
+    /// extra hang round is offered, never demanded.
     func isDoneForToday(_ template: SessionTemplate) -> Bool {
         if template.isOnDemand {
             // Never OWED — but "done" still means something: once you've run it today
@@ -708,11 +654,9 @@ final class TemplateStore {
     }
 
     /// The Maxes tab's SOFT NUDGE: true once the newest measured max is four weeks
-    /// stale. Nobody who has never measured gets nudged — there is nothing to re-test,
-    /// and the tab's own empty state does the inviting. Four weeks because finger
-    /// strength moves on a monthly timescale; there is deliberately no setting for it
-    /// (a cadence you configure is a schedule, and the schedule was voted down for a
-    /// pulse).
+    /// stale. Nobody who has never measured gets nudged — the tab's empty state does
+    /// the inviting. Four weeks because finger strength moves on a monthly timescale;
+    /// no setting, because a configured cadence is a schedule, which was voted down.
     var benchmarkNudge: Bool {
         guard let last = lastMeasuredMaxAt else { return false }
         return Date.now.timeIntervalSince(last) >= 28 * 86_400
@@ -724,8 +668,7 @@ final class TemplateStore {
 
     /// Rung 2 of Today's selection rule: the routine started today on THIS device.
     /// DEVICE-LOCAL and day-scoped — a synced "primary" flag is the classic
-    /// second-device bug, and yesterday's choice is not evidence about today. M3 swaps
-    /// the backing store for today's newest log without changing this contract.
+    /// second-device bug, and yesterday's choice is not evidence about today.
     var suggestedRoutineID: UUID? {
         guard settings.lastStartedDayRaw == clock.today.raw else { return nil }
         return settings.lastStartedRoutineID
@@ -796,15 +739,12 @@ final class TemplateStore {
 
     /// A scanned routine (or the reason a scan failed), HELD rather than presented.
     ///
-    /// A `getagrip://` link arrives from outside the app entirely — the system Camera, a
-    /// message — and can land while a full-screen cover owns the screen. Presenting
-    /// from the root at that moment was measured tearing the cover down (2026-08-19,
-    /// simulator): a running SESSION died unlogged, around every safeguard the runner
-    /// has, and the builder lost its unsaved edits with the import sheet never even
-    /// appearing. So the URL is decoded here into a value, and `TodayView` — the one
-    /// view that owns every conflicting presentation — drains the inbox when nothing
-    /// else is on screen. One slot, latest scan wins: two codes scanned back to back
-    /// are one decision, about the second one.
+    /// A `getagrip://` link arrives from outside the app and can land while a
+    /// full-screen cover owns the screen. Presenting from the root then tore the cover
+    /// down: a running session died unlogged and the builder lost its edits. So the URL
+    /// is decoded here into a value, and `TodayView` — the view that owns every
+    /// conflicting presentation — drains the inbox when nothing else is on screen. One
+    /// slot, latest scan wins.
     private(set) var pendingImport: RoutineDraft?
     private(set) var pendingImportError: String?
 
@@ -837,27 +777,23 @@ final class TemplateStore {
         uniqueName(wanted)
     }
 
-    /// A routine that arrived from somebody else's QR code — `duplicate`'s twin, and
-    /// deliberately the same two moves: deconflict the name, then `create`. There is no
-    /// second save path, so an import lands at the END of the sort order like every
-    /// other new routine and can never displace the one Today opens on.
+    /// A routine from somebody else's QR code — `duplicate`'s twin: deconflict the
+    /// name, then `create`, so an import lands at the END of the sort order and can
+    /// never displace the one Today opens on.
     ///
-    /// Two facts are re-asserted here rather than trusted from the wire, because this is
-    /// the last gate before disk and the payload is untrusted input:
+    /// Two facts are re-asserted rather than trusted, because the payload is untrusted:
     ///
     /// - **`templateID` is nilled.** `SessionTemplate.init(draft:)` ADOPTS a draft's id,
     ///   so a code carrying its author's UUID would mint a routine wearing somebody
     ///   else's identity — and that id is what `doigt.routine.<uuid>.<slot>` reminder
     ///   identifiers are built from. Same reason `RoutineDraft.copying` nils it.
-    /// - **Reminders are forced OFF.** They are personal times the payload deliberately
-    ///   omits, and `create` asks for notification permission whenever a draft arrives
-    ///   with them on — an OS prompt raised by scanning a stranger's code is an ambush,
-    ///   not a request.
+    /// - **Reminders are forced OFF.** The payload omits personal times, and `create`
+    ///   asks for notification permission whenever a draft has them on — an OS prompt
+    ///   raised by scanning a stranger's code is an ambush.
     @discardableResult
     func importRoutine(_ draft: RoutineDraft) -> SessionTemplate? {
-        // Normalized FIRST so the name `uniqueName` deconflicts is the name that will
-        // actually be written — an empty one becomes the house default on the way in,
-        // and deconflicting the empty string would let two "Daily no-hangs" through.
+        // Normalized FIRST so `uniqueName` deconflicts the name actually written — an
+        // empty one becomes the house default, and deconflicting "" would let two through.
         var incoming = draft.normalized
         incoming.templateID = nil
         incoming.remindersEnabled = false
@@ -865,9 +801,8 @@ final class TemplateStore {
         return create(incoming)
     }
 
-    /// Duplicating twice must not produce two routines called "Copy of Daily no-hangs":
-    /// the routine carousel needs distinct titles, so identical ones make the second routine
-    /// unpickable by sight. Suffixes count up from 2 — "Copy of X", "Copy of X 2".
+    /// The routine carousel needs distinct titles, or the second routine is unpickable
+    /// by sight. Suffixes count up from 2 — "Copy of X", "Copy of X 2".
     private func uniqueName(_ wanted: String) -> String {
         let taken = Set((fetchRoutines() ?? []).map(\.name))
         guard taken.contains(wanted) else { return wanted }
@@ -879,13 +814,10 @@ final class TemplateStore {
     @discardableResult
     func delete(_ template: SessionTemplate) -> Bool {
         guard template.modelContext != nil else { return false }
-        // ITS SESSIONS GO WITH IT (Nuri, 2026-09-20). A deleted routine used to keep its
-        // history — "history answers for itself" — and the result was a "Load per grip"
-        // card that went on charting a routine that no longer existed. The sessions are
-        // snapshotted exactly as a single deleted session is, raw columns and blobs, and
-        // the same Undo puts routine and sessions back together. A read that FAILS
-        // refuses the whole delete: deleting the routine anyway would leave its sessions
-        // behind as orphans nothing on screen can reach.
+        // ITS SESSIONS GO WITH IT (Nuri, 2026-09-20) — kept, they went on charting a
+        // routine that no longer existed. They are snapshotted as raw columns like a
+        // single deleted session, and the same Undo restores both. A read that FAILS
+        // refuses the whole delete rather than leave orphans nothing can reach.
         let routineID: UUID? = template.id
         let ownSessions = FetchDescriptor<WorkoutLog>(
             predicate: #Predicate<WorkoutLog> { $0.templateID == routineID },
@@ -938,18 +870,15 @@ final class TemplateStore {
 
     /// Re-insert with the ORIGINAL UUID, sortIndex and raw blob `Data`.
     ///
-    /// The id matters because `doigt.routine.<uuid>.r0480` identifiers are content-keyed
-    /// on it — a new id would leave the old reminders orphaned and firing. The raw blobs
-    /// matter because decoding and re-encoding a routine written by a NEWER build drops
-    /// every field this one does not understand, and losing a field to the gesture whose
-    /// entire job is putting things back is the worst possible place for it.
+    /// The id matters because `doigt.routine.<uuid>.r0480` identifiers are keyed on it —
+    /// a new id would leave the old reminders orphaned and firing. The raw blobs matter
+    /// because re-encoding a routine written by a NEWER build drops every field this one
+    /// does not understand.
     func undoDelete() {
         guard let restorable = lastDeleted else { return }
         undoExpiry?.cancel()
 
-        // Built from a default draft and then overwritten column by column. Going
-        // through `apply(_:)` would re-encode the blobs, which is exactly what this
-        // must not do.
+        // Overwritten column by column: `apply(_:)` would re-encode the blobs.
         let template = SessionTemplate(draft: RoutineDraft(), sortIndex: restorable.sortIndex)
         template.id = restorable.id
         template.name = restorable.name
@@ -972,19 +901,16 @@ final class TemplateStore {
         template.isOnDemand = restorable.isOnDemand
         template.sortIndex = restorable.sortIndex
         template.createdAt = restorable.createdAt
-        // `updatedAt` is deliberately NOT restored: the restore is itself the most
-        // recent thing that happened to this routine, and `recentGrips` reads that
-        // order.
+        // `updatedAt` is NOT restored: the restore is the most recent thing that
+        // happened to this routine, and `recentGrips` reads that order.
         template.updatedAt = .now
         context.insert(template)
-        // Its sessions come back with it, by the same raw-column path a single deleted
-        // session takes — see `restored(_:)`.
+        // Its sessions come back by the single-session raw-column path, `restored(_:)`.
         for session in restorable.sessions { context.insert(Self.restored(session)) }
         persistAndSync(maxesChanged: false)
 
-        // Only consume the undo once the restore has landed. Clearing it first would
-        // mean a rolled-back save loses the routine for good — the one outcome the
-        // undo bar exists to prevent.
+        // Only consume the undo once the restore has landed, or a rolled-back save
+        // loses the routine for good.
         if saveError == nil {
             lastDeleted = nil
         } else {
@@ -1061,12 +987,9 @@ final class TemplateStore {
         return saveError == nil ? log : nil
     }
 
-    /// Write a finished session. Goes through the hub like every other mutation, so
-    /// the completion count on Today and the consistency strip update in the same
-    /// breath — a session that vanished until relaunch would read as lost work.
-    ///
-    /// `day` comes from the app's own `DayClock`, not `Date.now`, so a session finished
-    /// at 00:30 lands on the day the climber actually lived through.
+    /// Write a finished session. `day` comes from the app's own `DayClock`, not
+    /// `Date.now`, so a session finished at 00:30 lands on the day the climber lived
+    /// through.
     @discardableResult
     func recordSession(plan: SessionPlan,
                        template: SessionTemplate?,
@@ -1074,10 +997,9 @@ final class TemplateStore {
                        startedAt: Date,
                        finishedAt: Date,
                        rpe: RPE?, newMaxes: [MaxRecord] = []) -> WorkoutLog? {
-        // The write itself is `SessionLedger`'s — one implementation for the phone and
-        // the watch. What is the STORE's is everything that follows a write: the
-        // completion counts, the strip, the reminders and the review prompt's tally,
-        // recomputed in the same breath so a session never vanishes until relaunch.
+        // The write is `SessionLedger`'s, shared with the watch. The STORE owns what
+        // follows — counts, strip, reminders, review tally — recomputed in the same
+        // breath so a session never vanishes until relaunch.
         let log = ledger.recordSession(plan: plan, template: template, reps: reps,
                                        startedAt: startedAt, finishedAt: finishedAt,
                                        rpe: rpe, newMaxes: newMaxes)
@@ -1090,11 +1012,10 @@ final class TemplateStore {
 
     /// Remove a session from history — the one destructive act on this data.
     ///
-    /// It is not merely a row disappearing: `dayKey` and `sessionsPerDayTarget` are what
-    /// "2 of 2 today" and the consistency strip are counted from, so deleting today's
-    /// session must walk Today's completion back in the same breath. `persistAndSync`
-    /// is what guarantees that, which is why this goes through the hub like every other
-    /// write rather than calling `context.delete` from the view.
+    /// `dayKey` and `sessionsPerDayTarget` are what "2 of 2 today" and the strip count
+    /// from, so deleting today's session must walk Today's completion back in the same
+    /// breath — which is why this goes through the hub rather than `context.delete`
+    /// from the view.
     @discardableResult
     func deleteSession(_ log: WorkoutLog) -> Bool {
         guard log.modelContext != nil else { return false }
@@ -1112,11 +1033,9 @@ final class TemplateStore {
 
     /// Re-insert with the ORIGINAL UUID, dates and raw blob `Data`.
     ///
-    /// Built from a placeholder and overwritten column by column, exactly as
-    /// `undoDelete()` is and for the same two reasons: `WorkoutLog`'s init RE-DERIVES
-    /// every denormalized number from the reps it is given, and encoding a plan this
-    /// build cannot fully decode would drop whatever a newer one wrote. A session is a
-    /// record of something that happened — putting it back must not recompute it.
+    /// Overwritten column by column, as in `undoDelete()`: `WorkoutLog`'s init
+    /// RE-DERIVES every denormalized number, and re-encoding would drop what a newer
+    /// build wrote. Putting a session back must not recompute it.
     func undoDeleteSession() {
         guard let restorable = lastDeletedSession else { return }
         sessionUndoExpiry?.cancel()
@@ -1210,13 +1129,11 @@ final class TemplateStore {
             context.insert(MaxRecord(grip: value.grip, kg: value.kg,
                                      source: value.source, side: value.side))
         }
-        // **A MEASURED max makes today a benchmark day** — the lightweight version of a
-        // test session (Nuri, 2026-08-10): no ceremony, but the day still reads as
-        // trained, the grid fills, and no reminder nags after maximal pulls. One log
-        // per day however many grips get tested; typed numbers never create one,
-        // because typing is not training. `marksBenchmarkDay: false` is the session-PR
-        // path: a max hit INSIDE a routine already logged its session, and settling
-        // the day on top would silently cancel the evening ritual.
+        // **A MEASURED max makes today a benchmark day** (Nuri, 2026-08-10): the day
+        // reads as trained, the grid fills, no reminder nags after maximal pulls. One
+        // log per day; typed numbers never create one. `marksBenchmarkDay: false` is
+        // the session-PR path: that session is already logged, and settling the day on
+        // top would silently cancel the evening ritual.
         if marksBenchmarkDay, values.contains(where: { $0.source == .measured }),
            benchmarkedToday == false,
            let todaysLogs = fetchLogs(from: clock.today), !todaysLogs.benchmark(on: clock.today) {
@@ -1258,13 +1175,9 @@ final class TemplateStore {
 
             /// **The move, in one sentence** — `25–30 % · now 8.0–12.0 kg · was 7.0–10.0`.
             ///
-            /// Here rather than on either screen, because TWO report this same fact at
-            /// two moments: the impact block while a max is being entered
-            /// (`MaxesView`) and the receipt once it is saved (`MaxSaveReceipt`). Two
-            /// copies of the wording could only drift, and then the receipt would
-            /// explain a move in different words from the sheet that offered it. The
-            /// band is the house `WeightUnit.bandText`, unitless — the line states the
-            /// unit once, after the newer number.
+            /// Here rather than on a screen because two report it — the impact block
+            /// (`MaxesView`) and the receipt (`MaxSaveReceipt`) — and two copies of the
+            /// wording would drift. The unit is stated once, after the newer number.
             func line(unit: WeightUnit) -> String {
                 let pct = String(localized: "\(Int((loPercent * 100).rounded()))–\(Int((hiPercent * 100).rounded())) %")
                 var line = String(localized: "\(pct) · now \(unit.bandText(newBand, withUnit: false)) \(unit.symbol)")
@@ -1493,25 +1406,17 @@ final class TemplateStore {
     /// routines, multiplied by `ratio`. Normalized exactly as a builder save is, so a
     /// rescale cannot produce a routine the builder itself would have refused.
     ///
-    /// **Applied to every routine first, then persisted ONCE.** It used to call
-    /// `save(draft)` per routine, and that is the builder's entry point — it drags a full
-    /// `context.save()`, a whole-store `syncDerived()` and a reminder replan behind each
-    /// one. For what is a single tap ("Scale them with the new max") on a grip that
-    /// appears in four routines, that was four of each. Going direct also stops it
-    /// calling `clearDraft()`, which would have discarded the builder's unsaved rescue
-    /// copy as a side effect of a tap in the Maxes tab, and makes the rescale ATOMIC — a
-    /// write that fails now rolls every routine back together, where before it could
-    /// leave half the offer scaled and half not.
+    /// **Applied to every routine first, then persisted ONCE** — not via `save(draft)`,
+    /// which drags a save, a full `syncDerived()` and a replan behind each routine, and
+    /// calls `clearDraft()` (discarding the builder's rescue copy). One write also makes
+    /// the rescale ATOMIC: a failure rolls every routine back together.
     ///
-    /// It deliberately does NOT `askNotificationPermissionOnce`: every routine here has
-    /// already been through the builder at least once, which is where that question
-    /// belongs — an OS permission alert raised from a max-entry sheet arrives with no
-    /// reason anywhere on screen.
+    /// Does NOT `askNotificationPermissionOnce`: an OS alert raised from a max-entry
+    /// sheet arrives with no reason on screen.
     @discardableResult
     func scaleKgTargets(grip: GripSpec, ratio: Double, routineIDs: [UUID]) -> Bool {
         guard ratio.isFinite, ratio > 0 else { return false }
-        // ONE fetch for the batch: `routine(id:)` fetches and sorts every routine in the
-        // store, so asking it per id paid for that N times over.
+        // ONE fetch for the batch: `routine(id:)` fetches and sorts every routine.
         guard let routines = fetchRoutines() else { return false }
         let wanted = Set(routineIDs)
 
@@ -1536,8 +1441,7 @@ final class TemplateStore {
             applied = true
         }
 
-        // Nothing was touched, so there is nothing to save and no rollback to survive —
-        // and an empty save would still cost a full sync.
+        // Nothing touched: an empty save would still cost a full sync.
         guard applied else { return allApplied }
         // The new max was written and folded by `recordMax` before this offer was even
         // computed; this write moves routines only.
@@ -1580,10 +1484,9 @@ final class TemplateStore {
     /// `maxesChanged: false` is the caller asserting that this write touched no
     /// `MaxRecord`, which is what lets `syncDerived` skip the unbounded fetch.
     ///
-    /// It defaults to TRUE so the conservative answer is the one you get by forgetting,
-    /// and the DEBUG assert catches the other direction — a `false` that is a lie leaves
-    /// `maxTable` stale, and every percent-of-max band in the app resolves through it.
-    /// The check has to run BEFORE the save, which is what drains the pending sets.
+    /// It defaults to TRUE so forgetting is conservative; the DEBUG assert catches a
+    /// `false` that lies, which would leave `maxTable` (and every percent band) stale.
+    /// The check runs BEFORE the save, which drains the pending sets.
     private func persistAndSync(maxesChanged: Bool = true) {
         #if DEBUG
         if !maxesChanged {
