@@ -20,13 +20,40 @@ import kotlinx.coroutines.launch
 internal interface CueAudioOutput {
     fun write(buffer: FloatArray, offset: Int, count: Int): Int
     fun close()
+
+    /// Frames written but not yet played, or null when the output cannot say — the
+    /// keep-alive feed is then skipped rather than guessed at.
+    fun queuedFrames(): Int? = null
 }
+
+/** Keeps the output FED between cues, which is what the iPhone gets for free.
+ *
+ * iOS schedules cue buffers on an `AVAudioPlayerNode` whose engine renders continuously,
+ * silence included, from `begin()` to `end()` — so the route is awake before the first
+ * tick and stays awake through a two-minute rest. A streaming `AudioTrack` fed only cue
+ * samples does the opposite: it starves between cues, the output drops to standby after a
+ * few seconds, and the next cue pays the wake-up — clipped on the speaker, often lost
+ * entirely on Bluetooth, where waking A2DP costs longer than a 60 ms tick lasts. A brand
+ * new track is worse still: it does not start until its start threshold fills, so the
+ * first "3" of a countdown sat in the buffer until the "2" pushed it out, and the two
+ * sounded together. Feeding silence at a small lead fixes both, at the price iOS already
+ * pays: an audio path held open for the session.
+ */
+internal class CueKeepAlive(
+    /// One chunk of silence, written whenever the queued lead drops below [lowWaterFrames].
+    val silence: FloatArray,
+    /// The lead kept queued while idle. Small, because a cue queues BEHIND it: this is
+    /// the latency added to every cue, so it is tens of milliseconds, not hundreds.
+    val lowWaterFrames: Int,
+    val pollMillis: Long,
+)
 
 internal class CueAudioQueue(
     private val dispatcher: CoroutineDispatcher,
     private val enabled: () -> Boolean,
     private val render: (ToneSynth.Tone) -> FloatArray,
     private val open: () -> CueAudioOutput?,
+    private val keepAlive: CueKeepAlive? = null,
 ) {
     private var queue: Channel<ToneSynth.Tone>? = null
     private var worker: Job? = null
@@ -43,29 +70,68 @@ internal class CueAudioQueue(
                 output = null
                 runCatching { previous?.close() }
             }
+            // One tone, written in full. Partial writes are completed; a failed route is
+            // rebuilt once and the samples already written are kept.
+            suspend fun writeTone(tone: ToneSynth.Tone) {
+                val buffer = render(tone)
+                var offset = 0
+                var stalls = 0
+                var rebuilt = false
+                while (offset < buffer.size && enabled()) {
+                    currentCoroutineContext().ensureActive()
+                    if (output == null) output = runCatching(open).getOrNull()
+                    val active = output ?: break
+                    val written = runCatching { active.write(buffer, offset, buffer.size - offset) }.getOrDefault(-1)
+                    when {
+                        written > 0 && written <= buffer.size - offset -> {
+                            offset += written
+                            stalls = 0
+                        }
+                        written == 0 && ++stalls < 200 -> delay(5)
+                        else -> {
+                            close()
+                            if (rebuilt || written == 0) break
+                            rebuilt = true
+                        }
+                    }
+                }
+            }
+            // Idle: top the lead up with silence. One nonblocking attempt — a short write
+            // of silence is simply less silence, and a failing route closes so the next
+            // pass (or cue) opens a fresh one.
+            // Polls to skip before trying to open again after a failed open: with no usable
+            // route, retrying every poll would be a hundred native calls a second. Two
+            // seconds matches the iPhone's retry of a dead engine.
+            var openBackoff = 0
+            fun feed(feed: CueKeepAlive) {
+                if (!enabled()) return
+                if (output == null) {
+                    if (openBackoff > 0) { openBackoff--; return }
+                    output = runCatching(open).getOrNull()
+                    if (output == null) openBackoff = (2_000 / feed.pollMillis.coerceAtLeast(1)).toInt()
+                }
+                val active = output ?: return
+                val queued = runCatching { active.queuedFrames() }.getOrNull() ?: return
+                if (queued >= feed.lowWaterFrames) return
+                val written = runCatching { active.write(feed.silence, 0, feed.silence.size) }.getOrDefault(-1)
+                if (written < 0) close()
+            }
             try {
-                for (tone in channel) {
-                    if (!enabled()) continue
-                    val buffer = render(tone)
-                    var offset = 0
-                    var stalls = 0
-                    var rebuilt = false
-                    while (offset < buffer.size && enabled()) {
-                        currentCoroutineContext().ensureActive()
-                        if (output == null) output = runCatching(open).getOrNull()
-                        val active = output ?: break
-                        val written = runCatching { active.write(buffer, offset, buffer.size - offset) }.getOrDefault(-1)
-                        when {
-                            written > 0 && written <= buffer.size - offset -> {
-                                offset += written
-                                stalls = 0
-                            }
-                            written == 0 && ++stalls < 200 -> delay(5)
-                            else -> {
-                                close()
-                                if (rebuilt || written == 0) break
-                                rebuilt = true
-                            }
+                val feed = keepAlive
+                if (feed == null) {
+                    for (tone in channel) {
+                        if (enabled()) writeTone(tone)
+                    }
+                } else {
+                    while (true) {
+                        val next = channel.tryReceive()
+                        if (next.isClosed) break
+                        val tone = next.getOrNull()
+                        if (tone != null) {
+                            if (enabled()) writeTone(tone)
+                        } else {
+                            feed(feed)
+                            delay(feed.pollMillis)
                         }
                     }
                 }

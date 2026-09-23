@@ -6,12 +6,14 @@ package run.nuri.getagrip.runner
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import java.util.concurrent.ConcurrentHashMap
 import run.nuri.getagrip.engine.RunnerCue
 import kotlin.math.PI
 import kotlin.math.exp
@@ -52,9 +54,16 @@ import kotlin.math.sin
 /// from `scheduleBuffer` without `.interrupts`: cues QUEUE rather than cutting each other
 /// off, because the runner returns them in batches (a final rep yields rep-end, set-end and
 /// session-end together) and interrupting would leave only the last one audible.
-/// `CHHapticEngine` patterns become `VibrationEffect` waveforms; Android has no sharpness
-/// axis, so intensity is mapped to amplitude and sharpness to DURATION — a sharp cue is a
-/// short tick, a dull one a longer buzz, which is the closest the hardware gets.
+///
+/// **The track is kept FED between cues** (`CueKeepAlive`), because the iPhone's engine
+/// renders continuously from `begin()` to `end()` and a starved Android track does not:
+/// the output fell to standby during every rest and the next tick paid the wake-up —
+/// clipped on the speaker, lost on Bluetooth — and a fresh track held its first cue until
+/// its start threshold filled. Same tones, same envelopes, same pitches at the device's
+/// own sample rate; this is what makes them ARRIVE the way they do on the iPhone.
+///
+/// `CHHapticEngine` patterns become `VibrationEffect`s — composition primitives where the
+/// vibrator has them, which is the nearest thing to a Core Haptics transient. See `CueHaptic`.
 class CuePlayer(
     context: Context,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -63,11 +72,28 @@ class CuePlayer(
     private val appContext = context.applicationContext
 
     private var isRunning = false
+    /// The output's own rate, so the mixer never resamples a tone. The pitches are the
+    /// same at any rate — `ToneSynth.render` works in seconds — so a Pixel at 48 kHz and an
+    /// iPhone at 44.1 kHz play the identical figure.
+    private val outputRate: Int by lazy {
+        runCatching { AudioTrack.getNativeOutputSampleRate(AudioManager.STREAM_MUSIC) }
+            .getOrNull()?.takeIf { it in 8_000..192_000 } ?: ToneSynth.SAMPLE_RATE
+    }
+
+    /// Rendered once per tone and kept, as iOS builds its nine buffers once at `begin()`.
+    /// Concurrent because a new session's worker can start while the last one finishes.
+    private val rendered = ConcurrentHashMap<ToneSynth.Tone, FloatArray>()
+
     private val audio = CueAudioQueue(
         dispatcher = dispatcher,
         enabled = { true },
-        render = { ToneSynth.render(ToneSynth.notes(it)) },
+        render = { tone -> rendered.getOrPut(tone) { ToneSynth.render(ToneSynth.notes(tone), outputRate) } },
         open = ::openTrack,
+        keepAlive = CueKeepAlive(
+            silence = FloatArray(outputRate / 50), // 20 ms
+            lowWaterFrames = outputRate * 3 / 100, // 30 ms
+            pollMillis = 8,
+        ),
     )
 
     /// Null on a device with no vibrator — everything haptic short-circuits on it rather
@@ -176,34 +202,56 @@ class CuePlayer(
                 .build()
             val format = AudioFormat.Builder()
                 .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                .setSampleRate(ToneSynth.SAMPLE_RATE)
+                .setSampleRate(outputRate)
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                 .build()
             val minBytes = AudioTrack.getMinBufferSize(
-                ToneSynth.SAMPLE_RATE,
+                outputRate,
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_FLOAT,
             ).coerceAtLeast(FALLBACK_BUFFER_BYTES)
-            // A short buffer keeps queued feedback close to the action that caused it.
-            val bytes = maxOf(minBytes, ToneSynth.SAMPLE_RATE / 10 * Float.SIZE_BYTES)
+            // Room for the longest figure (the 0.52 s session chord) plus the keep-alive
+            // lead, so every cue lands in ONE write and a burst never has to wait on the
+            // poll loop mid-figure. Capacity is not latency: only what is queued plays
+            // before a cue, and the keep-alive holds that to tens of milliseconds.
+            val bytes = maxOf(minBytes, outputRate * 3 / 4 * Float.SIZE_BYTES)
             AudioTrack.Builder()
                 .setAudioAttributes(attributes)
                 .setAudioFormat(format)
                 .setBufferSizeInBytes(bytes)
                 .setTransferMode(AudioTrack.MODE_STREAM)
+                // A request, not a guarantee: the system falls back to the normal mixer
+                // when it cannot grant a fast track, which is no worse than before.
+                .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
                 .build()
         }.getOrNull() ?: return null
         if (built.state != AudioTrack.STATE_INITIALIZED) {
             runCatching { built.release() }
             return null
         }
+        // A new streaming track waits for its WHOLE buffer before it starts — which, with a
+        // buffer sized for the longest chord, would hold the first tick back indefinitely.
+        // Start on the first ~5 ms instead; the keep-alive fills behind it.
+        runCatching { built.setStartThresholdInFrames(maxOf(1, outputRate / 200)) }
         if (runCatching { built.play() }.isFailure) {
             runCatching { built.release() }
             return null
         }
+        // Frames handed to the track, for `queuedFrames`. Worker-only, like every call here.
+        var framesWritten = 0L
         return object : CueAudioOutput {
-            override fun write(buffer: FloatArray, offset: Int, count: Int): Int =
-                built.write(buffer, offset, count, AudioTrack.WRITE_NON_BLOCKING)
+            override fun write(buffer: FloatArray, offset: Int, count: Int): Int {
+                val written = built.write(buffer, offset, count, AudioTrack.WRITE_NON_BLOCKING)
+                if (written > 0) framesWritten += written
+                return written
+            }
+
+            // The head position is an unsigned 32-bit frame count; masked, it cannot go
+            // negative across a wrap no session will ever reach.
+            override fun queuedFrames(): Int? {
+                val played = built.playbackHeadPosition.toLong() and 0xFFFF_FFFFL
+                return (framesWritten - played).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+            }
 
             override fun close() {
                 runCatching { built.pause() }
@@ -216,20 +264,49 @@ class CuePlayer(
 
     // MARK: - Haptics
 
+    /// What this vibrator can actually express, asked once. Primitives are the closest
+    /// Android comes to Core Haptics' transients; amplitude control is the next best.
+    private val hapticRange: HapticRange by lazy {
+        val device = vibrator ?: return@lazy HapticRange.predefined
+        val composed = runCatching {
+            device.areAllPrimitivesSupported(*CueHaptic.PRIMITIVES)
+        }.getOrDefault(false)
+        when {
+            composed -> HapticRange.composed
+            runCatching { device.hasAmplitudeControl() }.getOrDefault(false) -> HapticRange.amplitude
+            else -> HapticRange.predefined
+        }
+    }
+
     private fun haptic(kind: CueHaptic) {
         if (!isRunning) return
         val device = vibrator ?: return
-        runCatching { device.vibrate(kind.effect()) }
+        runCatching { device.vibrate(kind.effect(hapticRange)) }
     }
 }
 
+/// How much of a haptic figure this device's vibrator can express.
+enum class HapticRange { composed, amplitude, predefined }
+
 /// The seven haptic figures, mapped onto what Android's vibrator can actually express.
 ///
-/// iOS has an intensity axis AND a sharpness axis; Android has amplitude and time. So
-/// intensity becomes AMPLITUDE and sharpness becomes DURATION — a sharp cue is a short
-/// tick, a dull one a longer buzz. The ramp keeps its swell as a rising waveform, because
-/// "go" is a state you enter and a swell is still felt through a hand already closing on
-/// the edge.
+/// iOS plays these through Core Haptics: TRANSIENTS (a tap with an intensity and a
+/// sharpness) and CONTINUOUS events (a buzz, a swell). Android gets as close as the
+/// hardware allows, in three tiers:
+///
+/// - **composed** — `VibrationEffect.Composition` primitives. A primitive CLICK or TICK is
+///   the device maker's own tuned transient, which is what a Core Haptics transient is on an
+///   iPhone; a fixed-length one-shot on the same motor is a short buzz, and at 10 ms on
+///   many motors it is felt as nothing at all. Intensity maps to the primitive's scale,
+///   sharpness chooses the primitive (sharp → CLICK/TICK, dull → LOW_TICK).
+/// - **amplitude** — one-shots and waveforms, intensity as amplitude and sharpness as
+///   DURATION: a sharp cue is a short tick, a dull one a longer buzz.
+/// - **predefined** — no amplitude control: `EFFECT_CLICK` and friends, which every
+///   device maps to something it can play, instead of one-shots whose amplitude would be
+///   silently ignored and leave every transient feeling the same.
+///
+/// The continuous figures (the "go" swell, the alarm buzz) stay waveforms in every tier
+/// that can shape them: no primitive is a sustained buzz.
 enum class CueHaptic {
     crisp,
     crispStrong,
@@ -239,7 +316,34 @@ enum class CueHaptic {
     buzzSoft,
     heavyDouble;
 
-    fun effect(): VibrationEffect = when (this) {
+    fun effect(range: HapticRange): VibrationEffect = when (range) {
+        HapticRange.composed -> composed() ?: amplitude()
+        HapticRange.amplitude -> amplitude()
+        HapticRange.predefined -> predefined()
+    }
+
+    /// Null for the continuous figures, which fall through to the amplitude waveforms.
+    private fun composed(): VibrationEffect? {
+        val composition = VibrationEffect.startComposition()
+        when (this) {
+            crisp -> composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.6f)
+            crispStrong -> composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
+            // Soft and dull on iOS (intensity 0.45, sharpness 0.35). LOW_TICK is the dull
+            // primitive; it is also the faintest, so it gets more scale than 0.45 to land at
+            // the same felt weight.
+            soft -> composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.7f)
+            // Two knocks whose STARTS are 160 ms apart, as on iOS; the delay is measured from
+            // the end of the first primitive, which is ~10-20 ms long.
+            heavyDouble -> {
+                composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
+                composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 145)
+            }
+            ramp, buzz, buzzSoft -> return null
+        }
+        return composition.compose()
+    }
+
+    private fun amplitude(): VibrationEffect = when (this) {
         crisp -> VibrationEffect.createOneShot(10, 153)
         crispStrong -> VibrationEffect.createOneShot(16, 255)
         soft -> VibrationEffect.createOneShot(22, 115)
@@ -256,6 +360,26 @@ enum class CueHaptic {
             longArrayOf(0, 16, 144, 16),
             intArrayOf(0, 255, 0, 255),
             -1,
+        )
+    }
+
+    private fun predefined(): VibrationEffect = when (this) {
+        crisp -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+        crispStrong -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
+        soft -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+        heavyDouble -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
+        // No amplitude to shape, so the swell becomes its length alone.
+        ramp -> VibrationEffect.createOneShot(320, VibrationEffect.DEFAULT_AMPLITUDE)
+        buzz -> VibrationEffect.createOneShot(280, VibrationEffect.DEFAULT_AMPLITUDE)
+        buzzSoft -> VibrationEffect.createOneShot(140, VibrationEffect.DEFAULT_AMPLITUDE)
+    }
+
+    companion object {
+        /// Every primitive `composed()` uses: a device that lacks any of them gets the
+        /// amplitude tier for ALL figures, so one cue never feels unlike its family.
+        val PRIMITIVES = intArrayOf(
+            VibrationEffect.Composition.PRIMITIVE_CLICK,
+            VibrationEffect.Composition.PRIMITIVE_LOW_TICK,
         )
     }
 }

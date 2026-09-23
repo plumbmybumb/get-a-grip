@@ -560,8 +560,24 @@ class RunnerSession(
     ///    until the summary is resolved — `end()`, from Save or Discard, stops both.
     private fun finish() {
         onFinished?.invoke(outcome())
+        // **A finished session lets go of what only a running one needs**, as the iPhone
+        // does at the same moment: the heartbeat, the stream watchdog and the sample
+        // callback. The summary can sit open for minutes and none of them has anything left
+        // to measure. `end()` still runs later and only undoes what is still live.
+        ticker?.cancel()
+        ticker = null
+        streamWatchdog?.cancel()
+        streamWatchdog = null
+        if (!timerOnly) device.onSample = null
         if (!timerOnly && device.isStreaming) device.stopStreaming(StreamStopCause.sessionEnded)
         activity.showFinished(routineName)
+        // The cue player is released a beat later, not now: the session-complete chord is
+        // queued by this very `send` and stopping the output in the same turn would cut it.
+        // Until then the keep-alive holds the audio path open, which the summary does not need.
+        scope.launch {
+            delay(CUE_RELEASE_AFTER_FINISH_MILLIS)
+            if (!hasEnded) cues.end()
+        }
     }
 
     /// Advance the wall clock and beat once. The ticker's body, exposed so a test can drive
@@ -787,6 +803,8 @@ class RunnerSession(
         /// resolution anything on screen can show — enough that a phase boundary is never
         /// visibly late, cheap enough to run for twenty minutes.
         const val TICK_MILLIS = 100L
+        /// How long the cue player outlives the finish, so the session chord (0.52 s) plays out.
+        const val CUE_RELEASE_AFTER_FINISH_MILLIS = 1_000L
 
         /// One cheap check every 500 ms for the session's whole life; the silence it acts on
         /// is `silenceRestartSeconds`, which is per-gauge.
