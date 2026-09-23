@@ -81,30 +81,21 @@ import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.tour.TourTarget
 import run.nuri.getagrip.ui.tour.tourAnchor
 
-/// The routine you are committing to, as one card, in three ZONES: identity + today's
-/// status (tight), the plan as one line (which IS the edit surface), and the one action.
-/// Spacing does the grouping — 6 dp inside a zone, 16 dp between zones — because proximity
-/// is how the eye assigns belonging: when every row sat a uniform 14 dp from its neighbour,
-/// title, dots, plan and button read as six unrelated things "slapped in" (Nuri's words,
-/// and he was right).
+/// The routine you are committing to, as one card in three ZONES: identity + today's status,
+/// the plan as one line (which IS the edit surface), and the one action. Spacing does the
+/// grouping — 6 dp inside a zone, 16 dp between — because at a uniform 14 dp every row read
+/// as parts "slapped in" (Nuri).
 ///
-/// **The grip ladder and the platter it sat in left this card on 2026-08-17** — the per-set
-/// finger diagrams read as clutter on a dashboard (Nuri's call). Today is a dashboard, not a
-/// document: what a card here owes you is which routine, how much of it you have done, what
-/// it costs and the way in. Which fingers on which edge is what the editor and the runner
-/// are for, and both are one tap away.
+/// **No grip ladder** (removed 2026-08-17, Nuri's call): per-set finger diagrams were clutter
+/// on a dashboard. The card owes which routine, how much is done, what it costs and the way
+/// in; the editor and runner show the fingers.
 ///
-/// Every input is a VALUE — `RoutineSummary` rather than a `SessionTemplateEntity` — so the
-/// card previews and reasons without a store, and so every derived number is computed once
-/// in `TemplateStore` instead of in a body that runs on every frame of a scroll.
-/// `completionText` comes in for the same reason it exists there: the spoken sentence and
-/// the "1 of 2" fragment beside it must never be able to drift apart, and rebuilding the
-/// sentence here would be a second source of truth.
+/// Inputs are VALUES (`RoutineSummary`), so the card previews without a store and derived
+/// numbers are computed once in `TemplateStore`, not per scroll frame. `completionText`
+/// comes from there too, so the spoken sentence and "1 of 2" cannot drift apart.
 ///
 /// TRANSLATION NOTE: iOS splits `SolidPrimaryButton` from the glass one because the
-/// context-menu lift re-composites this subtree and Liquid Glass ghosts through it. Android
-/// has no glass and no lift preview, so the house `PrimaryButton`/`SecondaryButton` are the
-/// only buttons there are and that whole distinction evaporates.
+/// context-menu lift ghosts Liquid Glass. Android has neither, so the house buttons suffice.
 @Composable
 fun RoutineCard(
     summary: RoutineSummary,
@@ -112,11 +103,8 @@ fun RoutineCard(
     /// in place of the numeral fragment.
     completionText: String,
     modifier: Modifier = Modifier,
-    /// Marks the deck's HOME card — the routine the app would front on its own (the last
-    /// reminder to call, else the one mid-ritual, else the primary). One quiet graphite
-    /// line, so swiping away to browse and back still answers "which one is being asked of
-    /// me right now". Never set on a single-routine screen, where it would distinguish the
-    /// only thing there is.
+    /// Marks the deck's HOME card (last reminder to call, else mid-ritual, else primary), so
+    /// swiping away and back still answers "which one now". Never set with a single routine.
     isUpNext: Boolean = false,
     deviceState: ProgressorConnectionState = ProgressorConnectionState.Idle,
     battery: Double? = null,
@@ -128,8 +116,8 @@ fun RoutineCard(
     onDuplicate: () -> Unit = {},
     onNew: () -> Unit = {},
     onMakePrimary: () -> Unit = {},
-    /// The routine as a QR code and a link — the sheet is hosted by Today, which freezes the
-    /// request at the tap so a swipe behind it cannot change the code on screen.
+    /// The routine as a QR code and link; Today freezes the request at the tap so a swipe
+    /// behind the sheet cannot change the code.
     onShare: () -> Unit = {},
     /// Read somebody ELSE's code. Android-only; see the note on `TodayMenu`.
     onScan: () -> Unit = {},
@@ -144,12 +132,9 @@ fun RoutineCard(
         color = palette.card,
         modifier = modifier
             .fillMaxWidth()
-            // Graphite, not bleu: bleu is the live-force signal, and "your next ritual" is
-            // ink-family information like the done-dots. 1.5 dp at half strength sits one
-            // clear step above the ghost card's hairline (0.35 tertiary) — the ghost
-            // outline means "could exist", this means "is the one" — while staying far
-            // below an alarm. A STROKE, so it survives greyscale and every colour vision;
-            // TalkBack hears it on the title instead.
+            // Graphite, not bleu (bleu is live force). 1.5 dp at half strength sits a clear step above
+            // the ghost card's hairline — "could exist" versus "is the one" — and far below an alarm.
+            // A STROKE survives greyscale; TalkBack hears it on the title.
             .then(
                 if (isUpNext) {
                     Modifier.border(
@@ -161,21 +146,16 @@ fun RoutineCard(
                     Modifier
                 }
             )
-            // The long-press mirror of the ⋯ menu: free discoverability at zero hit-target
-            // cost, since a long press is not a gesture anything else on this screen wants.
+            // The long-press mirror of the ⋯ menu: free discoverability, no hit-target cost.
             //
-            // TRANSLATION NOTE: the obvious spelling is `combinedClickable`, but it REQUIRES
-            // an `onClick`, and this card has no whole-surface tap — iOS's `.contextMenu`
-            // adds none either. A no-op click would publish a phantom "double-tap to
-            // activate" to TalkBack on a surface where nothing happens. `detectTapGestures`
-            // carries the long press alone; the accessible door is the ⋯ button, which is
-            // labelled and 44 dp.
+            // TRANSLATION NOTE: not `combinedClickable`, which REQUIRES an `onClick`; this card has no
+            // whole-surface tap, and a no-op click would publish a phantom "double-tap to activate" to
+            // TalkBack. The accessible door is the labelled 44 dp ⋯ button.
             .pointerInput(Unit) {
                 detectTapGestures(onLongPress = { menuOpen = true })
             }
-            // A raw pointer gesture is invisible to TalkBack, so the long press is ALSO
-            // published as a semantic action. The ⋯ button is still the primary accessible
-            // door — this is the mirror, exactly as the gesture mirrors the button by sight.
+            // A raw gesture is invisible to TalkBack, so the long press is also a semantic action,
+            // mirroring the ⋯ button.
             .semantics {
                 onLongClick(label = L10n.tr("Routine options")) { menuOpen = true; true }
             }
@@ -186,9 +166,8 @@ fun RoutineCard(
             Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Zone 1 — identity and today's status. The dots are a SUBTITLE, locked to the
-            // name they qualify; letting them float equidistant between title and the plan
-            // was half of what made them read as loose parts.
+            // Zone 1 — identity and status. The dots are a SUBTITLE locked to the name; floating
+            // between title and plan they read as loose parts.
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 TitleRow(
                     summary = summary,
@@ -233,12 +212,9 @@ private fun TitleRow(
 ) {
     val palette = LocalGripPalette.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        // The routine's SIGNATURE grip leads the name. When the grip ladder left, it took
-        // every drawn element on the card with it and the surface went typographic (Nuri,
-        // 2026-08-17: "bland and text heavy"); an identical badge on every card was the
-        // first fix and failed the same day ("I don't like how all routines have the same
-        // logo"). One derived mark per card: identity that differs exactly when the
-        // routines do, never the per-set inventory that was removed as clutter.
+        // The routine's SIGNATURE grip leads the name. Without the ladder the card went
+        // "bland and text heavy", and an identical badge on every card failed the same day
+        // (Nuri, 2026-08-17). One derived mark per card: it differs exactly when routines do.
         EdgeMark(
             fingers = summary.signatureFingers ?: FingerSet.four,
             modifier = Modifier.padding(end = 10.dp),
@@ -254,8 +230,7 @@ private fun TitleRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .weight(1f)
-                // The border's spoken counterpart — a stroke is invisible to TalkBack, and
-                // "which card is being asked of me" must not be sighted-only.
+                // The border's spoken counterpart: a stroke is invisible to TalkBack.
                 .semantics {
                     if (isUpNext) stateDescription = L10n.tr("Up next")
                 },
@@ -263,8 +238,8 @@ private fun TitleRow(
 
         Spacer(Modifier.width(8.dp))
 
-        // 44 dp target around a bare glyph, and the menu ANCHORS here — so the long press on
-        // the card body and the tap on this button raise the same menu in the same place.
+        // 44 dp target around a bare glyph; the menu ANCHORS here, so long press and tap raise it
+        // in the same place.
         Box {
             val interaction = remember { MutableInteractionSource() }
             Box(
@@ -306,19 +281,15 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
     Row(
         Modifier
             .fillMaxWidth()
-            // ONE element with the store's sentence as its label. The dots and the fragment
-            // beside them are two readings of one fact; spoken twice that is a duplicate
-            // swipe, not extra information.
+            // ONE element: dots and fragment are two readings of one fact, not two swipes.
             .clearAndSetSemantics { contentDescription = completionText },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         SessionDots(summary)
 
-        // A CLIMB DAY says what happened, not what didn't. "0 of 2 today" beside a
-        // checkmark is the card contradicting itself, and it is precisely the "you didn't
-        // train" reading this feature exists to stop — the tally counts hang sessions, and
-        // on this day the training was somewhere else.
+        // A CLIMB DAY says what happened. "0 of 2 today" beside a checkmark contradicts itself and
+        // is the "you didn't train" reading this feature exists to stop.
         val climb = summary.climbedToday
         when {
             climb != null -> {
@@ -336,8 +307,7 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
                 )
             }
             summary.benchmarkedToday -> {
-                // Same anatomy as the climb line: what the day WAS, then any hangs as the
-                // extra. Never "at the gym" — testing maxes is a different day.
+                // Same anatomy as the climb line. Never "at the gym": testing maxes is a different day.
                 Text(
                     tr("Maxes tested"),
                     style = MaterialTheme.typography.titleSmall,
@@ -354,8 +324,7 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
                 }
             }
             summary.isOnDemand -> {
-                // No target, so no tally and NO GUILT — "not done yet today" is exactly the
-                // sentence a whenever routine exists to never say.
+                // No target, no tally, NO GUILT: never "not done yet today" for a whenever routine.
                 val done = summary.completedToday > 0
                 Text(
                     if (done) tr("Done today") else tr("Whenever you're fresh"),
@@ -369,8 +338,7 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    // NO ROLL. Every numeral in this app is a plain text swap — the Compose
-                    // digit roll measured "really bad and super laggy" on the Realme.
+                    // NO ROLL: the Compose digit roll read "really bad and super laggy" on the Realme.
                     Text(
                         "${summary.completedToday}",
                         style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
@@ -385,8 +353,7 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
                 }
             }
             else -> {
-                // A "1 of 1" readout is silly, so the one-a-day routine says the thing the
-                // number was standing in for.
+                // "1 of 1" is silly; the one-a-day routine says what the number stood for.
                 val done = summary.completedToday > 0
                 Text(
                     if (done) tr("Done today") else tr("Not done yet today"),
@@ -400,8 +367,7 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
         Spacer(Modifier.weight(1f))
 
         if (summary.targetMet) {
-            // Graphite, never green: green is not chrome in this palette, and filled ink
-            // already means "a session that happened" in the dots and the strip.
+            // Graphite, never green: green is not chrome here, and filled ink already means "happened".
             Icon(
                 Icons.Filled.CheckCircle,
                 contentDescription = null,
@@ -412,32 +378,28 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
     }
 }
 
-/// "at the gym", plus any hang rounds that happened anyway — said second, because they are
-/// the extra on a day the training already counted.
+/// "at the gym", plus any hang rounds anyway — said second, as the extra on a day that
+/// already counted.
 private fun hangSuffix(completed: Int): String = when (completed) {
     0 -> L10n.tr("at the gym")
     1 -> L10n.tr("at the gym · 1 hang")
     else -> L10n.tr("at the gym · %d hangs", completed)
 }
 
-/// **CIRCLES ARE SESSIONS. BARS ARE FINGERS.** 16 dp, not the caption-sized mark this
-/// started as: at 9 dp a row of small round marks reads as decoration rather than as a
-/// COUNT, and "two of these" is the entire message. Spacing scales with the dot for the
-/// same reason — two touching circles read as one shape.
+/// **CIRCLES ARE SESSIONS. BARS ARE FINGERS.** 16 dp: at 9 dp small round marks read as
+/// decoration, not a COUNT. Spacing scales with the dot, since touching circles read as one.
 @Composable
 private fun SessionDots(summary: RoutineSummary) {
     val palette = LocalGripPalette.current
-    // Scaled off the body text like iOS's `@ScaledMetric(relativeTo: .body)`, and CAPPED
-    // for the reason `ConsistencyCard`'s strip is: a repeated cell multiplies, and a row of
-    // marks that widens the card is the accessibility3 clipping bug.
+    // Scaled off body text (iOS `@ScaledMetric(relativeTo: .body)`) and CAPPED like
+    // `ConsistencyCard`'s strip: a repeated cell multiplies and widens the card.
     val scale = LocalDensity.current.fontScale.coerceAtMost(1.4f)
     val dot = 16.dp * scale
 
     Row(horizontalArrangement = Arrangement.spacedBy(dot * 0.45f)) {
         when {
-            // ONE notched dot on a climb day, not a row of empty rings: the rings count
-            // hang sessions owed, and nothing is owed. A benchmark day gets the same single
-            // dot, plain — the notch stays a climbing mark.
+            // ONE notched dot on a climb day: the rings count hang sessions owed, and none are. A
+            // benchmark day gets one plain dot — the notch is a climbing mark.
             summary.climbedToday != null -> Box(
                 Modifier.size(dot).clip(CircleShape).background(palette.graphite).climbNotch(true),
             )
@@ -445,8 +407,7 @@ private fun SessionDots(summary: RoutineSummary) {
                 Modifier.size(dot).clip(CircleShape).background(palette.graphite),
             )
             summary.isOnDemand -> {
-                // No slots owed, so no empty rings to fill — one dot appears only once a
-                // session happened.
+                // No slots owed, so no empty rings; one dot appears once a session happened.
                 if (summary.completedToday > 0) {
                     Box(Modifier.size(dot).clip(CircleShape).background(palette.graphite))
                 }
@@ -455,12 +416,9 @@ private fun SessionDots(summary: RoutineSummary) {
                 if (index < summary.completedToday) {
                     Box(Modifier.size(dot).clip(CircleShape).background(palette.graphite))
                 } else {
-                    // 1.5 dp, not 2: the hollow ring has to sit at the same optical weight
-                    // as the filled dot beside it. 0.85 opacity, measured twice on the dark
-                    // screenshot — 0.5 hit 2.1:1 and 0.75 still only 2.98:1, because a
-                    // 1.5 dp ring is mostly antialiased edge and its peak pixel never
-                    // reaches the stroke colour. Under the 3:1 floor a mark that MEANS
-                    // something ("not done yet") is decoration; this clears it with margin.
+                    // 1.5 dp to match the filled dot's optical weight. 0.85 opacity, measured on the dark
+                    // screenshot: 0.5 hit 2.1:1 and 0.75 only 2.98:1, because a thin ring is mostly
+                    // antialiased edge. A mark that MEANS "not done yet" must clear 3:1.
                     Box(
                         Modifier
                             .size(dot)
@@ -475,14 +433,10 @@ private fun SessionDots(summary: RoutineSummary) {
 // MARK: - 2 · The plan, in one line — and the line IS the editor entry
 
 /// What the routine costs — "20 mm · 6 sets · 36 pulls · ≈21 min" — and tapping it opens the
-/// editor. The door to change the plan is still the plan itself, which is the rule that
-/// retired the old chevron footnote stranded at the card's foot, three rows away from the
-/// thing it edited.
+/// editor: the door to the plan is the plan itself.
 ///
-/// **No platter.** The inset well existed because the card had a DIAGRAM in it and a diagram
-/// floating on the same surface as text reads as debris; with the ladder gone there is
-/// nothing to frame, and a platter drawn around a single footnote makes a sentence look
-/// like a text field. The chevron and the press feedback are what say this row is a door.
+/// **No platter.** The inset well framed a DIAGRAM; around a single line it makes a sentence
+/// look like a text field. The chevron and press feedback say this row is a door.
 @Composable
 private fun PlanRow(summary: RoutineSummary, onOverview: () -> Unit) {
     val palette = LocalGripPalette.current
@@ -505,9 +459,8 @@ private fun PlanRow(summary: RoutineSummary, onOverview: () -> Unit) {
             .testTag("today.routineOverview")
             .semantics {
                 contentDescription = L10n.tr("Routine overview")
-                // The card no longer draws the grips, so it must not speak them either.
-                // The intensity suffix rides here because the rung's colour is invisible to
-                // TalkBack and to greyscale — the number is the fact, the colour the glance.
+                // The card no longer draws the grips, so it does not speak them. The intensity suffix
+                // is here because the rung's colour is invisible to TalkBack and greyscale.
                 stateDescription = summary.metaLine + intensitySuffix(summary)
             },
     ) {
@@ -523,10 +476,8 @@ private fun PlanRow(summary: RoutineSummary, onOverview: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (form == PlanRowFit.Form.Sentence) {
-                // At accessibility sizes this is the ONLY statement of the plan on the card,
-                // and truncating "≈21 min" off the end of it costs the reader the fact this
-                // row exists for. Two lines only ever appear on a screen that already
-                // scrolls.
+                // At accessibility sizes this is the ONLY statement of the plan; truncating "≈21 min"
+                // loses the fact the row exists for. Two lines only appear on a screen that scrolls.
                 Text(
                     summary.metaLine,
                     style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
@@ -558,9 +509,8 @@ private fun PlanRow(summary: RoutineSummary, onOverview: () -> Unit) {
     }
 }
 
-/// The plan's numbers with a symbol each. The VALUE carries the ink (secondary, medium);
-/// the symbol is quiet (tertiary, deliberately decorative — each one sits beside the word
-/// that names it, so it owes nothing to the 3:1 graphics floor).
+/// The plan's numbers with a symbol each. The VALUE carries the ink; the symbol is decorative
+/// (tertiary) since each sits beside the word naming it, so the 3:1 floor does not apply.
 @Composable
 private fun Stat(icon: androidx.compose.ui.graphics.vector.ImageVector, value: String) {
     val palette = LocalGripPalette.current
@@ -598,9 +548,8 @@ internal data class PlanRowStat(
 
 internal object PlanRowStats {
     fun of(summary: RoutineSummary): List<PlanRowStat> = buildList {
-        // `edgeLine`, not `sharedEdgeMM`: a mixed ladder states its span in ladder order
-        // ("20–10 mm") — dropping the edge because sets disagree read as the app not
-        // knowing its own routine.
+        // `edgeLine`, not `sharedEdgeMM`: a mixed ladder states its span ("20–10 mm"); dropping it
+        // read as the app not knowing its own routine.
         summary.edgeLine?.let {
             add(PlanRowStat(Icons.Outlined.Straighten, it, it.replace(" mm", "mm")))
         }
@@ -623,33 +572,26 @@ internal object PlanRowStats {
     }
 }
 
-/// **Which of the three forms the plan row draws — full glyph row, COMPACT glyph row, or
-/// the plain sentence — as a pure function of the width and the font scale.**
+/// **Which of three forms the plan row draws — full glyph row, COMPACT glyph row, or the
+/// sentence — as a pure function of width and font scale.**
 ///
-/// iOS spells this `ViewThatFits(in: .horizontal)` with the three candidates in order. There
-/// is no such measuring container in Compose (`SubcomposeLayout` is the nearest thing and
-/// costs an extra measure pass on a card that redraws with every completion), so the choice
-/// is arithmetic — and being arithmetic is what lets a JVM test pin it rather than a
-/// screenshot, exactly as `DialLadder` does for the dial's drawing.
+/// iOS uses `ViewThatFits(in: .horizontal)`. Compose has no such container (`SubcomposeLayout`
+/// costs an extra measure pass), so the choice is arithmetic, which a JVM test can pin (as
+/// `DialLadder` does).
 ///
-/// The estimate is deliberately a LOWER-CASE fact: it does not need to know the real font
-/// metrics, only to fall to the next form before the last stat truncates. The three
-/// failures it exists to prevent are all recorded on iOS — the edge SPAN plus four symbols
-/// overflowed on hardware and truncated its own stat ("20–10…"), and the first fix fell
-/// straight past compact to the sentence, which threw the icons away on exactly the routine
-/// the span exists for (Nuri: "the little icons being gone is sad").
+/// The estimate only has to fall to the next form before the last stat truncates. On iOS the
+/// edge SPAN plus four symbols truncated its own stat ("20–10…"), and the first fix skipped
+/// compact straight to the sentence (Nuri: "the little icons being gone is sad").
 internal object PlanRowFit {
 
     enum class Form { Full, Compact, Sentence }
 
-    /// The accessibility rung. `Chips.kt` already reads 1.3 as Android's `.accessibility1`,
-    /// and this is the same threshold: a row of pictograms cannot wrap, and someone who
-    /// asked for big text is served by words.
+    /// The accessibility rung, the same 1.3 `Chips.kt` reads as `.accessibility1`: pictograms
+    /// cannot wrap, and big-text readers are served by words.
     const val SENTENCE_FONT_SCALE = 1.3f
 
-    /// Roughly what one character of the stat's `bodySmall` costs. 12 sp at ~0.55 advance —
-    /// mixed digits and short words at medium weight. Over-estimating is the safe direction:
-    /// it falls to compact a few points early, where under-estimating truncates.
+    /// ~One `bodySmall` character: 12 sp at ~0.55 advance. Over-estimating is safe (compact a
+    /// few points early); under-estimating truncates.
     private const val CHAR_DP_AT_SCALE_ONE = 12f * 0.55f
 
     /// Symbol plus its 4 dp gap.
@@ -702,11 +644,9 @@ private fun StartBlock(
                 onClick = onStart,
             )
         } else {
-            // Graphite, not bleu — bleu is the live-force signal and is spent the moment the
-            // runner opens. And ALWAYS enabled: the runner's first phase is
-            // connect-and-tare, so tapping while disconnected is the common path. Disabling
-            // the ritual's one button because a peripheral has not been asked for yet turns
-            // the ritual into a chore.
+            // Graphite, not bleu (bleu is live force). ALWAYS enabled: the runner's first phase is
+            // connect-and-tare, so tapping while disconnected is the common path, and disabling the
+            // ritual's one button turns it into a chore.
             PrimaryButton(
                 title = startTitle(summary, deviceState),
                 icon = Icons.Filled.PlayArrow,
@@ -718,20 +658,17 @@ private fun StartBlock(
         connectionNote(deviceState, palette.inkTertiary, palette.alarm)?.let { NoteRow(it) }
         batteryNote(battery, palette.armed)?.let { NoteRow(it) }
 
-        // **Only while there is no gauge on the line.** Flat battery, left at home, Bluetooth
-        // off — the cases where the ritual would otherwise just not happen (Nuri,
-        // 2026-08-09). Offering it beside a connected Progressor would be offering to throw
-        // the measurement away, which nobody wants at 8 a.m.; it stays reachable there
-        // through the ⋯ menu.
+        // **Only while no gauge is connected** — flat battery, left at home, Bluetooth off (Nuri,
+        // 2026-08-09). Beside a connected Progressor it would offer to throw the measurement away;
+        // it stays in the ⋯ menu.
         if (!deviceState.isConnected) {
             val interaction = remember { MutableInteractionSource() }
             Box(
                 Modifier
                     .fillMaxWidth()
                     .heightIn(min = 44.dp)
-                    // 44 tall for the target, but pulled up tight against the note above it:
-                    // the row's own height is the floor, and the 10 dp stack gap on top of
-                    // it was pure spend on a page that has to fit.
+                    // 44 tall for the target, pulled tight to the note above: the 10 dp stack gap was pure
+                    // spend on a page that has to fit.
                     .padding(top = 0.dp)
                     .clip(RoundedCornerShape(Metrics.radiusInner))
                     .clickable(
@@ -757,8 +694,7 @@ private fun StartBlock(
         }
 
         when (deviceState) {
-            // Always compiled in, never behind a debug flag — without hardware, on an
-            // emulator or in review, this is the only way to see it work.
+            // Always compiled in: without hardware, on an emulator or in review, this is the only way to see it work.
             is ProgressorConnectionState.Unsupported ->
                 SecondaryButton(title = tr("Try demo mode"), modifier = Modifier.fillMaxWidth(), onClick = onDemo)
             else -> Unit
@@ -766,8 +702,8 @@ private fun StartBlock(
     }
 }
 
-/// The ordinal drops out entirely once disconnected: "Connect and start second session" is
-/// thirty characters, and the line above already says which session this is.
+/// No ordinal once disconnected: "Connect and start second session" is too long, and the line
+/// above says which session this is.
 private fun startTitle(summary: RoutineSummary, deviceState: ProgressorConnectionState): String {
     if (!deviceState.isConnected) return L10n.tr("Connect and start")
     if (summary.sessionsPerDay <= 1) return L10n.tr("Start session")

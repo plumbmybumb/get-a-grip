@@ -90,29 +90,25 @@ import run.nuri.getagrip.ui.tour.TourHost
 import run.nuri.getagrip.ui.tour.TourTarget
 import run.nuri.getagrip.ui.tour.tourAnchor
 
-/// Three tabs on iOS became four when Maxes earned its own; the anti-Frez tab count is
-/// still "the fewest that can carry the ritual".
+/// Three tabs on iOS became four when Maxes earned its own; the anti-Frez tab count is still
+/// "the fewest that can carry the ritual".
 ///
-/// Material Symbols are not the SF Symbols
-/// the iOS app names, so each one is a translation rather than a match. The mapping:
+/// Material Symbols translate the iOS SF Symbols rather than match them:
 ///
-/// - `figure.climbing` maps to our original `ClimbingIcon`: a climber on a rope.
-///   The former Hiking substitute depicted the wrong activity.
-/// - `chart.xyaxis.line` becomes `AutoMirrored.Outlined.ShowChart`. A line on axes, the same
-///   picture. AutoMirrored because a chart reads the other way round in an RTL layout.
-/// - `scalemass.fill` becomes `Outlined.Scale`. A weighing scale, the literal twin. It
-///   replaces `FitnessCenter`, a dumbbell: this app MEASURES a load, it does not lift weights,
-///   and the gym-equipment metaphor is the one Frez leans on.
-/// - `gearshape.fill` becomes `Outlined.Settings`. The gear, unchanged.
+/// - `figure.climbing` → our original `ClimbingIcon`, a climber on a rope (Hiking depicted the
+///   wrong activity).
+/// - `chart.xyaxis.line` → `AutoMirrored.Outlined.ShowChart`; AutoMirrored because a chart
+///   reads the other way in RTL.
+/// - `scalemass.fill` → `Outlined.Scale`, not `FitnessCenter`: this app MEASURES a load, and
+///   the dumbbell is the gym metaphor Frez leans on.
+/// - `gearshape.fill` → `Outlined.Settings`.
 ///
-/// Outlined throughout, including where iOS names a `.fill`: Material's own tab guidance is
-/// an outlined rest state, and the selection is carried by the graphite indicator pill rather
-/// than by a weight change nobody can read at 24 dp.
+/// Outlined throughout, even for iOS `.fill`: Material's rest state is outlined, and the
+/// graphite pill carries selection better than a weight change at 24 dp.
 ///
-/// **The label is a `get()`, not a constructor argument.** Enum entries are built once when
-/// the class loads, so a translated string baked in at construction would still be in the
-/// old language after the phone's language changed under a running process. Every enum here
-/// that carries a display name resolves it on read, for that reason.
+/// **The label is a `get()`, not a constructor argument.** Enum entries are built once per
+/// process, so a translated string baked in would keep the old language after the phone's
+/// changes. Every enum carrying a display name resolves it on read for this reason.
 enum class Tab(private val key: String, val icon: ImageVector) {
     Today("Today", ClimbingIcon),
     History("History", Icons.AutoMirrored.Outlined.ShowChart),
@@ -122,23 +118,17 @@ enum class Tab(private val key: String, val icon: ImageVector) {
     val label: String get() = L10n.tr(key)
 }
 
-/// The SOFT NUDGE: once the newest measured max is four weeks stale the Maxes icon pulses —
-/// the schedule-free version of a benchmark reminder (Nuri, 2026-08-10: "maybe after a while
-/// the menu icon pulses"). No badge, no notification; someone who has never measured is never
-/// nudged.
+/// The SOFT NUDGE: once the newest measured max is four weeks stale the Maxes icon pulses
+/// (Nuri, 2026-08-10). No badge, no notification; someone who never measured is never nudged.
 ///
-/// **Off under Reduce Motion**, exactly as iOS gates `symbolEffect(.pulse)`: the tab's own
-/// staleness subtitle carries the same fact in words, so nothing is lost by holding still.
+/// **Off under Reduce Motion**, as iOS gates `symbolEffect(.pulse)`; the tab's staleness
+/// subtitle says it in words.
 ///
-/// TRANSLATION NOTE: SF Symbols animates the GLYPH; Compose has no symbol effect, so the same
-/// beat is a scale on the icon, out and back so it breathes rather than snapping. It is
-/// deliberately NOT routed through `Motion`: the ladder is three TRANSITION curves between
-/// states, and a heartbeat is neither a transition nor a state.
+/// TRANSLATION NOTE: Compose has no symbol effect, so the beat is a scale out and back. Not
+/// routed through `Motion`: those are TRANSITION curves, and a heartbeat is not a transition.
 ///
-/// **A few beats each time the bar appears, then still.** It used to breathe FOREVER, which
-/// kept the frame clock running for as long as the tab bar was on screen — an app drawing
-/// sixty frames a second to sit on Today, for weeks, until somebody measured a max. A nudge
-/// that has been seen has done its job; the staleness line on the tab still says it in words.
+/// **A few beats each time the bar appears, then still.** Breathing forever kept the frame
+/// clock at sixty frames a second on Today for weeks.
 @Composable
 internal fun Modifier.benchmarkPulse(active: Boolean): Modifier {
     val scale = remember { Animatable(1f) }
@@ -168,21 +158,18 @@ fun RootTabView() {
     val tour = LocalTourController.current
     val reduceMotion = rememberReduceMotion()
 
-    // Retain the route AND runner across Activity recreation. Neither is restored
-    // after process death, when the original gauge timeline no longer exists.
+    // Retain the route AND runner across Activity recreation — not process death, where the
+    // gauge timeline no longer exists.
     val workouts: WorkoutViewModel = viewModel()
     val device = LocalDeviceStore.current
     val appContext = LocalContext.current.applicationContext
 
-    // **A shared routine lands on Today, so the tab moves FIRST.** Answering an import while
-    // Settings is on screen would leave you on a page with no trace of what happened.
+    // **A shared routine lands on Today, so the tab moves FIRST**; answering while Settings is
+    // up leaves no trace of what happened.
     //
-    // This is the whole of the URL handler's UI job, and it is placed ABOVE the early returns
-    // on purpose: it PRESENTS nothing, it only says where the answer belongs. A link tapped
-    // during a session sets the tab, the session goes on undisturbed, and the inbox is still
-    // waiting when the runner closes — which is the iOS rule (`onOpenURL` never presents)
-    // expressed in the shape Compose already has. Composables after an early return do not
-    // run at all, so a tab switch written further down would silently never happen.
+    // ABOVE the early returns on purpose: composables after one never run. It PRESENTS nothing
+    // (iOS: `onOpenURL` never presents) — a link tapped mid-session sets the tab, the session
+    // continues, and the inbox waits for the runner to close.
     LaunchedEffect(templates.pendingImport, templates.pendingImportError) {
         if (templates.pendingImport != null || templates.pendingImportError != null) {
             current = Tab.Today
@@ -191,16 +178,14 @@ fun RootTabView() {
 
     val request = workouts.active
     if (request != null) {
-        // **Every presented container needs its own host.** The runner replaces the root
-        // outright, so the intro act's overlay is gone by the time this draws; the session act
-        // is hosted here, over the screen it describes.
+        // **Every presented container needs its own host**: the runner replaces the root, so the
+        // session act is hosted here.
         TourHost(TourAct.Session) {
         RunnerHost(
             workout = request,
             submissionScope = workouts.viewModelScope,
             onFinished = { outcome, decision ->
-                // Discard means NOTHING is written; a session nobody pulled in is not
-                // worth logging either (both rules from the iOS runner).
+                // Discard writes NOTHING; a session nobody pulled in is not worth logging either.
                 if (decision.save && outcome.didAnyWork) {
                     val saved = templates.recordSession(
                         plan = outcome.plan,
@@ -225,11 +210,9 @@ fun RootTabView() {
         return
     }
 
-    // THE BUILDER IS A FULL-SCREEN COVER, never a sheet and never a push:
-    // nothing touches the store until Save, Cancel IS undo, and a back chevron would promise
-    // save-as-you-go. Hosted here so it covers the tab bar like the runner does.
-    // The live gauge from Today's header, replacing the root the way the runner does: the
-    // graph wants the whole screen, and a back gesture is the way out.
+    // THE BUILDER IS A FULL-SCREEN COVER, never a sheet or push: nothing touches the store until
+    // Save, Cancel IS undo, and a back chevron would promise save-as-you-go.
+    // The live gauge replaces the root like the runner: the graph wants the whole screen.
     var liveGauge by rememberSaveable { mutableStateOf(false) }
     if (liveGauge) {
         LiveGaugeHost(onClose = { liveGauge = false })
@@ -297,14 +280,11 @@ fun RootTabView() {
         return
     }
 
-    // The log sheet is one sheet with two doors — History's row and Today's consistency card
-    // — because it writes one kind of row and a second copy would be a second set of rules
-    // about what settles a day.
+    // One log sheet with two doors (History, Today's consistency card): one kind of row, one
+    // set of rules about what settles a day.
     var loggingSession by presentation::loggingSession
 
-    // **"Take me to that tab."** Settings sits two tabs away from everything it can restart,
-    // and a step that lives on History has to BE on History. `requestedTab` is how anything
-    // deeper in the tree asks, and it is cleared the moment it is honoured.
+    // See `TourController.requestedTab`; cleared the moment it is honoured.
     val tourTab = tour.requestedTab
     LaunchedEffect(tourTab) {
         if (tourTab != null) {
@@ -312,15 +292,14 @@ fun RootTabView() {
             tour.requestedTab = null
         }
     }
-    // The step itself names its tab; the tour never describes History from Today, because
-    // pointing at a tab bar icon teaches less than showing the calendar it contains.
+    // The step names its tab — see `TourStep.tab`.
     val stepTab = if (tour.act == TourAct.Intro) tour.current?.tab else null
     LaunchedEffect(stepTab) {
         if (stepTab != null) current = Tab.entries.getOrElse(stepTab) { Tab.Today }
     }
 
-    // The intro act's host, ABOVE the tab bar: its last steps light History, Maxes and the
-    // Settings row, and a host inside the tab content could not reach the chrome around them.
+    // The intro act's host sits ABOVE the tab bar: its last steps light History, Maxes and
+    // Settings chrome that tab content cannot reach.
     TourHost(TourAct.Intro) {
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -334,12 +313,9 @@ fun RootTabView() {
             Tab.entries.chunked(if (LocalDensity.current.fontScale >= 1.6f) 2 else 4).forEach { tabs ->
             NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp,
                 windowInsets = WindowInsets(0, 0, 0, 0)) {
-                // **The selection pill is GRAPHITE, not Material's lavender.** The default
-                // `secondaryContainer` indicator leaks a hue the palette does not contain
-                // onto the one piece of chrome that is on screen at all times — and the
-                // house rule is that a colour can only mean something if it is not also
-                // the baseline. Graphite is ink; a 12 % wash of it reads as selection
-                // without spending either signal hue on navigation.
+                // **The selection pill is GRAPHITE, not Material's lavender**: `secondaryContainer` leaks a
+                // hue the palette lacks onto always-visible chrome. A 12 % graphite wash reads as selection
+                // without spending a signal hue on navigation.
                 val itemColours = NavigationBarItemDefaults.colors(
                     indicatorColor = palette.graphite.copy(alpha = 0.12f),
                     selectedIconColor = palette.inkPrimary,
@@ -355,8 +331,7 @@ fun RootTabView() {
                         icon = {
                             Icon(
                                 tab.icon,
-                                // The LABEL beside it already says "Maxes"; a description
-                                // here would make TalkBack read the tab's name twice.
+                                // The LABEL already says "Maxes"; a description would be read twice.
                                 contentDescription = null,
                                 modifier = Modifier.benchmarkPulse(tab == Tab.Maxes && nudge),
                             )
@@ -372,8 +347,8 @@ fun RootTabView() {
             }
         },
     ) { padding ->
-        // Only the top/sides constrain the viewport. A bottom viewport inset cuts
-        // scrolling cards off along a full-width rectangle above the floating bar.
+        // Only top/sides constrain the viewport: a bottom inset clipped scrolling cards along a
+        // rectangle above the floating bar.
         val direction = LocalLayoutDirection.current
         Box(Modifier.fillMaxSize().padding(
             start = padding.calculateStartPadding(direction),
@@ -385,8 +360,7 @@ fun RootTabView() {
             when (current) {
                 Tab.Today -> TodayScreen(
                     onStart = { template, timerOnly ->
-                        // Written on START, not on finish: the useful question at 19:00 is
-                        // "which one am I in the middle of", not "which one did I complete".
+                        // Written on START: at 19:00 the question is which one you are in the middle of.
                         val started = workouts.start(template) { sessionScope ->
                             RunnerSession(
                                 plan = template.plan,
@@ -404,26 +378,20 @@ fun RootTabView() {
                     },
                     onBuild = {
                         building = if (templates.routines.isEmpty()) BuilderMode.FirstRun else BuilderMode.AddAnother
-                        // The intro act's last step is the hand-off that opened this
-                        // document, and that step has now done its job — `builderOpened`
-                        // takes over from a RUNNING act rather than waiting for one to end,
-                        // or the "Build one now" card sits on top of the builder it opened.
+                        // Takes over from a RUNNING intro act — see `TourController.builderOpened`.
                         tour.builderOpened()
                     },
                     onEdit = { template -> building = BuilderMode.Edit(template.id) },
                     onShowHistory = { current = Tab.History },
                     onLogSession = { loggingSession = true },
                     onOpenGauge = { liveGauge = true },
-                    // The two presentations Today cannot see: both are hosted here and both
-                    // leave this screen composed underneath them, so the guard has to be
-                    // told. Everything else that could collide replaces Today outright.
+                    // The two presentations Today cannot see (both hosted here, Today composed beneath), so the
+                    // guard has to be told.
                     canPresentImport = !loggingSession,
                 )
                 Tab.History -> HistoryScreen(
                     onLogSession = { loggingSession = true },
-                    // The step SWITCHES to this tab rather than pointing at its icon from
-                    // Today: the calendar is what History is, and a tab bar glyph teaches
-                    // nothing (Nuri, 2026-08-09).
+                    // The step SWITCHES to this tab — see `TourStep.tab`.
                     monthAnchor = Modifier.tourAnchor(TourTarget.HistoryMonth),
                 )
                 Tab.Maxes -> MaxesTabScreen(
@@ -446,8 +414,7 @@ fun RootTabView() {
         SessionLogSheet(onClose = { loggingSession = false })
     }
 
-    // A session that finished but was never saved — offered only here, below the runner's
-    // early return, so it can never appear over a workout that is still going.
+    // Below the runner's early return, so it never appears over a workout still going.
     UnsavedSessionPrompt()
 
 }

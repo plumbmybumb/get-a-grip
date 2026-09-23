@@ -74,24 +74,16 @@ import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.Metrics
 
-/// THE FIRST-RUN TOUR — a spotlight walked across the real screen, not a slideshow.
+/// THE FIRST-RUN TOUR — a spotlight walked across the real screen, not a slideshow
+/// (Nuri, 2026-08-09).
 ///
-/// Nuri asked for this (2026-08-09): *"I want all the features to be explained thoroughly
-/// in a tutorial on your first launch, where each thing gets highlighted, maybe even with
-/// a spotlight on the thing you need to focus on."*
+/// **It highlights the LIVE UI**, so the card described is the card you will always see
+/// there. Each step names a `TourTarget`, every target registers its frame through
+/// `tourAnchor`, and the scrim punches a hole at it.
 ///
-/// **It highlights the LIVE UI.** A carousel of screenshots would be easier and would teach
-/// nothing: the point is that the card being described is the card you are looking at, in
-/// the place it will always be. So each step names a `TourTarget`, every target registers its
-/// own frame through `tourAnchor`, and the scrim punches a hole at it.
-///
-/// **The scrim blocks touches, deliberately** — and that is the opposite of the app's rule
-/// about tips. A tip on the control it is telling you to use is a trap because the first tap
-/// only dismisses it; the control looks pressed and does nothing. A tour has no such
-/// ambiguity: there is a Next button, nothing else is live, and the thing being described is
-/// lit rather than offered. The failure mode that rule exists to prevent cannot happen here,
-/// because the tour never asks you to tap what it is pointing at — except on the two
-/// `interactive` steps, which punch the HIT REGION as well as the paint.
+/// **The scrim blocks touches**, unlike the app's rule about tips: a tip on its own control
+/// makes the first tap only dismiss it. A tour has a Next button and never asks you to tap
+/// what it points at — except on `interactive` steps, which punch the HIT REGION as well.
 enum class TourTarget {
     BuildRoutine,
     RoutineCard,
@@ -110,9 +102,8 @@ enum class TourTarget {
     MaxesManage,
 }
 
-/// The three places the tour has something to say. Each is seen — or skipped — on its own,
-/// because they happen minutes or days apart and one Skip should not silently swallow the two
-/// you have not reached yet.
+/// The three places the tour speaks, each seen or skipped on its own: they happen minutes or
+/// days apart, and one Skip must not swallow the two you have not reached.
 enum class TourAct(val rawValue: String) {
     Intro("intro"),
     Builder("builder"),
@@ -126,41 +117,29 @@ data class TourStep(
     val target: TourTarget?,
     val title: String,
     val body: String,
-    /// **The lit control stays live for this step.** The scrim's hit region is punched with
-    /// the same hole the paint is, using an even-odd fill, so the tap lands on the button
-    /// rather than on a sheet of glass over it.
-    ///
-    /// This is the difference between a step that describes a control and a step that asks
-    /// you to use one, and getting it wrong is the exact failure the codebase already has a
-    /// rule about.
+    /// **The lit control stays live for this step**: the scrim's hit region is punched with the
+    /// same even-odd hole as the paint, so the tap reaches the button. This is what separates
+    /// describing a control from asking you to use one.
     val interactive: Boolean = false,
-    /// The tab this step lives on. The tour SWITCHES to it rather than describing it from
-    /// Today — pointing at a tab bar icon and saying "History is over there" teaches less
-    /// than showing the calendar it contains (Nuri, 2026-08-09).
+    /// The tab this step lives on. The tour SWITCHES to it: showing the calendar teaches more
+    /// than pointing at a tab icon from Today.
     val tab: Int? = null,
 )
 
 // MARK: - The script
 
-/// TRANSLATION NOTE: every list here is a `get()`, not a stored `val`, for the same reason
-/// the display names are — a top-level `val` initialises once per
-/// process, so a translated sentence baked in at construction keeps the language it was born
-/// in after the phone's language changes under a running process.
+/// TRANSLATION NOTE: every list here is a `get()`, not a stored `val`: a top-level `val`
+/// initialises once per process and would keep its language after the phone's changes.
 object TourScript {
-    /// **Act one, on a phone with no routine yet.** The tour has to build one before it can
-    /// point at anything: on a genuine first launch Today is an empty state, and every step
-    /// about the card, the plan row and the Start button would be lighting a rectangle that
-    /// does not exist. So it hands you over to the builder and picks up again the moment a
-    /// routine is saved — which is also what Nuri asked for, a tutorial that builds your
-    /// first routine with you rather than describing one.
+    /// **Act one, on a phone with no routine yet.** Every step about the card would light a
+    /// rectangle that does not exist, so it hands you to the builder and resumes once a routine
+    /// is saved — a tutorial that builds your first routine with you.
     val firstRun: List<TourStep>
         get() = listOf(
             TourStep(
                 target = null,
                 title = L10n.tr("Get a Grip runs your hangboard sessions"),
-                // No prefill to promise any more: the builder opens blank on the name field,
-                // so a card saying "this is mostly saying yes" would describe a screen nobody
-                // gets.
+                // The builder opens blank on the name field, so there is no prefill to promise.
                 body = L10n.tr("It counts you in, times every pull, and reads your force gauge so you know what you actually held. Start by making a routine — a name and one set is enough."),
             ),
             TourStep(
@@ -171,19 +150,16 @@ object TourScript {
             ),
         )
 
-    /// Act two, once there is something to point at. Written in the app's own voice: second
-    /// person, present tense, concrete, no exclamation marks, and every step says what the
-    /// thing DOES rather than how good it is.
+    /// Act two, once there is something to point at. Second person, present tense, concrete,
+    /// no exclamation marks; every step says what the thing DOES.
     val today: List<TourStep>
         get() = listOf(
-            // No opening card. Arriving here from the builder, the first useful thing is the
-            // routine lit up rather than a paragraph laid over the top of it.
+            // No opening card: arriving from the builder, the routine lit up is the useful first thing.
             TourStep(
                 target = TourTarget.RoutineCard,
                 title = L10n.tr("This is your routine"),
-                // Short on purpose. This step lights the whole card, which is tall, so a
-                // four-line callout has nowhere to sit that does not cover the thing it is
-                // describing. COPY LENGTH IS LAYOUT here.
+                // Short on purpose: this step lights a tall card, and a long callout would cover it.
+                // COPY LENGTH IS LAYOUT here.
                 body = L10n.tr("One card, one ritual. The dots are today's sessions, and a filled dot is one you have done."),
             ),
             TourStep(
@@ -232,10 +208,8 @@ object TourScript {
             ),
         )
 
-    /// The routine DOCUMENT, top to bottom — the skeleton first, then the sets that inherit
-    /// it. The name field above the rhythm block is deliberately not a step of its own: the
-    /// guide's first coach card sits on it inline, and a spotlight over a text field says
-    /// nothing the field does not already say.
+    /// The routine DOCUMENT, top to bottom — the skeleton first, then the sets that inherit it.
+    /// The name field has no step: the first coach card sits on it inline.
     val builder: List<TourStep>
         get() = listOf(
             TourStep(
@@ -256,18 +230,16 @@ object TourScript {
             ),
         )
 
-    /// The session screen, on the first one you run. The runner is PAUSED while this shows —
-    /// see `TourController.sessionPausesRunner` — because teaching over a running clock costs
-    /// you the pull.
+    /// The session screen, on the first one you run. The runner is PAUSED while this shows
+    /// (`TourController.sessionPausesRunner`).
     val session: List<TourStep>
         get() = listOf(
             TourStep(
                 target = TourTarget.RunnerHand,
                 title = L10n.tr("Which hand"),
-                // TRANSLATION NOTE: the iOS copy for this step names the Dynamic Island,
-                // which is an iPhone fact this app cannot state. Android DRAWS its own palm
-                // on every phone (`PalmHand`), so the sentence has no iOS twin and lives in
-                // `android_extra.json` — the documented case for that file.
+                // TRANSLATION NOTE: the iOS copy names the Dynamic Island. Android draws its own palm on
+                // every phone (`PalmHand`), so this sentence has no iOS twin and lives in
+                // `android_extra.json`.
                 body = L10n.tr("The big word is the hand that goes on the edge. Your fingers hang off the palm at the top of the screen, so the grip reads without a word."),
             ),
             TourStep(
@@ -293,14 +265,12 @@ object TourScript {
 
 /// Owns which step is showing, and whether the tour has ever finished.
 ///
-/// The "seen" flag is VERSIONED rather than a Bool: when the tour gains an act, a bumped
-/// version is what lets it run again for people who saw the old one, and a Bool would have no
-/// way to say that. The keys are `tour.seen.<act>` in `SettingsStore` — a STORAGE FORMAT, so
-/// renaming one silently replays a tour somebody has already seen.
+/// The "seen" flag is VERSIONED rather than a Bool, so a bumped version can re-run the tour
+/// for people who saw the old one. The keys are `tour.seen.<act>` in `SettingsStore` — a
+/// STORAGE FORMAT: renaming one silently replays a tour somebody has already seen.
 ///
-/// TRANSLATION NOTE: iOS reads and writes `UserDefaults` inline. Here every read and write
-/// goes through an injected `TourSeenStore`, which is also what makes the whole controller a
-/// plain JVM test subject: `TourControllerTests` drives it against an in-memory one.
+/// TRANSLATION NOTE: iOS uses `UserDefaults` inline; here everything goes through an injected
+/// `TourSeenStore`, which makes the controller a plain JVM test subject.
 @Stable
 class TourController(private val settings: TourSeenStore) {
 
@@ -309,10 +279,8 @@ class TourController(private val settings: TourSeenStore) {
         const val VERSION = 1
     }
 
-    /// **"Take me to that tab."** Settings sits two tabs away from everything it can restart,
-    /// so a reset there looked like nothing had happened at all (Nuri, 2026-08-09). The tab
-    /// selection lives in `RootTabView`; this is how anything deeper in the tree asks for it.
-    /// Cleared by the observer once honoured.
+    /// **"Take me to that tab."** Settings sits two tabs from everything it restarts, so a reset
+    /// there looked like nothing happened. `RootTabView` honours this and clears it.
     var requestedTab: Int? by mutableStateOf(null)
 
     var act: TourAct? by mutableStateOf(null)
@@ -336,14 +304,12 @@ class TourController(private val settings: TourSeenStore) {
     val isRunning: Boolean get() = current != null
     val progress: String get() = L10n.tr("%d of %d", index + 1, steps.size)
 
-    /// **The session act PAUSES the runner** — the whole reason the runner asks. Teaching over
-    /// a running clock costs the pull being explained, so the runner sends a Pause when this
-    /// turns true and a Resume when it turns false again.
+    /// **The session act PAUSES the runner**: it sends Pause when this turns true and Resume
+    /// when it turns false.
     val sessionPausesRunner: Boolean get() = act == TourAct.Session && isRunning
 
-    /// Start the tour unless it has already been finished or skipped once. Idempotent, because
-    /// callers are `LaunchedEffect` hooks that can fire more than once — starting an act twice
-    /// must not restart one already running.
+    /// Start the tour unless it was already finished or skipped. Idempotent: `LaunchedEffect`
+    /// hooks can fire more than once, and must not restart a running act.
     fun beginIfUnseen(act: TourAct, hasRoutine: Boolean = true) {
         if (isRunning || awaitingRoutine) return
         if (settings.tourSeenVersion(act.rawValue) >= VERSION) return
@@ -358,8 +324,8 @@ class TourController(private val settings: TourSeenStore) {
         index = 0
     }
 
-    /// Replay everything from the beginning — the Settings row. Clearing the flags is what
-    /// lets the builder and session acts fire again the next time you reach them.
+    /// Replay everything — the Settings row. Clearing the flags lets the builder and session
+    /// acts fire again.
     fun replay(hasRoutine: Boolean) {
         settings.clearTourSeen(TourAct.entries.map { it.rawValue })
         begin(TourAct.Intro, hasRoutine)
@@ -367,13 +333,11 @@ class TourController(private val settings: TourSeenStore) {
         requestedTab = 0
     }
 
-    /// The builder opened while act one was waiting for a routine, so teach it. Runs only in
-    /// that window: opening the builder a month later to add a set is not a moment for a
-    /// tutorial.
+    /// Teach the builder, but only while act one is waiting for a routine — not when it is
+    /// opened a month later to add a set.
     fun builderOpened() {
-        // Act one may still be RUNNING — its last step is the hand-off that opened this
-        // document, and that step has now done its job. Guarding on `!isRunning` left the
-        // intro's "Build one now" card sitting over the builder it had just opened.
+        // Act one may still be RUNNING (its last step opened this document). Guarding on
+        // `!isRunning` left "Build one now" sitting over the builder it had just opened.
         if (!awaitingRoutine) return
         if (act != TourAct.Intro && act != null) return
         if (settings.tourSeenVersion(TourAct.Builder.rawValue) >= VERSION) {
@@ -400,9 +364,8 @@ class TourController(private val settings: TourSeenStore) {
             index += 1
             return
         }
-        // The end of act one is not the end of the tour: step aside and wait for the builder
-        // rather than marking it seen, or saving your first routine would drop you back onto a
-        // screen nobody has explained.
+        // The end of act one is not the end of the tour: wait for the builder rather than marking
+        // it seen, or saving the first routine lands on a screen nobody has explained.
         if (act == TourAct.Intro && awaitingRoutine) {
             steps = emptyList()
             index = 0
@@ -415,8 +378,7 @@ class TourController(private val settings: TourSeenStore) {
         index = maxOf(0, index - 1)
     }
 
-    /// Skipping counts as seen. Being asked twice whether you want the tour you already
-    /// declined is worse than never offering it.
+    /// Skipping counts as seen: being re-offered a declined tour is worse than never offering it.
     fun finish() {
         act?.let { settings.setTourSeenVersion(it.rawValue, VERSION) }
         // Only the intro act owns `awaitingRoutine`. Finishing the BUILDER act must leave it
@@ -428,9 +390,8 @@ class TourController(private val settings: TourSeenStore) {
     }
 }
 
-/// The three calls the controller makes on the settings surface, named as their own interface
-/// for the same reason `RoutineSettings` is: it keeps the controller testable without a
-/// `Context`, a DataStore file, or the cross-test bleed a real preference file causes.
+/// The controller's three settings calls, as an interface (like `RoutineSettings`) so it
+/// tests without a `Context` or a real preference file.
 interface TourSeenStore {
     fun tourSeenVersion(act: String): Int
     fun setTourSeenVersion(act: String, version: Int)
@@ -453,28 +414,22 @@ class SettingsTourSeenStore(private val settings: SettingsStore) : TourSeenStore
     override fun clearTourSeen(acts: List<String>) = settings.clearTourSeen(acts)
 }
 
-/// See `LocalDeviceStore` for why this is `staticCompositionLocalOf`. A controller over an
-/// in-memory store is the default, so previews and any screen composed outside the app's root
-/// still render — and never write a seen flag.
+/// `staticCompositionLocalOf`: see `LocalDeviceStore`. The in-memory default lets previews
+/// render and never writes a seen flag.
 val LocalTourController = staticCompositionLocalOf { TourController(InMemoryTourSeenStore()) }
 
 // MARK: - Anchors
 
 /// Every target's frame, in WINDOW coordinates, kept as a LIST per target.
 ///
-/// **A list, not a single frame — and that is the whole reason the spotlight worked on buttons
-/// and not on the builder's controls.** Any pager, `LazyColumn` or eager stack can legitimately
-/// have two views claiming one target, and only one of them is on screen; a last-wins merge
-/// punched the hole somewhere off to the right. Unique targets — the Start button, the routine
-/// card — had exactly one registrant and so were never affected, which is exactly the pattern
-/// Nuri spotted.
+/// **A list, because any pager, `LazyColumn` or eager stack can have two views claiming one
+/// target** with only one on screen; a last-wins merge punched the hole off to the right.
+/// Unique targets (Start, the routine card) never showed the bug.
 ///
-/// TRANSLATION NOTE: SwiftUI collects these as `Anchor<CGRect>` through a `PreferenceKey`,
-/// which walks UP the tree on its own. Compose has no preference system, so a registry object
-/// is passed DOWN through a CompositionLocal and each anchor writes its window rect into it
-/// from `onGloballyPositioned`. WINDOW coordinates rather than a parent's, because the host
-/// draws edge to edge and converts by subtracting its own origin — the same conversion
-/// `GeometryProxy[anchor]` performs on iOS.
+/// TRANSLATION NOTE: SwiftUI collects `Anchor<CGRect>` through a `PreferenceKey`, which walks
+/// UP the tree. Compose has none, so a registry is passed DOWN through a CompositionLocal and
+/// each anchor writes its window rect from `onGloballyPositioned`. The host draws edge to edge
+/// and subtracts its own origin, as `GeometryProxy[anchor]` does on iOS.
 @Stable
 class TourAnchors {
     private var frames: Map<TourTarget, List<Rect>> by mutableStateOf(emptyMap())
@@ -493,11 +448,8 @@ class TourAnchors {
         frames = frames + (target to keyed.values.toList())
     }
 
-    /// The registrant that is actually ON SCREEN, out of however many claimed this target.
-    ///
-    /// Scored by how much of it lands inside the host — a page waiting off to the right scores
-    /// zero and loses to the one you are looking at. Zero-sized rects are dropped outright: a
-    /// view that has not been laid out yet reports one, and it would beat nothing.
+    /// The registrant actually ON SCREEN, scored by how much of it lands inside the host.
+    /// Zero-sized rects (not yet laid out) are dropped outright.
     fun visibleRect(target: TourTarget, host: Rect): Rect? =
         frames[target]
             ?.filter { it.width > 1f && it.height > 1f }
@@ -518,9 +470,8 @@ internal fun intersect(a: Rect, b: Rect): Rect {
 
 val LocalTourAnchors = staticCompositionLocalOf { TourAnchors() }
 
-/// Register this view as something the tour can point at. Free when no tour is running —
-/// `onGloballyPositioned` costs one callback per layout pass and the registry writes only when
-/// the rect actually moved.
+/// Register this view as something the tour can point at. Cheap when no tour runs: the
+/// registry writes only when the rect moved.
 @Composable
 fun Modifier.tourAnchor(target: TourTarget): Modifier {
     val anchors = LocalTourAnchors.current
@@ -535,17 +486,13 @@ fun Modifier.tourAnchor(target: TourTarget): Modifier {
 
 // MARK: - Host
 
-/// Draw the tour over this container. Attach it at the ROOT of a screen, above the content
-/// whose anchors it reads.
+/// Draw the tour over this container, at the ROOT of a screen above the anchors it reads.
 ///
-/// `act` is a FILTER, and every host names one. Without it, a host draws whatever act happens
-/// to be running — so Today's act, resumed the moment a routine was saved, rendered its steps
-/// over the session that "Save and start training" had just opened. A host only ever shows the
-/// act it belongs to.
+/// `act` is a FILTER: without it, Today's act — resumed the moment a routine was saved —
+/// drew over the session "Save and start training" had just opened.
 ///
-/// **Every presented container needs its own host.** The builder and the runner each replace
-/// the root outright in `RootTabView`, so each hosts its own; the root's overlay is gone by
-/// then and would have nothing to draw over.
+/// **Every presented container needs its own host.** The builder and the runner replace the
+/// root in `RootTabView`, so the root's overlay has nothing to draw over.
 @Composable
 fun TourHost(act: TourAct, content: @Composable () -> Unit) {
     val tour = LocalTourController.current
@@ -558,11 +505,8 @@ fun TourHost(act: TourAct, content: @Composable () -> Unit) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    // The screen-reader twin of the scrim: while a step is DESCRIBING
-                    // something, everything under the tour is out of reach for TalkBack too.
-                    // Scoped to non-interactive steps only — on exactly the steps that ask you
-                    // to press something, the real control lives in this subtree and a
-                    // screen-reader user has to be able to reach past the card to press it.
+                    // The screen-reader twin of the scrim: a DESCRIBING step hides everything beneath from
+                    // TalkBack. Not on interactive steps, where the real control must stay reachable.
                     .then(
                         if (showing && step?.interactive == false) {
                             Modifier.clearAndSetSemantics {}
@@ -588,8 +532,7 @@ fun TourHost(act: TourAct, content: @Composable () -> Unit) {
                     .semantics { isTraversalGroup = true; traversalIndex = -1f },
             ) {
                 if (host.width > 0f) {
-                    // Anchors are in WINDOW space; the overlay draws in its own. One
-                    // subtraction converts, and this is the only place the two spaces meet.
+                    // Anchors are in WINDOW space; this is the one place it is converted to the overlay's.
                     val lit = step.target
                         ?.let { anchors.visibleRect(it, host) }
                         ?.translate(-host.left, -host.top)
@@ -610,11 +553,9 @@ fun TourHost(act: TourAct, content: @Composable () -> Unit) {
     }
 }
 
-/// The whole screen with the lit control subtracted, filled EVEN-ODD.
-///
-/// It shapes the touch BLOCKER, not the paint: Compose hit-tests a pointer against the layer's
-/// clip outline, so clipping a bare Box to this shape is what makes the hole a hole for
-/// touches — a tap inside it misses the blocker entirely and reaches the control underneath.
+/// The whole screen minus the lit control, filled EVEN-ODD. It shapes the touch BLOCKER:
+/// Compose hit-tests against the layer's clip outline, so a tap in the hole misses the
+/// blocker and reaches the control.
 private class ScrimHitShape(private val hole: Rect?, private val radius: Float) : Shape {
     override fun createOutline(
         size: Size,
@@ -642,18 +583,13 @@ private fun TourOverlay(
     onSkip: () -> Unit,
 ) {
     val density = LocalDensity.current
-    /// Breathing room around the lit control, so the hole reads as "this thing" rather than as
-    /// a crop of it.
+    /// Breathing room so the hole reads as "this thing", not a crop of it.
     val padPx = with(density) { 8.dp.toPx() }
     val radiusPx = with(density) { Metrics.radiusCard.toPx() }
 
-    /// An interactive step normally reaches its control through the punched hole, and
-    /// tap-anywhere is off so a stray tap cannot skip past the one instruction that mattered.
-    /// But `spotlight` can resolve to null — the target scrolled off-screen, not yet laid out —
-    /// and without this the scrim still eats every touch with no hole to let one through: the
-    /// WHOLE screen goes dead, reachable only by the small Next button in the card. A step
-    /// describing something that is not actually lit cannot demand the interaction it cannot
-    /// show.
+    /// An interactive step reaches its control through the hole, with tap-anywhere off so a
+    /// stray tap cannot skip the instruction. But when `spotlight` is null (scrolled off, not
+    /// laid out) there is no hole, and the WHOLE screen went dead except the small Next button.
     val tapAnywhereAdvances = !step.interactive || spotlight == null
     val hole = spotlight?.inflate(padPx)
     val interactiveHole = if (step.interactive) hole else null
@@ -661,10 +597,8 @@ private fun TourOverlay(
     var cardHeightPx by remember(step) { mutableStateOf(0f) }
 
     Box(Modifier.fillMaxSize()) {
-        // **`BlendMode.Clear` in an OFFSCREEN layer is the only way to get a real hole.**
-        // Drawing four rectangles around the control leaves a seam at every corner the moment
-        // the corner radius is not zero — and `Metrics.radiusCard` is 22 dp. The Canvas takes
-        // no pointer input, so it is paint and nothing else.
+        // **`BlendMode.Clear` in an OFFSCREEN layer is the only real hole.** Four rectangles leave a
+        // seam at every rounded corner (`Metrics.radiusCard` is 22 dp). Paint only; no input.
         Canvas(
             Modifier
                 .fillMaxSize()
@@ -683,17 +617,14 @@ private fun TourOverlay(
             }
         }
 
-        // The touch blocker, shaped. It eats every touch on purpose — except the lit control on
-        // an interactive step. A half-live screen under a tutorial is how people start a
-        // session by accident; a dead control the tutorial just told you to press is worse.
+        // The touch blocker eats everything except the lit control on an interactive step: a
+        // half-live screen starts sessions by accident.
         Box(
             Modifier
                 .fillMaxSize()
                 .clip(ScrimHitShape(interactiveHole, radiusPx))
                 .pointerInput(step, tapAnywhereAdvances) {
-                    // Tap anywhere to advance, but NOT while a step is asking you to press
-                    // something it can actually show you: there, a stray tap would carry you
-                    // past the one instruction that mattered.
+                    // Not while a step asks you to press something it can show: a stray tap would skip it.
                     detectTapGestures { if (tapAnywhereAdvances) onNext() }
                 }
                 .clearAndSetSemantics {},
@@ -720,9 +651,8 @@ private fun TourOverlay(
                 .heightIn(max = with(density) { hostHeight.toDp() - 190.dp }.coerceAtLeast(120.dp))
                 .clip(RoundedCornerShape(Metrics.radiusCard))
                 .background(Color(0xFF20252D))
-                // MEASURED, not estimated. A fixed guess was fine for a two-line step and ran
-                // the buttons off the bottom of the screen on a four-line one — and the step
-                // whose buttons you cannot reach is the step the tour stops at.
+                // MEASURED, not estimated: a fixed guess ran a four-line step's buttons off the screen,
+                // and the step you cannot leave is where the tour stops.
                 .onGloballyPositioned { cardHeightPx = it.size.height.toFloat() }
                 .verticalScroll(cardScroll)
                 .padding(20.dp),
@@ -757,14 +687,11 @@ private fun TourOverlay(
     }
 }
 
-/// BELOW the lit control when there is room under it, above it when there is not, and centred
-/// when nothing is lit. The card must never cover the thing it is describing, which is the one
-/// job this arithmetic has.
+/// BELOW the lit control when there is room, above when not, centred when nothing is lit —
+/// the card must never cover what it describes.
 ///
-/// Measured from the PHYSICAL edges, because the host ignores the safe area — it has to, so the
-/// scrim covers the status bar and the navigation bar. 70 dp clears a cutout, 120 dp clears the
-/// tab bar and the gesture handle. A card tucked under either is a card with unreachable
-/// buttons.
+/// From the PHYSICAL edges, because the host ignores the safe area so the scrim covers the
+/// system bars: 70 dp clears a cutout, 120 dp clears the tab bar and gesture handle.
 internal fun cardOffsetPx(
     spotlight: Rect?,
     cardHeight: Float,
@@ -787,9 +714,8 @@ private fun TourButton(title: String, prominent: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .heightIn(min = 48.dp)
-            // The house rule: a label with padding and a background still hit-tests only its
-            // opaque content unless the shape is declared. Clipping to the capsule BEFORE the
-            // clickable is what declares it.
+            // House rule: padding and background hit-test only when the shape is declared. Clipping to
+            // the capsule BEFORE the clickable declares it.
             .clip(CircleShape)
             .background(if (prominent) Color.White else Color.White.copy(alpha = 0.18f))
             .clickable(

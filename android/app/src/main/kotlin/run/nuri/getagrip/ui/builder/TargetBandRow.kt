@@ -68,73 +68,60 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
 /// The target load for ONE set, as a single row on that set's editor.
 ///
-/// A percentage only means kilograms once you know WHICH grip it applies to, so a
-/// routine-wide card had to talk in abstractions and then hope you checked each grip's max
-/// separately. Here the row says the actual answer — "20–30 % · 6.0–9.0 kg" — because it
-/// knows the grip it is sitting on.
+/// A percentage only means kilograms once you know WHICH grip, so the row states the answer —
+/// "20–30 % · 6.0–9.0 kg" — for the grip it sits on.
 ///
-/// Stored as a PERCENTAGE by default, not kilograms: your max moves, and a routine that
-/// silently keeps prescribing last spring's load is the bookkeeping this app exists to
-/// refuse. The kilograms are resolved fresh at the start of every session.
+/// Stored as a PERCENTAGE by default: your max moves, and a routine prescribing last spring's
+/// load is the bookkeeping this app refuses. Kilograms resolve fresh each session.
 ///
-/// **But kilograms are typeable too** (Nuri, 2026-08-09: "we also need to be able to set
-/// weight ranges even if you don't have your max recorded"). A percentage of a max you have
-/// not measured is a target of NOTHING — it resolves to no band at run time, and finding
-/// that out mid-session is the wrong moment. So the unit is a choice inside Custom, and it
-/// defaults to kilograms exactly when the percentage could not work.
+/// **Kilograms are typeable too** (Nuri, 2026-08-09): a percentage of an unmeasured max
+/// resolves to no band at run time, found out mid-session. The unit is a choice inside
+/// Custom, defaulting to kilograms exactly when a percentage could not work.
 ///
-/// **SHUT BY DEFAULT — and its warning is not.** The editor measured ~293 pt, a third of
-/// the whole expanded set row, on a screen where most sets carry no target at all. Six
-/// chips, a unit picker, a trimmer and a two-line caption is the right EDITOR and the wrong
-/// thing to look at while scrolling past five sets you are not editing.
+/// **SHUT BY DEFAULT — and its warning is not.** The editor measured ~293 pt, a third of an
+/// expanded set row, on a screen where most sets carry no target.
 @Composable
 fun TargetBandRow(
     set: SetPlan,
-    /// Every max on file, by grip and hand — so a percentage can be shown as the ACTUAL
-    /// kilograms each hand will be asked for, which is the whole point of the row.
+    /// Every max on file, by grip and hand, so the row can show each hand's ACTUAL kilograms.
     maxes: MaxTable,
-    /// Whether this routine alternates hands. `bothHands` puts them on the edge together,
-    /// so there is no per-hand question to answer and the row must not invent one.
+    /// Whether hands alternate. `bothHands` shares the edge, so there is no per-hand question and
+    /// the row must not invent one.
     handMode: HandMode,
     modifier: Modifier = Modifier,
     onChange: (SetPlan) -> Unit,
 ) {
     val palette = LocalGripPalette.current
 
-    /// CLOSED on every appearance, deliberately — see the header note.
+    /// CLOSED on every appearance — see the header note.
     var expanded by remember { mutableStateOf(false) }
 
-    /// Sticky once opened: a custom band that happens to LAND on 20–30 % would otherwise
-    /// close the fields under the finger that was still editing it.
+    /// Sticky once opened: a custom band landing on 20–30 % would otherwise close the fields
+    /// under the finger editing them.
     var showsCustomFields by remember { mutableStateOf(false) }
 
-    /// How a custom band is expressed. Not persisted — the STORED band says which it is
-    /// (a `targetLoKg` means kilograms), and this only carries the choice while the fields
-    /// are open and both are momentarily empty.
+    /// How a custom band is expressed. Not persisted: the STORED band says which (`targetLoKg`
+    /// means kilograms); this only holds the choice while both fields are empty.
     var unit by remember { mutableStateOf(if (set.targetBand != null) Unit_.Kilograms else Unit_.Percent) }
 
-    // The STORED band says which unit it is. Without this, reopening a set that already
-    // holds a kilogram band would show the percentage fields over it.
+    // Otherwise reopening a kilogram band would show percentage fields over it.
     LaunchedEffect(set.id) {
         unit = if (set.targetBand != null) Unit_.Kilograms else Unit_.Percent
     }
 
     val percentBand = set.targetPercentBand
-    /// An explicit kilogram band, which OUTRANKS any percentage — the same order
-    /// `PlanMath.targetBand` resolves in. The two are mutually exclusive here: setting
-    /// either clears the other, so the row can never show one and run the other.
+    /// An explicit kilogram band OUTRANKS any percentage (`PlanMath.targetBand` order). Setting
+    /// either clears the other, so the row never shows one and runs the other.
     val kgBand = set.targetBand
     val hasTarget = kgBand != null || percentBand != null
 
     /// The hands this routine asks about, in the order the runner alternates them.
     val sides = if (handMode.sideCount > 1) listOf(Side.left, Side.right) else listOf(Side.both)
 
-    /// The kilograms this set will ask of one hand. Resolved locally from the set's own
-    /// percentage rather than through `PlanMath.targetBand`, because this row deliberately
-    /// does not hold a whole `SessionPlan`.
+    /// The kilograms this set asks of one hand, resolved locally because this row holds no
+    /// `SessionPlan` for `PlanMath.targetBand`.
     fun resolved(side: Side): ClosedFloatingPointRange<Double>? {
-        // An explicit band needs no resolving and no max — it is already the answer, and it
-        // is the same answer for both hands.
+        // An explicit band is already the answer, the same for both hands.
         if (kgBand != null) return kgBand
         val band = percentBand ?: return null
         val maxKg = maxes.max(set.grip.key, side) ?: return null
@@ -149,9 +136,8 @@ fun TargetBandRow(
     val hasResolvableMax = sides.any { (maxes.max(set.grip.key, it) ?: 0.0) > 0 }
 
     fun applyPercent(lo: Double, hi: Double) {
-        // A percentage and an explicit kilogram band on the same set would leave the kg
-        // winning silently — `PlanMath.targetBand` ranks it first — so picking a percentage
-        // clears any kilograms that may have been typed here.
+        // `PlanMath.targetBand` ranks kg first, so a percentage beside kilograms would silently
+        // lose; picking a percentage clears them.
         onChange(
             set.copy(
                 targetLoPercent = lo, targetHiPercent = hi,
@@ -180,47 +166,40 @@ fun TargetBandRow(
     }
 
     fun matches(lo: Double, hi: Double): Boolean {
-        // A kilogram band is never a percentage preset, however the numbers happen to line
-        // up — 20 kg is not "20 %".
+        // A kilogram band is never a percentage preset: 20 kg is not "20 %".
         if (kgBand != null) return false
         val band = percentBand ?: return false
         return abs(band.start - lo) < 0.001 && abs(band.endInclusive - hi) < 0.001
     }
 
-    /// Whether the row is in custom mode: either you asked for it, or the stored band is one
-    /// no preset can express (a routine synced from another device, or a value typed here
-    /// earlier). The second half is what stops a 17–22 % band opening as "None".
+    /// Custom mode: you asked for it, or no preset expresses the stored band (synced, or typed
+    /// earlier). The second half stops a 17–22 % band opening as "None".
     val editingCustom = showsCustomFields || kgBand != null ||
         (percentBand != null && PRESETS.none { matches(it.lo, it.hi) })
 
     val valueText = when {
         kgBand != null -> WeightUnits.band(kgBand)
         percentBand == null -> tr("None")
-        // **When the hands differ there is no single number to lead with**, so it shows the
-        // percentage — the thing you actually set, and the one figure that IS true of both
-        // hands — and the caption underneath carries the two loads.
+        // **When the hands differ there is no single number to lead with**: show the percentage
+        // (what you set, true of both hands); the caption carries the two loads.
         differsByHand -> percentText(percentBand)
         else -> resolved(sides[0])?.let { WeightUnits.band(it) } ?: percentText(percentBand)
     }
 
     val caption: String? = when {
         kgBand != null ->
-            // What it does NOT do is the part worth stating: an explicit load is the one
-            // kind that goes stale, and it is the trade you make for not needing a max.
+            // An explicit load is the one kind that goes stale — the price of not needing a max.
             tr("A fixed load, the same on both hands — it stays put when your max moves.")
         percentBand == null -> null
         else -> {
             val resolvedSides = sides.filter { resolved(it) != null }
             when {
-                // Named, not hinted: a percentage with no max resolves to no target at all
-                // at run time, and finding that out mid-session is the wrong moment.
-                // ANDROID-ONLY WORDING: iOS says "Settings › Maxes", where its max list
-                // lives. Android's Maxes is a tab of its own.
+                // Named, not hinted: a percentage with no max resolves to no target at run time.
+                // ANDROID-ONLY WORDING: iOS says "Settings › Maxes"; Android's Maxes is its own tab.
                 resolvedSides.isEmpty() ->
                     tr("No max on file for this grip yet, so this shows no target during a session. Add one in Maxes.")
-                // One hand has a max and the other does not — which is what an explicitly
-                // left-only or right-only max leaves behind. Say WHICH hand is unloaded,
-                // because the row above will happily show a confident band for the other.
+                // One hand has a max, the other not (a left- or right-only max). Say WHICH, because the row
+                // above shows a confident band for the other.
                 resolvedSides.size < sides.size -> {
                     val missing = sides.first { resolved(it) == null }
                     tr(
@@ -279,8 +258,7 @@ fun TargetBandRow(
                 valueText,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                // Amber when a hand will genuinely go untargeted — the collapsed row's only
-                // way to say that the number beside it will not survive to the session.
+                // Amber when a hand will go untargeted: the collapsed row's only way to say so.
                 color = when {
                     unresolved -> palette.armed
                     hasTarget -> palette.inkPrimary
@@ -296,9 +274,8 @@ fun TargetBandRow(
             )
         }
 
-        // **Collapsing a control must never collapse the reason it is broken.** A percentage
-        // that resolves to NOTHING stays explained with the editor shut — the same class of
-        // bug as a per-set override that only appears once you open the row.
+        // **Collapsing a control must never collapse the reason it is broken**: an unresolvable
+        // percentage stays explained with the editor shut.
         if (!expanded && unresolved && caption != null) {
             Text(
                 caption,
@@ -308,9 +285,8 @@ fun TargetBandRow(
             )
         }
 
-        // A disclosure is the ladder's DEFAULT motion — critically damped, and flat under
-        // Reduce Motion. Compose's own default here is an unguarded 400 ms tween nothing in
-        // this app chose.
+        // A disclosure uses `Motion.state` (flat under Reduce Motion), not Compose's unguarded
+        // 400 ms default.
         AnimatedVisibility(
             visible = expanded,
             enter = expandVertically(Motion.state(rememberReduceMotion())) +
@@ -327,10 +303,8 @@ fun TargetBandRow(
                         }
                         PRESETS.forEach { preset ->
                             add { cell: Modifier ->
-                                // A preset only reads as selected while the custom fields
-                                // are CLOSED. Otherwise tapping Custom lit "20–30 %" — the
-                                // band it seeds from — and the row said it was on a preset
-                                // while offering you two fields.
+                                // Selected only while the custom fields are CLOSED: tapping Custom otherwise lit
+                                // "20–30 %", the band it seeds from, beside two open fields.
                                 Chip(
                                     tr("%s %%", preset.label),
                                     matches(preset.lo, preset.hi) && !editingCustom,
@@ -342,17 +316,14 @@ fun TargetBandRow(
                             }
                         }
                         add { cell: Modifier ->
-                            // A band nobody thought to make a chip — 17–22 % was Nuri's own
-                            // example, and four presets could never have held it.
+                            // For bands no chip holds — 17–22 % was Nuri's own example.
                             Chip(tr("Custom"), editingCustom, cell) {
                                 showsCustomFields = true
                                 if (hasTarget) {
                                     unit = if (kgBand != null) Unit_.Kilograms else Unit_.Percent
                                 } else {
-                                    // **Kilograms when a percentage could not work.**
-                                    // Offering "20 % of your max" to someone who has never
-                                    // measured this grip is offering a number that resolves
-                                    // to nothing at run time.
+                                    // **Kilograms when a percentage could not work**: "20 % of your max" with no max
+                                    // resolves to nothing at run time.
                                     unit = if (hasResolvableMax) Unit_.Percent else Unit_.Kilograms
                                     if (unit == Unit_.Kilograms) {
                                         applyKg(DEFAULT_KG_LO, DEFAULT_KG_HI)
@@ -366,10 +337,8 @@ fun TargetBandRow(
                 )
 
                 if (editingCustom) {
-                    // WHICH UNIT, asked only here. It is a question about how you want to
-                    // express the load, not another preset value, so it does not belong in
-                    // the chip row above — and it only comes up once you have said the
-                    // presets do not fit.
+                    // WHICH UNIT, asked only here: it is how you express the load, not a preset value,
+                    // and only matters once the presets do not fit.
                     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         Unit_.entries.forEachIndexed { index, option ->
                             SegmentedButton(
@@ -377,9 +346,7 @@ fun TargetBandRow(
                                 onClick = {
                                     if (unit == option) return@SegmentedButton
                                     unit = option
-                                    // Seed from what is on screen where that is possible, so
-                                    // switching units reads as a conversion rather than a
-                                    // reset.
+                                    // Seed from what is on screen, so switching units reads as a conversion, not a reset.
                                     when (option) {
                                         Unit_.Kilograms -> {
                                             val seed = resolved(sides[0])
@@ -399,10 +366,8 @@ fun TargetBandRow(
                         }
                     }
 
-                    // ONE two-ended control, the trimmer — it replaced a pair of steppers
-                    // that made "80 to 90" a dozen taps. The steps snap to the same 5 % /
-                    // 0.5 kg resolution the app rounds targets to, so every value it can
-                    // land on is one people quote to each other exactly.
+                    // ONE two-ended trimmer, replacing steppers that made "80 to 90" a dozen taps. Steps snap
+                    // to the 5 % / 0.5 kg resolution targets round to.
                     if (unit == Unit_.Kilograms) {
                         val lo = kgBand?.start ?: DEFAULT_KG_LO
                         val hi = kgBand?.endInclusive ?: DEFAULT_KG_HI
@@ -451,8 +416,7 @@ fun TargetBandRow(
                         caption,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
-                        // Amber only when a hand will genuinely go untargeted — a per-hand
-                        // breakdown is information, not a warning.
+                        // Amber only when a hand goes untargeted; a per-hand breakdown is not a warning.
                         color = if (unresolved) palette.armed else palette.inkTertiary,
                     )
                 }
@@ -461,10 +425,8 @@ fun TargetBandRow(
     }
 }
 
-/// How a custom band is expressed. Named with a trailing underscore because `Unit` is
-/// Kotlin's own void type and shadowing it inside a file this size is a trap.
-/// The label is a `get()` for the reason `Tab`'s is: an enum entry is constructed once per
-/// process, and a translated string baked in there survives a language change.
+/// How a custom band is expressed. Trailing underscore because `Unit` is Kotlin's void type.
+/// The label is a `get()` — see `Tab`.
 private enum class Unit_(private val key: String) {
     Percent("% of max"),
     Kilograms("Kilograms");
@@ -474,9 +436,8 @@ private enum class Unit_(private val key: String) {
 
 private data class Preset(val label: String, val lo: Double, val hi: Double)
 
-/// The bands worth one tap. Low-intensity volume is the app's centre of gravity, so it gets
-/// two of the four; the others reach strength-endurance and max work without pretending a
-/// slider would be more precise than a person's intent.
+/// The one-tap bands. Low-intensity volume, the app's centre of gravity, gets two of four;
+/// the others reach strength-endurance and max work.
 private val PRESETS = listOf(
     Preset("15–25", 0.15, 0.25),
     Preset("20–30", 0.20, 0.30),
@@ -484,14 +445,13 @@ private val PRESETS = listOf(
     Preset("80–100", 0.80, 1.00),
 )
 
-/// Where a kilogram band starts when there is nothing to seed it from. The low-intensity
-/// no-hang load this whole app is built around, in the units someone with no max on file
-/// can still reason about.
+/// A kilogram band's start with nothing to seed it: the low-intensity no-hang load the app
+/// is built around.
 private const val DEFAULT_KG_LO = 10.0
 private const val DEFAULT_KG_HI = 15.0
 
-/// The kilogram scale's top. Wide enough for strong pullers without making a 10–15 kg band
-/// a sliver: it grows with the band it has to show and with the strongest max on file.
+/// The kilogram scale's top: grows with the band and the strongest max on file, so a
+/// 10–15 kg band is not a sliver.
 private fun kgScaleTop(
     bandTop: Double?,
     set: SetPlan,
@@ -506,16 +466,15 @@ private fun kgScaleTop(
 private fun percentText(band: ClosedFloatingPointRange<Double>): String =
     L10n.tr("%d–%d %%", (band.start * 100).roundToInt(), (band.endInclusive * 100).roundToInt())
 
-/// The trimmer's own formatters. Named rather than inline because a lambda passed to a
-/// composable is not itself composable, and `L10n.tr` is the door that works from either.
+/// Named, because a lambda passed to a composable is not composable, and `L10n.tr` works
+/// from either.
 private fun kgUnit(value: Double): String = WeightUnits.tr("%s kg", kgText(value))
 
 private fun percentUnit(fraction: Double): String =
     L10n.tr("%d %%", (fraction * 100).roundToInt())
 
-/// One kilogram figure, to one decimal. LOCALE-SENSITIVE, like `PlanMath.bandText` and
-/// every other number a person reads — the locale-free `Fmt.fixed` belongs to keys and
-/// exports.
+/// One kilogram figure, to one decimal. LOCALE-SENSITIVE like every number a person reads;
+/// the locale-free `Fmt.fixed` is for keys and exports.
 internal fun kgText(kg: Double): String = WeightUnits.number(kg)
 
 @Preview(name = "TargetBandRow", showBackground = true, widthDp = 360)
