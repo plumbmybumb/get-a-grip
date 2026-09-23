@@ -76,7 +76,10 @@ struct RoutineShareSheet: View {
         }
         .presentationDetents([.medium, .large])
         .task {
-            if rendered == nil, !renderFailed { await renderImage() }
+            // After the slide-up, never during it — see `ShareRenderTiming`.
+            guard rendered == nil, !renderFailed,
+                  await ShareRenderTiming.wait(ShareRenderTiming.afterPresentation) else { return }
+            await renderImage()
         }
     }
 
@@ -171,7 +174,7 @@ struct RoutineShareSheet: View {
         RoutineShareExportCard(name: request.name, payload: payload)
     }
 
-    /// Rendered once, when the sheet appears — the request is frozen, so there is no
+    /// Rendered once, once the sheet has settled — the request is frozen, so there is no
     /// input that could change under it. `isOpaque = false` keeps the card's rounded
     /// corners transparent instead of squaring the PNG off with white.
     @MainActor
