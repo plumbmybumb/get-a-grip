@@ -3,10 +3,12 @@
 
 package run.nuri.getagrip.ui.builder
 
+import androidx.compose.runtime.saveable.Saver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import run.nuri.getagrip.engine.BlobCodec
 import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.RoutineDraft
 
@@ -117,6 +119,22 @@ object BuilderDraft {
         draft.plan.executable.sets.map { it.targetPercentBand }.toSet().size > 1
 }
 
+
+/// **A draft across a configuration change** — the builder's document and Today's import
+/// preview both. It is the rescue stash's own frozen JSON, so there is exactly one
+/// serialization of a draft to keep lossless. A draft that will not encode (a non-finite
+/// number, which no screen can produce) saves nothing, and the screen reopens on its seed
+/// rather than on a half-written copy.
+val RoutineDraftSaver: Saver<RoutineDraft, String> = Saver(
+    save = { BlobCodec.encode(it) },
+    restore = { text -> BlobCodec.decode(text) { RoutineDraft.fromJson(it) } },
+)
+
+/// The same, for a slot that may hold nothing — Today's import preview.
+val OptionalRoutineDraftSaver: Saver<RoutineDraft?, String> = Saver(
+    save = { draft -> draft?.let { BlobCodec.encode(it) } },
+    restore = { text -> BlobCodec.decode(text) { RoutineDraft.fromJson(it) } },
+)
 
 /** One pending rescue write reads the latest draft even during a continuous drag. */
 internal class DraftStashCoalescer(

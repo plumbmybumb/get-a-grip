@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -97,8 +98,9 @@ fun FineTuningSection(
     fun edit(transform: (SessionPlan) -> SessionPlan) = update { it.copy(plan = transform(it.plan)) }
     val reduceMotion = rememberReduceMotion()
     /// View-local and unpersisted BY CONSTRUCTION — a fresh section is built every time the
-    /// builder opens, so "collapsed on every open" needs no resetting logic.
-    var isOpen by remember { mutableStateOf(false) }
+    /// builder opens, so "collapsed on every open" needs no resetting logic. Saved only across
+    /// a rotation, which is not an open.
+    var isOpen by rememberSaveable { mutableStateOf(false) }
     val chevron by animateFloatAsState(
         targetValue = if (isOpen) 180f else 0f,
         animationSpec = Motion.state(reduceMotion),

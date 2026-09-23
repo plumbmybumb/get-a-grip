@@ -227,7 +227,9 @@ fun RootTabView() {
         return
     }
 
-    var building by remember { mutableStateOf<BuilderMode?>(null) }
+    // Which screen the root is presenting survives a rotation — see `RootPresentation`.
+    val presentation: RootPresentation = viewModel { RootPresentation() }
+    var building by presentation::building
     val builderMode = building
     if (builderMode != null) {
         TourHost(TourAct.Builder) {
@@ -238,11 +240,11 @@ fun RootTabView() {
 
     // Keep the grip composer above each child destination: Cancel returns to the same
     // grip, while a successful save closes the whole creation flow after its receipt.
-    var newMax by remember { mutableStateOf<NewMaxDraft?>(null) }
-    var editingMax by remember { mutableStateOf<MaxEditRequest?>(null) }
-    var editingSharedMax by remember { mutableStateOf<MaxEditRequest?>(null) }
-    var measuring by remember { mutableStateOf<MeasureRequest?>(null) }
-    var measurementSaved by remember(measuring) { mutableStateOf(false) }
+    var newMax by presentation::newMax
+    var editingMax by presentation::editingMax
+    var editingSharedMax by presentation::editingSharedMax
+    var measuring by presentation::measuring
+    var measurementSaved by presentation::measurementSaved
     val measure = measuring
     if (measure != null) {
         MaxMeasureScreen(
@@ -289,7 +291,7 @@ fun RootTabView() {
     // The log sheet is one sheet with two doors — History's row and Today's consistency card
     // — because it writes one kind of row and a second copy would be a second set of rules
     // about what settles a day.
-    var loggingSession by remember { mutableStateOf(false) }
+    var loggingSession by presentation::loggingSession
 
     // **"Take me to that tab."** Settings sits two tabs away from everything it can restart,
     // and a step that lives on History has to BE on History. `requestedTab` is how anything
@@ -436,12 +438,3 @@ fun RootTabView() {
     }
 
 }
-
-private data class MaxEditRequest(val grip: GripSpec, val fromNew: Boolean = false)
-
-/** Both individual hands are measured in one visit; shared measurement is explicitly chosen. */
-private data class MeasureRequest(
-    val grip: GripSpec,
-    val side: Side,
-    val fromNew: Boolean = false,
-)

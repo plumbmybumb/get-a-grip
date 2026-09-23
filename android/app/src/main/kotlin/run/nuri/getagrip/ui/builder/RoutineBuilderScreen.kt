@@ -43,6 +43,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -143,7 +144,11 @@ fun RoutineBuilderHost(
     }
 
     val editableSeed = remember(seed) { BuilderDraft.editable(seed) }
-    val draftState = remember(seed) { mutableStateOf(editableSeed) }
+    // **SAVED, not remembered — for creating AND editing.** A rotation recreates the Activity
+    // and destroys every `remember`, and the create-only rescue stash is up to half a second
+    // behind and does not exist at all for an edit, so turning the phone used to throw the
+    // document away. The draft round-trips through the same frozen JSON the stash writes.
+    val draftState = rememberSaveable(seed, stateSaver = RoutineDraftSaver) { mutableStateOf(editableSeed) }
     var draft by draftState
     /// The seed, kept only to answer "is this dirty".
     val initialDraft = editableSeed
@@ -152,17 +157,21 @@ fun RoutineBuilderHost(
 
     /// At most ONE open set row. The accordion is not only a readability device: it is what
     /// guarantees exactly one dense control cluster can exist on screen at a time.
-    var expanded by remember { mutableStateOf<UUID?>(null) }
+    var expanded by rememberSaveable { mutableStateOf<UUID?>(null) }
 
     /// Which set's grip the panel is editing. It lives HERE, not on the token: the panel
     /// hangs off the top of the screen, and nothing inside a scrolling set row can reach it.
-    var editingSet by remember { mutableStateOf<UUID?>(null) }
+    var editingSet by rememberSaveable { mutableStateOf<UUID?>(null) }
 
-    var coachStep by remember { mutableStateOf(BuilderDraft.retiredCoachStep) }
+    var coachStep by rememberSaveable { mutableStateOf(BuilderDraft.retiredCoachStep) }
+    /// Whether this document has already been OPENED — seeded its guide step and swept the
+    /// rescue stash. Saved with the draft, so the rotation that recreates this screen does not
+    /// restart the guide or swap the document for a stash up to half a second older than it.
+    var opened by rememberSaveable { mutableStateOf(false) }
     /// Held with its ORIGINAL id and original index, so Undo puts the same row back where it
     /// was rather than an equal-looking new one two places down.
     var removedSet by remember { mutableStateOf<RemovedSet?>(null) }
-    var showDiscard by remember { mutableStateOf(false) }
+    var showDiscard by rememberSaveable { mutableStateOf(false) }
 
     val reduceMotion = rememberReduceMotion()
     val scrollState = rememberScrollState()
@@ -184,6 +193,8 @@ fun RoutineBuilderHost(
     // The guide's starting step, once. Reading it during the first composition rather than in
     // a remembered initializer keeps the store read out of the state's constructor.
     LaunchedEffect(mode) {
+        if (opened) return@LaunchedEffect
+        opened = true
         coachStep = BuilderDraft.startingCoachStep(mode, settings.builderGuideDone)
         // The rescue copy only exists if a previous session died mid-build: Save and Cancel
         // both clear it. `initialDraft` deliberately stays at the seed, so a restored

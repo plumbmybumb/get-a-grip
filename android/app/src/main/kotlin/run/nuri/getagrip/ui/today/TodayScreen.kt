@@ -59,6 +59,7 @@ import run.nuri.getagrip.store.LocalDayClock
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.store.LocalHistoryFeed
 import run.nuri.getagrip.store.LocalTemplateStore
+import run.nuri.getagrip.ui.builder.OptionalRoutineDraftSaver
 import run.nuri.getagrip.ui.components.DeviceChip
 import run.nuri.getagrip.ui.components.UndoSnackbar
 import run.nuri.getagrip.ui.components.UndoSnackbarEffect
@@ -154,8 +155,11 @@ fun TodayScreen(
     /// `drainImportInbox`. It lives here — not in `MainActivity`, where the link actually
     /// arrives — because this is the one place that can see whether anything else holds the
     /// screen.
-    var importPreview by remember { mutableStateOf<RoutineDraft?>(null) }
-    var importError by remember { mutableStateOf<String?>(null) }
+    ///
+    /// SAVED across a rotation: claiming it EMPTIED the inbox, so a preview that died with the
+    /// Activity was a shared routine gone for good — rescanning is somebody else's phone away.
+    var importPreview by rememberSaveable(stateSaver = OptionalRoutineDraftSaver) { mutableStateOf<RoutineDraft?>(null) }
+    var importError by rememberSaveable { mutableStateOf<String?>(null) }
     /// The scanner could not be opened at all — no Play services, or the module has never
     /// downloaded. Separate from `importError`, which is about a code that WAS read.
     var scannerError by remember { mutableStateOf<String?>(null) }
