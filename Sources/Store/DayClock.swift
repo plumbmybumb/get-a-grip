@@ -9,17 +9,13 @@ import UIKit
 
 /// The app's single source of "today".
 ///
-/// Reading `DayStamp.today()` straight from a view body only re-evaluates when SwiftUI
-/// happens to invalidate that view — so an app left open across local midnight keeps
-/// rendering yesterday's day: the ritual screen still says "1 of 2 today" for a session
-/// trained before midnight, and the streak strip still fills yesterday's cell. The day
-/// therefore gets an observable of its own, and every surface recomputes together.
+/// Reading `DayStamp.today()` from a view body only re-evaluates when SwiftUI happens to
+/// invalidate that view, so an app left open across midnight kept rendering yesterday.
+/// The day gets an observable of its own, and every surface recomputes together.
 ///
-/// `significantTimeChangeNotification` is the right hook: UIKit posts it at local
-/// midnight, and also when the clock is changed manually or the device crosses into a new
-/// time zone — all three change which calendar day the user is training in. The TRAINING
-/// day turns later than that, at `DayStamp.rolloverHour`, an hour nothing in UIKit
-/// announces — so the clock also books its own wake-up for it (`armRolloverRefresh`).
+/// `significantTimeChangeNotification` fires at local midnight, on a manual clock change
+/// and on a time-zone change. The TRAINING day turns at `DayStamp.rolloverHour`, which
+/// nothing announces, so the clock books its own wake-up (`armRolloverRefresh`).
 @Observable @MainActor
 final class DayClock {
     private(set) var today: DayStamp
@@ -42,8 +38,8 @@ final class DayClock {
 
     @ObservationIgnored private let observers = ObserverTokens()
 
-    /// The `today:` parameter is a test seam. Crossing midnight is the single most
-    /// expensive behaviour in the app to verify by waiting for it.
+    /// The `today:` parameter is a test seam: crossing midnight is too expensive to
+    /// verify by waiting.
     init(today: DayStamp = .today()) {
         self.today = today
         let center = NotificationCenter.default
@@ -75,11 +71,9 @@ final class DayClock {
         armRolloverRefresh()
     }
 
-    /// The training day turns at `DayStamp.rolloverHour` (see `DayStamp`), which UIKit
-    /// posts nothing for — `significantTimeChange` is midnight's. So the clock sleeps
-    /// until the next rollover and refreshes itself; a process suspended across it does
-    /// not run this and is caught by the foreground refresh instead. Continuous clock,
-    /// so a phone that dozed with the app in the foreground still wakes on time.
+    /// Sleeps until the next `DayStamp.rolloverHour` and refreshes itself; a process
+    /// suspended across it is caught by the foreground refresh instead. Continuous
+    /// clock, so a phone that dozed with the app foregrounded still wakes on time.
     private func armRolloverRefresh() {
         rolloverRefresh?.cancel()
         let interval = DayStamp.nextRollover(after: .now).timeIntervalSinceNow

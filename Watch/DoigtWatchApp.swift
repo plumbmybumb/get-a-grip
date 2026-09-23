@@ -4,20 +4,16 @@
 import SwiftData
 import SwiftUI
 
-/// The watch is a STANDALONE GAUGE HOST, not a remote for the phone (2026-09-19). It
-/// connects to the gauge itself, runs `SessionRunner` itself, and writes the
-/// `WorkoutLog` itself; the phone learns about the session the way it learns about
-/// anything — CloudKit. Nothing here talks to the phone directly, which is why there is
-/// no WatchConnectivity anywhere in the target, and why a session works with the phone
-/// in a bag or at home.
+/// The watch is a STANDALONE GAUGE HOST, not a remote for the phone. It connects to the
+/// gauge, runs `SessionRunner` and writes the `WorkoutLog` itself; the phone learns via
+/// CloudKit. No WatchConnectivity, so a session works with the phone at home.
 ///
 /// Three screens and no builder: routines are made on the phone and arrive by sync. The
 /// wrist gets the ritual, never the library.
 ///
 /// **One gauge, one central.** A Progressor accepts a single Bluetooth connection, so
-/// whichever device pressed Start owns it. Like the phone, this app connects only when
-/// a session starts — never at launch — so a watch on the wrist cannot steal the gauge
-/// from a phone that is mid-session.
+/// whichever device pressed Start owns it. This app connects only when a session starts,
+/// so a watch cannot steal the gauge from a phone mid-session.
 @main
 struct DoigtWatchApp: App {
     @Environment(\.scenePhase) private var scenePhase
@@ -49,11 +45,8 @@ struct DoigtWatchApp: App {
                 .environment(clock)
                 .environment(ledger)
                 .environment(device)
-                // The phone's one-shot training-day repair, on the wrist too — the row
-                // may have been written here, by a build whose clock still turned at
-                // midnight. After the first frame, never in `init`: see
-                // `SessionLedger.repairTrainingDaysIfNeeded`. The screens read `@Query`,
-                // so a moved row redraws itself.
+                // The phone's one-shot training-day repair, on the wrist too, after the
+                // first frame — see `SessionLedger.repairTrainingDaysIfNeeded`.
                 .task { ledger.repairTrainingDaysIfNeeded(defaults: .standard) }
                 .onChange(of: scenePhase) { _, phase in
                     device.recordScenePhase(String(describing: phase))

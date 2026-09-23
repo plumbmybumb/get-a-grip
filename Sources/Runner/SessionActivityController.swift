@@ -7,18 +7,15 @@ import Foundation
 
 /// Starts, updates and ends the session's Live Activity.
 ///
-/// **It pushes on STATE CHANGES, never on the clock.** The widget owns its own countdown
-/// (`Text(timerInterval:)`), so the only reason to send anything is that something the
-/// widget cannot derive has changed: the phase, the hand, the grip, the rep. That is a
-/// handful of updates a minute against ActivityKit's coalescing budget, instead of the
-/// ~80 a second the gauge produces — and it is why a twenty-minute session works at all.
+/// **It pushes on STATE CHANGES, never on the clock.** The widget owns its countdown
+/// (`Text(timerInterval:)`), so only what it cannot derive is sent — phase, hand, grip,
+/// rep: a handful of updates a minute against ActivityKit's budget.
 ///
-/// **The `Activity` handle is deliberately never stored.** `ActivityKit.Activity` is a
-/// plain class — `Identifiable`, NOT `Sendable` — so holding one on an actor and then
-/// awaiting a method on it is a send across isolation domains, which Swift 6 rejects
-/// outright. Fetching it from `Activity.activities` inside a `nonisolated` async function
-/// keeps the handle's whole life in one context. Each controller owns only its activity
-/// ID, so delayed cleanup from a prior session cannot end a newer card.
+/// **The `Activity` handle is never stored.** `ActivityKit.Activity` is NOT `Sendable`,
+/// so awaiting a method on a stored one is a send Swift 6 rejects. Fetching it from
+/// `Activity.activities` inside a `nonisolated` async function keeps its whole life in
+/// one context. Each controller owns only its activity ID, so a prior session's delayed
+/// cleanup cannot end a newer card.
 ///
 /// Everything here is best-effort by design: a Live Activity that cannot start
 /// (permission off, budget spent) must never disturb a workout.
@@ -26,9 +23,7 @@ import Foundation
 final class SessionActivityController {
     private(set) var isRunning = false
     private var activityID: String?
-    /// The last state pushed. An update that would change nothing is dropped rather than
-    /// spent — the runner republishes its snapshot on every tick, and forwarding those
-    /// verbatim would burn the budget on identical frames.
+    /// The last state pushed; an update that would change nothing is dropped.
     private var lastPushed: SessionActivity.ContentState?
 
     func start(routineName: String, plannedReps: Int, setCount: Int,
@@ -38,9 +33,8 @@ final class SessionActivityController {
         let attributes = SessionActivity(routineName: routineName,
                                          plannedReps: plannedReps,
                                          setCount: setCount)
-        // A stale date on EVERY request and update — see `ContentState.staleDate`. With
-        // nil, a card whose app was killed mid-session read "Pull" on the lock screen for
-        // hours, because nothing was ever going to push the end.
+        // A stale date on EVERY request and update — see `ContentState.staleDate` — or a
+        // card whose app was killed reads "Pull" on the lock screen for hours.
         // Keep only the Sendable ID, never a handle across actor boundaries.
         guard let activity = try? Activity.request(attributes: attributes,
                                                    content: .init(state: state,

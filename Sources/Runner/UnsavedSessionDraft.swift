@@ -5,17 +5,12 @@ import Foundation
 
 /// **A finished session nobody has saved yet**, on disk.
 ///
-/// The `WorkoutLog` is written only when Save is tapped, and the summary it waits behind
-/// can sit open for minutes — long enough for iOS to reclaim a backgrounded app, for a
-/// watch to come off the wrist, for a battery to die. Every one of those used to throw a
-/// twenty-minute session away without a word. Now the moment a session FINISHES its
-/// result is written here, Save and Discard both delete it, and anything still here at
-/// the next launch is a session that ended with neither — which is offered back.
+/// The `WorkoutLog` is written only on Save, and the summary can sit open long enough
+/// for iOS to reclaim the app or a battery to die. So a FINISHED session is written here,
+/// Save and Discard both delete it, and anything left at the next launch is offered back.
 ///
-/// Everything the Save path needs and nothing it does not: the plan, the reps, the two
-/// times and the routine they belong to. The engine value types ARE the format, with
-/// their own lenient decoders, so a field added to `RepSummary` later decodes here exactly
-/// as it decodes in history. New fields on the draft itself must be optional.
+/// The engine value types ARE the format, with their own lenient decoders, so a field
+/// added to `RepSummary` decodes here as in history. New draft fields must be optional.
 struct UnsavedSessionDraft: Codable, Equatable, Identifiable, Sendable {
     /// One file per session, so a second session finishing can never overwrite a first
     /// one that is still waiting to be offered back.
@@ -64,9 +59,8 @@ struct UnsavedSessionDraftStore: Sendable {
     static let decoder = JSONDecoder()
 
     /// ATOMIC and SYNCHRONOUS. Synchronous because Save deletes this file, and a write
-    /// still in flight when that delete lands would resurrect a session already logged —
-    /// offered back at the next launch and saved twice. The payload is a few kilobytes;
-    /// atomic is what keeps a half-written file from ever being read as a draft.
+    /// still in flight would resurrect a logged session to be saved twice. Atomic so a
+    /// half-written file is never read as a draft.
     func write(_ draft: UnsavedSessionDraft) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let data = try Self.encoder.encode(draft)
@@ -100,9 +94,8 @@ struct UnsavedSessionDraftStore: Sendable {
 
 /// Drafts written by THIS process — sessions whose summaries may still be on screen.
 ///
-/// Recovery skips them. A draft is only "unsaved" once the process that owned its
-/// summary is gone; offering one back while its summary is still open (an iPad's second
-/// window appearing, say) would put two Save buttons on one session, and both would work.
+/// Recovery skips them: offering one back while its summary is still open (an iPad's
+/// second window) would put two working Save buttons on one session.
 @MainActor
 enum LiveSessionDrafts {
     private(set) static var ids: Set<UUID> = []
