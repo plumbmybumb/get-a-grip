@@ -11,29 +11,19 @@ import Foundation
 /// characteristic (plus any `alternateNotifyCharacteristicUUIDs`), write
 /// `oneTimeSetupPayloads` once, write `streamStartPayloads` in order — paced by
 /// `startPayloadDelaySeconds` where a device needs it — and hand every notification to
-/// `kind.makeFrameDecoder()`. What differs between an Entralpi and a Motherboard lives
-/// entirely in `GaugeGattProfile` and the codec — which is the point of freezing those
-/// two shapes.
+/// `kind.makeFrameDecoder()`. What differs between devices lives entirely in
+/// `GaugeGattProfile` and the codec.
 ///
-/// **Deliberately simpler than `LiveProgressorClient`.** The Tindeq client carries three
-/// mechanisms this one must not copy: serialized queries (its tag-0 replies carry no
-/// echo of the command they answer, so one outstanding query is the only safe number),
-/// the tare-integrity latch, and the peripheral quarantine. None of them applies here. A
-/// GATT read's reply names its own characteristic, so nothing can cross-pair; a tare is
-/// either one plain write or app-side arithmetic; and every one of these devices is a
-/// PORT of hangtime-grip-connect's documented protocol that this project has never held
-/// in its hands, so the honest shape is the small one, with the hard-won Tindeq
-/// machinery left where it was earned.
+/// **Deliberately simpler than `LiveProgressorClient`.** Its serialized queries,
+/// tare-integrity latch and peripheral quarantine do not apply: a GATT read's reply
+/// names its own characteristic, so nothing can cross-pair; a tare is one plain write or
+/// app-side arithmetic; and every device here is a PORT of hangtime-grip-connect's
+/// documented protocol that this project has never held, so the honest shape is the
+/// small one.
 ///
-/// **Isolation.** Same shape as `LiveProgressorClient`, for the same reasons: the class
-/// is `@MainActor`, the central is created with `queue: .main`, and the delegate
-/// conformances are declared `@preconcurrency` so main-actor-isolated methods may
-/// witness CoreBluetooth's nonisolated `@objc` requirements (SE-0423). The two
-/// alternatives DO NOT COMPILE, so don't rediscover them: plain isolated methods report
-/// "conformance ... crosses into main actor-isolated code", and `nonisolated` methods
-/// wrapping their bodies in `MainActor.assumeIsolated` report "sending 'peripheral' risks
-/// causing data races" — passing a non-Sendable `CBPeripheral` into the closure IS the
-/// boundary crossing the checker rejects.
+/// **Isolation.** Same shape as `LiveProgressorClient` — `@MainActor`, `queue: .main`,
+/// `@preconcurrency` delegate conformances (SE-0423). See that type for the two
+/// alternatives that do not compile.
 ///
 /// Protocol knowledge ported from hangtime-grip-connect (BSD-2-Clause, © 2024
 /// Stevie-Ray Hartog, https://github.com/Stevie-Ray/hangtime-grip-connect).
@@ -64,13 +54,11 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     private let tareUUID: CBUUID?
 
     /// The standard Battery Service. Read once at connect for the kinds whose
-    /// capabilities claim it; a device that does not advertise it simply has no battery
-    /// characteristic to find and the row stays blank, which is the honest answer.
+    /// capabilities claim it; absent, the row stays blank.
     private static let batteryServiceUUID = CBUUID(string: "180F")
     private static let batteryLevelUUID = CBUUID(string: "2A19")
     /// Firmware Revision String, in Device Information (0x180A). Every ported device's
-    /// service table in the reference lists it, so Settings' Firmware row can be filled
-    /// for free — one read, one event, and nothing depends on it arriving.
+    /// service table lists it; nothing depends on it arriving.
     private static let firmwareRevisionUUID = CBUUID(string: "2A26")
     /// Software Revision String, the other Device Information slot a version can live in.
     /// Read only when a device has no Firmware Revision to offer — Frez publishes the
@@ -82,22 +70,17 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     private static let attemptLimit = 5
 
     /// **A `.withResponse` write that is never acknowledged must not wedge the queue for the
-    /// life of the link.** `inFlightWrite` is otherwise cleared only by `didWriteValueFor`,
-    /// so one lost ATT response left tare, stop and every later re-kick undeliverable while
-    /// notifications kept arriving perfectly — the store's freshness watchdog and the
-    /// runner's silence watchdog both see a healthy stream and neither can repair this.
-    /// Two seconds, the same deadline `LiveProgressorClient` gives a query reply.
+    /// life of the link.** One lost ATT response otherwise left tare, stop and every later
+    /// re-kick undeliverable while notifications kept arriving — invisible to both
+    /// watchdogs. Two seconds, the deadline `LiveProgressorClient` gives a query reply.
     private static let writeResponseDeadlineSeconds: Double = 2
 
-    /// **Service UUIDs that are evidence of a SERIAL MODULE, not of a device.** These are
-    /// the stock 16-bit vendor services (HM-10/JDY `FFF0` and `FFE0`) and the two ubiquitous
-    /// UART profiles (Nordic, Microchip), all of which ship on countless unrelated
-    /// products — this repo proves it: `.entralpi` and `.pb700bt` declare the same `FFF0`
-    /// AND the same `FFF4` notify characteristic. Matching a scan hit on one of them alone
-    /// would adopt a stranger's serial module and hand its bytes to a codec that turns two
-    /// of them into kilograms, which is the harm `GaugeKind.selectable`'s PB-700BT exclusion
-    /// exists to prevent. For these, the advertised NAME has to agree as well; a long-form
-    /// vendor-unique service (the Force Board's) remains proof on its own.
+    /// **Service UUIDs that are evidence of a SERIAL MODULE, not of a device**: the stock
+    /// 16-bit HM-10/JDY services and the Nordic and Microchip UART profiles ship on
+    /// countless unrelated products (`.entralpi` and `.pb700bt` declare the same `FFF0`
+    /// and `FFF4`). Matching on one alone would decode a stranger's module as kilograms,
+    /// so for these the advertised NAME must agree too; a long-form vendor-unique service
+    /// (the Force Board's) remains proof on its own.
     private static let wellKnownServiceUUIDs: Set<String> = [
         "0000FFF0-0000-1000-8000-00805F9B34FB",   // HM-10 / JDY BLE-serial
         "0000FFE0-0000-1000-8000-00805F9B34FB",   // the same family's other service
@@ -105,17 +88,13 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         "49535343-FE7D-4AE5-8FA9-9FAFD205E455",   // Microchip Transparent UART
     ]
 
-    /// **CoreBluetooth cannot filter a scan by NAME, and every ported device in the
-    /// reference is filtered by name rather than by advertised service.** Web Bluetooth's
-    /// `requestDevice` takes `{ name }` / `{ namePrefix }` filters, which is what
-    /// hangtime-grip-connect uses for all six of these; whether any of them also puts its
-    /// primary service UUID in the advertisement packet is UNVERIFIED. A service-filtered
-    /// scan would therefore silently find nothing on a device that keeps its service
-    /// private, so the scan is unfiltered and each hit is matched two ways: advertised
-    /// service UUID, or advertised name against the reference's own filter strings.
+    /// **CoreBluetooth cannot filter a scan by NAME, and the reference filters every
+    /// ported device by name** (Web Bluetooth `{ name }` / `{ namePrefix }`). Whether any
+    /// of them advertises its service UUID is UNVERIFIED, so the scan is unfiltered and
+    /// each hit is matched on advertised service or on name.
     ///
     /// Unfiltered scanning only yields results in the foreground, which is where every
-    /// connect in this app happens (the runner never scans; it is handed a live link).
+    /// connect in this app happens.
     private static func nameHints(for kind: GaugeKind) -> [String] {
         switch kind {
         case .entralpi: ["ENTRALPI"]
@@ -137,9 +116,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         enum Target { case stream, tare }
         let payload: Data
         let target: Target
-        /// Set on the LAST payload of a start sequence, so the ring's "start written"
-        /// breadcrumb means the whole sequence reached the device rather than its first
-        /// byte.
+        /// Set on the LAST payload of a start sequence, so "start written" means the
+        /// whole sequence reached the device.
         let startCause: StreamStartCause?
     }
 
@@ -165,10 +143,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     /// Alternate notify characteristics found anywhere in the table, and the subscription
     /// bookkeeping for the whole set.
     ///
-    /// **The link is established when the primary OR any alternate is notifying.** One of
-    /// the Entralpi's two candidates may well refuse or stay mute; only ALL of them failing
-    /// is a device that cannot stream, so the attempt fails when every candidate has
-    /// answered and none of them is notifying.
+    /// **The link is established when the primary OR any alternate is notifying**; the
+    /// attempt fails only when every candidate has answered and none is notifying.
     private var alternateNotifyCharacteristics: [CBCharacteristic] = []
     private var streamCharacteristics: [CBCharacteristic] = []
     private var notifyingCharacteristics: [CBCharacteristic] = []
@@ -180,25 +156,19 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     /// Matches for the notify and write UUIDs found OUTSIDE the profile's own service,
     /// used only when that service does not contain them.
     ///
-    /// **The PitchSix Force Board is why this exists**: its Device Mode characteristic —
-    /// the one every start and stop payload is written to — belongs to a different service
-    /// from the one that streams weight, and `GaugeGattProfile` has room for exactly one
-    /// service UUID. Preferring the profile's own service still matters, because a 16-bit
-    /// characteristic UUID like `fff4` is not unique across a device's service table and
-    /// subscribing to a same-numbered characteristic in the wrong service would look like
-    /// a device that connects and never speaks.
+    /// **The PitchSix Force Board is why this exists**: its Device Mode characteristic
+    /// (every start and stop write) lives in a different service from the weight stream,
+    /// and `GaugeGattProfile` names one service. The profile's own service is still
+    /// preferred, because a 16-bit UUID like `fff4` is not unique across a device's table.
     private var notifyElsewhere: CBCharacteristic?
     private var writeElsewhere: CBCharacteristic?
 
-    /// Discovery walks EVERY service, not just the profile's one: the ForceBoard's write
-    /// and tare characteristics live in other services, and the Battery Service is a
-    /// separate service by definition. `GaugeGattProfile` names characteristics, not the
-    /// services that hold them, so the only way to honour it is to look everywhere. It
-    /// costs one extra round of discovery on a connect that happens twice a day.
+    /// Discovery walks EVERY service: the ForceBoard's write and tare characteristics
+    /// live in other services, the Battery Service is separate by definition, and
+    /// `GaugeGattProfile` names characteristics, not the services that hold them.
     private var pendingServiceDiscoveries = 0
-    /// One subscription per link. Without this, a second characteristics callback for a
-    /// service already counted would run the finish step again — re-subscribing and, worse,
-    /// minting a FRESH decoder mid-stream, which throws away a half-reassembled frame.
+    /// One subscription per link: a second characteristics callback would otherwise
+    /// re-subscribe and mint a FRESH decoder mid-stream, losing a half-reassembled frame.
     private var discoveryFinished = false
 
     /// Link-local, exactly as the protocol requires: a decoder holding half a
@@ -261,9 +231,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     // MARK: - ProgressorClient
 
     func connect() {
-        // Same guard as the Tindeq client: `wantsConnection` covers the backoff and
-        // radio-off gaps, where the public state is not busy but the intent is live. A
-        // second tap must not replenish the retry budget.
+        // `wantsConnection` covers the backoff and radio-off gaps, where the state is not
+        // busy but the intent is live. A second tap must not replenish the retry budget.
         guard !wantsConnection, !state.isBusy, !state.isConnected else { return }
 
         wantsConnection = true
@@ -304,10 +273,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         state = .disconnected(reason: nil)
     }
 
-    /// **A plain disconnect.** No ported device documents a sleep opcode, and inventing a
-    /// write for one would be guessing at bytes on somebody else's hardware. Dropping the
-    /// link is also what actually saves the battery on these devices: they idle down on
-    /// their own schedule once nobody is subscribed.
+    /// **A plain disconnect.** No ported device documents a sleep opcode, and inventing
+    /// one would be guessing at bytes on somebody else's hardware.
     func sleepDevice() {
         disconnect()
     }
@@ -317,8 +284,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         case .tare:
             tareNow()
         case .startWeightMeasurement:
-            // Starts carry a cause through one funnel, so a later breadcrumb can never be
-            // a guess about who asked. `startStreaming(cause:)` is the only start path.
+            // `startStreaming(cause:)` is the only start path, so every breadcrumb names
+            // who asked.
             return
         case .stopWeightMeasurement:
             guard let payload = profile.streamStopPayload else { return }
@@ -330,24 +297,17 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         case .getAppVersion, .getErrorInformation, .clearErrorInformation,
              .startPeakRFDMeasurement, .startPeakRFDSeries,
              .addCalibrationPoint, .saveCalibration:
-            // Tindeq control-point commands with no counterpart on any ported device.
-            // Silently ignored rather than mapped onto a plausible-looking write: these
-            // protocols are ports, and a speculative command is a write to hardware
-            // nobody here has tested.
+            // Tindeq commands with no counterpart on any ported device. Ignored rather than
+            // mapped onto a plausible-looking write to untested hardware.
             return
         }
     }
 
-    /// **Never gated on an "is streaming" flag.** That flag can only ever cause the one
-    /// command a session depends on to be skipped, and re-sending a start to a device
-    /// already streaming is harmless — the rule the first hardware session taught the
-    /// Tindeq client, which applies identically here.
+    /// **Never gated on an "is streaming" flag**, which can only skip the one command a
+    /// session depends on; re-sending a start is harmless.
     ///
-    /// **No engine timeline break belongs to a re-kick of THIS client.** `RunnerSession`
-    /// sends `RunnerEvent.streamRestarted` around the call only for a gauge with a clock of
-    /// its own; a synthetic stamp is host uptime, which no device restart can rewind, so
-    /// there is no epoch here to break — and the break would clear the accrual anchor and
-    /// the arming debounce for nothing.
+    /// No engine timeline break belongs to a re-kick of THIS client: synthetic stamps
+    /// have no device epoch — see `RunnerSession.restartStreamArmingStaleBatchHeal`.
     func startStreaming(cause: StreamStartCause) {
         guard state.isConnected, !notifyingCharacteristics.isEmpty else {
             onDiagnostic?(.streamStartDeferred(cause))
@@ -355,23 +315,16 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         }
         guard !profile.streamStartPayloads.isEmpty else {
             // Subscribing IS the start on these devices (the Entralpi streams the moment
-            // notifications are on). The ring records the start as having reached the
-            // device, because it has: the subscription is the act that starts it. Staying
-            // silent instead would leave a request with no write in the one log that
-            // exists to explain a stalled stream.
+            // notifications are on), so the ring records the start as written.
             onDiagnostic?(.streamStartWritten(cause))
             return
         }
 
         guard profile.startPayloadDelaySeconds <= 0 else {
-            // **A SEQUENCE in flight absorbs further starts, and that is NOT the
-            // "never gate the start on isStreaming" mistake.** That rule is about a STATE
-            // FLAG, which can go stale and then skip the one command a session depends on
-            // forever. This is a time-bounded window that always runs to completion — every
-            // payload is written or the link is gone — so folding delays a redundant write
-            // by at most `startPayloadDelaySeconds`, and the Motherboard's whole reason for
-            // pacing is that the 500 ms watchdog would otherwise re-ask for the calibration
-            // table four times inside the 2.5 s it takes to arrive.
+            // **A SEQUENCE in flight absorbs further starts** — not the "never gate on
+            // isStreaming" mistake: that is a flag that can go stale forever, this is a
+            // time-bounded window that always completes. Otherwise the 500 ms watchdog
+            // re-asks the Motherboard for its calibration table inside the 2.5 s it takes.
             guard startSequenceTask == nil else {
                 onDiagnostic?(.streamStartWritten(cause))
                 return
@@ -389,17 +342,13 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     /// Writes the start payloads with the profile's own wait between them.
     ///
     /// The Motherboard is why: its reference writes "C", waits up to 2500 ms for the
-    /// calibration dump, and only then writes "S30". Back-to-back through the paced queue
-    /// the two land milliseconds apart, which can put the start command in the middle of the
-    /// device's own reply.
+    /// calibration dump, and only then writes "S30" — back to back, the start could land
+    /// in the middle of the device's reply.
     private func beginStartSequence(cause: StreamStartCause) {
         let payloads = profile.streamStartPayloads
         let delay = profile.startPayloadDelaySeconds
-        // CAPTURED, like every other deadline on this client. The sleep can outlive the
-        // link it was started for, and a task belonging to a connection that is gone must
-        // neither write into the next one nor clear the slot the next one's sequence
-        // holds — clearing it out of turn is what lets a later start be refused as one
-        // already running, or run twice.
+        // CAPTURED: a sleep that outlives its link must neither write into the next one
+        // nor clear the slot the next one's sequence holds.
         let generation = self.generation
         startSequenceTask = Task { [weak self] in
             for (index, payload) in payloads.enumerated() {
@@ -421,12 +370,9 @@ final class GattGaugeClient: NSObject, ProgressorClient {
 
     /// Enqueue one start payload, COALESCED against the queue.
     ///
-    /// A byte-identical start payload still sitting unwritten is the write this cause is
-    /// asking for, so a second copy would only spend the radio twice: the watchdog re-kicks
-    /// every 500 ms while a stream is silent, and on the Motherboard that meant asking for
-    /// the calibration table again before the first ask had left the queue. The breadcrumb
-    /// is still recorded — the ring must not show a start requested with nothing delivering
-    /// it, when the queued write is what delivers it.
+    /// A byte-identical start still queued is the write this cause wants; a second copy
+    /// only spends the radio twice (the 500 ms watchdog re-asked the Motherboard for its
+    /// calibration table before the first ask left). The breadcrumb is still recorded.
     private func enqueueStart(_ payload: Data, cause: StreamStartCause?) {
         guard !writeQueue.contains(where: { $0.target == .stream && $0.payload == payload })
         else {
@@ -439,11 +385,10 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     /// Configuration written ONCE per link, right after subscribing and before any start
     /// payload can be enqueued.
     ///
-    /// `streamStartPayloads` is re-sent on every re-kick by design, so a device
-    /// configuration folded into it gets re-issued roughly 1500 times across a silent
-    /// twenty-minute session. The CTS500's sampling-rate command is EEPROM-class and
-    /// plausibly resets the ADC, which would make each re-kick prevent the stream it is
-    /// trying to revive.
+    /// `streamStartPayloads` is re-sent on every re-kick, so configuration folded into it
+    /// would be re-issued ~1500 times in a silent session. The CTS500's sampling-rate
+    /// command is EEPROM-class and plausibly resets the ADC, which would make each
+    /// re-kick prevent the stream it is reviving.
     private func writeOneTimeSetupPayloadsIfNeeded() {
         guard !oneTimeSetupWritten, !profile.oneTimeSetupPayloads.isEmpty else { return }
         oneTimeSetupWritten = true
@@ -464,13 +409,9 @@ final class GattGaugeClient: NSObject, ProgressorClient {
             enqueue(payload, target: .tare)
             return
         }
-        // Captures the newest reading as the offset. The reference averages five seconds
-        // of samples instead; that is wrong for this app, where Tare is a button whose
-        // effect must be visible in the frame it is tapped, and `TarePolicy` already
-        // refuses to tare against a reading that is not live. With no reading yet the
-        // offset is LEFT ALONE rather than zeroed: a fresh link has an offset of zero
-        // already, and silently discarding a good offset because the stream went quiet
-        // would move every later reading by the load that was on the gauge.
+        // Captures the newest reading as the offset, not the reference's five-second
+        // average: Tare must take effect in the frame it is tapped, and `TarePolicy`
+        // already refuses a reading that is not live. See `SoftwareTare.capture()`.
         softwareTare.capture()
     }
 
@@ -483,17 +424,15 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     }
 
     /// Queued and PACED, never fired back to back. CoreBluetooth silently discards a
-    /// `.withoutResponse` write when its buffer is not ready — no error, no callback — and
-    /// accepts one `.withResponse` write at a time. The Motherboard's start is a text
-    /// command and the CTS500's is a checksummed frame; both would lose a payload.
+    /// `.withoutResponse` write when its buffer is not ready and accepts one
+    /// `.withResponse` write at a time.
     private func drainWriteQueue() {
         guard state.isConnected, let peripheral, isCurrent(peripheral) else { return }
 
         while let next = writeQueue.first {
             guard let characteristic = self.characteristic(for: next.target) else {
-                // The link does not have what this write needs. Dropping it is better than
-                // holding the queue: the tare falls back to arithmetic and a stop payload
-                // for a missing characteristic was never going to arrive.
+                // The link lacks this write's characteristic: drop it rather than hold the
+                // queue.
                 writeQueue.removeFirst()
                 continue
             }
@@ -519,9 +458,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     }
 
     /// The one recovery from a write response that never comes — see
-    /// `writeResponseDeadlineSeconds`. Expiry treats the write as lost and drains, exactly
-    /// as an acknowledgement would: a failed write is dropped rather than retried here, and
-    /// a lost start is re-sent by the store's silence watchdog anyway.
+    /// `writeResponseDeadlineSeconds`. Expiry treats the write as lost and drains; a lost
+    /// start is re-sent by the silence watchdog anyway.
     private func armInFlightWriteDeadline() {
         inFlightWriteToken &+= 1
         let token = inFlightWriteToken
@@ -581,10 +519,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         generation &+= 1
         scanGeneration = generation
 
-        // BLE links belong to the system daemon, not to this process, so after a relaunch
-        // the gauge may already be connected. Worth a try even though these devices may
-        // not advertise the service — `retrieveConnectedPeripherals` matches on what the
-        // device actually exposes, not on its advertisement.
+        // BLE links belong to the system daemon, so after a relaunch the gauge may already
+        // be connected; `retrieveConnectedPeripherals` matches on what it exposes.
         if let known = central.retrieveConnectedPeripherals(withServices: [serviceUUID]).first {
             attach(known, via: central, generation: generation)
             return
@@ -609,9 +545,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         scanGeneration = nil
         peripheral = found
         activeGeneration = generation
-        // Never overwrite an advertised local name with a nil `peripheral.name`: the
-        // advertisement is what the scan matched on, and on these devices it is often the
-        // only name there is until the link is up.
+        // Never overwrite an advertised local name with a nil `peripheral.name`: it is
+        // often the only name until the link is up.
         deviceName = found.name ?? deviceName
         found.delegate = self
         state = .connecting
@@ -663,9 +598,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         }
         let retryGeneration = generation
         backoffTask?.cancel()
-        // One second, which is also what keeps this client honest without the Tindeq's
-        // quarantine slot: a cancelled peripheral's terminal callback belongs to a
-        // superseded generation and is ignored, and the backoff means a rescan never
+        // One second — what lets this client skip the Tindeq's quarantine: a cancelled
+        // peripheral's callback belongs to a superseded generation, and a rescan never
         // races the cancellation it just issued.
         backoffTask = Task { [weak self] in
             do {
@@ -754,9 +688,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         pendingServiceDiscoveries = 0
         discoveryFinished = false
         writeQueue.removeAll()
-        // The paced sequence belongs to this link: its remaining payloads mean nothing on
-        // the next one, and a task left in the slot would fold every future start into a
-        // sequence that has already returned.
+        // The paced sequence belongs to this link; left in the slot it would fold every
+        // future start into a sequence that has already returned.
         startSequenceTask?.cancel()
         startSequenceTask = nil
         clearInFlightWrite()
@@ -791,9 +724,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     private func ingest(_ data: Data) {
         onPacketBoundary?(.began(receivedAt: ProcessInfo.processInfo.systemUptime))
         defer { onPacketBoundary?(.ended) }
-        // Copy out, mutate, store back: the decoders are structs (the protocol is written
-        // for `mutating ingest`), and losing the copy would lose the reassembly buffer
-        // that makes the Motherboard's split frames decodable at all.
+        // Copy out, mutate, store back: the decoders are structs, and losing the copy
+        // would lose the reassembly buffer the Motherboard's split frames need.
         guard var working = decoder else { return }
         let readings = working.ingest(data)
         decoder = working
@@ -806,14 +738,11 @@ final class GattGaugeClient: NSObject, ProgressorClient {
 
         guard !readings.isEmpty else { return }
 
-        // **One stamp per NOTIFICATION, shared by every reading it carried.** These
-        // devices tell us nothing about the spacing of samples inside a frame, and
-        // spreading them at the nominal rate would be inventing timing the engine then
-        // credits as hang time. Sharing the stamp keeps the arithmetic honest: interior
-        // deltas are zero and accrue nothing, and the next notification's delta carries
-        // the whole elapsed interval, so the SUM — which is what the engine accrues — is
-        // exactly the time that passed. `isBatchStart` marks the first reading, matching
-        // the Tindeq's meaning of one notification, one batch.
+        // **One stamp per NOTIFICATION, shared by every reading it carried.** Spreading
+        // them at the nominal rate would invent timing the engine credits as hang time.
+        // Interior deltas are zero and the next notification carries the whole interval,
+        // so the SUM the engine accrues is exactly the time that passed. `isBatchStart`
+        // marks the first reading: one notification, one batch, as on the Tindeq.
         let arrival = SyntheticSampleClock.micros(uptime: ProcessInfo.processInfo.systemUptime)
         for (index, reading) in readings.enumerated() {
             let kg = softwareTare.value(for: reading.kg)
@@ -828,10 +757,8 @@ final class GattGaugeClient: NSObject, ProgressorClient {
 
 /// The app-side zero, for every gauge that has no tare of its own.
 ///
-/// Shared with `BroadcastGaugeClient` — a crane scale has nothing to write a tare to at
-/// all. Kept as a value type with no clock and no Bluetooth in it so the arithmetic is
-/// testable on its own, which is where the double-subtract and empty-capture mistakes
-/// would otherwise hide.
+/// Shared with `BroadcastGaugeClient`. A value type with no clock or Bluetooth, so the
+/// double-subtract and empty-capture mistakes are testable on their own.
 struct SoftwareTare {
     private var offsetKg: Double = 0
     private var latestRawKg: Double?
@@ -864,9 +791,8 @@ struct SoftwareTare {
 
 // MARK: - CBCentralManagerDelegate
 
-// `@preconcurrency` is what lets main-actor-isolated methods witness CoreBluetooth's
-// nonisolated `@objc` requirements — sound precisely because the central is created with
-// `queue: .main`. See `LiveProgressorClient` for the full account.
+// `@preconcurrency`: sound because the central uses `queue: .main`. See
+// `LiveProgressorClient` for the full account.
 extension GattGaugeClient: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard central.state == .poweredOn else {
@@ -899,17 +825,13 @@ extension GattGaugeClient: @preconcurrency CBCentralManagerDelegate {
     /// The scan is unfiltered, so THIS is the filter: the profile's service if the device
     /// advertises it, otherwise the reference's own name filters.
     ///
-    /// **A service-UUID match alone is only proof for a LONG-FORM vendor-unique service.**
-    /// The 16-bit serial services and the two UART profiles are shared by half the BLE
-    /// modules in existence (see `wellKnownServiceUUIDs`), so for those kinds the advertised
-    /// name has to agree as well — otherwise a stranger's HM-10 in range is adopted as an
-    /// Entralpi and its arbitrary bytes are decoded as kilograms, which then arm reps, bank
-    /// hang time and set a grip's percentage targets from a fabricated max.
+    /// **A service-UUID match alone is only proof for a LONG-FORM vendor-unique service**
+    /// — see `wellKnownServiceUUIDs`. Otherwise a stranger's HM-10 in range would be
+    /// decoded as kilograms that arm reps and set targets from a fabricated max.
     private func matches(_ peripheral: CBPeripheral, advertisement: [String: Any]) -> Bool {
         let name = (advertisement[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name
         let hints = Self.nameHints(for: kind)
-        // Prefix, not equality: the reference uses `namePrefix` for the Climbro and
-        // exact names elsewhere, and an exact name is its own prefix. A unit that appends
+        // Prefix, not equality: an exact name is its own prefix, and a unit that appends
         // a serial ("Force Board 214") still matches.
         let nameMatches = name.map { advertised in
             let folded = advertised.lowercased()
@@ -1004,13 +926,8 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
         guard isCurrent(peripheral) else { return }
 
         // A service that refuses discovery is not fatal — the one that matters is checked
-        // when the whole walk finishes.
-        //
-        // Notify and write PREFER the profile's own service and fall back to a match
-        // anywhere (see `notifyElsewhere`). Alternates, tare, battery and firmware are
-        // matched anywhere outright: the two standard ones are separate services by
-        // definition, and a tare characteristic is only ever named by a profile that means
-        // one specific handle (the CTS500's is its write characteristic).
+        // when the walk finishes. Notify and write PREFER the profile's own service (see
+        // `notifyElsewhere`); alternates, tare, battery and firmware match anywhere.
         let isProfileService = service.uuid == serviceUUID
         for characteristic in service.characteristics ?? [] {
             let uuid = characteristic.uuid
@@ -1028,9 +945,8 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
                     writeElsewhere = characteristic
                 }
             }
-            // Alternates are matched ANYWHERE outright: the Entralpi's second candidate is
-            // declared under the Weight Scale service, not under the UART one, which is the
-            // whole reason the reference subscribes to both.
+            // The Entralpi's second candidate is declared under the Weight Scale service,
+            // not the UART one.
             if alternateNotifyUUIDs.contains(uuid),
                !alternateNotifyCharacteristics.contains(where: { $0 === characteristic }) {
                 alternateNotifyCharacteristics.append(characteristic)
@@ -1069,8 +985,7 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
         if writeCharacteristic == nil { writeCharacteristic = writeElsewhere }
 
         // The profile's own notify characteristic FIRST, then the alternates, keeping only
-        // the ones that can actually push. A characteristic present but mute is not a
-        // candidate, and on a device with alternates it is not a failure either.
+        // the ones that can actually push.
         var candidates: [CBCharacteristic] = []
         for candidate in [notifyCharacteristic].compactMap({ $0 }) + alternateNotifyCharacteristics
         where candidate.properties.contains(.notify) || candidate.properties.contains(.indicate) {
@@ -1088,11 +1003,9 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
             failAttempt(reason: String(localized: "Missing control characteristic"), cancelling: peripheral)
             return
         }
-        // The decoder is minted HERE, one per link, and dropped by `clearLinkState` —
-        // except for a gauge whose counts need a coefficient. That one gets its decoder
-        // the moment the coefficient is in hand (`resolveCalibration`) and none before:
-        // a decoder without a slope could only invent numbers, and Frez's rule is that no
-        // calibrated force is shown until the lookup has succeeded.
+        // The decoder is minted HERE, one per link — except for a gauge whose counts need
+        // a coefficient, which gets none until `resolveCalibration` has one: Frez's rule is
+        // no calibrated force until the lookup has succeeded.
         decoder = capabilities.requiresRemoteCalibration ? nil : kind.makeFrameDecoder()
         streamCharacteristics = candidates
         pendingSubscriptions = candidates.count
@@ -1111,10 +1024,8 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
                 notifyingCharacteristics.append(characteristic)
             }
         } else if pendingSubscriptions == 0, notifyingCharacteristics.isEmpty {
-            // Only once EVERY candidate has answered and none of them streams. With
-            // alternates in play a single refusal is expected — the reference subscribes to
-            // both of the Entralpi's "rx" characteristics precisely because its source
-            // cannot say which one is real.
+            // Only once EVERY candidate has answered and none streams; with alternates a
+            // single refusal is expected.
             failAttempt(reason: error.map {
                             String(localized: "Notification subscription failed: \($0.localizedDescription)")
                         } ?? String(localized: "Notification subscription failed"),
@@ -1134,10 +1045,8 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
         writeOneTimeSetupPayloadsIfNeeded()
         state = .connected
 
-        // Both reads are fire-and-forget and NOT serialized: unlike the Tindeq control
-        // point, a GATT read's reply names the characteristic it came from, so two
-        // outstanding reads cannot cross-pair the way a version reply once parsed as
-        // battery millivolts.
+        // Fire-and-forget and NOT serialized: a GATT read's reply names its
+        // characteristic, so two reads cannot cross-pair as the Tindeq's replies did.
         if batteryCharacteristic != nil { readBatteryLevel() }
         if let firmwareCharacteristic {
             peripheral.readValue(for: firmwareCharacteristic)
@@ -1150,11 +1059,9 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
 
     // MARK: - Remote calibration
 
-    /// Frez's connection order, honoured exactly: subscribe, read the serial, fetch the
-    /// coefficient, and only then let counts become kilograms. The start payload may
-    /// already be queued — nothing gates the start, per the house rule — and until the
-    /// decoder exists the notifications it produces are dropped at `ingest`, which is the
-    /// fail-closed answer Frez asks for: no calibrated force without a coefficient.
+    /// Frez's connection order: subscribe, read the serial, fetch the coefficient, and
+    /// only then let counts become kilograms. The start may already be queued; until the
+    /// decoder exists its notifications are dropped at `ingest` — fail-closed.
     private func beginCalibrationIfNeeded(on peripheral: CBPeripheral) {
         guard capabilities.requiresRemoteCalibration else { return }
         guard let serialCharacteristic else {
@@ -1198,10 +1105,8 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic,
                     error: Error?) {
         guard isCurrent(peripheral), inFlightWrite != nil else { return }
-        // A failed write is dropped rather than retried. The Tindeq client retries because
-        // its tare must be acknowledged before a stream may start; here a lost start is
-        // recovered by the store's silence watchdog, which re-sends it — one recovery path
-        // instead of two that can disagree.
+        // A failed write is dropped, not retried: a lost start is recovered by the silence
+        // watchdog — one recovery path instead of two that can disagree.
         clearInFlightWrite()
         drainWriteQueue()
     }
@@ -1224,9 +1129,8 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
         }
         guard error == nil, let data = characteristic.value else { return }
 
-        // Identity first: the stream is a characteristic we subscribed to, not merely one
-        // carrying its UUID. Any of them may be the one that speaks — the same decoder
-        // parses either, which is what makes subscribing to both safe.
+        // Identity first: a characteristic we subscribed to, not merely one carrying its
+        // UUID. The same decoder parses any of them.
         if streamCharacteristics.contains(where: { $0 === characteristic }) {
             ingest(data)
             return
