@@ -104,7 +104,10 @@ struct WatchRunnerView: View {
                                     cues: WatchCuePlayer(), draftStore: .standard)
             session = new
             new.begin()
-            if !timerOnly { readout.begin(reading: device) }
+            if !timerOnly {
+                readout.pollsSlowly = dimmed
+                readout.begin(reading: device)
+            }
             #if DEBUG
             // Headless verification: the watch simulator cannot answer the Health
             // permission sheet a workout session raises, so `-noWorkoutSession` runs
@@ -128,6 +131,9 @@ struct WatchRunnerView: View {
             keeper.end()
             readout.end()
         }
+        // Always On redraws once a second, so reading the gauge five times a second for
+        // it is four reads nobody sees.
+        .onChange(of: dimmed) { _, dimmed in readout.pollsSlowly = dimmed }
         .onChange(of: device.state.isConnected) { _, connected in
             session?.connectionChanged(isConnected: connected)
         }
@@ -194,11 +200,14 @@ struct WatchRunnerView: View {
             // unreadable from a bench (Nuri, 2026-09-19).
             HStack(alignment: .lastTextBaseline, spacing: 10) {
                 if !timerOnly {
-                    hero(WeightUnit.kg.number(readout.kg), unit: WeightUnit.kg.symbol,
-                         ink: snapshot.hasSignal ? ink : quiet, quiet: quiet, rolls: false)
+                    // A LEAF: it reads `readout.kg` itself, so a changing load redraws
+                    // this numeral and nothing else. Read here, the whole face — fill,
+                    // prompt, hand, counters — re-evaluated five times a second.
+                    WatchLoadHero(readout: readout, heroSize: heroSize,
+                                  ink: snapshot.hasSignal ? ink : quiet, quiet: quiet)
                 }
-                hero("\(snapshot.secondsShown)", unit: String(localized: "s"),
-                     ink: ink, quiet: quiet, rolls: clockRolls)
+                WatchHeroNumeral(value: "\(snapshot.secondsShown)", unit: String(localized: "s"),
+                                 heroSize: heroSize, ink: ink, quiet: quiet, rolls: clockRolls)
             }
             if let grip = snapshot.grip {
                 HStack(spacing: 8) {
@@ -234,27 +243,6 @@ struct WatchRunnerView: View {
             }
         }
         .padding(.horizontal, 4)
-    }
-
-    /// A numeral and its unit. `rolls` is the difference between a CLOCK and a
-    /// MEASUREMENT, the phone's rule: the countdown rolls, the load snaps — and a clock
-    /// stops rolling too once the face is dimmed or the battery rationed (`NumeralRoll`).
-    private func hero(_ value: String, unit: String, ink: Color, quiet: Color, rolls: Bool) -> some View {
-        HStack(alignment: .lastTextBaseline, spacing: 2) {
-            // Rolls without `.numericText()` — see `RollingNumeral`; on the wrist the
-            // blur that transition renders on the CPU would be paid out of the battery.
-            RollingNumeral(value: value, countsDown: true, rolls: rolls, shift: heroSize * 0.25) { value in
-                Text(value)
-                    .font(.system(size: heroSize, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-            }
-                .foregroundStyle(ink)
-            Text(unit)
-                .font(.caption2)
-                .foregroundStyle(quiet)
-        }
     }
 
     /// The next hand replaces the word during a rest — the wrist has room for one
@@ -390,5 +378,49 @@ struct WatchRunnerView: View {
                 .accessibilityIdentifier("watch.end")
             }
         }
+    }
+}
+
+/// A numeral and its unit. `rolls` is the difference between a CLOCK and a MEASUREMENT,
+/// the phone's rule: the countdown rolls, the load snaps — and a clock stops rolling too
+/// once the face is dimmed or the battery rationed (`NumeralRoll`).
+private struct WatchHeroNumeral: View {
+    let value: String
+    let unit: String
+    let heroSize: CGFloat
+    let ink: Color
+    let quiet: Color
+    let rolls: Bool
+
+    var body: some View {
+        HStack(alignment: .lastTextBaseline, spacing: 2) {
+            // Rolls without `.numericText()` — see `RollingNumeral`; on the wrist the
+            // blur that transition renders on the CPU would be paid out of the battery.
+            RollingNumeral(value: value, countsDown: true, rolls: rolls, shift: heroSize * 0.25) { value in
+                Text(value)
+                    .font(.system(size: heroSize, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
+                .foregroundStyle(ink)
+            Text(unit)
+                .font(.caption2)
+                .foregroundStyle(quiet)
+        }
+    }
+}
+
+/// The live load, as its own view so its observation of `WatchForceReadout.kg` stops
+/// here. The phone's leaf-view rule (`LiveForceReadout`), on the wrist.
+private struct WatchLoadHero: View {
+    let readout: WatchForceReadout
+    let heroSize: CGFloat
+    let ink: Color
+    let quiet: Color
+
+    var body: some View {
+        WatchHeroNumeral(value: WeightUnit.kg.number(readout.kg), unit: WeightUnit.kg.symbol,
+                         heroSize: heroSize, ink: ink, quiet: quiet, rolls: false)
     }
 }
