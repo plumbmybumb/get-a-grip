@@ -11,6 +11,8 @@ struct WatchRootView: View {
     var storageMode: StorageMode
 
     @Environment(DayClock.self) private var clock
+    @Environment(SessionLedger.self) private var ledger
+    @Environment(\.modelContext) private var context
     @State private var running: RunRequest?
     #if DEBUG
     /// Headless verification: `-previewWatchGauge` opens the gauge screen on launch,
@@ -42,8 +44,21 @@ struct WatchRootView: View {
             }
         }
         // A session that finished on the wrist but was never saved or discarded — the
-        // watch came off, the battery went — is offered back once, at launch.
-        .watchUnsavedSessionRecovery()
+        // watch came off, the battery went — is offered back once, at launch. Save
+        // writes through `SessionLedger`, the watch summary's own path.
+        .unsavedSessionRecovery { draft in
+            ledger.recordSession(plan: draft.plan, template: routine(draft.templateID),
+                                 reps: draft.reps,
+                                 startedAt: draft.startedAt,
+                                 finishedAt: draft.finishedAt,
+                                 rpe: nil) != nil
+        }
+    }
+
+    private func routine(_ id: UUID?) -> SessionTemplate? {
+        guard let id else { return nil }
+        let descriptor = FetchDescriptor<SessionTemplate>(predicate: #Predicate { $0.id == id })
+        return (try? context.fetch(descriptor))?.first
     }
 }
 

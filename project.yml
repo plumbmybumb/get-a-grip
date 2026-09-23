@@ -224,6 +224,9 @@ targets:
           - "RunnerTrainingGuidance.swift"
           - "SessionActivityController.swift"
           - "TarePolicy.swift"
+          - "UnsavedSessionDraft.swift"
+          - "UnsavedSessionRecovery.swift"
+      - path: Sources/UI/Components/HoldToConfirm.swift
       - path: Sources/UI/Components/WeightUnits.swift
     info:
       path: Watch/Info.plist

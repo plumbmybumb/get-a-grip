@@ -17,7 +17,8 @@ final class RunnerFinishLifecycleTests: XCTestCase {
         let session = RunnerSession(
             template: RunnerFixtures.template(), device: device,
             liveActivity: activity, cues: cues,
-            activityStartDelay: nil)
+            draftStore: nil,
+            activityStartDelay: nil, finishCueTail: .zero)
         session.begin()
         XCTAssertEqual(IdleTimerLock.depth, lockDepth + 1)
         XCTAssertTrue(device.isStreaming)
@@ -31,18 +32,19 @@ final class RunnerFinishLifecycleTests: XCTestCase {
         XCTAssertEqual(client.commands.last, .stopWeightMeasurement)
         XCTAssertNil(device.onSample)
         XCTAssertEqual(IdleTimerLock.depth, lockDepth, "The summary does not keep the screen awake")
-        await Task.yield()
-        XCTAssertEqual(activity.ends, 1)
         XCTAssertEqual(cues.ends, 0, "The finish chord was just queued; the engines stay up for it")
         XCTAssertTrue(cues.played.contains(.sessionCompleted))
+        await session.lastActivityPush?.value
+        XCTAssertEqual(activity.ends, 1)
 
-        try await Task.sleep(for: .milliseconds(1_300))
+        let tail = try XCTUnwrap(session.cueShutdown, "The cue shutdown waits out the tail")
+        await tail.value
         XCTAssertEqual(cues.ends, 1, "…and are let go once it has sounded")
 
         // The view going away later undoes nothing twice.
         let commands = client.commands.count
         session.end()
-        await Task.yield()
+        await session.lastActivityPush?.value
         XCTAssertEqual(IdleTimerLock.depth, lockDepth, "An unbalanced release would be a bug")
         XCTAssertEqual(cues.ends, 1)
         XCTAssertEqual(activity.ends, 1)
@@ -57,13 +59,15 @@ final class RunnerFinishLifecycleTests: XCTestCase {
         let session = RunnerSession(
             template: RunnerFixtures.template(), device: device,
             liveActivity: RunnerActivityRecorder(), cues: cues,
-            activityStartDelay: nil)
+            draftStore: nil,
+            activityStartDelay: nil, finishCueTail: .zero)
         session.begin()
         RunnerFixtures.pull(session, kg: 10, samples: 120, from: 1)
         XCTAssertTrue(session.isFinished)
+        let tail = try XCTUnwrap(session.cueShutdown)
         session.end()
         XCTAssertEqual(cues.ends, 1)
-        try await Task.sleep(for: .milliseconds(1_300))
+        await tail.value
         XCTAssertEqual(cues.ends, 1, "The cancelled tail must not end them a second time")
     }
 
@@ -76,6 +80,7 @@ final class RunnerFinishLifecycleTests: XCTestCase {
         let session = RunnerSession(
             template: RunnerFixtures.template(holdSeconds: 10), device: device,
             liveActivity: RunnerActivityRecorder(), cues: cues,
+            draftStore: nil,
             activityStartDelay: nil)
         session.begin()
         RunnerFixtures.pull(session, kg: 10, samples: 20, from: 1)

@@ -14,7 +14,7 @@ import SwiftUI
 ///
 /// Every number here comes from `WorkoutLog`, which freezes its plan and each rep's grip
 /// at save time. Editing or deleting a routine can therefore never rewrite what history
-/// says you DID. Its NAME is the one deliberate exception — see `displayName(of:)`.
+/// says you DID. Its NAME is the one deliberate exception — see `WorkoutLog.displayName(in:)`.
 struct HistoryView: View {
     @Environment(\.weightUnit) private var weightUnit
     /// Newest first — the session you are most likely looking for is the one you just did.
@@ -49,8 +49,10 @@ struct HistoryView: View {
     /// `WorkoutLog.resultsData` is write-once, so this cache never invalidates. Only the
     /// session rows read it now — one leading grip per VISIBLE row — since the trend deck
     /// decodes its own copy off the main actor (`TrendModel`); without the cache every
-    /// body evaluation re-decoded each visible row's JSON on the main thread. A reference type mutated during body, deliberately outside
-    /// observation — the same trick as ForceTraceView's AxisMemory.
+    /// body evaluation re-decoded each visible row's JSON on the main thread.
+    ///
+    /// A reference type mutated during body, deliberately outside observation — the same
+    /// trick as ForceTraceView's AxisMemory.
     ///
     /// A deleted log leaves its entry behind, which is deliberate rather than a leak:
     /// undo re-inserts the SAME id carrying byte-identical `resultsData`, so the stale
@@ -432,7 +434,7 @@ struct HistoryView: View {
             }
         }
         // 8, not 4: the bar sat close enough to the tab bar that a reach for Undo
-        // could land on the tab strip instead (rank 3 audit finding).
+        // could land on the tab strip instead.
         .padding(.bottom, 8)
         .animation(Motion.state(reduceMotion),
                    value: templates.lastDeletedSession)
@@ -707,24 +709,9 @@ struct HistoryView: View {
 
     // MARK: - Derived
 
-    /// What to CALL this session's routine — the routine's live name while it still
-    /// exists, the frozen copy once it doesn't.
-    ///
-    /// The log freezes `templateName` at save time and must keep doing so: a deleted
-    /// routine has to leave its history with something to be called. But that made a
-    /// rename invisible here (Nuri, 2026-08-11) — rename "Daily no-hangs" to "Morning
-    /// ladder" and every past session stayed filed under a name that appeared nowhere
-    /// else in the app. Worse, it was already INCONSISTENT: the trend card titled itself
-    /// from the newest log in the group, so one new session made the card say the new
-    /// name while every row beneath it said the old one.
-    ///
-    /// Resolving at DISPLAY time rather than rewriting the logs is the cheaper and more
-    /// honest fix: renaming stays a routine edit instead of a write across the whole
-    /// history, renaming back needs no second migration, and what the session actually
-    /// WAS — its plan, its reps, its grips — is still frozen and still untouchable.
+    /// See `WorkoutLog.displayName(in:)`.
     private func displayName(of log: WorkoutLog) -> String {
-        guard let id = log.templateID else { return log.templateName }
-        return templates.routineNames[id] ?? log.templateName
+        log.displayName(in: templates.routineNames)
     }
 }
 
@@ -826,7 +813,7 @@ private struct DayCell: View {
 private struct SessionRow: View {
     @Environment(\.weightUnit) private var weightUnit
     let log: WorkoutLog
-    /// Resolved by `HistoryView.displayName(of:)` — the routine's live name while it
+    /// Resolved by `WorkoutLog.displayName(in:)` — the routine's live name while it
     /// exists, the log's frozen copy once it doesn't. Passed IN rather than read from
     /// the store here so the row stays a dumb leaf with nothing to observe.
     let name: String

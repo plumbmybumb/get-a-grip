@@ -84,7 +84,7 @@ final class BLELifecycleTests: XCTestCase {
         )
     }
 
-    /// REGRESSION (audit rank 18, verified): `DeviceStore.isLoadedForTare` has to be the
+    /// REGRESSION: `DeviceStore.isLoadedForTare` has to be the
     /// coarse, change-guarded flag `tapDecision` actually consumes — computed straight
     /// from `TarePolicy.shouldConfirm`'s own threshold, so the two can never disagree.
     func testIsLoadedForTareMatchesTheShouldConfirmThreshold() {
@@ -146,7 +146,7 @@ final class BLELifecycleTests: XCTestCase {
         XCTAssertFalse(device.isLoadedForTare, "and it drops back once the load clears")
     }
 
-    // MARK: - Pause/Skip controls (audit rank 2)
+    // MARK: - Pause/Skip controls
 
     /// `.idle` is every session opened before the gauge has connected — indefinitely, if
     /// it never answers. Pause/Resume stays enabled once paused (it is the button that
@@ -258,7 +258,7 @@ final class BLELifecycleTests: XCTestCase {
         let client = RecordingProgressorClient()
         let device = DeviceStore(client: client)
         let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                     device: device)
+                                     device: device, draftStore: nil)
         session.begin()
         defer { session.end() }
 
@@ -303,7 +303,7 @@ final class BLELifecycleTests: XCTestCase {
         let client = RecordingProgressorClient()
         let device = DeviceStore(client: client)
         let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                    device: device)
+                                    device: device, draftStore: nil)
         session.begin()
         defer { session.end() }
 
@@ -339,7 +339,7 @@ final class BLELifecycleTests: XCTestCase {
             let client = RecordingProgressorClient(kind: kind)
             let device = DeviceStore(client: client)
             let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                        device: device)
+                                        device: device, draftStore: nil)
             session.begin()
             defer { session.end() }
 
@@ -366,7 +366,7 @@ final class BLELifecycleTests: XCTestCase {
             let client = RecordingProgressorClient(kind: kind)
             let device = DeviceStore(client: client)
             let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                        device: device)
+                                        device: device, draftStore: nil)
             client.setState(.connected)
             session.begin()
             defer { session.end() }
@@ -406,7 +406,8 @@ final class BLELifecycleTests: XCTestCase {
             let client = RecordingProgressorClient()
             let device = DeviceStore(client: client)
             client.setState(.connected)
-            let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0), device: device)
+            let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
+                                        device: device, draftStore: nil)
             session.begin()
             defer { session.end() }
             session.checkStaleBatches(at: ProcessInfo.processInfo.systemUptime + 6)
@@ -447,7 +448,7 @@ final class BLELifecycleTests: XCTestCase {
 
         let scale = DeviceStore(client: RecordingProgressorClient(kind: .whc06))
         let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                    device: scale)
+                                    device: scale, draftStore: nil)
         XCTAssertEqual(session.silenceRestartSeconds, 3.0, accuracy: 1e-9,
                        "read once at init, from the capability table — and a broadcast "
                        + "session gets the 3 s floor, not the rate-derived 1 s")

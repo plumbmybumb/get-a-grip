@@ -105,94 +105,37 @@ struct WatchSummaryView: View {
 }
 
 /// Discarding takes a deliberate HOLD — the phone's `HoldToDiscardButton`, sized for a
-/// wrist. Same 0.9 s, same "cannot be undone" vocabulary, and the same escape: lifting or
-/// sliding off early cancels for free. VoiceOver cannot express a hold, so an
-/// accessibility activation discards outright; the gesture guards a thumb, it is not the
-/// safeguard itself.
+/// wrist, on the same `HoldToConfirm`: same 0.9 s, same "cannot be undone" vocabulary, and
+/// the same escape — lifting or sliding off early cancels for free, and any drift lets the
+/// summary scroll instead.
 private struct WatchHoldToDiscardButton: View {
     var action: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.isEnabled) private var isEnabled
-    @State private var progress: Double = 0
-    @State private var holdTask: Task<Void, Never>?
-    @State private var slidOff = false
-
-    private static let holdSeconds: Double = 0.9
-    /// A holding finger is still; a scrolling one moves. The phone's slop.
-    private static let holdDriftSlop: CGFloat = 10
 
     var body: some View {
-        ZStack {
-            // Both labels reserve their width, so the button does not resize mid-hold.
-            Text("Keep holding…").hidden().accessibilityHidden(true)
-            Text("Hold to discard").hidden().accessibilityHidden(true)
-            Text(holdTask != nil ? "Keep holding…" : "Hold to discard")
-                .foregroundStyle(StatusTint.alarm)
-        }
-        .font(.body.weight(.semibold))
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
-        .frame(maxWidth: .infinity, minHeight: 44)
-        .background {
-            GeometryReader { geo in
-                ZStack {
-                    Capsule().fill(StatusTint.alarm.opacity(0.16))
-                    Capsule()
-                        .fill(StatusTint.alarm.opacity(0.4))
-                        .mask(alignment: .leading) {
-                            Rectangle()
-                                .frame(width: geo.size.width * progress)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                }
+        HoldToConfirm(cancel: .drift(10),
+                      accessibilityLabel: "Discard this session",
+                      accessibilityHint: "Press and hold. Nothing is saved.",
+                      action: {
+                          WKInterfaceDevice.current().play(.failure)
+                          action()
+                      }) { isHolding, progress in
+            ZStack {
+                // Both labels reserve their width, so the button does not resize mid-hold.
+                Text("Keep holding…").hidden().accessibilityHidden(true)
+                Text("Hold to discard").hidden().accessibilityHidden(true)
+                Text(isHolding ? "Keep holding…" : "Hold to discard")
+                    .foregroundStyle(StatusTint.alarm)
             }
+            .font(.body.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background {
+                HoldFill(progress: progress, tint: StatusTint.alarm, track: 0.16, fill: 0.4)
+            }
+            .opacity(isEnabled ? 1 : 0.4)
         }
-        .opacity(isEnabled ? 1 : 0.4)
-        .contentShape(.capsule)
-        // Simultaneous, so a drag that starts here still scrolls the summary; global
-        // space, so the page moving under a parked finger reads as movement and cancels.
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                .onChanged { value in
-                    guard isEnabled, !slidOff else { return }
-                    guard abs(value.translation.width) <= Self.holdDriftSlop,
-                          abs(value.translation.height) <= Self.holdDriftSlop else {
-                        slidOff = true
-                        cancelHold()
-                        return
-                    }
-                    beginHold()
-                }
-                .onEnded { _ in
-                    cancelHold()
-                    slidOff = false
-                }
-        )
-        .onDisappear { cancelHold() }
-        .accessibilityElement()
-        .accessibilityLabel("Discard this session")
-        .accessibilityHint("Press and hold. Nothing is saved.")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { if isEnabled { action() } }
-    }
-
-    private func beginHold() {
-        guard holdTask == nil else { return }
-        // UNCONDITIONAL, as on the phone: the fill is functional progress for the hold,
-        // not decoration, and it must match the task's real sleep.
-        withAnimation(.linear(duration: Self.holdSeconds)) { progress = 1 }
-        holdTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(Self.holdSeconds))
-            guard !Task.isCancelled else { return }
-            WKInterfaceDevice.current().play(.failure)
-            action()
-        }
-    }
-
-    private func cancelHold() {
-        holdTask?.cancel()
-        holdTask = nil
-        withAnimation(Motion.state(reduceMotion)) { progress = 0 }
     }
 }

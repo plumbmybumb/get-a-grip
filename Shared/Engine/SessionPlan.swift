@@ -367,6 +367,19 @@ struct ReminderTime: Hashable, Comparable, Sendable, Identifiable, Codable {
     /// Hour and minute only — a repeating daily trigger, never a dated one.
     var dateComponents: DateComponents { DateComponents(hour: hour, minute: minute) }
 
+    /// Minutes since the TRAINING day began (`DayStamp.rolloverHour`) — the order a
+    /// day's slots are lived in. A 01:00 slot is the last of the evening before, not the
+    /// first of the morning, so it sorts after 23:00. The reminder planner's suppression
+    /// and Today's "calling" routine both order by this; ordered by the calendar instead,
+    /// the two disagree between midnight and the rollover.
+    var trainingDayOrder: Int { Self.trainingDayOrder(minutesFromMidnight) }
+
+    /// The same order for a bare minutes-from-midnight value, such as the clock's.
+    static func trainingDayOrder(_ minutesFromMidnight: Int) -> Int {
+        let rollover = DayStamp.rolloverHour * 60
+        return (minutesFromMidnight - rollover + 1440) % 1440
+    }
+
     /// The ladder new slots are filled from, in order: morning, evening, then the two
     /// in-between times someone training four times a day actually uses.
     static let defaults: [ReminderTime] = [

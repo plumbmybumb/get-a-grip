@@ -202,8 +202,12 @@ final class TemplateStore {
     /// Identity is a complete signature because `MaxRecord` is append-only: a max is
     /// inserted or deleted, never edited in place. nil until the first fold.
     @ObservationIgnored private var foldedMaxIDs: Set<PersistentIdentifier>?
-    /// How many times the max history has been fetched and folded. Tests only.
+    #if DEBUG
+    /// How many times the max history has been fetched and folded. A skipped fold looks
+    /// exactly like a fold that found nothing new, so the count is the only way a test can
+    /// tell them apart — and it has no reader in a release build.
     @ObservationIgnored private(set) var maxFoldCount = 0
+    #endif
 
     private static let consistencyDays = 14
     private static let recentGripLimit = 6
@@ -352,7 +356,9 @@ final class TemplateStore {
         publish(\.routineNames,
                 Dictionary(routines.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a }))
         if let maxes {
+            #if DEBUG
             maxFoldCount += 1
+            #endif
             foldedMaxIDs = Set(maxes.map(\.persistentModelID))
             let newest = Self.newestPerGrip(maxes)
             publish(\.currentMaxes, newest)

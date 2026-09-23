@@ -231,15 +231,15 @@ struct RoutineCard: View, Equatable {
         // subtree the context-menu lift re-composites, so nothing in it may carry glass.
         Button(action: onShare) { Label("Share routine…", systemImage: "qrcode") }
         Divider()
-        // A SUBMENU, not a flat destructive row. A live-simulator audit landed a tap
-        // meant for "Start without a gauge" one row low, on Delete, with only the
-        // Divider's hairline between them — and the only net was the 10 s Undo bar,
-        // which the same tap-miss then also failed to catch. This is not the house's
-        // banned confirmation DIALOG (no Yes/No prompt, no tax on the 99% of taps that
-        // mean it): it is ordinary menu navigation one level deeper, so a mis-tap that
-        // lands on "Delete routine…" opens a second small menu and does nothing —
-        // nobody's data is gone until they deliberately tap the destructive row inside
-        // it, at the SAME menu-row hit height as every other item here.
+        // A SUBMENU, not a flat destructive row. A tap meant for "Start without a gauge"
+        // landed one row low, on Delete, with only the Divider's hairline between them —
+        // and the only net was the 10 s Undo bar, which the same tap-miss then also
+        // failed to catch. This is not the house's banned confirmation DIALOG (no Yes/No
+        // prompt, no tax on the 99% of taps that mean it): it is ordinary menu navigation
+        // one level deeper, so a mis-tap that lands on "Delete routine…" opens a second
+        // small menu and does nothing — nobody's data is gone until they deliberately tap
+        // the destructive row inside it, at the SAME menu-row hit height as every other
+        // item here.
         Menu {
             Button(role: .destructive, action: onDelete) { Label("Delete routine", systemImage: "trash") }
         } label: {

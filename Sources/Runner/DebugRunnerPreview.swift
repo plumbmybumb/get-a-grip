@@ -103,7 +103,7 @@ private final class RunnerCuePreviewState {
         device = DeviceStore(client: client)
         device.connect()
         session = RunnerSession(template: template, device: device, timerOnly: timerOnly,
-                                liveActivity: RunnerCuePreviewActivity())
+                                liveActivity: RunnerCuePreviewActivity(), draftStore: nil)
         session.begin()
         if timerOnly {
             if !working { session.send(.skipRep) }

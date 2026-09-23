@@ -43,18 +43,18 @@ final class RunnerActivityLifecycleTests: XCTestCase {
                                     device: device, liveActivity: activity,
                                     // These read the FIRST card synchronously; the delayed
                                     // start has its own tests.
-                                    activityStartDelay: nil)
+                                    draftStore: nil, activityStartDelay: nil)
         session.begin()
         defer { session.end() }
         for index in 1...120 {
             session.send(.sample(ForceSample(kg: 10, deviceMicros: UInt32(index * 12_500))))
         }
         guard case .releasing = session.snapshot.phase else { return XCTFail("Expected release wait") }
-        await Task.yield()
+        await session.lastActivityPush?.value
         XCTAssertEqual(activity.states.last?.phase, .releasing)
         XCTAssertNil(activity.states.last?.endsAt, "LET GO waits for force, without a rest deadline")
         session.send(.pause)
-        await Task.yield()
+        await session.lastActivityPush?.value
         XCTAssertEqual(activity.states.last?.phase, .paused)
         XCTAssertNil(activity.states.last?.endsAt)
         session.send(.resume)
@@ -62,7 +62,7 @@ final class RunnerActivityLifecycleTests: XCTestCase {
         for index in 121...160 {
             session.send(.sample(ForceSample(kg: 0, deviceMicros: UInt32(index * 12_500))))
         }
-        await Task.yield()
+        await session.lastActivityPush?.value
         XCTAssertEqual(activity.states.last?.phase, .resting)
         let restDeadline = try XCTUnwrap(activity.states.last?.endsAt)
         XCTAssertLessThanOrEqual(restDeadline.timeIntervalSinceNow, 20.01,
@@ -71,7 +71,7 @@ final class RunnerActivityLifecycleTests: XCTestCase {
                              "The full rest clock is anchored when the load releases")
         let published = activity.states.count
         session.send(.abort)
-        await Task.yield()
+        await session.lastActivityPush?.value
         XCTAssertEqual(activity.ends, 1, "End on the summary, before save/discard")
         XCTAssertEqual(activity.states.count, published, "Finish must not publish a phantom rest")
 
@@ -80,7 +80,7 @@ final class RunnerActivityLifecycleTests: XCTestCase {
         session.connectionChanged(isConnected: true)
         session.wakeStream()
         session.send(.tick)
-        await Task.yield()
+        await session.lastActivityPush?.value
         XCTAssertEqual(client.commands.count, commands, "A summary never restarts the gauge")
         XCTAssertEqual(activity.starts, 1)
         XCTAssertEqual(activity.states.count, published)
@@ -98,7 +98,7 @@ final class RunnerActivityLifecycleTests: XCTestCase {
                                     device: device, liveActivity: activity,
                                     // These read the FIRST card synchronously; the delayed
                                     // start has its own tests.
-                                    activityStartDelay: nil)
+                                    draftStore: nil, activityStartDelay: nil)
         session.weightUnit = .lb
         session.begin()
         defer { session.end() }
@@ -107,7 +107,7 @@ final class RunnerActivityLifecycleTests: XCTestCase {
         XCTAssertEqual(activity.states.last?.targetHiKg, 15)
         let published = activity.states.count
         session.weightUnit = .kg
-        await Task.yield()
+        await session.lastActivityPush?.value
         XCTAssertEqual(activity.states.count, published + 1)
         XCTAssertEqual(activity.states.last?.displayWeightUnit, .kg)
         XCTAssertEqual(session.snapshot.targetBand, 10...15)

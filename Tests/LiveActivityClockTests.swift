@@ -15,12 +15,13 @@ final class LiveActivityClockTests: XCTestCase {
         let session = RunnerSession(
             template: RunnerFixtures.template(holdSeconds: 10), device: device,
             liveActivity: activity, cues: RunnerCueRecorder(),
+            draftStore: nil,
             activityStartDelay: nil)
         session.begin()
         defer { session.end() }
 
         RunnerFixtures.pull(session, kg: 10, samples: 40, from: 1)
-        await Task.yield()
+        await session.lastActivityPush?.value
         guard case .working = session.snapshot.phase else { return XCTFail("Expected a running hold") }
         XCTAssertFalse(session.snapshot.holdClockIsStopped)
         XCTAssertEqual(activity.states.last?.phase, .pulling)
@@ -29,7 +30,7 @@ final class LiveActivityClockTests: XCTestCase {
 
         // Off the edge: RE-GRIP. The rep is alive, its clock is not.
         RunnerFixtures.pull(session, kg: 0, samples: 8, from: 41)
-        await Task.yield()
+        await session.lastActivityPush?.value
         XCTAssertTrue(session.snapshot.isDropped)
         XCTAssertTrue(session.snapshot.holdClockIsStopped)
         let stopped = try XCTUnwrap(activity.states.last)
@@ -40,7 +41,7 @@ final class LiveActivityClockTests: XCTestCase {
 
         // Back on: a fresh deadline, and the frozen number goes.
         RunnerFixtures.pull(session, kg: 10, samples: 16, from: 49)
-        await Task.yield()
+        await session.lastActivityPush?.value
         XCTAssertFalse(session.snapshot.holdClockIsStopped)
         XCTAssertNotNil(activity.states.last?.endsAt)
         XCTAssertNil(activity.states.last?.pendingSeconds)
@@ -67,11 +68,12 @@ final class LiveActivityClockTests: XCTestCase {
         let session = RunnerSession(
             template: RunnerFixtures.template(), device: device, timerOnly: true,
             liveActivity: activity, cues: RunnerCueRecorder(),
-            activityStartDelay: .milliseconds(50))
+            draftStore: nil,
+            activityStartDelay: .zero)
         session.begin()
         defer { session.end() }
         XCTAssertEqual(activity.starts, 0, "No IPC inside the cover's onAppear")
-        try await Task.sleep(for: .milliseconds(300))
+        await session.activityStart?.value
         XCTAssertEqual(activity.starts, 1)
         XCTAssertEqual(activity.states.first?.repPosition, session.snapshot.pullPosition)
 
@@ -79,10 +81,12 @@ final class LiveActivityClockTests: XCTestCase {
         let short = RunnerSession(
             template: RunnerFixtures.template(), device: device, timerOnly: true,
             liveActivity: gone, cues: RunnerCueRecorder(),
-            activityStartDelay: .milliseconds(50))
+            draftStore: nil,
+            activityStartDelay: .zero)
         short.begin()
+        let pending = try XCTUnwrap(short.activityStart)
         short.end()
-        try await Task.sleep(for: .milliseconds(300))
+        await pending.value
         XCTAssertEqual(gone.starts, 0, "A card for a session already over would only be ended again")
     }
 
