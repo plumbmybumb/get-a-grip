@@ -21,6 +21,7 @@ import run.nuri.getagrip.l10n.AppResources
 import run.nuri.getagrip.l10n.STRING_KEYS
 import run.nuri.getagrip.runner.LiveUpdateNotification
 import run.nuri.getagrip.runner.SessionForegroundService
+import run.nuri.getagrip.store.AlarmGraceBackstop
 import run.nuri.getagrip.store.AlarmScheduler
 import run.nuri.getagrip.store.AndroidAlarmScheduler
 import run.nuri.getagrip.store.AndroidGaugeClientFactory
@@ -220,7 +221,12 @@ class GetAGripApplication : Application() {
         kindStore = settings,
         clientFactory = AndroidGaugeClientFactory(this, gaugeScope, SystemHostClock),
         clock = SystemHostClock,
+        graceBackstop = AlarmGraceBackstop(this),
     ).also { existing = it }
 
     private var existing: DeviceStore? = null
+
+    /// The store if one was ever built — the grace backstop's receiver must not construct a
+    /// Bluetooth client for a process woken only to deliver its alarm.
+    val existingDeviceStore: DeviceStore? get() = existing
 }

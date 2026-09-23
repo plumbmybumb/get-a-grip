@@ -138,6 +138,8 @@ class DeviceStore(
     private val mockFactory: (MockForceProfile) -> ProgressorClient = { profile ->
         MockProgressorClient(scope, profile)
     },
+    /// The grace's frozen-process backstop — see `BackgroundGraceBackstop`.
+    private val graceBackstop: BackgroundGraceBackstop = NoGraceBackstop,
 ) {
 
     /// The rolling window the force trace draws, on a PLAYBACK timeline built here at
@@ -381,6 +383,7 @@ class DeviceStore(
         clientFactory: GaugeClientFactory,
         clock: HostClock = SystemHostClock,
         mockFactory: (MockForceProfile) -> ProgressorClient = { MockProgressorClient(scope, it) },
+        graceBackstop: BackgroundGraceBackstop = NoGraceBackstop,
     ) : this(
         client = if (useMock) {
             mockFactory(MockForceProfile.clean)
@@ -393,6 +396,7 @@ class DeviceStore(
         kindStore = kindStore,
         clientFactory = clientFactory,
         mockFactory = mockFactory,
+        graceBackstop = graceBackstop,
     ) {
         gaugeKind = if (useMock) GaugeKind.progressor else kindStore.load()
     }
@@ -581,13 +585,16 @@ class DeviceStore(
     /// `beginBackgroundTask` assertion whose EXPIRATION HANDLER does the disconnect,
     /// because a suspended iOS process keeps its CoreBluetooth link alive and would
     /// otherwise leave the gauge awake until flat — and a DENIED assertion disconnects at
-    /// once for exactly the same reason. **Android has no assertion to be denied, and it
-    /// fails the other way: a process the OS reclaims takes its GATT link with it.** So the
-    /// worst case here is a grace that is CUT SHORT, never a gauge left burning — which is
-    /// why this is a plain coroutine on the store's scope with no assertion machinery
-    /// around it. (A session that must genuinely survive backgrounding runs a
-    /// `connectedDevice` foreground service instead — see `SessionForegroundService` — and
-    /// that session is streaming, so it takes the `none` branch below.)
+    /// once for exactly the same reason. **Android has the same hazard under another name.**
+    /// A process the OS KILLS takes its GATT link with it, but one it merely FREEZES (the
+    /// cached-apps freezer, seconds after the app leaves the screen) keeps its link up while
+    /// its threads — and this timer — stand still. This used to claim the worst case here
+    /// was a grace cut short; the real worst case was a gauge left awake indefinitely. So
+    /// the window is armed twice: this coroutine, and a `BackgroundGraceBackstop` alarm the
+    /// system delivers to a frozen app — whichever fires first disconnects. (A session that
+    /// must genuinely survive backgrounding runs a `connectedDevice` foreground service
+    /// instead — see `SessionForegroundService` — and that session is streaming, so it takes
+    /// the `none` branch below.)
     fun beginBackgroundGrace() {
         isInBackground = true
         when (
@@ -619,6 +626,7 @@ class DeviceStore(
                     delay(BackgroundGracePolicy.graceSeconds * 1_000L)
                     disconnectAfterGrace()
                 }
+                graceBackstop.arm(BackgroundGracePolicy.graceSeconds * 1_000L)
             }
         }
     }
@@ -635,6 +643,7 @@ class DeviceStore(
         val job = backgroundGraceJob ?: return
         backgroundGraceJob = null
         job.cancel()
+        graceBackstop.cancel()
         record(DiagnosticBreadcrumb.BackgroundDisconnectCancelled)
     }
 
@@ -649,7 +658,18 @@ class DeviceStore(
     internal fun disconnectAfterGrace() {
         backgroundGraceJob?.cancel()
         backgroundGraceJob = null
+        graceBackstop.cancel()
         if (state.isConnected && !isStreaming) disconnect()
+    }
+
+    /// The backstop alarm arrived — possibly to a process that was frozen through the whole
+    /// window, possibly racing a return to the foreground whose cancel it beat. So on top of
+    /// the grace's own re-checks it asks the one question only it has to: is the app STILL
+    /// in the background? A late alarm must never drop the link from under a screen that
+    /// is in use.
+    fun backgroundGraceBackstopFired() {
+        if (!isInBackground) return
+        disconnectAfterGrace()
     }
 
     private var isInBackground = false
@@ -683,13 +703,19 @@ class DeviceStore(
 
     private fun wire() {
         client.onStateChange = { next ->
-            if (next.isConnected && !state.isConnected) {
+            val arrived = next.isConnected && !state.isConnected
+            if (arrived) {
                 connectionEpoch += 1uL
                 pipelineDiagnostics.reset()
             }
             record(DiagnosticBreadcrumb.Connection(next))
             state = next
             deviceName = client.deviceName
+            // A link that comes up while the app is AWAY — a reconnect finishing behind a
+            // locked screen — is an idle gauge held open like any other, and gets the same
+            // grace. A session re-kicks its stream within moments, and the grace re-checks
+            // for that before it disconnects anything.
+            if (arrived && isInBackground) beginBackgroundGrace()
             if (!next.isConnected) {
                 publishStreaming(false)
                 publishCurrentKg(0.0)

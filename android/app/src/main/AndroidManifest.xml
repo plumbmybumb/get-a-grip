@@ -152,6 +152,13 @@
             </intent-filter>
         </receiver>
 
+        <!-- The background grace's backstop: an inexact alarm that drops an idle gauge's link
+             even when the app was frozen through the 45 s window and its own timer never
+             ran. See `BackgroundGraceBackstop`. `exported="false"` — only our alarm fires it. -->
+        <receiver
+            android:name=".store.BackgroundGraceReceiver"
+            android:exported="false" />
+
         <!-- Fires one reminder and reschedules the same slot for tomorrow. It replaces
              iOS's REPEATING calendar trigger: Android's own `setRepeating` is inexact and
              cannot be cancelled per occurrence, and rescheduling on fire is what lets a
