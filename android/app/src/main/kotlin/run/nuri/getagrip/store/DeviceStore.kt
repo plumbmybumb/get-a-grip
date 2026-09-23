@@ -962,6 +962,10 @@ class DeviceStore(
         record(DiagnosticBreadcrumb.SignalFreshness(fresh))
     }
 
+    /// The cue player's door into the ring, so one export tells the whole story of a
+    /// session — link, stream AND sound. Main thread only, like every other `record`.
+    fun recordAudio(event: String) = record(DiagnosticBreadcrumb.Audio(event))
+
     private fun record(event: DiagnosticBreadcrumb) {
         if (diagnosticRing.append(event, clock.wallSeconds())) diagnosticRevision++
     }

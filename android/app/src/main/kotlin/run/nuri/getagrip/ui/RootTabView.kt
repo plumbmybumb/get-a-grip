@@ -395,7 +395,7 @@ fun RootTabView() {
                                 maxes = templates.maxTable,
                                 timerOnly = timerOnly,
                                 scope = sessionScope,
-                                cues = CuePlayer(appContext),
+                                cues = CuePlayer(appContext, diagnostic = device::recordAudio),
                                 activity = AndroidActivityPublisher(appContext),
                                 service = AndroidSessionServiceController(appContext),
                             )

@@ -8,6 +8,8 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -67,7 +69,22 @@ import kotlin.math.sin
 class CuePlayer(
     context: Context,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    /// Where audio evidence goes — the session's diagnostics ring. Called on the MAIN thread.
+    private val diagnostic: ((String) -> Unit)? = null,
 ) : CueSink {
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val audioManager: AudioManager? = context.applicationContext.getSystemService(AudioManager::class.java)
+
+    private fun report(event: String) {
+        val sink = diagnostic ?: return
+        mainHandler.post { sink(event) }
+    }
+
+    /// Every player the system reports as active, ours included once the track is open.
+    /// Other apps' players are anonymised, but they are COUNTED, which is all this needs.
+    private fun activePlayers(): Int =
+        runCatching { audioManager?.activePlaybackConfigurations?.size }.getOrNull() ?: -1
 
     private val appContext = context.applicationContext
 
@@ -229,6 +246,8 @@ class CuePlayer(
             runCatching { built.release() }
             return null
         }
+        // Counted before this track exists: whatever is playing now is somebody else's.
+        val othersBefore = activePlayers()
         // A new streaming track waits for its WHOLE buffer before it starts — which, with a
         // buffer sized for the longest chord, would hold the first tick back indefinitely.
         // Start on the first ~5 ms instead; the keep-alive fills behind it.
@@ -239,6 +258,18 @@ class CuePlayer(
         }
         // Frames handed to the track, for `queuedFrames`. Worker-only, like every call here.
         var framesWritten = 0L
+        report("cue output open, no audio focus requested, " +
+            (if (othersBefore > 0) "$othersBefore other player(s) active" else "no other audio") + " at start")
+        if (othersBefore > 0) {
+            // A podcast that was playing when the session started should STILL be playing a
+            // moment later. Ours is now one of the active players, hence the minus one.
+            mainHandler.postDelayed({
+                if (!isRunning) return@postDelayed
+                val others = activePlayers() - 1
+                report(if (others >= othersBefore) "other audio still playing 2 s after start"
+                    else "other audio STOPPED within 2 s of start ($othersBefore → ${others.coerceAtLeast(0)})")
+            }, 2_000)
+        }
         return object : CueAudioOutput {
             override fun write(buffer: FloatArray, offset: Int, count: Int): Int {
                 val written = built.write(buffer, offset, count, AudioTrack.WRITE_NON_BLOCKING)

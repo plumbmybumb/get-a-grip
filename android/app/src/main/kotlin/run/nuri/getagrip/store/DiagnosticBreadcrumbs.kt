@@ -37,6 +37,11 @@ sealed interface DiagnosticBreadcrumb {
     /// string is a fixed phase description — never the serial, per the rule above.
     data class Calibration(val phase: String) : DiagnosticBreadcrumb
 
+    /// The cue player's output, and whether OTHER media was playing either side of it. The
+    /// design rule is that a session never stops the user's podcast or video; this is the
+    /// evidence for whether it did, read from the phone rather than argued about.
+    data class Audio(val event: String) : DiagnosticBreadcrumb
+
     val text: String
         get() = when (this) {
             is BroadcastScan -> "Bluetooth scan: $event"
@@ -55,6 +60,7 @@ sealed interface DiagnosticBreadcrumb {
             BackgroundDisconnectCancelled ->
                 "Back in time — link kept, disconnect cancelled"
             is Calibration -> "Calibration: " + phase
+            is Audio -> "Audio: $event"
         }
 }
 

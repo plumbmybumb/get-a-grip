@@ -58,6 +58,10 @@ final class CuePlayer {
     /// reset replaces the engine it was registered against.
     private var engineObserver: NSObjectProtocol?
 
+    /// Where audio evidence goes — the session's diagnostics ring. Optional: a test or a
+    /// preview has nowhere to send it, and output never depends on being observed.
+    var onDiagnostic: ((String) -> Void)?
+
     init() {}
 
     /// Activate the audio session and prepare both engines. Called ONCE per session:
@@ -71,7 +75,9 @@ final class CuePlayer {
         guard !isRunning else { return }
         isRunning = true
         buildTones()
-        buildGraph()
+        // The graph is built AFTER the session is configured (in `startAudio`), never
+        // before: preparing an engine under the default `.soloAmbient` category is an audio
+        // object created in a session that is NOT mixable, and nothing here may ever be.
         installObservers()
         startAudio()
         prepareHaptics()
@@ -163,18 +169,57 @@ final class CuePlayer {
         audioStarting = true
         lastAudioAttempt = ProcessInfo.processInfo.systemUptime
         Task { @MainActor [weak self] in
-            let active = await Self.activateSession()
+            let report = await Self.activateSession()
             guard let self else { return }
             self.audioStarting = false
+            self.onDiagnostic?(report.summary)
             // Ended while the session was activating: `end()` has already queued the
             // deactivation behind us, and starting the engine now would outlive it.
             guard self.isRunning else { return }
-            guard active else {
+            guard report.active else {
                 // Haptics-only until a later cue retries. The session keeps running.
                 self.audioReady = false
                 return
             }
+            self.buildGraph()
             self.startEngine()
+            if report.otherAudioBefore { self.checkOtherAudioSurvived() }
+        }
+    }
+
+    /// A podcast that was playing when the session started should STILL be playing a
+    /// moment later. Apps pause on their own schedule, so this looks once, after the
+    /// engine has had time to make any noise it was going to make.
+    private func checkOtherAudioSurvived() {
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard let self, self.isRunning else { return }
+            let still = await Self.otherAudioPlaying()
+            self.onDiagnostic?(still
+                ? "other audio still playing 2 s after start"
+                : "other audio STOPPED within 2 s of start")
+        }
+    }
+
+    nonisolated private static func otherAudioPlaying() async -> Bool {
+        await withCheckedContinuation { continuation in
+            sessionQueue.async {
+                continuation.resume(returning: AVAudioSession.sharedInstance().isOtherAudioPlaying)
+            }
+        }
+    }
+
+    /// What activation found and did — plain values, so it can cross off the session queue.
+    private struct ActivationReport: Sendable {
+        var active: Bool
+        var otherAudioBefore: Bool
+        var mixable: Bool
+        var error: String?
+
+        var summary: String {
+            guard active else { return "session failed to activate (\(error ?? "unknown"))" }
+            return "session active, " + (mixable ? "mixable" : "NOT MIXABLE")
+                + ", other audio " + (otherAudioBefore ? "playing" : "silent") + " at start"
         }
     }
 
@@ -194,9 +239,10 @@ final class CuePlayer {
     nonisolated private static let sessionQueue = DispatchQueue(
         label: "run.nuri.getagrip.cue-audio-session", qos: .userInitiated)
 
-    nonisolated private static func activateSession() async -> Bool {
+    nonisolated private static func activateSession() async -> ActivationReport {
         await withCheckedContinuation { continuation in
             sessionQueue.async {
+                let otherBefore = AVAudioSession.sharedInstance().isOtherAudioPlaying
                 do {
                     // `.playback`, NOT `.ambient`: `.ambient` obeys the mute switch, and a
                     // phone face-down and muted on a mat is exactly where this app is used.
@@ -211,9 +257,13 @@ final class CuePlayer {
                     let session = AVAudioSession.sharedInstance()
                     try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
                     try session.setActive(true)
-                    continuation.resume(returning: true)
+                    continuation.resume(returning: ActivationReport(
+                        active: true, otherAudioBefore: otherBefore,
+                        mixable: session.categoryOptions.contains(.mixWithOthers)))
                 } catch {
-                    continuation.resume(returning: false)
+                    continuation.resume(returning: ActivationReport(
+                        active: false, otherAudioBefore: otherBefore, mixable: false,
+                        error: (error as NSError).localizedDescription))
                 }
             }
         }
@@ -324,6 +374,7 @@ final class CuePlayer {
 
     private func handleInterruption(typeRaw: UInt?, optionsRaw: UInt?) {
         guard let typeRaw, let type = AVAudioSession.InterruptionType(rawValue: typeRaw) else { return }
+        onDiagnostic?(type == .began ? "interrupted by another app" : "interruption ended")
         switch type {
         case .began:
             // The system has already silenced us; tearing the graph down keeps a

@@ -28,6 +28,10 @@ enum DiagnosticBreadcrumb: Equatable, Sendable {
     /// A remotely calibrated gauge's progress from "connected" to "produces force". The
     /// string is a fixed phase description — never the serial, per the rule above.
     case calibration(String)
+    /// The cue player's audio session, and whether OTHER audio was playing either side of
+    /// it. The design rule is that a session never stops the user's podcast or video; this
+    /// is the evidence for whether it did, read from the phone rather than argued about.
+    case audio(String)
 
     var text: String {
         switch self {
@@ -61,6 +65,8 @@ enum DiagnosticBreadcrumb: Equatable, Sendable {
             "Back in time — link kept, disconnect cancelled"
         case .calibration(let phase):
             "Calibration: " + phase
+        case .audio(let event):
+            "Audio: " + event
         }
     }
 }

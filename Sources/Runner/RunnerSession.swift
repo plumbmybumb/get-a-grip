@@ -212,6 +212,13 @@ final class RunnerSession {
         self.device = device
         self.liveActivity = liveActivity
         self.cues = cues
+        #if !os(watchOS)
+        // The audio evidence lands in the same ring as the link's, so a session that
+        // stopped somebody's podcast says so in the diagnostics export.
+        if let player = cues as? CuePlayer {
+            player.onDiagnostic = { [weak device] in device?.recordAudio($0) }
+        }
+        #endif
         self.draftStore = draftStore
         self.activityStartDelay = activityStartDelay
         self.timerOnly = timerOnly

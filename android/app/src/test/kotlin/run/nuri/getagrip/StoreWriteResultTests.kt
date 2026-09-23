@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -144,6 +145,12 @@ class StoreWriteResultTests {
         val routine = assertNotNull(created.await())
         assertEquals(listOf(routine.id), store.routines.map { it.id },
             "the newest world is the one left on screen")
+        // The replan is launched off the recompute (as on iOS), so it lands a beat later.
+        // Wait for it rather than racing it: under a loaded full-suite run it had not yet
+        // applied anything, which read as "no plan" rather than "the wrong plan".
+        withContext(Dispatchers.Default) {
+            withTimeoutOrNull(5_000) { while (scheduler.applied.isEmpty()) delay(10) }
+        }
         assertTrue(scheduler.applied.isNotEmpty() &&
             scheduler.applied.all { it.identifier.contains(routine.id.toString().uppercase()) },
             "and the newest plan is the one left in the scheduler")

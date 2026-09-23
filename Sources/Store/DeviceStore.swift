@@ -1023,6 +1023,10 @@ final class DeviceStore {
         record(.signalFreshness(fresh))
     }
 
+    /// The cue player's door into the ring. It lives beside the gauge's own events so one
+    /// export tells the whole story of a session — link, stream AND sound.
+    func recordAudio(_ event: String) { record(.audio(event)) }
+
     private func record(_ event: DiagnosticBreadcrumb) {
         diagnosticRing.append(event)
         diagnosticEntries = diagnosticRing.entries
