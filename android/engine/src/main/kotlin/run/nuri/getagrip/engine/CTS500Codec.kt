@@ -10,13 +10,10 @@ package run.nuri.getagrip.engine
 //
 // UNVERIFIED ON HARDWARE BY THIS PROJECT.
 //
-// A generic MY-BT102 UART bridge in front of a crane-scale board, so the protocol
-// is the scale's, not Bluetooth's: fixed-length frames behind a 0x05 header with an
-// additive checksum, and ONE channel carrying commands, command echoes and weight
-// uploads together. Nothing echoes which command it answers — the same problem the
-// Progressor has with its tag-0 replies — but here the fix is cheaper: a frame's
-// SHAPE identifies it, so the decoder needs no pending-command state and never
-// serializes anything.
+// A generic MY-BT102 UART bridge in front of a crane-scale board: fixed-length frames
+// behind a 0x05 header with an additive checksum, and ONE channel carrying commands,
+// echoes and weight uploads. Replies do not name their command (like the Progressor's
+// tag 0), but a frame's SHAPE identifies it, so no pending-command state is needed.
 //
 // Frames, all of them checksummed:
 //   6 bytes  `05 <opcode> p0 p1 p2 ck`   command, and the device's echo of it
@@ -91,24 +88,16 @@ object CTS500Codec {
     /// 0x03 = 80, 0x04 = 160, 0x05 = 320.
     const val samplingRate40HzCode: Int = 0x02
 
-    /// Anything above this is a corrupt frame, not a pull.
+    /// Anything above this is a corrupt frame, not a pull. The weight is read UNSIGNED,
+    /// as the reference reads it, so two's-complement negative drift would read as tens
+    /// of millions of kilograms. Dropping it is fail-closed: a missing sample costs a
+    /// tenth of a second, one absurd sample sets the session peak. (A genuinely negative
+    /// reading is DISCARDED — the sign convention is unverified.)
     ///
-    /// The weight field is read UNSIGNED, exactly as the reference reads it, so a
-    /// firmware that sends small negative drift in two's complement would produce
-    /// tens of millions of kilograms. Dropping those is the fail-closed direction:
-    /// a missing sample costs a tenth of a second of trace, while one absurd sample
-    /// sets the session peak and rescales the graph. It also means a genuinely
-    /// negative reading is DISCARDED rather than mis-reported — the sign convention
-    /// is unverified.
-    ///
-    /// **DOUBLE the 500 kg this scale family claims, and the doubling is the point.**
-    /// The centi-kilogram scaling is corroborated by the device's own division presets
-    /// but not verified on hardware here, so a ceiling set at the rated capacity would
-    /// silently discard EVERY reading if the real scaling is finer — total silence being
-    /// far harder to diagnose than a number visibly out by 10×. One rated capacity of
-    /// headroom rejects everything a bad frame can express and refuses nothing a scale in
-    /// this family can report. Same reasoning, same order of magnitude, as the Force
-    /// Board's and the Entralpi's 907 kg.
+    /// **DOUBLE the family's rated 500 kg, on purpose.** The centi-kilogram scaling is
+    /// unverified here, and a ceiling at rated capacity would silently discard EVERY
+    /// reading if the real scaling is finer — silence is far harder to diagnose than a
+    /// number out by 10×. Same reasoning as the Force Board's and Entralpi's 907 kg.
     const val maxPlausibleKilograms: Double = 1000.0
 
     // MARK: - Command building
@@ -135,27 +124,18 @@ object CTS500Codec {
 
     /// The MY-BT102's transparent UART: notify on 0xFFE1, write on 0xFFE2.
     ///
-    /// **40 Hz is asked for ONCE PER LINK, not on every start.** The reference never sends
-    /// `SET_SAMPLING_RATE` at all — it exposes it as an API and leaves the device at
-    /// whatever it was configured with, and the lowest code is 10 Hz — so without this
-    /// write the sample rate is unknown, and 10 Hz would put barely one sample inside the
-    /// runner's 100 ms engage debounce. Asking makes the capability table's advertised rate
-    /// a fact instead of a hope. Some firmwares apply rate changes without echoing a
-    /// confirmation, which costs us nothing here: nothing waits for the echo, and the start
-    /// command follows regardless.
+    /// **40 Hz is asked for ONCE PER LINK.** The reference never sends
+    /// `SET_SAMPLING_RATE`, leaving the rate unknown, and at the lowest code (10 Hz)
+    /// barely one sample fits inside the runner's 100 ms engage debounce. Nothing waits
+    /// for an echo, since some firmwares apply the change without one.
     ///
-    /// It lives in `oneTimeSetupPayloads` because `streamStartPayloads` is re-sent on
-    /// EVERY re-kick by design — the watchdog every 500 ms of silence, a tare recovery, the
-    /// foreground return — and 0xC1 is a scale-configuration command on a board whose
-    /// rate and baud settings are EEPROM-backed. Re-sending START (0xAA) to a live device
-    /// is harmless, which is the house rule; re-writing a config that plausibly resets the
-    /// ADC is not the same thing, and roughly 1500 times across a silent twenty-minute
-    /// session it could prevent the very stream it was trying to revive.
+    /// It lives in `oneTimeSetupPayloads` because start payloads are re-sent on EVERY
+    /// re-kick, and 0xC1 configures an EEPROM-backed board. Re-sending START is harmless;
+    /// rewriting a config that plausibly resets the ADC ~1500 times across a silent
+    /// session could kill the very stream it was trying to revive.
     ///
-    /// The tare is the DEVICE's own (`TARE_SCALE`), written to the same
-    /// characteristic as everything else — this device genuinely has a hardware
-    /// tare, and the reference's own `tare()` override sends it while clearing the
-    /// app-side offset.
+    /// The tare is the DEVICE's own (`TARE_SCALE`), on the same characteristic; the
+    /// reference's `tare()` sends it too, while clearing the app-side offset.
     val profile = GaugeGattProfile(
         serviceUUID = "0000FFE0-0000-1000-8000-00805F9B34FB",
         notifyCharacteristicUUID = "0000FFE1-0000-1000-8000-00805F9B34FB",
@@ -194,10 +174,9 @@ object CTS500Codec {
             frame[2] == opcode &&
             isValidFrame(frame)
 
-    /// Bytes 2…5 are BIG-endian hundredths of a kilogram. Big-endian on a
-    /// little-endian protocol neighbourhood is exactly the kind of detail that
-    /// produces a plausible wrong number rather than a crash, which is why there is
-    /// a test for a value whose two readings differ by six orders of magnitude.
+    /// Bytes 2…5 are BIG-endian hundredths of a kilogram — among little-endian
+    /// neighbours, the kind of detail that yields a plausible wrong number, hence a test
+    /// whose two byte orders differ by six orders of magnitude.
     ///
     /// TRANSLATION NOTE: Swift's argument label folds into the name here —
     /// `kilograms(fromWeightFrame:)` becomes `kilogramsFromWeightFrame`, since Kotlin
@@ -229,10 +208,8 @@ object CTS500Codec {
 
         private val buffer: MutableList<Int> = mutableListOf()
 
-        /// Battery arrives only if something asks (opcode 0xC4), and nothing in the
-        /// app does today; parsed anyway so a manual query is not silently swallowed.
-        /// NOT turned into `batteryFraction`: volts → percent needs this cell's
-        /// discharge curve, and the Progressor's curve is the Progressor's.
+        /// Battery arrives only when asked (0xC4, which the app does not do today); parsed
+        /// anyway. NOT a `batteryFraction`: volts → percent needs this cell's own curve.
         var latestBatteryVolts: Double? = null
             private set
 
@@ -269,11 +246,9 @@ object CTS500Codec {
         /// checksum, and if neither does, the header was a coincidence inside some
         /// other frame's payload — drop one byte and hunt again.
         ///
-        /// **Resynchronising continues the walk**, where the reference returns from
-        /// the notification entirely. At 40 Hz its version would spend one whole
-        /// notification per bad byte, so a single corrupted frame could stall the
-        /// stream for a noticeable fraction of a second. Every pass here either
-        /// consumes a frame or drops at least one byte, so the walk still terminates.
+        /// **Resynchronising continues the walk**, where the reference abandons the
+        /// notification — spending one notification per bad byte, a visible stall at
+        /// 40 Hz. Every pass consumes a frame or drops a byte, so the walk terminates.
         private fun takeFrame(): Scan {
             if (commandOpcodes.contains(buffer[1])) {
                 val candidate = take(ackFrameLength)

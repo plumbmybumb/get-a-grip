@@ -10,18 +10,14 @@ package run.nuri.getagrip.engine
 //
 // UNVERIFIED ON HARDWARE BY THIS PROJECT.
 //
-// Two facts here cost more than the rest of the file put together:
+// Two facts here matter more than the rest of the file:
 //
-// 1. **The board streams POUNDS.** The reference marks it `streamUnit = "lbs"` and
-//    its own test asserts a 1000 in the packet means 1000 lbs. Kilograms are the
-//    unit everywhere in Doigt, so the conversion happens HERE, at the choke point,
-//    and never downstream where a display would have to remember which device it
-//    was drawing.
-// 2. **The notify and write characteristics live in DIFFERENT SERVICES.** Force
-//    data comes out of the Force Board service; the mode command that starts it
-//    goes into the Weight service. `GaugeGattProfile` carries one `serviceUUID`,
-//    so it names the streaming service and `deviceModeServiceUUID` below names the
-//    other one — see the note on `profile`.
+// 1. **The board streams POUNDS** (the reference's `streamUnit = "lbs"`). The app is
+//    kilograms everywhere, so the conversion happens HERE, never downstream where a
+//    display would have to remember which device it was drawing.
+// 2. **The notify and write characteristics live in DIFFERENT SERVICES.** Data comes
+//    out of the Force Board service; the mode command goes into the Weight service,
+//    named by `deviceModeServiceUUID` — see the note on `profile`.
 
 object ForceBoardCodec {
 
@@ -29,12 +25,9 @@ object ForceBoardCodec {
 
     /// The service that STREAMS.
     ///
-    /// `writeCharacteristicUUID` is the Device Mode characteristic, and it is NOT a
-    /// member of `serviceUUID`'s service — it belongs to `deviceModeServiceUUID`.
-    /// Characteristic UUIDs are globally unique on this device, so a client that
-    /// discovers ALL services and then looks the characteristic UUIDs up across
-    /// them finds both; a client that discovers only `serviceUUID` will find the
-    /// notify characteristic and silently fail to start the stream.
+    /// `writeCharacteristicUUID` (Device Mode) belongs to `deviceModeServiceUUID`, not
+    /// `serviceUUID`. A client must discover ALL services and look characteristics up
+    /// across them; discovering only `serviceUUID` silently fails to start the stream.
     ///
     /// **No tare characteristic, deliberately — see `tareCharacteristicUUID` below.**
     ///
@@ -59,71 +52,51 @@ object ForceBoardCodec {
 
     /// **OPEN hardware check: the board's own tare, kept OUT of the profile.**
     ///
-    /// Writing 0x01 here is supposed to zero the board, and the bytes are recorded so a
-    /// hardware session can try them — but in the reference that write lives only in
-    /// `tareByCharacteristic`, an API its own tare path never calls. ForceBoard does not
-    /// override `tare()`, so the reference's shipped behaviour for this device is the base
-    /// class's SOFTWARE tare, and `hasHardwareTare` says so.
+    /// Writing 0x01 should zero the board, but the reference only exposes it as
+    /// `tareByCharacteristic`, which its own tare path never calls — its shipped
+    /// behaviour is SOFTWARE tare, and `hasHardwareTare` says so.
     ///
-    /// The two mechanisms are mutually exclusive in `GattGaugeClient` — a device that
-    /// zeroes itself must not also have an app-side offset subtracted — so naming the
-    /// characteristic in the profile would REPLACE the working tare with an unexercised
-    /// one. If the write is wrong on real firmware, Tare becomes a silent no-op, and the
-    /// session flow tares before every start: every reading would then carry the board's
-    /// standing offset and every target-band gate would be judged against it. Promote
-    /// these two constants into the profile only once a real unit confirms the write.
+    /// The two mechanisms are exclusive in `GattGaugeClient`, so naming this in the
+    /// profile would REPLACE the working tare with an unexercised one. If the write is
+    /// wrong on real firmware, Tare silently does nothing and every reading and band gate
+    /// carries the board's standing offset. Promote these only once a real unit confirms.
     const val tareCharacteristicUUID = "9A88D683-8DF2-4AFE-9E0D-C2BBBE773DD0"
     val tarePayload: ByteArray = byteArrayOf(0x01)
 
     // MARK: - Units
 
-    /// One pound of force in kilograms of force. The reference converts through
-    /// newtons (4.4482216152605 / 9.80665); that ratio is exactly the avoirdupois
-    /// pound in kilograms, so the single multiply below is the same number without
-    /// two divisions of rounding.
+    /// One pound-force in kilograms-force. The reference goes through newtons
+    /// (4.4482216152605 / 9.80665), which is exactly the avoirdupois pound — one
+    /// multiply, less rounding.
     ///
-    /// That a raw count is WHOLE pounds is the one fact here with no second source:
-    /// the reference asserts it only against its own fixture builder, whose sample
-    /// values (1000, 1200 "lbs") are nothing a fingerboard ever sees. If the board
-    /// actually streams tenths of a pound, every reading is off by a decimal factor
-    /// — confirm against a known hanging weight before trusting the figures.
+    /// That a raw count is WHOLE pounds has no second source: the reference asserts it
+    /// only against its own fixture builder. If the board streams tenths, every reading
+    /// is off by 10× — confirm against a known hanging weight before trusting it.
     const val poundsToKilograms: Double = 0.45359237
 
     /// Anything above this is a misframed packet, not a pull.
     ///
-    /// **A GENEROUS ceiling rather than none**, which is the whole argument. The
-    /// objection to a window here was that a bound picked for whole pounds would
-    /// silently discard EVERY reading if the scaling turns out finer — true, and answered
-    /// by 2000 lb (907 kg): it survives a 10× scaling surprise and still rejects what a
-    /// bad frame can express, which is 255·32768 + 255·256 + 255 = 8,421,375 lb, i.e.
-    /// 3.8 MILLION kilograms.
+    /// **A GENEROUS ceiling rather than none.** 2000 lb (907 kg) survives a 10× scaling
+    /// surprise — a tight bound would silently discard EVERY reading if the scaling is
+    /// finer — and still rejects what a bad frame can express (8,421,375 lb).
     ///
-    /// The blast radius is why none was not an option. This protocol has no checksum, no
-    /// header magic and no sequence field, and the decoder holds no reassembly buffer — so
-    /// a packet over the ATT MTU has its continuation decoded as a fresh packet, bytes 0–1
-    /// read as a sample count. `DeviceStore.peakKg` is `max(peakKg, sample.kg)` with no
-    /// clamp and `MaxAttempt`'s peak is a running maximum, so ONE such reading sets the
-    /// session peak, rescales the trace for the rest of the session and, inside a max
-    /// attempt, becomes the recorded max that then sets every percentage target for that
-    /// grip. Same house rule as the Progressor's −10…165 kg window: garbage is rejected AT
-    /// THE CODEC, before it can reach the runner, trace, store or recorded maxes.
+    /// None was not an option: there is no checksum, header magic or sequence field, so
+    /// a packet over the ATT MTU has its continuation decoded as a fresh packet. ONE such
+    /// reading would set the session peak and, inside a max attempt, the recorded max
+    /// behind every percentage target. As with the Progressor's −10…165 kg window,
+    /// garbage is rejected AT THE CODEC.
     const val maxPlausibleKilograms: Double = 907.0
 
     /// One 3-byte sample in pounds.
     ///
     ///     value = b0 * 32768 + b1 * 256 + b2
     ///
-    /// The high byte is worth 2^15, not 2^16, so the middle byte only ever carries
-    /// 7 bits. The reference's own fixture builder packs it that way
-    /// (`floor(sample / 32768)`, `floor((sample % 32768) / 256)`), which is the only
-    /// evidence we have of the layout, so it is ported to the digit rather than
-    /// "corrected" into a 24-bit read. A naive `b0 << 16` decode agrees with this
-    /// one for every sample under 32768 and then quietly doubles.
+    /// The high byte is worth 2^15, not 2^16, so the middle byte carries 7 bits. The
+    /// reference's fixture builder packs it that way — the only evidence of the layout —
+    /// so it is ported to the digit rather than "corrected": a naive `b0 << 16` decode
+    /// agrees below 32768 and then quietly doubles.
     ///
-    /// Values are UNSIGNED: this frame cannot express a negative load at all, so
-    /// drift below the board's own zero reads as zero. The Tare button still means
-    /// something because the offset it applies is the app's, or the board's own via
-    /// `tareCharacteristicUUID`.
+    /// Values are UNSIGNED: drift below the board's own zero reads as zero.
     ///
     /// TRANSLATION NOTE: Swift takes a 3-tuple of `UInt8`; Kotlin has no tuple, so
     /// the three bytes are three `Int` parameters holding UNSIGNED byte values.
@@ -139,9 +112,8 @@ object ForceBoardCodec {
         /// packet; the sample arithmetic itself lives in `ForceBoardCodec.pounds`,
         /// where its oddity is documented.
         ///
-        /// Nothing here spans notifications — every packet is self-describing — so
-        /// unlike the Motherboard and CTS500 decoders this one holds no buffer, and a
-        /// short read costs only the samples that were cut off.
+        /// Every packet is self-describing, so there is no buffer: a short read costs
+        /// only the samples that were cut off.
         override fun ingest(data: ByteArray): List<GaugeReading> {
             // Two header bytes and at least one whole sample, or there is nothing to
             // say. A count-only packet is legal and means zero samples.
@@ -160,10 +132,8 @@ object ForceBoardCodec {
 
                 val pounds = pounds(byteAt(offset), byteAt(offset + 1), byteAt(offset + 2))
                 val kg = pounds * poundsToKilograms
-                // Per SAMPLE, not per packet: each 3-byte sample is self-describing, so an
-                // absurd one costs a fortieth of a second of trace while its neighbours
-                // still stand. See `maxPlausibleKilograms` for what one of them would cost
-                // if it got through.
+                // Per SAMPLE, not per packet: an absurd one costs a fortieth of a second
+                // while its neighbours stand. See `maxPlausibleKilograms`.
                 if (kg > maxPlausibleKilograms) continue
                 readings.add(GaugeReading(kg = kg))
             }

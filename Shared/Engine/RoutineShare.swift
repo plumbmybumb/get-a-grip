@@ -5,16 +5,12 @@ import Foundation
 
 // A routine as a LINK, and the link as a QR code somebody points a camera at.
 //
-// The code IS the routine — no server, no account, no lookup. Everything the recipient
-// needs rides in the URL FRAGMENT, which is also the one part of a URL that never
-// reaches a server even after this grows into a universal link: the routine stays
-// between two phones.
+// The code IS the routine — no server, no account. It rides in the URL FRAGMENT, the
+// one part of a URL that never reaches a server, even as a universal link.
 //
-// What deliberately does NOT travel: reminder times and `remindersEnabled` (personal
-// hours, and an import must never ambush the recipient with a notification permission
-// prompt), the template id, and everything the store derived. Percent targets DO travel
-// and resolve against the RECIPIENT's own maxes — that is the entire reason a
-// prescription is a fraction rather than kilograms, and it needs no translation here.
+// NOT carried: reminder times and `remindersEnabled` (personal hours, and an import must
+// never ambush the recipient with a permission prompt), the template id, and anything
+// the store derived. Percent targets travel and resolve against the RECIPIENT's maxes.
 //
 // Pure Foundation: this file compiles into the widget target too.
 
@@ -48,24 +44,20 @@ enum RoutineShareError: Error, LocalizedError, Equatable {
 }
 
 enum RoutineShare {
-    /// Bumped only when the ENVELOPE changes shape. Adding a field to `SessionPlan` does
-    /// not touch this: the plan's own decoder already tolerates keys it has never heard
-    /// of, so a routine from a newer build imports with one field missing rather than
-    /// refusing outright. A version bump means "an older build cannot read this at all".
+    /// Bumped only when the ENVELOPE changes shape; a new `SessionPlan` field does not
+    /// need it, since the plan decoder tolerates unknown keys. A bump means "an older
+    /// build cannot read this at all".
     static let currentVersion = 1
 
     // MARK: - Out
 
-    /// The ONE place a routine becomes a URL, so the scheme can later swap to an https
-    /// universal link without another line in the app changing.
+    /// The ONE place a routine becomes a URL, so the scheme can later become an https
+    /// universal link without touching the app.
     ///
-    /// nil when this routine cannot become a WORKING code — and the encoder's refusals
-    /// mirror the decoder's caps deliberately: a 51-set routine used to share as a
-    /// perfectly normal-looking QR that every phone, including the sender's own, then
-    /// refused as "too large". A code the sharer cannot learn is broken is worse than
-    /// the alert the nil routes into. The name and note caps are applied here as well,
-    /// for the same symmetry: truncating only on arrival left two people believing they
-    /// had the same routine under two different names.
+    /// nil when the routine cannot make a WORKING code: the encoder mirrors the
+    /// decoder's caps, because a 51-set routine once shared as a normal-looking QR that
+    /// every phone then refused. Name and note caps apply here too, so sender and
+    /// recipient see the same truncated name.
     static func url(for draft: RoutineDraft) -> URL? {
         var plan = draft.plan
         guard !plan.executable.sets.isEmpty, plan.sets.count <= maxSets else { return nil }
@@ -87,32 +79,23 @@ enum RoutineShare {
 
     // MARK: - In
 
-    /// Accepts `getagrip://routine#…` today and `https://<any-host>/…routine…#…` for the
-    /// universal-link form that is still out of scope — today's build must be able to
-    /// read a link tomorrow's build hands out, or every code shared in between dies at
-    /// the App Store fallback.
+    /// Accepts `getagrip://routine#…` and the future `https://<any-host>/…routine…#…`
+    /// universal link, so today's build reads codes tomorrow's build hands out.
     ///
-    /// Everything past this point is UNTRUSTED input from a camera: every step is capped
-    /// or fails closed, and nothing is trusted to be the size it says it is.
+    /// Everything past this point is UNTRUSTED camera input: every step is capped or
+    /// fails closed, and nothing is trusted to be the size it says it is.
     static func draft(from url: URL) throws -> RoutineDraft {
         guard isRoutineLink(url) else { throw RoutineShareError.notARoutineLink }
-        // PERCENT-DECODED, deliberately: the base64url alphabet contains no character
-        // that needs encoding, so nothing a percent-decode produces could ever have been
-        // in a payload this encoder wrote — but a third-party scanner or a link
-        // shortener is allowed to percent-encode unreserved characters on the way
-        // through, and refusing its output would fail an intact code. The nil-versus-
-        // empty distinction is the one that matters — a link with no '#' at all is a
-        // bare scheme somebody typed, while an empty payload is a code that scanned
-        // badly.
+        // PERCENT-DECODED: base64url needs no encoding, but a scanner or link shortener
+        // may percent-encode unreserved characters, and refusing that fails an intact
+        // code. nil (no '#': a bare typed scheme) differs from empty (a bad scan).
         guard let fragment = url.fragment(percentEncoded: false) else {
             throw RoutineShareError.notARoutineLink
         }
         guard !fragment.isEmpty else { throw RoutineShareError.unreadable }
-        // Length-bounded BEFORE any string work: everything below walks or copies the
-        // whole fragment, and without this guard a 40 MB link would allocate several
-        // multiples of itself on the main actor just to be refused. The 4/3 is base64's
-        // own expansion ratio, so this is the same cap as `maxCompressedBytes`, measured
-        // in characters.
+        // Length-bounded BEFORE any string work, or a 40 MB link allocates multiples of
+        // itself on the main actor just to be refused. 4/3 is base64's expansion, so this
+        // is `maxCompressedBytes` measured in characters.
         guard fragment.count <= maxCompressedBytes * 4 / 3 + 4 else {
             throw RoutineShareError.unreadable
         }
@@ -121,21 +104,16 @@ enum RoutineShare {
               compressed.count <= maxCompressedBytes
         else { throw RoutineShareError.unreadable }
 
-        // zlib tops out near 1030:1, so `maxCompressedBytes` — the only bound Foundation
-        // lets us enforce BEFORE inflation — caps the transient allocation at ~4 MB.
-        // The decompressed check below is therefore a backstop, not the limit; the
-        // compressed cap is the real one, and it is sized so a legal 50-set routine
-        // (~1.6 KB) still clears it with headroom.
+        // The compressed cap is the real bound on inflation (see `maxCompressedBytes`);
+        // the decompressed check below is a backstop.
         guard let inflated = try? (compressed as NSData).decompressed(using: .zlib) else {
             throw RoutineShareError.unreadable
         }
         let json = inflated as Data
         guard json.count <= maxDecompressedBytes else { throw RoutineShareError.unreadable }
 
-        // The version is judged BEFORE the envelope is decoded in full: a future format
-        // may reshape the plan itself, and its payload must come back as "update the
-        // app", never as "damaged" — the plan decode below is strict and would otherwise
-        // answer first.
+        // Version BEFORE the full decode: a future format may reshape the plan, and must
+        // read as "update the app", not "damaged" — the strict plan decode would answer first.
         guard let probe = try? decoder.decode(VersionProbe.self, from: json) else {
             throw RoutineShareError.unreadable
         }
@@ -150,20 +128,17 @@ enum RoutineShare {
         guard envelope.plan.sets.count <= maxSets else { throw RoutineShareError.tooLarge }
 
         var plan = envelope.plan
-        // NO sets at all is damage, not a routine: the encoder refuses to build a code
-        // for an empty plan, so a payload with none was mangled between the two phones —
-        // and "a routine with no pulls in it" would blame the sharer for a crease in a
-        // printout. `.emptyRoutine` is reserved for the one distinguishable case below.
+        // NO sets at all is damage: the encoder never builds a code for an empty plan, and
+        // "a routine with no pulls" would blame the sharer for a crease in a printout.
+        // `.emptyRoutine` is reserved for the distinguishable case below.
         guard !plan.sets.isEmpty else { throw RoutineShareError.unreadable }
-        // Trimmed and capped rather than rejected — a long name is somebody's routine
-        // with a long name, not an attack, and the store's own `normalized` turns what
-        // is left of a whitespace-only name into the house default on save.
+        // Trimmed and capped rather than rejected: a long name is not an attack, and
+        // `normalized` turns a whitespace-only name into the house default on save.
         plan.name = sanitizedName(plan.name)
         plan.sets = plan.sets.map { set in
             var s = set
-            // Fresh row identity, same reason as `RoutineDraft.copying`: two people's
-            // routines must never share a SetPlan id, or a reorder on one phone is a
-            // reorder on the other's list the next time both sync the same rows.
+            // Fresh row identity, as in `RoutineDraft.copying`: two people's routines
+            // must never share a SetPlan id.
             s.id = UUID()
             s.note = String(s.note.prefix(maxNoteCharacters))
             return s
@@ -172,10 +147,8 @@ enum RoutineShare {
         // IS a routine with no pulls in it, so the error can honestly say so.
         guard !plan.executable.sets.isEmpty else { throw RoutineShareError.emptyRoutine }
 
-        // Start from the defaults, not from a decoded draft: reminders are the one thing
-        // that must be the RECIPIENT's, and `setSessionsPerDay` is the only door that
-        // fills the ladder for however many sessions a day this routine asks for. It
-        // clamps the count itself, which is why nothing clamps it here.
+        // Start from the defaults, not a decoded draft: reminders must be the RECIPIENT's,
+        // and `setSessionsPerDay` (which clamps) is the one door that fills the ladder.
         var draft = RoutineDraft()
         // Stated rather than inherited from the default: nil is what makes the store
         // CREATE this routine instead of updating one of the recipient's.
@@ -183,9 +156,8 @@ enum RoutineShare {
         draft.plan = plan
         draft.setSessionsPerDay(envelope.sessionsPerDay)
         draft.isOnDemand = envelope.isOnDemand
-        // OFF, always. Somebody else's routine may not fire notifications on your phone
-        // until you say so — and turning it on here is what would trigger the permission
-        // prompt at import.
+        // OFF, always: somebody else's routine may not notify on your phone until you say
+        // so, and turning it on would trigger the permission prompt at import.
         draft.remindersEnabled = false
         return draft
     }
@@ -196,10 +168,8 @@ enum RoutineShare {
     static func isRoutineLink(_ url: URL) -> Bool {
         guard let incoming = url.scheme?.lowercased() else { return false }
         if incoming == scheme { return url.host()?.lowercased() == host }
-        // Any host: the AASA domain is not decided, so the path is the only thing that
-        // can say "routine" — and it says it as a whole COMPONENT, not a substring, or
-        // this guard would claim `/my-routines/7` and every other page with the word in
-        // its slug as ours to answer for.
+        // Any host (the AASA domain is undecided), so the path must say "routine" as a
+        // whole COMPONENT — a substring match would claim `/my-routines/7`.
         if incoming == "https" {
             return url.pathComponents.contains { $0.lowercased() == host }
         }
@@ -222,10 +192,8 @@ enum RoutineShare {
         }
     }
 
-    /// The plan rides VERBATIM as `SessionPlan`'s own Codable output — no parallel share
-    /// DTO. A DTO would be a second description of a routine to keep in step with the
-    /// first, and the drift between them is exactly the parity bug the builder already
-    /// taught this codebase about.
+    /// The plan rides VERBATIM as `SessionPlan`'s own Codable output: a share DTO would be
+    /// a second description of a routine to drift out of step with the first.
     private struct Envelope: Codable {
         var v: Int
         var plan: SessionPlan
@@ -248,16 +216,13 @@ enum RoutineShare {
         /// one value instead of the whole routine — the house rule from `Leniency`.
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
-            // Absent reads as 0, which is below the floor and therefore unreadable: a
-            // payload with no version is not a payload this format ever wrote.
+            // Absent reads as 0, below the floor and therefore unreadable: this format
+            // never wrote a payload without a version.
             self.v = c.value(.v, or: 0)
-            // STRICT, unlike every field around it. The lenient fallback here was
-            // `SessionPlan()` — whose set list is empty — so a plan key that was
-            // missing, or present but mangled into a string by a bad scan, sailed
-            // through and was then reported as "a routine with no pulls in it": the
-            // damage got blamed on the sharer. Throwing surfaces it as `.unreadable`,
-            // which is the sentence that is actually true. Leniency still lives INSIDE
-            // `SessionPlan.init(from:)` for its fields, which is where it belongs.
+            // STRICT, unlike every field around it: a lenient `SessionPlan()` fallback has
+            // no sets, so a missing or mangled plan read as "a routine with no pulls in
+            // it", blaming the sharer. Throwing reports `.unreadable`, which is true.
+            // Leniency still lives inside `SessionPlan.init(from:)` for its fields.
             self.plan = try c.decode(SessionPlan.self, forKey: .plan)
             self.sessionsPerDay = c.value(.sessionsPerDay, or: 2)
             self.isOnDemand = c.value(.isOnDemand, or: false)
@@ -269,12 +234,10 @@ enum RoutineShare {
     private static let scheme = "getagrip"
     private static let host = "routine"
 
-    /// Caps on untrusted input, enforced at BOTH ends — the encoder refuses to build
-    /// what the decoder would refuse to read. The compressed cap is the load-bearing
-    /// one: zlib inflates at most ~1030:1, and Foundation offers no way to bound the
-    /// output before it exists, so 4 KB compressed is what actually caps the transient
-    /// allocation (~4 MB worst case). A legal 50-set routine measures ~1.6 KB, so the
-    /// headroom is real without being an invitation.
+    /// Caps on untrusted input, enforced at BOTH ends. The compressed cap is the one that
+    /// matters: zlib inflates at most ~1030:1 and Foundation cannot bound the output
+    /// before it exists, so 4 KB compressed caps the transient allocation at ~4 MB. A
+    /// legal 50-set routine is ~1.6 KB.
     private static let maxCompressedBytes = 4 * 1024
     private static let maxDecompressedBytes = 256 * 1024
     private static let maxSets = 50
@@ -288,11 +251,9 @@ enum RoutineShare {
             .prefix(maxNameCharacters))
     }
 
-    /// `.sortedKeys` so the output is stable in practice and the round-trip tests have
-    /// one canonical form to pin. It is NOT a cross-device byte-stability guarantee —
-    /// neither JSONEncoder's Double formatting nor Apple's deflate output is documented
-    /// stable — and nothing here needs one: no URL is ever compared or used as a key,
-    /// and a printed code keeps working because the DECODER is stable, not the encoder.
+    /// `.sortedKeys` gives the round-trip tests one canonical form. Not a cross-device
+    /// byte-stability guarantee, and none is needed: no URL is compared or used as a key,
+    /// and a printed code keeps working because the DECODER is stable.
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]

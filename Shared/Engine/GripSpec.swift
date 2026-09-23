@@ -11,13 +11,11 @@ import Foundation
 
 // MARK: - Fingers
 
-/// Which digits are on the hold. An OptionSet over exactly FIVE bits — the four
-/// fingers plus the THUMB — because the domain is closed at the hand: every non-empty
-/// combination is representable, so there is no such thing as an "unknown value from a
-/// newer build" to fall back from. The thumb earned its bit the honest way (Nuri,
-/// 2026-08-04): pinch blocks are real training, and a pinch IS thumb opposition — it
-/// was a missing digit, not a new dimension. A genuinely new dimension (pinch width,
-/// sloper angle) is still a new FIELD, never a new bit.
+/// Which digits are on the hold. An OptionSet over exactly FIVE bits — four fingers
+/// plus the THUMB — because the domain is closed at the hand: there is no "unknown
+/// value from a newer build" to fall back from. The thumb was a missing digit, not a
+/// new dimension (Nuri, 2026-08-04: pinch blocks are real training). A genuinely new
+/// dimension (pinch width, sloper angle) is a new FIELD, never a new bit.
 struct FingerSet: OptionSet, Hashable, Sendable, Codable {
     let rawValue: Int
 
@@ -236,20 +234,15 @@ extension GripPosition {
 
 // MARK: - The grip
 
-/// A grip, as a VALUE. There is no Grip model, no library, no folder — a grip lives
-/// inline on the set row that uses it, and two sets built independently with the same
-/// three fields are automatically the same trend series.
+/// A grip, as a VALUE — see the file header.
 struct GripSpec: Hashable, Sendable, Codable {
-    /// WHOLE millimetres. Int, not Double, and that is load-bearing: `key` is a
-    /// serialization, and Double formatting is locale-dependent — "20" vs "20.0" vs
-    /// "20,0" would fork one trend series into three between a French phone and an
-    /// American one.
+    /// WHOLE millimetres. Int, not Double: `key` is a serialization, and "20" vs "20.0"
+    /// vs "20,0" would fork one trend series into three across locales.
     var edgeMM: Int = 20
-    /// A PINCH ALWAYS INCLUDES THE THUMB (Nuri, 2026-08-04: "there's no world where you
-    /// can pinch without the thumb"). It is not a preference — a pinch IS thumb
-    /// opposition, so a pinch without one is not a grip anybody can perform, and the app
-    /// must not be able to represent it. Enforced HERE rather than in the three screens
-    /// that edit a grip, so no surface can produce one and no blob can decode into one.
+    /// A PINCH ALWAYS INCLUDES THE THUMB (Nuri, 2026-08-04). Not a preference: a pinch IS
+    /// thumb opposition, so a thumbless one is not a performable grip and must not be
+    /// representable. Enforced HERE, not in the screens that edit a grip, so no surface
+    /// can produce one and no blob can decode into one.
     var fingers: FingerSet = .four {
         didSet { if position == .pinch { fingers.formUnion(.thumb) } }
     }
@@ -272,19 +265,15 @@ struct GripSpec: Hashable, Sendable, Codable {
 
     /// ### THE CANONICAL KEY — FROZEN FOREVER.
     /// `"<edgeMM>|<fingerToken>|<positionRaw>"` → "20|IMRL|halfCrimp", "20|IM|fullCrimp".
-    /// The only thing joining a rep pulled in March to one pulled in December and to
-    /// the `MaxRecord` that says what 25 % means for it. NEVER localize, reformat,
-    /// reorder or pad. `|` is safe: no component can contain one — the edge is an Int,
-    /// the token is drawn from "IMRL", and a position raw is an identifier.
-    /// NEVER STORED — always computed, because a stored copy is a second source of
-    /// truth that can disagree with the fields beside it.
-    /// A fourth dimension takes a "v2:" namespace plus a migration, or lives outside
-    /// the key.
+    /// The only thing joining a rep pulled in March to one in December and to the
+    /// `MaxRecord` that says what 25 % means for it. NEVER localize, reformat, reorder
+    /// or pad; no component can contain `|`. NEVER STORED: a stored copy could disagree
+    /// with the fields beside it. A fourth dimension takes a "v2:" namespace plus a
+    /// migration, or lives outside the key.
     var key: String { "\(edgeMM)|\(fingers.token)|\(position.rawValue)" }
 
     /// Sentence case, for a set row inside running copy: "20 mm · 4 fingers · half crimp".
-    /// It differs from `displayName` in the POSITION's case only — the finger names are
-    /// labels ("Front 3", "4 fingers") whose capital is part of the name.
+    /// Only the POSITION is lowercased; finger names are labels whose capital is kept.
     var line: String { String(localized: "\(edgeMM) mm · \(fingers.name) · \(position.name.lowercased())") }
 
     /// Title case, for a heading or a picker: "20 mm · 4 fingers · Half crimp".
@@ -313,11 +302,9 @@ extension GripSpec {
         self.fingers = c.value(.fingers, or: .four)
         self.position = c.value(.position, or: .halfCrimp)
         // Observers do not fire during init, so the pinch invariant is asserted by hand.
-        // A blob written before the rule existed self-heals on read — which DOES change
-        // its `key` from "20|IM|pinch" to "20|IMT|pinch", so a max recorded against the
-        // thumbless form no longer joins. Acceptable only because `.pinch` is hours old
-        // and unshipped; a rule that re-keys shipped data needs a "v2:" namespace and a
-        // migration instead.
+        // Healing re-keys a pre-rule blob ("20|IM|pinch" → "20|IMT|pinch"), acceptable
+        // only because `.pinch` was unshipped; re-keying shipped data needs a "v2:"
+        // namespace and a migration.
         if self.position == .pinch { self.fingers.formUnion(.thumb) }
     }
 }

@@ -112,10 +112,9 @@ struct ForceSample: Sendable, Equatable {
 enum ProgressorEvent: Sendable, Equatable {
     case sample(ForceSample)
     case battery(millivolts: UInt32)
-    /// Battery as a ready-made 0…1 fraction, from gauges that report the standard
-    /// Battery Service percentage. The Progressor keeps `.battery` — its raw
-    /// millivolts go through its own discharge curve, and forcing one shape on the
-    /// other would bake a Tindeq-specific curve into every ported device.
+    /// Battery as a 0…1 fraction, from gauges reporting the standard Battery Service
+    /// percentage. The Progressor keeps `.battery`: its millivolts go through its own
+    /// discharge curve, which must not be baked into every ported device.
     case batteryFraction(Double)
     case appVersion(String)
     case errorInformation(String)
@@ -271,10 +270,9 @@ enum ProgressorCodec {
     }
 
     /// Walk a structurally valid payload of repeated 8-byte `(float32 kg, uint32 µs)`
-    /// pairs, dropping readings a 150 kg load cell cannot physically produce. The
-    /// −10…165 kg window allows negative zero drift and 10% calibration tolerance while
-    /// rejecting finite garbage at the codec choke point, before it can reach the runner,
-    /// trace, store, or recorded maxes.
+    /// pairs, dropping readings a 150 kg load cell cannot produce. The −10…165 kg window
+    /// allows zero drift and 10% calibration tolerance while rejecting finite garbage
+    /// here, before it can reach the runner, trace, store or recorded maxes.
     private static func samples(in payload: [UInt8]) -> [ForceSample] {
         var out: [ForceSample] = []
         out.reserveCapacity(payload.count / 8)

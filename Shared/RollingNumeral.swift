@@ -5,18 +5,12 @@ import SwiftUI
 
 /// A clock numeral that ROLLS without a blur.
 ///
-/// `.contentTransition(.numericText())` is the obvious way to roll a countdown, and it
-/// renders every animated frame of the roll through a CPU Gaussian blur. On the runner
-/// that is two numerals rolling once a second for the whole session — the hero seconds
-/// and the big rest countdown — and it measured at 14 points of a core (27 % of the
-/// app's time in `vSepConvolve…`, Nuri's phone, real session path, 2026-09-19); with the
-/// digits snapping instead the blur vanished and the app fell from 51 % to 37 % of a core.
-/// The house rule stands — a clock rolls, because a number that moves is counting — so
-/// the roll is done the cheap way: the numeral is keyed by its value, the outgoing one
-/// slides a quarter of its height in the counting direction while fading out and the
-/// incoming one arrives the same way. Offset and opacity are composited on the GPU;
-/// nothing is blurred. `rolls == false` (Low Power Mode, Reduce Motion) bypasses the
-/// keying entirely, so a snapping readout costs exactly what a plain `Text` does.
+/// `.contentTransition(.numericText())` blurs every frame of the roll on the CPU; two
+/// numerals rolling each second measured 14 points of a core (27 % of the app's time in
+/// `vSepConvolve…`, 2026-09-19). Clocks still roll, the cheap way: keyed by value, the
+/// outgoing numeral slides and fades a quarter-height in the counting direction as the
+/// next arrives — GPU offset and opacity, no blur. `rolls == false` (Low Power Mode,
+/// Reduce Motion) skips the keying, costing what a plain `Text` does.
 struct RollingNumeral<Key: Hashable, Label: View>: View {
     var value: Key
     /// True for a countdown: the digits move downward, as an odometer counting down.

@@ -49,12 +49,10 @@ extension GaugeFrameDecoder {
 
 /// µs stamps for devices that have no clock of their own.
 ///
-/// Built from host MONOTONIC uptime, never `Date` — wall time steps under NTP and
-/// timezone changes, and a stamp that jumps backwards would read as a stale batch
-/// and trip the engine's fail-closed high-water check. Truncating to `UInt32`
-/// reproduces the Tindeq clock's ~71.6-minute wrap on purpose: it keeps one wrap
-/// rule, already handled everywhere with `&-`, instead of adding a second timing
-/// regime with its own edge cases.
+/// Built from host MONOTONIC uptime, never `Date`: wall time steps under NTP and
+/// timezone changes, and a backwards stamp would read as a stale batch and trip the
+/// engine's fail-closed high-water check. Truncating to `UInt32` reproduces the
+/// Tindeq's ~71.6-minute wrap on purpose, so there is one wrap rule, not two.
 enum SyntheticSampleClock {
     static func micros(uptime: TimeInterval) -> UInt32 {
         UInt32(truncatingIfNeeded: Int64(uptime * 1_000_000))
@@ -74,22 +72,18 @@ struct GaugeGattProfile: Sendable, Equatable {
     /// Empty means subscribing to notifications is itself the start.
     var streamStartPayloads: [Data] = []
     var streamStopPayload: Data?
-    /// Written once per LINK, right after subscribing — configuration that must not
-    /// ride the repeated start path. Start payloads are re-sent on every re-kick BY
-    /// DESIGN (the house rule: never gate the start), so a config write folded into
-    /// them would be re-issued ~1500 times across a silent 20-minute session. The
-    /// CTS500's sampling-rate command lives here for exactly that reason.
+    /// Written once per LINK, right after subscribing. Start payloads are re-sent on
+    /// every re-kick by design (never gate the start), so config folded into them would
+    /// repeat ~1500 times across a silent 20-minute session (the CTS500's sampling rate).
     var oneTimeSetupPayloads: [Data] = []
     /// Seconds to wait between successive `streamStartPayloads` writes. The
     /// Motherboard answers "C" with its calibration table and the reference waits
     /// 2.5 s before sending "S30"; written back-to-back, the start can race the
     /// table home and the device streams packets the decoder must drop.
     var startPayloadDelaySeconds: Double = 0
-    /// Extra characteristics to subscribe ALONGSIDE `notifyCharacteristicUUID`,
-    /// resolved across every discovered service. For devices where the reference
-    /// subscribes everything it marks "rx" and never had to pick one (Entralpi
-    /// declares two candidates); subscribing to both is what the reference does,
-    /// costs nothing, and the same decoder parses whichever speaks.
+    /// Extra characteristics to subscribe ALONGSIDE `notifyCharacteristicUUID`, across
+    /// every discovered service — for devices with two "rx" candidates (Entralpi). The
+    /// reference subscribes both, and the same decoder parses whichever speaks.
     var alternateNotifyCharacteristicUUIDs: [String] = []
     /// Hardware tare, for the devices whose DEVICE tare the reference itself
     /// exercises (CTS500). Everything else gets the client's software tare.
@@ -127,7 +121,7 @@ enum GaugeProtocolSource: Sendable, Equatable {
 /// flags, never on the kind itself — a rule keyed to a capability survives the
 /// next device; a rule keyed to a device name is a bug waiting in the one after.
 struct GaugeCapabilities: Sendable, Equatable {
-    /// Device µs timestamps in the stream (Tindeq only). Without them the client
+    /// Device timestamps in the stream (Progressor, Frez Dyno). Without them the client
     /// synthesizes stamps and the runner clamps per-sample credit, because host
     /// arrival gaps are radio facts, not measurements of the hand.
     var hasDeviceClock: Bool
@@ -146,15 +140,13 @@ struct GaugeCapabilities: Sendable, Equatable {
     /// Approximate samples per second — for UI copy and debounce sanity checks,
     /// never for timing.
     var nominalSampleRate: Double
-    /// Verified against real hardware by THIS project. Settings says so for every
-    /// gauge where this is false — the same honesty rule as the codec's inferred RFD
-    /// layout — and `protocolSource` says whether the unverified protocol is at least
-    /// the maker's own word or a port of somebody else's.
+    /// Verified against real hardware by THIS project. Settings says so whenever it is
+    /// false (the same honesty rule as the inferred RFD layout); `protocolSource` says
+    /// whether the unverified protocol is the maker's word or a port.
     var hardwareVerified: Bool
-    /// The stream is raw sensor counts, and kilograms need a per-device slope fetched
-    /// from the maker's API by serial — once per device, then cached. Until it is in
-    /// hand the client mints no decoder and the app says why there is no force to show,
-    /// rather than guessing at a number (Frez Dyno).
+    /// The stream is raw counts, and kilograms need a per-device slope fetched once from
+    /// the maker's API by serial, then cached. Until then there is no decoder and the app
+    /// says why, rather than guessing a number (Frez Dyno).
     var requiresRemoteCalibration: Bool = false
     var protocolSource: GaugeProtocolSource = .ported
 }
@@ -207,11 +199,9 @@ extension GaugeKind {
                               sustainsBackgroundStreaming: true,
                               nominalSampleRate: 10, hardwareVerified: false)
         case .forceboard:
-            // The board HAS a tare characteristic, but the reference never calls it
-            // from its own tare path — its shipped behaviour is the software tare.
-            // Promoting an unexercised API to the only mechanism would make Tare a
-            // silent no-op if the write is wrong on real firmware, so software tare
-            // ships until hardware confirms the write (OPEN check, see the codec).
+            // The board HAS a tare characteristic, but the reference's tare path never
+            // calls it. If that write were wrong on real firmware, Tare would silently do
+            // nothing, so software tare ships until hardware confirms it (OPEN check).
             GaugeCapabilities(hasDeviceClock: false, hasHardwareTare: false,
                               isBroadcast: false, hasStandardBattery: true,
                               sustainsBackgroundStreaming: true,
@@ -242,11 +232,9 @@ extension GaugeKind {
                               sustainsBackgroundStreaming: true,
                               nominalSampleRate: 10, hardwareVerified: false)
         case .frezdyno:
-            // Every record carries the device's elapsed milliseconds since Start, so
-            // this is the second gauge with a real clock. No hardware tare: the zero is
-            // the average of the first hundred unloaded counts, taken in the codec. The
-            // coefficient that turns counts into kilograms is per device and comes from
-            // Frez's API, which is the one thing no other gauge needs.
+            // Records carry device milliseconds since Start: the second gauge with a real
+            // clock. No hardware tare (the codec zeroes on the first hundred unloaded
+            // counts), and the counts-to-kg coefficient is per device, from Frez's API.
             GaugeCapabilities(hasDeviceClock: true, hasHardwareTare: false,
                               isBroadcast: false, hasStandardBattery: true,
                               sustainsBackgroundStreaming: true,
@@ -301,14 +289,8 @@ extension GaugeKind {
     /// Picker order: the two devices this project has in hand first, then the Dyno,
     /// whose protocol is its maker's own, then the ports alphabetically by maker.
     ///
-    /// **`.pb700bt` is deliberately absent.** The NSD PB-700BT turned out to be a
-    /// gyroscopic hand exerciser whose stream is REVOLUTIONS PER MINUTE — the
-    /// reference library funnels rpm into its single "mass" channel, and passing
-    /// that through as kilograms would arm every rep instantly and record a
-    /// five-figure "max" that then sets the grip's percentage targets. Its codec
-    /// decodes the frames (fail-closed: no force readings) so a future spin-training
-    /// mode is an addition, not a refactor — the same reason the Tindeq codec
-    /// decodes RFD tags nothing consumes yet.
+    /// **`.pb700bt` is deliberately absent**: it streams rotation speed, not force —
+    /// see `PB700BTCodec`.
     static var selectable: [GaugeKind] {
         [.progressor, .whc06, .frezdyno, .climbro, .entralpi, .motherboard, .cts500, .forceboard]
     }

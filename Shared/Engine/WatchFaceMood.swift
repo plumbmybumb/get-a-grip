@@ -5,27 +5,17 @@ import Foundation
 
 /// What the WHOLE watch face is painted, and why that is the face's main instrument.
 ///
-/// On the wrist the face is glanced at, not read — mid-hang it faces the ceiling, and
-/// between pulls it is a quarter-second look from a bench. With the wrist out of the
-/// raise pose watchOS also dims it and redraws it once a second, and no app can hold full
-/// brightness (Apple's own Workout app dims the same way; there is no API for it). A
-/// colour survives all of that where a rolling digit does not: one redraw a second is
-/// enough to show that the face went green, and a fill reads at arm's length through
-/// reduced luminance. So the state ladder is the BACKGROUND (Nuri, 2026-09-19), the way
-/// the phone runner's keyline changes colour, only over the entire screen.
+/// The face is glanced at, not read, and off the raise pose watchOS dims it and redraws
+/// once a second (no app can prevent that). A colour survives both where a rolling digit
+/// does not, so the state ladder is the BACKGROUND (Nuri, 2026-09-19).
 ///
-/// The ladder, in Nuri's words: blue when you should pull, green when the clock is
-/// running, red when you have to re-grip, gray while you rest, orange when the next pull
-/// is a different grip. Two the words did not cover: amber for "less" — EASE OFF above the
-/// band and LET GO at the release gate are the same instruction, and both are the
-/// opposite of RE-GRIP's, so they cannot share red — and the rest gray for a pause, where
-/// the word carries the difference.
+/// Blue: pull. Green: the clock is running. Red: re-grip. Gray: rest (and pause, where the
+/// word differs). Orange: the next pull is a different grip. Amber: "less" — EASE OFF and
+/// LET GO are one instruction, the opposite of RE-GRIP's, so they cannot share red.
 ///
-/// This is the phone's `tint(_:)` ladder in structure (link down first, then the phase),
-/// with two deliberate departures: ARMED is blue rather than amber, because on a wrist
-/// the useful glance is "pull now" versus "it is counting", and those need two colours;
-/// and `.idle` is never red, because CONNECTING on the first second of a session is not
-/// an alarm.
+/// Structurally the phone's `tint(_:)` ladder (link down first, then phase), except ARMED
+/// is blue not amber — on a wrist the glance is "pull now" versus "counting" — and
+/// `.idle` is never red, since CONNECTING in a session's first second is not an alarm.
 enum WatchFaceMood: String, CaseIterable, Sendable, Equatable {
     /// Rest, set break, lead-in, idle, finished: nothing asked of you yet.
     case rest
@@ -81,12 +71,9 @@ enum WatchFaceMood: String, CaseIterable, Sendable, Equatable {
 /// eyeballed one (`WatchFaceMoodTests`), and so the watch target only has to turn a
 /// string into a `Color`.
 ///
-/// Two shades per mood, and the reason is Apple's: the system sets the Always On
-/// brightness from the ratio of lit to dark pixels, and its guidance for large areas of
-/// colour in that state is to use DIMMED colours. So the lit fill is for the raised
-/// wrist, and the dimmed one — the same hue at a fraction of the light — is what the
-/// face paints under reduced luminance, where every ink goes white. Both shades of every
-/// mood clear 4.5:1 against their ink.
+/// Two shades per mood: Apple's Always On guidance is DIMMED colours for large areas, so
+/// the lit fill is for the raised wrist and the dimmed one for reduced luminance, where
+/// every ink goes white. Both shades of every mood clear 4.5:1 against their ink.
 struct WatchFacePalette: Equatable, Sendable {
     /// `RRGGBB`, no hash.
     let fillHex: String
@@ -100,21 +87,16 @@ struct WatchFacePalette: Equatable, Sendable {
         case (.rest, true), (.paused, true):          return .init(fillHex: "22272E", inkIsWhite: true)
         case (.newGrip, false):                       return .init(fillHex: "F26B0A", inkIsWhite: false)
         case (.newGrip, true):                        return .init(fillHex: "8A3D00", inkIsWhite: true)
-        // The shared hues come from the engine's `AccentHex`, not from a second copy
-        // of the same six characters: blue means "pull" and red means "attention" on
-        // both screens, and a face that drifted a shade off the app would be saying so
-        // about a signal that is meant to be one.
+        // Shared hues come from `AccentHex`, not a second copy: blue and red mean the
+        // same thing on both screens and must not drift apart.
         case (.pull, false):                          return .init(fillHex: AccentHex.bleu, inkIsWhite: true)
         case (.pull, true):                           return .init(fillHex: "123F70", inkIsWhite: true)
         case (.holding, false):                       return .init(fillHex: "2EBF5C", inkIsWhite: false)
         case (.holding, true):                        return .init(fillHex: "135E2E", inkIsWhite: true)
         case (.regrip, false), (.linkDown, false):    return .init(fillHex: AccentHex.alarm, inkIsWhite: true)
         case (.regrip, true), (.linkDown, true):      return .init(fillHex: "711717", inkIsWhite: true)
-        // DELIBERATELY its own literal, not `StatusTint.armed` (FF9800). The phone's
-        // amber is CHROME on a slate field; this one floods the entire face, and it was
-        // tuned as a pair with the dimmed twin below it. Both clear 4.5:1 on black — the
-        // difference is the surface, not the arithmetic, so it is a real decision rather
-        // than a stale copy.
+        // Its own literal, not `StatusTint.armed` (FF9800): the phone's amber is chrome
+        // on slate, this floods the face and was tuned with its dimmed twin. Not a stale copy.
         case (.easeOff, false), (.letGo, false):      return .init(fillHex: "FFB300", inkIsWhite: false)
         case (.easeOff, true), (.letGo, true):        return .init(fillHex: "8A6100", inkIsWhite: true)
         }
@@ -145,11 +127,9 @@ struct WatchFacePalette: Equatable, Sendable {
 /// `.contentTransition(.numericText())`, which blurs on the CPU — or must cut straight to
 /// the next digit.
 ///
-/// The house rule is that clocks roll and measurements snap. Two states take the roll
-/// away from a clock too: reduced luminance, where watchOS redraws once a second and a
-/// digit-by-digit roll is caught mid-flight as a smear ("looks sloppy and hurts", Nuri,
-/// 2026-09-19); and Low Power Mode, on either device, where the phone caps the refresh
-/// rate and the watch has just told you it is rationing. In both the number cuts.
+/// Clocks roll and measurements snap — except under reduced luminance, where a once-a-second
+/// redraw catches the roll mid-flight as a smear (Nuri, 2026-09-19), and in Low Power Mode,
+/// where the refresh rate is capped. In both the number cuts.
 enum NumeralRoll {
     static func rolls(luminanceReduced: Bool, lowPower: Bool) -> Bool {
         !luminanceReduced && !lowPower

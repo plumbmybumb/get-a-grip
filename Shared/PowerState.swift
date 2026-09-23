@@ -4,14 +4,10 @@
 import Foundation
 import Observation
 
-/// Low Power Mode, observable. `ProcessInfo` has the answer on the phone and the watch
-/// alike, but it is a plain property with a notification beside it, so this is the one
-/// place that turns the pair into something a view can depend on. What depends on it:
-/// the clock numerals stop rolling (`NumeralRoll`), because a device rationing its
-/// battery has said it wants fewer frames, not a digit animation forty times a second.
-///
-/// A singleton rather than an injected store: it is a fact about the device, not about
-/// the app, and every target — phone, watch, widget — reads the same one.
+/// Low Power Mode, observable: `ProcessInfo`'s property plus its notification, turned
+/// into something a view can depend on. The clock numerals stop rolling under it
+/// (`NumeralRoll`). A singleton, because it is a fact about the device, read by every
+/// target.
 @Observable @MainActor
 final class PowerState {
     static let shared = PowerState()

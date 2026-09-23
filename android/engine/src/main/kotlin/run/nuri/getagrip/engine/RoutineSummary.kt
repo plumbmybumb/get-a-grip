@@ -5,22 +5,17 @@ package run.nuri.getagrip.engine
 
 import java.util.UUID
 
-// TRANSLATION NOTE (from Sources/Store/RoutineSummary.swift): the file imports nothing
-// but Foundation on iOS and holds no SwiftData at all — it is the VALUE the routine card
-// is drawn from, which is exactly what makes it previewable. It lives in `:engine` here
-// so both the card and the QR import preview fold the same arithmetic. `TemplateStore`
-// builds one from a `SessionTemplate` on iOS; the Android store will hand the same plain
-// values in (`plan`, `name`, `sessionsPerDay`, `isOnDemand`, the completion counts).
-// Swift's `init(previewing:)` becomes `RoutineSummary.previewing(draft)` — Kotlin has no
-// argument-labelled initializer to overload on.
+// TRANSLATION NOTE (from Sources/Store/RoutineSummary.swift): a store-free VALUE the
+// routine card is drawn from, so it lives in `:engine` here and the card and the QR
+// import preview fold the same arithmetic. The Android store hands in the same plain
+// values iOS's `TemplateStore` reads from a `SessionTemplate`. Swift's
+// `init(previewing:)` becomes `RoutineSummary.previewing(draft)`.
 
 /// One rung of the grip ladder Today draws: a finger glyph over a per-side rep count,
 /// one column per set, in the order they will be pulled.
 data class LadderRung(
-    /// The set index — order IS the identity here. Two sets can be byte-identical and
-    /// still be distinct rungs (Nuri's protocol repeats front-2 at a different position),
-    /// and a `SetPlan.id` would make the ladder re-animate whenever a set was replaced
-    /// rather than edited.
+    /// The set index — order IS the identity. Two sets can be byte-identical and still be
+    /// distinct rungs, and a `SetPlan.id` would re-animate the ladder on every replacement.
     val id: Int,
     val grip: GripSpec,
     val repsPerSide: Int,
@@ -28,10 +23,8 @@ data class LadderRung(
 
 /// Everything Today needs to draw a routine card, as a VALUE.
 ///
-/// The card takes one of these rather than a `SessionTemplate`, which is what makes it
-/// previewable and testable without a `ModelContext` — and it is why every derived number
-/// is computed once in the store instead of in a view body that runs on every frame of a
-/// scroll.
+/// A value rather than a `SessionTemplate`, so the card is previewable without a store
+/// and every derived number is computed once, not in a view body on every scroll frame.
 data class RoutineSummary(
     val id: UUID,
     val name: String,
@@ -60,20 +53,17 @@ data class RoutineSummary(
     /// the dots and the daily-guilt copy for it.
     val isOnDemand: Boolean = false,
 
-    /// The routine's highest prescribed target intensity as a fraction of max
-    /// (`PlanMath.peakIntensity`, computed by the store against `maxTable`). null when
-    /// nothing resolves — no targets anywhere, or kilogram bands with no max on file
-    /// to divide by. Drives the `EdgeMark` rung's colour and the spoken suffix; a
-    /// defaulted field so previews and value tests without a store stay buildable.
+    /// The routine's highest prescribed intensity as a fraction of max
+    /// (`PlanMath.peakIntensity` against the store's `maxTable`); null when nothing
+    /// resolves. Drives the `EdgeMark` colour and the spoken suffix. Defaulted so
+    /// previews and store-free tests stay buildable.
     val peakIntensity: Double? = null,
 ) {
 
-    /// **A climb — or a benchmark — meets the target.** Without this the card
-    /// contradicted the rest of the app on a day spent at the gym: the daily completion indicator said
-    /// done, the sentence said "Limit session at the gym today", and the card still
-    /// offered a primary "Start first session" with no checkmark. One fact, three
-    /// surfaces, one answer. A whenever routine has no target to meet — doing it once
-    /// today is what earns the checkmark and demotes Start.
+    /// **A climb — or a benchmark — meets the target.** Without this the card said "at the
+    /// gym today" and still offered "Start first session" with no checkmark: one fact,
+    /// three surfaces, one answer. A whenever routine has no target; doing it once today
+    /// earns the checkmark.
     val targetMet: Boolean
         get() {
             if (isOnDemand) return climbedToday != null || benchmarkedToday || completedToday > 0
@@ -81,14 +71,10 @@ data class RoutineSummary(
                 completedToday >= maxOf(1, sessionsPerDay)
         }
 
-    /// The edge column as the routine actually runs it: one number when every set
-    /// agrees, a SPAN when they differ — never silence. `sharedEdgeMM` alone DROPPED
-    /// the edge from the card the moment sets disagreed, which read as the app not
-    /// knowing its own routine (Nuri, 2026-08-17: a 20-and-10 ladder "should say
-    /// 20-10mm right?"). The span runs in LADDER order, not ascending — "20–10 mm"
-    /// for a ladder that starts deep and thins out — because it is a fact about the
-    /// protocol's direction, not an interval on a number line. A first edge that is
-    /// neither extreme falls back to ascending, the only order left with a claim.
+    /// The edge as the routine runs it: one number when every set agrees, a SPAN when
+    /// they differ — never silence (Nuri, 2026-08-17). The span runs in LADDER order
+    /// ("20–10 mm" for a ladder that thins out), because it states the protocol's
+    /// direction; a first edge that is neither extreme falls back to ascending.
     val edgeLine: String?
         get() {
             val edges = ladder.map { it.grip.edgeMM }
@@ -99,15 +85,10 @@ data class RoutineSummary(
             return if (first == hi) L10n.tr("%d–%d mm", hi, lo) else L10n.tr("%d–%d mm", lo, hi)
         }
 
-    /// The grip the card's `EdgeMark` draws — the routine's SIGNATURE, not its
-    /// inventory. Weighted by PULLS, not by set count: a set is a container, and
-    /// counting containers let two one-pull crimp sets outvote twelve four-finger
-    /// pulls — Nuri's own Daily burn wore a two-finger mark on its first hardware
-    /// day (2026-08-17) because its taper repeats the small grips as short sets.
-    /// `repsPerSide` is the honest mass (hands multiply every rung equally, so sides
-    /// cancel). A tie still goes to the ladder's first rung, the grip the session
-    /// opens on. One derived mark per card is identity; the per-set ladder this
-    /// replaced was information, and it read as clutter.
+    /// The grip the card's `EdgeMark` draws — the routine's SIGNATURE. Weighted by PULLS
+    /// (`repsPerSide`; sides cancel), not set count: counting sets let two one-pull crimp
+    /// sets outvote twelve four-finger pulls (2026-08-17). A tie goes to the ladder's
+    /// first rung, the grip the session opens on.
     val signatureFingers: FingerSet?
         get() {
             if (ladder.isEmpty()) return null
@@ -138,16 +119,10 @@ data class RoutineSummary(
     companion object {
         /// A summary for a routine that does not exist yet — the QR import preview.
         ///
-        /// Every fold here is `TemplateStore.summary(for:)`'s, verbatim, and that is the
-        /// whole point: the preview a stranger's code shows you and the card it becomes
-        /// thirty seconds later must quote the same edge, the same set count, the same pull
-        /// count and the same estimate. Two hand-written versions of that arithmetic is how
-        /// one screen ends up promising ≈21 min and the next one ≈19.
-        ///
-        /// What it cannot carry, and why the defaults are honest: a fresh `id` (there is no
-        /// routine yet), no completions and no reminder (nothing has happened and nothing is
-        /// scheduled), and no climb or benchmark — those are facts about the READER's day,
-        /// which belongs to Today's card rather than to a preview of somebody else's plan.
+        /// Every fold is `TemplateStore.summary(for:)`'s, verbatim, so the preview and the
+        /// card it becomes quote the same edge, counts and estimate — two hand-written
+        /// versions is how one screen promises ≈21 min and the next ≈19. A fresh `id`, no
+        /// completions, reminder, climb or benchmark: those are facts about the READER's day.
         fun previewing(draft: RoutineDraft): RoutineSummary {
             val plan = draft.plan
             val ladder = plan.executable.sets.mapIndexed { index, set ->
@@ -165,14 +140,10 @@ data class RoutineSummary(
                 completedToday = 0,
                 nextReminder = null,
                 isOnDemand = draft.isOnDemand,
-                // Against an EMPTY table, deliberately. A percentage band IS the intensity
-                // and needs no max at all, so a routine prescribed in percentages — which is
-                // the app's primary path — colours its mark here exactly as it will on
-                // Today. A kilogram band cannot resolve without the reader's own max, so it
-                // contributes nothing, which is `PlanMath.peakIntensity`'s existing rule for
-                // an unmeasured grip: the mark can only under-claim into `unknown` (bleu,
-                // "a routine"), never over-claim a load somebody's fingers would pay for.
-                // The kilogram footnote on the sheet is what names that gap in words.
+                // Against an EMPTY table: a percentage band needs no max, so it colours
+                // the mark as it will on Today; a kilogram band cannot resolve without the
+                // reader's max and contributes nothing. The mark can only under-claim into
+                // `unknown`, never over-claim a load. The sheet's footnote names the gap.
                 peakIntensity = PlanMath.peakIntensity(plan, MaxTable()),
             )
         }
@@ -185,10 +156,9 @@ data class DayRecord(
     val completed: Int,
     val target: Int,
 
-    /// false = earlier than any routine existed. NOT a missed day — a hairline, not a
-    /// hole. Drawing days that predate the app as empty circles tells someone they failed
-    /// on days they did not own it, which is the single most important honesty detail on
-    /// the screen. Computed ONCE in the store from `trackingSince`, never per cell.
+    /// false = earlier than any routine existed: a hairline, NOT a missed day. Empty
+    /// circles there would say someone failed on days they did not own the app. Computed
+    /// ONCE in the store from `trackingSince`, never per cell.
     val tracked: Boolean,
 
     /// The climb logged that day, if any — `null` on an ordinary day. Carried as the

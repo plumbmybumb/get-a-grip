@@ -6,18 +6,14 @@ import Foundation
 /// The whole training history as ONE self-describing Markdown document, written to be
 /// pasted into a language model.
 ///
-/// **It is deliberately English, whatever the app's language is.** A French export and an
-/// English one would be two different schemas describing the same rows, and the reader on
-/// the other end has to learn the vocabulary from the document itself — so the document
-/// says so in its own first legend line and then keeps one set of words forever. Every
-/// string in this file is a bare Swift literal for exactly that reason: nothing here goes
-/// through `String(localized:)`, and nothing here may borrow a display name from a type
-/// that does (`GripSpec.shortName`, `SessionKind.name`, `RPE.name` are all translated).
+/// **English, whatever the app's language.** A French export would be a second schema
+/// for the same rows, and the reader learns the vocabulary from the document itself. So
+/// nothing here goes through `String(localized:)` or borrows a translated display name
+/// (`GripSpec.shortName`, `SessionKind.name`, `RPE.name`).
 ///
-/// **PURE, and deterministic.** No clock is read here — the caller passes `generatedOn`
-/// — and every ordering is total, so two calls on the same input produce byte-identical
-/// strings. That is what makes the whole thing testable and what stops a diff of two
-/// exports being noise.
+/// **PURE and deterministic.** No clock is read (the caller passes `generatedOn`) and
+/// every ordering is total, so the same input gives byte-identical output — testable,
+/// and a diff of two exports is not noise.
 ///
 /// It consumes VALUES only (`Shared/` may not see SwiftData); `AnalysisExportAssembler`
 /// in `Sources/Store` is the one place models become these.
@@ -25,10 +21,9 @@ enum AnalysisExport {
 
     // MARK: - What the document is made of
 
-    /// How a session's hold time was measured. `WorkoutLog` carries no flag for this, so
-    /// the assembler infers it — see `AnalysisExportAssembler`. It matters because a
-    /// timer-only session's seconds come off the wall clock rather than off the gauge,
-    /// and its kilogram columns are empty rather than zero.
+    /// How a session's hold time was measured, inferred by `AnalysisExportAssembler`
+    /// (`WorkoutLog` has no flag). A timer-only session's seconds are wall clock and its
+    /// kilogram columns are empty rather than zero.
     enum Timing: String, Hashable, Sendable {
         /// A gauge measured the pull: hold time accrued from device timestamps.
         case gauge
@@ -84,7 +79,7 @@ enum AnalysisExport {
     struct Input: Hashable, Sendable {
         var sessions: [Session] = []
         var maxes: [MaxEntry] = []
-        /// The day the export was taken — the anchor the 8-week boundary is measured from.
+        /// The day the export was taken — the anchor of the 8-week boundary.
         var today: DayStamp = DayStamp(raw: 0)
         /// Passed in, never read from a clock here.
         var generatedOn: DayStamp = DayStamp(raw: 0)
@@ -241,9 +236,8 @@ enum AnalysisExport {
         return out
     }
 
-    /// Newest per grip AND hand — folding on the grip alone would let a right-hand max
-    /// recorded second become the grip's current number and drop the left out of the
-    /// table entirely, which is the same bug `MaxRecord.maxKey` exists to prevent.
+    /// Newest per grip AND hand: folding on the grip alone lets a right-hand max recorded
+    /// second drop the left out of the table — the bug `MaxRecord.maxKey` exists to prevent.
     private static func newestPerKey(_ maxes: [MaxEntry]) -> [MaxEntry] {
         var newest: [String: MaxEntry] = [:]
         for entry in maxes.sorted(by: oldestFirst) {
@@ -286,9 +280,8 @@ enum AnalysisExport {
     private static func recentSessions(_ sessions: [Session], maxes: [MaxEntry],
                                        cutoff: DayStamp) -> [String] {
         var out = ["## Sessions, last 8 weeks", ""]
-        // When the whole history fits inside the window, saying "on or after <cutoff>"
-        // implies eight weeks of behaviour that do not exist — the history's own start
-        // is the honest bound (flagged by the feature's first real reader, 2026-08-28).
+        // When the whole history fits inside the window, "on or after <cutoff>" implies
+        // eight weeks that do not exist; the history's own start is the honest bound.
         let oldest = sessions.map(\.day.raw).min()
         if let oldest, oldest >= cutoff.raw {
             out.append("Every session on record — the history begins \(isoDay(DayStamp(raw: oldest))). Newest first.")
@@ -352,9 +345,8 @@ enum AnalysisExport {
         out.append("| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |")
         out.append("| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |")
         for (index, rep) in session.reps.enumerated() {
-            // A SKIPPED pull registers no load because it never happened, which is not
-            // the same fact as "it registered zero" — printing 0.0 would put a pull that
-            // was passed over into any average taken down this column.
+            // A SKIPPED pull registered no load, which is not "it registered zero";
+            // printing 0.0 would drag any average taken down this column.
             let measured = session.timing == .gauge && rep.outcome != .skipped
             let peak = measured ? kgText(rep.peakKg) : blank
             let avg = measured ? kgText(rep.avgKg) : blank
@@ -435,10 +427,8 @@ enum AnalysisExport {
 
         var weeks: [Int: [Session]] = [:]
         for session in sessions { weeks[weekStart(session.day).raw, default: []].append(session) }
-        // The first recorded day bounds every denominator from below; today bounds it
-        // from above. Scoring a day outside [firstDay … today] as a miss is how a
-        // 19-for-19 streak printed as "6 of 7" on its opening week (found by the
-        // feature's own first real reader, 2026-08-28).
+        // Denominators run [firstDay … today]: scoring a day outside that as a miss
+        // printed a 19-for-19 streak as "6 of 7" in its opening week.
         let firstDay = sessions.map(\.day.raw).min() ?? today.raw
         for raw in weeks.keys.sorted(by: >) {
             let week = weeks[raw] ?? []

@@ -33,21 +33,16 @@ object MotherboardCodec {
     /// Nordic UART. As everywhere in the reference, `rx` is the characteristic the
     /// HOST subscribes to and `tx` the one it writes.
     ///
-    /// The start sequence is "C" then "S30", in that order, because the raw counts
-    /// mean nothing without the calibration table and "C" is what asks for it. The
-    /// reference waits up to 2500 ms between the two writes while the rows arrive, and
-    /// `startPayloadDelaySeconds` is that wait — the client paces the sequence rather
-    /// than firing both writes into the same runloop turn, where the start could race
-    /// the table home or land while the device is still dumping rows. Any packet that
-    /// does arrive early produces NO readings (see `applyCalibration`) rather than
-    /// uncalibrated counts: a fraction of a second of silence at the start of a stream,
-    /// against numbers that would be wrong by orders of magnitude.
+    /// Start is "C" then "S30": raw counts mean nothing without the calibration table
+    /// "C" requests. The reference waits up to 2.5 s between them while rows arrive, and
+    /// `startPayloadDelaySeconds` is that wait, so the start cannot race the table home.
+    /// A packet that arrives early yields NO readings rather than uncalibrated counts
+    /// wrong by orders of magnitude.
     ///
-    /// STOP is "#", the serial query. The reference's own stop is an EMPTY write
-    /// with the comment "all commands will stop the data stream"; a zero-length
-    /// GATT write is a no-op on some stacks, so we send the most harmless real
-    /// command instead and let its documented side effect do the work. Its ASCII
-    /// reply is neither hex nor a calibration row, so the decoder drops it.
+    /// STOP is "#", the serial query. The reference stops with an EMPTY write ("all
+    /// commands will stop the data stream"), but a zero-length GATT write is a no-op on
+    /// some stacks, so the most harmless real command does it. Its reply is neither hex
+    /// nor a calibration row, so the decoder drops it.
     val profile = GaugeGattProfile(
         serviceUUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
         notifyCharacteristicUUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E",
@@ -75,13 +70,9 @@ object MotherboardCodec {
     /// than dropped, exactly as the reference stores it.
     const val calibrationSlotCount = 4
 
-    /// A line that never ends is not a Motherboard line.
-    ///
-    /// The reference buffers without a bound, which is fine for a page you close;
-    /// a session here runs for twenty minutes with the radio live, and a stream
-    /// that produces no LF would grow this buffer for all of it. 1 KB is thirty
-    /// lines' worth of slack before we decide the peer is not speaking our
-    /// protocol.
+    /// A line that never ends is not a Motherboard line. The reference buffers without
+    /// bound; here a twenty-minute session with no LF would grow the buffer for all of
+    /// it. 1 KB is thirty lines of slack.
     const val maxBufferedBytes = 1024
 
     private const val lineFeed = 0x0A
@@ -103,11 +94,9 @@ object MotherboardCodec {
     ///   that is the arithmetic its own tests pin.
     /// - The sign is applied at the END, so a negative sample is mapped through the
     ///   positive side of the table and then negated.
-    /// - A sample ABOVE the table's last raw count returns nil here, where the
-    ///   reference returns 0. Zero is not a smaller error than a missing sample: it
-    ///   is the app telling the runner the climber let go, mid-pull, at exactly the
-    ///   moment they pulled hardest. Fail closed instead — same rule as "no max
-    ///   means no target, never a guess".
+    /// - A sample ABOVE the table's last raw count returns nil, where the reference
+    ///   returns 0 — which would tell the runner the climber let go at the moment they
+    ///   pulled hardest. Fail closed instead.
     fun applyCalibration(sample: Double, table: List<List<Double>>): Double? {
         val zeroRow = table.firstOrNull() ?: return null
         if (zeroRow.size < 3 || table.size < 2) return null
@@ -127,9 +116,8 @@ object MotherboardCodec {
             val start = lower[2]
             val end = upper[2]
             if (value >= end) continue
-            // A zero-width segment would divide by zero and hand the engine a NaN
-            // kilogram, which poisons every average and peak it touches. Skip it and
-            // let a later segment answer, or fail closed if none can.
+            // A zero-width segment would divide by zero into a NaN kilogram that poisons
+            // every average and peak. Skip it; a later segment answers, or none does.
             if (end == start) continue
 
             val fraction = (value - start) / (end - start)
@@ -213,16 +201,13 @@ object MotherboardCodec {
         /// then three 24-bit LITTLE-endian samples at bytes 4, 7 and 10. Bytes 13…15
         /// are unused by the reference and by us.
         ///
-        /// Each sample is signed by RANGE, not by a sign bit the way a two's
-        /// complement 24-bit value would be read in Swift: `>= 0x7FFFFF` means
-        /// subtract 0x1000000. That boundary is the reference's, off by one from the
-        /// textbook 0x800000, and it is kept because a sample sitting exactly on it
-        /// is indistinguishable garbage either way.
+        /// Each sample is signed by RANGE: `>= 0x7FFFFF` means subtract 0x1000000. The
+        /// boundary is the reference's, one off the textbook 0x800000; a sample exactly
+        /// on it is garbage either way.
         ///
-        /// Centre and right are INVERTED after calibration — the outer cells read
-        /// the opposite direction from the middle one — and the three then sum to
-        /// the total load. Left is not inverted; a loop that negated all three would
-        /// look tidier and be wrong.
+        /// Centre and right are INVERTED after calibration, then all three sum to the
+        /// total load. Left is not inverted; negating all three would look tidier and
+        /// be wrong.
         private fun decodePacket(bytes: IntArray): GaugeReading? {
             if (bytes.size < 4 + 3 * sensorCount) return null
 
@@ -250,13 +235,10 @@ object MotherboardCodec {
         /// kinds cannot be confused, and unlike the reference we do not need to
         /// remember which command was written last to tell them apart.
         ///
-        /// **A NEW DUMP REPLACES ITS SLOT.** "C" is asked again on every reconnect-free
-        /// re-kick the app makes — the silence watchdog, a tare recovery, the foreground
-        /// return — while the decoder lives for the whole LINK, so appending unconditionally
-        /// grew the table without bound and left it a non-monotonic concatenation of copies
-        /// that `applyCalibration` walks linearly three times per packet. Row INDEX 0 is
-        /// what marks the start of a dump, which is the same signal the reference uses when
-        /// it refuses to re-request a table it already has.
+        /// **A NEW DUMP REPLACES ITS SLOT.** "C" is re-sent on every re-kick (watchdog,
+        /// tare recovery, foreground) while the decoder lives for the whole LINK, so
+        /// appending grew the table without bound into a non-monotonic concatenation.
+        /// Row INDEX 0 marks the start of a dump, the same signal the reference uses.
         private fun ingestCalibration(line: IntArray) {
             val text = String(ByteArray(line.size) { line[it].toByte() }, Charsets.UTF_8)
             val parts = text.split(",")
@@ -265,13 +247,10 @@ object MotherboardCodec {
             val numbers = parts.mapNotNull { it.trim().toDoubleOrNull() }
             if (numbers.size != 4) return
 
-            // TRANSLATION NOTE: Swift guards this with `Int(exactly:)`, which is nil for
-            // NaN, ±inf, a fractional slot and anything outside Int's range — a plain
-            // `Int(_:)` TRAPPED on `nan,0,0,0` and `1e30,0,0,0` until 2026-09-04. Kotlin's
-            // `toInt()` saturates instead, and the equality guard below rejects the same
-            // rows, so the two engines drop exactly the same lines. (`toDoubleOrNull`
-            // is also stricter than Swift's parser — it takes "NaN"/"Infinity" but not
-            // "nan"/"inf" — which only drops those rows one guard earlier.)
+            // TRANSLATION NOTE: Swift guards with `Int(exactly:)` (nil for NaN, ±inf,
+            // fractions and out-of-range; a plain `Int(_:)` trapped). `toInt()` saturates
+            // instead, and the equality guard below rejects the same rows. `toDoubleOrNull`
+            // refuses "nan"/"inf" outright, which only drops those one guard earlier.
             val slot = numbers[0].toInt()
             if (numbers[0] != slot.toDouble() || slot < 0 || slot >= calibrationSlotCount) return
 

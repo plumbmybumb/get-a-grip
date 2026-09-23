@@ -16,30 +16,24 @@ import java.util.UUID
 /// The whole training history as ONE self-describing Markdown document, written to be
 /// pasted into a language model.
 ///
-/// **It is deliberately English, whatever the app's language is.** A French export and an
-/// English one would be two different schemas describing the same rows, and the reader on
-/// the other end has to learn the vocabulary from the document itself — so the document
-/// says so in its own first legend line and then keeps one set of words forever. Every
-/// string in this file is a bare literal for exactly that reason: nothing here goes
-/// through `L10n`, and nothing here may borrow a display name from a type that does
-/// (`GripSpec.shortName`, `SessionKind.displayName`, `RPE.displayName` are all translated).
+/// **English, whatever the app's language.** A French export would be a second schema
+/// for the same rows, and the reader learns the vocabulary from the document itself. So
+/// nothing here goes through `L10n` or borrows a translated display name
+/// (`GripSpec.shortName`, `SessionKind.displayName`, `RPE.displayName`).
 ///
-/// **PURE, and deterministic.** No clock is read here — the caller passes `generatedOn`
-/// — and every ordering is total, so two calls on the same input produce byte-identical
-/// strings. That is what makes the whole thing testable and what stops a diff of two
-/// exports being noise.
+/// **PURE and deterministic.** No clock is read (the caller passes `generatedOn`) and
+/// every ordering is total, so the same input gives byte-identical output — testable,
+/// and a diff of two exports is not noise.
 ///
 /// It consumes VALUES only (`engine/` may not see the store); `AnalysisExportAssembler`
 /// on the app side is the one place models become these.
 ///
 /// TRANSLATION NOTE (from Shared/Engine/AnalysisExport.swift):
 ///   - `Date` → `java.time.Instant`; the fixture wire form is ISO-8601 UTC to the second.
-///   - Swift's `sorted(by:)` predicates become `Comparator`s. Every one of them is
-///     TOTAL, which is what makes the document byte-stable on both platforms; the one
-///     that is not obviously so — the ascending sweep in `tablesAtSessionTime` — is the
-///     reversed argument order of `newestFirst`, so its id tiebreak runs DESCENDING.
-///     That looks like a typo and is not: it is what `sorted { newestFirst($1, $0) }`
-///     means, and reproducing it is how the two engines agree on a tie.
+///   - Swift's `sorted(by:)` predicates become TOTAL `Comparator`s. The ascending sweep
+///     in `tablesAtSessionTime` reverses `newestFirst`'s arguments, so its id tiebreak
+///     runs DESCENDING — not a typo: it is what `sorted { newestFirst($1, $0) }` means,
+///     and it is how the two engines agree on a tie.
 ///   - `String(format: "%.1f", …)` is C printf (ties to even) → `Fmt.fixed`, never
 ///     `String.format`. `Double.rounded()` is ties-away-from-zero, which is neither
 ///     `Math.rint` nor Kotlin's `round`, so it is spelled out in `roundedAwayFromZero`.
@@ -47,10 +41,9 @@ object AnalysisExport {
 
     // MARK: - What the document is made of
 
-    /// How a session's hold time was measured. `WorkoutLog` carries no flag for this, so
-    /// the assembler infers it — see `AnalysisExportAssembler`. It matters because a
-    /// timer-only session's seconds come off the wall clock rather than off the gauge,
-    /// and its kilogram columns are empty rather than zero.
+    /// How a session's hold time was measured, inferred by `AnalysisExportAssembler`
+    /// (`WorkoutLog` has no flag). A timer-only session's seconds are wall clock and its
+    /// kilogram columns are empty rather than zero.
     enum class Timing(val rawValue: String) {
         /// A gauge measured the pull: hold time accrued from device timestamps.
         gauge("gauge"),
@@ -194,7 +187,7 @@ object AnalysisExport {
     data class Input(
         val sessions: List<Session> = emptyList(),
         val maxes: List<MaxEntry> = emptyList(),
-        /// The day the export was taken — the anchor the 8-week boundary is measured from.
+        /// The day the export was taken — the anchor of the 8-week boundary.
         val today: DayStamp = DayStamp(0),
         /// Passed in, never read from a clock here.
         val generatedOn: DayStamp = DayStamp(0),
@@ -385,9 +378,8 @@ object AnalysisExport {
         return out
     }
 
-    /// Newest per grip AND hand — folding on the grip alone would let a right-hand max
-    /// recorded second become the grip's current number and drop the left out of the
-    /// table entirely, which is the same bug `MaxRecord.maxKey` exists to prevent.
+    /// Newest per grip AND hand: folding on the grip alone lets a right-hand max recorded
+    /// second drop the left out of the table — the bug `MaxRecord.maxKey` exists to prevent.
     private fun newestPerKey(maxes: List<MaxEntry>): List<MaxEntry> {
         val newest = LinkedHashMap<String, MaxEntry>()
         for (entry in maxes.sortedWith(oldestFirst)) {
@@ -431,9 +423,8 @@ object AnalysisExport {
     private fun recentSessions(sessions: List<Session>, maxes: List<MaxEntry>,
                                cutoff: DayStamp): List<String> {
         val out = arrayListOf("## Sessions, last 8 weeks", "")
-        // When the whole history fits inside the window, saying "on or after <cutoff>"
-        // implies eight weeks of behaviour that do not exist — the history's own start
-        // is the honest bound (flagged by the feature's first real reader, 2026-08-28).
+        // When the whole history fits inside the window, "on or after <cutoff>" implies
+        // eight weeks that do not exist; the history's own start is the honest bound.
         val oldest = sessions.map { it.day.raw }.minOrNull()
         if (oldest != null && oldest >= cutoff.raw) {
             out.add("Every session on record — the history begins ${isoDay(DayStamp(oldest))}. Newest first.")
@@ -498,9 +489,8 @@ object AnalysisExport {
         out.add("| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |")
         out.add("| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |")
         for ((index, rep) in session.reps.withIndex()) {
-            // A SKIPPED pull registers no load because it never happened, which is not
-            // the same fact as "it registered zero" — printing 0.0 would put a pull that
-            // was passed over into any average taken down this column.
+            // A SKIPPED pull registered no load, which is not "it registered zero";
+            // printing 0.0 would drag any average taken down this column.
             val measured = session.timing == Timing.gauge && rep.outcome != RepOutcome.skipped
             val peak = if (measured) kgText(rep.peakKg) else blank
             val avg = if (measured) kgText(rep.avgKg) else blank
@@ -593,10 +583,8 @@ object AnalysisExport {
 
         val weeks = LinkedHashMap<Int, MutableList<Session>>()
         for (session in sessions) weeks.getOrPut(weekStart(session.day).raw) { ArrayList() }.add(session)
-        // The first recorded day bounds every denominator from below; today bounds it
-        // from above. Scoring a day outside [firstDay … today] as a miss is how a
-        // 19-for-19 streak printed as "6 of 7" on its opening week (found by the
-        // feature's own first real reader, 2026-08-28).
+        // Denominators run [firstDay … today]: scoring a day outside that as a miss
+        // printed a 19-for-19 streak as "6 of 7" in its opening week.
         val firstDay = sessions.map { it.day.raw }.minOrNull() ?: today.raw
         for (raw in weeks.keys.sortedDescending()) {
             val week = weeks[raw] ?: emptyList<Session>()

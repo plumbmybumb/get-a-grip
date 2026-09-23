@@ -8,18 +8,13 @@ import Foundation
 // hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray Hartog,
 // https://github.com/Stevie-Ray/hangtime-grip-connect).
 //
-// This is the one supported gauge with NO CONNECTION AT ALL. The scale exposes no
-// service worth talking to; it shouts its current reading in the manufacturer-data
-// field of every advertisement, so there is no `GaugeGattProfile` and no
-// `GaugeFrameDecoder` here — the client scans with duplicate advertisements allowed
-// and hands each frame to `kilograms(fromManufacturerData:)`. "Connected" for this
-// device means "advertisements are arriving", which is why silence, not a GATT
-// event, is what ends the link.
+// The one gauge with NO CONNECTION AT ALL: the scale shouts its reading in the
+// manufacturer data of every advertisement, so there is no GATT profile or frame
+// decoder. The client scans with duplicates allowed and hands each frame to
+// `kilograms(fromManufacturerData:)`. "Connected" means "advertisements are arriving", so silence ends the link.
 //
-// The weight field is BIG-ENDIAN — the opposite of the Progressor and of BLE's own
-// headers. Read it the wrong way round and a 26 kg pull reports as 102.5 kg: a
-// plausible number, not a crash, which is exactly why the fixture test asserts both
-// orders.
+// The weight field is BIG-ENDIAN, unlike the Progressor and BLE's own headers. Read
+// backwards, a 26 kg pull reports 102.5 kg — plausible, hence a test of both orders.
 
 enum WHC06Codec {
     /// Bluetooth SIG company identifier carried in the advertisement.
@@ -34,60 +29,41 @@ enum WHC06Codec {
     /// signal that the scale has been switched off, walked away, or run flat.
     static let advertisementSilenceSeconds: TimeInterval = 10
 
-    /// The local name the scale advertises. Recorded because the reference's React
-    /// Native and Capacitor ports filter on it (the Web Bluetooth port filters on
-    /// the company ID alone), so it is a usable SECOND check if 0x0100 traffic from
-    /// other makers ever turns out to be a problem in the wild. Not required: iOS
-    /// hands us the manufacturer data either way, and a name filter would silently
-    /// exclude a relabelled unit.
+    /// The local name the scale advertises. Some reference ports filter on it, so it is
+    /// a possible SECOND check if other 0x0100 traffic ever becomes a problem. Not
+    /// required: a name filter would silently exclude a relabelled unit.
     static let advertisedLocalName = "IF_B7"
 
     /// Byte offsets into CoreBluetooth's manufacturer-data value, which INCLUDES the
-    /// 2-byte little-endian company ID. The Web Bluetooth reference indexes the
-    /// payload *after* that prefix, so every reference offset shifts by +2 here: its
-    /// weight offset 10 is our 12, its stability offset 14 is our 16. The reference's
-    /// React Native port confirms the shift independently — it slices the full
-    /// manufacturer data at hex characters 24…27, i.e. bytes 12…13.
+    /// 2-byte little-endian company ID. The Web Bluetooth reference indexes after that
+    /// prefix, so its offsets 10 and 14 are our 12 and 16 (its React Native port, slicing
+    /// the full data at bytes 12…13, confirms the shift).
     static let weightOffset = 12
     static let statusOffset = 16
 
-    /// **Through the WEIGHT bytes and no further.** A frame this long carries everything
-    /// the app reads, so it is everything the app may require.
+    /// **Through the WEIGHT bytes and no further** — everything the app reads.
     ///
-    /// It used to demand 17 — through the status byte — on the reasoning that the whole
-    /// documented shape is a stronger filter against another 0x0100 advertiser. But that
-    /// byte is one the reference NAMES and never reads: its own read is commented out, the
-    /// offset it actually requires is 11 (14 bytes here, with the company-ID prefix), and
-    /// its React Native port needs only through byte 13. Rejecting is total —
-    /// `BroadcastGaugeClient` reads nil as "not our advertisement" — so a real unit whose
-    /// advertisement stops one byte short of a byte nobody parses would never reach
-    /// `.connected`, and the ten-second silence watchdog would report it as a scale that is
-    /// switched off. Undiagnosable silence is exactly what the "a connected-but-silent
-    /// gauge must SAY so" rule exists to prevent, and no invented constant is worth it.
-    ///
-    /// The company ID, the weight field's own capacity window and the scale's lock on the
-    /// first advertiser remain the filter.
+    /// Demanding 17 (through the status byte) filtered harder, but the reference never
+    /// reads that byte: its own required offset is 11 (14 here). Rejection is total — nil
+    /// means "not our advertisement" — so a unit one byte short would never connect, and
+    /// the silence watchdog would report it switched off: undiagnosable silence. The
+    /// company ID, the capacity window and the lock on the first advertiser remain the
+    /// filter.
     static let minimumFrameLength = 14
 
-    /// Rated capacity of the scale (300 kg). The raw field is an unsigned 16-bit count
-    /// of hundredths of the display unit, so in kilograms it can express 655.35 kg — a
-    /// value the load cell cannot produce. Rejecting the impossible range is a free extra shape filter at
-    /// the choke point, the same reasoning as the Progressor codec's −10…165 kg
-    /// window: garbage must never reach the runner, the trace, or a recorded max.
+    /// Rated capacity (300 kg). The raw field can express 655.35 kg, which the load cell
+    /// cannot produce, so rejecting that range is a free shape filter — as with the
+    /// Progressor's −10…165 kg window, garbage never reaches the runner or a max.
     static let capacityKg: Double = 300
 
-    /// The unit the scale is SET TO, from the low nibble of the status byte. The weight
-    /// field is hundredths of whatever the display shows, not of a kilogram.
+    /// The unit the scale is SET TO (low nibble of the status byte); the weight field is
+    /// hundredths of whatever the display shows, not of a kilogram.
     ///
-    /// Two firmwares are known, and they agree on kilograms. The maker's own reference
-    /// (Weiheng's `ScaleWatcher.java`, shipped with the scale's SDK and carried in
-    /// sebws/Crane) declares "重量单位 1：kg, 2：LB, 3：ST, 4：斤" — kilograms, pounds,
-    /// stone, jin (the Chinese catty, half a kilogram). TheLastKiwi/Dyna, written against
-    /// a US unit, recorded the byte as 1 in kilograms and **0 in pounds**. So 1 is
-    /// kilograms, 0 and 2 are pounds, 3 stone, 4 jin, and nothing else is known. The
-    /// hangtime reference this codec was ported from names the nibble and leaves it
-    /// unread, which is why every reading was kilograms until a field report (2026-09-18,
-    /// a Pixel 8 and a scale switched to pounds) saw every number arrive 2.2× too large.
+    /// The maker's `ScaleWatcher.java` (Weiheng's SDK, via sebws/Crane) declares
+    /// "重量单位 1：kg, 2：LB, 3：ST, 4：斤"; TheLastKiwi/Dyna, written against a US unit,
+    /// saw **0 in pounds**. So 1 kg, 0 and 2 lb, 3 stone, 4 jin (half a kilogram); nothing
+    /// else is known. The hangtime reference leaves the nibble unread, so pounds arrived
+    /// 2.2× too large until a field report (2026-09-18).
     enum Unit: CaseIterable, Sendable {
         case kilograms, pounds, stone, jin
 
@@ -114,21 +90,15 @@ enum WHC06Codec {
     /// Kilograms from one advertisement, or nil when this is not a WH-C06 frame.
     ///
     /// `data` is CoreBluetooth's `CBAdvertisementDataManufacturerDataKey` value,
-    /// company-ID prefix included. Returns nil unless the company ID matches, the
-    /// frame reaches through the weight field, and the reading is inside the
-    /// scale's capacity. Zero IS a reading — an unloaded scale reports 0.00 kg, and
-    /// conflating that with "no frame" would make the client treat a hanging idle
-    /// scale as disconnected.
+    /// company-ID prefix included. nil unless the company ID matches, the frame reaches
+    /// through the weight field and the reading is inside capacity. Zero IS a reading:
+    /// treating an unloaded scale's 0.00 as "no frame" would disconnect an idle scale.
     ///
-    /// The raw field is converted by the scale's own unit (`Unit`). **A unit this codec
-    /// does not know — the nibble absent on a short frame, or a code neither firmware
-    /// uses — reads as kilograms**, which is what every frame read as before the nibble
-    /// was decoded, and the client's diagnostics name the code and the raw count so a
-    /// new one can be added rather than guessed at.
+    /// Converted by the scale's own `Unit`. **An unknown unit (nibble absent, or an
+    /// unlisted code) reads as kilograms**; the client's diagnostics name the code and
+    /// raw count so it can be added rather than guessed at.
     ///
-    /// No tare is applied here. The scale has no tare command of its own, so the
-    /// client subtracts a captured baseline app-side; a codec that also subtracted
-    /// would double-count it.
+    /// No tare here: the client subtracts a captured baseline, so this would double-count.
     static func kilograms(fromManufacturerData data: Data) -> Double? {
         // Index from zero regardless of how the Data was sliced upstream.
         let bytes = [UInt8](data)
@@ -159,11 +129,9 @@ enum WHC06Codec {
         status(fromManufacturerData: data).flatMap { Unit(code: $0.unit) }
     }
 
-    /// The stability/unit byte, split into its two nibbles: high = a stability code,
-    /// low = a unit code (`Unit`). **Read OPPORTUNISTICALLY: nil when the frame stops
-    /// short of it**, which is not a reason to refuse the weight — see
-    /// `minimumFrameLength`. The stability nibble has no table anywhere and nothing in
-    /// the app gates on it.
+    /// The stability/unit byte: high nibble a stability code (no known table, nothing
+    /// gates on it), low nibble a `Unit` code. **Read OPPORTUNISTICALLY: nil when the
+    /// frame stops short of it**, which is no reason to refuse the weight.
     static func status(fromManufacturerData data: Data) -> (stability: UInt8, unit: UInt8)? {
         let bytes = [UInt8](data)
         guard bytes.count > statusOffset else { return nil }

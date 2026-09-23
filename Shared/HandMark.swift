@@ -5,11 +5,9 @@ import SwiftUI
 
 /// The hand, as a pure drawing — **the one glyph the app and the widget both compile.**
 ///
-/// `FingerGlyph` cannot be used here: it lives in `Sources/` and leans on app-only ink
-/// tokens. A Live Activity renders in a separate process that only sees `Shared/`, so the
-/// mark it draws has to live here, take its colour from the caller, and depend on nothing
-/// but SwiftUI. Same proportions and same capsule family as the in-app glyph and the
-/// Dynamic Island hand, so all three are recognisably one mark.
+/// `FingerGlyph` lives in `Sources/` with app-only ink tokens, and a Live Activity only
+/// sees `Shared/`, so this takes its colour from the caller. Same proportions and
+/// capsules as the in-app glyph and the island hand: recognisably one mark.
 struct HandMark: View {
     var fingers: FingerSet
     var position: GripPosition = .halfCrimp

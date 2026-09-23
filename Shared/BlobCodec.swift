@@ -17,10 +17,8 @@ import Foundation
 /// the store writes a routine's blob ONLY on a real user edit — no launch migration, no
 /// normalize-on-sync, and `undoDelete` restores the raw `Data`.
 enum BlobCodec {
-    /// `.sortedKeys` makes the bytes a pure function of the content. Without it an
-    /// unchanged routine can re-encode differently, SwiftData marks the column dirty,
-    /// and CloudKit syncs a no-op on every save — which on two devices reads as an
-    /// endless phantom edit nobody made.
+    /// `.sortedKeys` makes the bytes a pure function of the content; otherwise an
+    /// unchanged routine can re-encode differently and CloudKit syncs a phantom edit.
     static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.outputFormatting = [.sortedKeys]
@@ -48,10 +46,9 @@ enum BlobCodec {
         return try? decoder.decode(T.self, from: data)
     }
 
-    /// Element-wise: one structurally broken element is dropped instead of taking the
-    /// whole routine with it. Decoding `[T].self` in one pass would throw on the first
-    /// bad set and lose the five good ones after it — the difference between a routine
-    /// missing a row and a routine that vanished.
+    /// Element-wise: one broken element is dropped instead of the whole array. A single
+    /// `[T].self` decode would throw on the first bad set — a routine that vanished,
+    /// rather than one missing a row.
     static func decodeArray<T: Decodable>(_ type: T.Type, from data: Data) -> [T] {
         guard !data.isEmpty else { return [] }
         guard let elements = try? decoder.decode([Lenient<T>].self, from: data) else { return [] }

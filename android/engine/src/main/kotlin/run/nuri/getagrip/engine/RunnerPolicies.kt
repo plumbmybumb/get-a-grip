@@ -5,11 +5,9 @@ package run.nuri.getagrip.engine
 
 import kotlin.math.max
 
-// TRANSLATION NOTE: these three policies live in `Sources/Runner/RunnerSession.swift`
-// on iOS — the app layer — for historical reasons only. Each of them is a pure
-// function of numbers with no clock, no BLE and no SwiftUI in it, each is asserted by
-// `SessionRunnerTests`, and each is a rule about how the ENGINE must be driven. They
-// belong here, so the Android store can read the same answers the runner does.
+// TRANSLATION NOTE: on iOS these three policies live in `Sources/Runner/RunnerSession.swift`
+// for historical reasons only. Each is a pure function of numbers, tested in
+// `SessionRunnerTests`, and a rule about driving the ENGINE — so they belong here.
 
 enum class StaleBatchHealDecision {
     hold,
@@ -45,21 +43,16 @@ object StaleBatchHealer {
 /// Whether losing the foreground has to PAUSE the session — a question about whether
 /// samples can still reach us, answered from capabilities rather than from a device name.
 ///
-/// Three cases, and the middle one is the one `bluetooth-central` bought:
-/// - **No link at all** → pause on any move off `.active`. Nothing keeps the process
-///   alive, samples stop, and a rep would silently stall at whatever it had accrued.
+/// - **No link** → pause on any move off `.active`: nothing keeps the process alive,
+///   and a rep would silently stall.
 /// - **A connected gauge that sustains background streaming** (the Progressor) → keep
-///   running. Swiping home to change the music keeps the workout alive and the Live
-///   Activity carries it (Nuri, 2026-08-09).
-/// - **A connected gauge that does NOT** (the broadcast scales: CoreBluetooth coalesces
-///   duplicate advertisements in the background, so the scan effectively goes silent) →
-///   pause on `.background`. This is the app losing the ability to measure, which is the
-///   same rule as having no gauge, not a dropout — and a dropout is the one thing that
-///   must never end a rep.
+///   running; swiping home to change the music keeps the workout alive (2026-08-09).
+/// - **A connected gauge that does NOT** (broadcast scales, whose background scan goes
+///   silent) → pause on `.background`: the app lost the ability to measure, which is not
+///   a dropout — and a dropout must never end a rep.
 ///
-/// `.inactive` deliberately does NOT pause a connected session either way: a
-/// notification banner or a Control Centre pull is not a suspension, the scan is still
-/// running, and a scenePhase pause needs a deliberate tap to come back from.
+/// `.inactive` never pauses a connected session: a banner or Control Centre pull is not
+/// a suspension, and a scenePhase pause needs a deliberate tap to come back from.
 object BackgroundPausePolicy {
     fun pausesOnLeavingForeground(
         isBackground: Boolean,
@@ -80,28 +73,20 @@ object SamplePacing {
 
     /// How much silence means the stream needs re-kicking, for THIS gauge.
     ///
-    /// Eight samples' worth of silence, floored at the Progressor's 0.8 s.
-    ///
-    /// 0.8 s was justified by "the gauge sends at 80 Hz", which is true of exactly one of
-    /// the seven kinds: at 8 Hz an ordinary sample gap is 125 ms and two coalesced
-    /// advertisements already spend a third of that budget, so a threshold that never moves
-    /// re-kicks a perfectly healthy stream. Eight samples is the same judgement the 0.8 s
-    /// expressed — silence long enough that a rep is quietly not being counted — read off
-    /// the rate the gauge actually claims. The floor keeps the Progressor's number exactly
-    /// where the hardware sessions put it.
+    /// Eight samples' worth of silence, floored at the Progressor's 0.8 s. A fixed 0.8 s
+    /// assumed 80 Hz: at 8 Hz two coalesced advertisements spend a third of it and a
+    /// healthy stream gets re-kicked. Eight samples is the same judgement at the gauge's
+    /// own rate; the floor keeps the Progressor where hardware sessions put it.
     fun silenceThreshold(forRate: Double, isBroadcast: Boolean = false): Double {
-        // A broadcast gauge's delivery is bursty by NATURE — multi-second holes are
-        // ordinary advertisements, not a stalled stream, and the re-kick is a no-op
-        // against an already-running scan anyway. A three-second floor keeps the
-        // watchdog for the case it exists for (a scan that actually died) instead of
-        // letting it beat in time with the radio (Nuri's hardware session, 2026-08-17).
+        // Broadcast delivery is bursty by nature and a re-kick is a no-op on a running
+        // scan, so a three-second floor keeps the watchdog for a scan that actually died
+        // rather than beating in time with the radio (hardware session, 2026-08-17).
         val eightSamples = 8.0 / max(1.0, forRate)
         return if (isBroadcast) max(3.0, eightSamples) else max(0.8, eightSamples)
     }
 
-    /// One second — deliberately the same clamp `SessionRunner.holdTick` puts on a
-    /// stalled wall clock, because it is the same judgement: a hand that was on the edge
-    /// before the gap and still on it after plausibly held through a second of silence,
-    /// and anything longer is the radio's story rather than the climber's.
+    /// One second — the same clamp `SessionRunner.holdTick` puts on a stalled wall clock:
+    /// a hand on the edge either side of a gap plausibly held through a second of silence;
+    /// anything longer is the radio's story, not the climber's.
     const val syntheticClockGapCapSeconds: Double = 1.0
 }

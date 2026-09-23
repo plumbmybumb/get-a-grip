@@ -132,10 +132,9 @@ sealed interface ProgressorEvent {
 
     data class Battery(val millivolts: UInt) : ProgressorEvent
 
-    /// Battery as a ready-made 0…1 fraction, from gauges that report the standard
-    /// Battery Service percentage. The Progressor keeps `.battery` — its raw
-    /// millivolts go through its own discharge curve, and forcing one shape on the
-    /// other would bake a Tindeq-specific curve into every ported device.
+    /// Battery as a 0…1 fraction, from gauges reporting the standard Battery Service
+    /// percentage. The Progressor keeps `.battery`: its millivolts go through its own
+    /// discharge curve, which must not be baked into every ported device.
     data class BatteryFraction(val fraction: Double) : ProgressorEvent
 
     data class AppVersion(val text: String) : ProgressorEvent
@@ -213,11 +212,8 @@ object ProgressorCodec {
     /// Never throws, never traps: a truncated or malformed packet stops the walk and
     /// returns whatever was fully parsed. Real BLE hardware delivers short reads.
     ///
-    /// TRANSLATION NOTE: Swift has two entry points, `decode(_ data: Data, …)` and
-    /// `decode(bytes: [UInt8], …)`, because `Data` may be a slice whose indices do not
-    /// start at zero. Kotlin's `ByteArray` is always zero-based, so the two collapse
-    /// into this one function and the "index from zero regardless of how the Data was
-    /// sliced" hazard cannot arise.
+    /// TRANSLATION NOTE: Swift has two entry points because a `Data` slice may not
+    /// start at index zero. `ByteArray` always does, so they collapse into this one.
     fun decode(data: ByteArray, answering: ProgressorCommand? = null): List<ProgressorEvent> {
         val events = mutableListOf<ProgressorEvent>()
         var i = 0
@@ -334,10 +330,9 @@ object ProgressorCodec {
     }
 
     /// Walk a structurally valid payload of repeated 8-byte `(float32 kg, uint32 µs)`
-    /// pairs, dropping readings a 150 kg load cell cannot physically produce. The
-    /// −10…165 kg window allows negative zero drift and 10% calibration tolerance while
-    /// rejecting finite garbage at the codec choke point, before it can reach the runner,
-    /// trace, store, or recorded maxes.
+    /// pairs, dropping readings a 150 kg load cell cannot produce. The −10…165 kg window
+    /// allows zero drift and 10% calibration tolerance while rejecting finite garbage
+    /// here, before it can reach the runner, trace, store or recorded maxes.
     private fun samples(payload: ByteArray): List<ForceSample> {
         val out = ArrayList<ForceSample>(payload.size / 8)
         var i = 0

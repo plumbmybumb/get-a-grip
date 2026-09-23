@@ -7,39 +7,26 @@ package run.nuri.getagrip.engine
 // (BSD-2-Clause, © 2024 Stevie-Ray Hartog,
 // https://github.com/Stevie-Ray/hangtime-grip-connect).
 //
-// **THIS DEVICE MEASURES ROTATION SPEED, NOT FORCE.** The PB-700BT (sold as the NSD
-// Spinner Bluetooth) is a gyroscopic hand exerciser — a powerball. Its notifications
-// carry the PERIOD of one rotor revolution; the reference converts that to RPM and
-// pushes the figure down the same "mass" channel it uses for load cells, because its
-// device interface has exactly one numeric channel. The reference's own
-// documentation calls it a "Bluetooth gyroscopic hand exerciser", and its plausible
-// range for the value is 800…15000 — revolutions per minute, not kilograms.
+// **THIS DEVICE MEASURES ROTATION SPEED, NOT FORCE.** The PB-700BT (NSD Spinner
+// Bluetooth) is a gyroscopic hand exerciser — a powerball. Its notifications carry the
+// PERIOD of one rotor revolution; the reference converts that to RPM (plausible range
+// 800…15000) and pushes it down its single "mass" channel.
 //
-// So `Decoder.ingest` decodes every frame and returns NO readings. There is no force
-// in this protocol to port. Feeding four-figure RPM into a kilogram channel would
-// arm every rep instantly, bank hang time at a load nobody pulled, and write a
-// five-figure "max" into the `MaxTable` that then sets the percentage targets for
-// that grip — a data-corruption path, not a cosmetic unit bug. The codebase's
-// standing rule is that no number is better than a confident wrong one.
+// So `Decoder.ingest` decodes every frame and returns NO readings. Four-figure RPM in a
+// kilogram channel would arm every rep instantly and write a five-figure "max" that sets
+// the grip's percentage targets — data corruption, not a unit bug. No number beats a
+// confident wrong one. It is also why `GaugeKind.selectable` omits this device.
 //
-// The parse itself is kept, tested, and exposed as `revolutionsPerMinute(from:)` for
-// the same reason the Progressor codec decodes the RFD tags it never consumes: a
-// future rotation mode should be an addition, not a refactor. What it must not be is
-// a silent reinterpretation of somebody's training history.
+// The parse is kept and tested (`revolutionsPerMinute(from:)`), like the Progressor's
+// unconsumed RFD tags, so a future rotation mode is an addition, not a refactor.
 //
 // Everything in the frame is BIG-ENDIAN.
 
 object PB700BTCodec {
-    /// The only notify characteristic the reference actually subscribes to: its
-    /// generic connect path starts notifications on every declared characteristic
-    /// whose id is `rx`, and for this device that is exactly one — `0000FFF4` under
-    /// the ISSC transparent UART service `0000FFF0`. Extracted from the source rather
-    /// than guessed off the UUID list, which also declares an unknown custom service
-    /// (`0000FEBA` with `0000FA10`/`FA11`/`FA13`), five further unnamed UART
-    /// characteristics, Device Information and the standard Battery Service. None of
-    /// those is read for streaming, and the source says nothing about what the custom
-    /// service does — if this device has a force or torque channel at all, that is
-    /// where it would live, and nothing here establishes it.
+    /// The only notify characteristic the reference subscribes to (its one `rx`):
+    /// `0000FFF4` under the ISSC transparent UART service `0000FFF0`. The device also
+    /// declares an unknown custom service (`0000FEBA` with `FA10`/`FA11`/`FA13`); if it
+    /// has a force or torque channel at all it would live there, and nothing establishes it.
     val profile = GaugeGattProfile(
         serviceUUID = "0000FFF0-0000-1000-8000-00805F9B34FB",
         notifyCharacteristicUUID = "0000FFF4-0000-1000-8000-00805F9B34FB",
@@ -52,17 +39,13 @@ object PB700BTCodec {
         tarePayload = null,
     )
 
-    /// Ticks per second of whatever counter produces the period field. 666,666 is the
-    /// reference's constant (`60 * (666666 / period)`), a 1.5 µs tick; it is not
-    /// derived from anything documented, so treat it as the magic number that
-    /// reproduces NSD's own RPM figures rather than as a known clock rate.
+    /// Ticks per second of the period counter: the reference's undocumented constant
+    /// (`60 * (666666 / period)`, a 1.5 µs tick) — a magic number, not a known clock rate.
     const val timerTicksPerSecond: Double = 666_666.0
 
-    /// The reference discards anything outside this band before reporting it. A
-    /// powerball idles far above zero and tops out well below the range's ceiling, so
-    /// the band doubles as the frame-sanity check: a byte-order mistake or a stray
-    /// notification lands orders of magnitude outside it (reversing the period bytes
-    /// of a 4000 RPM frame yields 0.15 RPM).
+    /// The reference discards anything outside this band, so it doubles as a frame
+    /// sanity check: a byte-order mistake lands orders of magnitude outside it (a
+    /// reversed 4000 RPM frame reads 0.15 RPM).
     val plausibleRPM: ClosedFloatingPointRange<Double> = 800.0..15_000.0
 
     /// Revolutions per minute from one notification, or nil when the frame is not a
@@ -72,15 +55,9 @@ object PB700BTCodec {
     ///   bytes 0…3  uint32  rotor period, in `timerTicksPerSecond` ticks
     ///   bytes 4…7  uint32  the reference's `sampleIndex` (see `sampleIndex(from:)`)
     ///
-    /// Eight bytes are required even though the period alone occupies four: the
-    /// reference reads offset 4 unconditionally on every frame it accepts, so in a
-    /// browser a 4…7-byte read throws out of the handler and yields nothing. Refusing
-    /// it here reproduces that behaviour deliberately instead of accepting a frame the
-    /// reference never accepted.
-    ///
-    /// A zero period is refused before the division rather than after: `60 * (x / 0)`
-    /// is `.infinity`, which the plausibility band would also reject, but relying on
-    /// that leaves a divide-by-zero one edit away from being the answer.
+    /// Eight bytes are required though the period needs four: the reference reads
+    /// offset 4 unconditionally, so it never accepted a shorter frame either. A zero
+    /// period is refused before the division, not left to the plausibility band.
     ///
     /// Rounded to whole RPM, as the reference does.
     ///
@@ -97,29 +74,22 @@ object PB700BTCodec {
         return Math.round(rpm).toDouble()
     }
 
-    /// The second word of the frame. The reference stores it as the packet's
-    /// `sampleIndex`, which is a use, not a meaning: it could be a revolution
-    /// counter, a device tick, or a session sample number, and the source does not
-    /// say. **If it turns out to be a device clock this family gains a real
-    /// `hasDeviceClock`** — until somebody establishes that on hardware, the client
-    /// keeps stamping synthetically.
+    /// The second word, stored by the reference as `sampleIndex` — a use, not a meaning
+    /// (revolution counter, device tick or sample number; the source does not say). **If
+    /// hardware shows it is a device clock, this family gains `hasDeviceClock`.**
     fun sampleIndex(data: ByteArray): UInt? {
         if (data.size < 8) return null
         return bigEndianUInt32(data, 4)
     }
 
     class Decoder : GaugeFrameDecoder {
-        /// The most recent decoded rotation speed, in RPM. Held so the parse is a
-        /// real decode with an inspectable result rather than a discarded one, and so
-        /// a future rotation feature has somewhere to read from. Nothing in the force
-        /// path consumes it.
+        /// The most recent rotation speed, in RPM, kept inspectable for a future rotation
+        /// feature. Nothing in the force path consumes it.
         var lastRPM: Double? = null
             private set
 
-        /// Always returns no readings — see this file's header. The frame is decoded
-        /// first: a device this app cannot honestly measure is still a device whose
-        /// bytes we understand, and silence is the fail-closed answer, not the
-        /// unexamined one.
+        /// Always returns no readings — see this file's header. The frame is still
+        /// decoded: silence is the fail-closed answer, not the unexamined one.
         override fun ingest(data: ByteArray): List<GaugeReading> {
             revolutionsPerMinute(data)?.let { lastRPM = it }
             return emptyList()

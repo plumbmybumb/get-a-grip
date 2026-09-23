@@ -72,11 +72,9 @@ enum HandMode: String, Codable, Hashable, Sendable, CaseIterable {
         }
     }
 
-    /// Every set starts here — alternation RESETS at each set boundary, so no set ever
-    /// begins on the "wrong" hand because the set before it had an odd rep count. WHICH
-    /// hand that is belongs to the routine (`SessionPlan.startingHand`); the mode only
-    /// says whether there is a first hand at all. A `.both` handed in as a starting hand
-    /// is not one, and reads as the default, left.
+    /// Every set starts here — alternation RESETS at each set boundary, so an odd rep
+    /// count never starts the next set on the wrong hand. WHICH hand is the routine's
+    /// (`SessionPlan.startingHand`); a `.both` passed in reads as the default, left.
     func startSide(startingHand: Side) -> Side {
         switch self {
         case .alternateEachRep, .alternateEachSet: startingHand == .right ? .right : .left
@@ -210,11 +208,9 @@ struct SessionPlan: Hashable, Sendable, Codable {
     var name: String = String(localized: "Daily no-hangs")
     var sets: [SetPlan] = []
     var handMode: HandMode = .alternateEachRep
-    /// Which hand the first pull of every set is on, under either alternating mode
-    /// (Nuri, 2026-09-18: "start with right hand instead of left"). Left, as every
-    /// routine before this field was; the builder's swap button is its only writer.
-    /// `.bothHands` ignores it, and it is never `.both` itself — the decoder reads that,
-    /// and any raw it does not know, as left.
+    /// Which hand the first pull of every set is on under either alternating mode
+    /// (Nuri, 2026-09-18). Left by default, as every older routine was. Never `.both`:
+    /// the decoder reads that, and any unknown raw, as left.
     var startingHand: Side = .left
     /// RHYTHM — the routine-level defaults every set inherits unless it overrides.
     var holdSeconds: Int = 10
@@ -226,36 +222,22 @@ struct SessionPlan: Hashable, Sendable, Codable {
     /// whole routine because ~2 kg sits below every set's working load. Intensity lives
     /// in each set's target band.
     var thresholdKg: Double = 2.0
-    /// Hold the rest countdown until you are actually OFF the edge.
-    ///
-    /// Default ON, which is a deliberate behaviour change for routines written before
-    /// this existed: starting the clock the instant the hold completes charges your rest
-    /// for the two or three seconds it takes to stand down, every rep, so a 20 s rest was
-    /// never 20 s of rest. Off is still honest — a fixed cadence you pace yourself to.
+    /// Hold the rest countdown until you are actually OFF the edge. Default ON, even for
+    /// older routines: starting the clock when the hold completes charges the rest for
+    /// the seconds it takes to stand down, so a 20 s rest was never 20 s. Off is still
+    /// honest — a fixed cadence you pace yourself to.
     var waitForReleaseBeforeRest: Bool = true
 
-    /// Whether leaving the TARGET BAND stops the rep clock.
-    ///
-    /// Default ON, which is the rule the band exists to enforce: a rep prescribed at
-    /// 22.5–34 kg should not be bankable at 12. But the band is a prescription, not a
-    /// referee, and there are honest reasons to want it drawn without it judging —
-    /// training by feel on a day your fingers disagree with last month's numbers, or a
-    /// grip whose max is stale. Off, the band still draws as a lane on the trace and the
-    /// clock runs whenever you are ENGAGED, whatever the load.
-    ///
-    /// It never loosens the engagement threshold: let go of the edge and the rep still
-    /// stops, because that is not a question about range, it is a question about whether
-    /// you are pulling at all.
+    /// Whether leaving the TARGET BAND stops the rep clock. Default ON, the rule the band
+    /// exists to enforce. Off is for training by feel or against a stale max: the band
+    /// still draws as a lane and the clock runs whenever you are ENGAGED. It never
+    /// loosens the engagement threshold — letting go still stops the rep.
     var pausesOutsideTargetBand: Bool = true
 
-    /// TARGET LOAD as a fraction of your max on whichever grip a set uses — the routine
-    /// default every set inherits, exactly like `holdSeconds`.
-    ///
-    /// A percentage rather than kilograms because the prescription IS a fraction ("20 %
-    /// of max"), and because ONE band then means the right load on all six grips at once:
-    /// a four-finger half crimp and a middle-2 have very different maxes and the same
-    /// intensity. Kilograms would freeze one day's arithmetic and go stale the next time
-    /// a max is recorded — which is the whole reason this is not just a seeded number.
+    /// TARGET LOAD as a fraction of your max on whichever grip a set uses, inherited like
+    /// `holdSeconds`. A percentage because the prescription IS a fraction, so ONE band is
+    /// the right load on every grip at once; kilograms would freeze one day's arithmetic
+    /// and go stale the next time a max is recorded.
     var targetLoPercent: Double? = nil
     var targetHiPercent: Double? = nil
 
@@ -310,8 +292,7 @@ extension SessionPlan {
         // A zero threshold would read as "engaged" against sensor noise and start the
         // clock before the user touched the edge.
         self.thresholdKg = Self.thresholdRange.clamping(c.value(.thresholdKg, or: 2.0))
-        // Absent key → true, so an existing routine GAINS the behaviour. See the
-        // property for why that is the right default rather than the safe-looking one.
+        // Absent key → true, so an existing routine GAINS the behaviour (see the property).
         self.waitForReleaseBeforeRest = c.value(.waitForReleaseBeforeRest, or: true)
         // Absent key → true, so every routine written before this existed keeps the
         // behaviour it was authored under.
@@ -472,11 +453,9 @@ struct RoutineDraft: Hashable, Sendable, Codable {
             out.plan.targetHiPercent = lo
         }
         out.plan = Self.consolidatingInheritance(out.plan)
-        // DEMOTE a routine-level band onto the sets, then clear it — the migration
-        // that makes "load lives per set" true for routines authored before it was.
-        // Resolution-preserving: a set with any target of its own already outranked
-        // the routine's, and a set without one resolves to the same numbers it
-        // inherited, now written where the editor can see them.
+        // DEMOTE a legacy routine-level band onto the sets and clear it, so "load lives
+        // per set" holds for older routines. Resolution-preserving: a set with its own
+        // target already outranked it; one without now shows the numbers it inherited.
         if let band = out.plan.targetPercentBand {
             out.plan.sets = out.plan.sets.map { set in
                 guard !set.hasTarget, !set.hasPercentTarget else { return set }
@@ -503,27 +482,18 @@ struct RoutineDraft: Hashable, Sendable, Codable {
 
     /// Fold per-set values that are really ROUTINE values back where they belong.
     ///
-    /// The setup deck edits hold, rest and the target band ON EACH GRIP CARD, so it
-    /// writes a per-set override every time one is touched — and `addGrip` copies the
-    /// previous grip, overrides included. A routine built that way arrived with every set
-    /// overriding and `plan.holdSeconds` still at its factory 10, which broke inheritance
-    /// in three visible ways: the document's RHYTHM card quoted a number no set used,
-    /// changing it did nothing, and a set added later inherited that phantom while its
-    /// siblings ran something else. The coach card's own promise — "change it here once
-    /// and it changes everywhere" — was false for every deck-authored routine.
+    /// The setup deck writes hold/rest overrides onto every grip card (and `addGrip`
+    /// copies them), so deck-built routines arrived with every set overriding and
+    /// `plan.holdSeconds` at a phantom 10: the RHYTHM card quoted a number no set used
+    /// and "change it here once" did nothing. Two passes, both RESOLUTION-PRESERVING:
     ///
-    /// Two passes, both RESOLUTION-PRESERVING by construction:
+    /// 1. **Promote** a value every executable set overrides identically — none of them
+    ///    is inheriting, so moving it onto the plan changes nothing.
+    /// 2. **Clear** an override that equals the routine's value; one that merely agrees
+    ///    silently skips that set the next time the rhythm changes.
     ///
-    /// 1. **Promote** a value every executable set overrides identically. If they all
-    ///    carry it then none of them is inheriting, so moving it onto the plan cannot
-    ///    change what any set resolves to.
-    /// 2. **Clear** an override that now equals the routine's value. The codebase already
-    ///    says why one that merely agrees is harmful: it silently skips that set the next
-    ///    time the rhythm changes.
-    ///
-    /// `PlanMath.hold`/`rest`/`targetBand` answer identically before and after — which is
-    /// the property the tests pin, because it is the only thing that makes this safe to
-    /// run on every save.
+    /// `PlanMath.hold`/`rest`/`targetBand` answer identically before and after — the
+    /// property the tests pin, and what makes this safe to run on every save.
     private static func consolidatingInheritance(_ plan: SessionPlan) -> SessionPlan {
         var out = plan
         let live = out.sets
@@ -531,11 +501,9 @@ struct RoutineDraft: Hashable, Sendable, Codable {
 
         if let hold = uniform(live, { $0.holdSeconds }) { out.holdSeconds = hold }
         if let rest = uniform(live, { $0.restSeconds }) { out.restSeconds = rest }
-        // TARGETS ARE NEVER PROMOTED any more — load lives per set (Nuri, 2026-08-10:
-        // "target load needs to only be in each set"), and with no routine-level load
-        // editor left in the builder, a promoted band would be active but invisible.
-        // The inverse — DEMOTION of a legacy routine-level band — happens in
-        // `normalized` right after this pass.
+        // Targets are never promoted: load lives per set (Nuri, 2026-08-10), and with no
+        // routine-level load editor a promoted band would be active but invisible.
+        // `normalized` DEMOTES any legacy routine-level band right after this pass.
 
         out.sets = out.sets.map { set in
             var s = set
@@ -613,17 +581,10 @@ extension RoutineDraft {
     /// the six SetPlan UUIDs once per process and would hand identical ids to two
     /// routines built in one sitting.
     ///
-    /// Note what is NOT here — every SetPlan leaves `holdSeconds` and `restSeconds`
-    /// nil, so all six inherit the routine's 10 s / 20 s. That is the point of the
-    /// RHYTHM block: the prefill contains ZERO timing overrides, so changing one rest
-    /// interval is one edit.
-    ///
-    /// Three of the positions are a considered GUESS, not dictation: the protocol
-    /// states half crimp for the 4-finger set and crimp for the last two, and says
-    /// nothing for the 3-finger and the plain 2-finger sets. They ship as half crimp
-    /// and open hand so the plain pairs read as the low-intensity counterparts of the
-    /// crimped ones that follow, and step 3 of the builder is where that gets corrected
-    /// in four taps.
+    /// Every set inherits the routine's 10 s / 20 s — ZERO timing overrides, so changing
+    /// one rest interval is one edit. The 3-finger and plain 2-finger positions are a
+    /// GUESS (the protocol names only the 4-finger half crimp and the crimped pair); they
+    /// ship as the low-intensity counterparts of the crimped sets that follow.
     static var starter: RoutineDraft {
         RoutineDraft(
             templateID: nil,
@@ -663,17 +624,10 @@ extension RoutineDraft {
             remindersEnabled: true)
     }
 
-    /// TRULY EMPTY (Nuri, 2026-08-11: "there shouldn't be anything in here").
-    ///
-    /// It used to seed one 20 mm four-finger half-crimp set, on the reasoning that an
-    /// empty list with an "Add" button is a form and a form is what Frez feels like. That
-    /// traded one problem for a worse one: the seeded set was a GUESS presented as your
-    /// routine, and the commonest first edit was deleting or rewriting a grip nobody
-    /// asked for. The reasoning has also expired — adding a set is one tap and choosing
-    /// its grip is one more, so the empty state costs two taps rather than a form.
-    ///
-    /// `validationIssue` already refuses to save a routine with no pulls in it, so Save
-    /// stays disabled and says why until there is a real set here.
+    /// TRULY EMPTY (Nuri, 2026-08-11: "there shouldn't be anything in here"). A seeded
+    /// set was a GUESS presented as your routine and usually the first thing deleted;
+    /// an empty list costs two taps, not a form. `validationIssue` keeps Save disabled,
+    /// and says why, until a real set exists.
     static func blank(named name: String = String(localized: "My routine")) -> RoutineDraft {
         var d = RoutineDraft()
         d.plan.name = name
@@ -701,9 +655,7 @@ extension RoutineDraft {
     /// final set deliberately carries NONE — a band gates the rep clock, and pausing a
     /// max attempt the instant it fades below 95 % is exactly wrong. A WHENEVER routine
     /// by construction: nobody maxes daily.
-    ///
-    /// A computed var for the same reason `.starter` is — a `static let` would mint the
-    /// SetPlan UUIDs once per process.
+    /// Computed for the same reason as `.starter`.
     static var maxDay: RoutineDraft {
         let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
         var d = RoutineDraft()

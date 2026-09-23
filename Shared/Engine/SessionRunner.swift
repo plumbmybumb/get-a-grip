@@ -3,12 +3,10 @@
 
 import Foundation
 
-// The guided session — the thing the whole app exists to run.
-//
-// Pure Swift: no SwiftUI, no CoreBluetooth, no clock of its own. Every input arrives
-// as an event and every output leaves as a returned cue, so a whole workout can be
-// replayed in a test from a synthetic force trace with no audio, no haptics and no
-// waiting. That is the only way the timing rules below are checkable at all.
+// The guided session. Pure logic: no UI, no Bluetooth, no clock of its own. Every
+// input arrives as an event and every output leaves as a returned cue, so a whole
+// workout replays in a test from a synthetic force trace — the only way the timing
+// rules below are checkable at all.
 
 // MARK: - Phases
 
@@ -23,12 +21,10 @@ indirect enum RunnerPhase: Sendable, Equatable {
     case armed(slot: Int)
     /// Force is above threshold and the rep's clock is running.
     case working(slot: Int)
-    /// The hold is DONE and recorded, but you are still on the edge. **No clock runs
-    /// here** — the rest countdown has not started, and will not until force drops below
-    /// release. Only reachable when `plan.waitForReleaseBeforeRest` is on.
-    ///
-    /// A phase of its own rather than "resting, but paused": `isCountingDown` would then
-    /// be lying, and the screen has to say LET GO rather than show a frozen countdown.
+    /// The hold is DONE and recorded, but you are still on the edge. No clock runs: the
+    /// rest countdown waits until force drops below release. Only reachable when
+    /// `plan.waitForReleaseBeforeRest` is on. Its own phase, not "resting but paused",
+    /// because `isCountingDown` would lie and the screen must say LET GO.
     case releasing(slot: Int)
     /// Between reps, or between sets — the slot's own `restAfter` covers both, and
     /// `isSetBreak` is what tells them apart. Wall-clock.
@@ -66,9 +62,8 @@ enum RunnerEvent: Sendable, Equatable {
     /// The gauge was re-zeroed, so the next sample's timestamp is not comparable
     /// with the last one.
     case tareCommitted
-    /// The silence watchdog is about to restart weight measurement. The device may
-    /// begin a fresh timestamp epoch, so this is an explicit timeline break just like
-    /// a committed tare.
+    /// The silence watchdog is restarting weight measurement. The device may begin a
+    /// fresh timestamp epoch, so this breaks the timeline like a committed tare.
     case streamRestarted
     case pause
     case resume
@@ -101,29 +96,21 @@ struct SessionRunner: Sendable {
 
     // MARK: Tuning
     //
-    // Starting values, all named so they can be tuned from one place after real
-    // hands have used it. Every one of them exists to absorb a specific physical
-    // reality rather than to be clever.
+    // Named so they tune from one place. Each absorbs a specific physical reality.
 
     /// Force must stay above the threshold this long before the rep's clock starts.
     /// Rejects the single-sample spike of bumping the edge on the way to gripping it.
     static let engageDebounceMicros: UInt64 = 100_000
-    /// A larger device-time delta is a broken timeline, not measured hang time. The
-    /// Progressor samples every ~12.5 ms; 200 ms is deliberately generous. Applies to
-    /// gauges that stamp their OWN samples; the rest get a clamp instead of a cliff —
-    /// see `maxCreditedSampleGapSeconds` and `creditableDelta`.
+    /// A larger device-time delta is a broken timeline, not hang time (the Progressor
+    /// samples every ~12.5 ms). Applies to gauges that stamp their OWN samples; the rest
+    /// get a clamp instead of a cliff — see `creditableDelta`.
     static let maxCreditableDeltaMicros: UInt32 = 200_000
     // THERE IS NO DROPOUT TIMEOUT, AND THERE MUST NOT BE ONE (Nuri, 2026-08-03).
-    //
-    // Coming off the edge NEVER ends a rep, however long you are off it: the clock
-    // stops, the screen says RE-GRIP, and it resumes exactly where it paused. Re-gripping
-    // honestly takes more than three seconds, so any grace long enough to be fair is
-    // long enough to be pointless — and a rep that ends itself while you are chalking up
-    // is the app overruling the person doing the work.
-    //
-    // **The Skip button is the only way to end a rep early.** One deliberate action,
-    // never a clock you have to beat. The same goes for a dropped connection: a rep
-    // waits for the gauge to come back rather than abandoning work somebody actually did.
+    // Coming off the edge never ends a rep: the clock stops, the screen says RE-GRIP,
+    // and it resumes where it paused. Re-gripping honestly takes more than three
+    // seconds, so any grace long enough to be fair is long enough to be pointless.
+    // Skip is the only way to end a rep early; a dropped connection likewise waits for
+    // the gauge rather than abandoning work somebody actually did.
 
     /// Release sits BELOW engage by this band, so force hovering exactly at the
     /// threshold cannot chatter the rep on and off. 5% of the threshold, clamped to
@@ -132,19 +119,14 @@ struct SessionRunner: Sendable {
         min(2.0, max(0.5, thresholdKg * 0.05))
     }
 
-    /// **The window a rep's clock runs inside.**
+    /// The window a rep's clock runs inside.
     ///
-    /// With no target band this is the session threshold and no ceiling at all — the
-    /// original rule, unchanged: pull harder than the line and the clock runs.
-    ///
-    /// With one, the BAND is the rule (Nuri, 2026-08-09): the clock runs only while the
-    /// load is actually inside the range the routine asked for, so a rep prescribed at
-    /// 22.5–34.0 kg cannot be banked at 12. Below the floor reads as RE-GRIP; above the
-    /// ceiling reads as EASE OFF. Both stop the clock and neither ends the rep.
-    ///
-    /// `release*` sit OUTSIDE `engage*` by the same hysteresis in both directions, so a
-    /// hand hovering on either edge cannot chatter the clock — and so the ordinary
-    /// overshoot at the start of a hard pull costs nothing.
+    /// No target band: the session threshold and no ceiling. With one, the BAND is the
+    /// rule (Nuri, 2026-08-09): the clock runs only while the load is inside it, so a rep
+    /// prescribed at 22.5–34 kg cannot be banked at 12. Below reads RE-GRIP, above reads
+    /// EASE OFF; both stop the clock, neither ends the rep. `release*` sit OUTSIDE
+    /// `engage*` by the same hysteresis both ways, so neither edge chatters and the
+    /// ordinary overshoot at the start of a hard pull costs nothing.
     struct RepGate: Equatable, Sendable {
         var engageLo: Double
         var engageHi: Double
@@ -156,11 +138,9 @@ struct SessionRunner: Sendable {
     }
 
     private func gate(for slot: RepSlot) -> RepGate {
-        // `pausesOutsideTargetBand == false` takes the SAME gate a band-less rep takes:
-        // the engagement threshold and no ceiling. The band is still drawn on the trace —
-        // it just stops refereeing. Note what this does NOT loosen: letting go of the
-        // edge still stops the rep, because that is a question about whether you are
-        // pulling, not about which range you are pulling in.
+        // `pausesOutsideTargetBand == false` takes the band-less gate: threshold, no
+        // ceiling. The band is still drawn, it just stops refereeing. Letting go still
+        // stops the rep — that is about whether you pull, not in which range.
         guard plan.pausesOutsideTargetBand, let band = slot.targetBand, band.upperBound > 0 else {
             return RepGate(engageLo: engageKg, engageHi: .infinity,
                            releaseLo: releaseKg, releaseHi: .infinity)
@@ -184,31 +164,21 @@ struct SessionRunner: Sendable {
     /// drift from the duration the routine advertised.
     let slots: [RepSlot]
 
-    /// **No gauge at all** — a flat battery, or the Progressor left at home (Nuri,
-    /// 2026-08-09). The session becomes what it always was underneath: a count-in, a
-    /// clock, and which hand goes on the edge.
-    ///
-    /// The engine changes in exactly three places, and nowhere else:
-    /// - there is no `armed` phase, because nothing can observe you taking the load, so
-    ///   the hold starts when the lead-in ends;
+    /// No gauge at all — a flat battery, or the gauge left at home (Nuri, 2026-08-09).
+    /// The engine changes in exactly three places:
+    /// - no `armed` phase, because nothing can observe you taking the load, so the hold
+    ///   starts when the lead-in ends;
     /// - the hold's clock runs on `tick` (wall time) instead of device timestamps;
     /// - `waitForReleaseBeforeRest` is skipped, because there is no release to see.
     ///
-    /// Everything else — the rep sequence, the rests, the set breaks, the cues, the
-    /// summary — is the same code path. A session run this way is a real session with
-    /// unmeasured load, not a simulation of one, which is why it books real reps.
+    /// Everything else is the same code path: a real session with unmeasured load, not
+    /// a simulation, which is why it books real reps.
     let timerOnly: Bool
 
-    /// **The most hang time ONE sample-to-sample gap may ever bank**, for gauges whose
-    /// timestamps the CLIENT synthesizes instead of the device measuring them.
-    ///
-    /// nil — the default, and the Progressor's setting — leaves the original rule alone:
-    /// a device clock's deltas are truth, so a gap over `maxCreditableDeltaMicros` is a
-    /// broken timeline and credits nothing at all.
-    ///
-    /// Every ported gauge is stamped from host uptime (`SyntheticSampleClock`), so its
-    /// deltas measure the RADIO rather than the hand, and the two halves of that need
-    /// opposite treatment. See `creditableDelta`.
+    /// The most hang time ONE sample-to-sample gap may bank, for gauges whose timestamps
+    /// the CLIENT synthesizes from host uptime (`SyntheticSampleClock`). nil, the
+    /// Progressor's setting, keeps the device-clock rule: a gap over
+    /// `maxCreditableDeltaMicros` credits nothing. See `creditableDelta`.
     let maxCreditedSampleGapSeconds: Double?
 
     private let engageKg: Double
@@ -230,9 +200,8 @@ struct SessionRunner: Sendable {
     /// release threshold. The screen has to SAY this — a timer that silently stops
     /// looks broken, and the climber's instinct is to pull harder rather than re-grip.
     private(set) var isDropped = false
-    /// The other way to stall a banded rep: OVER the top of the target range. Same
-    /// consequence, opposite instruction — and it needs its own flag because "pull
-    /// harder" is the exact wrong thing to tell someone who is already pulling too hard.
+    /// The other way to stall a banded rep: OVER the target range. Its own flag because
+    /// "pull harder" is the wrong thing to tell someone already pulling too hard.
     private(set) var isOverTarget = false
 
     /// Observational timing only. It never participates in thresholds, countdowns,
@@ -255,9 +224,8 @@ struct SessionRunner: Sendable {
 
     /// When the current countdown phase ends, in the caller's monotonic seconds.
     private var countdownEndsAt: TimeInterval = 0
-    /// The original length of that countdown, so the dial can describe the phase as a
-    /// fraction rather than borrowing rep-only progress. It is replaced at every lead-in
-    /// and rest, exactly when `countdownEndsAt` is replaced.
+    /// The original length of that countdown, so the dial can show the phase as a
+    /// fraction. Replaced whenever `countdownEndsAt` is.
     private var countdownDuration: TimeInterval = 0
     /// Last value announced by a countdown cue, so a tick only speaks when the number
     /// on screen actually changes.
@@ -291,11 +259,9 @@ struct SessionRunner: Sendable {
 
     // MARK: Init
 
-    /// `maxes` is captured ONCE here and never consulted again — that is what freezes
-    /// the session's loads. Percentage targets become kilograms per rep, per hand, at
-    /// the moment the session begins, so a max recorded next month cannot rewrite what
-    /// this morning told you to pull. Defaulted to empty for every test and caller that
-    /// exercises timing rather than load.
+    /// `maxes` is read ONCE here, which freezes the session's loads: percentage targets
+    /// become kilograms per rep, per hand, so a max recorded next month cannot rewrite
+    /// what this morning prescribed. Empty by default for callers testing timing only.
     init(plan: SessionPlan, maxes: MaxTable = MaxTable(), timerOnly: Bool = false,
          maxCreditedSampleGapSeconds: Double? = nil) {
         let executable = plan.executable
@@ -377,12 +343,9 @@ struct SessionRunner: Sendable {
         return [.armed(slots[index].side), .repStarted]
     }
 
-    /// The slot that has NOT been recorded yet — the one a skip or an abort applies to.
-    ///
-    /// Distinct from `phase.slotIndex` for exactly one phase, and that distinction is
-    /// load-bearing: during `.resting(i)` slot `i` is already in `results`, so treating
-    /// it as current books it a second time. That is precisely how a six-set routine
-    /// reported "37 of 36 pulls" when its sets were skipped from the rest screen.
+    /// The slot NOT yet recorded — the one a skip or abort applies to. Differs from
+    /// `phase.slotIndex` during `.resting(i)`, where slot `i` is already in `results`;
+    /// treating it as current booked it twice and reported "37 of 36 pulls".
     private func pending(in phase: RunnerPhase) -> Int? {
         switch phase {
         case .leadIn(let i), .armed(let i), .working(let i):
@@ -449,12 +412,9 @@ struct SessionRunner: Sendable {
         // ending with a pointless countdown.
         if slots[index].restAfter > 0 {
             resetRepAccumulators()
-            // Hold the countdown until the hand is actually off the edge. Gated on the
-            // link being UP: with no samples arriving there is no release to observe,
-            // and stalling the whole session on a dead radio is worse than starting the
-            // rest a few seconds early.
-            // `!timerOnly` because there is no release to observe without a gauge — the
-            // session would sit on LET GO forever waiting for a sample that never comes.
+            // Hold the countdown until the hand is off the edge, but only when a release
+            // can be observed: with no gauge or a dead link the session would sit on
+            // LET GO forever, which is worse than starting the rest a few seconds early.
             if plan.waitForReleaseBeforeRest, !timerOnly, !linkIsDown, currentKg >= releaseKg {
                 phase = .releasing(slot: index)
                 return cues
@@ -498,15 +458,11 @@ struct SessionRunner: Sendable {
 
     private mutating func abort(at t: TimeInterval) -> [RunnerCue] {
         guard phase != .finished else { return [] }
-        // Only the rep actually in flight is aborted — everything the climber already
-        // finished keeps the outcome it earned. `pending(in:)` already resolves through
-        // `.paused` (pause never wraps `.idle` — see `pause(at:)`), so a hold-to-end
-        // fired while paused still books the rep with whatever it had accrued before
-        // the pause. There is deliberately NO `!phase.isPaused` guard here any more:
-        // that clause existed only to DROP the in-flight rep, silently, which broke
-        // `HoldToEndButton`'s own promise — "nothing is destroyed either way" — for
-        // anyone who paused mid-hold before ending. See
-        // `testAbortWhilePausedMidHoldStillRecordsTheRepAndItsAccruedTime`.
+        // Only the rep in flight is aborted; finished reps keep their outcome.
+        // `pending(in:)` resolves through `.paused`, so ending while paused still books
+        // the rep with what it had accrued. No `!phase.isPaused` guard: it silently
+        // dropped that rep, breaking `HoldToEndButton`'s "nothing is destroyed" promise.
+        // See `testAbortWhilePausedMidHoldStillRecordsTheRepAndItsAccruedTime`.
         if let index = pending(in: phase) {
             results.append(summary(for: slots[index], outcome: .aborted))
         }
@@ -526,9 +482,8 @@ struct SessionRunner: Sendable {
     }
 
     private mutating func tick(at t: TimeInterval) -> [RunnerCue] {
-        // WITH NO GAUGE the tick IS the hold's clock. It runs the same accumulator the
-        // force path fills, so the halfway cue, the ring, the countdown and the summary
-        // all read one number and none of them needs to know where it came from.
+        // With no gauge the tick IS the hold's clock, filling the same accumulator the
+        // force path fills, so every readout reads one number.
         if timerOnly, case .working(let index) = phase {
             return holdTick(slot: index, at: t)
         }
@@ -544,12 +499,9 @@ struct SessionRunner: Sendable {
         }
     }
 
-    /// The gauge-free hold, advanced by wall time.
-    ///
-    /// Deltas are CLAMPED to a second: the ticker is a `Task.sleep` loop, so a
-    /// backgrounded phone or a stalled main thread would otherwise hand the rep half a
-    /// minute it never spent on the edge. Credit the tick you can account for and no more
-    /// — the same instinct as the force path's 200 ms plausibility limit.
+    /// The gauge-free hold, advanced by wall time. Deltas are CLAMPED to a second: the
+    /// ticker is a sleep loop, so a backgrounded phone or stalled main thread would
+    /// otherwise bank time never spent on the edge.
     private mutating func holdTick(slot index: Int, at t: TimeInterval) -> [RunnerCue] {
         defer { lastTickAt = t }
         guard let last = lastTickAt else { return [] }
@@ -595,9 +547,8 @@ struct SessionRunner: Sendable {
         case .working(let index):
             return workingSample(sample, slot: index, at: t)
         case .releasing(let index):
-            // The ONE place a sample starts a countdown. Uses the same release
-            // threshold the rep's own clock uses, so "off the edge" means one thing in
-            // the whole engine and a hand hovering at the line cannot chatter it.
+            // The ONE place a sample starts a countdown, on the rep's own release
+            // threshold, so "off the edge" means one thing in the whole engine.
             guard sample.kg < releaseKg else { return [] }
             return beginRest(after: index, at: t)
         default:
@@ -716,35 +667,26 @@ struct SessionRunner: Sendable {
         return cues
     }
 
-    /// How much of one sample-to-sample gap may be banked as hang time. **Two clocks,
-    /// two opposite rules, and the difference is which of them the gap is a fact about.**
+    /// How much of one sample-to-sample gap may be banked as hang time. Two clocks, two
+    /// opposite rules.
     ///
-    /// A DEVICE clock (the Progressor's) measures the gauge's own sampling, so at ~80 Hz
-    /// a delta over 200 ms is not a slow sample, it is a broken timeline — a
-    /// retransmission, a restarted epoch, a corrupt payload. It credits NOTHING, and
-    /// `lastSample` still advances so the next coherent delta resumes. Nothing is
-    /// invented from an interval the device cannot account for.
+    /// A DEVICE clock (the Progressor's) measures the gauge's own sampling, so at ~80 Hz a
+    /// delta over 200 ms is a broken timeline (retransmission, restarted epoch, corrupt
+    /// payload). It credits NOTHING; `lastSample` still advances so the next coherent
+    /// delta resumes.
     ///
-    /// A SYNTHETIC clock stamps each reading with host uptime at ingestion, so its
-    /// deltas measure the RADIO. Dropping them the same way would throw away ordinary
-    /// sampling rather than protecting anything: an 8 Hz scale is already 125 ms apart
-    /// and one coalesced advertisement doubles that, so the 200 ms rule would quietly
-    /// under-count every hang on those gauges — the failure mode the runner exists to
-    /// prevent, arriving from the other direction. The gap is CLAMPED instead: credit
-    /// the interval the cap can account for, exactly as `holdTick` credits a stalled
-    /// wall-clock tick, and never the surplus — a two-second RF hole is a fact about
-    /// the antenna, not about the hand.
+    /// A SYNTHETIC clock stamps readings with host uptime, so its deltas measure the
+    /// RADIO. An 8 Hz scale is already 125 ms apart and one coalesced advertisement
+    /// doubles that, so the 200 ms rule would under-count every hang. The gap is CLAMPED
+    /// instead, as `holdTick` does: credit what the cap can account for, never the
+    /// surplus — a two-second RF hole is a fact about the antenna, not the hand.
     ///
-    /// **KNOWN LIMITATION, named rather than hidden: on a gauge that packs several readings
-    /// into one notification, `avgKg` is sampled at the NOTIFICATION rate.** Those readings
-    /// all share the batch's stamp (the client refuses to invent spacing it was never told),
-    /// so the interior ones have a zero delta, credit nothing, and never reach
-    /// `weightedKgMicros` — the average is computed from the first reading of each packet.
-    /// The two figures that matter are unaffected: `accruedMicros` is exact because the next
-    /// batch's delta carries the whole elapsed interval, and `peakKg` takes its `max` before
-    /// this gate. Weighting interior samples by an equal share of the batch delta is the fix
-    /// when a real ForceBoard is in hand to measure it against; guessing the spacing now
-    /// would trade an under-sampled average for a fabricated one.
+    /// KNOWN LIMITATION: on a gauge that packs several readings into one notification,
+    /// `avgKg` is sampled at the NOTIFICATION rate. Interior readings share the batch's
+    /// stamp, so their zero delta never reaches `weightedKgMicros`. `accruedMicros` (the
+    /// next delta carries the whole interval) and `peakKg` (taken before this gate) stay
+    /// exact. Weighting interior samples by a share of the batch delta is the fix once a
+    /// real ForceBoard can be measured; guessing the spacing now would fabricate it.
     private func creditableDelta(_ delta: UInt64) -> UInt64 {
         guard let ceiling = creditedGapCeilingMicros else {
             return delta <= UInt64(Self.maxCreditableDeltaMicros) ? delta : 0
@@ -832,18 +774,10 @@ struct SessionRunner: Sendable {
         return slots[index]
     }
 
-    /// The rep the SCREEN should be describing — which during a rest is the one you are
-    /// about to do, not the one you just finished (Nuri, 2026-08-04).
-    ///
-    /// Resting is preparation: the grip, the hand and the set number are all there to be
-    /// read while you shake out, and the rep already behind you is the one thing you do
-    /// not need. `pullLine` has always counted forward ("Pull 13 of 36" during the rest
-    /// after pull 12) — everything else was still describing the past, which is how a set
-    /// break came to show the grip you had just put down.
-    ///
-    /// `.releasing` deliberately does NOT look forward: you are still on the current
-    /// edge, and swapping the grip out from under a hand that has not let go yet would
-    /// be the app describing something that isn't happening.
+    /// The rep the SCREEN should describe — during a rest, the one you are about to do
+    /// (Nuri, 2026-08-04). Resting is preparation; the rep behind you is the one thing
+    /// you do not need. `.releasing` does NOT look forward: you are still on the edge,
+    /// and swapping the grip under a hand that has not let go describes nothing real.
     var displaySlot: RepSlot? {
         if case .resting = unpaused, let index = pending(in: phase), index < slots.count {
             return slots[index]
@@ -851,29 +785,19 @@ struct SessionRunner: Sendable {
         return currentSlot
     }
 
-    /// Whether the rest currently running is a SET BREAK. Keyed to the slot just
-    /// finished, deliberately — this describes the rest itself, not what comes next, and
-    /// it is the one readout that must keep looking backwards while the rest look
-    /// forward. (`isLastOfSet` on `displaySlot` would say "set break" during the rest
-    /// before the last rep of the NEXT set.)
+    /// Whether the running rest is a SET BREAK. Keyed to the slot just finished: it
+    /// describes the rest itself, so it keeps looking back while the rest look forward
+    /// (`isLastOfSet` on `displaySlot` would say "set break" before a set's last rep).
     var isSetBreak: Bool {
         guard case .resting(let index) = unpaused, index < slots.count else { return false }
         return slots[index].isLastOfSet
     }
 
-    /// Whether the rest now running leads into a DIFFERENT grip (Nuri, 2026-08-19: the
-    /// next set changing grip is easy to miss while you shake out).
-    ///
-    /// Compared against the slot that OWNS the rest, never against `displaySlot` — that
-    /// one has already swapped to the upcoming rep, so asking it both halves of the
-    /// question compares a slot with itself and nothing ever differs.
-    ///
-    /// `.releasing` is excluded for the same reason it does not look forward: a hand
-    /// still on the edge is not being asked to change anything yet, and the warning
-    /// belongs to the rest that follows.
-    ///
-    /// Whole specs, not just the fingers — an edge change alone IS a grip change,
-    /// because you move your hand for it.
+    /// Whether the running rest leads into a DIFFERENT grip (Nuri, 2026-08-19: easy to
+    /// miss while you shake out). Compared against the slot that OWNS the rest, since
+    /// `displaySlot` has already swapped forward and would compare a slot with itself.
+    /// `.releasing` is excluded: the warning belongs to the rest that follows. Whole
+    /// specs, because an edge change alone moves your hand.
     var nextGripDiffers: Bool {
         guard case .resting(let index) = unpaused, index < slots.count,
               let next = pending(in: phase) else { return false }
@@ -916,9 +840,8 @@ struct SessionRunner: Sendable {
 
     /// Whole seconds left on whatever is counting down, for the big numeral.
     ///
-    /// A paused phase is still the phase it interrupted. Evaluating it against the current
-    /// time would make a paused REST continue to lose seconds behind the pause button; the
-    /// deadline is shifted only on resume, so the frozen readout must use `pausedAt`.
+    /// A paused phase reads against `pausedAt`: the deadline shifts only on resume, so
+    /// the current time would keep draining a paused rest behind the pause button.
     func secondsRemaining(at t: TimeInterval) -> Int? {
         let phaseToRead: RunnerPhase
         let clock: TimeInterval
@@ -958,10 +881,9 @@ struct SessionRunner: Sendable {
 
     /// The fraction of the CURRENT phase remaining, 1…0 as its clock runs down.
     ///
-    /// `repProgress` cannot answer this: it is hold-only, so it is zero for every second
-    /// of lead-in and rest. Timer-only needs one dial that stays meaningfully filled in
-    /// all three live phases, while measured sessions must not publish a continuous value
-    /// on every force sample; `RunnerSession` gates this readout to `timerOnly`.
+    /// `repProgress` is hold-only, zero through lead-in and rest; timer-only needs one
+    /// dial filled in all three live phases. `RunnerSession` gates this to `timerOnly`
+    /// so measured sessions do not publish a continuous value per force sample.
     func phaseRemainingFraction(at t: TimeInterval) -> Double? {
         let phaseToRead = unpaused
         let clock: TimeInterval
@@ -994,9 +916,8 @@ struct SessionRunner: Sendable {
     /// the set you are about to start rather than the one you just finished — the same
     /// forward tense as the grip line and the pull count beside it.
     var setNumber: Int? { displaySlot.map { $0.setIndex + 1 } }
-    /// STORED, not computed. `slots` is fixed at `init` and never mutates, but this was
-    /// read from `RunnerSession.publish()` — which runs on EVERY sample — so an Array-map
-    /// plus a Set construction ran ~96,000 times a session to recompute a constant.
+    /// STORED, not computed: `RunnerSession.publish()` reads it on EVERY sample, where
+    /// recomputing it cost ~96,000 map-and-Set passes a session.
     let setCount: Int
     /// 1-based rep position within the current set.
     var repNumberInSet: Int? { displaySlot.map { $0.repIndex + 1 } }

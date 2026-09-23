@@ -4,10 +4,9 @@
 import Foundation
 
 /// One executable rep, fully resolved. EVERYTHING the app says about a routine — the
-/// "≈21 min" in the nav subtitle, the per-side totals, the collapsed row's clock, and
-/// the order M3 actually executes — is a fold over this ONE list. A parallel closed
-/// form would eventually disagree with the runner, and the disagreement would be
-/// invisible without a stopwatch.
+/// "≈21 min", the per-side totals, the row clocks, the order the runner executes — is
+/// a fold over this ONE list. A parallel closed form would eventually disagree with the
+/// runner, invisibly without a stopwatch.
 struct RepSlot: Hashable, Sendable, Identifiable {
     /// Index into `plan.executable.sets` — NOT into the authored sets, so a zero-rep
     /// set can never shift what a logged rep points at.
@@ -19,10 +18,9 @@ struct RepSlot: Hashable, Sendable, Identifiable {
     var holdSeconds: Int
     /// The set's lead-in, on rep 0 only; 0 otherwise.
     var leadInBefore: Int
-    /// The load to aim for, in kilograms, ALREADY RESOLVED — percentages are baked down
-    /// per hand by `PlanMath.sequence` against the max table frozen at session start,
-    /// so nothing downstream of here needs a live max lookup. nil when the routine sets no target for this set, or
-    /// when its grip has no max on file.
+    /// The load to aim for in kilograms, ALREADY RESOLVED per hand by `PlanMath.sequence`
+    /// against the max table frozen at session start, so nothing downstream looks up a
+    /// max. nil when the set has no target or its grip has no max on file.
     var targetBand: ClosedRange<Double>? = nil
     /// The intra-set rest, the SET BREAK on a set's last rep, or 0 at the very end of
     /// the session — nobody rests after the last pull, and counting that rest would put
@@ -80,39 +78,21 @@ enum PlanMath {
         set.targetPercentBand ?? plan.targetPercentBand
     }
 
-    /// The load for ONE rep, resolved against the hand that rep is pulled with.
-    ///
-    /// This is `targetBand` plus the one fact a `SetPlan` cannot carry: a set covers both
-    /// hands, and the two hands do not have the same max. So the per-hand answer has to
-    /// be computed per REP, which is the only place `Side` is known — see `sequence`.
-    ///
-    /// An explicit kilogram band typed on the set stays hand-agnostic, deliberately. The
-    /// precedence rule this file already states is that *a number a person typed must
-    /// never be second-guessed by arithmetic*, and splitting a typed 8 kg into 8.4 and
-    /// 7.6 because of a ratio derived elsewhere is exactly that. Per-hand loads come
-    /// from percentages, which is the app's primary path anyway.
+    /// The load for ONE rep, resolved against that rep's hand. A set covers both hands and
+    /// they do not share a max, so this is computed per REP — see `sequence`. A kg band
+    /// typed on the set stays hand-agnostic: splitting a typed 8 kg into 8.4 / 7.6 would
+    /// second-guess a number a person typed. Per-hand loads come from percentages.
     static func targetBand(_ set: SetPlan, in plan: SessionPlan,
                            side: Side, maxes: MaxTable) -> ClosedRange<Double>? {
         targetBand(set, in: plan, maxKg: maxes.max(grip: set.grip.key, side: side))
     }
 
-    /// Bake every percentage target down to the kilograms it means TODAY, keyed by each
-    /// set's own grip.
+    /// Bake every percentage target down to today's kilograms, keyed by each set's grip.
     ///
-    /// A set-level projection for callers that need one band per set. This is not the
-    /// session-start path: the runner freezes a MaxTable and sequence resolves each
-    /// hand separately; its RepSummary freezes the resulting target.
-    ///
-    /// **Hand-agnostic on purpose:** it fills the SET's band, which is what surfaces
-    /// that speak about a set rather than a rep need. The per-rep, per-hand load is
-    /// resolved in `sequence(for:maxes:)`, and that is what the runner and the log
-    /// actually use.
-    ///
-    /// Sets whose grip has no max on file keep an empty band and simply show no target;
-    /// the percentages stay in the returned plan untouched, so nothing is lost — this
-    /// only ADDS the resolved kilograms.
-    /// Retained set-level utility; current training freezes a MaxTable and resolves
-    /// each rep through sequence instead. No current screen depends on this helper.
+    /// A retained set-level utility; no current screen depends on it. NOT the
+    /// session-start path: the runner freezes a MaxTable and `sequence` resolves each
+    /// hand, whereas one band baked onto a set would hand both hands the same kilograms.
+    /// Sets without a max keep no band; percentages stay untouched.
     static func resolvingTargets(_ plan: SessionPlan, maxes: MaxTable) -> SessionPlan {
         var out = plan
         out.sets = plan.sets.map { set in
@@ -168,15 +148,11 @@ enum PlanMath {
 
     // MARK: - The sequence
 
-    /// The whole session, rep by rep. Zero-rep sets are dropped ENTIRELY — no lead-in,
-    /// no set break — because a set with nothing in it is not a pause, it is a row the
-    /// user has emptied out.
+    /// The whole session, rep by rep. Zero-rep sets are dropped ENTIRELY (no lead-in, no
+    /// set break): an emptied row is not a pause.
     ///
-    /// **`maxes` is what makes loads per-hand.** A set covers both hands and a rep does
-    /// not, so this loop is the only place that can ask "what is the target for the LEFT
-    /// hand on this grip". Pass an empty table (the default) for every caller that wants
-    /// the shape of a session rather than its loads — totals, estimates, the row clocks —
-    /// none of which read `targetBand`.
+    /// `maxes` makes loads per-hand, since only a rep knows its hand. Callers that want
+    /// the session's shape rather than its loads (totals, estimates) pass the empty default.
     static func sequence(for plan: SessionPlan, maxes: MaxTable = MaxTable()) -> [RepSlot] {
         let live = plan.executable
         var slots: [RepSlot] = []
@@ -355,11 +331,8 @@ enum PlanMath {
     // MARK: - Per-hand loads, as words
 
     /// What this set asks of each hand: `"5.5–8.0 kg"` when the hands agree, and
-    /// `"L 5.5–8.0 · R 5.0–7.5 kg"` when they do not.
-    ///
-    /// THE one place per-hand load copy is decided. The builder, the wrap-up and the
-    /// runner all speak through it, because three hand-rolled versions of "which hand
-    /// gets what" is three chances to disagree about the number someone trains against.
+    /// `"L 5.5–8.0 · R 5.0–7.5 kg"` when they do not. THE one place per-hand load copy is
+    /// decided, so the builder, wrap-up and runner cannot disagree.
     ///
     /// nil when neither hand resolves — the caller then says "no max" rather than
     /// printing an empty band.
@@ -378,9 +351,8 @@ enum PlanMath {
             return bandText(l)
         case let (l?, r?):
             return String(localized: "L \(bandText(l, withUnit: false)) · R \(bandText(r))")
-        // Exactly one hand resolves — which happens when a max was recorded for ONE hand
-        // and no both-hands max exists. Naming the hand is the point: the other one
-        // genuinely has no target, and a bare band would read as applying to both.
+        // Exactly one hand resolves (a one-handed max, no both-hands max). Name it: a bare
+        // band would read as applying to both.
         case let (l?, nil):
             return String(localized: "L \(bandText(l))")
         case let (nil, r?):
@@ -432,16 +404,10 @@ enum PlanMath {
 
     // MARK: - Peak intensity
 
-    /// How hard a routine PRESCRIBES, as four bands rather than a bare number — the
-    /// vocabulary a card colours itself from (Nuri, 2026-08-17: red at 80–100 %, orange
-    /// between, green for light, bleu when nothing resolves). The band → colour mapping
-    /// lives in the UI; this file decides only WHICH band, so the boundaries are pinned by
-    /// a test rather than by a screenshot.
-    ///
-    /// **Boundary ownership is explicit and must stay that way: 0.30 is `light` and 0.80
-    /// is `nearMax`.** Each edge belongs to the quieter side at the bottom and the louder
-    /// side at the top, because the direction of the error matters: describing a max
-    /// effort as merely moderate is the harmful way to be wrong.
+    /// How hard a routine PRESCRIBES, as four bands a card colours itself from (Nuri,
+    /// 2026-08-17). The UI owns the colours; this decides only WHICH band, so the
+    /// boundaries are pinned by a test. **0.30 is `light` and 0.80 is `nearMax`** —
+    /// calling a max effort moderate is the harmful direction to be wrong in.
     enum IntensityBand: Hashable, Sendable {
         /// No set prescribes a load anything can resolve — NOT "easy". See
         /// `peakIntensity(of:maxes:)` for what makes a set contribute.
@@ -457,9 +423,8 @@ enum PlanMath {
         /// nil → `unknown`, which is the whole reason the fraction is an Optional: a
         /// routine that prescribes no load is not a light routine.
         static func band(for fraction: Double?) -> IntensityBand {
-            // A non-finite fraction is nobody's intensity. It is named rather than left
-            // to fall through, because a NaN fails both comparisons below and would
-            // otherwise be reported as `moderate` — a confident answer about nothing.
+            // Named, because a NaN fails both comparisons below and would otherwise be
+            // reported as `moderate` — a confident answer about nothing.
             guard let fraction, fraction.isFinite else { return .unknown }
             if fraction <= 0.30 { return .light }
             if fraction >= 0.80 { return .nearMax }
@@ -467,44 +432,24 @@ enum PlanMath {
         }
     }
 
-    /// The hardest load this routine prescribes, as a fraction of max — `0.85` is 85 %.
-    /// ONE number for the whole routine, because "how hard is this" is the difference
-    /// between the daily 20 % no-hangs and a max day, and today that fact is only
-    /// readable by opening the routine and reading six set rows.
+    /// The hardest load this routine prescribes, as a fraction of max (`0.85` is 85 %) —
+    /// the difference between the daily 20 % no-hangs and a max day, in one number.
     ///
-    /// Per set, in `targetBand`'s OWN precedence — kilograms typed on the set, then the
-    /// set's percentage, then the routine's — because an intensity that disagreed with the
-    /// loads the runner will actually prescribe would be a second source of truth about
-    /// the number somebody trains against:
+    /// Per set, in `targetBand`'s OWN precedence, so it cannot disagree with the loads
+    /// the runner prescribes:
+    /// - **A kg band** is divided by the max of each hand the set's reps use
+    ///   (`handSequence`, with `MaxTable`'s fallbacks; a `.both` rep never uses a
+    ///   synthesised sum). The HIGHEST fraction wins: the weaker hand names the day.
+    /// - **A percentage band** IS the intensity and needs no max.
     ///
-    /// - **A kg band** is divided by the max of each hand this set's reps are actually
-    ///   pulled with — `handSequence`, so which sides a mode covers is resolved in the one
-    ///   place allowed to answer that, and a `bothHands` set never invents a left and a
-    ///   right. `MaxTable` supplies the fallback rules unchanged: a `.left`/`.right` rep
-    ///   may fall back to the both-hands max, a `.both` rep resolves against the
-    ///   both-hands max ONLY and never a synthesised sum. **The HIGHEST fraction across
-    ///   those hands wins** — the same 8 kg is a harder morning for the weaker hand, and
-    ///   that hand's experience is what names the day.
-    /// - **A percentage band** IS the intensity and needs no max at all: "80–100 %" states
-    ///   how hard a routine is whether or not anybody has ever measured that grip.
-    ///
-    /// **A set that cannot resolve contributes NOTHING rather than making the whole answer
-    /// unknown.** Five sets at 22 % plus one kg set on an unmeasured grip is still a 22 %
-    /// routine, and blanking the badge would be the loudest possible way to say "no max
-    /// on file". nil comes back only when NO set contributed, which is the honest reading
-    /// of a routine that prescribes no load anywhere — Nuri's own daily routine, which
-    /// deliberately goes by feel.
-    ///
-    /// The HI bound is the intensity throughout. A lone endpoint needs no special case:
-    /// `SetPlan.band` normalizes one to `lo...lo`, so a from-only band reads as itself.
-    /// Nothing is clamped to 1.0 — a 110 % prescription against a stale max is a real
-    /// thing to author, and reporting it as 100 % would hide exactly the case worth
-    /// seeing. See `IntensityBand`, which puts it in `nearMax` on purpose.
+    /// A set that cannot resolve contributes NOTHING rather than blanking the answer;
+    /// nil only when no set contributed (a routine trained by feel). The HI bound is the
+    /// intensity; a lone endpoint normalizes to `lo...lo`. Nothing is clamped to 1.0: a
+    /// 110 % prescription against a stale max belongs in `nearMax`, not hidden at 100 %.
     static func peakIntensity(of plan: SessionPlan, maxes: MaxTable) -> Double? {
         var peak: Double?
         // Only a finite fraction may raise the peak: a NaN wins no comparison, so an
-        // unguarded `Swift.max` would silently keep it and poison the whole routine's
-        // answer with one nonsense band.
+        // unguarded max would keep it and poison the whole answer.
         func consider(_ fraction: Double) {
             guard fraction.isFinite else { return }
             peak = peak.map { Swift.max($0, fraction) } ?? fraction
@@ -520,10 +465,8 @@ enum PlanMath {
                     consider(kg.upperBound / maxKg)
                 }
             } else if let percent = targetPercent(set, in: live) {
-                // Deliberately NOT reached by a set carrying kilograms: the precedence
-                // rule is that a typed number is never second-guessed by arithmetic, so a
-                // kg band with no max on file falls through to nothing rather than back
-                // to a percentage the set also happens to carry.
+                // A kg set never falls back to a percentage it also carries: a typed
+                // number is never second-guessed by arithmetic.
                 consider(percent.upperBound)
             }
         }

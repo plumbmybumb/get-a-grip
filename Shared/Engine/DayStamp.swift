@@ -5,19 +5,14 @@ import Foundation
 
 /// A calendar day as an integer — days since 1970-01-01 (proleptic Gregorian).
 ///
-/// A training day is the day the user lived through, which has no timezone: a session
-/// finished at 00:30 belongs to the evening it was part of — the day turns at
-/// `rolloverHour`, not midnight — and "2 of 2 today" must flip at that hour without a
-/// relaunch. Storing days as integers makes all of
-/// that pure integer math and immune to the DST/timezone off-by-one bugs `Date`
-/// invites (a local-midnight `Date` re-read in another timezone shifts a day), and it
-/// makes `WorkoutLog.dayKey` a cheap Int predicate instead of a Calendar pass over
-/// every log.
+/// A training day is the day the user lived through: a session finished at 00:30
+/// belongs to the evening before (the day turns at `rolloverHour`), and "2 of 2 today"
+/// must flip at that hour without a relaunch. Integers make that pure arithmetic,
+/// immune to the off-by-one a local-midnight `Date` re-read in another zone invites,
+/// and make `WorkoutLog.dayKey` a cheap Int predicate.
 ///
 /// The ONLY place `Calendar` appears is this file's conversion boundary: take Y/M/D in
 /// the user's calendar, rebuild it in a fixed UTC Gregorian calendar, divide by 86 400.
-///
-/// Ported from Schengen Slice, trimmed to what a training app needs.
 struct DayStamp: Hashable, Comparable, Sendable, Strideable {
     var raw: Int
 
@@ -62,11 +57,9 @@ extension DayStamp {
 
     private static let secondsPerDay: Double = 86_400
 
-    /// A Gregorian calendar in the given calendar's TIME ZONE. Only the zone is taken
-    /// from the user's calendar, never its calendar system: a device set to the
-    /// Buddhist or Japanese calendar reports years like 2569 or Reiwa 8, and rebuilding
-    /// those components under Gregorian rules would shift every stamp by centuries.
-    /// `raw` must always mean true days-since-1970 proleptic Gregorian.
+    /// A Gregorian calendar in the given calendar's TIME ZONE — never its calendar
+    /// system: Buddhist or Japanese years (2569, Reiwa 8) rebuilt under Gregorian rules
+    /// would shift every stamp by centuries.
     static func gregorian(zoneOf calendar: Calendar) -> Calendar {
         var g = Calendar(identifier: .gregorian)
         g.timeZone = calendar.timeZone
@@ -96,21 +89,16 @@ extension DayStamp {
 
     // MARK: - The training day
 
-    /// **A training day turns at 04:00, not at midnight.** A hang that starts at 23:47
-    /// and ends 44 seconds past midnight is an evening session; filing it under the
-    /// morning after scores one evening as two days, which is exactly what Nuri's own
-    /// history showed (2026-09-20: the row dated the 19th, the tally and the calendar
-    /// crediting the 20th). The promise this file always made — a 00:30 session belongs
-    /// to the day the climber lived through — was never actually implemented until this
-    /// constant existed: the clock simply turned at midnight. Anything in the small hours
-    /// before this counts for the day before. Four is after any late session and before
-    /// any morning one.
+    /// **A training day turns at 04:00, not at midnight.** A hang from 23:47 to just past
+    /// midnight is an evening session; filing it under the morning after scored one
+    /// evening as two days (2026-09-20). Anything before this hour counts for the day
+    /// before: four is after any late session and before any morning one.
     static let rolloverHour = 4
 
     /// The training day `date` falls in: its calendar day, or the previous one when the
-    /// local clock reads earlier than `rolloverHour`. Calendar arithmetic, deliberately
-    /// not "minus four hours": on the night the clocks go back, 04:30 is only three and a
-    /// half hours past midnight, and subtracting a fixed interval filed it a day early.
+    /// local clock reads earlier than `rolloverHour`. Calendar arithmetic, never "minus
+    /// four hours": on the night the clocks go forward, 04:30 minus four hours is 23:30
+    /// the evening before.
     init(trainingDayOf date: Date, calendar: Calendar = .current) {
         let comps = Self.gregorian(zoneOf: calendar)
             .dateComponents([.year, .month, .day, .hour], from: date)

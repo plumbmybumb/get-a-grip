@@ -3,9 +3,8 @@
 
 import Foundation
 
-// What a finished session leaves behind. M3's runner produces these; they are declared
-// now because `WorkoutLog`'s blob columns are typed on them, and a log written in M3
-// must be readable by every build after it.
+// What a finished session leaves behind. `WorkoutLog`'s blob columns are typed on these,
+// so a log written by any build must stay readable by every build after it.
 
 /// How a rep ended, including historical outcomes retained for readable old exports.
 /// Unrecognized stored outcomes decode conservatively as aborted.
@@ -31,22 +30,18 @@ struct RepSummary: Hashable, Sendable, Codable {
     /// What was AUTHORED — kept beside `heldSeconds` so a short rep reads as a short
     /// rep rather than as a rewritten plan.
     var targetSeconds: Int = 10
-    /// What was ACCRUED over threshold, from device timestamps only. Never wall clock:
-    /// BLE jitter and a UI hitch would otherwise invent hang time the device never
-    /// measured. Double because the accrual is sub-second.
+    /// What was ACCRUED over threshold, from device timestamps only — never wall clock,
+    /// where BLE jitter or a UI hitch would invent hang time. Double: it is sub-second.
     var heldSeconds: Double = 0
     var peakKg: Double = 0
     /// Mean while engaged; segments below threshold are excluded, so a dropout does not
     /// drag the average toward zero and make a good rep look weak.
     var avgKg: Double = 0
     /// **What this rep was ASKED to pull, in kilograms, for THIS hand** — nil when the
-    /// routine set no target or the grip had no max on file for that hand.
-    ///
-    /// It lives per REP rather than on the frozen plan because that is the only place
-    /// the answer is single-valued: a set covers both hands, and a left and a right max
-    /// resolve the same percentage to different kilograms. The plan blob keeps what was
-    /// AUTHORED (the percentage); these keep what was DEMANDED, which is the number that
-    /// has to survive somebody recording a new max next month.
+    /// routine set no target or the grip had no max on file for that hand. Per REP
+    /// because only there is the answer single-valued (the hands have different maxes).
+    /// The plan keeps what was AUTHORED; this keeps what was DEMANDED, which must survive
+    /// a new max recorded next month.
     var targetLoKg: Double? = nil
     var targetHiKg: Double? = nil
     var outcome: RepOutcome = .completed
@@ -58,10 +53,8 @@ struct RepSummary: Hashable, Sendable, Codable {
 
     var targetBand: ClosedRange<Double>? { SetPlan.band(lo: targetLoKg, hi: targetHiKg) }
 
-    /// FROZEN — these keys are inside write-once log blobs the moment M3 ships.
-    /// ADDITIVE ONLY: `targetLoKg`/`targetHiKg` arrived later and decode as nil on every
-    /// rep logged before they existed, which is the honest reading — that session's
-    /// prescribed load genuinely was not recorded.
+    /// FROZEN — these keys live in write-once log blobs. ADDITIVE ONLY: later keys such
+    /// as `targetLoKg`/`targetHiKg` decode as nil on older reps, which is true.
     enum CodingKeys: String, CodingKey {
         case setIndex, repIndex, side, grip, targetSeconds, heldSeconds, peakKg, avgKg, outcome
         case targetLoKg, targetHiKg, startedElapsedSeconds, endedElapsedSeconds
@@ -82,8 +75,7 @@ extension RepSummary {
         self.heldSeconds = Swift.max(0, c.value(.heldSeconds, or: 0))
         self.peakKg = Swift.max(0, c.value(.peakKg, or: 0))
         self.avgKg = Swift.max(0, c.value(.avgKg, or: 0))
-        // Absent on every rep logged before the column existed, and `optional` is the
-        // right door for that: nil means "no target was recorded", which is true.
+        // Absent on older reps: nil means "no target was recorded", which is true.
         self.targetLoKg = c.optional(.targetLoKg)
         self.targetHiKg = c.optional(.targetHiKg)
         self.outcome = c.value(.outcome, or: .aborted)
@@ -100,23 +92,16 @@ enum MaxSource: String, Codable, Hashable, Sendable {
 
 /// WHAT KIND of training a logged session was.
 ///
-/// The app was built around one ritual — twice-a-day no-hangs — and then ran into the
-/// obvious fact that a climbing session is finger training too (Nuri, 2026-08-05:
-/// *"there are days I go climb at the gym and it interrupts my twice-a-day
-/// hangboarding. It's not really fair to say that I didn't train"*). A day spent
-/// bouldering at your limit is MORE finger load than the routine it displaced, and an
-/// app that scored it as a miss was lying about the week.
+/// A climbing session is finger training too (Nuri, 2026-08-05: *"It's not really fair
+/// to say that I didn't train"*); a day bouldering at your limit is MORE finger load
+/// than the routine it displaced, and scoring it as a miss lied about the week.
 ///
-/// **A climb COMPLETES THE DAY** — see `TemplateStore.dayIsComplete`. It does not merely
-/// fill a slot: no reminder fires afterwards and the day reads as done. An extra hang
-/// session stays available and still logs, because after an easy volume evening one is
-/// perfectly reasonable; it is offered, never asked for. A hang logged by hand is
-/// different: it tallies like a routine session, because it is still one of the day's
-/// sessions rather than a reason to settle the day outright.
+/// **A climb COMPLETES THE DAY** (`TemplateStore.dayIsComplete`): no reminder fires
+/// afterwards. An extra hang session is still offered, never asked for. A hang logged by
+/// hand instead tallies like a routine session rather than settling the day.
 ///
-/// One enum rather than a kind plus a separate style column: every question the app asks
-/// is either "was this a climb" or "which sort of session", and both fall straight out
-/// of the case.
+/// One enum rather than kind plus style: every question is "was this a climb" or "which
+/// sort of session", and both fall out of the case.
 enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
     /// The routine — a hangboard/no-hang session the runner drove.
     case hang
@@ -141,10 +126,8 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
     /// `.benchmark` is `recordMax`'s; neither may be created by hand.
     var isLoggedByHand: Bool { isClimb || self == .hangManual }
 
-    /// SETTLES THE DAY: no reminder fires after it and the day reads as done. Climbs
-    /// because the training happened elsewhere; a benchmark because maximal testing IS
-    /// a maximal finger stimulus — being nagged to hangboard after pulling limit maxes
-    /// is the same failure as being nagged after the gym.
+    /// SETTLES THE DAY: no reminder fires after it. Climbs because the training happened
+    /// elsewhere; a benchmark because maximal testing IS a maximal finger stimulus.
     var settlesDay: Bool { isClimb || self == .benchmark }
 
     /// Title case, for a row that names it.
@@ -169,9 +152,8 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
         }
     }
 
-    /// What each style actually is, in the words a climber would use. Shown under the
-    /// picker, because "volume" and "limit" are jargon someone may only half-know and a
-    /// mis-picked one quietly mis-describes the week.
+    /// What each style is, in a climber's words, under the picker: "volume" and "limit"
+    /// are jargon, and a mis-picked one mis-describes the week.
     var explainer: String {
         switch self {
         case .hang:        String(localized: "A session on the board.")
@@ -182,10 +164,9 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
         }
     }
 
-    /// An unknown raw from a newer build reads as `.hang`, which is what every row
-    /// written before this column existed means. It is also the CONSERVATIVE direction:
-    /// a future kind misread as a hang session under-counts the day and asks for more
-    /// training, where the opposite would silently excuse a day nobody trained.
+    /// An unknown raw from a newer build reads as `.hang`, as every row before this column
+    /// did. CONSERVATIVE: a misread future kind under-counts the day and asks for more
+    /// training, rather than silently excusing a day nobody trained.
     init(fallback raw: String) {
         self = SessionKind(rawValue: raw) ?? .hang
     }

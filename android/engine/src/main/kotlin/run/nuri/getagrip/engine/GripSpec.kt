@@ -15,23 +15,18 @@ import kotlinx.serialization.json.JsonPrimitive
 
 // MARK: - Fingers
 
-/// Which digits are on the hold. An OptionSet over exactly FIVE bits — the four
-/// fingers plus the THUMB — because the domain is closed at the hand: every non-empty
-/// combination is representable, so there is no such thing as an "unknown value from a
-/// newer build" to fall back from. The thumb earned its bit the honest way (Nuri,
-/// 2026-08-04): pinch blocks are real training, and a pinch IS thumb opposition — it
-/// was a missing digit, not a new dimension. A genuinely new dimension (pinch width,
-/// sloper angle) is still a new FIELD, never a new bit.
+/// Which digits are on the hold. An OptionSet over exactly FIVE bits — four fingers
+/// plus the THUMB — because the domain is closed at the hand: there is no "unknown
+/// value from a newer build" to fall back from. The thumb was a missing digit, not a
+/// new dimension (Nuri, 2026-08-04: pinch blocks are real training). A genuinely new
+/// dimension (pinch width, sloper angle) is a new FIELD, never a new bit.
 ///
 /// TRANSLATION NOTE (from Shared/Engine/GripSpec.swift): Swift's `OptionSet` becomes a
-/// `@JvmInline value class` over the same Int. The masking initializer needs a PRIVATE
-/// primary constructor plus `Companion.invoke`, because a Kotlin constructor cannot
-/// rewrite its own parameter — so `FingerSet(rawValue)` reads identically to Swift at
-/// every call site outside this file. Inside the class the private constructor wins
-/// overload resolution and therefore does NOT mask; every internal call below passes an
-/// already-masked value (an `or`/`and` of masked bits stays inside the mask). Set
-/// algebra is `contains` / `union` / `subtracting`, the three operations Swift's
-/// `OptionSet` gave for free.
+/// `@JvmInline value class`. Masking needs a PRIVATE primary constructor plus
+/// `Companion.invoke` (a Kotlin constructor cannot rewrite its own parameter), so
+/// `FingerSet(rawValue)` reads as in Swift outside this file. Inside, the private
+/// constructor wins and does NOT mask, so internal calls pass already-masked values.
+/// Set algebra is `contains` / `union` / `subtracting`.
 @JvmInline
 value class FingerSet private constructor(val rawValue: Int) {
 
@@ -250,37 +245,27 @@ value class GripPosition(val rawValue: String) {
 
 // MARK: - The grip
 
-/// A grip, as a VALUE. There is no Grip model, no library, no folder — a grip lives
-/// inline on the set row that uses it, and two sets built independently with the same
-/// three fields are automatically the same trend series.
+/// A grip, as a VALUE — see the file header.
 ///
-/// TRANSLATION NOTE: Swift enforces the pinch invariant with `didSet` observers on
-/// `fingers` and `position` plus a hand-written `init` that shadows the memberwise one.
-/// Kotlin has neither property observers nor mutable value semantics, so this is a plain
-/// class (NOT a `data class`) whose `fingers` PROPERTY is computed from the constructor
-/// parameter of the same name — a property initializer is the one place a Kotlin
-/// constructor can normalize its own input, and unlike an `init { require(…) }` guard it
-/// heals rather than throws, which is what the decoder needs. There is deliberately no
-/// generated `copy`: the Swift mutations (`spec.position = .pinch`) become
-/// `withEdgeMM` / `withFingers` / `withPosition`, which re-enter the constructor and
-/// therefore re-assert the invariant. `equals`/`hashCode` are hand-written over the
-/// three RESOLVED fields, so a grip built as a thumbless pinch is equal to — and hashes
-/// with — the same grip built with the thumb.
+/// TRANSLATION NOTE: Swift enforces the pinch invariant with `didSet` observers plus a
+/// hand-written `init`. Kotlin has no observers, so this is a plain class (NOT a `data
+/// class`) whose `fingers` PROPERTY is computed from the constructor parameter — a
+/// property initializer heals rather than throws, which the decoder needs. No generated
+/// `copy`: Swift's mutations become `withEdgeMM` / `withFingers` / `withPosition`, which
+/// re-enter the constructor. `equals`/`hashCode` cover the three RESOLVED fields, so a
+/// grip built as a thumbless pinch equals the same grip built with the thumb.
 class GripSpec(
-    /// WHOLE millimetres. Int, not Double, and that is load-bearing: `key` is a
-    /// serialization, and Double formatting is locale-dependent — "20" vs "20.0" vs
-    /// "20,0" would fork one trend series into three between a French phone and an
-    /// American one.
+    /// WHOLE millimetres. Int, not Double: `key` is a serialization, and "20" vs "20.0"
+    /// vs "20,0" would fork one trend series into three across locales.
     val edgeMM: Int = 20,
     fingers: FingerSet = FingerSet.four,
     val position: GripPosition = GripPosition.halfCrimp,
 ) : JsonEncodable {
 
-    /// A PINCH ALWAYS INCLUDES THE THUMB (Nuri, 2026-08-04: "there's no world where you
-    /// can pinch without the thumb"). It is not a preference — a pinch IS thumb
-    /// opposition, so a pinch without one is not a grip anybody can perform, and the app
-    /// must not be able to represent it. Enforced HERE rather than in the three screens
-    /// that edit a grip, so no surface can produce one and no blob can decode into one.
+    /// A PINCH ALWAYS INCLUDES THE THUMB (Nuri, 2026-08-04). Not a preference: a pinch IS
+    /// thumb opposition, so a thumbless one is not a performable grip and must not be
+    /// representable. Enforced HERE, not in the screens that edit a grip, so no surface
+    /// can produce one and no blob can decode into one.
     val fingers: FingerSet =
         if (position == GripPosition.pinch) fingers.union(FingerSet.thumb) else fingers
 
@@ -290,19 +275,15 @@ class GripSpec(
 
     /// ### THE CANONICAL KEY — FROZEN FOREVER.
     /// `"<edgeMM>|<fingerToken>|<positionRaw>"` — "20|IMRL|halfCrimp", "20|IM|fullCrimp".
-    /// The only thing joining a rep pulled in March to one pulled in December and to
-    /// the `MaxRecord` that says what 25 % means for it. NEVER localize, reformat,
-    /// reorder or pad. `|` is safe: no component can contain one — the edge is an Int,
-    /// the token is drawn from "IMRL", and a position raw is an identifier.
-    /// NEVER STORED — always computed, because a stored copy is a second source of
-    /// truth that can disagree with the fields beside it.
-    /// A fourth dimension takes a "v2:" namespace plus a migration, or lives outside
-    /// the key.
+    /// The only thing joining a rep pulled in March to one in December and to the
+    /// `MaxRecord` that says what 25 % means for it. NEVER localize, reformat, reorder
+    /// or pad; no component can contain `|`. NEVER STORED: a stored copy could disagree
+    /// with the fields beside it. A fourth dimension takes a "v2:" namespace plus a
+    /// migration, or lives outside the key.
     val key: String get() = "$edgeMM|${fingers.token}|${position.rawValue}"
 
     /// Sentence case, for a set row inside running copy: "20 mm · 4 fingers · half crimp".
-    /// It differs from `displayName` in the POSITION's case only — the finger names are
-    /// labels ("Front 3", "4 fingers") whose capital is part of the name.
+    /// Only the POSITION is lowercased; finger names are labels whose capital is kept.
     val line: String
         get() = L10n.tr("%d mm · %s · %s", edgeMM, fingers.name, position.name.lowercase())
 
@@ -343,12 +324,10 @@ class GripSpec(
 
         fun fromJson(element: JsonElement?): GripSpec? = JsonRead.obj(element)?.let { fromJson(it) }
 
-        /// The lenient decoder. A blob written before the pinch rule existed self-heals on
-        /// read — which DOES change its `key` from "20|IM|pinch" to "20|IMT|pinch", so a
-        /// max recorded against the thumbless form no longer joins. Acceptable only
-        /// because `.pinch` is hours old and unshipped; a rule that re-keys shipped data
-        /// needs a "v2:" namespace and a migration instead. Here the invariant needs no
-        /// hand-written re-assertion at all: the constructor IS the only door.
+        /// The lenient decoder. Healing re-keys a pre-rule blob ("20|IM|pinch" →
+        /// "20|IMT|pinch"), acceptable only because `.pinch` was unshipped; re-keying
+        /// shipped data needs a "v2:" namespace and a migration. No hand-written
+        /// re-assertion here: the constructor IS the only door.
         fun fromJson(o: JsonObject): GripSpec = GripSpec(
             edgeMM = edgeRange.clamping(o.intOr("edgeMM", 20)),
             fingers = o.valueOr("fingers", FingerSet.four) { FingerSet.fromJson(it) },

@@ -6,14 +6,10 @@ import SwiftUI
 import UIKit
 #endif
 
-// Widget-safe design subset — this file is in `Shared/`, so when a workout widget
-// eventually exists it compiles into that target too. Nothing here may reference
-// `.glassEffect` / `Glass` / `GlassEffectContainer` (unsupported in archived widget
-// views). Glass chrome lives in Sources/UI/Style/GlassStyle.swift.
-//
-// Ported from Schengen Slice so the apps read as siblings: same bones (slate field,
-// graphite interactive chrome, semantic ink, small-caps labels, house metrics),
-// different signal hue — see `Accent` below.
+// Widget-safe design subset: this file is in `Shared/` and compiles into the widget
+// too, so nothing here may reference `.glassEffect` / `Glass` / `GlassEffectContainer`
+// (unsupported in archived widget views). Glass chrome lives in
+// Sources/UI/Style/GlassStyle.swift.
 
 extension Color {
     init(hex: String) {
@@ -46,14 +42,10 @@ enum Ink {
 }
 
 extension View {
-    /// **Display tracking for the hero numerals.** Apple's rule is that tracking is
-    /// size-specific: small text wants it slightly OPEN (which `CapsLabel` already does
-    /// at +0.8), and large text wants it TIGHT, because letterforms read further and
-    /// further apart as they grow. At 76 pt a default-tracked "21.7" is visibly loose —
-    /// the digits float instead of reading as one number.
-    ///
-    /// Scaled from the point size rather than fixed, so it stays proportional at every
-    /// Dynamic Type setting: −0.02 em is the standard display correction.
+    /// **Display tracking for the hero numerals.** Tracking is size-specific: small text
+    /// wants it slightly OPEN (`CapsLabel`, +0.8), large text TIGHT, because letterforms
+    /// read further apart as they grow — at 76 pt default tracking makes "21.7" float.
+    /// −0.02 em of the point size, so it stays proportional at every Dynamic Type size.
     func displayTracking(_ size: CGFloat) -> some View {
         tracking(size * -0.02)
     }
@@ -72,19 +64,14 @@ extension Font {
 /// Slate bones + graphite interactive chrome, with exactly two signal hues:
 /// **bleu** for "force is live" and **alarm red** for "attention here".
 ///
-/// The house discipline (learned on Schengen Slice) is that a colour can only mean
-/// something if it isn't also the app's baseline. So chrome stays `graphite` — the
-/// app's ink, not a colour — which leaves the whole spectrum free for the two things
-/// a training app actually has to say at arm's length, mid-hang, without reading a
-/// word: *you are pulling hard enough* (bleu), and *something is wrong* (red).
+/// A colour can only mean something if it isn't also the baseline, so chrome stays
+/// `graphite` — ink, not a colour — leaving hue for the two things to say at arm's
+/// length, mid-hang: *you are pulling* (bleu) and *something is wrong* (red).
 enum Accent {
-    /// **The hues as `RRGGBB` text**, for the surfaces that need the string rather than
-    /// the `Color`: `WatchFacePalette` computes its contrast from the hex and hands the
-    /// watch a string to turn back into a colour, so it cannot take a `Color` token. One
-    /// literal per hue, read from here by both, is what stops the face and the app from
-    /// drifting into two different blues while claiming to be one signal.
-    /// The engine owns the values (`AccentHex`): the watch face reads them there, and
-    /// the engine compiles without SwiftUI. These are the same strings, by reference.
+    /// **The hues as `RRGGBB` text**, for surfaces that need the string (the watch face
+    /// computes contrast from hex). The engine owns the values (`AccentHex`, which
+    /// compiles without SwiftUI); these are the same strings by reference, so the face
+    /// and the app cannot drift into two different blues.
     enum Hex {
         static let bleu = AccentHex.bleu
         static let alarm = AccentHex.alarm
@@ -102,11 +89,9 @@ enum Accent {
     static let bleu = Color.adaptive(Color(hex: Hex.bleu), Color(hex: "5AA9F0"))
     static let bleuFlat = Color(hex: "318CE7")
 
-    /// Moss — the LIGHT-INTENSITY signal, and green's only appearance in the palette.
-    /// It exists for exactly one job: the routine card's rung saying "this one is
-    /// easy on the fingers" (≤30 % of max, Nuri's ladder, 2026-08-17). Muted on
-    /// purpose so it sits with slate and bleu rather than reading as a traffic
-    /// light; anything else that wants green must argue here first.
+    /// Moss — the LIGHT-INTENSITY signal and green's only appearance: the routine card's
+    /// rung saying "easy on the fingers" (≤30 % of max, 2026-08-17). Muted so it does not
+    /// read as a traffic light; anything else that wants green must argue here first.
     static let moss = Color.adaptive(Color(hex: "1F7A4A"), Color(hex: "58BE8B"))
 
     /// RESERVED for alarm: dropout below threshold mid-rep, destructive actions,
@@ -129,19 +114,14 @@ enum StatusTint {
     static let alarm = Accent.alarm
 }
 
-/// THE MOTION LADDER — every animation in the app comes from here.
-///
-/// Before this there were six durations (0.22, 0.24, 0.25, 0.26, 0.28, 0.30) doing one
-/// job, and the Reduce Motion ternary was copy-pasted at 22 call sites. Nothing chose
-/// those numbers; they drifted. Apple's own bar is that every timing value is a
-/// deliberate choice you can defend, so there are now three, and each says what it is
-/// for (audited against *Designing Fluid Interfaces*, 2026-08-05).
+/// THE MOTION LADDER — every animation in the app comes from here. It replaced six
+/// drifting durations and 22 copy-pasted Reduce Motion ternaries: every timing is a
+/// choice you can defend (audited against *Designing Fluid Interfaces*, 2026-08-05).
 enum Motion {
-    /// **The default, and critically damped — `bounce: 0`.** Disclosures, selection,
-    /// a row appearing, a page turned by a button: state changes that no gesture threw.
-    /// Overshoot on something that merely appeared reads as decoration; Apple reserves
-    /// bounce for motion a hand actually put momentum into. 0.30 s is the fast end of
-    /// the 0.3–0.4 s response band Apple ships for repositioning.
+    /// **The default, and critically damped — `bounce: 0`.** Disclosures, selection, a row
+    /// appearing, a page turned by a button: state changes no gesture threw. Overshoot is
+    /// earned by momentum; on something that merely appeared it is decoration. 0.30 s is
+    /// the fast end of Apple's 0.3–0.4 s repositioning band.
     static func state(_ reduceMotion: Bool) -> Animation {
         reduceMotion ? reduced : .smooth(duration: 0.30)
     }
@@ -152,10 +132,9 @@ enum Motion {
         reduceMotion ? reduced : .snappy(duration: 0.30)
     }
 
-    /// A LIVE SENSOR VALUE settling — the kg readouts, the force bar. Deliberately far
-    /// shorter than any transition, and deliberately bounce-free: this is tracking a
-    /// signal, not transitioning between states, and a number that overshoots the load
-    /// on the gauge is lying about a measurement.
+    /// A LIVE SENSOR VALUE settling — kg readouts, the force bar. Far shorter than any
+    /// transition and bounce-free: it tracks a signal, and a readout that overshoots is
+    /// lying about a measurement.
     static let live = Animation.smooth(duration: 0.12)
 
     /// Cumulative measured work travels linearly between radio batches. Match Android:
@@ -185,14 +164,12 @@ enum Metrics {
     /// system large title and toolbar rather than sitting inset from them.
     static let hPadding: CGFloat = 20
     static let maxContentWidth: CGFloat = 440
-    /// The column on a REGULAR-width screen (iPad, and a foldable's inner display). 440
-    /// was a phone number: centred in an 11-inch window it reads as a phone app in a
-    /// frame. 560 keeps the cards readable at arm's length without stretching a set row
-    /// into a form. Sheets keep 440 — a form sheet is already narrow.
+    /// The column on a REGULAR-width screen. 440 centred on an iPad reads as a phone app
+    /// in a frame; 560 stays readable without stretching a set row into a form. Sheets
+    /// keep 440.
     static let maxContentWidthRegular: CGFloat = 560
-    /// A GRID of cards on a wide screen: two phone-width cards and the gap between them.
-    /// Today's routines and the Maxes cards lay out this way once the window has room
-    /// for two — a single 560 column on a 13-inch iPad was a phone in a frame.
+    /// A GRID of cards on a wide screen: two phone-width cards and the gap between them,
+    /// used by Today and Maxes once the window has room for two.
     static let maxContentWidthGrid: CGFloat = 1080
     /// The narrowest a card in that grid may go: the phone column, where every card was
     /// measured.

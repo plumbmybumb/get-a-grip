@@ -5,20 +5,17 @@ import Foundation
 
 // The Frez Dyno wire protocol, v1 — pure value types, no CoreBluetooth, no network.
 //
-// Written from Frez's own published Dyno API, not from anybody's reverse engineering,
-// which is a better witness than the ported gauges have — and still UNVERIFIED ON
-// HARDWARE BY THIS PROJECT until a Dyno has pulled on this app.
+// Written from Frez's own published Dyno API — a better witness than the ported gauges
+// have, and still UNVERIFIED ON HARDWARE BY THIS PROJECT.
 //
-// The device separates transport from calibration on purpose. It streams SIGNED RAW
-// ADC counts with its own clock, nine to a notification at 250 Hz, and turning them
-// into kilograms is the client's job:
+// The device streams SIGNED RAW ADC counts with its own clock, nine to a notification
+// at 250 Hz; turning them into kilograms is the client's job:
 //
 //     tare_adc  = average(first 100 unloaded samples)
 //     weight_kg = a × (raw_adc − tare_adc)
 //
-// where `a` is the per-device slope Frez's coefficient API returns for the serial.
-// Both halves of that arithmetic live HERE, so the Bluetooth client is only bytes in,
-// readings out, and both platforms assert the same fixtures against it.
+// where `a` is the per-device slope Frez's API returns for the serial. Both halves live
+// HERE, so the client is only bytes in, readings out, and both platforms share fixtures.
 
 enum FrezDynoCodec {
 
@@ -62,15 +59,11 @@ enum FrezDynoCodec {
     /// establish the zero.
     static let defaultTareSampleCount = 100
 
-    /// The device clock restarting on a Start command — which the app re-sends routinely
-    /// (watchdog, foreground, tare recovery) — looks like a jump BACK of at least this
-    /// much that lands under it: the previous record was a quarter second or more into
-    /// the old session, the next is within a quarter second of zero. A restart's first
-    /// record arrives within one notification (36 ms) of the Start, so the margin is
-    /// generous; a small backwards step mid-stream satisfies neither half and is dropped,
-    /// as Frez's defensive-client notes ask. The one case this refuses is a Start re-sent
-    /// within a quarter second of the previous one, which then drops the handful of
-    /// records until the new clock passes the old one — bounded by the threshold itself.
+    /// A clock restart on Start (re-sent routinely: watchdog, foreground, tare recovery)
+    /// is a jump BACK of at least this much that lands under it. A restart's first record
+    /// arrives within 36 ms, so the margin is generous; a small backwards step mid-stream
+    /// meets neither half and is dropped, as Frez asks. A Start re-sent within a quarter
+    /// second drops a few records until the new clock passes the old one — bounded.
     static let restartThresholdMs: UInt32 = 250
 
     /// Nothing a hand does; a count the coefficient turns into more than this is a
@@ -136,14 +129,11 @@ enum FrezDynoCodec {
 
     /// Raw counts in, kilograms out — once it has a coefficient and a zero.
     ///
-    /// **One tare per LINK, never per Start.** The app re-sends Start on every silence,
-    /// foreground return and tare recovery, and Start resets the device clock, so a tare
-    /// keyed to "the first samples after Start" would re-zero the gauge under whatever
-    /// load was on it at the time — a hang, typically. The count offset is a property of
-    /// the load cell, not of the session, so the zero taken when the link came up stays
-    /// good; the Tare button's app-side capture sits on top of it for anything drifting.
-    /// A new connection is a new decoder and a fresh zero, which is also what Frez asks
-    /// for after an unexpected disconnect.
+    /// **One tare per LINK, never per Start.** Start is re-sent routinely, so a tare keyed
+    /// to "the first samples after Start" would re-zero under whatever load was on — a
+    /// hang, typically. The offset belongs to the load cell, so the link-up zero stays
+    /// good and the Tare button's app-side capture handles drift. A new connection is a
+    /// new decoder and a fresh zero, as Frez asks after an unexpected disconnect.
     struct Decoder: GaugeFrameDecoder {
         let coefficient: Double
         let tareSampleCount: Int

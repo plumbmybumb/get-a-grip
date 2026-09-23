@@ -12,12 +12,10 @@ import java.time.ZonedDateTime
 
 /// A calendar day as an integer — days since 1970-01-01 (proleptic Gregorian).
 ///
-/// A training day is the day the user lived through, which has no timezone: a session
-/// finished at 00:30 belongs to the evening it was part of — the day turns at
-/// `ROLLOVER_HOUR`, not midnight — and "2 of 2 today" must flip at that hour without a
-/// relaunch. Storing days as integers makes all of
-/// that pure integer math and immune to the DST/timezone off-by-one bugs a timestamp
-/// invites, and it makes `WorkoutLog.dayKey` a cheap Int predicate.
+/// A training day is the day the user lived through: a session finished at 00:30
+/// belongs to the evening before (the day turns at `ROLLOVER_HOUR`), and "2 of 2 today"
+/// must flip at that hour without a relaunch. Integers make that pure arithmetic,
+/// immune to timezone off-by-ones, and make `WorkoutLog.dayKey` a cheap Int predicate.
 ///
 /// The ONLY place a time zone appears is this file's conversion boundary.
 ///
@@ -70,13 +68,10 @@ data class DayStamp(val raw: Int) : Comparable<DayStamp>, JsonEncodable {
 
         // MARK: - The training day
 
-        /// **A training day turns at 04:00, not at midnight.** A hang that starts at 23:47
-        /// and ends 44 seconds past midnight is an evening session; filing it under the
-        /// morning after scores one evening as two days, which is exactly what Nuri's own
-        /// history showed on iOS (2026-09-20). The promise this file always made — a 00:30
-        /// session belongs to the day the climber lived through — was never implemented
-        /// until this constant existed: the clock simply turned at midnight. Anything in the
-        /// small hours before this counts for the day before.
+        /// **A training day turns at 04:00, not at midnight.** A hang from 23:47 to just past
+        /// midnight is an evening session; filing it under the morning after scored one
+        /// evening as two days (2026-09-20). Anything before this hour counts for the day
+        /// before: four is after any late session and before any morning one.
         const val ROLLOVER_HOUR = 4
 
         /// The training day `instant` falls in: its calendar day, or the previous one when
