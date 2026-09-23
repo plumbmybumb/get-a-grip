@@ -162,6 +162,8 @@ final class RunnerSession {
     @ObservationIgnored private var hasStarted = false
     @ObservationIgnored private var hasBegun = false
     @ObservationIgnored private var hasEnded = false
+    @ObservationIgnored private var activityStart: Task<Void, Never>?
+    @ObservationIgnored private let activityStartDelay: Duration?
     @ObservationIgnored private var streamWatchdog: Task<Void, Never>?
     @ObservationIgnored private var lastSampleAt: TimeInterval = 0
     @ObservationIgnored private var staleBatchHealArmedAt: TimeInterval?
@@ -184,15 +186,20 @@ final class RunnerSession {
     /// connect, no stream, no sample callback, no watchdog. The store is still held
     /// because the screen shares one view, and because a session started without a gauge
     /// must not start quietly using one that happens to be connected.
+    ///
+    /// `activityStartDelay` holds the Live Activity back off the presenting frame; nil
+    /// starts it inside `begin()`, which is what tests that read the first card use.
     init(template: SessionTemplate, device: DeviceStore, maxes: MaxTable = MaxTable(),
          timerOnly: Bool = false,
          liveActivity: any RunnerActivityPublishing = RunnerSession.defaultLiveActivity(),
-         cues: any RunnerCuePlaying = RunnerSession.defaultCues()) {
+         cues: any RunnerCuePlaying = RunnerSession.defaultCues(),
+         activityStartDelay: Duration? = RunnerSession.liveActivityStartDelay) {
         self.template = template
         self.plan = template.plan
         self.device = device
         self.liveActivity = liveActivity
         self.cues = cues
+        self.activityStartDelay = activityStartDelay
         self.timerOnly = timerOnly
         // Read ONCE, like the timing policy below: what this session is driving must not
         // change under it because a different gauge was selected in Settings mid-workout.
@@ -289,6 +296,8 @@ final class RunnerSession {
         // running them inside `onAppear` put that delay between tapping Start and the
         // runner appearing — the one tap in the app that must feel instant. The first
         // cue is at most a runloop turn late; nothing audible is due for five seconds.
+        // (`CuePlayer.begin()` also moves the audio-session activation off the main
+        // thread entirely — see there.)
         Task { @MainActor [weak self] in
             guard let self, !self.hasEnded else { return }
             self.cues.begin()
@@ -332,12 +341,40 @@ final class RunnerSession {
 
         // Best-effort and deliberately last: a Live Activity that cannot start (setting
         // off, budget spent) must never disturb a workout that is already under way.
-        if let grip = runner.displaySlot?.grip ?? plan.executable.sets.first?.grip {
-            liveActivity.start(routineName: template.name,
-                               plannedReps: runner.plannedRepCount,
-                               setCount: runner.setCount,
-                               state: activityState(grip: grip))
+        //
+        // **And OFF the presenting frame.** `Activity.request` is an IPC round trip to
+        // the system, and made inside the cover's `onAppear` it sat between tapping Start
+        // and the runner appearing. Nobody reads the lock screen in the first 300 ms of a
+        // session. The card is built when the task FIRES, from the snapshot as it is then,
+        // so a phase that changed in the meantime is not announced stale.
+        if let activityStartDelay {
+            activityStart = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: activityStartDelay)
+                guard !Task.isCancelled else { return }
+                self?.startLiveActivity()
+            }
+        } else {
+            startLiveActivity()
         }
+    }
+
+    /// How long the Live Activity waits after `begin()` — long enough to clear the
+    /// cover's presentation, short enough that nobody who swipes home ever sees no card.
+    static let liveActivityStartDelay: Duration = .milliseconds(300)
+
+    private func startLiveActivity() {
+        activityStart = nil
+        // A session already over by the time the delay ran out gets no card at all: it
+        // would only be ended again on the next line of somebody's lock screen.
+        guard !hasEnded, !runner.isFinished,
+              let grip = runner.displaySlot?.grip ?? plan.executable.sets.first?.grip else { return }
+        let state = activityState(grip: grip)
+        liveActivity.start(routineName: template.name,
+                           plannedReps: runner.plannedRepCount,
+                           setCount: runner.setCount,
+                           state: state)
+        // The card just went out with exactly this; the next publish must not re-push it.
+        lastActivitySignature = activitySignature(grip: grip)
     }
 
     func end() {
@@ -347,6 +384,8 @@ final class RunnerSession {
         guard hasBegun, !hasEnded else { return }
         hasEnded = true
 
+        activityStart?.cancel()
+        activityStart = nil
         ticker?.cancel()
         ticker = nil
         streamWatchdog?.cancel()
@@ -599,12 +638,7 @@ final class RunnerSession {
     /// number would spend ActivityKit's budget on frames it would have drawn anyway.
     private func pushActivity() {
         guard !snapshot.isFinished, liveActivity.isRunning, let grip = snapshot.grip else { return }
-        let signature = ActivitySignature(grip: grip,
-                                          side: snapshot.side ?? .both,
-                                          phase: activityPhase,
-                                          setNumber: snapshot.setNumber ?? 1,
-                                          repPosition: snapshot.pullPosition,
-                                          weightUnit: weightUnit)
+        let signature = activitySignature(grip: grip)
         // **Compared WITHOUT `endsAt`, and that is the whole point.** `endsAt` is
         // `now + secondsRemaining`, so it drifts by fractions of a second on every one of
         // the ten publishes a second — comparing it would push ten times a second and
@@ -628,6 +662,15 @@ final class RunnerSession {
         var setNumber: Int
         var repPosition: Int
         var weightUnit: WeightUnit
+    }
+
+    private func activitySignature(grip: GripSpec) -> ActivitySignature {
+        ActivitySignature(grip: grip,
+                          side: snapshot.side ?? .both,
+                          phase: activityPhase,
+                          setNumber: snapshot.setNumber ?? 1,
+                          repPosition: snapshot.pullPosition,
+                          weightUnit: weightUnit)
     }
 
     private func activityState(grip: GripSpec) -> SessionActivity.ContentState {
