@@ -350,109 +350,34 @@ struct SessionSummaryView: View {
 
 /// Discarding a finished session takes a deliberate HOLD, exactly like ending one.
 ///
-/// Shares `HoldToEndButton`'s shape and its 0.9 s: one gesture vocabulary for "this cannot
-/// be undone", learned once. It is quieter than Save — outlined rather than filled — because
-/// throwing the session away is the rarer answer and must never be the reflex.
+/// Shares `HoldToEndButton`'s gesture and its 0.9 s: one vocabulary for "this cannot be
+/// undone", learned once. It is quieter than Save — outlined rather than filled — because
+/// throwing the session away is the rarer answer and must never be the reflex. It sits in
+/// a scrolling summary, so any drift cancels the hold and scrolls instead.
 private struct HoldToDiscardButton: View {
     var action: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var progress: Double = 0
-    @State private var isHolding = false
-    @State private var holdTask: Task<Void, Never>?
     @State private var firedTick = 0
-    @State private var slidOff = false
-
-    private static let holdSeconds: Double = 0.9
-    private static let slideSlop: CGFloat = 24
 
     var body: some View {
-        ZStack {
-            Text("Keep holding…").hidden().accessibilityHidden(true)
-            Text("Hold to discard").hidden().accessibilityHidden(true)
-            Text(isHolding ? "Keep holding…" : "Hold to discard")
-                .foregroundStyle(Accent.alarm)
-                .contentTransition(.identity)
-                .animation(nil, value: isHolding)
-        }
-        .font(.system(.subheadline, weight: .semibold))
-        .actionLabelLayout(fullWidth: true)
-        .background {
-            GeometryReader { geo in
-                ZStack {
-                    Capsule().fill(Accent.alarm.opacity(0.12))
-                    Capsule()
-                        .fill(Accent.alarm.opacity(0.36))
-                        .mask(alignment: .leading) {
-                            Rectangle()
-                                .frame(width: geo.size.width * progress)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                }
+        HoldToConfirm(cancel: .drift(10),
+                      accessibilityLabel: "Discard this session",
+                      accessibilityHint: "Press and hold. Nothing is saved.",
+                      action: { firedTick += 1; action() }) { isHolding, progress in
+            ZStack {
+                Text("Keep holding…").hidden().accessibilityHidden(true)
+                Text("Hold to discard").hidden().accessibilityHidden(true)
+                Text(isHolding ? "Keep holding…" : "Hold to discard")
+                    .foregroundStyle(Accent.alarm)
+                    .contentTransition(.identity)
+                    .animation(nil, value: isHolding)
+            }
+            .font(.system(.subheadline, weight: .semibold))
+            .actionLabelLayout(fullWidth: true)
+            .background {
+                HoldFill(progress: progress, tint: Accent.alarm, track: 0.12, fill: 0.36)
             }
         }
-        .contentShape(.capsule)
-        // Keep scrolling available if a gesture begins here. Global translation
-        // cancels the hold as the page moves beneath the finger.
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                .onChanged { updateHold(translation: $0.translation) }
-                .onEnded { _ in endHold() }
-        )
-        .onDisappear { endHold() }
         .sensoryFeedback(.impact(weight: .heavy, intensity: 0.9), trigger: firedTick)
-        .accessibilityElement()
-        .accessibilityLabel("Discard this session")
-        .accessibilityHint("Press and hold. Nothing is saved.")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { action() }
-    }
-
-    /// A holding finger is stationary; a scrolling one moves. 10 pt is the same slop
-    /// `RepeatingStep` cancels at, and it is measured in GLOBAL space so a page scroll
-    /// — which moves the finger through the window while leaving it parked on the
-    /// button's own coordinates — reads as movement here.
-    private static let holdDriftSlop: CGFloat = 10
-
-    private func updateHold(translation: CGSize) {
-        guard !slidOff else { return }
-        guard abs(translation.width) <= Self.holdDriftSlop,
-              abs(translation.height) <= Self.holdDriftSlop else {
-            slidOff = true
-            cancelHold()
-            return
-        }
-        beginHold()
-    }
-
-    private func endHold() {
-        cancelHold()
-        slidOff = false
-    }
-
-    private func beginHold() {
-        guard holdTask == nil else { return }
-        isHolding = true
-        // UNCONDITIONAL, deliberately — see `HoldToEndButton.beginHold()`, which makes
-        // and documents the same call: this fill is functional progress feedback for
-        // the hold, not decorative motion, and it must match `holdTask`'s real sleep.
-        withAnimation(.linear(duration: Self.holdSeconds)) { progress = 1 }
-        holdTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(Self.holdSeconds))
-            guard !Task.isCancelled else { return }
-            firedTick += 1
-            action()
-        }
-    }
-
-    private func cancelHold() {
-        holdTask?.cancel()
-        holdTask = nil
-        isHolding = false
-        // `Motion.state(reduceMotion)` already resolves to `Motion.reduced` when the
-        // flag is set — see `HoldToEndButton.cancelHold()`, where the identical
-        // redundant ternary produced a second, divergent, untokenised reduced-motion
-        // curve.
-        withAnimation(Motion.state(reduceMotion)) { progress = 0 }
     }
 }
