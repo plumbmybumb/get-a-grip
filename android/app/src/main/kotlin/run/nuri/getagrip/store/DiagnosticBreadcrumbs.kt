@@ -84,10 +84,13 @@ class DiagnosticBreadcrumbRing {
 
     val entries: List<DiagnosticBreadcrumbEntry> get() = storage.toList()
 
-    fun append(event: DiagnosticBreadcrumb, at: Double = 0.0) {
+    /// True when the ring gained an entry; false when the event was dropped as a repeat or
+    /// merged into the last one. `DeviceStore` republishes only on true — see
+    /// `diagnosticEntries`.
+    fun append(event: DiagnosticBreadcrumb, at: Double = 0.0): Boolean {
         // Repeated watchdog no-ops must not evict the transition that explains a stall.
         // Keep the first timestamp; a different event starts a new entry as usual.
-        if (event is DiagnosticBreadcrumb.BroadcastScan && storage.lastOrNull()?.event == event) return
+        if (event is DiagnosticBreadcrumb.BroadcastScan && storage.lastOrNull()?.event == event) return false
         if (event is DiagnosticBreadcrumb.TraceFlush && storage.isNotEmpty()) {
             val lastIndex = storage.lastIndex
             val existing = storage[lastIndex].event
@@ -97,12 +100,13 @@ class DiagnosticBreadcrumbRing {
                     at = at,
                     event = DiagnosticBreadcrumb.TraceFlush(existing.count + event.count),
                 )
-                return
+                return false
             }
         }
 
         storage.add(DiagnosticBreadcrumbEntry(id = UUID.randomUUID(), at = at, event = event))
         while (storage.size > capacity) storage.removeAt(0)
+        return true
     }
 }
 

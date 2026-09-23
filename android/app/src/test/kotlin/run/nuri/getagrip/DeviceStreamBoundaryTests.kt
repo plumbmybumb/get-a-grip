@@ -52,4 +52,26 @@ class DeviceStreamBoundaryTests {
         assertTrue(device.state.isConnected)
         device.cancelBackgroundGrace()
     }
+    /// **A backlog flush does not republish the breadcrumb ring per sample.** Every dropped
+    /// sample records a `TraceFlush`, and the ring merges consecutive ones into a single
+    /// entry — so the published revision must not move while the count climbs, or Settings
+    /// is invalidated at sample rate for a number nobody is watching. A read still sees the
+    /// merged count, so a report shared mid-flush is current.
+    @Test fun mergedTraceFlushesDoNotRepublishTheRing() {
+        val client = RecordingProgressorClient()
+        val device = DeviceStore(client = client, scope = inertScope(), clock = FakeClock())
+        client.connect()
+        device.startStreaming(StreamStartCause.manualMeasurement)
+        // 0.9 s device deltas with the wall clock held still: every second sample runs the
+        // playback clock more than half a second ahead of wall time and is flushed.
+        var micros = 0u
+        fun sample() { client.emit(ProgressorEvent.Sample(ForceSample(5.0, micros))); micros += 900_000u }
+        repeat(3) { sample() }
+        val flushes = { (device.diagnosticEntries.last().event as? DiagnosticBreadcrumb.TraceFlush)?.count ?: 0 }
+        assertEquals(1, flushes())
+        val revision = device.diagnosticRevision
+        repeat(40) { sample() }
+        assertEquals(revision, device.diagnosticRevision, "a merge is not a new entry")
+        assertEquals(21, flushes(), "and the merged count is still what a read returns")
+    }
 }

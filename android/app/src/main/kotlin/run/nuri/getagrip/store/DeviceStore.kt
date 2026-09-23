@@ -189,7 +189,19 @@ class DeviceStore(
 
     /// In-memory only, bounded evidence for distinguishing a real link drop from a
     /// connected-but-stale trace after a session. Surfaced in Settings › About.
-    var diagnosticEntries: List<DiagnosticBreadcrumbEntry> by mutableStateOf(emptyList())
+    ///
+    /// **Read through a revision, not republished per event.** A long Bluetooth backlog
+    /// records a `TraceFlush` for EVERY sample it drops, and the ring merges those into
+    /// one entry — so republishing a fresh list each time invalidated Settings (and
+    /// allocated a 64-entry copy) at sample rate for a count nobody was watching tick. The
+    /// revision moves only when an entry is ADDED; a read still returns the ring as it
+    /// stands, merged count included, so a report shared mid-flush is never stale.
+    val diagnosticEntries: List<DiagnosticBreadcrumbEntry>
+        get() { diagnosticRevision; return diagnosticRing.entries }
+
+    /// Bumped when the ring gains an entry. Internal so a test can pin the change-guard,
+    /// which is otherwise only visible as how often Settings recomposes.
+    internal var diagnosticRevision by mutableIntStateOf(0)
         private set
 
     /// Latest reading, tare-relative, in kilograms.
@@ -893,8 +905,7 @@ class DeviceStore(
     }
 
     private fun record(event: DiagnosticBreadcrumb) {
-        diagnosticRing.append(event, clock.wallSeconds())
-        diagnosticEntries = diagnosticRing.entries
+        if (diagnosticRing.append(event, clock.wallSeconds())) diagnosticRevision++
     }
 
     companion object {
