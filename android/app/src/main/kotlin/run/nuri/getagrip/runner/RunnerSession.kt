@@ -38,97 +38,87 @@ import java.util.UUID
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
-/// Owns a running session: the state machine, the clock that drives its countdowns, the
-/// gauge subscription, and the cue playback.
+/// Owns a running session: the state machine, the clock driving its countdowns, the gauge
+/// subscription and cue playback.
 ///
-/// TRANSLATION NOTE (from Sources/Runner/RunnerSession.swift): the iOS type is an
-/// `@Observable @MainActor final class`; this is a `@Stable` class holding Compose
-/// snapshot state, and it is a CLASS for exactly the same load-bearing reason. The gauge
-/// hands samples to a callback ~80 times a second and that callback has to mutate the
-/// runner — a composable is a function, so state captured in one is not something a
-/// long-lived closure can write through. One identity, nothing to lose.
+/// TRANSLATION NOTE (Sources/Runner/RunnerSession.swift): iOS's `@Observable @MainActor`
+/// class becomes a `@Stable` class holding Compose snapshot state — a CLASS for the same
+/// reason: the ~80 Hz sample callback must mutate the runner, and a long-lived closure
+/// cannot write through state captured in a composable.
 ///
-/// The three pure policies iOS keeps in this file (`StaleBatchHealer`,
-/// `BackgroundPausePolicy`, the silence threshold) live in `:engine`'s `RunnerPolicies.kt`
-/// instead — see its own translation note. Everything else moves across unchanged.
+/// The three pure policies iOS keeps here (`StaleBatchHealer`, `BackgroundPausePolicy`, the
+/// silence threshold) live in `:engine`'s `RunnerPolicies.kt`.
 @Stable
 class RunnerSession(
     /// The routine's plan, as authored. `SessionRunner` takes its `executable` copy.
     val plan: SessionPlan,
 
-    /// Frozen with the session — a routine renamed or deleted tomorrow must not rewrite
-    /// what today's log says it was.
+    /// Frozen with the session: a routine renamed or deleted tomorrow must not rewrite
+    /// today's log.
     val routineName: String,
 
     private val device: DeviceStore,
 
-    /// Every max on file, by grip AND hand.
+    /// Every max on file, by grip AND hand. Percentage targets become kilograms when the
+    /// session begins and never move again, so a max recorded next month cannot rewrite
+    /// what this morning prescribed.
     ///
-    /// Percentage targets become kilograms at the moment the session begins and never move
-    /// again: the runner executes concrete loads and the log freezes them, so a max
-    /// recorded next month cannot rewrite what this morning told you to pull.
-    ///
-    /// **The plan is NOT pre-baked** — `SessionRunner` resolves per REP instead, because a
-    /// set covers both hands and the two hands do not have the same max. Baking a single
-    /// band onto the set here would hand both hands the same kilograms and silently undo
-    /// per-hand loads; the freeze is preserved by capturing the TABLE once.
+    /// **The plan is NOT pre-baked**: `SessionRunner` resolves per REP, because a set
+    /// covers both hands and they have different maxes. Baking one band onto the set would
+    /// silently undo per-hand loads; the freeze comes from capturing the TABLE once.
     private val maxes: MaxTable = MaxTable(),
 
-    /// Run the whole plan on the clock with no gauge at all — see `SessionRunner.timerOnly`.
-    /// Nothing here touches `DeviceStore` in that mode: no connect, no stream, no sample
-    /// callback, no watchdog. The store is still held because the screen shares one view,
-    /// and because a session started without a gauge must not start quietly using one that
-    /// happens to be connected.
+    /// Run the whole plan on the clock with no gauge — see `SessionRunner.timerOnly`.
+    /// Nothing touches `DeviceStore` then: no connect, stream, sample callback or watchdog.
+    /// The store is still held for the shared screen, and so a gauge-free session never
+    /// quietly starts using a connected one.
     val timerOnly: Boolean = false,
 
-    /// The ticker and watchdog share the retained workout's scope. Recreating its
-    /// Activity must not cancel measurement; explicit finish or ViewModel cleanup does.
+    /// The ticker and watchdog share the retained workout's scope: recreating the Activity
+    /// must not cancel measurement; explicit finish or ViewModel cleanup does.
     private val scope: CoroutineScope,
 
-    /// Injected because `SystemClock.elapsedRealtimeNanos()` reads a stubbed zero forever
-    /// in a JVM unit test — the same seam `DeviceStore` and the trace already use.
+    /// Injected because `SystemClock.elapsedRealtimeNanos()` reads zero forever in a JVM
+    /// unit test.
     private val clock: HostClock = SystemHostClock,
 
-    /// Where a cue is actually played. Defaulted to nothing so the engine's timing can be
-    /// driven in a test with no audio session, no vibrator and no waiting.
+    /// Where a cue is played. Defaulted to nothing so tests drive timing with no audio or
+    /// vibrator.
     private val cues: CueSink = CueSink {},
 
-    /// Where the Live Update is published. `AndroidActivityPublisher` in the app; nothing
-    /// in a test, so a whole session can be driven with no notification manager.
+    /// Where the Live Update is published: `AndroidActivityPublisher` in the app, nothing
+    /// in a test.
     private val activity: ActivityPublisher = NoActivityPublisher,
 
-    /// Where a session asks the OS to keep it alive — `SessionForegroundService` in the
-    /// app, nothing in a test. Started only for a MEASURED session on a CONNECTED gauge
-    /// that sustains background streaming; see `updateForegroundService`.
+    /// Where the session asks the OS to keep it alive — `SessionForegroundService` in the
+    /// app, nothing in a test. Only for a MEASURED session on a CONNECTED gauge that
+    /// sustains background streaming; see `updateForegroundService`.
     private val service: SessionServiceController = NoSessionServiceController,
 ) {
 
-    /// **NOT Compose state, and that is the whole performance story of this screen.**
-    ///
-    /// `SessionRunner` is mutated by every force sample, 80× a second. Held in a
-    /// `mutableStateOf` and read piecemeal by the screen, that rebuilds counters, prompt,
-    /// grip line and every control 80×/s to move two numbers. The engine state stays a
-    /// plain field; what the SCREEN needs is republished as `snapshot` only when it
-    /// actually changes.
+    /// **NOT Compose state — the whole performance story of this screen.** `SessionRunner`
+    /// is mutated by every force sample, 80× a second; as `mutableStateOf` read piecemeal
+    /// it would rebuild every control 80×/s to move two numbers. What the SCREEN needs is
+    /// republished as `snapshot` only on a real change.
     val runner: SessionRunner = SessionRunner(
         plan = plan,
         maxes = maxes,
         timerOnly = timerOnly,
-        // Keyed to the CAPABILITY, never to the kind: a gauge with no clock of its own is
-        // stamped from host uptime by the client, so one sample's delta is an arrival gap
-        // and may only ever buy the cap. The Progressor's own µs deltas are truth and stay
-        // uncapped. See `SessionRunner.maxCreditedSampleGapSeconds`.
+        // Keyed to the CAPABILITY, never the kind: a clockless gauge is stamped from host
+        // uptime, so one delta is an arrival gap and may only buy the cap. The Progressor's
+        // µs deltas are truth and stay uncapped. See
+        // `SessionRunner.maxCreditedSampleGapSeconds`.
         maxCreditedSampleGapSeconds =
             if (device.gaugeCapabilities.hasDeviceClock) null else SamplePacing.syntheticClockGapCapSeconds,
     )
 
-    /// The coarse, view-shaped view of the runner. A data class assigned only on a real
-    /// change, so a second of holding invalidates the UI once or twice instead of ~80 times.
+    /// The coarse, view-shaped view of the runner, assigned only on a real change: a second
+    /// of holding invalidates the UI once or twice instead of ~80 times.
     var snapshot: RunnerSnapshot by mutableStateOf(RunnerSnapshot())
         private set
 
-    /// Measured fraction, separate from the coarse snapshot so only the small bar
-    /// updates with samples. The view settles toward this value and never extrapolates.
+    /// Measured fraction, separate from the snapshot so only the small bar updates with
+    /// samples. The view settles toward it and never extrapolates.
     var repProgress: Float by mutableFloatStateOf(0f)
         private set
     val repProgressBucket: Int get() = (repProgress * 100).roundToInt()
@@ -137,57 +127,50 @@ class RunnerSession(
     var phaseRemainingFraction: Double? by mutableStateOf(null)
         private set
 
-    /// Bumped on every real republish. A test seam for the change-guard itself, which is
-    /// otherwise only observable by watching how often a view recomposes.
+    /// Bumped on every real republish; a test seam for the change-guard.
     var snapshotRevision: Int = 0
         private set
 
     var startedAt: Instant = Instant.now()
         private set
 
-    /// The identity this session's log row will be written under — from the summary's Save
-    /// or from launch recovery, the same id, so the two can never log it twice. See
-    /// `FinishedSessionDraft`.
+    /// The id this session's log row is written under, shared by the summary's Save and
+    /// launch recovery so it can never be logged twice. See `FinishedSessionDraft`.
     val sessionID: UUID = UUID.randomUUID()
 
-    /// Called ONCE, the moment the session finishes, with what a store would write. Set by
-    /// `WorkoutViewModel`, which is where the finished-session draft is written down —
-    /// before the summary, and before anything can take the process away.
+    /// Called ONCE, when the session finishes, with what a store would write.
+    /// `WorkoutViewModel` writes the finished-session draft here, before the summary and
+    /// before anything can take the process away.
     var onFinished: ((SessionOutcome) -> Unit)? = null
 
     /// Monotonic seconds the countdowns are measured against. NOT observable: the screen
-    /// reads whole seconds off `snapshot`, so republishing this 10× a second would
-    /// invalidate every reader for a number none of them display.
+    /// reads whole seconds off `snapshot`.
     var now: Double = clock.uptimeSeconds()
         private set
 
-    /// How many force samples have reached this session. Zero while a workout is under way
-    /// means the gauge is connected but not talking, which is the one failure the screen
-    /// must not render as "0.0 kg" — that reads as a device measuring nothing rather than
-    /// an app receiving nothing.
+    /// Force samples received by this session. Zero mid-workout means connected but not
+    /// talking, which the screen must not render as "0.0 kg" (a device measuring nothing
+    /// rather than an app receiving nothing).
     var samplesSeen: Int = 0
         private set
 
     // MARK: - Read once, at construction
 
     /// Whether the gauge stamps its own samples. The Progressor does; every ported device
-    /// is stamped from host uptime at ingestion, which is why a re-kick means something
-    /// different to each — see `restartStreamArmingStaleBatchHeal`.
+    /// is stamped from host uptime, so a re-kick means something different to each — see
+    /// `restartStreamArmingStaleBatchHeal`.
     ///
-    /// Read ONCE, like the timing policy below: what this session is driving must not
-    /// change under it because a different gauge was selected in Settings mid-workout.
+    /// Read ONCE, like the timing policy below: selecting a different gauge in Settings
+    /// mid-workout must not change what this session drives.
     private val hasDeviceClock: Boolean = device.gaugeCapabilities.hasDeviceClock
 
-    /// Whether this gauge can go on delivering samples with the app in the background —
-    /// the capability that decides whether the foreground service is worth running at all,
-    /// and the same one `BackgroundPausePolicy` reads when the app leaves the foreground.
-    ///
-    /// Read ONCE, for the same reason as above: what this session is driving must not change
-    /// under it because a different gauge was selected in Settings mid-workout.
+    /// Whether this gauge keeps delivering samples in the background: decides whether the
+    /// foreground service is worth running, and is what `BackgroundPausePolicy` reads. Read
+    /// ONCE, as above.
     private val sustainsBackgroundStreaming: Boolean =
         device.gaugeCapabilities.sustainsBackgroundStreaming
 
-    /// How much silence means the stream needs re-kicking, for THIS gauge — eight samples'
+    /// Silence that means the stream needs re-kicking, for THIS gauge: eight samples'
     /// worth, floored at the Progressor's 0.8 s. See `SamplePacing.silenceThreshold`.
     val silenceRestartSeconds: Double = SamplePacing.silenceThreshold(
         forRate = device.gaugeCapabilities.nominalSampleRate,
@@ -202,8 +185,8 @@ class RunnerSession(
     private var streamWatchdog: Job? = null
     private var connectionWatch: Job? = null
 
-    /// The link the watcher last saw. It reports a CHANGE of this, never a repeat, so the
-    /// engine hears each drop and each return exactly once.
+    /// The link the watcher last saw. It reports CHANGES only, so the engine hears each
+    /// drop and return once.
     private var lastLink: DeviceStore.Link? = null
     private var hasStarted = false
     private var hasBegun = false
@@ -218,8 +201,8 @@ class RunnerSession(
     // MARK: - Lifecycle
 
     fun begin() {
-        // Idempotent. A `DisposableEffect` can be re-run when its key changes, and a second
-        // `begin()` would re-acquire the wake lock and re-arm the ticker.
+        // Idempotent: a re-run `DisposableEffect` must not re-acquire the wake lock or
+        // re-arm the ticker.
         if (hasBegun) return
         hasBegun = true
 
@@ -227,8 +210,8 @@ class RunnerSession(
         runner.beginRecording(clock.uptimeSeconds())
         now = clock.uptimeSeconds()
 
-        // begin only starts the audio queue; native setup and synthesis happen on its
-        // worker. Register it before Start so a zero-lead-in routine keeps its first cue.
+        // Only starts the audio queue; native setup and synthesis run on its worker.
+        // Registered before Start so a zero-lead-in routine keeps its first cue.
         cues.begin()
 
         if (!timerOnly) {
@@ -239,8 +222,8 @@ class RunnerSession(
             }
         }
 
-        // Wall-clock heartbeat. Countdowns live here; work time never does — that only ever
-        // comes from the device's own timestamps inside the runner.
+        // Wall-clock heartbeat. Countdowns live here; work time never does — only device
+        // timestamps inside the runner.
         ticker = scope.launch {
             while (isActive) {
                 delay(TICK_MILLIS)
@@ -249,14 +232,14 @@ class RunnerSession(
         }
 
         if (!timerOnly) {
-            // Captured BEFORE anything can connect, so a link that comes up during `begin()`
-            // itself is a change the watcher reports rather than a baseline it swallows.
+            // Captured BEFORE anything can connect, so a link coming up during `begin()` is
+            // a change, not a swallowed baseline.
             lastLink = device.link.value
         }
 
         if (timerOnly) {
-            // The session starts on the spot: there is nothing to connect to and nothing to
-            // tare, and the count-in is the only preamble a clock needs.
+            // Starts on the spot: nothing to connect or tare; the count-in is the only
+            // preamble.
             send(RunnerEvent.Start)
         } else if (device.state.isConnected) {
             startIfReady(StreamStartCause.initial)
@@ -264,14 +247,13 @@ class RunnerSession(
             device.connect()
         }
 
-        // PUBLISH FIRST. The activity state reads the snapshot, and until this runs the
-        // snapshot is still the empty default — which is how the very first card went out
-        // saying "Pull 0 of 12" with no countdown, and then sat there until the next phase
-        // change happened to correct it.
+        // PUBLISH FIRST. The activity state reads the snapshot, and before this it is the
+        // empty default — the first card once went out saying "Pull 0 of 12" with no
+        // countdown.
         publish()
 
-        // Best-effort and deliberately last: an activity that cannot start (permission
-        // refused, budget spent) must never disturb a workout that is already under way.
+        // Best-effort and last: an activity that cannot start (permission refused, budget
+        // spent) must never disturb the workout.
         val grip = runner.displaySlot?.grip ?: plan.executable.sets.firstOrNull()?.grip
         if (grip != null) {
             activity.start(
@@ -282,20 +264,18 @@ class RunnerSession(
             )
         }
 
-        // AFTER the publisher, never before: the service's `startForeground` adopts the card
-        // the publisher just built, and starting first would flash a placeholder.
+        // AFTER the publisher: `startForeground` adopts the card just built; starting first
+        // would flash a placeholder.
         updateForegroundService()
 
-        // Last, for the same reason: a link that arrived during `begin()` is reported here,
-        // and reporting it starts the service, which must find the card already built.
+        // Last, for the same reason: a link that arrived during `begin()` is reported here
+        // and starts the service, which must find the card built.
         if (!timerOnly) watchConnection()
     }
 
-    /// **The session follows the link itself, on its own scope.** This used to be a
-    /// `LaunchedEffect` on the runner's screen, which stops with the Activity: a session the
-    /// foreground service kept alive behind a locked screen never heard the link drop or
-    /// come back, so it neither paused its clock nor re-kicked the stream. See
-    /// `DeviceStore.link`.
+    /// **The session follows the link on its own scope.** A `LaunchedEffect` on the screen
+    /// stops with the Activity, so a session kept alive behind a locked screen never heard
+    /// the link drop or return. See `DeviceStore.link`.
     private fun watchConnection() {
         connectionWatch?.cancel()
         connectionWatch = scope.launch {
@@ -304,8 +284,8 @@ class RunnerSession(
                 lastLink = link
                 if (last == null || link == last) return@collect
                 if (link.isConnected && last.isConnected) {
-                    // A NEW connection with no drop observed in between — the flow conflated
-                    // it. The engine still has to break its timeline across it.
+                    // A NEW connection with no drop observed (the flow conflated it); the
+                    // engine must still break its timeline.
                     connectionChanged(false)
                     connectionChanged(true)
                 } else if (link.isConnected != last.isConnected) {
@@ -316,9 +296,8 @@ class RunnerSession(
     }
 
     fun end() {
-        // Only ever tear down a session we actually started, and only once: a stray dispose
-        // reaching this used to stop the stream out from under a live session, which looks
-        // exactly like a dead gauge.
+        // Tear down only a session we started, and only once: a stray dispose once stopped
+        // the stream under a live session, which looks exactly like a dead gauge.
         if (!hasBegun || hasEnded) return
         hasEnded = true
 
@@ -329,15 +308,14 @@ class RunnerSession(
         connectionWatch?.cancel()
         connectionWatch = null
         device.onSample = null
-        // Never leave the gauge streaming behind us: it drains its own battery for ten
-        // minutes and the user blames the app.
+        // Never leave the gauge streaming: it drains its own battery and the user blames
+        // the app.
         if (device.isStreaming) device.stopStreaming(StreamStopCause.sessionEnded)
-        // Ended with the session, not left to expire: a card still saying "Pull" on the
-        // lock screen after you have finished is worse than no card at all.
+        // Ended with the session: a lock-screen card still saying "Pull" afterwards is
+        // worse than none.
         activity.end()
-        // And the service goes with it. A `connectedDevice` foreground service outliving
-        // the session it exists for is an app holding the radio open for nothing — and the
-        // one thing every OEM battery manager notices.
+        // A `connectedDevice` service outliving its session holds the radio open for
+        // nothing — what every OEM battery manager notices.
         if (serviceRunning) {
             serviceRunning = false
             service.end()
@@ -345,22 +323,17 @@ class RunnerSession(
         cues.end()
     }
 
-    /// Start the foreground service once this session actually qualifies for one.
+    /// Start the foreground service once this session qualifies. Called from `begin()` and
+    /// `connectionChanged`, because Start is enabled while the gauge sleeps: the first
+    /// phase is connect-and-tare, so there is often no link yet at `begin()`.
     ///
-    /// Called from `begin()` and again from `connectionChanged`, because Start on Today is
-    /// deliberately enabled while the gauge is still asleep: the session's real first phase
-    /// is connect-and-tare, so at `begin()` there is often no link yet to keep alive.
-    ///
-    /// **Started once, never stopped early.** A link that drops mid-session is exactly when
-    /// the process most needs to stay alive — to reconnect, and to go on showing RE-GRIP
-    /// rather than freezing — so the service's life is the SESSION's life, not the link's.
-    /// iOS gets the same shape for free: `bluetooth-central` is a capability of the app, not
-    /// of the current connection.
+    /// **Started once, never stopped early.** A mid-session drop is exactly when the
+    /// process must stay alive to reconnect and keep showing RE-GRIP, so the service lives
+    /// as long as the SESSION, not the link (as iOS's app-wide `bluetooth-central`).
     private fun updateForegroundService() {
         if (serviceRunning || timerOnly || hasEnded || runner.isFinished) return
-        // A gauge-free session has nothing to keep alive: no samples are coming, so
-        // `RunnerLifecycle` pauses it outright on the way out. Same for a broadcast scale,
-        // whose scan the OS silences whatever we ask for.
+        // A gauge-free session has nothing to keep alive (`RunnerLifecycle` pauses it on
+        // the way out); nor does a broadcast scale, whose scan the OS silences regardless.
         if (!sustainsBackgroundStreaming) return
         if (!device.state.isConnected) return
         serviceRunning = true
@@ -369,27 +342,24 @@ class RunnerSession(
 
     private var serviceRunning = false
 
-    /// The session's real first phase is connect-and-tare, which is why Start on Today is
-    /// deliberately enabled while the gauge is still asleep.
+    /// The first phase is connect-and-tare, which is why Start on Today is enabled while
+    /// the gauge is asleep.
     fun startIfReady(cause: StreamStartCause) {
         if (timerOnly || hasEnded || runner.isFinished || !device.state.isConnected) return
-        // UNCONDITIONAL, deliberately. This used to be `if (!device.isStreaming)`, and that
-        // guard could only ever SKIP the one command the session depends on — if
-        // `isStreaming` was true while the gauge was not actually streaming (a stale flag
-        // after a reconnect, a backgrounded app, a session torn down early), the start
-        // opcode never went out and the whole workout sat at 0.0 kg with an empty trace,
-        // while the live gauge screen worked fine because it sends its own. Re-sending
-        // start to a streaming Progressor is harmless; not sending it is a dead session.
+        // UNCONDITIONAL. An `if (!device.isStreaming)` guard could only SKIP the one
+        // command the session depends on: with a stale flag the workout sat at 0.0 kg with
+        // an empty trace while the gauge screen (which sends its own) worked fine.
+        // Re-sending start is harmless; not sending it is a dead session.
         if (hasStarted) {
-            // The foreground kick lands here. A re-kick may start a fresh device timestamp
-            // epoch, so it needs the same break-first ordering as the silence watchdog and
-            // one bounded recovery opportunity for queued old-epoch data.
+            // The foreground kick lands here. A re-kick may start a fresh device-µs epoch,
+            // so it gets the watchdog's break-first ordering and one bounded recovery for
+            // queued old-epoch data.
             restartStreamArmingStaleBatchHeal(cause)
             return
         }
         hasStarted = true
-        // Tare FIRST, then start — the order the vendor's own app uses. The reversed order
-        // tared a freshly started stream, and on real firmware that killed it.
+        // Tare FIRST, then start — the vendor app's order. The reverse tared a fresh stream
+        // and killed it on real firmware.
         armStaleBatchHeal()
         send(RunnerEvent.TareCommitted)
         device.tare()
@@ -398,16 +368,11 @@ class RunnerSession(
         armStreamWatchdog()
     }
 
-    /// Restart the stream whenever it falls SILENT — not merely if it never started.
-    ///
-    /// The first version fired three times and only when no sample had EVER arrived, which
-    /// left a hole the first hardware session fell straight through: a stream that dies
-    /// after a few samples (a tare mid-stream did exactly this) defeated the
-    /// `samplesSeen == 0` guard, and the workout sat dead beside a connected gauge with
-    /// nothing left trying to revive it. A session's stream is supposed to be CONTINUOUS,
-    /// so silence while connected is always wrong and always worth a restart — the start
-    /// command is harmless when the stream is alive, and this is one cheap check every
-    /// 500 ms. It runs for the session's whole life; `end()` cancels it.
+    /// Restart the stream whenever it falls SILENT, not merely if it never started. The
+    /// first version fired only when no sample had EVER arrived, so a stream that died
+    /// after a few samples (as a mid-stream tare did) was never revived. A session's stream
+    /// is CONTINUOUS, so silence while connected is always worth a restart: harmless when
+    /// alive, one cheap check every 500 ms for the session's life. `end()` cancels it.
     private fun armStreamWatchdog() {
         streamWatchdog?.cancel()
         lastSampleAt = clock.uptimeSeconds()
@@ -421,9 +386,9 @@ class RunnerSession(
                     continue
                 }
 
-                // Raw BLE data is arriving but the engine may be rejecting it because a
-                // queued pre-background burst re-anchored the high-water mark. Two 500 ms
-                // observations make that state durable rather than a packet-order blip.
+                // Raw data arrives but the engine may be rejecting it because a queued
+                // pre-background burst re-anchored the high-water mark. Two 500 ms
+                // observations separate that from a packet-order blip.
                 consecutiveRejectingChecks =
                     if (snapshot.isRejectingStaleBatches) consecutiveRejectingChecks + 1 else 0
                 applyStaleBatchHealDecision(clock.uptimeSeconds())
@@ -431,28 +396,24 @@ class RunnerSession(
         }
     }
 
-    /// Restart the stream and NOTHING else — no tare, on any path.
-    ///
-    /// `startIfReady` is not a substitute: its first-start branch tares, so routing a manual
-    /// wake through it would make "waking never tares" a property of which branch happened
-    /// to run rather than a guarantee of the API. With the load unknown (that is what stale
-    /// means) a tare is the one thing that must not happen here.
+    /// Restart the stream and NOTHING else — no tare, on any path. Not `startIfReady`,
+    /// whose first-start branch tares: "waking never tares" must be a guarantee of the API,
+    /// not of which branch ran. With the load unknown (that is what stale means), a tare
+    /// must not happen.
     fun wakeStream() {
         if (timerOnly || hasEnded || runner.isFinished || !device.state.isConnected) return
         restartStreamArmingStaleBatchHeal(StreamStartCause.manualWake)
     }
 
-    /// Every RunnerSession-owned re-kick uses this path. Arming happens before the break,
-    /// and the break remains immediately before the command that can reset the device clock.
+    /// Every session-owned re-kick uses this path. Arming precedes the break, and the break
+    /// sits immediately before the command that can reset the device clock.
     private fun restartStreamArmingStaleBatchHeal(cause: StreamStartCause) {
-        // **No timeline break on a gauge with no clock of its own.** The break exists to
-        // survive a Tindeq restarting its µs epoch mid-session; a synthetic stamp is host
-        // uptime, which no device restart can rewind, so there is no epoch here to break —
-        // and the break is not free. It nulls the accrual anchor and the arming debounce,
-        // and at 8–10 Hz the watchdog can land one between every pair of samples: a screen
-        // that looks alive, kg moving, on a rep that can neither arm nor finish. So the
-        // re-kick is just the re-kick, and the single-shot heal machinery stays for the one
-        // gauge whose clock can actually reset.
+        // **No timeline break on a clockless gauge.** The break survives a Tindeq
+        // restarting its µs epoch; host uptime has no epoch to restart. And the break is
+        // not free: it nulls the accrual anchor and arming debounce, and at 8–10 Hz the
+        // watchdog could land one between every pair of samples — kg moving on a rep that
+        // can neither arm nor finish. The single-shot heal stays for the one gauge whose
+        // clock can reset.
         if (!hasDeviceClock) {
             device.startStreaming(cause)
             return
@@ -479,8 +440,8 @@ class RunnerSession(
         when (decision) {
             StaleBatchHealDecision.hold -> Unit
             StaleBatchHealDecision.fire -> {
-                // Consume BEFORE sending. The healing break cannot authorize itself again;
-                // only another actual re-kick can create another opportunity.
+                // Consume BEFORE sending: the healing break cannot authorize itself again;
+                // only a real re-kick can.
                 staleBatchHealArmedAt = null
                 consecutiveRejectingChecks = 0
                 lastStaleBatchHealAt = checkTime
@@ -493,17 +454,17 @@ class RunnerSession(
         }
     }
 
-    /// Reported by `watchConnection`, which has already filtered repeats — the one caller
-    /// in the app. Internal only so a test on an inert scope can stand in for the watcher.
+    /// Reported by `watchConnection`, which already filtered repeats. Internal so a test on
+    /// an inert scope can stand in for it.
     internal fun connectionChanged(isConnected: Boolean) {
-        // A gauge waking up in your bag must not silently take over a session you chose to
-        // run without it — the clock would suddenly start waiting for force.
+        // A gauge waking up in your bag must not take over a session you chose to run
+        // without it.
         if (timerOnly) return
         send(if (isConnected) RunnerEvent.ConnectionRestored else RunnerEvent.ConnectionLost)
         if (isConnected) {
             startIfReady(if (hasStarted) StreamStartCause.reconnect else StreamStartCause.initial)
-            // The link that `begin()` was waiting for. From here the session can survive
-            // the screen locking, which is the whole reason the service exists.
+            // The link `begin()` was waiting for; from here the session can survive the
+            // screen locking.
             updateForegroundService()
         }
     }
@@ -512,8 +473,8 @@ class RunnerSession(
         if (timerOnly || hasEnded || runner.isFinished || !device.state.isConnected) return
         if (!TarePolicy.phaseAllowsTare(runner.phase) ||
             !TarePolicy.isSafeToTareNow(device.secondsSinceLastSample(), device.tareReadingMaxAge)) return
-        // DeviceStore re-kicks a running stream after tare. Buffered pre-tare samples
-        // can anchor the new epoch first; allow only the same bounded single-use heal.
+        // DeviceStore re-kicks a running stream after tare, and buffered pre-tare samples
+        // can anchor the new epoch first; allow the same bounded single-use heal.
         if (device.isStreaming) armStaleBatchHeal()
         send(RunnerEvent.TareCommitted)
         device.tare()
@@ -521,9 +482,9 @@ class RunnerSession(
 
     // MARK: - The one funnel
 
-    /// Every event in, every cue out, in one place — so there is exactly one line in the app
-    /// that decides what a session sounds like. The list is also RETURNED, which is what
-    /// lets a test assert a whole workout's cue schedule with no audio involved.
+    /// Every event in, every cue out, in one place — the one line deciding what a session
+    /// sounds like. The list is also RETURNED, so a test can assert a whole workout's cue
+    /// schedule with no audio.
     private val announcedGrips = mutableSetOf<String>()
 
     fun send(event: RunnerEvent): List<RunnerCue> {
@@ -538,27 +499,23 @@ class RunnerSession(
         return emitted
     }
 
-    /// **The last rep is not the end of the session's life — the summary is.**
+    /// **The last rep is not the end of the session's life — the summary is.** Ending the
+    /// card and service at the last rep, with nothing written until Save, left a finished
+    /// workout only in memory exactly when the phone gets put down, and Android free to
+    /// reclaim it. Now, in order:
     ///
-    /// This used to end the card and stop the foreground service at the last rep, and
-    /// nothing was written until the summary's Save. So a finished workout lived only in
-    /// memory for exactly the stretch when the phone is most likely to be put down — and
-    /// with the service gone, Android was free to reclaim the process and the session with
-    /// it. Now, in this order:
-    ///
-    /// 1. **The draft is written** (`onFinished` → `FinishedSessionDraft`), so even a process
-    ///    killed this instant leaves something the next launch can offer to save.
-    /// 2. **The stream stops.** The summary reads no force, and a service that outlives the
-    ///    workout must not keep the gauge streaming behind a locked screen while the climber
-    ///    decides; a stopped stream in the background also lets the idle grace do its job.
-    /// 3. **The card turns into "session done"** and the service keeps running under it
-    ///    until the summary is resolved — `end()`, from Save or Discard, stops both.
+    /// 1. **The draft is written** (`onFinished` → `FinishedSessionDraft`), so a process
+    ///    killed now leaves something the next launch can offer to save.
+    /// 2. **The stream stops.** The summary reads no force, and the gauge must not stream
+    ///    behind a locked screen while the climber decides; stopping also lets the idle
+    ///    grace work.
+    /// 3. **The card becomes "session done"** and the service keeps running until `end()`
+    ///    (Save or Discard) stops both.
     private fun finish() {
         onFinished?.invoke(outcome())
-        // **A finished session lets go of what only a running one needs**, as the iPhone
-        // does at the same moment: the heartbeat, the stream watchdog and the sample
-        // callback. The summary can sit open for minutes and none of them has anything left
-        // to measure. `end()` still runs later and only undoes what is still live.
+        // **A finished session lets go of what only a running one needs**, as on iPhone:
+        // the heartbeat, the stream watchdog and the sample callback. `end()` later undoes
+        // only what is still live.
         ticker?.cancel()
         ticker = null
         streamWatchdog?.cancel()
@@ -566,27 +523,26 @@ class RunnerSession(
         if (!timerOnly) device.onSample = null
         if (!timerOnly && device.isStreaming) device.stopStreaming(StreamStopCause.sessionEnded)
         activity.showFinished(routineName)
-        // The cue player is released a beat later, not now: the session-complete chord is
-        // queued by this very `send` and stopping the output in the same turn would cut it.
-        // Until then the keep-alive holds the audio path open, which the summary does not need.
+        // Released a beat later: the session-complete chord is queued by this `send`, and
+        // stopping now would cut it.
         scope.launch {
             delay(CUE_RELEASE_AFTER_FINISH_MILLIS)
             if (!hasEnded) cues.end()
         }
     }
 
-    /// Advance the wall clock and beat once. The ticker's body, exposed so a test can drive
-    /// the same path against an injected clock instead of waiting on real time.
+    /// Advance the wall clock and beat once: the ticker's body, exposed so a test can drive
+    /// it against an injected clock.
     fun tickNow(): List<RunnerCue> {
         now = clock.uptimeSeconds()
         return send(RunnerEvent.Tick)
     }
 
-    /// Rebuild the view-facing snapshot, assigning ONLY on a real change. The guard is the
-    /// point: Compose invalidates on every set, equal or not.
+    /// Rebuild the snapshot, assigning ONLY on a real change: Compose invalidates on every
+    /// set, equal or not.
     private fun publish() {
-        // `displaySlot`, not `currentSlot`: during a rest the screen describes the rep you
-        // are about to do. See `SessionRunner.displaySlot`.
+        // `displaySlot`, not `currentSlot`: during a rest the screen describes the next
+        // rep. See `SessionRunner.displaySlot`.
         val slot = runner.displaySlot
         // Published separately so only the progress bar reads this sample-rate state.
         repProgress = runner.repProgress.toFloat().coerceIn(0f, 1f)
@@ -598,8 +554,7 @@ class RunnerSession(
             isRejectingStaleBatches = runner.isRejectingStaleBatches,
             linkIsDown = runner.linkIsDown,
             isFinished = runner.isFinished,
-            // A gauge-free session always "has signal": the clock is the signal, and the
-            // no-readings notice would be complaining about a device nobody asked for.
+            // A gauge-free session always "has signal": the clock is the signal.
             hasSignal = timerOnly || samplesSeen > 0,
             setNumber = runner.setNumber,
             setCount = runner.setCount,
@@ -612,8 +567,8 @@ class RunnerSession(
             newGripID = runner.newGripID, upcomingGrip = runner.upcomingGrip,
             isSetBreak = runner.isSetBreak,
             scheduledRestSeconds = RestFocusPresentation.scheduledRestSeconds(runner.phase, runner.slots),
-            // Whole seconds belong in the screen snapshot. The measured fraction stays
-            // separate so smoothing the small progress bar cannot redraw the whole runner.
+            // Whole seconds belong here; the measured fraction stays separate so the
+            // progress bar cannot redraw the runner.
             secondsShown = secondsShown,
         )
         if (next != snapshot) {
@@ -623,10 +578,9 @@ class RunnerSession(
         pushActivity()
     }
 
-    /// Mirror the snapshot into the activity — but only the parts it draws, and only when
-    /// one of them actually moved. `secondsShown` deliberately does NOT reach it: the
-    /// notification counts down on its own from `endsAt`, so forwarding a ticking number
-    /// would spend the platform's update budget on frames it would have drawn anyway.
+    /// Mirror the snapshot into the activity, only the parts it draws, only when one moved.
+    /// Not `secondsShown`: the notification counts down from `endsAt` itself, and
+    /// forwarding a ticking number spends the update budget for nothing.
     private fun pushActivity() {
         if (snapshot.isFinished) return
         val grip = snapshot.grip ?: return
@@ -638,19 +592,17 @@ class RunnerSession(
             setNumber = snapshot.setNumber ?: 1,
             repPosition = repPosition,
         )
-        // **Compared WITHOUT `endsAt`, and that is the whole point.** `endsAt` is
-        // `now + secondsRemaining`, so it drifts by fractions of a second on every one of
-        // the ten publishes a second — comparing it would push ten times a second and spend
-        // a whole session's update budget in the first minute. Recomputing the deadline only
-        // when the rep or phase actually changes is also the CORRECT moment: a new phase is
-        // exactly when a new countdown should start.
+        // **Compared WITHOUT `endsAt`.** `endsAt` is `now + secondsRemaining` and drifts on
+        // each of the ten publishes a second, so comparing it would spend a session's
+        // update budget in the first minute. A new rep or phase is also exactly when a new
+        // countdown should start.
         if (signature == lastActivitySignature) return
         lastActivitySignature = signature
         activity.update(activityState(grip))
     }
 
-    /// Everything that should force a push. Deliberately excludes the clock and the live
-    /// load: both move continuously and neither is something the card needs told.
+    /// Everything that should force a push. Excludes the clock and the live load: both move
+    /// continuously.
     private data class ActivitySignature(
         val grip: GripSpec,
         val side: Side,
@@ -659,8 +611,8 @@ class RunnerSession(
         val repPosition: Int,
     )
 
-    /// Which pull you are ON. Floored at 1: a card reading "Pull 0 of 12" says the session
-    /// has not started, and by the time anyone can see it, it has.
+    /// Which pull you are ON, floored at 1: "Pull 0 of 12" says the session has not
+    /// started, and by the time anyone sees it, it has.
     private val repPosition: Int
         get() {
             if (snapshot.plannedRepCount <= 0) return 1
@@ -669,8 +621,8 @@ class RunnerSession(
 
     private fun activityState(grip: GripSpec): SessionActivityState {
         val phase = activityPhase
-        // ARMED runs no clock — it waits on you, with no timeout, by design. So the deadline
-        // goes out null and the hold LENGTH goes out instead.
+        // ARMED runs no clock (it waits on you, no timeout), so the deadline goes out null
+        // and the hold LENGTH instead.
         val isArmed = phase == SessionActivityPhase.armed
         val remainingInterval = runner.countdownRemainingInterval(clock.uptimeSeconds())
             ?: snapshot.secondsShown.toDouble()
@@ -682,8 +634,7 @@ class RunnerSession(
             repPosition = repPosition,
             targetLoKg = snapshot.targetBand?.start,
             targetHiKg = snapshot.targetBand?.endInclusive,
-            // An ABSOLUTE deadline, recomputed from the same countdown the screen shows.
-            // Converting to a wall-clock instant here is what lets the notification tick
+            // An ABSOLUTE deadline from the screen's countdown, so the notification ticks
             // without us.
             endsAtEpochMillis = if (phase.runsCountdown && remainingInterval > 0) {
                 System.currentTimeMillis() + (remainingInterval * 1_000).toLong()
@@ -694,11 +645,9 @@ class RunnerSession(
         )
     }
 
-    /// The runner's phases collapsed to the ones that change what you do with your hands —
-    /// **and `armed` is one of them.** It used to fall into "pulling", which meant the card
-    /// said "Pull" and ran a countdown while the edge was still hanging there untouched. It
-    /// is its own beat, and its own colour: amber, the app's "waiting on you", against bleu
-    /// for a clock that is genuinely running.
+    /// The phases that change what you do with your hands — **`armed` included.** Folded
+    /// into "pulling", the card said "Pull" and counted down while the edge was untouched.
+    /// Its own colour: amber, "waiting on you", against bleu for a running clock.
     private val activityPhase: SessionActivityPhase
         get() {
             val phase = snapshot.phase
@@ -740,24 +689,22 @@ class RunnerSession(
     /// Everything a store needs to write this session down, computed once when the summary
     /// asks for it.
     ///
-    /// No store writes happen here on purpose: `RunnerHost` hands this to `onFinished` and
-    /// the integrator decides what to persist. That keeps the whole runner previewable and
-    /// testable with no database behind it.
+    /// No store writes here: `RunnerHost` hands this to `onFinished` and the integrator
+    /// persists, keeping the runner testable with no database.
     fun outcome(): SessionOutcome {
         val reps = runner.results
         val held = reps.sumOf { it.heldSeconds }
         return SessionOutcome(
             id = sessionID,
-            // The EXECUTABLE plan — what actually ran. Sets with no reps never happened and
-            // must not appear in a log claiming they did.
+            // The EXECUTABLE plan — what actually ran. Sets with no reps never happened.
             plan = plan.executable,
             routineName = routineName,
             results = reps,
             startedAt = startedAt,
             finishedAt = finishedAt ?: Instant.now().also { finishedAt = it },
             peakKg = reps.maxOfOrNull { it.peakKg } ?: 0.0,
-            // Time-weighted, like the log's own: a rep that dropped off after a second must
-            // not weigh as much as a full hang.
+            // Time-weighted, like the log's own: a rep dropped after a second must not
+            // weigh like a full hang.
             avgKg = if (held > 0) reps.sumOf { it.avgKg * it.heldSeconds } / held else 0.0,
             totalHeldSeconds = held,
             completedReps = reps.count { it.outcome == RepOutcome.completed },
@@ -769,9 +716,8 @@ class RunnerSession(
         )
     }
 
-    /// A pull inside a session that beat a grip's working max, offered as the new max per
-    /// HAND. COMPLETED reps only, and only real pulls: a timer-only session records 0 kg
-    /// peaks, and offering "0.0 kg — new max!" would be the app talking nonsense.
+    /// A pull that beat a grip's working max, offered per HAND. COMPLETED reps and real
+    /// pulls only: a timer-only session records 0 kg peaks.
     internal fun maxCandidates(reps: List<RepSummary>): List<MaxCandidate> {
         val best = LinkedHashMap<String, MaxCandidate>()
         for (rep in reps) {
@@ -783,8 +729,8 @@ class RunnerSession(
                 grip = rep.grip,
                 side = rep.side,
                 kg = rep.peakKg,
-                // A shared target fallback is not a recorded peak for this hand. Offer
-                // its first measured max even when that pull is below the shared value.
+                // A shared fallback target is not a recorded peak for this hand; offer its
+                // first measured max even below the shared value.
                 previous = maxes.exact(rep.grip.key, rep.side),
             )
         }
@@ -794,27 +740,25 @@ class RunnerSession(
     }
 
     companion object {
-        /// 100 ms. Countdowns are whole seconds, so ten beats a second is four times the
-        /// resolution anything on screen can show — enough that a phase boundary is never
-        /// visibly late, cheap enough to run for twenty minutes.
+        /// 100 ms: four times the resolution of whole-second countdowns, so a phase
+        /// boundary is never visibly late, and cheap for twenty minutes.
         const val TICK_MILLIS = 100L
         /// How long the cue player outlives the finish, so the session chord (0.52 s) plays out.
         const val CUE_RELEASE_AFTER_FINISH_MILLIS = 1_000L
 
-        /// One cheap check every 500 ms for the session's whole life; the silence it acts on
-        /// is `silenceRestartSeconds`, which is per-gauge.
+        /// One cheap check every 500 ms; the silence it acts on is per-gauge
+        /// `silenceRestartSeconds`.
         const val WATCHDOG_MILLIS = 500L
 
-        /// Every load cell drifts a few hundred grams unloaded, so a max is only offered
-        /// above a kilogram — the same floor `MaxAttempt` uses to decide somebody pulled.
+        /// Load cells drift a few hundred grams unloaded, so a max is only offered above a
+        /// kilogram — `MaxAttempt`'s floor too.
         const val MAX_CANDIDATE_FLOOR_KG = 1.0
     }
 }
 
-/// Everything the runner screen draws, at the resolution it draws it.
-///
-/// A `data class` on purpose: `RunnerSession.publish()` assigns only on a real change,
-/// which is what turns 80 engine mutations a second into one or two recompositions.
+/// Everything the runner screen draws, at the resolution it draws it. A `data class` so
+/// `publish()` can assign only on a real change: 80 engine mutations a second become one or
+/// two recompositions.
 data class RunnerSnapshot(
     val phase: RunnerPhase = RunnerPhase.Idle,
     val isDropped: Boolean = false,
@@ -839,9 +783,9 @@ data class RunnerSnapshot(
     /// The load this rep is aiming for, already resolved to kilograms. Null when the routine
     /// sets no target, or when the grip has no max to take a percentage of.
     val targetBand: ClosedFloatingPointRange<Double>? = null,
-    /// True while the rest currently running leads into a different grip — the one thing on
-    /// a rest screen that is a change of instruction rather than a countdown. False outside
-    /// a rest, `Releasing` included; see `SessionRunner.nextGripDiffers`.
+    /// True while the running rest leads into a different grip — a change of instruction,
+    /// not a countdown. False outside a rest, `Releasing` included; see
+    /// `SessionRunner.nextGripDiffers`.
     val gripChangesNext: Boolean = false,
     val newGripID: String? = null,
     val upcomingGrip: GripSpec? = null,
@@ -851,8 +795,8 @@ data class RunnerSnapshot(
 
     /// Whole seconds on whichever clock is running.
     val secondsShown: Int = 0,
-    /// Original duration of the completed slot's rest. It does not shrink with the
-    /// countdown or accidentally inherit the next grip's rest while labels look ahead.
+    /// Original duration of the completed slot's rest: does not shrink with the countdown
+    /// or inherit the next grip's rest.
     val scheduledRestSeconds: Int? = null,
 ) {
     val showsRestFocus: Boolean
@@ -885,23 +829,21 @@ data class SessionOutcome(
     val totalHeldSeconds: Double,
     val completedReps: Int,
     val plannedReps: Int,
-    /// True when the session ran on the clock alone. The reps are real and the loads are
-    /// not, which is a fact a log has to carry rather than infer from zero kilograms.
+    /// Ran on the clock alone: the reps are real, the loads are not — a fact the log must
+    /// carry, not infer from zero kg.
     val timerOnly: Boolean,
     /// Which gauge measured it, or null when nothing did.
     val gaugeKind: GaugeKind?,
     val didAnyWork: Boolean,
     val maxCandidates: List<MaxCandidate>,
-    /// The log row's id — see `RunnerSession.sessionID`. Never defaulted: a fresh id minted
-    /// by whoever builds an outcome would break one-session-one-row between Save and
-    /// launch recovery.
+    /// The log row's id — see `RunnerSession.sessionID`. Never defaulted: a fresh id would
+    /// break one-session-one-row between Save and launch recovery.
     val id: UUID,
 )
 
-/// What the summary decided. `save` false means the climber held the Discard button — the
-/// session is thrown away and nothing is written (Nuri, 2026-08-09: "just in case you get
-/// interrupted"). A session you were pulled out of halfway is not training, and logging it
-/// drags a bad number through every average and marks the day done when it was not.
+/// What the summary decided. `save` false means the climber held Discard and nothing is
+/// written (Nuri, 2026-08-09): an interrupted session is not training, and logging it skews
+/// every average and marks the day done.
 data class SessionSummaryDecision(
     val save: Boolean,
     val rpe: run.nuri.getagrip.engine.RPE? = null,
