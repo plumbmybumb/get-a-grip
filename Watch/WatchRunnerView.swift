@@ -132,11 +132,20 @@ struct WatchRunnerView: View {
             session?.connectionChanged(isConnected: connected)
         }
         .onChange(of: scenePhase) { _, phase in
-            // NO pause on leaving the foreground, unlike the phone: the workout session
+            // NO pause on leaving the foreground while a workout session is RUNNING: it
             // keeps the process and the stream alive with the wrist down, so a rep keeps
             // counting. Coming back re-kicks the stream for the same reason the phone
             // does — the burst the radio buffered while the screen slept.
             if phase == .active { session?.startIfReady(cause: .foreground) }
+            // **Without one, the phone's rule** (`BackgroundPausePolicy`): Health refused,
+            // unavailable, still starting, or ended by the system — nothing keeps the app
+            // alive, watchOS suspends it, the ticker and the samples stop, and a rep would
+            // stall silently at whatever it had accrued. Pausing says so, and a pause needs
+            // a deliberate tap to come back from. Gauge or no gauge: on the wrist it is the
+            // workout session, not the Bluetooth link, that buys background time.
+            if phase == .background, keeper.state != .running, session?.isFinished == false {
+                session?.send(.pause)
+            }
         }
     }
 
