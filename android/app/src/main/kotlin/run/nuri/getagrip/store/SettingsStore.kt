@@ -21,7 +21,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -350,37 +350,54 @@ class SettingsStore(
     }
 }
 
-/// **One consumer, in submission order.** The fix for fire-and-forget writes that raced each
-/// other on a multi-threaded pool — see `SettingsStore`.
+/// **One writer at a time, in submission order.** The fix for fire-and-forget writes that
+/// raced each other on a multi-threaded pool — see `SettingsStore`.
 ///
 /// Not `limitedParallelism(1)`: a lane of one THREAD still interleaves at every suspension
 /// point, and `DataStore.edit` suspends, so two launched writes could still commit out of
-/// order. A channel drained by a single coroutine cannot: the second write is not even
-/// looked at until the first one's `apply` has returned.
+/// order. Here a second write is not even looked at until the first one's `apply` returns.
 ///
 /// Whatever queued up while one batch was being written is applied as the NEXT batch, in
 /// order — so a burst (a draft stash per keystroke) costs one file write rather than one
-/// per change, and the file still ends up holding the last value written.
+/// per change, and the file still ends up holding the last value written. The drain is a
+/// coroutine that exists only while there is something to write, never a consumer parked
+/// forever on the store's scope: a scope's children finishing is how a caller (and a test)
+/// knows the writes it made have landed.
 internal class SerialWriteLane<T>(
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val apply: suspend (List<T>) -> Unit,
 ) {
-    private val pending = Channel<T>(Channel.UNLIMITED)
-
-    init {
-        scope.launch {
-            for (first in pending) {
-                val batch = mutableListOf(first)
-                while (true) batch.add(pending.tryReceive().getOrNull() ?: break)
-                // A failed write must not take the lane down with it: every later write
-                // would then be silently dropped for the life of the process.
-                runCatching { apply(batch) }
-            }
-        }
-    }
+    private val lock = Any()
+    private val pending = ArrayList<T>()
+    private var draining = false
 
     fun submit(value: T) {
-        pending.trySend(value)
+        val startDrain = synchronized(lock) {
+            pending.add(value)
+            if (draining) false else true.also { draining = true }
+        }
+        if (startDrain) scope.launch { drain() }
+    }
+
+    private suspend fun drain() {
+        try {
+            while (true) {
+                val batch = synchronized(lock) {
+                    if (pending.isEmpty()) return
+                    ArrayList(pending).also { pending.clear() }
+                }
+                try {
+                    apply(batch)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Throwable) {
+                    // A failed write must not take the lane down with it: every later write
+                    // would then be silently dropped for the life of the process.
+                }
+            }
+        } finally {
+            synchronized(lock) { draining = false }
+        }
     }
 }
 
