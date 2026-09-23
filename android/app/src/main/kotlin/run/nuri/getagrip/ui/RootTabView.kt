@@ -24,10 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
@@ -133,22 +130,32 @@ enum class Tab(private val key: String, val icon: ImageVector) {
 /// staleness subtitle carries the same fact in words, so nothing is lost by holding still.
 ///
 /// TRANSLATION NOTE: SF Symbols animates the GLYPH; Compose has no symbol effect, so the same
-/// beat is a scale on the icon. `infiniteRepeatable` with `RepeatMode.Reverse` gives one
-/// continuous breath rather than a sawtooth that snaps back every cycle. It is deliberately
-/// NOT routed through `Motion`: the ladder is three TRANSITION curves between states, and a
-/// heartbeat is neither a transition nor a state.
+/// beat is a scale on the icon, out and back so it breathes rather than snapping. It is
+/// deliberately NOT routed through `Motion`: the ladder is three TRANSITION curves between
+/// states, and a heartbeat is neither a transition nor a state.
+///
+/// **A few beats each time the bar appears, then still.** It used to breathe FOREVER, which
+/// kept the frame clock running for as long as the tab bar was on screen — an app drawing
+/// sixty frames a second to sit on Today, for weeks, until somebody measured a max. A nudge
+/// that has been seen has done its job; the staleness line on the tab still says it in words.
 @Composable
-private fun Modifier.benchmarkPulse(active: Boolean): Modifier {
-    if (!active) return this
-    val transition = rememberInfiniteTransition(label = "benchmarkNudge")
-    val pulse = transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.14f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "benchmarkNudgeScale",
-    )
-    return this.graphicsLayer { scaleX = pulse.value; scaleY = pulse.value }
+internal fun Modifier.benchmarkPulse(active: Boolean): Modifier {
+    val scale = remember { Animatable(1f) }
+    LaunchedEffect(active) {
+        if (!active) {
+            scale.snapTo(1f)
+            return@LaunchedEffect
+        }
+        repeat(BENCHMARK_PULSE_BEATS) {
+            scale.animateTo(1.14f, tween(900))
+            scale.animateTo(1f, tween(900))
+        }
+    }
+    return this.graphicsLayer { scaleX = scale.value; scaleY = scale.value }
 }
+
+/// Enough to catch an eye moving across the bar, few enough to stop before it is wallpaper.
+internal const val BENCHMARK_PULSE_BEATS = 3
 
 @Composable
 fun RootTabView() {
