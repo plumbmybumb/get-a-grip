@@ -19,8 +19,10 @@ import run.nuri.getagrip.debug.Seeds
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.l10n.AppResources
 import run.nuri.getagrip.l10n.STRING_KEYS
+import run.nuri.getagrip.runner.FinishedSessionDraftStore
 import run.nuri.getagrip.runner.LiveUpdateNotification
 import run.nuri.getagrip.runner.SessionForegroundService
+import run.nuri.getagrip.store.AlarmGraceBackstop
 import run.nuri.getagrip.store.AlarmScheduler
 import run.nuri.getagrip.store.AndroidAlarmScheduler
 import run.nuri.getagrip.store.AndroidGaugeClientFactory
@@ -60,6 +62,11 @@ class GetAGripApplication : Application() {
     val database: GetAGripDatabase by lazy { GetAGripDatabase.open(this) }
 
     val clock: DayClock by lazy { DayClock() }
+
+    /// The one finished-but-unsaved session, if any — see `FinishedSessionDraft`.
+    val finishedSessionDrafts: FinishedSessionDraftStore by lazy {
+        FinishedSessionDraftStore(java.io.File(filesDir, FinishedSessionDraftStore.FILE_NAME))
+    }
 
     /// THE SPOTLIGHT TOUR — one controller for the whole PROCESS, not one per Activity.
     ///
@@ -111,11 +118,16 @@ class GetAGripApplication : Application() {
         observeProcessLifecycle()
         storeScope.launch {
             Seeds.apply(database, intent)
-            // Before the first derived world, so a session filed under the wrong day by
-            // the midnight-turning clock is counted on the right one from the first frame.
-            templates.repairTrainingDays()
             templates.syncDerived()
             historyFeed.refresh()
+            // AFTER the first derived world, not before it: the repair reads the whole
+            // history's day columns, and the first frame must not wait on a read that grows
+            // with every week trained. It runs once per device (see
+            // `repairTrainingDaysOnce`), and republishes only if a row actually moved.
+            if (templates.repairTrainingDaysOnce() > 0) {
+                templates.syncDerived()
+                historyFeed.refresh()
+            }
         }
     }
 
@@ -215,7 +227,12 @@ class GetAGripApplication : Application() {
         kindStore = settings,
         clientFactory = AndroidGaugeClientFactory(this, gaugeScope, SystemHostClock),
         clock = SystemHostClock,
+        graceBackstop = AlarmGraceBackstop(this),
     ).also { existing = it }
 
     private var existing: DeviceStore? = null
+
+    /// The store if one was ever built — the grace backstop's receiver must not construct a
+    /// Bluetooth client for a process woken only to deliver its alarm.
+    val existingDeviceStore: DeviceStore? get() = existing
 }

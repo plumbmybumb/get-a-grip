@@ -14,7 +14,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1202) {
+val STRING_KEYS: Map<String, Int> = buildMap(1205) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -773,6 +773,7 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["One value for both hands"] = R.string.s_one_value_for_both_hands
     into["Only your %s hand. Its targets come from this number; your other hand needs its own."] = R.string.s_only_your_hand_its_targets_come_from_this_number_your_ot
     into["Open"] = R.string.s_open
+    into["Open Get a Grip to save it."] = R.string.a_open_get_a_grip_to_save_it
     into["Open Settings"] = R.string.s_open_settings
     into["Open in a browser"] = R.string.a_open_in_a_browser
     into["Open source"] = R.string.s_open_source
@@ -788,10 +789,10 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Optional. It's what tells you later whether to add load."] = R.string.s_optional_it_s_what_tells_you_later_whether_to_add_load
     into["Other…"] = R.string.s_other
     into["PAUSED"] = R.string.s_paused_cd5d07
-    into["PN"] = R.string.s_pn
 }
 
 private fun string_keysChunk5(into: MutableMap<String, Int>) {
+    into["PN"] = R.string.s_pn
     into["POSITION"] = R.string.s_position
     into["Past sessions keep the routine they were done with."] = R.string.s_past_sessions_keep_the_routine_they_were_done_with
     into["Pause"] = R.string.s_pause
@@ -941,10 +942,10 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Share routine…"] = R.string.s_share_routine_5ec936
     into["Share the code"] = R.string.s_share_the_code
     into["Share the document"] = R.string.s_share_the_document
-    into["Share this five-week calendar"] = R.string.s_share_this_five_week_calendar
 }
 
 private fun string_keysChunk6(into: MutableMap<String, Int>) {
+    into["Share this five-week calendar"] = R.string.s_share_this_five_week_calendar
     into["Shared max"] = R.string.s_shared_max
     into["Shared routine"] = R.string.s_shared_routine
     into["Sharing a file isn't available on this build — use Copy, and paste the document where you need it."] = R.string.a_sharing_a_file_isn_t_available_on_this_build_use_copy_an
@@ -1066,6 +1067,7 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["This routine code couldn't be read. It may be damaged or incomplete."] = R.string.s_this_routine_code_couldn_t_be_read_it_may_be_damaged_or
     into["This routine is too large to import."] = R.string.s_this_routine_is_too_large_to_import
     into["This routine was shared from a newer version of Get a Grip. Update the app to import it."] = R.string.s_this_routine_was_shared_from_a_newer_version_of_get_a_gr
+    into["This session finished, but the app closed before it was saved."] = R.string.a_this_session_finished_but_the_app_closed_before_it_was_s
     into["Thumb"] = R.string.s_thumb_557518
     into["Thumb, %s"] = R.string.s_thumb_2ce0ce
     into["Time for a session."] = R.string.s_time_for_a_session
@@ -1089,15 +1091,16 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Undo"] = R.string.s_undo_39fc72
     into["Undo. %s"] = R.string.s_undo_e86500
     into["Unit"] = R.string.s_unit
+    into["Unsaved session from %s"] = R.string.a_unsaved_session_from_s
     into["Up %1\$s %2\$s across %3\$d sessions."] = R.string.s_up_across_lld_sessions
     into["Up %1\$s kg across %2\$d sessions."] = R.string.s_up_kg_across_lld_sessions
     into["Up %s %s across %d sessions."] = R.string.s_up_across_lld_sessions
-    into["Up %s kg across %d sessions."] = R.string.s_up_kg_across_lld_sessions
-    into["Up next"] = R.string.a_up_next
-    into["Upper bound"] = R.string.s_upper_bound
 }
 
 private fun string_keysChunk7(into: MutableMap<String, Int>) {
+    into["Up %s kg across %d sessions."] = R.string.s_up_kg_across_lld_sessions
+    into["Up next"] = R.string.a_up_next
+    into["Upper bound"] = R.string.s_upper_bound
     into["Use + to add a max. Each grip has an Edit button for changing hand values and reviewing earlier records. Your charts and percentage targets use these same numbers."] = R.string.a_use_to_add_a_max_each_grip_has_an_edit_button_for_changi
     into["Use as max"] = R.string.s_use_as_max
     into["Use this max"] = R.string.s_use_this_max
@@ -1245,12 +1248,12 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["today"] = R.string.s_today_2dd2be
     into["up"] = R.string.s_up
     into["version query"] = R.string.s_version_query
-    into["yesterday"] = R.string.s_yesterday_1aa96b
-    into["your fingers felt %s"] = R.string.s_your_fingers_felt
-    into["· %d hangs"] = R.string.s_lld_hangs
 }
 
 private fun string_keysChunk8(into: MutableMap<String, Int>) {
+    into["yesterday"] = R.string.s_yesterday_1aa96b
+    into["your fingers felt %s"] = R.string.s_your_fingers_felt
+    into["· %d hangs"] = R.string.s_lld_hangs
     into["· 1 hang"] = R.string.s_1_hang
     into["≈%d min"] = R.string.s_lld_min_7e09eb
 }

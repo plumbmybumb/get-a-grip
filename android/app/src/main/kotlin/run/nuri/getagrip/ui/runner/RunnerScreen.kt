@@ -210,12 +210,9 @@ fun RunnerHost(
     RunnerWindowChrome(hideStatusBar = !session.isFinished)
     RunnerLifecycle(session, device, timerOnly)
 
-    // `onChange`, not "on every composition": `connectionChanged` sends real engine events.
-    val connected = device.state.isConnected
-    LaunchedEffect(connected) {
-        if (workout.lastConnected != null && workout.lastConnected != connected) session.connectionChanged(connected)
-        workout.lastConnected = connected
-    }
+    // Link changes reach the engine through the session's own watcher, not an effect
+    // here: a composition stops with the Activity, and a locked screen is exactly when the
+    // service-kept session most needs to hear the link drop. See `RunnerSession.begin`.
 
     // **System back PAUSES; it never ends.** Ending a session is the hold, and only the
     // hold — a gesture people fire by reflex must not be able to destroy a workout, and iOS

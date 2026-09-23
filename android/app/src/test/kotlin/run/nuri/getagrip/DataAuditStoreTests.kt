@@ -79,6 +79,10 @@ class DataAuditStoreTests {
         override suspend fun removeRoutine(id: UUID) { routines.removeAll { it.id == id } }
         override suspend fun putLog(row: WorkoutLogEntity) { logs.removeAll { it.id == row.id }; logs.add(row) }
         override suspend fun removeLog(id: UUID) { logs.removeAll { it.id == id } }
+        override suspend fun refileLog(id: UUID, dayKey: Int) {
+            val index = logs.indexOfFirst { it.id == id }
+            if (index >= 0) logs[index] = logs[index].copy(dayKey = dayKey)
+        }
         override suspend fun putMax(row: MaxRecordEntity) { maxes.removeAll { it.id == row.id }; maxes.add(row) }
         override suspend fun removeMax(id: UUID) { maxes.removeAll { it.id == id } }
     }

@@ -198,6 +198,20 @@
     {
       "en": "Use + to add a max. Each grip has an Edit button for changing hand values and reviewing earlier records. Your charts and percentage targets use these same numbers.",
       "fr": "Utilisez + pour ajouter un max. Chaque prise a un bouton Modifier pour ajuster les valeurs de chaque main et consulter les anciens tests. Ces mêmes valeurs servent aux graphiques et aux cibles en pourcentage."
+    },
+    {
+      "en": "Open Get a Grip to save it.",
+      "fr": "Ouvre Get a Grip pour l'enregistrer.",
+      "//": "The session card once the last rep is done and the summary is waiting. The foreground service keeps running under it until Save or Discard."
+    },
+    {
+      "en": "Unsaved session from %s",
+      "fr": "Séance non enregistrée du %s",
+      "//": "Launch recovery of a finished session whose summary was never resolved. %s is a localized date and time."
+    },
+    {
+      "en": "This session finished, but the app closed before it was saved.",
+      "fr": "Cette séance s'est terminée, mais l'app s'est fermée avant qu'elle soit enregistrée."
     }
   ]
 }

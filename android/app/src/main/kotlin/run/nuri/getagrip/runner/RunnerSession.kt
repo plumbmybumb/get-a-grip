@@ -34,6 +34,7 @@ import run.nuri.getagrip.engine.StaleBatchHealer
 import run.nuri.getagrip.store.DeviceStore
 import run.nuri.getagrip.store.TarePolicy
 import java.time.Instant
+import java.util.UUID
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
@@ -144,6 +145,16 @@ class RunnerSession(
     var startedAt: Instant = Instant.now()
         private set
 
+    /// The identity this session's log row will be written under — from the summary's Save
+    /// or from launch recovery, the same id, so the two can never log it twice. See
+    /// `FinishedSessionDraft`.
+    val sessionID: UUID = UUID.randomUUID()
+
+    /// Called ONCE, the moment the session finishes, with what a store would write. Set by
+    /// `WorkoutViewModel`, which is where the finished-session draft is written down —
+    /// before the summary, and before anything can take the process away.
+    var onFinished: ((SessionOutcome) -> Unit)? = null
+
     /// Monotonic seconds the countdowns are measured against. NOT observable: the screen
     /// reads whole seconds off `snapshot`, so republishing this 10× a second would
     /// invalidate every reader for a number none of them display.
@@ -189,6 +200,12 @@ class RunnerSession(
 
     private var ticker: Job? = null
     private var streamWatchdog: Job? = null
+    private var connectionWatch: Job? = null
+
+    /// What this session was last TOLD about the link — `connectionChanged` acts on a change
+    /// of this, never on a repeat, so the watcher and a direct call cannot double an event.
+    private var reportedConnected: Boolean? = null
+    private var lastLink: DeviceStore.Link? = null
     private var hasStarted = false
     private var hasBegun = false
     private var hasEnded = false
@@ -232,6 +249,13 @@ class RunnerSession(
             }
         }
 
+        if (!timerOnly) {
+            // Captured BEFORE anything can connect, so a link that comes up during `begin()`
+            // itself is a change the watcher reports rather than a baseline it swallows.
+            lastLink = device.link.value
+            reportedConnected = device.state.isConnected
+        }
+
         if (timerOnly) {
             // The session starts on the spot: there is nothing to connect to and nothing to
             // tare, and the count-in is the only preamble a clock needs.
@@ -263,6 +287,34 @@ class RunnerSession(
         // AFTER the publisher, never before: the service's `startForeground` adopts the card
         // the publisher just built, and starting first would flash a placeholder.
         updateForegroundService()
+
+        // Last, for the same reason: a link that arrived during `begin()` is reported here,
+        // and reporting it starts the service, which must find the card already built.
+        if (!timerOnly) watchConnection()
+    }
+
+    /// **The session follows the link itself, on its own scope.** This used to be a
+    /// `LaunchedEffect` on the runner's screen, which stops with the Activity: a session the
+    /// foreground service kept alive behind a locked screen never heard the link drop or
+    /// come back, so it neither paused its clock nor re-kicked the stream. See
+    /// `DeviceStore.link`.
+    private fun watchConnection() {
+        connectionWatch?.cancel()
+        connectionWatch = scope.launch {
+            device.link.collect { link ->
+                val last = lastLink
+                lastLink = link
+                if (last == null || link == last) return@collect
+                if (link.isConnected && last.isConnected) {
+                    // A NEW connection with no drop observed in between — the flow conflated
+                    // it. The engine still has to break its timeline across it.
+                    connectionChanged(false)
+                    connectionChanged(true)
+                } else if (link.isConnected != last.isConnected) {
+                    connectionChanged(link.isConnected)
+                }
+            }
+        }
     }
 
     fun end() {
@@ -276,6 +328,8 @@ class RunnerSession(
         ticker = null
         streamWatchdog?.cancel()
         streamWatchdog = null
+        connectionWatch?.cancel()
+        connectionWatch = null
         device.onSample = null
         // Never leave the gauge streaming behind us: it drains its own battery for ten
         // minutes and the user blames the app.
@@ -445,6 +499,11 @@ class RunnerSession(
         // A gauge waking up in your bag must not silently take over a session you chose to
         // run without it — the clock would suddenly start waiting for force.
         if (timerOnly) return
+        // A change, never a repeat: the session's own watcher reports every transition, and
+        // a caller repeating one must not send the engine a second restore (and a second
+        // stream re-kick) for a link that never moved.
+        if (reportedConnected == isConnected) return
+        reportedConnected = isConnected
         send(if (isConnected) RunnerEvent.ConnectionRestored else RunnerEvent.ConnectionLost)
         if (isConnected) {
             startIfReady(if (hasStarted) StreamStartCause.reconnect else StreamStartCause.initial)
@@ -476,16 +535,33 @@ class RunnerSession(
         val emitted = runner.handle(event, at = now, recordedAt = clock.uptimeSeconds())
         if (runner.isFinished && finishedAt == null) {
             finishedAt = startedAt.plusNanos(((runner.finishedElapsedSeconds ?: 0.0) * 1e9).toLong())
-            activity.end()
-            if (serviceRunning) {
-                serviceRunning = false
-                service.end()
-            }
+            finish()
         }
         publish()
         runner.newGripID?.let { if (announcedGrips.add(it)) cues.gripChanged() }
         for (cue in emitted) cues.play(cue)
         return emitted
+    }
+
+    /// **The last rep is not the end of the session's life — the summary is.**
+    ///
+    /// This used to end the card and stop the foreground service at the last rep, and
+    /// nothing was written until the summary's Save. So a finished workout lived only in
+    /// memory for exactly the stretch when the phone is most likely to be put down — and
+    /// with the service gone, Android was free to reclaim the process and the session with
+    /// it. Now, in this order:
+    ///
+    /// 1. **The draft is written** (`onFinished` → `FinishedSessionDraft`), so even a process
+    ///    killed this instant leaves something the next launch can offer to save.
+    /// 2. **The stream stops.** The summary reads no force, and a service that outlives the
+    ///    workout must not keep the gauge streaming behind a locked screen while the climber
+    ///    decides; a stopped stream in the background also lets the idle grace do its job.
+    /// 3. **The card turns into "session done"** and the service keeps running under it
+    ///    until the summary is resolved — `end()`, from Save or Discard, stops both.
+    private fun finish() {
+        onFinished?.invoke(outcome())
+        if (!timerOnly && device.isStreaming) device.stopStreaming(StreamStopCause.sessionEnded)
+        activity.showFinished(routineName)
     }
 
     /// Advance the wall clock and beat once. The ticker's body, exposed so a test can drive
@@ -660,6 +736,7 @@ class RunnerSession(
         val reps = runner.results
         val held = reps.sumOf { it.heldSeconds }
         return SessionOutcome(
+            id = sessionID,
             // The EXECUTABLE plan — what actually ran. Sets with no reps never happened and
             // must not appear in a log claiming they did.
             plan = plan.executable,
@@ -802,6 +879,9 @@ data class SessionOutcome(
     val gaugeKind: GaugeKind?,
     val didAnyWork: Boolean,
     val maxCandidates: List<MaxCandidate>,
+    /// The log row's id — see `RunnerSession.sessionID`. Last and defaulted, so a preview
+    /// or a test building an outcome positionally need not invent one.
+    val id: UUID = UUID.randomUUID(),
 )
 
 /// What the summary decided. `save` false means the climber held the Discard button — the

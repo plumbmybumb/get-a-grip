@@ -93,6 +93,20 @@ class AndroidActivityPublisher(context: Context) : ActivityPublisher {
         notifications.cancel(LiveUpdateNotification.NOTIFICATION_ID)
     }
 
+    /// "Session done — open to save it", silent and without a clock. It replaces the live
+    /// card under the SAME id, so the foreground service keeps running in it (see
+    /// `SessionForegroundService.pending`) until the summary's Save or Discard ends both.
+    override fun showFinished(routineName: String) {
+        if (!isRunning) return
+        unitObservation?.cancel()
+        unitObservation = null
+        latestState = null
+        lastPosted = null
+        val notification = LiveUpdateNotification.finished(appContext, routineName)
+        SessionForegroundService.pending = notification
+        notifications.notify(LiveUpdateNotification.NOTIFICATION_ID, notification)
+    }
+
     private fun post(state: SessionActivityState) {
         latestState = state
         val signature = Signature(state)

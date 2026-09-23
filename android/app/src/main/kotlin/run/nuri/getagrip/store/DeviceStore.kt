@@ -15,6 +15,8 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import run.nuri.getagrip.ble.BroadcastGaugeClient
@@ -31,6 +33,7 @@ import run.nuri.getagrip.ble.ProgressorClient
 import run.nuri.getagrip.ble.PacketBoundary
 import run.nuri.getagrip.ble.ProgressorClientDiagnostic
 import run.nuri.getagrip.ble.ProgressorConnectionState
+import run.nuri.getagrip.ble.ScanStartBudget
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
 import run.nuri.getagrip.ble.SystemHostClock
@@ -85,12 +88,16 @@ class AndroidGaugeClientFactory(
     private val scope: CoroutineScope,
     private val clock: HostClock = SystemHostClock,
 ) : GaugeClientFactory {
+    /// ONE count of scan starts for every client this app builds: Android's quota is per
+    /// app, so switching gauges must not forget what the phone has already counted.
+    private val scanBudget = ScanStartBudget()
+
     override fun make(kind: GaugeKind): ProgressorClient =
         when (GaugeClientRouting.shape(kind)) {
             GaugeClientShape.gatt ->
-                GattGaugeClient(context, scope, kind, kind.gatt!!, clock, calibration(kind))
-            GaugeClientShape.broadcast -> BroadcastGaugeClient(context, scope, clock)
-            GaugeClientShape.progressor -> LiveProgressorClient(context, scope)
+                GattGaugeClient(context, scope, kind, kind.gatt!!, clock, calibration(kind), scanBudget)
+            GaugeClientShape.broadcast -> BroadcastGaugeClient(context, scope, clock, scanBudget)
+            GaugeClientShape.progressor -> LiveProgressorClient(context, scope, clock, scanBudget)
         }
 
     /// The resolver exists only for a gauge that needs one. Every other kind gets null and
@@ -136,6 +143,8 @@ class DeviceStore(
     private val mockFactory: (MockForceProfile) -> ProgressorClient = { profile ->
         MockProgressorClient(scope, profile)
     },
+    /// The grace's frozen-process backstop — see `BackgroundGraceBackstop`.
+    private val graceBackstop: BackgroundGraceBackstop = NoGraceBackstop,
 ) {
 
     /// The rolling window the force trace draws, on a PLAYBACK timeline built here at
@@ -156,8 +165,33 @@ class DeviceStore(
 
     // MARK: - Published state
 
-    var state: ProgressorConnectionState by mutableStateOf(ProgressorConnectionState.Idle)
-        private set
+    var state: ProgressorConnectionState
+        get() = stateValue
+        private set(value) {
+            stateValue = value
+            linkFlow.value = Link(value.isConnected, connectionEpoch)
+        }
+    private var stateValue: ProgressorConnectionState by mutableStateOf(ProgressorConnectionState.Idle)
+
+    /// The link as a stream a SESSION can follow on its own scope — connected or not, and
+    /// which connection. See `RunnerSession.watchConnection`.
+    ///
+    /// **Why a flow and not the Compose state above.** The runner used to learn about a
+    /// dropped or restored link from a `LaunchedEffect` on its screen, and a composition
+    /// stops running effects once the Activity stops — so a session the foreground service
+    /// was keeping alive with the screen locked never heard `ConnectionLost` or
+    /// `ConnectionRestored`, and the one thing the service exists for (reconnecting and
+    /// re-kicking the stream behind a locked screen) never reached the engine. A
+    /// `StateFlow` is written synchronously from the client's callback and collected on the
+    /// session's own scope, which no screen can pause.
+    ///
+    /// The epoch rides along because a flow CONFLATES: a drop and a reconnect landing
+    /// between two collections would otherwise look like no change at all, and the engine
+    /// would never break its timeline across a link it did not see go.
+    data class Link(val isConnected: Boolean, val epoch: ULong)
+
+    private val linkFlow = MutableStateFlow(Link(isConnected = false, epoch = 0uL))
+    val link: StateFlow<Link> get() = linkFlow
 
     /// Increments when a new connected link is published. A tare confirmation carries this
     /// epoch so an alert from an old link cannot authorize a write on a new one.
@@ -189,7 +223,19 @@ class DeviceStore(
 
     /// In-memory only, bounded evidence for distinguishing a real link drop from a
     /// connected-but-stale trace after a session. Surfaced in Settings › About.
-    var diagnosticEntries: List<DiagnosticBreadcrumbEntry> by mutableStateOf(emptyList())
+    ///
+    /// **Read through a revision, not republished per event.** A long Bluetooth backlog
+    /// records a `TraceFlush` for EVERY sample it drops, and the ring merges those into
+    /// one entry — so republishing a fresh list each time invalidated Settings (and
+    /// allocated a 64-entry copy) at sample rate for a count nobody was watching tick. The
+    /// revision moves only when an entry is ADDED; a read still returns the ring as it
+    /// stands, merged count included, so a report shared mid-flush is never stale.
+    val diagnosticEntries: List<DiagnosticBreadcrumbEntry>
+        get() { diagnosticRevision; return diagnosticRing.entries }
+
+    /// Bumped when the ring gains an entry. Internal so a test can pin the change-guard,
+    /// which is otherwise only visible as how often Settings recomposes.
+    internal var diagnosticRevision by mutableIntStateOf(0)
         private set
 
     /// Latest reading, tare-relative, in kilograms.
@@ -342,6 +388,7 @@ class DeviceStore(
         clientFactory: GaugeClientFactory,
         clock: HostClock = SystemHostClock,
         mockFactory: (MockForceProfile) -> ProgressorClient = { MockProgressorClient(scope, it) },
+        graceBackstop: BackgroundGraceBackstop = NoGraceBackstop,
     ) : this(
         client = if (useMock) {
             mockFactory(MockForceProfile.clean)
@@ -354,6 +401,7 @@ class DeviceStore(
         kindStore = kindStore,
         clientFactory = clientFactory,
         mockFactory = mockFactory,
+        graceBackstop = graceBackstop,
     ) {
         gaugeKind = if (useMock) GaugeKind.progressor else kindStore.load()
     }
@@ -542,13 +590,16 @@ class DeviceStore(
     /// `beginBackgroundTask` assertion whose EXPIRATION HANDLER does the disconnect,
     /// because a suspended iOS process keeps its CoreBluetooth link alive and would
     /// otherwise leave the gauge awake until flat — and a DENIED assertion disconnects at
-    /// once for exactly the same reason. **Android has no assertion to be denied, and it
-    /// fails the other way: a process the OS reclaims takes its GATT link with it.** So the
-    /// worst case here is a grace that is CUT SHORT, never a gauge left burning — which is
-    /// why this is a plain coroutine on the store's scope with no assertion machinery
-    /// around it. (A session that must genuinely survive backgrounding runs a
-    /// `connectedDevice` foreground service instead — see `SessionForegroundService` — and
-    /// that session is streaming, so it takes the `none` branch below.)
+    /// once for exactly the same reason. **Android has the same hazard under another name.**
+    /// A process the OS KILLS takes its GATT link with it, but one it merely FREEZES (the
+    /// cached-apps freezer, seconds after the app leaves the screen) keeps its link up while
+    /// its threads — and this timer — stand still. This used to claim the worst case here
+    /// was a grace cut short; the real worst case was a gauge left awake indefinitely. So
+    /// the window is armed twice: this coroutine, and a `BackgroundGraceBackstop` alarm the
+    /// system delivers to a frozen app — whichever fires first disconnects. (A session that
+    /// must genuinely survive backgrounding runs a `connectedDevice` foreground service
+    /// instead — see `SessionForegroundService` — and that session is streaming, so it takes
+    /// the `none` branch below.)
     fun beginBackgroundGrace() {
         isInBackground = true
         when (
@@ -580,6 +631,7 @@ class DeviceStore(
                     delay(BackgroundGracePolicy.graceSeconds * 1_000L)
                     disconnectAfterGrace()
                 }
+                graceBackstop.arm(BackgroundGracePolicy.graceSeconds * 1_000L)
             }
         }
     }
@@ -596,6 +648,7 @@ class DeviceStore(
         val job = backgroundGraceJob ?: return
         backgroundGraceJob = null
         job.cancel()
+        graceBackstop.cancel()
         record(DiagnosticBreadcrumb.BackgroundDisconnectCancelled)
     }
 
@@ -610,7 +663,18 @@ class DeviceStore(
     internal fun disconnectAfterGrace() {
         backgroundGraceJob?.cancel()
         backgroundGraceJob = null
+        graceBackstop.cancel()
         if (state.isConnected && !isStreaming) disconnect()
+    }
+
+    /// The backstop alarm arrived — possibly to a process that was frozen through the whole
+    /// window, possibly racing a return to the foreground whose cancel it beat. So on top of
+    /// the grace's own re-checks it asks the one question only it has to: is the app STILL
+    /// in the background? A late alarm must never drop the link from under a screen that
+    /// is in use.
+    fun backgroundGraceBackstopFired() {
+        if (!isInBackground) return
+        disconnectAfterGrace()
     }
 
     private var isInBackground = false
@@ -644,13 +708,19 @@ class DeviceStore(
 
     private fun wire() {
         client.onStateChange = { next ->
-            if (next.isConnected && !state.isConnected) {
+            val arrived = next.isConnected && !state.isConnected
+            if (arrived) {
                 connectionEpoch += 1uL
                 pipelineDiagnostics.reset()
             }
             record(DiagnosticBreadcrumb.Connection(next))
             state = next
             deviceName = client.deviceName
+            // A link that comes up while the app is AWAY — a reconnect finishing behind a
+            // locked screen — is an idle gauge held open like any other, and gets the same
+            // grace. A session re-kicks its stream within moments, and the grace re-checks
+            // for that before it disconnects anything.
+            if (arrived && isInBackground) beginBackgroundGrace()
             if (!next.isConnected) {
                 publishStreaming(false)
                 publishCurrentKg(0.0)
@@ -893,8 +963,7 @@ class DeviceStore(
     }
 
     private fun record(event: DiagnosticBreadcrumb) {
-        diagnosticRing.append(event, clock.wallSeconds())
-        diagnosticEntries = diagnosticRing.entries
+        if (diagnosticRing.append(event, clock.wallSeconds())) diagnosticRevision++
     }
 
     companion object {

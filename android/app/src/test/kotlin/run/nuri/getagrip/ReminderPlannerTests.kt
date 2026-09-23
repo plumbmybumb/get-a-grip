@@ -96,6 +96,46 @@ class ReminderPlannerTests {
         }
     }
 
+    /// **A session finished after midnight settles the training day that began at 04:00
+    /// YESTERDAY — and must leave tomorrow morning's reminders alone.** The suppression used
+    /// to skip a slot's next CALENDAR occurrence, so finishing at 00:30 silenced the 08:00
+    /// that belongs to the next training day, and a whole day went unreminded (found on iOS,
+    /// and the same arithmetic was here).
+    @Test
+    fun finishingAfterMidnightDoesNotSilenceTheNextTrainingDay() {
+        val zone = ZoneId.of("Europe/Paris")
+        val halfPastMidnight = LocalDateTime.of(2026, 9, 23, 0, 30)
+        val morning = ReminderAlarms.nextOccurrence(8, 0, zone, halfPastMidnight, suppressToday = true)
+        assertEquals(LocalDateTime.of(2026, 9, 23, 8, 0).atZone(zone).toInstant().toEpochMilli(), morning,
+            "08:00 today is the next training day's slot, owed in full")
+
+        // A slot still INSIDE the training day being settled is skipped once.
+        val lateNight = ReminderAlarms.nextOccurrence(1, 0, zone, halfPastMidnight, suppressToday = true)
+        assertEquals(LocalDateTime.of(2026, 9, 24, 1, 0).atZone(zone).toInstant().toEpochMilli(), lateNight)
+
+        // And the ordinary evening case is unchanged: 19:00 today is skipped to tomorrow.
+        val sixPm = LocalDateTime.of(2026, 9, 23, 18, 0)
+        val evening = ReminderAlarms.nextOccurrence(19, 0, zone, sixPm, suppressToday = true)
+        assertEquals(LocalDateTime.of(2026, 9, 24, 19, 0).atZone(zone).toInstant().toEpochMilli(), evening)
+        // 04:00 is the NEXT day's first minute, never the settled one's last.
+        val beforeRollover = LocalDateTime.of(2026, 9, 23, 3, 0)
+        val atRollover = ReminderAlarms.nextOccurrence(4, 0, zone, beforeRollover, suppressToday = true)
+        assertEquals(LocalDateTime.of(2026, 9, 23, 4, 0).atZone(zone).toInstant().toEpochMilli(), atRollover)
+    }
+
+    /// The front of the TRAINING day: a 01:00 reminder is the evening's last slot, so one
+    /// session done suppresses the morning, not the small-hours one.
+    @Test
+    fun suppressionCountsFromTheFrontOfTheTrainingDay() {
+        val late = ReminderTime(hour = 1, minute = 0)
+        val morning = ReminderTime(hour = 8, minute = 0)
+        val requests = ReminderPlanner.requests(
+            listOf(input(routineA, "Daily", listOf(late, morning), outstanding = 1))
+        )
+        assertEquals(listOf(1, 8), requests.map { it.hour }, "still listed in clock order")
+        assertEquals(listOf(false, true), requests.map { it.suppressToday })
+    }
+
     // MARK: - Identity
 
     /// `ReminderTime` has no UUID: identity IS the time. That makes the notification id

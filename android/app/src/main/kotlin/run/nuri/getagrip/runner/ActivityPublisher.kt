@@ -31,6 +31,11 @@ interface ActivityPublisher {
     fun start(routineName: String, plannedReps: Int, setCount: Int, state: SessionActivityState)
     fun update(state: SessionActivityState)
     fun end()
+
+    /// The workout is over but not yet saved: the card stays, saying so, for as long as the
+    /// summary is open — and the foreground service stays under it. A publisher with no such
+    /// card simply ends; `end()` is still what takes the finished card away.
+    fun showFinished(routineName: String) = end()
 }
 
 /// The default. Best-effort and silent: an activity that cannot start must never disturb a

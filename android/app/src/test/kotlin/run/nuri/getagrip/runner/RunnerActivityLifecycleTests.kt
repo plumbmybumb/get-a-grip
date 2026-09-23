@@ -99,8 +99,10 @@ class RunnerActivityLifecycleTests {
         assertTrue(activity.states.last().endsAtEpochMillis!! - System.currentTimeMillis() > 18_000)
         val published = activity.states.size
         session.send(RunnerEvent.Abort)
-        assertEquals(1, activity.ends, "End on the summary, before save/discard")
-        assertEquals(1, service.ends)
+        assertEquals(1, activity.ends, "the live card ends on the summary, before save/discard")
+        // The SERVICE outlives the finish now: it keeps the process — and the unsaved
+        // session — alive under a "session done" card until the summary is resolved.
+        assertEquals(0, service.ends, "the service waits for Save or Discard")
         assertEquals(published, activity.states.size, "Finish must not publish a phantom rest")
 
         val commands = client.commands.size

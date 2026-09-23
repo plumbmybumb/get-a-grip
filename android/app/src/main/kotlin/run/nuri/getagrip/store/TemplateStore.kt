@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -183,6 +184,13 @@ class TemplateStore(
 
     /// Set when a write fails. The failed change has already been rolled back — it was
     /// one transaction — by the time a view reads this.
+    ///
+    /// **DISPLAY ONLY — never the answer to "did MY write land?"** It used to be both: each
+    /// write reset it, ran, and its caller then read it back. Two writes in flight shared
+    /// the one field, so a failed save could be read as a success because a second write
+    /// had reset it in between — an Undo offered for a delete that never happened, a
+    /// session reported saved that was rolled back. Every write now answers for itself
+    /// (`persistAndSync` returns it); this is only the sentence a screen shows.
     var saveError: String? by mutableStateOf(null)
 
     /// A scanned routine (or the reason a scan failed), HELD rather than presented.
@@ -242,7 +250,24 @@ class TemplateStore(
     /// true so every external trigger (launch, midnight, the permission callback) still
     /// refolds unconditionally; only the internal write path opts out, and only where it
     /// can prove it wrote no max.
-    suspend fun syncDerived(refoldingMaxes: Boolean = true) {
+    suspend fun syncDerived(refoldingMaxes: Boolean = true) = syncLane.withLock {
+        publishDerived(refoldingMaxes)
+    }
+
+    /// **One recompute at a time, in the order they were asked for.** `syncDerived` reads
+    /// three tables across three suspensions and then publishes; two of them overlapping —
+    /// a save's and the midnight refresh's, say — could finish in the wrong order and leave
+    /// the OLDER world on screen, and hand the planner the older plan. Serialized, the later
+    /// call starts after the earlier one has published, so it reads a disk at least as new.
+    private val syncLane = Mutex()
+
+    /// Bumped per recompute; the replan launched by an older one sees it moved and skips.
+    private var replanGeneration = 0L
+
+    /// Every replan in the app is launched from here, so this one lock orders them all.
+    private val replanGate = Mutex()
+
+    private suspend fun publishDerived(refoldingMaxes: Boolean) {
         val fetched = gateway.allRoutines() ?: return
         val ordered = fetched.sortedWith(routineOrder)
         val today = clock.today
@@ -304,8 +329,13 @@ class TemplateStore(
             )
         }
         // Off the caller's turn, exactly as iOS detaches it: an `AlarmManager` write per
-        // slot is not something a save should wait on.
-        scope.launch { ReminderPlanner.replan(inputs, scheduler) }
+        // slot is not something a save should wait on. Superseded plans are skipped rather
+        // than applied and immediately replaced — see `ReminderPlanner.replan`.
+        val generation = ++replanGeneration
+        scope.launch {
+            ReminderPlanner.replan(inputs, scheduler, isCurrent = { generation == replanGeneration },
+                gate = replanGate)
+        }
     }
 
     // MARK: - Derived computations (pure over what was fetched)
@@ -418,6 +448,9 @@ class TemplateStore(
     // MARK: - Reads
 
     suspend fun routine(id: UUID): SessionTemplateEntity? = gateway.routine(id)
+
+    /// One logged session by id — a point read. Null when absent or when the read failed.
+    suspend fun session(id: UUID): WorkoutLogEntity? = gateway.log(id)
 
     fun plan(template: SessionTemplateEntity): SessionPlan = template.plan
 
@@ -606,8 +639,7 @@ class TemplateStore(
             draft = normalized,
             sortIndex = (siblings.maxOfOrNull { it.sortIndex } ?: -1) + 1,
         )
-        persistAndSync(maxesChanged = false) { it.putRoutine(row) }
-        if (saveError != null) return null
+        if (!persistAndSync(maxesChanged = false) { it.putRoutine(row) }) return null
         askNotificationPermissionOnce(normalized)
         return row
     }
@@ -619,8 +651,7 @@ class TemplateStore(
         // row again, which is worse — a delete the user made would silently undo itself.
         if (gateway.routine(template.id) == null) return false
         val normalized = draft.normalized
-        persistAndSync(maxesChanged = false) { it.putRoutine(template.applying(normalized)) }
-        if (saveError != null) return false
+        if (!persistAndSync(maxesChanged = false) { it.putRoutine(template.applying(normalized)) }) return false
         askNotificationPermissionOnce(normalized)
         return true
     }
@@ -721,14 +752,14 @@ class TemplateStore(
         val restorable = gateway.routine(template.id) ?: return false
         // Its sessions go with it. A read that FAILS refuses the whole delete: deleting the
         // routine anyway would leave its sessions behind as orphans nothing can reach.
-        val sessions = (gateway.allLogs() ?: return false).filter { it.templateID == template.id }
-        persistAndSync(maxesChanged = false) { writer ->
+        val sessions = gateway.logsFor(template.id) ?: return false
+        val deleted = persistAndSync(maxesChanged = false) { writer ->
             sessions.forEach { writer.removeLog(it.id) }
             writer.removeRoutine(template.id)
         }
         // Only offer undo for a delete that actually landed — the transaction rolled
         // back on failure, so the routine is still there and "Undo" would duplicate it.
-        if (saveError != null) return false
+        if (!deleted) return false
         lastDeleted = DeletedRoutine(restorable, sessions)
         armUndoExpiry()
         return true
@@ -758,7 +789,7 @@ class TemplateStore(
         // `updatedAt` is deliberately NOT restored: the restore is itself the most recent
         // thing that happened to this routine, and `recentGrips` reads that order.
         val row = restorable.routine.copy(updatedAt = storedNow())
-        persistAndSync(maxesChanged = false) { writer ->
+        val restored = persistAndSync(maxesChanged = false) { writer ->
             writer.putRoutine(row)
             // Its sessions come back with it, as the raw rows they were — never through
             // `WorkoutLogEntity.from`, which would re-derive their numbers.
@@ -768,7 +799,7 @@ class TemplateStore(
         // Only consume the undo once the restore has landed. Clearing it first would mean
         // a rolled-back save loses the routine for good — the one outcome the undo bar
         // exists to prevent.
-        if (saveError == null) lastDeleted = null else armUndoExpiry()
+        if (restored) lastDeleted = null else armUndoExpiry()
     }
 
     fun dismissUndo() {
@@ -857,41 +888,87 @@ class TemplateStore(
             fingerStrain = fingerStrain,
             notes = notes,
         )
-        persistAndSync(maxesChanged = false) { it.putLog(log) }
-        return if (saveError == null) log else null
+        return if (persistAndSync(maxesChanged = false) { it.putLog(log) }) log else null
     }
 
     /// **Re-file every session the app itself timed under the training day it started
     /// in.** Until 2026-09-20 the clock turned at midnight, so a session that ran across it
     /// was stamped with the morning after, and one evening scored as two days. The day now
     /// turns at `DayStamp.ROLLOVER_HOUR`, and this brings the rows written under the old
-    /// rule into line with it. Hand-logged sessions are left alone: their day is the one
-    /// the person chose. Deterministic from a frozen column, so a row already right is never
-    /// touched — which is what makes it safe, and cheap, to run on every launch. Returns how
-    /// many rows moved; 0 when the read fails. Straight through the gateway rather than
-    /// `persistAndSync`: the launch sequence derives the world right after.
-    suspend fun repairTrainingDays(zone: ZoneId = ZoneId.systemDefault()): Int {
-        val logs = gateway.allLogs() ?: return 0
-        val moved = logs.filter { !it.kind.isLoggedByHand }
-            .mapNotNull { log ->
-                val day = DayStamp.trainingDayOf(log.startedAt, zone).raw
-                if (log.dayKey == day) null else log.copy(dayKey = day)
-            }
+    /// rule into line with it. Returns how many rows moved; 0 when the read fails.
+    ///
+    /// **Narrow on purpose, because it rewrites history.** It used to read every log ever
+    /// written, blobs and all, on EVERY cold launch, ahead of the first frame. Now:
+    ///
+    /// - only rows started before `before` — the moment this device first ran a build that
+    ///   stamps by the start's training day (`repairTrainingDaysOnce` passes its own launch),
+    ///   because nothing written since can be on the old rule;
+    /// - only rows still filed under the OLD rule — a calendar day the session started or
+    ///   finished on — so a row some other path filed deliberately is never second-guessed;
+    /// - never a hand-logged row (its day is the one the person chose), and never a KIND this
+    ///   build does not know: `SessionKind.fallback` reads an unknown kind as a hang, and
+    ///   moving a newer build's hand-logged row on that guess would be rewriting a choice;
+    /// - through a four-column projection and an `UPDATE` of one column, so no blob is read
+    ///   or rewritten.
+    ///
+    /// Straight through the gateway rather than `persistAndSync`: the caller republishes.
+    suspend fun repairTrainingDays(
+        zone: ZoneId = ZoneId.systemDefault(),
+        before: Instant = storedNow(),
+    ): Int = refileTrainingDays(zone, before) ?: 0
+
+    /// The pass itself; null when it could not run (the read or the write failed), which the
+    /// one-shot must not mistake for "nothing to move".
+    private suspend fun refileTrainingDays(zone: ZoneId, before: Instant): Int? {
+        val stamps = gateway.dayStamps(before) ?: return null
+        val moved = stamps.mapNotNull { row ->
+            val kind = SessionKind.fromRaw(row.kindRaw) ?: return@mapNotNull null
+            if (kind.isLoggedByHand) return@mapNotNull null
+            val day = DayStamp.trainingDayOf(row.startedAt, zone).raw
+            if (row.dayKey == day) return@mapNotNull null
+            val oldRule = row.dayKey == DayStamp.of(row.startedAt, zone).raw ||
+                row.dayKey == DayStamp.of(row.finishedAt, zone).raw
+            if (!oldRule) return@mapNotNull null
+            row.id to day
+        }
         if (moved.isEmpty()) return 0
         try {
-            gateway.write { writer -> moved.forEach { writer.putLog(it) } }
+            gateway.write { writer -> moved.forEach { (id, day) -> writer.refileLog(id, day) } }
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
-            return 0
+            return null
         }
         return moved.size
+    }
+
+    /// The launch-time door to `repairTrainingDays`: ONCE per device, behind a versioned
+    /// flag, and only marked done when the pass actually ran — a failed read leaves the flag
+    /// alone so the next launch tries again. Returns how many rows moved, so the caller
+    /// republishes only when something did.
+    ///
+    /// Called AFTER the first `syncDerived`, never before: the first frame must not wait on a
+    /// history-sized read, and a row it moves is republished by the caller a moment later.
+    suspend fun repairTrainingDaysOnce(zone: ZoneId = ZoneId.systemDefault()): Int {
+        if (settings.trainingDayRepairVersion >= trainingDayRepairVersion) return 0
+        val moved = refileTrainingDays(zone, before = storedNow()) ?: return 0
+        settings.setTrainingDayRepairVersion(trainingDayRepairVersion)
+        return moved
     }
 
     /// Write a finished session. Goes through the hub like every other mutation, so the
     /// completion count on Today and the consistency strip update in the same breath — a
     /// session that vanished until relaunch would read as lost work.
     ///
-    /// `day` comes from the app's own `DayClock`, not the wall clock, so a session
-    /// finished at 00:30 lands on the day the climber actually lived through.
+    /// Filed under the training day it STARTED in — `DayStamp.trainingDayOf(startedAt)`,
+    /// the same rule `repairTrainingDays` applies, so the writer and the repair can never
+    /// disagree about a row (iOS makes the same change). Stamping `clock.today` at SAVE time
+    /// used to split them: a session begun at 03:50 and saved at 04:10, or a summary left
+    /// open overnight, landed on the next day.
+    ///
+    /// `id` is the finished session's own identity when it has one — the draft a finished
+    /// session leaves behind (`FinishedSessionDraft`) — so saving it twice, once from the
+    /// summary and once from launch recovery, replaces one row rather than writing two.
     suspend fun recordSession(
         plan: SessionPlan,
         template: SessionTemplateEntity?,
@@ -900,27 +977,33 @@ class TemplateStore(
         finishedAt: Instant,
         rpe: RPE?,
         newMaxes: List<MaxRecordEntity> = emptyList(),
+        id: UUID? = null,
+        templateID: UUID? = template?.id,
+        templateName: String = template?.name ?: plan.name,
+        sessionsPerDayTarget: Int = template?.sessionsPerDay ?: 1,
+        zone: ZoneId = ZoneId.systemDefault(),
     ): WorkoutLogEntity? {
         if (newMaxes.any { !it.kg.isFinite() || it.kg <= 0 }) {
             saveError = L10n.tr("Couldn't save this workout. Please try again.")
             return null
         }
-        val log = WorkoutLogEntity.from(
+        val built = WorkoutLogEntity.from(
             plan = plan,
-            templateID = template?.id,
+            templateID = templateID,
             // FROZEN at save: renaming a routine later must not retro-rename history.
-            templateName = template?.name ?: plan.name,
-            sessionsPerDayTarget = template?.sessionsPerDay ?: 1,
+            templateName = templateName,
+            sessionsPerDayTarget = sessionsPerDayTarget,
             reps = reps,
             startedAt = startedAt,
             finishedAt = finishedAt,
-            day = clock.today,
+            day = DayStamp.trainingDayOf(startedAt, zone),
         ).copy(rpe = rpe?.rawValue)
-        persistAndSync(maxesChanged = newMaxes.isNotEmpty()) { writer ->
+        val log = if (id != null) built.copy(id = id) else built
+        val saved = persistAndSync(maxesChanged = newMaxes.isNotEmpty()) { writer ->
             writer.putLog(log)
             newMaxes.forEach { writer.putMax(it) }
         }
-        return if (saveError == null) log else null
+        return if (saved) log else null
     }
 
     /// Remove a session from history — the one destructive act on this data.
@@ -932,11 +1015,9 @@ class TemplateStore(
     /// write rather than deleting from the screen.
     suspend fun deleteSession(log: WorkoutLogEntity): Boolean {
         // Captured as the raw row, blobs included — see `undoDeleteSession`.
-        val restorable = (gateway.allLogs() ?: return false).firstOrNull { it.id == log.id }
-            ?: return false
-        persistAndSync(maxesChanged = false) { it.removeLog(log.id) }
+        val restorable = gateway.log(log.id) ?: return false
         // Only offer undo for a delete that actually landed.
-        if (saveError != null) return false
+        if (!persistAndSync(maxesChanged = false) { it.removeLog(log.id) }) return false
         lastDeletedSession = restorable
         armSessionUndoExpiry()
         return true
@@ -954,8 +1035,8 @@ class TemplateStore(
     suspend fun undoDeleteSession() {
         val restorable = lastDeletedSession ?: return
         sessionUndoExpiry?.cancel()
-        persistAndSync(maxesChanged = false) { it.putLog(restorable) }
-        if (saveError == null) lastDeletedSession = null else armSessionUndoExpiry()
+        val restored = persistAndSync(maxesChanged = false) { it.putLog(restorable) }
+        if (restored) lastDeletedSession = null else armSessionUndoExpiry()
     }
 
     fun dismissSessionUndo() {
@@ -1013,7 +1094,7 @@ class TemplateStore(
         // top would silently cancel the evening ritual.
         // A failed read is not evidence that today has no benchmark. Keep the max,
         // but don't invent a second day marker when the history cannot be checked.
-        persistAndSync { writer ->
+        return persistAndSync { writer ->
             val existing = checkNotNull(writer.allMaxes()) { "Couldn't read existing maxes" }
             val newest = newestPerGrip(existing)
             val previous = table(newest)
@@ -1038,13 +1119,11 @@ class TemplateStore(
             benchmarkLog?.let { writer.putLog(it) }
             snapshot?.invoke(previous, current, routines)
         }
-        return saveError == null
     }
 
     suspend fun deleteMax(record: MaxRecordEntity): Boolean {
         if ((gateway.allMaxes() ?: return false).none { it.id == record.id }) return false
-        persistAndSync { it.removeMax(record.id) }
-        return saveError == null
+        return persistAndSync { it.removeMax(record.id) }
     }
 
     // MARK: - What a new max moves
@@ -1275,7 +1354,6 @@ class TemplateStore(
             }
             updated.forEach { writer.putRoutine(it) }
         }
-        saveError == null
     }
 
     /// Apply the accepted rescale: every explicit-kg set on `grip` in the given routines,
@@ -1324,10 +1402,9 @@ class TemplateStore(
         if (updated.isEmpty()) return true
         // The new max was written and folded by `recordMax` before this offer was even
         // computed; this write moves routines only.
-        persistAndSync(maxesChanged = false) { writer ->
+        return persistAndSync(maxesChanged = false) { writer ->
             updated.forEach { writer.putRoutine(it) }
         }
-        return saveError == null
     }
 
     /// Half-kilogram rounding, same as the percent path resolves to — a scaled typed
@@ -1376,12 +1453,15 @@ class TemplateStore(
     /// Here the whole unit of work is a Room TRANSACTION, so a failure never wrote
     /// anything, and the `syncDerived` that follows republishes from the same disk. The
     /// rollback is structural rather than a call that could be forgotten.
+    ///
+    /// **Returns whether THIS write committed** — the only answer a caller may act on. See
+    /// `saveError` for why the shared field cannot be that answer.
     private suspend fun persistAndSync(
         maxesChanged: Boolean = true,
         work: suspend (StoreWriter) -> Unit,
-    ) {
+    ): Boolean {
         saveError = null
-        try {
+        val committed = try {
             gateway.write { writer ->
                 val audited = AuditingWriter(writer)
                 work(audited)
@@ -1392,10 +1472,15 @@ class TemplateStore(
                     )
                 }
             }
+            true
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
             saveError = L10n.tr("That change couldn't be saved — %s", error.message ?: "")
+            false
         }
         syncDerived(refoldingMaxes = maxesChanged)
+        return committed
     }
 
     /// Asked on the first Save of a routine that actually WANTS reminders — by then the
@@ -1429,6 +1514,10 @@ class TemplateStore(
     companion object {
         private const val consistencyDays = 14
         private const val recentGripLimit = 6
+
+        /// Bump to run the training-day repair once more on every device — only if its
+        /// rule itself changes. See `repairTrainingDaysOnce`.
+        const val trainingDayRepairVersion = 1
 
         const val defaultUndoWindowMillis = 10_000L
         private const val longUndoWindowMillis = 600_000L
@@ -1482,6 +1571,7 @@ private class AuditingWriter(private val inner: StoreWriter) : StoreWriter {
     override suspend fun removeRoutine(id: UUID) = inner.removeRoutine(id)
     override suspend fun putLog(row: WorkoutLogEntity) = inner.putLog(row)
     override suspend fun removeLog(id: UUID) = inner.removeLog(id)
+    override suspend fun refileLog(id: UUID, dayKey: Int) = inner.refileLog(id, dayKey)
     override suspend fun putMax(row: MaxRecordEntity) {
         touchedMax = true
         inner.putMax(row)

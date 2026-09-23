@@ -3,6 +3,14 @@
 
 package run.nuri.getagrip.store
 
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.os.SystemClock
+import run.nuri.getagrip.GetAGripApplication
+
 /// What leaving the foreground should do to the gauge's link — the rule on its own, with
 /// no store, no coroutine and no radio behind it.
 ///
@@ -51,5 +59,75 @@ object BackgroundGracePolicy {
         }
         if (isConnected && !isStreaming) return BackgroundGraceAction.scheduleDisconnect
         return BackgroundGraceAction.none
+    }
+}
+
+/// **The grace's second clock — one that survives the process being FROZEN.**
+///
+/// The 45 s window is a coroutine `delay`, and a delay only elapses while the process runs.
+/// Android's cached-apps freezer stops a backgrounded app's threads within seconds of it
+/// leaving the screen (no service, no visible Activity), and a frozen process's GATT client
+/// stays registered with the Bluetooth stack: the link stays UP, the timer never fires, and
+/// the gauge — which only self-sleeps ten minutes after a DISCONNECT — stays awake until the
+/// user comes back or its battery goes. That is the failure the whole grace exists to
+/// prevent, reached by the one path the old comment ruled out.
+///
+/// So the window is armed twice: the coroutine for the ordinary case, and an `AlarmManager`
+/// alarm the system delivers even to a frozen app, thawing it to run the receiver. Whichever
+/// fires first disconnects (both re-check that the app is still backgrounded and nothing is
+/// streaming); coming back to the foreground cancels both. An interface so the store stays
+/// JVM-testable — the app's is `AlarmGraceBackstop`.
+interface BackgroundGraceBackstop {
+    fun arm(afterMillis: Long)
+    fun cancel()
+}
+
+/// Nothing to arm — tests, previews, and a store with no `Context`.
+object NoGraceBackstop : BackgroundGraceBackstop {
+    override fun arm(afterMillis: Long) = Unit
+    override fun cancel() = Unit
+}
+
+/// `setAndAllowWhileIdle` on the elapsed-realtime clock: inexact, so it needs no
+/// `SCHEDULE_EXACT_ALARM` (Play gates that to alarm-clock apps), and allowed in Doze, so a
+/// phone put face-down in a bag still gets it. Inexact means it may land minutes late under
+/// Doze's own batching: a grace that runs LONG, never one that never ends, which is the
+/// property that matters.
+class AlarmGraceBackstop(context: Context) : BackgroundGraceBackstop {
+    private val app = context.applicationContext
+    private val alarms = app.getSystemService(AlarmManager::class.java)
+
+    override fun arm(afterMillis: Long) {
+        alarms?.setAndAllowWhileIdle(
+            AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            SystemClock.elapsedRealtime() + afterMillis,
+            intent(),
+        )
+    }
+
+    override fun cancel() {
+        alarms?.cancel(intent())
+    }
+
+    private fun intent(): PendingIntent = PendingIntent.getBroadcast(
+        app,
+        REQUEST_CODE,
+        Intent(app, BackgroundGraceReceiver::class.java).setAction(ACTION),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    companion object {
+        const val ACTION = "run.nuri.getagrip.BACKGROUND_GRACE"
+        private const val REQUEST_CODE = 4_501
+    }
+}
+
+/// Delivered by the backstop alarm. If the process died meanwhile there is no store and no
+/// link — a dead process takes its GATT client with it — so there is nothing to do.
+class BackgroundGraceReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != AlarmGraceBackstop.ACTION) return
+        val app = context.applicationContext as? GetAGripApplication ?: return
+        app.existingDeviceStore?.backgroundGraceBackstopFired()
     }
 }

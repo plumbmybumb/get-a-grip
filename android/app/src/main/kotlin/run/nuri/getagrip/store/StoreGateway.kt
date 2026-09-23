@@ -4,13 +4,18 @@
 package run.nuri.getagrip.store
 
 import androidx.room.withTransaction
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import run.nuri.getagrip.data.GetAGripDatabase
+import run.nuri.getagrip.data.LogDayStamp
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.data.WorkoutLogEntity
+import java.time.Instant
 import java.util.UUID
 
 /// Everything `TemplateStore` is allowed to do to the database, and the seam the
@@ -34,6 +39,22 @@ interface StoreGateway {
     suspend fun allLogs(): List<WorkoutLogEntity>?
     suspend fun allMaxes(): List<MaxRecordEntity>?
 
+    /// One session by id. Null when it is absent OR the read failed — every caller treats
+    /// the two alike (there is nothing to delete either way). Defaulted through `allLogs`
+    /// so a test double need not care; Room answers it with an indexed point read.
+    suspend fun log(id: UUID): WorkoutLogEntity? = allLogs()?.firstOrNull { it.id == id }
+
+    /// A routine's sessions. Null when the read FAILED, as everywhere here.
+    suspend fun logsFor(templateID: UUID): List<WorkoutLogEntity>? =
+        allLogs()?.filter { it.templateID == templateID }
+
+    /// The day-filing columns of every session started before `before` — the repair's only
+    /// read, and a projection so it never decodes a blob. Null when the read failed.
+    suspend fun dayStamps(before: Instant): List<LogDayStamp>? =
+        allLogs()?.filter { it.startedAt.isBefore(before) }?.map {
+            LogDayStamp(it.id, it.startedAt, it.finishedAt, it.dayKey, it.kindRaw)
+        }
+
     /// One atomic unit of work. It THROWS when it could not be committed — the caller
     /// (`TemplateStore.persistAndSync`) is the one place that turns that into a
     /// `saveError`, so no write path can forget to report one.
@@ -53,20 +74,33 @@ interface StoreWriter {
     suspend fun removeRoutine(id: UUID)
     suspend fun putLog(row: WorkoutLogEntity)
     suspend fun removeLog(id: UUID)
+    /// Move one session to another training day, touching nothing else about the row.
+    suspend fun refileLog(id: UUID, dayKey: Int)
     suspend fun putMax(row: MaxRecordEntity)
     suspend fun removeMax(id: UUID)
 }
 
-/// Room, on ONE thread.
+/// Room, one call at a time.
 ///
-/// `Dispatchers.IO.limitedParallelism(1)` rather than plain IO: SQLite serializes writes
-/// anyway, and a single lane means the store's own read-modify-write sequences (renumber,
-/// import-then-deconflict) cannot interleave with each other. Results hop back to the
-/// caller's context, which for the UI is Main.
+/// **The lane is a `Mutex`, not the dispatcher.** This used to claim that
+/// `Dispatchers.IO.limitedParallelism(1)` made it "one serial lane", and it did not: a lane
+/// of one THREAD still interleaves at every suspension point, and `withTransaction`
+/// suspends — so a read queued behind a write could run while the write's transaction was
+/// still open and read the disk as it stood before it. The mutex holds the lane across
+/// the whole call, which is what "a read can never overtake a write" (the history feed
+/// relies on it) actually requires. What it does NOT give is atomicity across two calls:
+/// a read-then-write in the store (renumber, import-then-deconflict) is two turns of the
+/// lane, and anything that must be atomic reads through the `StoreWriter` inside ONE
+/// transaction instead, as the max save and the rescale do.
+///
+/// Never call the gateway from inside a `write` block — use the writer it hands you. The
+/// mutex is not re-entrant, so that would wait on itself forever.
 class RoomStoreGateway(
     private val db: GetAGripDatabase,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : StoreGateway {
+
+    private val lane = Mutex()
 
     override suspend fun allRoutines(): List<SessionTemplateEntity>? =
         read { db.routines().all() }
@@ -81,16 +115,34 @@ class RoomStoreGateway(
 
     override suspend fun allMaxes(): List<MaxRecordEntity>? = read { db.maxes().all() }
 
+    override suspend fun log(id: UUID): WorkoutLogEntity? = read { db.logs().byId(id) }
+
+    override suspend fun logsFor(templateID: UUID): List<WorkoutLogEntity>? =
+        read { db.logs().byTemplate(templateID) }
+
+    override suspend fun dayStamps(before: Instant): List<LogDayStamp>? =
+        read { db.logs().dayStamps(before) }
+
     override suspend fun write(work: suspend (StoreWriter) -> Unit) {
-        withContext(dispatcher) {
-            db.withTransaction { work(RoomWriter(db)) }
+        lane.withLock {
+            withContext(dispatcher) {
+                db.withTransaction { work(RoomWriter(db)) }
+            }
         }
     }
 
     /// A thrown read is a FAILED read, and the null says so. It must never be caught into
     /// an empty list — see `StoreGateway`.
-    private suspend fun <T> read(block: suspend () -> T): T? = withContext(dispatcher) {
-        runCatching { block() }.getOrNull()
+    private suspend fun <T> read(block: suspend () -> T): T? = lane.withLock {
+        withContext(dispatcher) {
+            try {
+                block()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                null
+            }
+        }
     }
 }
 
@@ -102,6 +154,7 @@ private class RoomWriter(private val db: GetAGripDatabase) : StoreWriter {
     override suspend fun removeRoutine(id: UUID) = db.routines().delete(id)
     override suspend fun putLog(row: WorkoutLogEntity) = db.logs().upsert(row)
     override suspend fun removeLog(id: UUID) = db.logs().delete(id)
+    override suspend fun refileLog(id: UUID, dayKey: Int) = db.logs().refile(id, dayKey)
     override suspend fun putMax(row: MaxRecordEntity) = db.maxes().upsert(row)
     override suspend fun removeMax(id: UUID) = db.maxes().delete(id)
 }
