@@ -42,9 +42,11 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
 
     /// A deliberately cancelled peripheral stays quarantined until CoreBluetooth
     /// delivers its terminal callback. Reusing it earlier lets callbacks from the old
-    /// generation satisfy the new connection attempt.
-    private var retiringPeripheral: CBPeripheral?
-    private var expectedDisconnect = false
+    /// generation satisfy the new connection attempt. See `PeripheralQuarantine` for the
+    /// three ways out — a quarantine with only the first one wedged every reconnect after
+    /// a Bluetooth power cycle until the app was relaunched.
+    private var quarantine = PeripheralQuarantine<CBPeripheral>()
+    private var quarantineReleaseTask: Task<Void, Never>?
     private var pendingConnectionStart = false
 
     private var generation: UInt64 = 0
@@ -76,6 +78,7 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         replyDeadlineTask?.cancel()
         sleepFallbackTask?.cancel()
         writeDeadlineTask?.cancel()
+        quarantineReleaseTask?.cancel()
     }
 
     // MARK: - ProgressorClient
@@ -173,7 +176,7 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
               !state.isConnected,
               !state.isBusy else { return }
 
-        guard retiringPeripheral == nil else {
+        guard !quarantine.isHolding else {
             pendingConnectionStart = true
             return
         }
@@ -208,7 +211,7 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         guard wantsConnection,
               central.state == .poweredOn,
               self.generation == generation,
-              retiringPeripheral == nil else { return }
+              !quarantine.isHolding else { return }
 
         central.stopScan()
         scanDeadlineTask?.cancel()
@@ -338,32 +341,74 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         clearLinkState(clearDeferredStart: true)
     }
 
+    /// How long a retired peripheral may wait for its terminal callback before the
+    /// quarantine gives up on it. CoreBluetooth answers a cancel in well under a second
+    /// on a live radio; five is far past that and far short of anyone concluding the
+    /// Connect button is broken.
+    private static let quarantineSafetyRelease: Duration = .seconds(5)
+
     private func retire(_ retiring: CBPeripheral) {
+        // With no radio there is nothing to cancel — CoreBluetooth rejects the call as
+        // misuse — and no terminal callback will ever arrive to end a quarantine, so
+        // holding one here is what used to lock the gauge out until relaunch.
+        guard central?.state == .poweredOn else {
+            retiring.delegate = nil
+            return
+        }
         // There can only be one gauge. If an earlier deliberate cancellation is still
         // awaiting its terminal callback, never replace its quarantine with another.
-        guard retiringPeripheral == nil else { return }
+        guard let ticket = quarantine.hold(retiring) else { return }
         onDiagnostic?(.retiringPeripheral)
-        retiringPeripheral = retiring
-        expectedDisconnect = true
         central?.cancelPeripheralConnection(retiring)
+        armQuarantineSafetyRelease(ticket: ticket)
+    }
+
+    /// The last way out of the quarantine: a terminal callback that never arrives. A
+    /// callback that turns up after this has released is harmless in all but one case —
+    /// the same peripheral re-attached as the current link — and there it reads as a
+    /// dropped link, which reconnects on its own. Staying wedged does not.
+    private func armQuarantineSafetyRelease(ticket: UInt64) {
+        quarantineReleaseTask?.cancel()
+        quarantineReleaseTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: Self.quarantineSafetyRelease)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self,
+                  let released = self.quarantine.releaseOnTimeout(ticket: ticket) else { return }
+            self.quarantineReleaseTask = nil
+            self.endQuarantine(of: released, diagnostic: .quarantineAbandoned("no terminal callback"))
+        }
     }
 
     private func finishExpectedDisconnect(_ finished: CBPeripheral) -> Bool {
-        guard expectedDisconnect,
-              let retiringPeripheral,
-              retiringPeripheral === finished else { return false }
-        retiringPeripheral.delegate = nil
-        self.retiringPeripheral = nil
-        expectedDisconnect = false
-        onDiagnostic?(.quarantineReleased)
+        guard let released = quarantine.releaseOnTerminal(finished) else { return false }
+        endQuarantine(of: released, diagnostic: .quarantineReleased)
+        return true
+    }
+
+    /// Every release path ends here, so a deferred Connect is honoured whichever way the
+    /// quarantine ended.
+    private func endQuarantine(of released: CBPeripheral, diagnostic: ProgressorClientDiagnostic) {
+        released.delegate = nil
+        quarantineReleaseTask?.cancel()
+        quarantineReleaseTask = nil
+        onDiagnostic?(diagnostic)
 
         if pendingConnectionStart {
             pendingConnectionStart = false
             beginAttemptIfPossible()
         }
-        return true
     }
 
+    /// The radio went away (off, resetting, unauthorized). Everything tied to the link
+    /// dies here, the quarantine included: CoreBluetooth delivers no per-peripheral
+    /// callback after power loss — the state change IS the disconnect — so a peripheral
+    /// retired now would be held forever and `beginAttemptIfPossible` would refuse every
+    /// reconnect after Bluetooth came back (airplane mode was enough). Nothing is
+    /// cancelled either: the system has already torn the link down, and a cancel on an
+    /// unpowered central is rejected as misuse.
     private func handlePowerUnavailable(_ central: CBCentralManager) {
         refreshBudgetWhenPoweredOn = wantsConnection
         attemptsRemaining = 0
@@ -374,8 +419,19 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         replyDeadlineTask = nil
         sleepFallbackTask?.cancel()
         sleepFallbackTask = nil
-        if let active { retire(active) }
+        active?.delegate = nil
+        dropQuarantine(reason: "radio unavailable")
         state = Self.state(for: central.state)
+    }
+
+    /// Abandons a hold whose terminal callback cannot come. No deferred start is
+    /// honoured from here: the callers decide whether an attempt follows.
+    private func dropQuarantine(reason: String) {
+        quarantineReleaseTask?.cancel()
+        quarantineReleaseTask = nil
+        guard let dropped = quarantine.drop() else { return }
+        dropped.delegate = nil
+        onDiagnostic?(.quarantineAbandoned(reason))
     }
 
     private func isCurrent(_ candidate: CBPeripheral) -> Bool {
@@ -477,6 +533,11 @@ extension LiveProgressorClient: @preconcurrency CBCentralManagerDelegate {
             return
         }
 
+        // Belt to `handlePowerUnavailable`'s braces: whatever was held across the outage
+        // belongs to a link the system has already torn down, and a hold surviving to
+        // here would refuse the attempt below.
+        dropQuarantine(reason: "left over at power-on")
+        pendingConnectionStart = false
         if refreshBudgetWhenPoweredOn {
             attemptsRemaining = Self.attemptLimit
             refreshBudgetWhenPoweredOn = false
@@ -494,7 +555,7 @@ extension LiveProgressorClient: @preconcurrency CBCentralManagerDelegate {
               wantsConnection,
               state == .scanning,
               self.peripheral == nil,
-              retiringPeripheral == nil,
+              !quarantine.isHolding,
               scanGeneration == generation else { return }
         attach(peripheral, via: central, generation: generation)
     }

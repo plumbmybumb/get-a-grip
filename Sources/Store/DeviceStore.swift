@@ -805,6 +805,8 @@ final class DeviceStore {
                 self.record(.retiringPeripheral)
             case .quarantineReleased:
                 self.record(.quarantineReleased)
+            case .quarantineAbandoned(let reason):
+                self.record(.quarantineAbandoned(reason))
             case .streamStartDeferred(let cause):
                 self.record(.streamStartDeferred(cause))
             case .streamStartWritten(let cause):

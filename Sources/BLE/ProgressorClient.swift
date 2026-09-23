@@ -107,6 +107,9 @@ enum ProgressorClientDiagnostic: Sendable {
     case broadcastScan(String)
     case retiringPeripheral
     case quarantineReleased
+    /// A quarantine ended WITHOUT its terminal callback — the radio went away, or the
+    /// safety release fired. A fixed description, never a device identifier.
+    case quarantineAbandoned(String)
     case streamStartDeferred(StreamStartCause)
     case streamStartWritten(StreamStartCause)
     /// Where a remotely calibrated gauge stands between "connected" and "produces

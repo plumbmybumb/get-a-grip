@@ -10,6 +10,7 @@ enum DiagnosticBreadcrumb: Equatable, Sendable {
     case connection(ProgressorConnectionState)
     case retiringPeripheral
     case quarantineReleased
+    case quarantineAbandoned(String)
     case scenePhase(String)
     case traceFlush(count: Int)
     case signalFreshness(Bool)
@@ -38,6 +39,8 @@ enum DiagnosticBreadcrumb: Equatable, Sendable {
             "Peripheral retired and quarantined"
         case .quarantineReleased:
             "Peripheral quarantine released"
+        case .quarantineAbandoned(let reason):
+            "Peripheral quarantine abandoned (" + reason + ")"
         case .scenePhase(let phase):
             "Scene: " + phase
         case .traceFlush(let count):
