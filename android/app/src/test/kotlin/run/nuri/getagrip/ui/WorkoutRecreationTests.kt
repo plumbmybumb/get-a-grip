@@ -4,6 +4,7 @@
 package run.nuri.getagrip.ui
 
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -153,6 +154,18 @@ class WorkoutRecreationTests {
         setNightMode(false)
         assertSame(workout, currentModel().active)
         assertEquals(1, workout.session.snapshot.completedRepCount)
+    }
+
+    @Test fun recreationDoesNotReleaseThePortraitLockMidSession() {
+        startWorkout()
+        val outgoing = controller.get()
+        assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, outgoing.requestedOrientation)
+        compose.runOnUiThread { controller.recreate() }
+        compose.waitForIdle()
+        // Released in between, the replacement Activity would be handed the phone's current
+        // orientation — a landscape frame, and another recreation, in the middle of a pull.
+        assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, outgoing.requestedOrientation)
+        assertEquals(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, controller.get().requestedOrientation)
     }
 
     @Test fun unsavedSummaryChoicesSurviveThemeAndRecreationThenSaveOnce() {

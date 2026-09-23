@@ -55,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -296,7 +297,11 @@ private fun RunnerWindowChrome(hideStatusBar: Boolean) {
         }
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         onDispose {
-            activity.requestedOrientation = previousOrientation
+            // Not while the Activity is being RECREATED: the retained runner comes straight
+            // back and asks for portrait again, and releasing the lock in between hands the
+            // replacement Activity the phone's current orientation — a landscape frame, and a
+            // second recreation, in the middle of a pull.
+            if (!activity.isChangingConfigurations) activity.requestedOrientation = previousOrientation
             window.attributes = window.attributes.apply {
                 layoutInDisplayCutoutMode = previousCutout
             }
@@ -600,7 +605,13 @@ private fun LiveTargetChip(
     val device = LocalDeviceStore.current
     // In a timer-only session the gauge value is zero or stale by definition. Letting it
     // light this instruction chip would claim that an unmeasured pull is engaged.
-    val live = !timerOnly && isWorking && device.currentKg in band
+    //
+    // DERIVED, so the chip redraws when the load CROSSES an edge of the band rather than on
+    // each of the ~80 readings a second between them — reading `currentKg` straight in the
+    // body subscribed it to every sample.
+    val live by remember(device, band, isWorking, timerOnly) {
+        derivedStateOf { !timerOnly && isWorking && device.currentKg in band }
+    }
     Text(
         WeightUnits.band(band),
         style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
