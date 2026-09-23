@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import run.nuri.getagrip.engine.MaxTable
-import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
@@ -34,35 +33,33 @@ import run.nuri.getagrip.ui.theme.LocalGripPalette
 /// 36 pulls" as the price of every edit, and this is where the arithmetic is spelled out.
 @Composable
 fun TotalsBar(
-    draft: RoutineDraft,
+    /// The arithmetic, already done — see `TotalsValues`.
+    totals: TotalsValues,
     modifier: Modifier = Modifier,
-    maxes: MaxTable = MaxTable(),
 ) {
     val palette = LocalGripPalette.current
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            PlanMath.totalsLine(draft.plan),
+            totals.totalsLine,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             color = palette.inkSecondary,
         )
-        // null when the mode has one side, so the copy drops "per side" instead of dividing
-        // by a hand that isn't there.
-        PlanMath.perSideLine(draft.plan)?.let { perSide ->
+        totals.perSideLine?.let { perSide ->
             Text(
                 perSide,
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )
         }
-        if (draft.plan.executable.sets.any { it.targetBand == null && PlanMath.targetPercent(it, draft.plan) != null }) {
+        if (totals.usesSavedMaxes) {
             Text(
                 tr("Percentage targets use your saved maxes. These may no longer reflect your current strength."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )
         }
-        if (PlanMath.missingBenchmarkGripCount(draft.plan, maxes) > 0) {
+        if (totals.missingMaxes) {
             Text(
                 tr("Some percentage targets have no saved max, so they will show no target."),
                 style = MaterialTheme.typography.bodySmall,
@@ -70,7 +67,7 @@ fun TotalsBar(
                 color = palette.armed,
             )
         }
-        if (BuilderDraft.isVeryLong(draft)) {
+        if (totals.isVeryLong) {
             Row(
                 Modifier.padding(top = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -97,6 +94,6 @@ fun TotalsBar(
 @Composable
 private fun TotalsBarPreview() {
     GetAGripTheme {
-        Column(Modifier.padding(16.dp)) { TotalsBar(RoutineDraft.starter) }
+        Column(Modifier.padding(16.dp)) { TotalsBar(TotalsValues.of(RoutineDraft.starter, MaxTable())) }
     }
 }

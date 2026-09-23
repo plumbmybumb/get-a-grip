@@ -19,10 +19,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import run.nuri.getagrip.engine.MaxTable
-import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
+import run.nuri.getagrip.ui.builder.SetRowContext
 import run.nuri.getagrip.ui.builder.SetRowView
-import run.nuri.getagrip.ui.builder.StablePlan
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 
 /** Exercise the real builder row: a codec test cannot catch a stale UI-only cap. */
@@ -37,7 +36,7 @@ class BuilderPullCountTests {
             GetAGripTheme {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     SetRowView(
-                        plan = StablePlan(SessionPlan(sets = listOf(set))), setID = set.id,
+                        set = set, context = SetRowContext(),
                         isExpanded = true, maxes = MaxTable(), percentBandsVary = false,
                         canMoveUp = false, canMoveDown = false,
                         onTap = {}, onEditGrip = {}, onMoveUp = {}, onMoveDown = {},

@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import run.nuri.getagrip.engine.RoutineDraft
+import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.HandModeChipRow
@@ -67,12 +68,14 @@ import run.nuri.getagrip.ui.theme.Metrics
 /// share the work, and when a rest starts counting.
 @Composable
 fun RhythmSection(
-    draft: RoutineDraft,
+    /// Only what this card draws — see `RhythmValues`. Handed the whole draft, it redrew for
+    /// every letter typed into the name above it.
+    rhythm: RhythmValues,
     modifier: Modifier = Modifier,
-    onChange: (RoutineDraft) -> Unit,
+    update: DraftUpdate,
 ) {
     val palette = LocalGripPalette.current
-    val plan = draft.plan
+    fun edit(transform: (SessionPlan) -> SessionPlan) = update { it.copy(plan = transform(it.plan)) }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // A plain row, never a pinned section header — a header that pins leaves content
@@ -86,30 +89,30 @@ fun RhythmSection(
             ) {
                 IntValueRow(
                     title = tr("Break between sets"),
-                    value = plan.setBreakSeconds,
+                    value = rhythm.setBreakSeconds,
                     range = 0..240,
                     unit = tr("s"),
-                    limit = run.nuri.getagrip.engine.SessionPlan.setBreakRange,
+                    limit = SessionPlan.setBreakRange,
                     control = ValueControl.Dial(listOf(0.0, 30.0, 60.0, 90.0, 120.0, 180.0)),
-                ) { onChange(draft.copy(plan = plan.copy(setBreakSeconds = it))) }
+                ) { seconds -> edit { it.copy(setBreakSeconds = seconds) } }
 
                 // Under the break rather than in Fine tuning: this decides when every rest
                 // in the session actually STARTS, and a rest number whose meaning is set
                 // two cards away cannot be trusted.
                 ToggleRow(
                     title = tr("Start the rest when I let go"),
-                    checked = plan.waitForReleaseBeforeRest,
+                    checked = rhythm.waitForReleaseBeforeRest,
                     // ON by default, because the alternative silently shortens every rest
                     // you take: the hold completes at exactly 10 s, but standing down off a
                     // 20 mm edge takes another two or three, and those come out of the rest
                     // rather than out of the hang. Off is still a real choice — a fixed
                     // cadence you pace yourself to.
-                    explainer = if (plan.waitForReleaseBeforeRest) {
+                    explainer = if (rhythm.waitForReleaseBeforeRest) {
                         tr("The hold ends on time; the rest waits until you are off the edge.")
                     } else {
                         tr("The rest starts the moment the hold ends, whether or not you have let go.")
                     },
-                ) { onChange(draft.copy(plan = plan.copy(waitForReleaseBeforeRest = it))) }
+                ) { waits -> edit { it.copy(waitForReleaseBeforeRest = waits) } }
 
                 HorizontalDivider(color = palette.inkTertiary.copy(alpha = 0.22f))
 
@@ -117,21 +120,19 @@ fun RhythmSection(
                 // ALWAYS expanded, because this control exists to be SEEN: the strip under
                 // it is the only place the app shows what "alternate each pull" does.
                 CapsLabel(tr("HANDS"), Modifier.padding(top = 2.dp))
-                HandModeChipRow(plan.handMode) {
-                    onChange(draft.copy(plan = plan.copy(handMode = it)))
-                }
+                HandModeChipRow(rhythm.handMode) { mode -> edit { it.copy(handMode = mode) } }
                 // The FIRST set's sequence, because that is the one the reader is about to
                 // do; `executable` so an emptied-out row cannot decide it.
                 HandOrderStrip(
-                    mode = plan.handMode,
-                    repsPerSide = plan.executable.sets.firstOrNull()?.repsPerSide ?: 6,
-                    startingHand = plan.startingHand,
+                    mode = rhythm.handMode,
+                    repsPerSide = rhythm.firstRepsPerSide,
+                    startingHand = rhythm.startingHand,
                 )
-                if (plan.handMode.sideCount > 1) {
+                if (rhythm.handMode.sideCount > 1) {
                     // The strip is fill-vs-outline with no legend, so on its own it cannot
                     // say which hand it starts on (Nuri, 2026-09-18: "I can't tell what I'm
                     // swapping"). The sentence says it; the button swaps it.
-                    val startsRight = plan.startingHand == Side.right
+                    val startsRight = rhythm.startingHand == Side.right
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -144,9 +145,7 @@ fun RhythmSection(
                             color = palette.inkSecondary,
                             modifier = Modifier.weight(1f),
                         )
-                        SwapHandsAction(startsRight = startsRight) {
-                            onChange(draft.copy(plan = plan.copy(startingHand = it)))
-                        }
+                        SwapHandsAction(startsRight = startsRight) { hand -> edit { it.copy(startingHand = hand) } }
                     }
                 }
             }
@@ -244,7 +243,7 @@ internal fun ToggleRow(
 private fun RhythmSectionPreview() {
     GetAGripTheme {
         Column(Modifier.padding(16.dp)) {
-            RhythmSection(RoutineDraft.starter) {}
+            RhythmSection(RhythmValues.of(RoutineDraft.starter.plan)) {}
         }
     }
 }

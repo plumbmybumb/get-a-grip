@@ -129,6 +129,12 @@ android {
     }
 }
 
+// The engine's immutable values, declared stable to the Compose compiler — see the file's
+// own header for the rule that governs what may be listed there.
+composeCompiler {
+    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose-stability.conf"))
+}
+
 // Room writes its schema JSON here so a future migration can be diffed against the
 // version that shipped. `exportSchema = true` without this is a build warning and a
 // schema nobody can see.

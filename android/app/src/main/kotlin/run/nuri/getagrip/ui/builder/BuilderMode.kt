@@ -3,8 +3,6 @@
 
 package run.nuri.getagrip.ui.builder
 
-import androidx.compose.runtime.Immutable
-import run.nuri.getagrip.engine.SessionPlan
 import java.util.UUID
 
 /// Which door the routine document was opened through.
@@ -41,16 +39,3 @@ sealed interface BuilderMode {
 /// is also why the document is an eager `Column` in a `verticalScroll` rather than a
 /// `LazyColumn` — a lazy list has not built the anchor a screenful below the fold.
 enum class BuilderAnchor { Name, Rhythm, Sets, Totals, EveryDay, Finish }
-
-/// **A stable window onto the plan.**
-///
-/// TRANSLATION NOTE, and it is load-bearing: Compose infers stability from the module that
-/// DECLARES a type, and `:engine` has no Compose on its classpath — so `SessionPlan`, whose
-/// `sets` is a `List`, is inferred UNSTABLE, and every set row would recompose on every
-/// keystroke typed anywhere on the screen. That is precisely the cost iOS measured and
-/// fixed by replacing a subscript binding with a keypath projection. These types genuinely
-/// are immutable values (every property a `val`, every list replaced rather than mutated),
-/// so `@Immutable` states a truth rather than making a promise the code cannot keep. The
-/// alternative — a Compose stability-configuration file — is a build-script change.
-@Immutable
-data class StablePlan(val plan: SessionPlan)

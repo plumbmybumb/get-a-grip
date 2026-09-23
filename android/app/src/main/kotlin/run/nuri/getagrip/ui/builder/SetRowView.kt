@@ -88,13 +88,13 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SetRowView(
-    /// **The WHOLE plan, wrapped so Compose can prove it unchanged** — see `StablePlan`.
-    /// The row reads it for every resolved number (the inherited hold, the ×2, this row's
-    /// clock) and writes its own set back through one callback.
-    plan: StablePlan,
-    /// Which set this row draws — an ID, never an index, so a reorder cannot point a row at
-    /// its neighbour.
-    setID: UUID,
+    /// This row's set, as a value. It writes its edits back through one callback.
+    set: SetPlan,
+    /// **Only the routine-level fields the row resolves against** — the inherited hold, the
+    /// ×2, the lead-in inside this row's clock. It used to receive the WHOLE plan, and a plan
+    /// changes on every keystroke anywhere in the document, so every row redrew for a letter
+    /// typed into the name. See `SetRowContext`.
+    context: SetRowContext,
     isExpanded: Boolean,
     /// Every max on file, by grip and hand. Passed as a VALUE so the row stays previewable
     /// and never touches a store.
@@ -116,10 +116,7 @@ fun SetRowView(
     onSetChange: (SetPlan) -> Unit,
 ) {
     val palette = LocalGripPalette.current
-    val sessionPlan = plan.plan
-    /// This row's set. A row whose set has just been removed keeps drawing an empty one for
-    /// the frame before the list drops it, rather than trapping on a stale index.
-    val set = sessionPlan.sets.firstOrNull { it.id == setID } ?: SetPlan()
+    val sessionPlan = context.plan
     var menuOpen by remember { mutableStateOf(false) }
 
     val repsText = if (sessionPlan.handMode.sideCount > 1) {
@@ -450,8 +447,8 @@ private fun SetRowViewPreview() {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             plan.sets.take(2).forEachIndexed { index, set ->
                 SetRowView(
-                    plan = StablePlan(plan),
-                    setID = set.id,
+                    set = set,
+                    context = SetRowContext.of(plan),
                     isExpanded = expanded == set.id,
                     maxes = MaxTable(),
                     percentBandsVary = false,
