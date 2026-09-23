@@ -78,36 +78,27 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
 /// One row of the routine — collapsed it is a SENTENCE, expanded it is the whole set.
 ///
-/// The accordion is not only a readability device: at most one row is open at a time (the
-/// builder owns that state), which is what guarantees only one dense control cluster exists
-/// on screen at any moment.
-///
-/// **Two levels of disclosure, never three.** The set row opens, and the target row opens
-/// inside it. That is the ceiling the research names, and it is why the grip picker is a
-/// panel rather than a third level.
+/// At most one row is open (the builder owns that), so one dense control cluster exists at a
+/// time. **Two levels of disclosure, never three**: the set row, then the target row inside
+/// it — which is why the grip picker is a panel.
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SetRowView(
     /// This row's set, as a value. It writes its edits back through one callback.
     set: SetPlan,
-    /// **Only the routine-level fields the row resolves against** — the inherited hold, the
-    /// ×2, the lead-in inside this row's clock. It used to receive the WHOLE plan, and a plan
-    /// changes on every keystroke anywhere in the document, so every row redrew for a letter
-    /// typed into the name. See `SetRowContext`.
+    /// **Only the routine-level fields the row resolves against** (inherited hold, ×2, lead-in).
+    /// Given the WHOLE plan, every row redrew for a letter typed into the name. See `SetRowContext`.
     context: SetRowContext,
     isExpanded: Boolean,
-    /// Every max on file, by grip and hand. Passed as a VALUE so the row stays previewable
-    /// and never touches a store.
+    /// Every max on file, by grip and hand, as a VALUE so the row never touches a store.
     maxes: MaxTable,
-    /// Folded once by the builder that owns the whole plan. Computing it in every row made
-    /// both the visible and the spoken summaries scan every set again.
+    /// Folded once by the builder; per row, both summaries rescanned every set.
     percentBandsVary: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     modifier: Modifier = Modifier,
     onTap: () -> Unit,
-    /// Asks the BUILDER to open the grip panel for this set — nothing in a scrolling row can
-    /// reach the top of the screen.
+    /// Asks the BUILDER to open the grip panel: nothing in a scrolling row reaches the top of the screen.
     onEditGrip: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
@@ -122,8 +113,7 @@ fun SetRowView(
     val repsText = if (sessionPlan.handMode.sideCount > 1) {
         L10n.tr("%d per side", set.repsPerSide)
     } else {
-        // One-sided modes have no side to divide by, so the copy drops "per side" rather
-        // than halving a number that was never doubled.
+        // One-sided modes drop "per side" rather than halving a number never doubled.
         L10n.tr("%d %s", set.repsPerSide, L10n.tr(if (set.repsPerSide == 1) "pull" else "pulls"))
     }
     val tensionText = PlanMath.tensionSecondsPerSide(set, sessionPlan)?.let {
@@ -133,8 +123,8 @@ fun SetRowView(
         L10n.tr("%s under tension", PlanMath.clockText(reps * PlanMath.hold(set, sessionPlan)))
     }
     val overrideText = overrideText(set, percentBandsVary)
-    // Both read outside the semantics lambda, which is not composable. The visual line and
-    // the spoken line are the same sentence, written once as prose.
+    // Read outside the (non-composable) semantics lambda. Visual and spoken lines are the same
+    // sentence, written once as prose.
     val spoken = tr(
         "%s. %s, %s%s. %s.",
         set.grip.spoken,
@@ -156,10 +146,8 @@ fun SetRowView(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        // The long-press menu lives ON THE HEADER, never on the whole row:
-                        // attached to the row, a hold anywhere in the EXPANDED editor —
-                        // exactly where you are right after Add a set — would grab touches
-                        // from the controls you are trying to drag.
+                        // The long-press menu lives ON THE HEADER: on the whole row, a hold anywhere in the
+                        // EXPANDED editor would grab touches from the controls being dragged.
                         .combinedClickable(
                             interactionSource = interactionSource,
                             indication = null,
@@ -168,13 +156,11 @@ fun SetRowView(
                         )
                         .pressFeedback(interactionSource, scales = false)
                         .padding(16.dp)
-                        // The visual line and the spoken line are the same sentence; it
-                        // comes free from having written the row as prose in the first place.
+                        // The visual line and the spoken line are the same sentence.
                         .semantics(mergeDescendants = true) {
                             contentDescription = spoken
-                            // NOT the catalog's "Open": that key is the open-hand GRIP
-                            // POSITION and translates to "Tendue". A disclosure's state has
-                            // its own words — android_extra.json.
+                            // NOT the catalog's "Open": that is the open-hand GRIP POSITION ("Tendue"). Disclosure
+                            // state has its own words in android_extra.json.
                             stateDescription = disclosure
                             role = Role.Button
                         },
@@ -239,9 +225,7 @@ fun SetRowView(
                 }
             }
 
-            // A disclosure is the ladder's DEFAULT motion — critically damped, and flat under
-        // Reduce Motion. Compose's own default here is an unguarded 400 ms tween nothing in
-        // this app chose.
+            // `Motion.state`, not Compose's unguarded 400 ms default — see `TargetBandRow`.
         AnimatedVisibility(
             visible = isExpanded,
             enter = expandVertically(Motion.state(rememberReduceMotion())) +
@@ -255,13 +239,11 @@ fun SetRowView(
                 ) {
                     HorizontalDivider(color = palette.inkTertiary.copy(alpha = 0.22f))
 
-                    // ONE control, 60 dp, where an edge slider + finger pad + position chips
-                    // used to stack to about 400. All three still exist, in the grip panel.
+                    // ONE 60 dp control where edge slider + finger pad + position chips stacked to ~400; all
+                    // three live in the grip panel.
                     GripToken(set.grip, onEdit = onEditGrip)
 
-                    // A STEPPER, not a slider with chips: this is a small integer you want
-                    // EXACTLY, nudged around a common one — the HIG's own description of
-                    // when a stepper is the control. It repeats while held.
+                    // A STEPPER: a small integer you want EXACTLY (see `ValueControl.Stepper`). Repeats while held.
                     IntValueRow(
                         title = tr("Pulls per side"),
                         value = set.repsPerSide,
@@ -271,16 +253,13 @@ fun SetRowView(
                         control = ValueControl.Stepper,
                     ) { onSetChange(set.copy(repsPerSide = it)) }
 
-                    // **ONE ladder for both dials, differing only at the floor.** They sit
-                    // stacked, cover the same sixty seconds, and the dial spaces detents by
-                    // INDEX — so different ladders render different notches for the same
-                    // span and read as two different instruments (Nuri, 2026-08-18: "why is
-                    // the notches on the slider for hold and rest different"). The floor is
-                    // the one honest difference: a zero-second rest is a real cadence, a
-                    // zero-second hold is not a hold.
+                    // **ONE ladder for both dials, differing only at the floor.** They sit stacked over the same
+                    // sixty seconds and detents are spaced by INDEX, so different ladders read as two
+                    // instruments (Nuri, 2026-08-18). The floor is the honest difference: a zero-second rest
+                    // is a cadence, a zero-second hold is not a hold.
                     //
-                    // `null` on a set means "follow the routine", so each row READS the
-                    // resolved value and WRITES this set's own override.
+                    // `null` on a set means "follow the routine": each row READS the resolved value and WRITES
+                    // this set's override.
                     IntValueRow(
                         title = tr("Hold"),
                         value = PlanMath.hold(set, sessionPlan),
@@ -300,9 +279,7 @@ fun SetRowView(
 
                     TargetBandRow(set, maxes, sessionPlan.handMode, onChange = onSetChange)
 
-                    // Chevrons in the expanded row cover reordering, so no drag gesture is
-                    // load-bearing and the long-press menu is a convenience rather than the
-                    // only way in.
+                    // Chevrons cover reordering, so the long-press menu is a convenience, never the only way in.
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         MoveButton(tr("Move up"), Icons.Filled.KeyboardArrowUp, canMoveUp, tr("Already the first set"), onMoveUp)
@@ -348,8 +325,7 @@ private fun MoveButton(
             .padding(horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding)
             .semantics(mergeDescendants = true) {
                 role = Role.Button
-                // The dim state otherwise says nothing about WHY: at either end of the list
-                // one of these two is always disabled with no caption on screen.
+                // Say WHY it is dim: at either end of the list one of these is always disabled.
                 if (!enabled) stateDescription = disabledReason
             },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -366,16 +342,14 @@ private fun MoveButton(
     }
 }
 
-/// The shared interior of the Hold and Rest dials — every detent the shipping protocols use
-/// (3 s C4 holds, 5/7/10/12 s repeaters, 15–60 s rests), defined once so the two ladders
-/// cannot drift apart again. Each dial prepends only its floor.
+/// The shared interior of the Hold and Rest dials — every detent the shipping protocols use —
+/// defined once so the ladders cannot drift. Each dial prepends only its floor.
 private val SECONDS_LADDER = listOf(3.0, 5.0, 7.0, 10.0, 12.0, 15.0, 20.0, 30.0, 45.0, 60.0)
 
 /// "6 per side · 1:00 under tension per side", plus any timing override.
 ///
 /// **HARD RULE: a per-set override MUST render on the COLLAPSED row, in PRIMARY ink.** An
-/// override that is invisible until you open the row produces a session nobody can explain
-/// — including whoever set it.
+/// override hidden until the row opens produces a session nobody can explain.
 private fun detailLine(
     repsText: String,
     tensionText: String,
@@ -389,12 +363,10 @@ private fun detailLine(
     }
 }
 
-/// Every override this set carries, in the order they appear in the editor. Both timings are
-/// listed because the rule is about VISIBILITY, not about the hold alone.
+/// Every override this set carries, in editor order — the rule is VISIBILITY, so both timings.
 ///
-/// **A PERCENTAGE shows only where the sets DISAGREE.** A ramp is the whole shape of a max
-/// protocol and has to be readable straight down the list — 50–60, 65–75, 80–90 — whereas
-/// six sets that all say 18–22 % is the card talking to itself.
+/// **A PERCENTAGE shows only where the sets DISAGREE**: a max protocol's ramp (50–60, 65–75,
+/// 80–90) must read down the list, but six identical 18–22 % is the card talking to itself.
 internal fun overrideText(set: SetPlan, percentBandsVary: Boolean): String {
     val parts = mutableListOf<String>()
     set.holdSeconds?.let { parts.add(L10n.tr("%d s hold", it)) }
@@ -415,9 +387,8 @@ internal fun overrideText(set: SetPlan, percentBandsVary: Boolean): String {
     return if (parts.isEmpty()) "" else " · " + parts.joinToString(" · ")
 }
 
-/// The spoken form of the same overrides — built from the optionals rather than by unpicking
-/// the visual string, and in whole words, because "12 s hold" is read out as "twelve ess
-/// hold".
+/// The spoken form of the same overrides, from the optionals and in whole words: "12 s hold"
+/// reads aloud as "twelve ess hold".
 internal fun spokenOverride(set: SetPlan, percentBandsVary: Boolean): String {
     val parts = mutableListOf<String>()
     set.holdSeconds?.let { parts.add(trQuantity("%d second hold", it)) }

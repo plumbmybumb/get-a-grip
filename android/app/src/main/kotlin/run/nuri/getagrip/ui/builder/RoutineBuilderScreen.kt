@@ -86,29 +86,24 @@ import run.nuri.getagrip.ui.tour.tourAnchor
 /// **THE ROUTINE BUILDER — one screen, one scrollable document, zero pushes.**
 ///
 /// Document order is NAME → RHYTHM → SETS → EVERY DAY → FINE TUNING → finish/danger, and it
-/// is load-bearing: RHYTHM sits ABOVE the set list because constants belong above variables,
-/// expressed as vertical order instead of as screens. Both rival designs buried routine-wide
-/// timing below six set rows, so changing one interval meant scrolling past the whole set
-/// list every time.
+/// is load-bearing: RHYTHM sits ABOVE the sets because constants belong above variables.
+/// Rival designs buried routine-wide timing below six set rows, so changing one interval
+/// meant scrolling past the whole list every time.
 ///
-/// **The wizard IS the editor**, literally: the first-run walkthrough and the 30th four-tap
-/// edit are this same file in this same order, so there is no second surface to keep in
-/// sync. `BuilderMode` changes only which draft seeds the document, whether the guide starts
-/// at step 1, and whether the last block is Save or the delete row.
+/// **The wizard IS the editor**: first run and the 30th edit are this same file, so there is
+/// no second surface to keep in sync. `BuilderMode` changes only the seed draft, whether the
+/// guide starts at step 1, and whether the last block is Save or the delete row.
 ///
-/// **Nothing here touches the store until Save.** The document is a DRAFT VALUE, so
-/// reordering, removing and experimenting are free, Cancel IS undo, and a held stepper
-/// cannot fire dozens of database writes.
-///
-/// This is the entry point the rest of the app calls. It reads the stores itself, so the
-/// caller supplies only the mode and a way to close.
+/// **Nothing touches the store until Save.** The document is a DRAFT VALUE: Cancel IS undo,
+/// and a held stepper cannot fire dozens of writes. It reads the stores itself, so the caller
+/// supplies only the mode and a way to close.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutineBuilderHost(
     mode: BuilderMode,
     modifier: Modifier = Modifier,
-    /// Called after a successful Save with the routine's id, and on Cancel with null. The
-    /// PRESENTER decides what closing means — a pop, a dismissed cover, a tab change.
+    /// Called after a successful Save with the routine's id, on Cancel with null. The PRESENTER
+    /// decides what closing means.
     onDone: (UUID?) -> Unit,
 ) {
     val templates = LocalTemplateStore.current
@@ -117,26 +112,19 @@ fun RoutineBuilderHost(
     val scope = rememberCoroutineScope()
     val focus = LocalFocusManager.current
 
-    // **The seed is read ONCE, and deliberately without observing the store.**
-    //
-    // `templates.routines` is observable, and the store republishes it on every write
-    // anywhere in the app — a session logged, a max recorded, a sync landing. Keyed on that
-    // list, the seed would be recomputed mid-edit and the draft reset under the user's
-    // fingers. `withoutReadObservation` takes the value without subscribing, so the document
-    // opens on what existed the moment it opened and nothing behind it can replace it. That
-    // is the same guarantee iOS gets from seeding a child view's `@State` through its init.
+    // **The seed is read ONCE, without observing the store.** `templates.routines` republishes
+    // on every write anywhere (a session logged, a sync landing); keyed on it, the draft would
+    // reset mid-edit. `withoutReadObservation` gives the guarantee iOS gets from seeding a child
+    // view's `@State` in its init.
     val seed = remember(mode) {
         androidx.compose.runtime.snapshots.Snapshot.withoutReadObservation {
         when (mode) {
-            // BLANK, always (Nuri, 2026-08-10: "when creating a routine, I think it should
-            // start at blank"). Nothing is presumed and nothing is OFFERED either: the known
-            // protocols are still seeds in `SessionPlan`, but no screen proposes one. A
-            // chooser above the name field made the opening move "pick somebody's plan" on
-            // the one app whose pitch is that the plan is yours.
+            // BLANK, always (Nuri, 2026-08-10). Nothing presumed or OFFERED: the known protocols stay
+            // seeds in `SessionPlan`, but a chooser made the opening move "pick somebody's plan" in the
+            // app whose pitch is that the plan is yours.
             BuilderMode.FirstRun, BuilderMode.AddAnother -> RoutineDraft.blank()
-            // Missing means it was deleted while Today still showed it. A blank draft is the
-            // non-destructive answer: the store will CREATE rather than resurrect, and
-            // nothing the user typed is thrown away.
+            // Missing means deleted while Today still showed it. A blank draft is non-destructive:
+            // the store CREATES rather than resurrects, and nothing typed is lost.
             is BuilderMode.Edit ->
                 templates.routines.firstOrNull { it.id == mode.id }?.draft ?: RoutineDraft.blank()
         }
@@ -144,10 +132,9 @@ fun RoutineBuilderHost(
     }
 
     val editableSeed = remember(seed) { BuilderDraft.editable(seed) }
-    // **SAVED, not remembered — for creating AND editing.** A rotation recreates the Activity
-    // and destroys every `remember`, and the create-only rescue stash is up to half a second
-    // behind and does not exist at all for an edit, so turning the phone used to throw the
-    // document away. The draft round-trips through the same frozen JSON the stash writes.
+    // **SAVED, not remembered — for creating AND editing.** Rotation destroys every `remember`,
+    // and the rescue stash lags up to half a second and does not exist for edits. The draft
+    // round-trips through the stash's frozen JSON.
     val draftState = rememberSaveable(seed, stateSaver = RoutineDraftSaver) { mutableStateOf(editableSeed) }
     var draft by draftState
     /// The seed, kept only to answer "is this dirty".
@@ -155,68 +142,59 @@ fun RoutineBuilderHost(
     /// Every section writes through this ONE remembered door — see `DraftUpdate`.
     val update: DraftUpdate = remember(draftState) { { transform -> draftState.value = transform(draftState.value) } }
 
-    /// At most ONE open set row. The accordion is not only a readability device: it is what
-    /// guarantees exactly one dense control cluster can exist on screen at a time.
+    /// At most ONE open set row, which guarantees one dense control cluster on screen at a time.
     var expanded by rememberSaveable { mutableStateOf<UUID?>(null) }
 
-    /// Which set's grip the panel is editing. It lives HERE, not on the token: the panel
-    /// hangs off the top of the screen, and nothing inside a scrolling set row can reach it.
+    /// Which set's grip the panel is editing. HERE, not on the token: the panel hangs off the top
+    /// of the screen, out of any scrolling row's reach.
     var editingSet by rememberSaveable { mutableStateOf<UUID?>(null) }
 
     var coachStep by rememberSaveable { mutableStateOf(BuilderDraft.retiredCoachStep) }
-    /// Whether this document has already been OPENED — seeded its guide step and swept the
-    /// rescue stash. Saved with the draft, so the rotation that recreates this screen does not
-    /// restart the guide or swap the document for a stash up to half a second older than it.
+    /// Whether this document has been OPENED (guide seeded, stash swept). Saved, so a rotation
+    /// does not restart the guide or swap in an older stash.
     var opened by rememberSaveable { mutableStateOf(false) }
-    /// Held with its ORIGINAL id and original index, so Undo puts the same row back where it
-    /// was rather than an equal-looking new one two places down.
+    /// Held with its ORIGINAL id and index, so Undo restores the same row in the same place.
     var removedSet by remember { mutableStateOf<RemovedSet?>(null) }
     var showDiscard by rememberSaveable { mutableStateOf(false) }
-    /// A Save in flight. Both Saves go dim and a second tap is refused, because the store's
-    /// write is not instant and a new draft has no id yet: two taps inside it used to create
-    /// the routine TWICE.
+    /// A Save in flight: both Saves dim and a second tap is refused. The write is not instant and
+    /// a new draft has no id yet, so two taps used to create the routine TWICE.
     var saving by remember { mutableStateOf(false) }
 
     val reduceMotion = rememberReduceMotion()
     val scrollState = rememberScrollState()
-    // Layout coordinates update as the page moves. They are deliberately not Compose
-    // state: publishing the content's root position re-composed this entire eager form
-    // on every scroll frame, even though none of its inputs changed.
+    // Not Compose state: publishing the root position re-composed this eager form on every
+    // scroll frame.
     val anchors = remember { BuilderScrollAnchors() }
     val snackbarHostState = remember { SnackbarHostState() }
 
     fun scrollTo(key: Any) {
         val y = anchors.offset(key) ?: return
-        // Same rule as the routine deck's page turn: under Reduce Motion the coach lands on
-        // its block rather than flying down the document to it.
+        // Reduce Motion: the coach lands on its block instead of flying to it.
         scope.launch {
             if (reduceMotion) scrollState.scrollTo(y) else scrollState.animateScrollTo(y)
         }
     }
 
-    // The guide's starting step, once. Reading it during the first composition rather than in
-    // a remembered initializer keeps the store read out of the state's constructor.
+    // The guide's starting step, once — read here, keeping the store read out of a state constructor.
     LaunchedEffect(mode) {
         if (opened) return@LaunchedEffect
         opened = true
         coachStep = BuilderDraft.startingCoachStep(mode, settings.builderGuideDone)
-        // The rescue copy only exists if a previous session died mid-build: Save and Cancel
-        // both clear it. `initialDraft` deliberately stays at the seed, so a restored
-        // document counts as DIRTY and Cancel still asks before discarding it.
+        // A rescue copy exists only if a previous session died mid-build (Save and Cancel clear it).
+        // `initialDraft` stays at the seed, so a restored document is DIRTY and Cancel still asks.
         if (BuilderDraft.stashes(mode)) {
             val rescued = templates.restoreDraft()
             if (rescued != null && rescued != draft) {
                 draft = BuilderDraft.editable(rescued)
-                // A rescued draft means this build was already under way in a previous
-                // session, so the walkthrough has been walked. Retiring it here also keeps
-                // the restore's own value changes from deciding which card to show.
+                // A rescued build has already walked the guide; retiring it also stops the restore's own
+                // value changes from choosing a card.
                 coachStep = BuilderDraft.retiredCoachStep
             }
         }
     }
 
-    // One pending write reads the current draft; a held slider cannot defer rescue
-    // indefinitely or cancel and reallocate a timer on each detent.
+    // One pending write reads the current draft: a held slider cannot defer the rescue forever
+    // or reallocate a timer per detent.
     if (BuilderDraft.stashes(mode)) {
         LaunchedEffect(Unit) {
             val stash = DraftStashCoalescer(this) { templates.stashDraft(draft) }
@@ -224,8 +202,8 @@ fun RoutineBuilderHost(
         }
     }
 
-    // The guide advances on a real VALUE EDIT and on nothing else — not on a scroll, not on
-    // expanding a row — so it can never run away from someone still reading.
+    // The guide advances on a real VALUE EDIT only — never a scroll or an expand — so it cannot
+    // run away from someone still reading.
     LaunchedEffect(Unit) {
         snapshotFlow { draft.plan.name }.drop(1).distinctUntilChanged()
             .collect { coachStep = BuilderDraft.advancing(coachStep, 2) }
@@ -247,8 +225,7 @@ fun RoutineBuilderHost(
             .collect { coachStep = BuilderDraft.advancing(coachStep, 6) }
     }
 
-    // The undo bar. `SnackbarDuration.Long` is Material's own ten seconds, which is the house
-    // window, and its Undo action is what puts the row back.
+    // The undo bar: `SnackbarDuration.Long` is Material's ten seconds, the house window.
     LaunchedEffect(removedSet) {
         val removed = removedSet ?: return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
@@ -267,15 +244,13 @@ fun RoutineBuilderHost(
     }
 
     val isDirty = BuilderDraft.isDirty(draft, initialDraft)
-    // Folded ONCE per draft, not once per reader: the title, the top-bar Save and the foot
-    // of the document all ask, and each ask walks the plan's executable sets.
+    // Folded ONCE per draft: title, top-bar Save and the foot all ask, and each walks the sets.
     val validationIssue = draft.validationIssue
     val canSave = validationIssue == null
     val subtitle = validationIssue ?: PlanMath.subtitleLine(draft.plan)
 
     fun discard() {
-        // A stash that outlives an explicit Cancel returns as a ghost the next time the
-        // builder opens.
+        // A stash outliving an explicit Cancel would return as a ghost next time.
         templates.clearDraft()
         onDone(null)
     }
@@ -290,12 +265,11 @@ fun RoutineBuilderHost(
         saving = true
         scope.launch {
             try {
-                // ONE entry point, so the builder never has to know whether it is creating or
-                // editing — and the store's own `create`/`update` are what ask for notification
-                // permission, once, on the first Save of a routine that wants reminders.
+                // ONE entry point for create and edit; the store's own `create`/`update` ask for notification
+                // permission once, on the first Save of a routine with reminders.
                 val saved = templates.save(draft)
-                // A rolled-back save leaves the document OPEN with the error inline, and the
-                // rescue copy has to survive for the retry — the store only clears it on success.
+                // A rolled-back save leaves the document OPEN with the error inline; the stash survives for
+                // the retry.
                 if (saved == null) return@launch
                 // The guide has done its job the moment a routine exists.
                 settings.setBuilderGuideDone(true)
@@ -306,9 +280,8 @@ fun RoutineBuilderHost(
         }
     }
 
-    // **Predictive back IS Cancel**, with the discard dialog only when there is something to
-    // lose. Intercepting it means the system runs no back animation of its own, which is
-    // right: a document that would ask "discard?" must not first animate itself away.
+    // **Predictive back IS Cancel**, asking only when there is something to lose. No system back
+    // animation: a document that may ask "discard?" must not first animate itself away.
     PredictiveBackHandler(enabled = editingSet == null) { progress ->
         try {
             progress.collect { }
@@ -331,10 +304,8 @@ fun RoutineBuilderHost(
                                 fontWeight = FontWeight.SemiBold,
                                 color = palette.inkPrimary,
                             )
-                            // **The price of every edit, always visible, for zero document
-                            // space — and the disabled Save's only NEARBY explanation.** It
-                            // swaps to the validation issue the instant Save refuses, right
-                            // next to the control that refused.
+                            // **The price of every edit, always visible, and the disabled Save's only NEARBY
+                            // explanation**: it swaps to the validation issue the instant Save refuses.
                             Text(
                                 subtitle,
                                 style = MaterialTheme.typography.bodySmall,
@@ -352,9 +323,7 @@ fun RoutineBuilderHost(
                         TextButton(onClick = { cancel() }) { Text(tr("Cancel")) }
                     },
                     actions = {
-                        // The tour's last builder step lights THIS Save, not the one at the
-                        // foot of the document: it is the one that is on screen wherever you
-                        // have scrolled to, which is the only place a spotlight can find it.
+                        // The tour's last builder step lights THIS Save: it is on screen wherever you have scrolled.
                         TextButton(
                             onClick = { save() },
                             enabled = canSave && !saving,
@@ -371,10 +340,8 @@ fun RoutineBuilderHost(
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { insets ->
-            // **An eager Column in a verticalScroll, NOT a LazyColumn.** The coach's
-            // scroll-to has to find an anchor that may be a screenful below the fold, and a
-            // lazy list has not built it yet. A routine is a dozen rows, not a feed, so
-            // eager layout is free — and it is what lets every anchor register its position.
+            // **An eager Column, NOT a LazyColumn**: the coach's scroll-to must find anchors below the
+            // fold, which a lazy list has not built. A dozen rows cost nothing to lay out eagerly.
             Column(
                 Modifier
                     .fillMaxSize()
@@ -390,8 +357,7 @@ fun RoutineBuilderHost(
                     .widthIn(max = Metrics.maxContentWidth),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                // NAME — the document opens on it, in every mode, so creating and editing
-                // share the same first screenful.
+                // NAME opens the document in every mode, so creating and editing share a first screenful.
                 Block(BuilderAnchor.Name, anchors) {
                     Coach(coachStep, 1, scope, settings, { coachStep = it }, ::scrollTo)
                     NameSection(draft.plan.name) { name ->
@@ -407,16 +373,15 @@ fun RoutineBuilderHost(
                 Block(BuilderAnchor.Sets, anchors, Modifier.tourAnchor(TourTarget.BuilderSets)) {
                     Coach(coachStep, 3, scope, settings, { coachStep = it }, ::scrollTo)
                     val percentBandsVary = BuilderDraft.percentBandsVary(draft)
-                    // What every row resolves against, folded once and compared by VALUE: a
-                    // keystroke in the name leaves it equal, so no row redraws for it, and an
-                    // edit to one set redraws that one row.
+                    // Folded once and compared by VALUE: a name keystroke redraws no row, and a set edit
+                    // redraws only its own.
                     val rowContext = SetRowContext.of(draft.plan)
                     val sets = draft.plan.sets
                     // A plain row, never a pinned section header.
                     CapsLabel(tr("SETS"))
                     sets.forEachIndexed { index, set ->
-                        // Keyed by the set's id, so a reorder MOVES a row's state with it rather
-                        // than handing the open accordion to whichever set lands in its slot.
+                        // Keyed by id, so a reorder MOVES a row's state instead of handing the open accordion to
+                        // whichever set lands in its slot.
                         key(set.id) {
                             val id = set.id
                             Box(
@@ -448,24 +413,21 @@ fun RoutineBuilderHost(
                                             removedSet = RemovedSet(at, current[at])
                                         }
                                     },
-                                    // Writes back BY ID, so an edit in flight while the list
-                                    // reorders lands on the set it came from.
+                                    // BY ID, so an edit in flight during a reorder lands on its own set.
                                     onSetChange = { updated -> update { it.replacingSet(updated) } },
                                 )
                             }
                         }
                     }
                     AddSetRow {
-                        // Duplicates the previous set AND opens it, because editing the copy
-                        // is unambiguously the next thing you will do — and a uniform routine
-                        // then costs nothing extra to author.
+                        // Duplicates the previous set AND opens it: editing the copy is the next thing you do, and
+                        // uniform routines cost nothing extra.
                         val new = (draftState.value.plan.sets.lastOrNull() ?: SetPlan())
                             .copy(id = UUID.randomUUID())
                         update { draft -> draft.withSets { it + new } }
                         expanded = new.id
-                        // NEXT frame, once the row exists to scroll to: the tap otherwise
-                        // leaves you parked at the bottom of the list while the new set opens
-                        // a screen above the button (Nuri, 2026-08-10).
+                        // NEXT frame, once the row exists: otherwise the new set opened a screen above while you
+                        // stayed parked at the button.
                         scope.launch {
                             delay(16)
                             scrollTo(new.id)
@@ -506,9 +468,8 @@ fun RoutineBuilderHost(
             }
         }
 
-        // **An OVERLAY on the document, not another presentation.** The panel hangs off the
-        // top of the screen, which nothing inside a scrolling set row can reach — and the
-        // state that opens it lives at this root, not on the token.
+        // **An OVERLAY, not another presentation**: the panel hangs off the top of the screen, and
+        // its state lives at this root, not on the token.
         val editingID = editingSet
         if (editingID != null) {
             val editing = draft.plan.sets.firstOrNull { it.id == editingID }
@@ -530,8 +491,8 @@ fun RoutineBuilderHost(
     }
 
     if (showDiscard) {
-        // Only when there is something to lose: a back gesture that discards six sets of
-        // authored intent has no undo, unlike everything else in this document.
+        // Only when there is something to lose: a discarding back gesture, unlike everything else
+        // here, has no undo.
         AlertDialog(
             onDismissRequest = { showDiscard = false },
             containerColor = palette.card,
@@ -548,16 +509,13 @@ fun RoutineBuilderHost(
     }
 }
 
-/// One document block, registering its own scroll anchor. Always built, never lazy — see the
-/// note on `BuilderAnchor`.
+/// One document block, registering its own scroll anchor. Always built — see `BuilderAnchor`.
 @Composable
 private fun Block(
     anchor: BuilderAnchor,
     anchors: BuilderScrollAnchors,
-    /// The spotlight tour's anchor, when this block is one of the three it teaches. Two
-    /// registries, deliberately kept apart: this one is a scroll offset inside the document
-    /// (what the COACH needs to bring a block into view), the tour's is a window rect (what a
-    /// hole in a scrim needs).
+    /// The spotlight tour's anchor for the three blocks it teaches. Kept apart from the coach's
+    /// registry: that is a scroll offset in the document, this a window rect for the scrim.
     tourAnchor: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -571,9 +529,8 @@ private fun Block(
     }
 }
 
-/// The coach card for one step, drawn inline at its anchor. `Next` scrolls to the next
-/// section — that motion IS the step-by-step setup, with no modal sequence and nothing that
-/// can trap a tap. A scroll-to misfire degrades to "no auto-scroll".
+/// The coach card for one step, inline at its anchor. `Next` scrolls to the next section —
+/// that motion IS the setup, with no modal sequence. A scroll misfire just means no scroll.
 @Composable
 private fun Coach(
     coachStep: Int,
@@ -596,8 +553,7 @@ private fun Coach(
         },
         onSkip = {
             onStep(BuilderDraft.retiredCoachStep)
-            // Skipping is "not now and not next time". It stays a PREFERENCE, not a one-way
-            // door: Settings can put the guide back.
+            // "Not now and not next time" — a PREFERENCE Settings can reset, not a one-way door.
             settings.setBuilderGuideDone(true)
         },
     )
@@ -665,8 +621,7 @@ private fun FinishBlock(
             }
         }
         if (templates.saveError != null) {
-            // The document STAYS OPEN on a rollback: closing on failure destroys the form and
-            // the routine with it, and the reassurance is the sentence, not the exception.
+            // The document STAYS OPEN on a rollback: closing destroys the form and the routine with it.
             Text(
                 tr("That change couldn't be saved — the routine is still here. Try again."),
                 style = MaterialTheme.typography.bodySmall,
@@ -677,8 +632,7 @@ private fun FinishBlock(
 
         val editingID = mode.editingID
         if (editingID != null) {
-            // No confirmation dialog: Today arms a 10 s undo bar, and forgiveness beats a
-            // dialog people learn to dismiss blindly.
+            // No confirmation dialog: Today arms a 10 s undo bar instead.
             SecondaryButton(tr("Delete routine"), contentColor = palette.alarm) {
                 scope.launch {
                     val template = templates.routines.firstOrNull { it.id == editingID }
@@ -697,8 +651,8 @@ private fun FinishBlock(
             )
         } else {
             if (showsClosingCard) CoachClosingCard()
-            // Saves and STOPS. Building a routine and doing one are two decisions, and Start
-            // lives on Today where you take it every other day (Nuri, 2026-08-09).
+            // Saves and STOPS: building a routine and doing one are two decisions, and Start lives on
+            // Today (Nuri, 2026-08-09).
             PrimaryButton(
                 title = tr("Save routine"),
                 icon = Icons.Filled.Check,
@@ -716,8 +670,7 @@ private data class RemovedSet(val index: Int, val set: SetPlan)
 @Composable
 private fun BuilderFirstRunPreview() {
     GetAGripTheme {
-        // The document, drawn from a draft rather than from a store — the preview cannot
-        // reach one, and every section below the host takes plain values for that reason.
+        // Drawn from a draft: a preview cannot reach a store.
         BuilderDocumentPreview(RoutineDraft.blank(), coachStep = 1)
     }
 }
@@ -730,8 +683,7 @@ private fun BuilderEditPreview() {
     }
 }
 
-/// A store-free rehearsal of the document, so both previews render without a composition
-/// local the tooling cannot provide.
+/// A store-free rehearsal of the document for previews.
 @Composable
 private fun BuilderDocumentPreview(seed: RoutineDraft, coachStep: Int) {
     val palette = LocalGripPalette.current

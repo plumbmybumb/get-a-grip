@@ -15,12 +15,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// The design tokens, ported 1:1 from Shared/DesignTokens.swift. Same bones as the iOS
-// app: slate field, graphite interactive chrome, semantic ink, and exactly two signal
-// hues — bleu for "force is live", alarm red for "attention here". The house discipline
-// is that a colour can only mean something if it is not also the baseline, which is
-// why chrome stays graphite (ink, not a hue) and why DYNAMIC COLOUR IS OFF: a
-// wallpaper-derived palette would spend the whole spectrum on decoration.
+// The design tokens, ported 1:1 from Shared/DesignTokens.swift: slate field, graphite
+// interactive chrome, semantic ink, and exactly two signal hues — bleu for "force is live",
+// alarm red for "attention here". A colour only means something if it is not also the
+// baseline, so chrome stays graphite and DYNAMIC COLOUR IS OFF: a wallpaper palette would
+// spend the whole spectrum on decoration.
 
 /// Everything the screens read. Resolved once per colour scheme in `GetAGripTheme`.
 @Immutable
@@ -28,32 +27,26 @@ data class GripPalette(
     /// Semantic "ink" for text so the whole app flips together in dark mode.
     val inkPrimary: Color,
     val inkSecondary: Color,
-    /// The quietest ink, and it still has to be READABLE — footnotes and captions are
-    /// sentences. Measured at 4.72:1 on the field and 5.53:1 on a card in light, 4.73:1 and
-    /// 5.60:1 in dark (`scripts/measure_contrast.py --tokens`). It is still not for numbers
-    /// that carry the protocol: that is a hierarchy rule, not a contrast one.
+    /// The quietest ink, still READABLE: 4.72:1 on the field and 5.53:1 on a card in light,
+    /// 4.73:1 and 5.60:1 in dark (`scripts/measure_contrast.py --tokens`). Not for numbers that
+    /// carry the protocol — a hierarchy rule, not a contrast one.
     val inkTertiary: Color,
-    /// The INTERACTIVE accent — tabs, buttons, selection. Near-black in light, near-white
-    /// in dark: it reads as ink rather than as a colour, so it can never be a fill without
-    /// its explicit inverse.
+    /// The INTERACTIVE accent. Near-black in light, near-white in dark: ink, not a colour, so
+    /// never a fill without its explicit inverse.
     val graphite: Color,
     val graphiteInverse: Color,
     /// Bleu de France — the identity hue and the LIVE-FORCE signal.
     val bleu: Color,
     /// Light-intensity signal only (a routine rung at ≤ 30 % of max).
     val moss: Color,
-    /// RESERVED for attention: dropout, disconnect, destructive. Never chrome. This is the
-    /// INK — it is measured against the field and the card, and it is not what a red surface
-    /// is filled with.
+    /// RESERVED for attention: dropout, disconnect, destructive. Never chrome. This is the INK,
+    /// measured against field and card — not a fill.
     val alarm: Color,
     /// The alarm as a FILL, under white text — the swipe-to-delete backdrop.
     ///
-    /// **Fixed in both schemes, exactly like iOS's `Accent.alarmFlat`**, and that is the
-    /// whole point: `alarm` has to LIGHTEN in dark mode to stay legible as ink, and white on
-    /// that lightened red measures 3.40:1 — under the 4.5:1 floor on the one surface whose
-    /// only job is to say DELETE. Two jobs, two tokens; a literal cannot move with the
-    /// scheme, so this ratio cannot either. (Same reasoning as `RestBadge`'s amber capsule
-    /// with its fixed dark ink.)
+    /// **Fixed in both schemes, like iOS's `Accent.alarmFlat`**: `alarm` LIGHTENS in dark mode
+    /// to stay legible as ink, and white on it measures 3.40:1, under the 4.5:1 floor on the
+    /// surface whose only job is DELETE. A literal cannot move with the scheme (as `RestBadge`).
     val alarmFlat: Color,
     /// Runner phases: steel while calm, amber while waiting on you.
     val calm: Color,
@@ -64,9 +57,8 @@ data class GripPalette(
     val well: Color,
 )
 
-/// The deep red both schemes fill with. Named once so the two palettes cannot drift — and
-/// declared ABOVE them, because top-level properties initialise in declaration order and
-/// so it reads as the literal it is: white on it measures 5.62:1.
+/// The deep red both schemes fill with, named once so they cannot drift and declared ABOVE
+/// them (declaration-order init). White on it measures 5.62:1.
 private val ALARM_FLAT = Color(0xFFC62828)
 
 val LightPalette = GripPalette(
@@ -128,12 +120,10 @@ object Metrics {
 /// THE MOTION LADDER — every animation in the app comes from here. Three curves, never
 /// an ad-hoc one (see the iOS rationale in Shared/DesignTokens.swift).
 object Motion {
-    // FINITE, not just `AnimationSpec`: `expandVertically`/`fadeIn` and every other
-    // `EnterTransition` require a spec that is guaranteed to END, and both branches of every
-    // curve here already are one. Widening the declared type is what lets a disclosure take
-    // the ladder instead of Compose's unguarded 400 ms default.
-    /// The default, critically damped: disclosures, selection, a row appearing. Overshoot
-    /// on something that merely appeared is decoration.
+    // FINITE: every `EnterTransition` needs a spec guaranteed to END, which lets disclosures
+    // take the ladder instead of Compose's unguarded 400 ms default.
+    /// The default, critically damped: disclosures, selection, a row appearing. Overshoot on
+    /// something that merely appeared is decoration.
     fun <T> state(reduceMotion: Boolean): FiniteAnimationSpec<T> =
         if (reduceMotion) reduced() else spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
 

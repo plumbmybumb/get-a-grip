@@ -56,10 +56,9 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
 /// Ending a session takes a deliberate HOLD, not a tap plus a dialog.
 ///
-/// A confirmation sheet mid-workout is two taps with chalk on your hands, and the second one
-/// is the reflex you learn to fire without reading. A hold carries the same "are you sure"
-/// in the gesture itself: the button fills while you mean it, and letting go early costs
-/// nothing. Nothing is destroyed either way — everything already done is kept.
+/// A mid-workout confirmation is two taps with chalk on your hands, and the second becomes a
+/// reflex. The button fills while you mean it; letting go early costs nothing. Everything
+/// already done is kept either way.
 @Composable
 fun HoldToEndButton(modifier: Modifier = Modifier, onEnd: () -> Unit) {
     HoldButton(
@@ -69,18 +68,15 @@ fun HoldToEndButton(modifier: Modifier = Modifier, onEnd: () -> Unit) {
         spokenLabel = tr("End session"),
         trackAlpha = 0.16f,
         fillAlpha = 0.42f,
-        // Preserve a generous slop for chalky fingers; consumed scrolling still cancels
-        // this hold when the large-text runner needs a scrolling layout.
+        // Generous slop for chalky fingers; a consumed scroll still cancels in the large-text
+        // scrolling layout.
         cancel = HoldCancel.LeavesBounds(SLIDE_SLOP_DP),
         onFire = onEnd,
     )
 }
 
-/// Discarding a finished session takes a deliberate HOLD, exactly like ending one.
-///
-/// Shares the shape and the 0.9 s: one gesture vocabulary for "this cannot be undone",
-/// learned once. It is quieter than Save — a lighter fill — because throwing the session
-/// away is the rarer answer and must never be the reflex.
+/// Discarding a finished session takes the same 0.9 s HOLD: one gesture for "cannot be
+/// undone". A lighter fill than Save, because discarding is rarer and must never be the reflex.
 @Composable
 fun HoldToDiscardButton(modifier: Modifier = Modifier, onDiscard: () -> Unit) {
     HoldButton(
@@ -90,12 +86,9 @@ fun HoldToDiscardButton(modifier: Modifier = Modifier, onDiscard: () -> Unit) {
         spokenLabel = tr("Discard this session"),
         trackAlpha = 0.12f,
         fillAlpha = 0.36f,
-        // **This one lives inside the summary's scroller**, and the button legitimately sits
-        // below the fold on a session with several new maxes. A holding finger is stationary;
-        // a scrolling one moves — and the scroll CONSUMES the change, which is the signal
-        // this watches for. Cancelling on consumption is the Compose equivalent of iOS's
-        // `simultaneousGesture` plus a global-space drift cancel: the page still scrolls, and
-        // a scroll can never fire an irreversible discard with no undo behind it.
+        // **Inside the summary's scroller**, often below the fold. A scroll CONSUMES the movement,
+        // which is the cancel signal (iOS: `simultaneousGesture` plus a drift cancel): the page still
+        // scrolls, and a scroll can never fire an irreversible discard.
         cancel = HoldCancel.ConsumedOrDrifts(DRIFT_SLOP_DP),
         onFire = onDiscard,
     )
@@ -132,11 +125,9 @@ private fun HoldButton(
     val scope = rememberCoroutineScope()
     val progress = remember { Animatable(0f) }
 
-    /// SEPARATE from `progress`, and that is the entire fix for the overlap iOS hit. The
-    /// label used to read `progress > 0`, so it changed INSIDE the 0.9 s transaction that
-    /// drives the fill — and a Text whose content changes under an animation cross-fades.
-    /// Two strings of different widths, both half-opaque, sat on top of each other for the
-    /// whole hold. A plain Boolean flipped outside the animation swaps the label instantly.
+    /// SEPARATE from `progress` — the fix for the overlap iOS hit: a label keyed on `progress > 0`
+    /// changed inside the fill's animation and cross-faded two strings over each other for the
+    /// whole hold. A Boolean flipped outside it swaps instantly.
     var isHolding by remember { mutableStateOf(false) }
     var holdJob by remember { mutableStateOf<Job?>(null) }
 
@@ -154,12 +145,8 @@ private fun HoldButton(
         if (holdJob != null) return
         isHolding = true
         holdJob = scope.launch {
-            // UNCONDITIONAL — deliberately not gated on reduce motion. This fill is the
-            // functional progress readout for a 0.9 s hold-to-confirm gesture (how much
-            // longer to keep holding), not decorative motion; snapping straight to a full bar
-            // would remove the one signal that the hold is registering at all, while the
-            // gesture itself still takes exactly 0.9 s either way. It also has to match the
-            // real sleep below, which no motion token can express.
+            // UNCONDITIONAL, not gated on reduce motion: this fill is the functional readout of how
+            // much longer to hold, not decoration, and it must track the real sleep below.
             launch { progress.animateTo(1f, tween(HOLD_MILLIS.toInt(), easing = LinearEasing)) }
             delay(HOLD_MILLIS)
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -171,12 +158,9 @@ private fun HoldButton(
         modifier
             .fillMaxWidth()
             .heightIn(min = Metrics.controlMinHeight)
-            // **Clipped to the button's OWN capsule.** iOS learned this the hard way: a
-            // second capsule sized to `progress * width` draws its own fully rounded outline
-            // at that width — bigger than the button at low progress, and degenerating into a
-            // circle at small values. Clipping the PARENT and letting a plain rectangle grow
-            // inside it keeps the fill's outline exactly the button's outline: rounded
-            // leading edge, straight trailing sweep, never past the bounds.
+            // **Clipped to the button's OWN capsule.** A second capsule sized to `progress * width`
+            // outgrew the button at low progress and became a circle (iOS). Clipping the PARENT keeps
+            // the fill's outline the button's: rounded leading edge, straight sweep, never past bounds.
             .clip(CircleShape)
             .background(palette.alarm.copy(alpha = trackAlpha))
             .pointerInput(cancel) {
@@ -185,14 +169,13 @@ private fun HoldButton(
                     is HoldCancel.ConsumedOrDrifts -> cancel.slopDp.dp.toPx()
                 }
                 awaitEachGesture {
-                    // The Initial pass, so the fill starts on touch-DOWN. A long-press
-                    // detector gives no progress to draw until it has already succeeded.
+                    // The Initial pass, so the fill starts on touch-DOWN; a long-press detector reports nothing
+                    // until it has succeeded.
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     beginHold()
                     var slidOff = false
                     while (true) {
-                        // The FINAL pass is where an ancestor's scroll has already had its
-                        // say, so `isConsumed` here means "the page took this touch".
+                        // The FINAL pass: `isConsumed` here means an ancestor's scroll took the touch.
                         val event = awaitPointerEvent(PointerEventPass.Final)
                         val change = event.changes.firstOrNull { it.id == down.id }
                         if (change == null || !change.pressed) break
@@ -216,8 +199,8 @@ private fun HoldButton(
                     cancelHold()
                 }
             }
-            // TalkBack cannot express a hold, so an activation ends it outright — the gesture
-            // is the safeguard for a thumb, not a substitute for the action.
+            // TalkBack cannot express a hold, so activation ends outright: the gesture guards a thumb,
+            // it is not the safeguard itself.
             .semantics(mergeDescendants = true) {
                 role = Role.Button
                 contentDescription = spokenLabel
@@ -228,14 +211,12 @@ private fun HoldButton(
             },
         contentAlignment = Alignment.Center,
     ) {
-        // Decoration must not measure the button. matchParentSize keeps the label in
-        // charge of height, including when the summary footer has a tall constraint.
+        // Decoration must not measure the button: the label stays in charge of height.
         Canvas(Modifier.matchParentSize()) {
             drawRect(palette.alarm.copy(alpha = fillAlpha),
                 size = Size(size.width * progress.value, size.height))
         }
-        // Reserve both labels. Pressing and cancelling a hold must never move the
-        // control under the finger, even when its translation wraps differently.
+        // Reserve both labels, so pressing never moves the control under the finger.
         Box(Modifier.padding(horizontal = Metrics.buttonHorizontalPadding,
             vertical = Metrics.buttonVerticalPadding), contentAlignment = Alignment.Center) {
             for ((label, visible) in listOf(idleLabel to !isHolding, holdingLabel to isHolding)) {

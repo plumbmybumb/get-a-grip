@@ -56,20 +56,14 @@ import run.nuri.getagrip.ui.theme.Metrics
 
 /// REST & HANDS — the parts of a session every set genuinely shares.
 ///
-/// **It sits ABOVE the set list on purpose: constants above variables**, expressed as
-/// vertical order instead of as screens. Both losing designs buried routine-wide timing
-/// below six set rows, so changing one interval meant scrolling past the whole set list
-/// every time.
+/// **ABOVE the set list: constants above variables** — see `RoutineBuilderScreen`.
 ///
-/// Hold and rest used to live here as routine-level defaults, until the Max day protocol
-/// made the flaw obvious (Nuri, 2026-08-10: "what if for one pull you want 10 seconds and
-/// for the other 20?") — timing is a property of a SET, and it moved onto every set row.
-/// What is left is only what cannot vary per set: the break between sets, how the hands
-/// share the work, and when a rest starts counting.
+/// Hold and rest moved onto each set when the Max day protocol exposed the flaw (Nuri,
+/// 2026-08-10: "what if for one pull you want 10 seconds and for the other 20?"). What is left
+/// cannot vary per set: the set break, how hands share the work, when a rest starts counting.
 @Composable
 fun RhythmSection(
-    /// Only what this card draws — see `RhythmValues`. Handed the whole draft, it redrew for
-    /// every letter typed into the name above it.
+    /// Only what this card draws — see `RhythmValues`; the whole draft redrew it per name keystroke.
     rhythm: RhythmValues,
     modifier: Modifier = Modifier,
     update: DraftUpdate,
@@ -78,8 +72,7 @@ fun RhythmSection(
     fun edit(transform: (SessionPlan) -> SessionPlan) = update { it.copy(plan = transform(it.plan)) }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // A plain row, never a pinned section header — a header that pins leaves content
-        // scrolling illegibly behind it.
+        // A plain row: a pinned header leaves content scrolling illegibly behind it.
         CapsLabel(tr("REST & HANDS"))
 
         Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card) {
@@ -96,17 +89,13 @@ fun RhythmSection(
                     control = ValueControl.Dial(listOf(0.0, 30.0, 60.0, 90.0, 120.0, 180.0)),
                 ) { seconds -> edit { it.copy(setBreakSeconds = seconds) } }
 
-                // Under the break rather than in Fine tuning: this decides when every rest
-                // in the session actually STARTS, and a rest number whose meaning is set
-                // two cards away cannot be trusted.
+                // Under the break, not in Fine tuning: it decides when every rest STARTS, and a rest number
+                // whose meaning is set two cards away cannot be trusted.
                 ToggleRow(
                     title = tr("Start the rest when I let go"),
                     checked = rhythm.waitForReleaseBeforeRest,
-                    // ON by default, because the alternative silently shortens every rest
-                    // you take: the hold completes at exactly 10 s, but standing down off a
-                    // 20 mm edge takes another two or three, and those come out of the rest
-                    // rather than out of the hang. Off is still a real choice — a fixed
-                    // cadence you pace yourself to.
+                    // ON by default: otherwise the two or three seconds of standing down off a 20 mm edge come
+                    // out of every rest. Off is a real choice — a fixed cadence you pace yourself to.
                     explainer = if (rhythm.waitForReleaseBeforeRest) {
                         tr("The hold ends on time; the rest waits until you are off the edge.")
                     } else {
@@ -116,22 +105,19 @@ fun RhythmSection(
 
                 HorizontalDivider(color = palette.inkTertiary.copy(alpha = 0.22f))
 
-                // Hands is a genuinely categorical choice, so it stays chips — and it is
-                // ALWAYS expanded, because this control exists to be SEEN: the strip under
-                // it is the only place the app shows what "alternate each pull" does.
+                // Categorical, so chips — ALWAYS expanded: the strip below is the only place the app shows
+                // what "alternate each pull" does.
                 CapsLabel(tr("HANDS"), Modifier.padding(top = 2.dp))
                 HandModeChipRow(rhythm.handMode) { mode -> edit { it.copy(handMode = mode) } }
-                // The FIRST set's sequence, because that is the one the reader is about to
-                // do; `executable` so an emptied-out row cannot decide it.
+                // The FIRST set's sequence, the one about to be done; `executable` so an emptied row cannot decide it.
                 HandOrderStrip(
                     mode = rhythm.handMode,
                     repsPerSide = rhythm.firstRepsPerSide,
                     startingHand = rhythm.startingHand,
                 )
                 if (rhythm.handMode.sideCount > 1) {
-                    // The strip is fill-vs-outline with no legend, so on its own it cannot
-                    // say which hand it starts on (Nuri, 2026-09-18: "I can't tell what I'm
-                    // swapping"). The sentence says it; the button swaps it.
+                    // The strip has no legend, so it cannot say which hand starts (Nuri, 2026-09-18). The
+                    // sentence says it; the button swaps it.
                     val startsRight = rhythm.startingHand == Side.right
                     Row(
                         Modifier.fillMaxWidth(),
@@ -153,11 +139,8 @@ fun RhythmSection(
     }
 }
 
-/// The one writer of `startingHand` (Nuri, 2026-09-18: "a lil swap button … so you can
-/// start with right hand instead of left"). It sits beside the sentence that names the
-/// current starting hand, under the strip that shows it: tap, and both flip. Hidden under
-/// Both hands, where there is no first hand to swap. The spoken description names the
-/// OUTCOME of the tap, which is what a toggle should tell TalkBack.
+/// The one writer of `startingHand` (Nuri, 2026-09-18), beside the sentence naming the start:
+/// tap and both flip. Hidden under Both hands. The spoken description names the tap's OUTCOME.
 @Composable
 private fun SwapHandsAction(startsRight: Boolean, onSwap: (Side) -> Unit) {
     val palette = LocalGripPalette.current
@@ -185,8 +168,8 @@ private fun SwapHandsAction(startsRight: Boolean, onSwap: (Side) -> Unit) {
     }
 }
 
-/// A switch with its consequence said underneath, either way — a switch whose off-state is
-/// silent makes you flip it to find out what it does.
+/// A switch with its consequence said underneath either way: a silent off-state makes you flip
+/// it to learn what it does.
 @Composable
 internal fun ToggleRow(
     title: String,
@@ -197,13 +180,10 @@ internal fun ToggleRow(
 ) {
     val palette = LocalGripPalette.current
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        // **THE WHOLE ROW IS THE SWITCH.** Label and control as two independent stops is how
-        // TalkBack ends up reading a sentence and then a nameless "Switch, off" — the toggle
-        // belongs to the words beside it, and `toggleable` on the row is what says so. It is
-        // also the house hit-target rule: a row drawn full-width that is only tappable on a
-        // 32 dp switch at its right edge is half dead. The `Switch` then takes a NULL
-        // callback: the row owns both the tap and the semantics, and a second handler
-        // underneath it would fire the change twice.
+        // **THE WHOLE ROW IS THE SWITCH.** As two stops, TalkBack reads a sentence then a nameless
+        // "Switch, off"; `toggleable` on the row ties the toggle to its words. It is also the
+        // hit-target rule: a full-width row tappable only on a 32 dp switch is half dead. The `Switch`
+        // takes a NULL callback, or the change would fire twice.
         Row(
             Modifier
                 .fillMaxWidth()

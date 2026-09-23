@@ -74,30 +74,22 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
 /// **THE GRIP PICKER HANGS OFF THE TOP OF THE SCREEN**, with the app's own drawn palm.
 ///
-/// Nuri's idea (2026-08-11), and the runner's own trick made interactive: black capsules
-/// hanging under a black panel that runs flush to y = 0, so the cutout — whatever shape
-/// this phone's is — sits inside the black and the whole thing reads as one hand.
+/// Nuri's idea (2026-08-11), the runner's trick made interactive: black capsules under a
+/// black panel flush to y = 0, so whatever cutout this phone has sits inside the black.
 ///
-/// **The fingers are the control.** Black with a hairline outline while they are off the
-/// edge, solid white when they are on: exactly the reading the runner gives you at arm's
-/// length. Nothing else in the app says "which fingers" as fast as this does.
+/// **The fingers are the control**: black with a hairline when off the edge, solid white when
+/// on — the runner's own reading.
 ///
-/// TRANSLATION NOTE: iOS hangs this off the Dynamic Island, which is a guaranteed 126 ×
-/// 37.33 pt black capsule at a known position. Android has no such guarantee — punch-hole
-/// here, pill there, nothing at all on a tablet — so the panel supplies its own black, the
-/// same decision `PalmHand` already made for the runner. Geometry still MIRRORS
-/// `PalmGeometry` and must keep mirroring it: same capsule radius rule, same index-to-little
-/// length ratios, same 6 dp clearance. Two deliberate departures, both from iOS:
+/// TRANSLATION NOTE: iOS hangs this off the Dynamic Island, a guaranteed black capsule.
+/// Android cutouts vary (or are absent), so the panel supplies its own black, as `PalmHand`
+/// does. Geometry MIRRORS `PalmGeometry` and must keep doing so (capsule radius, finger
+/// length ratios, 6 dp clearance), with two departures:
 ///
-/// - **The finger PITCH is 44 dp, not the runner's 30.** The runner keeps its bars tight
-///   because it is a drawing nobody touches; a 30 dp pitch is an illegal tap target.
-/// - **The thumb is a HORIZONTAL BAR under the fingers**, exactly as `FingerPips` draws it.
-///   Angled off the palm's side like the runner's, it read as a stray pill — the runner can
-///   angle it because it is attached to the palm, and at a 44 dp pitch this hand is wider
-///   than the palm is.
+/// - **44 dp finger PITCH, not 30**: fine for a drawing, an illegal tap target for a control.
+/// - **The thumb is a HORIZONTAL BAR under the fingers**, as in `FingerPips`. Angled like the
+///   runner's, it read as a stray pill; this hand is wider than the palm.
 ///
-/// **An OVERLAY on the builder, not another presentation.** The state lives at the
-/// builder's root (`editingSet`), and the panel binds straight into that set's grip.
+/// **An OVERLAY on the builder**; the state lives at its root (`editingSet`).
 @Composable
 fun GripPanel(
     grip: GripSpec,
@@ -110,19 +102,15 @@ fun GripPanel(
 
     androidx.compose.runtime.LaunchedEffect(Unit) { shown = true }
 
-    // **The status bar is HIDDEN, not re-themed.** The panel runs to y = 0 and dark status
-    // glyphs on black vanish; forcing a dark scheme instead propagates to the WINDOW —
-    // measured on iOS 2026-08-11, the builder behind turned dark and STAYED dark after
-    // dismissal. Hiding the bar for the few seconds this is open costs a clock and leaks
-    // nothing. The window also has to draw INTO the cutout, or the panel starts below it
-    // and the black is severed exactly where the eye needs it continuous.
+    // **The status bar is HIDDEN, not re-themed.** Dark glyphs vanish on black, and forcing a
+    // dark scheme leaks to the WINDOW (on iOS the builder stayed dark after dismissal). The
+    // window also draws INTO the cutout, or the black is severed where it must be continuous.
     PanelWindowChrome()
 
     BackHandler(enabled = true) { onClose() }
 
     Box(modifier.fillMaxSize()) {
-        // Darker than a normal scrim: the unselected fingers are BLACK, and they have to
-        // read against whatever routine is behind them.
+        // Darker than a normal scrim: the unselected fingers are BLACK.
         Box(
             Modifier
                 .fillMaxSize()
@@ -145,8 +133,7 @@ fun GripPanel(
             exit = slideOutVertically(tween(if (reduceMotion) 0 else 200)) { -it } +
                 fadeOut(tween(if (reduceMotion) 200 else 200)),
         ) {
-            // Scoped, never a window-wide scheme: every adaptive token resolves dark inside
-            // the card so the ink comes out near-white on black, and nothing leaks.
+            // Scoped, never window-wide: adaptive tokens resolve near-white on black here only.
             CompositionLocalProvider(LocalGripPalette provides DarkPalette) {
                 Box(Modifier.fillMaxWidth()) {
                     PanelCard(grip, onChange, onClose)
@@ -169,8 +156,7 @@ private fun PanelCard(
             .fillMaxWidth()
             .background(
                 Color.Black,
-                // Rounded at the BOTTOM only. The top is square and flush with the screen
-                // edge, so the panel and whatever cutout is up there are one black object.
+                // Square top flush with the screen edge, so panel and cutout are one black object.
                 RoundedCornerShape(bottomStart = 42.dp, bottomEnd = 42.dp),
             )
             // Clears the hand hanging above it.
@@ -178,8 +164,7 @@ private fun PanelCard(
             .padding(horizontal = Metrics.hPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // The grip, said in one line — the sentence that proves the hand above means what
-        // you think it does.
+        // The grip in one line, proving the hand above means what you think.
         Text(
             tr("%d mm · %s · %s", grip.edgeMM, grip.fingers.name, grip.position.name),
             style = MaterialTheme.typography.titleMedium,
@@ -196,18 +181,15 @@ private fun PanelCard(
             value = grip.edgeMM,
             range = 4..45,
             unit = tr("mm"),
-            // The SLIDER-equivalent span is what you reach for; the typed LIMIT keeps the
-            // generous storage bound, so 22 mm and a 60 mm rail both stay expressible.
+            // The typed LIMIT keeps the storage bound, so 22 mm and a 60 mm rail stay expressible.
             limit = GripSpec.edgeRange,
             control = ValueControl.Dial(
                 listOf(6.0, 10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 45.0),
             ),
         ) { onChange(grip.withEdgeMM(it)) }
 
-        // Said in WORDS, mirroring `FingerPips` — the locked thumb bar dims and refuses
-        // taps with nothing else on screen to say why, and this is the primary place a grip
-        // gets edited. A control that looks live and refuses the tap is the exact failure
-        // the hit-target rule exists to prevent.
+        // Said in WORDS, as in `FingerPips`: the locked thumb bar refuses taps, and a control that
+        // looks live and refuses with no reason is what the hit-target rule prevents.
         if (grip.position == GripPosition.pinch) {
             Text(
                 tr("A pinch always includes the thumb."),
@@ -246,9 +228,8 @@ private fun GripPanelHand(
     /// enforces the same rule in the model.
     val locksThumb = grip.position == GripPosition.pinch
 
-    /// A set with no fingers on the edge is not a grip, so tapping the last engaged bar is
-    /// a no-op — and gets no tick either, because confirming a refusal is how feedback
-    /// stops meaning anything.
+    /// A set with no fingers is not a grip, so tapping the last engaged bar is a no-op with no
+    /// tick: confirming a refusal is how feedback stops meaning anything.
     fun toggle(finger: FingerSet) {
         val fingers = grip.fingers
         val next = run.nuri.getagrip.ui.components.FingerSelection.toggling(finger, fingers)
@@ -268,10 +249,8 @@ private fun GripPanelHand(
             val length = BASE_LENGTH * PalmGeometry.LENGTH_FACTOR[index]
             Box(
                 Modifier
-                    // ALL FOUR HIT BOXES THE SAME HEIGHT AND TOP-ALIGNED. Centring each
-                    // capsule in its own box floated the little finger in mid-air and read
-                    // as four unrelated pills. Fingers hang from a palm: they share a top
-                    // edge and differ at the tip.
+                    // ALL FOUR HIT BOXES SAME HEIGHT, TOP-ALIGNED: centred, the little finger floated as an
+                    // unrelated pill. Fingers share a top edge and differ at the tip.
                     .offset(x = originX + PITCH * index, y = FINGERS_TOP + cameraOffset)
                     .size(PITCH, ROW_HEIGHT)
                     .clickable(
@@ -356,9 +335,8 @@ private fun GripPanelHand(
     }
 }
 
-/// Portrait-agnostic, but it must draw INTO the cutout and hide the status bar, or the
-/// panel's black stops short of the top and the illusion is severed at exactly the junction
-/// the eye needs continuous. Both are restored on the way out.
+/// Draws INTO the cutout and hides the status bar, or the black stops short of the top.
+/// Both restored on the way out.
 @Composable
 private fun PanelWindowChrome() {
     val activity = LocalActivity.current
@@ -371,8 +349,7 @@ private fun PanelWindowChrome() {
         val controller: WindowInsetsControllerCompat =
             WindowCompat.getInsetsController(window, window.decorView)
         val previousBehavior = controller.systemBarsBehavior
-        // TRANSIENT by swipe, never sticky-hidden: the clock is one pull away for anyone
-        // who wants it.
+        // TRANSIENT by swipe, never sticky-hidden: the clock is one pull away.
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller.hide(WindowInsetsCompat.Type.statusBars())
@@ -389,13 +366,11 @@ private fun PanelWindowChrome() {
 // Geometry, mirroring `PalmGeometry` except where a CONTROL needs more room than a drawing.
 private val BAR_WIDTH: Dp = 26.dp
 
-/// 44 dp centres. The hit target IS the pitch, so the fingers cannot overlap and none of
-/// them is under the floor.
+/// 44 dp centres: the hit target IS the pitch, so none overlap or fall under the floor.
 private val PITCH: Dp = 44.dp
 private val BASE_LENGTH: Dp = 46.dp
 
-/// The panel's own black is the palm, so the fingers hang from the same place the runner's
-/// do: the palm's bottom plus the clearance every part of that hand keeps.
+/// The panel's black is the palm, so fingers hang where the runner's do.
 private val FINGERS_TOP: Dp = PalmGeometry.FINGER_TOP.dp
 
 /// ONE box height for all four, so they share a top edge and the hit areas line up.

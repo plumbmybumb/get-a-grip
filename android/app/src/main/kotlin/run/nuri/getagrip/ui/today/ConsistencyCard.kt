@@ -64,32 +64,27 @@ import run.nuri.getagrip.ui.tour.tourAnchor
 
 /// Fourteen days, oldest to newest, ending today.
 ///
-/// No streak, no badge, no score, no praise — and deliberately **no aggregate number in the
-/// header**: "11 of 14 days" is a score, and a score is the first step toward a streak. The
-/// strip IS the summary. The aggregate exists only in the spoken value, where it has to be a
-/// description because a picture cannot be spoken.
+/// No streak, badge, score or praise — and **no aggregate number in the header**: "11 of 14
+/// days" is a score, the first step toward a streak. The strip IS the summary; the aggregate
+/// exists only in the spoken value, because a picture cannot be spoken.
 @Composable
 fun ConsistencyCard(
     days: List<DayRecord>,
     modifier: Modifier = Modifier,
     onShowHistory: () -> Unit = {},
-    /// Logging a climb lives HERE rather than in the routine card's ⋯ menu, which is for
-    /// managing the routine — a gym session is not a fact about the routine. It sits on the
-    /// strip because the strip is what it changes: the control is next to the thing it
-    /// affects, which is the whole of good mapping.
+    /// Logging lives HERE, not in the routine's ⋯ menu: a gym session is not a fact about the
+    /// routine, and the control sits next to the strip it changes.
     onLogSession: () -> Unit,
 ) {
     val palette = LocalGripPalette.current
     Surface(
         shape = RoundedCornerShape(Metrics.radiusCard),
         color = palette.card,
-        // The tour lights the whole strip: "one mark a day", and the row that logs a climb
-        // or a gauge-free hang into it.
+        // The tour lights the whole strip, including the row that logs into it.
         modifier = modifier.fillMaxWidth().tourAnchor(TourTarget.Consistency),
     ) {
-        // 12 rather than the house 16 vertically: this is the least load-bearing card on
-        // Today, and it is where the last few points came from when the page had to fit
-        // under a large title without scrolling.
+        // 12, not the house 16, vertically: the least load-bearing card on Today gave up the points
+        // the page needed to fit.
         Column(
             Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -105,8 +100,7 @@ fun ConsistencyCard(
                 LogSessionButton(onLogSession)
             }
 
-            // Only the history body navigates; Log is a sibling touch target above
-            // it, so tapping that action can never also switch tabs.
+            // Only the history body navigates; Log is a sibling target, so it never also switches tabs.
             Column(
                 Modifier.fillMaxWidth().heightIn(min = 44.dp)
                     .testTag("today.history")
@@ -151,13 +145,11 @@ private fun LogSessionButton(onLogSession: () -> Unit) {
             .clickable(interactionSource = interaction, indication = null, onClick = onLogSession)
             .pressFeedback(interaction)
             .padding(horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding)
-            // Not "at the climbing gym": this sheet also logs hangs done away from the
-            // gauge, and a label naming only one of them hides the other entirely from
-            // anyone who never sees the button's own text.
+            // Not "at the climbing gym": the sheet also logs gauge-free hangs, and naming one hides the
+            // other from TalkBack.
             .clearAndSetSemantics {
-                // `clearAndSetSemantics` wipes the role `clickable` published, so it has to
-                // be restated here — a control TalkBack calls neither button nor link is a
-                // sentence it reads and nobody knows to double-tap.
+                // `clearAndSetSemantics` wipes `clickable`'s role; restate it, or TalkBack reads a sentence
+                // nobody knows to double-tap.
                 role = Role.Button
                 contentDescription = L10n.tr("Log a session you did elsewhere — climbing, or hangs off the gauge")
                 onClick(label = L10n.tr("Log a session")) { onLogSession(); true }
@@ -180,27 +172,22 @@ private fun LogSessionButton(onLogSession: () -> Unit) {
 /// How one day draws. Every state is SHAPE-encoded, never colour-only, so the strip survives
 /// greyscale and colourblindness intact.
 internal sealed interface DayMark {
-    /// Earlier than any routine existed. A hairline, not a hole — drawing those days as
-    /// empty circles would tell someone they failed on days they did not own the app. This
-    /// is the most important honesty detail on the screen.
+    /// Before any routine existed. A hairline, not a hole: empty circles would say someone failed
+    /// on days they did not own the app. The most important honesty detail on the screen.
     data object BeforeHistory : DayMark
     data object Missed : DayMark
-    /// At least one session, under target. The fill is the CONTINUOUS fraction, which
-    /// reduces to exactly full/half/empty at two sessions a day and stays truthful at three.
+    /// Under target. The CONTINUOUS fraction: exactly full/half/empty at two a day, truthful at three.
     data class Partial(val fraction: Double) : DayMark
     data object Full : DayMark
-    /// A day spent at the climbing gym. FULL — a climb completes the day — but drawn with a
-    /// notch so it is not mistaken for a hangboard day.
+    /// A climbing-gym day: FULL (a climb completes the day), notched so it is not a hangboard day.
     data object Climbed : DayMark
-    /// A max-testing day. FULL, bleu, and bored — the same glyph History's grid draws, so
-    /// the vocabulary is learned once.
+    /// A max-testing day: FULL, bleu, and bored — History's glyph, so it is learned once.
     data object Benchmarked : DayMark
 }
 
 internal fun markFor(record: DayRecord): DayMark {
     if (!record.tracked) return DayMark.BeforeHistory
-    // Asked FIRST: a climb settles the day whatever the hang count beside it, so a
-    // climb-plus-nothing day must never fall through to `Missed`.
+    // FIRST: a climb settles the day, so climb-plus-nothing never falls through to `Missed`.
     if (record.climb != null) return DayMark.Climbed
     if (record.benchmarked) return DayMark.Benchmarked
     if (record.completed == 0) return DayMark.Missed
@@ -210,14 +197,11 @@ internal fun markFor(record: DayRecord): DayMark {
 
 @Composable
 private fun ConsistencyStrip(days: List<DayRecord>) {
-    // CAPPED, and the cap is load-bearing. Each cell's ideal width is this dot, so fourteen
-    // of them at an unclamped accessibility scale come to ~406 dp against a 402 dp screen —
-    // and because the enclosing column sizes itself from its children, that widened the
-    // whole content column and clipped the device chip, the routine title and the summary
-    // row off BOTH edges of the screen.
+    // CAPPED, and load-bearing: fourteen unclamped dots at accessibility scale are ~406 dp
+    // against a 402 dp screen, and the column sizes from its children, so it widened the whole
+    // page and clipped the chip, title and summary off BOTH edges.
     //
-    // A strip is a sparkline: it exists to be glanced at, and it has to FIT. Anyone who
-    // needs the detail at a readable size has History's month grid, which is built for it.
+    // A strip is a sparkline and must FIT; History's month grid has the readable detail.
     val scaled = 12.dp * LocalDensity.current.fontScale
     val dot: Dp = minOf(scaled, 22.dp)
     val summary = remember(days) { spokenSummary(days) }
@@ -226,8 +210,7 @@ private fun ConsistencyStrip(days: List<DayRecord>) {
         Modifier
             .fillMaxWidth()
             .height(dot + 6.dp)
-            // ONE element. Fourteen focusable dots is swipe torture, and day-by-day detail
-            // belongs to History's month view.
+            // ONE element: fourteen focusable dots is swipe torture.
             .clearAndSetSemantics {
                 contentDescription = L10n.tr("Last 14 days")
                 stateDescription = summary
@@ -235,8 +218,8 @@ private fun ConsistencyStrip(days: List<DayRecord>) {
         verticalAlignment = Alignment.Top,
     ) {
         days.forEachIndexed { index, record ->
-            // Spacing 0 with equal-width cells: the pitch DERIVES from the available width,
-            // so the strip fits every device and every text size without a magic number.
+            // Equal-width cells with no spacing: the pitch DERIVES from the width, fitting every device
+            // and text size.
             Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) {
                 DayCell(record, dot, isToday = index == days.size - 1)
             }
@@ -250,9 +233,8 @@ private fun DayCell(record: DayRecord, dot: Dp, isToday: Boolean) {
     Box(Modifier.size(width = dot, height = dot + 6.dp), contentAlignment = Alignment.TopCenter) {
         Glyph(markFor(record), dot)
         if (isToday) {
-            // An under-tick, not a halo: today is still winnable, and at 0 of 2 at 8 a.m. it
-            // must not read as a failure. A halo would also fight the fractional fill
-            // sitting inside it.
+            // An under-tick, not a halo: 0 of 2 at 8 a.m. is still winnable, not a failure, and a halo
+            // would fight the fill.
             Box(
                 Modifier
                     .align(Alignment.TopCenter)
@@ -283,9 +265,8 @@ private fun Glyph(mark: DayMark, dot: Dp) {
             val ring = palette.inkTertiary.copy(alpha = 0.45f)
             Canvas(Modifier.size(dot)) {
                 val r = size.minDimension / 2f
-                // The fill is CLIPPED from the leading edge rather than drawn as an arc: a
-                // half-filled circle has to read as "half", and a pie slice reads as a
-                // different quantity at 12 dp.
+                // CLIPPED from the leading edge, not an arc: at 12 dp a half circle reads as "half", a pie
+                // slice as something else.
                 clipRect(right = size.width * mark.fraction.toFloat()) {
                     drawCircle(graphite, radius = r, center = center)
                 }
@@ -307,9 +288,8 @@ private fun Glyph(mark: DayMark, dot: Dp) {
     }
 }
 
-/// The only place an aggregate is allowed to exist, and it is phrased as a description
-/// rather than a score. Days before the routine existed are excluded from the missed count
-/// here exactly as they are in the drawing.
+/// The only aggregate allowed, phrased as a description, not a score. Pre-history days are
+/// excluded from "missed", as in the drawing.
 internal fun spokenSummary(days: List<DayRecord>): String {
     var complete = 0
     var partial = 0
@@ -330,8 +310,7 @@ internal fun spokenSummary(days: List<DayRecord>): String {
 
     val counts = buildList {
         if (complete > 0) add(L10n.tr("%d %s complete", complete, L10n.tr(if (complete == 1) "day" else "days")))
-        // Named, not folded into "complete": the notch is a distinction the drawing makes,
-        // so the spoken version has to make it too.
+        // Named: the notch is a distinction the drawing makes, so speech makes it too.
         if (climbed > 0) add(L10n.tr("%d at the climbing gym", climbed))
         if (benchmarked > 0) add(L10n.tr("%d max testing", benchmarked))
         if (partial > 0) add(trQuantity("%d partial", partial))

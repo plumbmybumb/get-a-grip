@@ -72,25 +72,21 @@ import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.tour.LocalTourController
 import run.nuri.getagrip.ui.tour.TourAct
 
-/// The ritual front door — the screen Nuri sees every single day, twice.
+/// The ritual front door — the screen Nuri sees twice a day, every day.
 ///
-/// What you do today is the first thing on screen and one tap from starting. There is no
-/// library to assemble and no session to pick apart from the routine: the routine IS the
-/// thing. Its plan row previews the session; its options menu opens the editor directly.
+/// What you do today is first on screen and one tap from starting. The routine IS the thing:
+/// its plan row previews the session, its menu opens the editor.
 ///
-/// **TODAY IS ONE SCREEN.** It is a dashboard, not a document, and it does not scroll — but
-/// it is still a scroll CONTAINER, because at accessibility text sizes it overflows and
-/// scrolling beats clipping a Start button nobody can reach. What is suppressed is the
-/// rubber-band on content that already fits, which is what iOS's
-/// `.scrollBounceBehavior(.basedOnSize)` means and what a null overscroll effect means here.
+/// **TODAY IS ONE SCREEN.** A dashboard that does not scroll, but still a scroll CONTAINER:
+/// at accessibility sizes it overflows, and scrolling beats clipping Start. Only the
+/// rubber-band on fitting content is suppressed (iOS `.scrollBounceBehavior(.basedOnSize)`).
 ///
-/// Deliberately no footer disclaimer. Schengen's dashboard carries one because every number
-/// there is legally load-bearing; nothing here is. The Tindeq non-affiliation line lives in
-/// Settings › About.
+/// No footer disclaimer: nothing here is legally load-bearing. The Tindeq non-affiliation
+/// line lives in Settings › About.
 @Composable
 fun TodayScreen(
-    /// Start the routine; `timerOnly` is the gauge-free session. The host above decides where
-    /// the runner is shown, so this screen never knows about navigation.
+    /// Start the routine; `timerOnly` is the gauge-free session. The host decides where the
+    /// runner shows.
     onStart: (SessionTemplateEntity, Boolean) -> Unit = { _, _ -> },
     /// The builder, for a first routine and for a second one.
     onBuild: () -> Unit = {},
@@ -98,15 +94,12 @@ fun TodayScreen(
     onShowHistory: () -> Unit = {},
     /// The log sheet, shared with History — a gym session or a hang done away from the gauge.
     onLogSession: () -> Unit = {},
-    /// The live gauge, from the button on the header. Some people use the gauge and no
-    /// routine at all (2026-09-20), so it is one tap from Today — the same top-right door
-    /// History and Maxes have. The host presents it; this screen never knows how.
+    /// The live gauge, from the header. Some people use the gauge with no routine at all
+    /// (2026-09-20), so it is one tap from Today, like History and Maxes.
     onOpenGauge: () -> Unit = {},
-    /// Whether the HOST has nothing of its own on screen. Today owns every presentation a
-    /// scan can collide with except two — the log sheet and the max composer both live in
-    /// `RootTabView` while this screen stays composed underneath them — so the host has to
-    /// say. Everything else that could collide (the runner, the builder, the measure screen)
-    /// replaces this screen outright, so its absence IS the guard.
+    /// Whether the HOST has nothing of its own on screen. Only the log sheet and max composer
+    /// (in `RootTabView`, with this screen composed beneath) can collide with a scan; everything
+    /// else replaces this screen, so its absence IS the guard.
     canPresentImport: Boolean = true,
 ) {
     val palette = LocalGripPalette.current
@@ -120,54 +113,43 @@ fun TodayScreen(
 
     val routines = templates.routines
 
-    // **THE TOUR IS STARTED FROM TODAY, not from `RootTabView`.**
+    // **THE TOUR IS STARTED FROM TODAY, not from `RootTabView`.** Two acts chosen at runtime:
+    // with no routine, every card step would light nothing, so the script hands you to the
+    // builder and `routineCreated()` resumes with the Today script once one is saved. Only this
+    // screen reads the routine list, and "is there a routine" is unknowable on the first frame.
     //
-    // Two acts, chosen at runtime: on a real first launch there is no routine, so every step
-    // about the card would light a rectangle that does not exist and the script hands you to
-    // the builder instead; `routineCreated()` picks up with the Today script the moment one is
-    // saved. This screen is the one that knows which — the routine list is its own read, and
-    // "is there a routine" is not knowable on the first frame.
-    //
-    // Keyed on the COUNT, and it is both the start and the resume trigger, which is why the
-    // effect runs on its first pass too.
+    // Keyed on the COUNT, as both start and resume trigger, so it runs on its first pass too.
     LaunchedEffect(routines.size) {
         if (routines.isEmpty()) {
             tour.beginIfUnseen(TourAct.Intro, hasRoutine = false)
         } else {
-            // A routine now exists. If the tour handed you to the builder, this is where it
-            // picks the thread back up.
+            // A routine now exists: resume the tour if it handed you to the builder.
             tour.routineCreated()
             tour.beginIfUnseen(TourAct.Intro, hasRoutine = true)
         }
     }
 
-    /// FROZEN at tap time — see `RoutineShareRequest`. Holding the request rather than the
-    /// routine is what stops a swipe, an edit or a delete changing the code on screen out
-    /// from under whoever is pointing a camera at it.
+    /// FROZEN at tap time — see `RoutineShareRequest` — so a swipe, edit or delete cannot change
+    /// the code under a pointed camera.
     var shareRequest by remember { mutableStateOf<RoutineShareRequest?>(null) }
-    /// The share alert fires when a routine cannot become a WORKING code — no pulls in it, or
-    /// past the 50-set ceiling the decoder enforces at the other end. Rare, which is exactly
-    /// why a silent no-op would be unreadable: a menu item that does nothing is
-    /// indistinguishable from a tap that missed.
+    /// Fires when a routine cannot become a WORKING code (no pulls, or past the decoder's 50-set
+    /// ceiling). Rare, which is why a silent no-op would read as a missed tap.
     var shareFailed by remember { mutableStateOf(false) }
-    /// The scanned routine currently ON SCREEN, claimed from the store's inbox by
-    /// `drainImportInbox`. It lives here — not in `MainActivity`, where the link actually
-    /// arrives — because this is the one place that can see whether anything else holds the
-    /// screen.
+    /// The scanned routine ON SCREEN, claimed from the store's inbox by `drainImportInbox`. Here,
+    /// not in `MainActivity`, because only this screen can see whether anything else holds it.
     ///
-    /// SAVED across a rotation: claiming it EMPTIED the inbox, so a preview that died with the
-    /// Activity was a shared routine gone for good — rescanning is somebody else's phone away.
+    /// SAVED across rotation: claiming EMPTIED the inbox, so a lost preview was a shared routine
+    /// gone for good.
     var importPreview by rememberSaveable(stateSaver = OptionalRoutineDraftSaver) { mutableStateOf<RoutineDraft?>(null) }
     var importError by rememberSaveable { mutableStateOf<String?>(null) }
-    /// The scanner could not be opened at all — no Play services, or the module has never
-    /// downloaded. Separate from `importError`, which is about a code that WAS read.
+    /// The scanner could not open at all (no Play services, module not downloaded). Separate
+    /// from `importError`, which is about a code that WAS read.
     var scannerError by remember { mutableStateOf<String?>(null) }
     var overviewID by rememberSaveable { mutableStateOf<String?>(null) }
     val overview = routines.firstOrNull { it.id.toString() == overviewID }
 
-    /// The single door from the store's inbox to the screen, called on arrival and whenever
-    /// a presentation closes. Nothing this view presents may be up, and the host must have
-    /// nothing up either.
+    /// The single door from the store's inbox to the screen, called on arrival and whenever a
+    /// presentation closes. Nothing here or in the host may be up.
     fun drainImportInbox() {
         if (!canPresentImport) return
         if (shareRequest != null || importPreview != null || importError != null || overviewID != null) return
@@ -179,13 +161,11 @@ fun TodayScreen(
         templates.claimPendingImport()?.let { importPreview = it }
     }
 
-    // Arrival. Both outlets are watched, and every presentation below drains again on
-    // dismissal, so a scan that landed mid-sheet appears the moment the screen is free
-    // instead of being lost.
+    // Arrival. Every presentation below drains again on dismissal, so a scan that landed
+    // mid-sheet appears once the screen is free.
     LaunchedEffect(templates.pendingImport, templates.pendingImportError, canPresentImport) {
-        // A link that COLD-LAUNCHED the app lands in the inbox before this screen exists;
-        // keying the effect on the fields themselves means the first pass sweeps whatever is
-        // already waiting, so there is no separate "on appear" door to keep in step.
+        // A cold-launch link lands before this screen exists; keying on the fields sweeps it on
+        // the first pass, with no separate "on appear" door.
         drainImportInbox()
     }
 
@@ -197,8 +177,7 @@ fun TodayScreen(
     }
 
     val startScan = rememberRoutineScanner(
-        // Straight into the same inbox a tapped link uses. There is ONE import path and one
-        // set of error words, whichever door the code came through.
+        // The same inbox a tapped link uses: ONE import path, one set of error words.
         onScanned = { raw -> templates.receiveShareLink(raw) },
         onUnavailable = { message -> scannerError = message },
     )
@@ -225,23 +204,18 @@ fun TodayScreen(
         }
     }
 
-    /// Rung 1 of the selection rule: an explicit swipe made TODAY. Never persisted, and
-    /// cleared by a day change — "this is what meets you every time you open the app" is a
-    /// promise about the primary, not about yesterday's browsing.
+    /// Rung 1 of the selection rule: an explicit swipe made TODAY. Never persisted; "what meets
+    /// you every time" is a promise about the primary, not yesterday's browsing.
     var chosenRoutineID by remember { mutableStateOf<UUID?>(null) }
     var chosenOnDay by remember { mutableStateOf<DayStamp?>(null) }
 
-    // The day-scoped guard below IS the expiry — deliberately, rather than an effect that
-    // clears the pin when the day rolls. Nothing reads `chosenRoutineID` without also
-    // checking `chosenOnDay == today`, so a stale pin cannot be seen; clearing it in
-    // composition would be a state write during a read of the same state.
+    // The day-scoped guard below IS the expiry: every read also checks `chosenOnDay == today`,
+    // and clearing the pin in composition would write state during its own read.
     val today = clock.today
 
-    /// Rungs 2–4: the routine the app would front WITH NO HAND ON IT — the deck's home card,
-    /// and the one wearing the up-next border. Split from `selected` because the border must
-    /// ignore rung 1: swipe away to browse and the border stays put on the called card, which
-    /// is what makes it information ("this one is being asked of you") rather than decoration
-    /// on whatever is in front.
+    /// Rungs 2–4: the routine the app would front WITH NO HAND ON IT — the home card, wearing the
+    /// up-next border. Split from `selected` because the border ignores rung 1: it stays on the
+    /// called card while you browse, which makes it information rather than decoration.
     val upNext = remember(routines, templates.completionsToday, templates.climbToday, templates.benchmarkedToday) {
         recentlyCalled(routines, templates)
             ?: routines.firstOrNull { it.id == templates.suggestedRoutineID }
@@ -251,8 +225,7 @@ fun TodayScreen(
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        // `RootTabView`'s Scaffold has already inset this subtree; a nested Scaffold that
-        // added its own would pad both twice.
+        // `RootTabView`'s Scaffold already inset this subtree; a second inset would pad twice.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = {
             UndoSnackbar(snackbar)
@@ -262,9 +235,7 @@ fun TodayScreen(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                // A scroll container that does not bounce when the content fits — see the
-                // header note. The overscroll effect is dropped rather than the scroll: at
-                // accessibility sizes this page genuinely does overflow.
+                // No bounce when content fits (see the header note), but it can still scroll at large sizes.
                 .verticalScroll(rememberScrollState(), overscrollEffect = null)
                 .padding(bottom = LocalFloatingTabBarInset.current),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -281,14 +252,12 @@ fun TodayScreen(
                     Modifier.padding(horizontal = Metrics.hPadding),
                     showsGaugeNote = !device.state.isConnected,
                     onBuild = onBuild,
-                    // With no routine there is no card and so no menu — this is the ONLY
-                    // door to the scanner on this screen. See the note on the card.
+                    // With no routine there is no card menu: this is the ONLY scanner door here.
                     onScan = startScan,
                 )
             } else {
-                // FULL-BLEED: the deck escapes the column's padding so the neighbouring card
-                // peeks at the screen edge. Its own content padding puts a settled card back
-                // on the house grid.
+                // FULL-BLEED, so the neighbouring card peeks at the edge; the deck's own content padding
+                // puts a settled card back on the house grid.
                 RoutineDeck(
                     routines = routines,
                     templates = templates,
@@ -311,17 +280,14 @@ fun TodayScreen(
                     onScan = startScan,
                     onDelete = { routine ->
                         scope.launch {
-                            // The card only leaves the deck once the store says the delete
-                            // landed; `lastDeleted` is what raises the Undo, and it is set by
-                            // the same guard.
+                            // Leaves the deck only once the delete landed; the same guard raises the Undo.
                             if (templates.delete(routine)) feed.refresh()
                         }
                     },
                     onDemo = { device.useMockDevice(true) },
                 )
 
-                // With no routine there is no ritual, and nothing the strip could honestly
-                // describe.
+                // With no routine there is nothing the strip could honestly describe.
                 ConsistencyCard(
                     days = templates.consistency,
                     modifier = Modifier.padding(horizontal = Metrics.hPadding),
@@ -330,15 +296,13 @@ fun TodayScreen(
                 )
             }
 
-            // The page has no scroll-off gutter when it fits, so this is 6 rather than the
-            // house 22 — the last of the points that bought Today its single screen.
+            // 6, not the house 22: a page that fits needs no scroll-off gutter.
             Spacer(Modifier.height(6.dp))
         }
     }
 
-    // The bar names the sessions because they are the part nobody expects to be on the
-    // line: a routine's history goes with it (`TemplateStore.delete`), and "Routine
-    // deleted" alone would be a true sentence about the smaller half.
+    // The bar names the sessions: a routine's history goes with it (`TemplateStore.delete`),
+    // and "Routine deleted" alone describes the smaller half.
     val deletedSessions = templates.lastDeleted?.sessions?.size ?: 0
     UndoSnackbarEffect(
         hostState = snackbar,
@@ -352,8 +316,8 @@ fun TodayScreen(
         onExpired = { templates.dismissUndo() },
     )
 
-    // Every presentation drains the inbox as it closes — the deferral idiom the iOS screen
-    // uses, and the reason a code scanned while the share sheet was open still arrives.
+    // Every presentation drains the inbox as it closes, so a code scanned during the share
+    // sheet still arrives.
     overview?.let { routine ->
         RoutineOverviewSheet(
             routine = routine,
@@ -383,9 +347,8 @@ fun TodayScreen(
     }
 
     if (importError != null) {
-        // The words come from `RoutineShareError.errorDescription` — there is no second copy
-        // of them in the UI, so what a damaged code says here and on the iPhone is one
-        // sentence maintained in one place.
+        // The words come from `RoutineShareError.errorDescription`: one sentence, shared with iOS,
+        // maintained in one place.
         AlertDialog(
             onDismissRequest = { importError = null; drainImportInbox() },
             title = { Text(tr("Couldn't import")) },
@@ -431,11 +394,9 @@ private fun Header(
 ) {
     val palette = LocalGripPalette.current
     Column(modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        // The LARGE title stays. It is the piece of real platform chrome that makes the
-        // screen read as native rather than styled (Nuri: "I liked the bigger today header,
-        // I think that respects the Apple design better"); the height Today needed came out
-        // of the content instead. It is drawn here rather than in a `LargeTopAppBar` because
-        // a collapsing bar would scroll the title away on the one screen that must not move.
+        // The LARGE title stays: real platform chrome reads as native (Nuri: "I liked the bigger
+        // today header"). Drawn here, not in a `LargeTopAppBar`, whose collapse would scroll the
+        // title away on the one screen that must not move.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 tr("Today"),
@@ -444,8 +405,7 @@ private fun Header(
                 color = palette.inkPrimary,
             )
             Spacer(Modifier.weight(1f))
-            // The bar's one action, where History keeps its export and Maxes its add: the
-            // live gauge, wearing the icon its Settings row used to.
+            // The bar's one action (History's export, Maxes' add): the live gauge.
             IconButton(onClick = onOpenGauge) {
                 Icon(
                     Icons.Outlined.Speed,
@@ -486,21 +446,17 @@ private fun Header(
     }
 }
 
-/// "Monday 3 August". The M1 subtitle ("Gauge connected") duplicated the DeviceChip thirty
-/// points above it; a daily-ritual screen says what day it is. Read off the app's own
-/// `DayClock` rather than the wall clock so it re-renders when the day rolls under a phone
-/// that was left open.
+/// "Monday 3 August": a daily-ritual screen says what day it is. Read off `DayClock`, not the
+/// wall clock, so it re-renders when the day rolls under an open phone.
 private fun dateLine(today: DayStamp): String = DATE_LINE.format(today.localDate())
 
 private val DATE_LINE = LocalizedPattern("EEEE d MMMM")
 
-/// Wraps to tomorrow's first slot rather than going blank once the day's last reminder has
-/// passed: at 22:00 the honest answer is still "next at 08:00", and a row that empties itself
-/// in the evening reads as broken.
+/// Wraps to tomorrow's first slot after the day's last reminder: at 22:00 the honest answer
+/// is "next at 08:00", and a row that empties in the evening reads as broken.
 ///
-/// TRANSLATION NOTE: iOS reads this off `RoutineSummary.nextReminder`, which `TemplateStore`
-/// recomputes per call for exactly this reason. The same fold is repeated here rather than
-/// building a whole summary for one string on a row that redraws with the device chip.
+/// TRANSLATION NOTE: iOS reads `RoutineSummary.nextReminder`; the fold is repeated here
+/// rather than building a whole summary for one string.
 private fun nextReminderText(template: SessionTemplateEntity): String? {
     if (!template.remindersEnabled) return null
     val slots = template.reminders.sorted()
@@ -510,16 +466,12 @@ private fun nextReminderText(template: SessionTemplateEntity): String? {
     return (slots.firstOrNull { it.minutesFromMidnight >= minutes } ?: first).displayText()
 }
 
-/// The routine whose reminder fired most recently today and whose day is still owed —
-/// opening the app off the back of a notification should land on the routine that sent it
-/// (Nuri, 2026-08-10).
+/// The routine whose reminder fired most recently today and whose day is still owed, so
+/// opening off a notification lands on the routine that sent it (Nuri, 2026-08-10).
 ///
-/// Computed from the SCHEDULE, deliberately not from the delivered-notification list: the
-/// schedule is synchronous (the deck must not jump a frame after appearing while an async
-/// query lands), it still works with notifications off — at 13:05 it is Max o'clock whether
-/// or not a banner said so — and the planner's suppression of already-trained days is
-/// mirrored by the `isDoneForToday` filter: a routine you finished has been answered and
-/// cannot be "calling".
+/// From the SCHEDULE, not the delivered-notification list: it is synchronous (no deck jump
+/// after an async query), works with notifications off, and `isDoneForToday` mirrors the
+/// planner's suppression — a finished routine cannot be "calling".
 private fun recentlyCalled(
     routines: List<SessionTemplateEntity>,
     templates: run.nuri.getagrip.store.TemplateStore,
@@ -530,8 +482,7 @@ private fun recentlyCalled(
         if (!routine.remindersEnabled || templates.isDoneForToday(routine)) continue
         val fired = routine.reminders.map { it.minutesFromMidnight }.filter { it <= now }.maxOrNull()
             ?: continue
-        // Strictly greater, so a tie goes to the earlier routine in the store's order —
-        // stable, and biased toward the primary.
+        // Strictly greater: a tie goes to the earlier routine, stable and biased to the primary.
         if (best == null || fired > best.second) best = routine to fired
     }
     return best?.first

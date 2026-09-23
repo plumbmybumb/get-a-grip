@@ -102,28 +102,23 @@ import run.nuri.getagrip.ui.theme.Metrics
 
 /// What you have actually done, and whether it is going anywhere.
 ///
-/// Two different questions, and the screen answers them in that order: **did I show up**
-/// (the five-week grid, which is about the ritual) and what each of those days was (the
-/// session log). Consistency comes first deliberately — for a twice-a-day habit, turning up
-/// is the whole game.
+/// Two questions, in this order: **did I show up** (the five-week grid) and what each day was
+/// (the session log). For a twice-a-day habit, turning up is the whole game.
 ///
-/// Every number here comes from a `WorkoutLogEntity`, which freezes its plan and each rep's
-/// grip at save time. Editing or deleting a routine can therefore never rewrite what
-/// history says you DID. Its NAME is the one deliberate exception — see `displayName`.
+/// Every number comes from a `WorkoutLogEntity`, which freezes its plan and each rep's grip at
+/// save time, so editing or deleting a routine never rewrites what you DID. Its NAME is the
+/// one exception — see `displayName`.
 ///
-/// TRANSLATION NOTE: iOS also carries a per-routine TREND deck here (average load per grip,
-/// per routine, as a chart with a chip row). It is not in this file: its grip picker is
-/// built out of the house `Chip`, which belongs to the builder wave, and half a trend card
-/// with no way to change grips would be worse than none. `MaxChart` is already the drawing
-/// it needs — see the report.
+/// TRANSLATION NOTE: iOS also has a per-routine TREND deck here. Not ported: its grip picker
+/// needs the builder's `Chip`, and a trend card with no way to change grips would be worse
+/// than none. `MaxChart` is already the drawing it needs.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     onLogSession: () -> Unit,
     modifier: Modifier = Modifier,
-    /// The spotlight tour's anchor for the month calendar. Passed IN rather than read from a
-    /// composition local, so this screen still has no idea a tour exists and stays previewable
-    /// — the same discipline `SetRowView` follows with `palette` and `maxes`.
+    /// The tour's anchor for the month calendar, passed IN so this screen knows nothing of the
+    /// tour and stays previewable (as `SetRowView` does with `palette` and `maxes`).
     monthAnchor: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
 ) {
@@ -138,19 +133,15 @@ fun HistoryScreen(
     var exportRequest by remember { mutableStateOf<AnalysisExportRequest?>(null) }
     var shareRequest by remember { mutableStateOf<ShareCalendarRequest?>(null) }
 
-    // The feed has no live query behind it, so a screen that draws the ledger asks for it on
-    // the way in — and it READS only when a write landed since the last read, so switching
-    // tabs costs nothing. Keyed on the revision, so a write made while History is up (a
-    // cascade from a deleted routine, a session logged from its own sheet) still reaches it.
+    // The feed has no live query, so the screen asks on the way in; it READS only when a write
+    // landed since, so switching tabs is free. Keyed on the revision so a write made while
+    // History is up (a cascade delete, a session logged here) still reaches it.
     LaunchedEffect(feed, templates.writeRevision) { feed.refreshIfStale() }
 
     val logs = feed.logs
     val today = clock.today
-    // Folded ONCE and handed down, rather than each of the ~200 questions a card asks
-    // re-scanning the whole log list. See `DayLedger`: every cell used to answer its own
-    // questions by filtering every log, which is on the order of two hundred whole-array
-    // passes per 35-day card. The feed keeps it (and refolds it off the main thread with each
-    // read), so coming back to this tab does not fold it again.
+    // Folded ONCE and handed down (see `DayLedger`): cells answering their own questions made
+    // ~200 whole-log passes per 35-day card. The feed keeps it and refolds off the main thread.
     val trackingSince = templates.trackingSince
     val ledger = feed.ledger(today, trackingSince)
     // The odometer, folded by the feed beside the read — columns only, no blobs.
@@ -163,8 +154,7 @@ fun HistoryScreen(
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        // `RootTabView`'s Scaffold has already inset this subtree; a nested Scaffold that
-        // added its own would pad both twice.
+        // `RootTabView`'s Scaffold already inset this subtree; a second inset would pad twice.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { UndoSnackbar(snackbar) },
         topBar = {
@@ -178,15 +168,11 @@ fun HistoryScreen(
                     titleContentColor = palette.inkPrimary,
                 ),
                 actions = {
-                    // The SCREEN-level action belongs on the screen's own bar: the month
-                    // card's share button exports ONE five-week calendar as a picture, and
-                    // this exports the whole ledger as a document. Two different scopes, so
-                    // two different places — a second button on the card would read as a
-                    // variant of the first.
+                    // The SCREEN-level action on the screen's own bar: the month card's share exports ONE
+                    // calendar as a picture, this the whole ledger as a document. Two scopes, two places.
                     //
-                    // Offered even with nothing logged: the sheet then says plainly that
-                    // there is nothing to export, which is a better answer than a toolbar
-                    // item that is present on some launches and missing on others.
+                    // Offered even with nothing logged: the sheet says so, which beats a toolbar item that
+                    // comes and goes.
                     IconButton(onClick = {
                         exportRequest = buildExportRequest(feed, routineNames, today)
                     }) {
@@ -219,10 +205,8 @@ fun HistoryScreen(
                     )
                 }
                 item("months") {
-                    // One card per 5-WEEK WINDOW, swiped like every other deck (Nuri,
-                    // 2026-08-10: "swipable cards of previous windows") — and only a deck
-                    // once a second window exists to swipe to, the same honesty rule as
-                    // Today's.
+                    // One card per 5-WEEK WINDOW, swiped like every other deck (Nuri, 2026-08-10) — and a deck
+                    // only once a second window exists, as on Today.
                     if (windowCount > 1) {
                         MonthDeck(windowCount, ledger, today, monthAnchor) { shareRequest = it }
                     } else {
@@ -232,10 +216,8 @@ fun HistoryScreen(
                     }
                 }
                 item("lifetime") {
-                    // SECOND, above the log and below the calendar (Nuri, 2026-09-20): the
-                    // calendar says how often, the odometer says how much, all of it — and
-                    // the sessions it adds up sit right under it. (iOS puts its per-grip
-                    // trend deck between the two; Android has no trend deck.)
+                    // SECOND, between calendar and log (Nuri, 2026-09-20): how often, then how much, then the
+                    // sessions it adds up. (iOS puts its trend deck here; Android has none.)
                     LifetimeCard(lifetime, Modifier.padding(horizontal = Metrics.hPadding, vertical = 6.dp))
                 }
                 item("sessions-label") {
@@ -245,9 +227,8 @@ fun HistoryScreen(
                     )
                 }
 
-                // TEN, then a door: the log grows forever, and a habit app's history would
-                // soon be a hundred rows of scroll under one card. The recent ones are the
-                // ones you check; the rest are one tap away, not gone.
+                // TEN, then a door: the log grows forever. The recent ones are what you check; the rest are
+                // one tap away.
                 val visible = if (showAllSessions) logs else logs.take(RECENT_SESSION_LIMIT)
                 items(visible, key = { it.id }) { log ->
                     SwipeableSessionRow(
@@ -257,9 +238,7 @@ fun HistoryScreen(
                         onExport = { exportRequest = buildExportRequest(feed, routineNames, today, log) },
                         onDelete = {
                             scope.launch {
-                                // The row only leaves the list once the store says the
-                                // delete landed; `lastDeletedSession` is what raises the
-                                // Undo, and it is set by the same guard.
+                                // Leaves the list only once the delete landed; the same guard raises the Undo.
                                 if (templates.deleteSession(log)) feed.refresh()
                             }
                         },
@@ -268,17 +247,14 @@ fun HistoryScreen(
 
                 if (!showAllSessions && logs.size > RECENT_SESSION_LIMIT) {
                     item("show-all") {
-                        // Says HOW MANY it is holding back — "show more" hiding an unknown
-                        // quantity reads as a trick.
+                        // Says HOW MANY it holds back: "show more" hiding an unknown quantity reads as a trick.
                         ShowAllRow(logs.size - RECENT_SESSION_LIMIT) { showAllSessions = true }
                     }
                 }
 
                 item("footnote") {
-                    // What a delete here does and does not touch, said once at the foot of
-                    // the list. Deleting a session moves the grid under it, and that is a
-                    // surprising amount of consequence for a swipe — so the screen states
-                    // it rather than letting the grid quietly change shape.
+                    // Deleting a session moves the grid under it — a lot of consequence for a swipe — so the
+                    // foot of the list says so rather than letting the grid quietly change shape.
                     Text(
                         tr("Deleting a session removes it from your streak and your trends too. Your routines are untouched."),
                         style = MaterialTheme.typography.bodySmall,
@@ -321,11 +297,9 @@ private fun sessionDisplayName(log: WorkoutLogEntity, routineNames: Map<UUID, St
     return routineNames[id] ?: log.templateName
 }
 
-/// **Freeze WHAT to export at the tap; assemble it once the sheet is up.** Assembling walked
-/// every log's plan and rep blobs on the main thread before the sheet could even appear — an
-/// export button that got slower every week of training. The lists and names are captured
-/// here, on the main thread, as the values they are right now; the sheet runs `assemble` on a
-/// background dispatcher and says "Preparing export…" meanwhile.
+/// **Freeze WHAT to export at the tap; assemble it once the sheet is up.** Assembling every
+/// log's blobs on the main thread made the button slower every week of training. Values are
+/// captured here; the sheet runs `assemble` on a background dispatcher.
 private fun buildExportRequest(
     feed: HistoryFeed,
     routineNames: Map<UUID, String>,
@@ -350,8 +324,7 @@ private fun buildExportRequest(
 /// The window arithmetic, as pure functions — the grid's identity and its counting, with
 /// no Compose in them, so `HistoryWindowTests` can pin them.
 object HistoryWindows {
-    /// Five weeks, and the deck's page size. 35 = 7 columns × 5 rows exactly, which is what
-    /// makes every card the same shape whatever month it lands on.
+    /// Five weeks, and the deck's page size: 7 × 5 exactly, so every card has the same shape.
     const val WINDOW_DAYS = 35
 
     /// How many windows have anything to show: from today back to the first day on record,
@@ -361,8 +334,8 @@ object HistoryWindows {
         return maxOf(1, Math.ceil(span.toDouble() / WINDOW_DAYS).toInt())
     }
 
-    /// Five weeks ending 35×`window` days ago. Window 0 is home — the last five weeks —
-    /// and the list runs oldest first so it fills the grid left to right, top to bottom.
+    /// Five weeks ending 35×`window` days ago; window 0 is home. Oldest first, filling the grid
+    /// left to right, top to bottom.
     fun days(window: Int, today: DayStamp): List<DayStamp> =
         (0 until WINDOW_DAYS).map { today - (WINDOW_DAYS - 1 - it) - window * WINDOW_DAYS }
 
@@ -394,14 +367,11 @@ object HistoryWindows {
     private val RANGE_DATE = LocalizedPattern("d MMM")
 }
 
-/// LAZY, unlike the other decks: the page count grows with the training history and a
-/// two-year habit must not build seventy hidden grids at once.
+/// LAZY, unlike the other decks: pages grow with history, and a two-year habit must not build
+/// seventy hidden grids at once.
 ///
-/// TRANSLATION NOTE: iOS uses a paging `ScrollView` with `.viewAligned(limitBehavior:
-/// .always)` — one card per swipe, each page a destination rather than a distance. The
-/// Compose twin is a `LazyRow` snapping on its own list state; the trailing content margin
-/// is what makes the next card PEEK at the screen edge, which is how the deck says there is
-/// more without a permanent sliver of chrome.
+/// TRANSLATION NOTE: iOS pages with `.viewAligned(limitBehavior: .always)`. Here a snapping
+/// `LazyRow`; the trailing content margin makes the next card PEEK, saying there is more.
 @Composable
 private fun MonthDeck(
     windowCount: Int,
@@ -411,9 +381,8 @@ private fun MonthDeck(
     onShare: (ShareCalendarRequest) -> Unit,
 ) {
     val state = rememberLazyListState()
-    // The DECK, not one card: a `LazyRow` builds only what is on screen, so an anchor on a
-    // card would vanish the moment you swiped — which is the general case the anchor registry
-    // keeps a list per target for.
+    // Anchor the DECK, not a card: a `LazyRow` card's anchor vanishes on swipe (why the anchor
+    // registry keeps a list per target).
     BoxWithConstraints(Modifier.fillMaxWidth().then(anchor)) {
         val cardWidth = maxWidth - Metrics.hPadding * 2
         LazyRow(
@@ -483,16 +452,14 @@ private fun MonthCard(
                 color = palette.inkTertiary,
             )
 
-            // Shown only once there is a marked cell to explain. A legend for a glyph
-            // nobody has produced yet is clutter teaching nothing.
+            // Only once a marked cell exists: a legend for an unseen glyph is clutter.
             val anyClimb = days.any { ledger.climbed(it) }
             val anyBenchmark = days.any { ledger.benchmarked(it) }
             if (anyClimb || anyBenchmark) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    // The legend explains the SHAPES; the grid's own spoken summary already
-                    // carries the same distinction in words.
+                    // The legend explains SHAPES; the grid's spoken summary already says it in words.
                     modifier = Modifier.clearAndSetSemantics {},
                 ) {
                     if (anyClimb) LegendSwatch(palette.graphite, tr("Climbing gym"), notch = true)
@@ -523,16 +490,14 @@ private fun LegendSwatch(
     }
 }
 
-/// Seven columns of 28 dp cells. A plain `Column` of `Row`s rather than a grid: the day
-/// count is a compile-time constant (35 = 7 × 5) and a `LazyVerticalGrid` cannot be nested
-/// inside a `LazyColumn` without a fixed height anyway.
+/// Seven columns of 28 dp cells, as `Row`s: 35 = 7 × 5 is constant, and a `LazyVerticalGrid`
+/// cannot nest in a `LazyColumn` without a fixed height anyway.
 @Composable
 private fun DayGrid(days: List<DayStamp>, ledger: DayLedger, today: DayStamp) {
     Column(
         Modifier
             .fillMaxWidth()
-            // The grid carries ONE spoken summary; 35 individually-labelled cells would be
-            // a minute of TalkBack to learn nothing.
+            // ONE spoken summary: 35 labelled cells would be a minute of TalkBack teaching nothing.
             .semantics(mergeDescendants = true) {
                 contentDescription = spokenMonthSummary(days, ledger)
             },
@@ -555,9 +520,8 @@ private fun DayGrid(days: List<DayStamp>, ledger: DayLedger, today: DayStamp) {
     }
 }
 
-/// Shape-encoded, not colour-only: the fill RISES with how much of the day you did, and
-/// today carries a ring. It has to survive Reduce Transparency and colourblindness, and it
-/// speaks the same language as the strip on Today.
+/// Shape-encoded, not colour-only: the fill RISES with how much of the day you did, and today
+/// has a ring — surviving Reduce Transparency and colourblindness, like Today's strip.
 @Composable
 private fun DayCell(
     fraction: Double,
@@ -572,17 +536,15 @@ private fun DayCell(
     // day-story precedence everywhere else.
     val showsBenchmark = benchmarked && !climbed
     val shape = RoundedCornerShape(CELL_RADIUS)
-    // Read HERE, not inside `drawBehind`: a draw lambda has no composition to read a
-    // CompositionLocal from, and capturing the two fills beside the cell is what keeps the
-    // rising bar a pure drawing.
+    // Read HERE: a `drawBehind` lambda cannot read a CompositionLocal, and capturing the fills
+    // keeps the bar a pure drawing.
     val fill = if (showsBenchmark) palette.bleu else palette.graphite
 
     Box(modifier.height(CELL_SIZE), contentAlignment = Alignment.Center) {
         if (isTracked) {
             Box(Modifier.fillMaxSize().background(palette.inkTertiary.copy(alpha = 0.14f), shape))
         } else {
-            // A HAIRLINE rather than an empty box: a day you never had the app cannot be
-            // mistaken for one you skipped.
+            // A HAIRLINE, so a day before the app cannot be mistaken for a skipped one.
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -623,10 +585,8 @@ private fun DayCell(
 private val CELL_SIZE = 28.dp
 private val CELL_RADIUS = 5.dp
 
-/// Folds the climb/benchmark counts in, so the "a climb completes the day" distinction the
-/// grid's shape-coding carries has a spoken equivalent — the legend that explains those
-/// glyphs is itself hidden from TalkBack, so without this the whole distinction would have
-/// no accessible channel at all.
+/// Folds the climb/benchmark counts in: the legend explaining those glyphs is hidden from
+/// TalkBack, so this is the distinction's only accessible channel.
 private fun spokenMonthSummary(days: List<DayStamp>, ledger: DayLedger): String {
     val tracked = days.filter { it >= ledger.trackingSince }
     val trained = tracked.count { ledger.fraction(it) > 0 }
@@ -648,9 +608,8 @@ private fun spokenMonthSummary(days: List<DayStamp>, ledger: DayLedger): String 
     return summary
 }
 
-/// The share card always names the heaviest CURRENT record, never an older peak from the
-/// append-only max history. Ties are stable so two equal pulls do not make the shared grip
-/// depend on map iteration order.
+/// The share card names the heaviest CURRENT record, never an older peak. Ties are stable, so
+/// the shared grip does not depend on map order.
 private fun heaviestCurrentMax(records: Collection<MaxRecordEntity>): ShareCalendarBestPull? =
     records
         .map { ShareCalendarBestPull(it.kg, it.grip, it.side, it.recordedAt) }
@@ -725,9 +684,8 @@ private fun ShowAllRow(hidden: Int, onShow: () -> Unit) {
     }
 }
 
-/// The door to `SessionLogSheet` — a climb at the gym, or hangs done away from the gauge.
-/// **This screen never builds that sheet**: it belongs to the wave that owns the input
-/// controls, so all this owes is a named, always-present entry point.
+/// The door to `SessionLogSheet` — a climb, or hangs done away from the gauge. This screen
+/// never builds that sheet; it owes only a named, always-present entry point.
 @Composable
 private fun LogSessionRow(onLogSession: () -> Unit, modifier: Modifier = Modifier) {
     SecondaryButton(

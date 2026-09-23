@@ -149,16 +149,13 @@ private val UNIT_SIZE = 22.sp
 
 /// **The whole runner, from a plan to a decision about what to log.**
 ///
-/// The guided session — the screen you look at, at arm's length, with chalk on your hands
-/// and something heavy on your fingers. Everything is arranged around that: what matters
-/// most is largest, the phase is legible from its colour before you read a word, and every
-/// control is big enough to hit without looking. It owns no timing logic — `RunnerSession`
-/// holds the state machine and this only draws what it says.
+/// Read at arm's length with chalk on your hands: what matters most is largest, the phase
+/// is legible from its colour, and every control is hittable without looking. Timing lives
+/// in `RunnerSession`; this only draws it.
 ///
-/// **What the integrator wires:** Today builds the plan and the max table and pushes this
-/// destination; `onFinished` receives the finished session and what the summary decided, and
-/// is where `recordSession` / `recordMax` belong. `onExit` pops the destination. Nothing in
-/// here touches a store other than `DeviceStore`, which is what keeps the screen previewable.
+/// Today builds the plan and max table; `onFinished` receives the session and the summary's
+/// decision (where `recordSession` / `recordMax` belong); `onExit` pops. Only `DeviceStore`
+/// is touched here, which keeps the screen previewable.
 @Composable
 fun RunnerHost(
     workout: run.nuri.getagrip.runner.ActiveWorkout,
@@ -173,21 +170,17 @@ fun RunnerHost(
     // The ViewModel owns begin/end and the ticker. Disposing this drawing during
     // Activity recreation must not stop the gauge or discard the workout.
 
-    // **THE SESSION ACT, on the first MEASURED session you run.**
-    //
-    // Started inside the same effect that creates the session, not as a modifier of its own:
-    // ordered separately it ran first, found no session, and taught over a live workout.
-    // Measured sessions only — a gauge-free one has no trace and no lane to point at.
+    // **THE SESSION ACT, on the first MEASURED session.** Started inside the effect that creates
+    // the session: as its own modifier it ran first, found no session, and taught over a live
+    // workout. A gauge-free session has no lane to point at.
     val tour = LocalTourController.current
     LaunchedEffect(session, timerOnly) {
         if (!timerOnly) tour.beginIfUnseen(TourAct.Session)
     }
 
-    // **The session act PAUSES the runner, and resumes it when the act ends.** Teaching over a
-    // running clock costs the pull being explained. `RunnerEvent.Pause` is the same event the
-    // Pause button and a background send, so the engine needs no tour-shaped special case —
-    // and the resume is guarded on having been the one to pause, so ending the tour can never
-    // restart a session the climber paused themselves.
+    // **The session act PAUSES the runner.** Teaching over a running clock costs the pull being
+    // explained. It sends the same `RunnerEvent.Pause` as the button, and resumes only if it was
+    // the one to pause, so ending the tour never restarts a session the climber paused.
     val teaching = tour.sessionPausesRunner
     LaunchedEffect(teaching) {
         if (teaching) {
@@ -205,9 +198,8 @@ fun RunnerHost(
     // the app going blind.
     KeepScreenOn(true)
 
-    // The status bar comes back for the SUMMARY: that screen is a document you read and
-    // scroll, not a thing you glance at mid-hang, and there is no black palm under the
-    // cutout for its glyphs to disappear into.
+    // The status bar returns for the SUMMARY: a document you scroll, with no black palm under
+    // the cutout for its glyphs to vanish into.
     RunnerWindowChrome(hideStatusBar = !session.isFinished)
     RunnerLifecycle(session, device, timerOnly)
 
@@ -215,13 +207,10 @@ fun RunnerHost(
     // here: a composition stops with the Activity, and a locked screen is exactly when the
     // service-kept session most needs to hear the link drop. See `RunnerSession.begin`.
 
-    // **System back PAUSES; it never ends.** Ending a session is the hold, and only the
-    // hold — a gesture people fire by reflex must not be able to destroy a workout, and iOS
-    // gets this for free by presenting the runner as a cover with no back affordance at all.
-    // Android's back gesture is always there, so it is given the one meaning that is safe
-    // and useful mid-set: stop the clock. Leaving is then a deliberate Hold to end, exactly
-    // as it is on iOS. (Predictive back is deliberately not intercepted for an animation
-    // this screen would not honour anyway.)
+    // **System back PAUSES; it never ends.** Ending is the hold, and only the hold: a reflex
+    // gesture must not destroy a workout. iOS gets this free (a cover has no back); Android's
+    // back is always there, so it gets the one safe meaning mid-set. Predictive back is not
+    // intercepted for an animation this screen would not honour.
     BackHandler(enabled = !session.isFinished) {
         if (!session.snapshot.phase.isPaused) session.send(RunnerEvent.Pause)
     }
@@ -232,9 +221,8 @@ fun RunnerHost(
             .background(Color.Transparent),
     ) {
         if (session.isFinished) {
-            // FROZEN at the moment the session ended. Recomputing it every recomposition
-            // would move `finishedAt` and re-derive the max candidates under the rows the
-            // climber is tapping.
+            // FROZEN when the session ended; recomputing would move `finishedAt` and re-derive the
+            // max candidates under the rows being tapped.
             val outcome = workout.outcome()
             SessionSummaryScreen(
                 outcome = outcome,
@@ -260,11 +248,9 @@ fun RunnerHost(
                     newGripID = snapshot.newGripID,
                     holdsGripCueForRest = snapshot.gripChangesNext,
                     side = snapshot.side ?: Side.both,
-                    // The tour's first session step lights the palm — "your fingers hang off
-                    // the palm at the top of the screen".
+                    // The tour's first session step lights the palm.
                     tourAnchor = Modifier.tourAnchor(TourTarget.RunnerHand),
-                    // Dimmed while resting, so the hand says "this is what's COMING" rather
-                    // than "pull this now".
+                    // Dimmed while resting: this is what's COMING, not "pull this now".
                     isActive = !isResting(snapshot),
                     restFocus = !timerOnly && snapshot.showsRestFocus,
                     modifier = Modifier.align(Alignment.TopCenter),
@@ -276,10 +262,7 @@ fun RunnerHost(
     }
 }
 
-/// Portrait, behind the cutout, no status bar — and all three put back on the way out.
-///
-/// Keep the camera-aligned fingers in portrait and the workout free of status-bar chrome.
-/// Window settings are restored when the session ends.
+/// Portrait, behind the cutout, no status bar — all three restored when the session ends.
 @Composable
 private fun RunnerWindowChrome(hideStatusBar: Boolean) {
     val activity = LocalActivity.current
@@ -294,10 +277,9 @@ private fun RunnerWindowChrome(hideStatusBar: Boolean) {
         }
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         onDispose {
-            // Not while the Activity is being RECREATED: the retained runner comes straight
-            // back and asks for portrait again, and releasing the lock in between hands the
-            // replacement Activity the phone's current orientation — a landscape frame, and a
-            // second recreation, in the middle of a pull.
+            // Not while the Activity is RECREATED: the retained runner asks for portrait again, and
+            // releasing the lock in between hands the new Activity a landscape frame and a second
+            // recreation mid-pull.
             if (!activity.isChangingConfigurations) activity.requestedOrientation = previousOrientation
             window.attributes = window.attributes.apply {
                 layoutInDisplayCutoutMode = previousCutout
@@ -335,35 +317,26 @@ private fun RunnerLifecycle(session: RunnerSession, device: DeviceStore, timerOn
                     // Bin whatever the radio buffered while we were away — see
                     // `DeviceStore.dropStaleTrace`.
                     device.dropStaleTrace()
-                    // **AND KICK THE STREAM.** This is the one that actually mattered (Nuri,
-                    // 2026-08-10: "when you first come back you get a little dot, then after
-                    // a while the stream continues"). The gauge stops sending while the app
-                    // is suspended, and the only thing that revived it was the watchdog —
-                    // which sleeps 500 ms between checks and then wants its whole silence
-                    // budget. Re-sending start to a live stream is harmless; not sending it
-                    // is three dead seconds in the middle of a rep.
+                    // **AND KICK THE STREAM** (Nuri, 2026-08-10: a dot, then the stream resumed seconds later).
+                    // The gauge stops sending while suspended and only the watchdog revived it, after its whole
+                    // silence budget. Re-sending start to a live stream is harmless; not sending it is three
+                    // dead seconds mid-rep.
                     session.startIfReady(StreamStartCause.foreground)
                 }
 
                 Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
                     val isBackground = event == Lifecycle.Event.ON_STOP
                     if (isBackground && !timerOnly) {
-                        // Clear the device-time anchor BEFORE suspension. Backgrounding
-                        // already forfeits any unobserved work; this prevents queued
-                        // old-epoch samples from inheriting a high-water mark across the
-                        // foreground re-kick.
+                        // Clear the device-time anchor BEFORE suspension, so queued old-epoch samples cannot
+                        // carry a high-water mark across the foreground re-kick.
                         session.send(RunnerEvent.StreamRestarted)
                     }
-                    // **`timerOnly` short-circuits the lot, whatever is connected.** A
-                    // gauge-free session never streams, so nothing keeps the process alive
-                    // even with a Progressor sitting there connected from earlier: the
-                    // ticker stops with the process and the hold freezes with no PAUSED
-                    // state to explain it, which is precisely the silent stall this guard
-                    // exists to prevent.
+                    // **`timerOnly` always pauses, whatever is connected.** A gauge-free session never
+                    // streams, so nothing keeps the process alive: the ticker stops and the hold freezes
+                    // with no PAUSED state to explain it.
                     //
-                    // ON_STOP is "background" and ON_PAUSE is "inactive", matching iOS's
-                    // scenePhase exactly — so a CONNECTED session that can stream in the
-                    // background survives both, and a session with no link pauses on either.
+                    // ON_STOP is "background" and ON_PAUSE "inactive", matching iOS's scenePhase: a CONNECTED
+                    // session that can stream in the background survives both; one with no link pauses on either.
                     val pauses = timerOnly || BackgroundPausePolicy.pausesOnLeavingForeground(
                         isBackground = isBackground,
                         isConnected = device.state.isConnected,
@@ -394,9 +367,8 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
     Column(
         Modifier
             .fillMaxSize()
-            // The gesture bar only. The TOP inset is deliberately NOT consumed: the window
-            // draws behind the cutout and the status bar is hidden, which is exactly what
-            // lets the fingers align beneath the physical camera region.
+            // The gesture bar only. The TOP inset is NOT consumed: drawing behind the hidden status
+            // bar is what lets the fingers align beneath the camera.
             .windowInsetsPadding(WindowInsets.navigationBars)
             .readablePageWidth()
             .padding(horizontal = Metrics.hPadding)
@@ -416,10 +388,8 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
             TimerDial(session, snapshot, tint, palette)
             Counters(snapshot)
         } else {
-            // The hand owns the whole top band, so the grip's NAME is all that goes up here —
-            // drawing the glyph again would be the same picture twice — and the counters move
-            // DOWN to sit above the graph. They read just as well there: they are the two
-            // numbers you check between pulls, not while pulling.
+            // The hand owns the top band, so only the grip's NAME goes here (the glyph would be the
+            // same picture twice); the counters move DOWN above the graph — checked between pulls.
             RestFocusHeaderFrame(
                 focused = snapshot.showsRestFocus,
                 liveHeader = {
@@ -441,17 +411,15 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                     .widthIn(max = Metrics.maxContentWidth)
                     .fillMaxWidth()
                     .then(if (scrollsForLargeText) Modifier.height(220.dp) else Modifier.weight(1f))
-                    // The tour's "lane" step lights the whole card, not the Canvas: the band
-                    // is drawn inside it and a hole cropped to the plot would cut the card's
-                    // own corners off.
+                    // The "lane" step lights the whole card: a hole cropped to the plot would cut the card's
+                    // corners off.
                     .tourAnchor(TourTarget.RunnerTrace),
             ) {
                 Box(Modifier.testTag("runner-plot"), contentAlignment = Alignment.Center) {
                     ForceTraceView(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
                         thresholdKg = session.plan.thresholdKg,
-                        // Only while the rep is actually live. A lane drawn during the rest
-                        // would ask you to hold a load you are not holding.
+                        // Only while the rep is live: a lane during the rest asks for a load you are not holding.
                         targetBand = if (isWorking(snapshot) || isArmed(snapshot)) {
                             snapshot.targetBand
                         } else {
@@ -459,13 +427,10 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                         },
                         tint = tint,
                     )
-                    // A connected gauge that is not sending is the one failure "0.0 kg"
-                    // renders as a lie — it reads as a device measuring nothing rather than
-                    // an app receiving nothing, and there is no way to tell them apart by
-                    // looking. Say it, and say what to do.
-                    // Focus replaces the old prompt that normally reports a lost link.
-                    // hasSignal means a sample has arrived at least once, not that the
-                    // gauge is still sending. Keep its live warning visible in the graph.
+                    // A connected gauge that is not sending renders "0.0 kg" as a lie: a device measuring
+                    // nothing and an app receiving nothing look identical. Say it, and say what to do.
+                    // Focus replaces the prompt that normally reports a lost link. hasSignal means a sample
+                    // arrived at least once, not that the gauge is still sending, so keep the warning visible.
                     if (!snapshot.hasSignal || (snapshot.showsRestFocus &&
                             (snapshot.linkIsDown || !device.state.isConnected || !device.isSignalFresh))) {
                         NoSignalNotice(device)
@@ -479,11 +444,8 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
     }
 }
 
-/// The grip, and — during a rest — the fact that it is the one COMING UP.
-///
-/// The snapshot already looks forward while resting (`SessionRunner.displaySlot`), so this
-/// row silently changed meaning between phases. "Next" is what makes that legible instead of
-/// leaving you to work out which grip you are being shown.
+/// The grip, and — during a rest — the fact that it is the one COMING UP. The snapshot looks
+/// forward while resting (`SessionRunner.displaySlot`); "Next" makes that change legible.
 @Composable
 internal fun GripNameRow(snapshot: RunnerSnapshot, palette: GripPalette, timerOnly: Boolean) {
     val grip = snapshot.grip ?: return
@@ -503,8 +465,7 @@ internal fun GripNameRow(snapshot: RunnerSnapshot, palette: GripPalette, timerOn
     ) {
         if (resting && snapshot.newGripID == null) RestBadge(snapshot.gripChangesNext, palette)
         Text(
-            // The full name fits here — the glyph no longer shares this row — so the short
-            // form is only needed when a badge or a target chip is also present.
+            // The full name fits unless a badge or target chip shares the row.
             if (!timerOnly && snapshot.upcomingGrip != null) {
                 "${grip.shortName} → ${snapshot.upcomingGrip.shortName}"
             } else if (resting || snapshot.targetBand != null) grip.shortName else grip.line,
@@ -517,8 +478,7 @@ internal fun GripNameRow(snapshot: RunnerSnapshot, palette: GripPalette, timerOn
         val band = snapshot.targetBand
         if (band != null) LiveTargetChip(band, isWorking(snapshot), timerOnly, palette)
         if (timerOnly) {
-            // A gauge-free session is a legitimate timing protocol, so its mode belongs beside
-            // the target instruction rather than underneath a card as an apology.
+            // Gauge-free is a legitimate protocol: its mode sits beside the target, not as an apology.
             CapsLabel(
                 tr("Timing only"),
                 Modifier
@@ -565,17 +525,13 @@ internal fun GripChangeNotice(snapshot: RunnerSnapshot, palette: GripPalette) {
     }
 }
 
-/// The rest screen's change of tense — and, when the pull ahead is on a different grip, the
-/// whole cue that it is (a grip change between sets is easy to miss while you shake out).
+/// The rest screen's change of tense — and, when the next pull is on a different grip, the
+/// whole cue that it is (easy to miss while you shake out).
 ///
-/// Amber is the house colour for "waiting on you", which choosing a new grip during a rest
-/// literally is — alarm red stays reserved for attention. The WORD changes with the colour,
-/// so the cue survives greyscale and colourblindness on its own.
-///
-/// A SOLID amber capsule with fixed dark ink, not amber TEXT: amber ink on the light field
-/// measures 1.72:1 against a 4.5:1 floor and cannot carry small text in either scheme.
-/// Filling the capsule flips the arithmetic, and both colours are fixed literals, so the
-/// ratio cannot move with the scheme.
+/// Amber is "waiting on you"; red stays reserved for attention. The WORD changes with the
+/// colour, so the cue survives greyscale. A SOLID capsule with fixed dark ink, because amber
+/// ink on the light field measures 1.72:1 against a 4.5:1 floor; fixed literals keep the
+/// ratio stable in both schemes.
 @Composable
 private fun RestBadge(changing: Boolean, palette: GripPalette) {
     CapsLabel(
@@ -600,12 +556,10 @@ private fun LiveTargetChip(
     palette: GripPalette,
 ) {
     val device = LocalDeviceStore.current
-    // In a timer-only session the gauge value is zero or stale by definition. Letting it
-    // light this instruction chip would claim that an unmeasured pull is engaged.
+    // In a timer-only session the gauge value is zero or stale; it must not light the chip.
     //
-    // DERIVED, so the chip redraws when the load CROSSES an edge of the band rather than on
-    // each of the ~80 readings a second between them — reading `currentKg` straight in the
-    // body subscribed it to every sample.
+    // DERIVED, so the chip redraws when the load CROSSES a band edge, not on each of ~80
+    // readings a second.
     val live by remember(device, band, isWorking, timerOnly) {
         derivedStateOf { !timerOnly && isWorking && device.currentKg in band }
     }
@@ -621,13 +575,11 @@ private fun LiveTargetChip(
     )
 }
 
-/// The one thing that has to be readable across a room: which hand, and whether to be
-/// pulling right now.
+/// Readable across a room: which hand, and whether to pull now.
 ///
-/// `BasicText` with `autoSize`, not `Text` — the Compose answer to iOS's
-/// `minimumScaleFactor(0.6)`. "RIGHT — PULL" at a large accessibility font scale does not fit
-/// one line, and the alternatives are both wrong: ellipsis turns the decision-critical word
-/// into "RIGHT — PU…", and wrapping shoves the hero numeral down mid-rep.
+/// `BasicText` with `autoSize` (iOS's `minimumScaleFactor(0.6)`): at a large font scale
+/// "RIGHT — PULL" does not fit one line, ellipsis would cut the decision-critical word, and
+/// wrapping would shove the hero numeral down mid-rep.
 @Composable
 internal fun Prompt(
     snapshot: RunnerSnapshot,
@@ -658,12 +610,8 @@ internal fun Prompt(
     }
 }
 
-/// BOTH numbers, always: what you are pulling and how much longer.
-///
-/// They answer different questions and you need them at the same moment — the force tells
-/// you whether to pull harder or ease off, the clock tells you whether to hang on. An
-/// earlier build swapped one for the other and the load simply vanished for the ten seconds
-/// it mattered most.
+/// BOTH numbers, always: force says pull harder or ease off, the clock says hang on. An
+/// earlier build swapped one for the other and the load vanished when it mattered most.
 @Composable
 private fun Hero(
     session: RunnerSession,
@@ -682,12 +630,10 @@ private fun Hero(
         horizontalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Bottom,
     ) {
-        // No gauge, no kilogram. The clock takes the whole hero rather than sharing it with a
-        // permanent 0.0 — an empty measurement reads as a fault.
+        // No gauge, no kilogram: a permanent 0.0 reads as a fault, so the clock takes the hero.
         //
-        // Each half takes a WEIGHT, which is what bounds the numeral's width — `autoSize`
-        // shrinks to the constraints it is given, and two unbounded 76 sp figures side by
-        // side simply overflow at a large font scale.
+        // Each half takes a WEIGHT, which bounds the numeral's width: `autoSize` shrinks to its
+        // constraints, and two unbounded 76 sp figures overflow at a large font scale.
         if (!timerOnly) {
             if (measureOnly) ForceReadoutText("0.0", palette.inkPrimary, palette, Modifier.weight(1f))
             else LiveForceReadout(snapshot, palette, Modifier.weight(1f))
@@ -701,12 +647,8 @@ private fun Hero(
     }
 }
 
-/// The live kilogram readout, isolated in its OWN composable.
-///
-/// `DeviceStore.currentKg` changes with every force sample. Read from the screen's body,
-/// that recomposed counters, prompt, grip line and controls 80 times a second to move one
-/// number. A leaf reading the store directly means the invalidation stops here, at the only
-/// thing that actually changed.
+/// The live kilogram readout, isolated in its OWN composable: `currentKg` changes per
+/// sample, and read from the screen's body it recomposed everything 80×/s to move one number.
 @Composable
 private fun LiveForceReadout(snapshot: RunnerSnapshot, palette: GripPalette, modifier: Modifier = Modifier) {
     val device = LocalDeviceStore.current
@@ -730,9 +672,8 @@ private fun ForceReadoutText(value: String, tint: Color, palette: GripPalette, m
     ) {
         BasicText(
             value,
-            // **CLOCKS ROLL, MEASUREMENTS SNAP.** No animation at all on this number: a
-            // value changing ten times a second under an animated transition turns the
-            // figure you are trying to read mid-pull into a permanent blur.
+            // **CLOCKS ROLL, MEASUREMENTS SNAP.** No animation: a value changing ten times a second
+            // under a transition is a permanent blur.
             style = heroStyle(tint),
             maxLines = 1,
             autoSize = heroAutoSize,
@@ -742,11 +683,9 @@ private fun ForceReadoutText(value: String, tint: Color, palette: GripPalette, m
     }
 }
 
-/// The clock. It SNAPS — on iOS a clock rolls (`.numericText()`) because SwiftUI renders
-/// that well; Compose's digit slide read as "really bad and super laggy" on the phone
-/// (Nuri, 2026-09-04), so on Android every numeral is a plain swap. Counts DOWN the hold,
-/// never up: mid-hang you want to know how much longer, not a stopwatch you have to
-/// subtract from.
+/// The clock. It SNAPS: Compose's digit slide read as "really bad and super laggy" on the
+/// phone (Nuri, 2026-09-04), unlike SwiftUI's `.numericText()`. Counts DOWN the hold —
+/// mid-hang you want how much longer, not a stopwatch.
 @Composable
 private fun CountdownNumeral(
     seconds: Int,
@@ -811,8 +750,7 @@ private fun RepProgress(session: RunnerSession, snapshot: RunnerSnapshot, palett
     }
 }
 
-/// Pushed OUT to the screen edges and up a size. They are the two numbers you check from a
-/// metre away between pulls, and at caption size inside the house margin they were a footnote.
+/// At the screen edges and a size up: the two numbers you check from a metre away between pulls.
 @Composable
 internal fun Counters(snapshot: RunnerSnapshot) {
     val palette = LocalGripPalette.current
@@ -872,18 +810,13 @@ private fun NoSignalNotice(device: DeviceStore) {
         )
         Text(
             if (connected) {
-                // A connected gauge with nothing to show is usually a stalled stream —
-                // unless it is a Dyno still waiting on its calibration, in which case Wake
-                // would not help and the honest line is the one the calibration status
-                // carries. `calibrationNote` is nil for every gauge that needs none, which
-                // is exactly the fallthrough this had before.
+                // A silent connected gauge is usually a stalled stream — unless a Dyno is still waiting on
+                // calibration, where Wake would not help. `calibrationNote` is nil for gauges that need none.
                 calibrationNote(device.calibrationStatus)
                     ?: tr("Connected, but no readings yet. Tap Wake to restart it.")
             } else {
-                // **Names the gauge that is actually selected, and does not promise a pairing
-                // that does not exist.** A broadcast scale is never paired with — the app
-                // listens for its advertisements — so telling somebody to pair with a
-                // Progressor they do not own is wrong twice over.
+                // **Names the selected gauge and promises no pairing that does not exist**: a broadcast
+                // scale is only listened to, never paired.
                 if (device.gaugeCapabilities.isBroadcast) {
                     tr("Tap Connect to start listening for your %s.", device.gaugeKind.displayName)
                 } else {
@@ -899,13 +832,10 @@ private fun NoSignalNotice(device: DeviceStore) {
 
 // MARK: - Timer-only
 
-/// The gauge-free hero: the countdown numeral and the phase's remaining time are one object,
-/// because proximity is the mapping that makes a timer readable at a glance.
+/// The gauge-free hero: countdown numeral and remaining-time ring as one object.
 ///
-/// The ring depletes per PHASE, not per rep: rep progress is hold-only and is zero through
-/// all of lead-in and rest, which made the old ring empty exactly when the timer-only user
-/// needed it most. The ring's fraction uses the same countdown clock as the numeral, so
-/// the two channels cannot drift.
+/// The ring depletes per PHASE, not per rep: rep progress is hold-only, so a per-rep ring
+/// sat empty through lead-in and rest. It uses the numeral's clock, so the two cannot drift.
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
     session: RunnerSession,
@@ -923,8 +853,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
 
     Box(
         Modifier
-            // The dial is the hero, so it is the element that takes the slack — the same job
-            // the trace card's weight does in the measured layout.
+            // The dial is the hero, so it takes the slack (the trace card's job in the measured layout).
             .then(if (LocalDensity.current.fontScale >= 1.5f) Modifier.height(320.dp) else Modifier.weight(1f))
             .fillMaxWidth()
             .semantics(mergeDescendants = true) { contentDescription = spoken },
@@ -1024,11 +953,9 @@ private fun Controls(session: RunnerSession, snapshot: RunnerSnapshot, timerOnly
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            // The buttons KEEP their identity while disabled: the visible reason the house
-            // rule demands is the prompt above them, which says PAUSED / CONNECTING at
-            // display weight. Swapping the labels spent the two Skips' names on the same
-            // repeated word, and TalkBack read "Paused, dimmed. Paused." twice with no way to
-            // tell them apart. The full sentence rides the description instead.
+            // Buttons KEEP their labels while disabled; the prompt above says PAUSED / CONNECTING.
+            // Swapped labels made TalkBack read "Paused, dimmed. Paused." twice; the sentence rides
+            // the description instead.
             WideButton(
                 title = if (phase.isPaused) tr("Resume") else tr("Pause"),
                 icon = if (phase.isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
@@ -1038,8 +965,7 @@ private fun Controls(session: RunnerSession, snapshot: RunnerSnapshot, timerOnly
             ) {
                 session.send(if (phase.isPaused) RunnerEvent.Resume else RunnerEvent.Pause)
             }
-            // Neither Tare nor Connect belongs here without a gauge: one has nothing to zero
-            // and the other would offer to change the session you are in.
+            // No gauge: Tare has nothing to zero and Connect would change the session you are in.
             if (!timerOnly) {
                 if (device.state.isConnected) {
                     TareButton(session, snapshot, Modifier.weight(1f).fillMaxHeight())
@@ -1119,10 +1045,8 @@ private fun WideButton(
     }
 }
 
-/// Loaded taring is useful for a static sling or mounted block, so the control confirms
-/// instead of silently refusing a meaningful reading. The PHASE guard — not the load — keeps
-/// taring out of a live rep; confirmation is the warning that prevents an allowed phase from
-/// zeroing a load the climber did not mean to discard.
+/// Loaded taring suits a static sling or mounted block, so a meaningful load is confirmed,
+/// not refused. The PHASE guard keeps taring out of a live rep.
 @Composable
 private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifier: Modifier) {
     val device = LocalDeviceStore.current
@@ -1130,9 +1054,7 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
     var promptedEpoch by remember { mutableStateOf(0uL) }
     val palette = LocalGripPalette.current
 
-    // `device.isLoadedForTare` and `device.isReadingLive`, never `device.currentKg` — the
-    // coarse, change-guarded flags, so this does not register a dependency on a value moving
-    // at sample rate.
+    // The coarse, change-guarded flags — never `currentKg`, which would subscribe at sample rate.
     val decision = TarePolicy.tapDecision(
         phase = snapshot.phase,
         isReadingLive = device.isReadingLive,
@@ -1141,9 +1063,7 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
     // Enabled for the WAKE even in a phase that forbids taring — waking never zeroes
     // anything, and a dead stream mid-pull is when you most need it back.
     val enabled = decision != TareTapDecision.blocked
-    // The label says what the tap will actually DO — "Wake" when the stream is dead, and the
-    // phase's reason while disabled. A button reading "Tare" that restarts the stream instead
-    // would be lying about itself.
+    // The label says what the tap DOES: "Wake" when the stream is dead, the reason while disabled.
     val title = when {
         decision == TareTapDecision.wakeStream -> tr("Wake")
         else -> TarePolicy.disabledLabel(snapshot.phase) ?: tr("Tare")
@@ -1169,9 +1089,8 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
             // is unknown, and the frozen reading says 0 kg however loaded the gauge is.
             TareTapDecision.wakeStream -> session.wakeStream()
             TareTapDecision.confirm, TareTapDecision.tare -> {
-                // The rendered decision said the reading was live; confirm that against the
-                // exact clock before doing anything irreversible. This can only downgrade to
-                // a wake, never authorize.
+                // Re-confirm liveness against the exact clock before anything irreversible. This can only
+                // downgrade to a wake, never authorize.
                 if (!TarePolicy.isSafeToTareNow(device.secondsSinceLastSample(), device.tareReadingMaxAge)) {
                     session.wakeStream()
                 } else if (TarePolicy.shouldConfirm(device.currentKg)) {
@@ -1204,10 +1123,8 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
                             maxAgeSeconds = device.tareReadingMaxAge,
                         )
                     ) {
-                        // Deliberately silent. A reject means the phase moved into a pull, the
-                        // link changed, or the gauge went away — and in every one of those
-                        // cases the screen behind the dialog has already changed to say so,
-                        // including this button's own label.
+                        // Silent: a reject means the phase, link or gauge changed, and the screen behind the
+                        // dialog (this button's label included) already says so.
                         TareConfirmationDecision.reject -> promptedKg = null
                         // The load moved while the dialog was open, so the number it quoted is
                         // no longer true — ask again with the one that is.
@@ -1241,13 +1158,12 @@ object RunnerTint {
         timerOnly: Boolean,
         isConnected: Boolean,
     ): Color {
-        // A gauge-free session is never "disconnected": there is nothing to be connected to,
-        // and painting REST in alarm red because of a device nobody asked for is the app
-        // raising an alarm about its own choice.
+        // Gauge-free is never "disconnected"; REST in alarm red would be an alarm about the app's
+        // own choice.
         if (!timerOnly && (!isConnected || snapshot.linkIsDown)) return palette.alarm
         return when (snapshot.phase) {
             is RunnerPhase.Working -> if (isStalled(snapshot)) palette.armed else palette.bleu
-            // Amber, the app's "waiting on you" colour — which is exactly what these are.
+            // Amber: "waiting on you".
             is RunnerPhase.Armed, is RunnerPhase.Releasing, is RunnerPhase.Paused -> palette.armed
             is RunnerPhase.Resting, is RunnerPhase.LeadIn, is RunnerPhase.Idle,
             is RunnerPhase.Finished,
@@ -1287,18 +1203,14 @@ private fun phasePromptText(snapshot: RunnerSnapshot, timerOnly: Boolean, isConn
         is RunnerPhase.Idle -> if (timerOnly || isConnected) L10n.tr("GET READY") else L10n.tr("CONNECTING")
         is RunnerPhase.LeadIn -> L10n.tr("GET READY")
         is RunnerPhase.Armed -> L10n.tr("%s — PULL", snapshot.side?.prompt ?: "")
-        // The clock stopping without saying so looks like a bug, and the instinct it provokes
-        // — pull harder — is the wrong one. Say what to do instead, and note that with a
-        // target range there are now TWO ways to stall it: the reflex that fixes one makes the
-        // other worse, so the word has to name which.
+        // A silently stopped clock provokes pulling harder, the wrong instinct. With a target range
+        // there are TWO ways to stall it and the fix for one worsens the other, so name which.
         is RunnerPhase.Working -> when {
             snapshot.isDropped -> L10n.tr("RE-GRIP")
             snapshot.isOverTarget -> L10n.tr("EASE OFF")
             else -> snapshot.side?.prompt ?: ""
         }
-        // The hold is banked and the rest has NOT started — say the one thing that starts it.
-        // Silence here would read as a frozen clock, which is the same bug "RE-GRIP" exists to
-        // prevent at the other end of the rep.
+        // Hold banked, rest NOT started — say the one thing that starts it, or it reads as a frozen clock.
         is RunnerPhase.Releasing -> L10n.tr("LET GO")
         is RunnerPhase.Resting -> if (snapshot.isSetBreak) L10n.tr("SET BREAK") else L10n.tr("REST")
         is RunnerPhase.Paused -> L10n.tr("PAUSED")
@@ -1310,11 +1222,8 @@ private fun setLine(snapshot: RunnerSnapshot): String {
     return L10n.tr("Set %d of %d", set, snapshot.setCount)
 }
 
-/// Which pull you are ON, not how many you have completed.
-///
-/// The count of RECORDED reps includes skipped ones, so a session skipped through read
-/// "34 of 36 pulls" — which says you did 34. Position through the plan is what this row is
-/// for, and it matches the "Set 6 of 6" beside it.
+/// Which pull you are ON, not how many you completed: recorded reps include skipped ones,
+/// so a skipped-through session read "34 of 36 pulls". Matches "Set 6 of 6" beside it.
 private fun pullLine(snapshot: RunnerSnapshot): String {
     val planned = snapshot.plannedRepCount
     val position = minOf(snapshot.completedRepCount + 1, planned)
@@ -1341,9 +1250,8 @@ private fun spokenGrip(snapshot: RunnerSnapshot, grip: GripSpec, timerOnly: Bool
     val resting = isResting(snapshot)
     val changing = snapshot.gripChangesNext
     val band = snapshot.targetBand
-    // WHOLE SENTENCES, one key each, rather than a body with a target fragment glued on:
-    // where the target lands inside the sentence is language-specific, and a fragment
-    // starting with a comma is not a thing a translator can move.
+    // WHOLE SENTENCES, one key each: where the target lands is language-specific, and a
+    // fragment starting with a comma cannot be moved by a translator.
     val body = if (band == null) {
         when {
             resting && changing -> L10n.tr("New grip next: %s", grip.spoken)

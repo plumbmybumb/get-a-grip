@@ -52,41 +52,30 @@ import run.nuri.getagrip.ui.theme.LocalGripPalette
 
 /// A number chosen from a LADDER, not from a continuum.
 ///
-/// The control this replaces was a slider with four preset chips underneath, and it was
-/// the wrong control twice over. Nielsen Norman is unusually blunt about the first: use a
-/// slider only when the precise value will not matter and only the approximate range will.
-/// Every number in a routine is exact — a 3 s hold, 4 pulls, a 5 s rest — which is why
-/// each row needed chips bolted underneath to reach the values people actually use.
+/// It replaced a slider plus four preset chips. Nielsen Norman: use a slider only when the
+/// precise value does not matter, and every number in a routine is exact. And arithmetically,
+/// a 3…45 hold slider in fives lands on 3, 8, 13, 18: 5, 7, 10 and 12 were chips only, and
+/// the C4 protocol's 3 s hold, 5 s rest and 4 pulls were none of them.
 ///
-/// The second is arithmetic. A hold slider spanning 3…45 in steps of five lands on 3, 8,
-/// 13, 18 — so 5, 7, 10 and 12 were unreachable by dragging and existed only as chips, and
-/// four chips hold four numbers. The C4 protocol wants a 3 s hold, a 5 s rest and 4 pulls;
-/// not one of those was a chip.
-///
-/// **The dial's positions are the ladder's INDICES, not the value's magnitude.** Detents
-/// are evenly spaced whatever the numbers are, so 3 and 30 are equally easy to hit, and the
-/// scale underneath states every value the control can produce. Tap-to-type stays on the
-/// row above and is not optional — Zwift's editor is drag-only and its own power users
-/// hand-edit exported XML to reach values the GUI cannot express.
+/// **Positions are the ladder's INDICES, not the value's magnitude**: evenly spaced detents
+/// make 3 and 30 equally easy, and the scale states every value it can produce. Tap-to-type
+/// on the row above is not optional — Zwift's drag-only editor drives power users to hand-edit
+/// exported XML.
 @Composable
 fun DialTrack(
     value: Double,
-    /// Ascending, and FIXED — the same stops whatever `value` currently is.
+    /// Ascending, and FIXED — the same stops whatever `value` is.
     ///
-    /// The caller used to splice the current value in so a typed number "kept its own
-    /// detent". Because positions come from the INDEX, that re-spaced every other stop the
-    /// moment you typed, and re-spaced them again on the first drag (Nuri, 2026-08-11:
-    /// "every time you type in a manual number it changes the scale of the bar, but then
-    /// when you drag the bar it changes again"). A ruler whose marks move is not a ruler.
-    /// The scale is immovable and an off-ladder value gets `offLadderMark` instead.
+    /// Splicing the current value in re-spaced every stop on typing and again on the first drag
+    /// (Nuri, 2026-08-11). A ruler whose marks move is not a ruler: an off-ladder value gets
+    /// `offLadderMark` instead.
     values: List<Double>,
     format: (Double) -> String,
     spokenUnit: String,
     label: String,
     modifier: Modifier = Modifier,
-    /// An unanswered scale is a real state, not a value below the ladder. The caller still
-    /// supplies a value for the drag to write into, but this flag keeps that temporary
-    /// number from drawing a misleading detent or off-ladder mark.
+    /// An unanswered scale is a real state. The caller still supplies a value for the drag to
+    /// write, but this keeps it from drawing a misleading detent or mark.
     isUnset: Boolean = false,
     onValueChange: (Double) -> Unit,
 ) {
@@ -103,13 +92,11 @@ fun DialTrack(
         val landed = values[index]
         if (!isUnset && landed == value) return
         onValueChange(landed)
-        // Fires the per-detent click. A tick has to name its cause, so it is bumped by a
-        // LANDING and never by the value — a typed number is not a detent.
+        // A tick names its cause: bumped by a LANDING, never the value (a typed number is no detent).
         haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
     }
 
-    // A pointer coroutine survives value changes. Read the latest landing callback
-    // without restarting the gesture or comparing against its first displayed value.
+    // The pointer coroutine outlives value changes, so read the latest callback without restarting.
     val currentLand by rememberUpdatedState<(Float) -> Unit> { x -> land(x) }
 
     Column(
@@ -126,8 +113,7 @@ fun DialTrack(
                         range = 0f..(values.size - 1).toFloat(),
                         steps = maxOf(0, values.size - 2),
                     )
-                    // ONE adjustable element rather than a mute picture, stepping the same
-                    // detents the drag lands on.
+                    // ONE adjustable element, stepping the same detents the drag lands on.
                     setProgress { target ->
                         val next = target.toInt().coerceIn(0, values.size - 1)
                         onValueChange(values[next])
@@ -140,30 +126,19 @@ fun DialTrack(
         Canvas(
             Modifier
                 .fillMaxWidth()
-                // What the finger gets. The drawing is 30 dp and that is right — a taller
-                // tick reads as a fence — but the live strip must clear the 44 dp floor,
-                // exactly as `BandTrimmer` does. Hit area LARGER than the drawing is the
-                // safe direction; the reverse is the "four points is exactly the kind of
-                // miss that reads as the tap didn't register" bug already paid for once.
+                // The drawing is 30 dp (taller reads as a fence), but the live strip clears the 44 dp floor,
+                // like `BandTrimmer`. A hit area LARGER than the drawing is the safe direction.
                 .height(HIT_HEIGHT)
-                // Measured here, never inside the draw scope: a state write during
-                // drawing schedules another draw, which is a loop.
+                // Measured here: a state write during drawing schedules another draw, a loop.
                 .onSizeChanged { width = it.width.toFloat() }
                 .clearAndSetSemantics {}
-                // Absolute tracking, not translation: on a ladder this short the value
-                // belongs under the finger, and there is no offset worth preserving.
+                // Absolute tracking: on a short ladder the value belongs under the finger.
                 .pointerInput(values, isUnset) {
                     detectTapGestures { offset -> currentLand(offset.x) }
                 }
-                // **THE AXIS GATE.** A full-width drag strip can only live inside a
-                // vertical scroll if the two gestures are on different axes and the
-                // horizontal one refuses to begin on a vertical move. Compose expresses
-                // that natively: `draggable(Horizontal)` claims the pointer only once the
-                // HORIZONTAL touch slop is crossed, so a vertical swipe starting on the
-                // dial reaches the page and scrolls it, and the dial never sees it. (iOS
-                // needs a UIKit recognizer with `gestureRecognizerShouldBegin` for the
-                // same rule — `DragGesture.minimumDistance` is a distance, not a
-                // direction.)
+                // **THE AXIS GATE.** `draggable(Horizontal)` claims the pointer only past the HORIZONTAL
+                // touch slop, so a vertical swipe starting here scrolls the page and the dial never sees
+                // it. (iOS needs `gestureRecognizerShouldBegin`: `minimumDistance` is not a direction.)
                 .draggable(
                     state = rememberDraggableState { delta ->
                         dragX += delta
@@ -186,10 +161,8 @@ fun DialTrack(
             )
 
             values.indices.forEach { index ->
-                // Only when the value is EXACTLY here. Off the ladder, no detent is
-                // "current" and the hollow mark carries the reading instead — a
-                // highlighted 20 while the face says 22 is the control disagreeing with
-                // the number above it.
+                // Only when EXACTLY here; off the ladder the hollow mark reads instead. A highlighted 20
+                // under a face reading 22 is the control disagreeing with itself.
                 val isCurrent = mark == DialLadder.RenderingMark.Detent(index)
                 val w = if (isCurrent) 4.dp.toPx() else 2.dp.toPx()
                 val h = if (isCurrent) TRACK_HEIGHT.toPx() else 11.dp.toPx()
@@ -202,10 +175,8 @@ fun DialTrack(
                 )
             }
 
-            // A typed value that is not on the ladder, drawn WHERE IT ACTUALLY FALLS —
-            // between its two neighbouring stops, proportionally. Hollow rather than solid
-            // so it reads as "here, but not a stop": the next drag will land on a detent,
-            // and the mark should say so before it happens rather than after.
+            // An off-ladder typed value, drawn WHERE IT FALLS between its neighbours. Hollow: "here,
+            // but not a stop" — the next drag lands on a detent.
             if (mark == DialLadder.RenderingMark.OffLadder) {
                 val x = DialLadder.offLadderX(value, values, size.width)
                 if (x != null) {
@@ -222,8 +193,7 @@ fun DialTrack(
             }
         }
 
-        // The ladder, STATED. It is what makes the control quotable — you can read every
-        // value it will produce without touching it, which a slider never allowed.
+        // The ladder, STATED: every value it can produce is readable without touching it.
         Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
             values.forEachIndexed { index, ladderValue ->
                 val isCurrent = mark == DialLadder.RenderingMark.Detent(index)
@@ -247,13 +217,9 @@ private val TRACK_HEIGHT = 30.dp
 /// What the finger gets — see the note on the Canvas.
 private val HIT_HEIGHT = 44.dp
 
-/// **The dial's arithmetic, with no Canvas in it** — so what it draws, and where a drag
-/// lands, can be asserted in a JVM test rather than from a screenshot.
-///
-/// Lifted out for exactly the reason iOS lifted `renderingMark` out of its view body: the
-/// detent highlight, the scale's bold label and the off-ladder mark all read one decision,
-/// so a test on it is a test of the real rendering path rather than a parallel copy of the
-/// rule that could pass while the drawing regressed.
+/// **The dial's arithmetic, with no Canvas**, so drawing and landing are JVM-testable. The
+/// detent highlight, the bold label and the off-ladder mark all read one decision (as iOS's
+/// `renderingMark`), so the test covers the real rendering path.
 object DialLadder {
 
     sealed interface RenderingMark {
@@ -265,11 +231,8 @@ object DialLadder {
     fun exactIndex(value: Double, values: List<Double>): Int? =
         values.indexOfFirst { abs(it - value) < 0.001 }.takeIf { it >= 0 }
 
-    /// **The single decision about what this dial draws.** The two marks are mutually
-    /// exclusive, and BOTH disappear while the answer is unset — the trap being that the
-    /// obvious implementation of "unset" is a sentinel below the ladder, and `offLadderX`
-    /// parks such a value on the FIRST stop, so an untouched dial would draw a mark sitting
-    /// on stop one, which is an answer.
+    /// **The single decision about what this dial draws.** The marks are exclusive and BOTH vanish
+    /// while unset: a sentinel below the ladder would park on stop one via `offLadderX` — an answer.
     fun renderingMark(value: Double, values: List<Double>, isUnset: Boolean): RenderingMark? {
         if (isUnset) return null
         exactIndex(value, values)?.let { return RenderingMark.Detent(it) }
@@ -292,10 +255,8 @@ object DialLadder {
     fun x(index: Int, width: Float, count: Int): Float =
         (index + 0.5f) * slotWidth(width, count)
 
-    /// Where an off-ladder value falls, interpolated between its neighbours so the mark
-    /// lands in the gap it belongs to. null when the value IS a detent, or sits outside the
-    /// ladder entirely — past either end there is no gap to interpolate into, so the mark
-    /// parks on the end stop rather than floating off the track.
+    /// Where an off-ladder value falls between its neighbours. null when it IS a detent or lies
+    /// outside the ladder, where the mark parks on the end stop.
     fun offLadderX(value: Double, values: List<Double>, width: Float): Float? {
         if (width <= 0f || values.isEmpty()) return null
         val upper = values.indexOfFirst { it > value }
@@ -307,9 +268,8 @@ object DialLadder {
         return x(upper - 1, width, values.size) + t * slotWidth(width, values.size)
     }
 
-    /// Which detent a touch at `x` belongs to. The whole strip is live, not just the ticks:
-    /// a 2 dp bar is not a target, and the gap between two of them is the most natural
-    /// place to aim.
+    /// Which detent a touch at `x` belongs to. The whole strip is live: the gap between two 2 dp
+    /// bars is the most natural place to aim.
     fun landIndex(x: Float, width: Float, count: Int): Int {
         if (count <= 0) return 0
         val slot = floor(x / slotWidth(width, count)).toInt()

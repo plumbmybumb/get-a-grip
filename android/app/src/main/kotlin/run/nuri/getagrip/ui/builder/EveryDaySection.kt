@@ -59,50 +59,39 @@ import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
-/// EVERY DAY — how many sessions a day this routine asks for, and when to say something
-/// about it.
+/// EVERY DAY — how many sessions a day this routine asks for, and when to say something.
 ///
-/// The whole scheduling story is these few rows, and the session count DRIVES the reminder
-/// rows underneath it: "twice a day" is expressed inline, in the document you are already
-/// editing, rather than behind a scheduling screen you have to go and find. There is
-/// deliberately no second surface where reminder times live.
+/// The session count DRIVES the reminder rows beneath it, so "twice a day" is expressed
+/// inline. There is no second surface where reminder times live.
 @Composable
 fun EveryDaySection(
     /// Only what this card draws — see `EveryDayValues`.
     values: EveryDayValues,
     modifier: Modifier = Modifier,
-    /// **Whether the permission dialog was raised and came back NO.** Arrives as a VALUE,
-    /// exactly like the palette and the grip list do, so this section still never touches a
-    /// store and stays previewable.
+    /// **Whether the permission dialog came back NO**, as a VALUE so this section never touches
+    /// a store.
     ///
-    /// It is not the same question as "can we post right now": the ask happens on the first
-    /// SAVE of a routine with reminders on, so a first-run builder is always unpermitted and
-    /// has simply not been asked yet. See the two branches at the foot of the section.
+    /// Not "can we post now": the ask happens on the first SAVE with reminders on, so a first-run
+    /// builder is unpermitted simply because it has not asked yet.
     notificationsRefused: Boolean = false,
     update: DraftUpdate,
 ) {
     val palette = LocalGripPalette.current
     val context = LocalContext.current
 
-    /// Read from the system, not from a store: nothing in the store layer owns
-    /// authorization, and the answer can change WHILE this screen is open — the user walks
-    /// to Settings, flips the switch and comes back.
+    /// From the system: no store owns authorization, and it can change while this screen is open.
     val notificationsBlocked = remember(context) {
         Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
-    /// **Blocked is not the same as refused, and the row must not say it is.** The caller's
-    /// flag is the app's record that the answer came back no; the live system check above is
-    /// what corrects it the moment the permission is granted in system Settings — so a user
-    /// who relents needs no second visit to the builder for the note to go away.
+    /// **Blocked is not refused.** The flag records the no; the live check clears the note the
+    /// moment permission is granted in system Settings.
     val showDenied = notificationsBlocked && notificationsRefused
 
-    // Repair, not normalization: a draft whose reminder list and session count disagree (an
-    // older stash, a merge from another device) would otherwise draw fewer rows than the
-    // count on its face promises. The guard keeps the common path from marking an untouched
-    // document dirty.
+    // Repair: a draft whose reminders and session count disagree (older stash, synced merge)
+    // would draw fewer rows than promised. Guarded so an untouched document stays clean.
     LaunchedEffect(Unit) {
         update { draft ->
             if (draft.reminders.size != draft.sessionsPerDay) draft.setSessionsPerDay(draft.sessionsPerDay)
@@ -115,9 +104,8 @@ fun EveryDaySection(
 
         Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                // Ritual or whenever (Nuri, 2026-08-10: "it's not a routine quite as much as
-                // something I want to do whenever I want"). A chip PAIR, not a toggle,
-                // because the two are peers with names — not one thing switched off.
+                // Ritual or whenever (Nuri, 2026-08-10). A chip PAIR, not a toggle: two named peers, not one
+                // thing switched off.
                 ChipGrid(
                     base = 2,
                     modifier = Modifier.semantics { contentDescription = L10n.tr("How often") },
@@ -136,9 +124,7 @@ fun EveryDaySection(
                 )
 
                 if (values.isOnDemand) {
-                    // The whole scheduling story, declined in one sentence. The times are
-                    // KEPT in the draft — flipping back to a ritual restores them — so
-                    // nothing here is destroyed, only quiet.
+                    // Declined in one sentence. The times stay in the draft, so flipping back restores them.
                     Text(
                         tr("No daily target and no reminders — it waits on Today until you feel like it."),
                         style = MaterialTheme.typography.bodySmall,
@@ -152,14 +138,12 @@ fun EveryDaySection(
                             fontWeight = FontWeight.SemiBold,
                             color = palette.inkPrimary,
                         )
-                        // Never writes `sessionsPerDay` directly. `setSessionsPerDay` PARKS
-                        // the times a lower count removes, so going 2 → 1 → 2 restores the
-                        // user's own 19:15 instead of resetting it to the 19:00 default.
+                        // Via `setSessionsPerDay`, which PARKS removed times: 2 → 1 → 2 restores the user's 19:15,
+                        // not the 19:00 default.
                         IntChipRow(
                             values = listOf(1, 2, 3, 4),
                             selection = values.sessionsPerDay,
-                            // The chips speak as bare numerals, which means nothing on their
-                            // own; the container label makes "2" a sentence.
+                            // Bare numeral chips need the container label to make "2" a sentence.
                             modifier = Modifier.semantics { contentDescription = L10n.tr("Sessions a day") },
                         ) { count -> update { it.setSessionsPerDay(count) } }
                     }
@@ -171,12 +155,8 @@ fun EveryDaySection(
                             explainer = null,
                         ) { enabled -> update { it.copy(remindersEnabled = enabled) } }
 
-                        // The times are what the toggle is about, so they follow it rather
-                        // than sitting there inert while it is off. The values stay in the
-                        // draft either way — turning reminders back on restores the schedule.
-                        // A disclosure is the ladder's DEFAULT motion — critically damped, and flat under
-        // Reduce Motion. Compose's own default here is an unguarded 400 ms tween nothing in
-        // this app chose.
+                        // The times follow the toggle; the draft keeps them either way. `Motion.state` — see
+                        // `TargetBandRow`.
         AnimatedVisibility(
             visible = values.remindersEnabled,
             enter = expandVertically(Motion.state(rememberReduceMotion())) +
@@ -185,20 +165,15 @@ fun EveryDaySection(
                 fadeOut(Motion.state(rememberReduceMotion())),
         ) {
                             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                // Bounded by the LIST itself, never by the count alone: a
-                                // mismatched draft must degrade to one row fewer, never to
-                                // an index crash.
+                                // Bounded by the LIST too: a mismatched draft loses a row, never crashes.
                                 val rows = minOf(values.sessionsPerDay, values.reminders.size)
                                 repeat(rows) { index ->
                                     ReminderRow(
                                         index = index,
                                         time = values.reminders[index],
                                     ) { newTime ->
-                                        // Deliberately NOT sorted or deduped here:
-                                        // re-ordering the list under the finger would swap
-                                        // the row being edited with the one below it.
-                                        // `RoutineDraft.normalized` tidies on the way into
-                                        // the store.
+                                        // NOT sorted or deduped here: reordering under the finger would swap the
+                                        // row being edited. `RoutineDraft.normalized` tidies on save.
                                         update { draft ->
                                             if (index !in draft.reminders.indices) draft
                                             else draft.copy(reminders = draft.reminders.toMutableList()
@@ -207,14 +182,12 @@ fun EveryDaySection(
                                     }
                                 }
                                 if (showDenied) {
-                                    // Denied is a dead end for the NOTIFICATION, never for
-                                    // the setting: reminders stay ON in the draft, so
-                                    // changing your mind in Settings later just works.
+                                    // Denied ends the NOTIFICATION, never the setting: reminders stay ON, so
+                                    // relenting in Settings later just works.
                                     DeniedRow()
                                 } else if (notificationsBlocked) {
-                                    // Not yet asked. Saying so is what makes the OS dialog
-                                    // that follows the Save read as expected rather than as
-                                    // an ambush — the whole reason the ask is contextual.
+                                    // Not yet asked: saying so makes the OS dialog after Save expected, not an
+                                    // ambush — why the ask is contextual.
                                     Text(
                                         tr("Android will ask to allow notifications when you save."),
                                         style = MaterialTheme.typography.bodySmall,
@@ -287,8 +260,7 @@ private fun TimePickerDialog(
     val state = rememberTimePickerState(
         initialHour = initialHour,
         initialMinute = initialMinute,
-        // The system's own 12/24-hour setting, never a hardcoded one — the same rule
-        // `ReminderTime.displayText` follows with a localized formatter.
+        // The system's 12/24-hour setting, as `ReminderTime.displayText` follows.
         is24Hour = android.text.format.DateFormat.is24HourFormat(LocalContext.current),
     )
     AlertDialog(

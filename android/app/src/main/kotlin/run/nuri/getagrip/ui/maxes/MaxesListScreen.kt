@@ -83,24 +83,18 @@ import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
-/// Saved-record history, reached through a grip’s Edit → Earlier records.
-/// Numbers are added, read back and deleted here.
+/// Saved-record history, reached through a grip's Edit → Earlier records: numbers are added,
+/// read back and deleted here.
 ///
-/// Two decisions worth stating, because both look like omissions:
+/// **Not a grip library**: no saved-grip list, no "create grip" step. The composer opens on
+/// a grip you use; a grip is still a VALUE.
 ///
-/// **This is not a grip library.** There is no saved-grip list to curate and no "create
-/// grip" step — the thing this app exists to refuse. The composer opens on a grip you
-/// already use and every field is editable in place. A grip is still a VALUE.
-///
-/// **Nothing is ever edited.** `MaxRecordEntity` is append-only, so recording again for the
-/// same grip and hand adds a row and the previous one becomes history. That is why a row
-/// with a past behind it OPENS: without somewhere to show the earlier records, they would
-/// exist, count for nothing, and be impossible to delete.
+/// **Nothing is ever edited.** `MaxRecordEntity` is append-only, so a row with a past OPENS;
+/// otherwise earlier records would exist, count for nothing, and be undeletable.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaxesListScreen(
-    /// The composer door — see `MaxesTabScreen.onAddMax`. `MaxEntrySheet` belongs to the
-    /// wave that owns the input controls, so this screen only owes a named entry point.
+    /// The composer door — see `MaxesTabScreen.onAddMax`.
     onAddMax: (GripSpec?) -> Unit,
     modifier: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
@@ -112,15 +106,13 @@ fun MaxesListScreen(
     val haptics = LocalHapticFeedback.current
     val reduceMotion = rememberReduceMotion()
 
-    /// The `maxKey` whose earlier records are showing — at most one open at a time, the same
-    /// accordion rule the builder's set rows follow.
+    /// The open `maxKey` — at most one, the builder's accordion rule.
     var expanded by remember { mutableStateOf<String?>(null) }
     var deleteFailed by remember { mutableStateOf(false) }
 
     LaunchedEffect(feed, templates.writeRevision) { feed.refreshIfStale() }
 
-    // Newest first, which is what makes the fold below correct: the first record in each
-    // bucket is that grip-and-hand's CURRENT max.
+    // Newest first: the first record in each bucket is that grip-and-hand's CURRENT max.
     val newestFirst = remember(feed.maxRecords, grip?.key) {
         feed.maxRecords.filter { grip == null || it.gripKey == grip.key }.sortedByDescending { it.recordedAt }
     }
@@ -140,9 +132,8 @@ fun MaxesListScreen(
         }
 
         if (grip == null) item("add") {
-            // The screen's PRIMARY action, drawn as a row rather than hidden behind a
-            // toolbar glyph: on a screen you visit in order to add something, the add must
-            // be the first thing under your thumb and must never scroll away behind a list.
+            // The PRIMARY action as a row, not a toolbar glyph: on a screen you visit to add, the add
+            // comes first and never scrolls away.
             AddRow { onAddMax(null) }
         }
 
@@ -182,9 +173,7 @@ fun MaxesListScreen(
             }
 
             item("footnote") {
-                // Provenance, stated plainly, now that BOTH sources exist. The rows carry
-                // the distinction individually ("measured"), so this only has to say that
-                // the distinction is there and what these numbers are for.
+                // Provenance: rows mark "measured"; this says the distinction exists and what the numbers are for.
                 Text(
                     tr("A max is either measured on the gauge or set by you — the measured ones say so. The percentages elsewhere in the app are worked out from these."),
                     style = MaterialTheme.typography.bodySmall,
@@ -206,8 +195,7 @@ data class GripHistory(
     val earlier: List<MaxRecordEntity>,
 )
 
-/// A single list row. The two cases look genuinely different and carry different delete
-/// labels, so they stay separate rather than sharing one row builder with flags.
+/// A single list row. The two cases differ in look and delete label, so they stay separate.
 sealed interface MaxEntry {
     val id: String
     val record: MaxRecordEntity
@@ -216,8 +204,7 @@ sealed interface MaxEntry {
     data class Current(val history: GripHistory) : MaxEntry {
         override val id: String get() = "grip-${history.key}"
         override val record: MaxRecordEntity get() = history.current
-        /// Names the HAND: with a left and a right row for one grip, a label that only said
-        /// the grip would be the same on both.
+        /// Names the HAND: left and right rows of one grip would otherwise share a label.
         override val deleteLabel: String
             get() {
                 val hand = if (history.current.side == Side.both) ""
@@ -232,15 +219,9 @@ sealed interface MaxEntry {
     }
 }
 
-/// One bucket per grip **AND HAND** — see `MaxRecordEntity.maxKey` — in order of each
-/// bucket's most recent record.
-///
-/// Bucketing on the grip alone would file your left and right maxes together, make whichever
-/// you recorded second "current", and demote the other to history — so one hand's number
-/// would vanish from the screen it was entered on. They are separate rows because they are
-/// separate facts.
-///
-/// `records` must arrive NEWEST FIRST.
+/// One bucket per grip **AND HAND** (`MaxRecordEntity.maxKey`), ordered by each bucket's
+/// latest record. On grip alone, the second hand recorded would become "current" and the
+/// other would vanish into history. `records` must arrive NEWEST FIRST.
 internal fun historiesOf(newestFirst: List<MaxRecordEntity>): List<GripHistory> {
     val order = mutableListOf<String>()
     val buckets = HashMap<String, MutableList<MaxRecordEntity>>()
@@ -256,8 +237,7 @@ internal fun historiesOf(newestFirst: List<MaxRecordEntity>): List<GripHistory> 
     }
 }
 
-/// Flattened to ONE entry per list row on purpose: a list item that renders two rows leaves
-/// it ambiguous which row a swipe belongs to.
+/// ONE entry per list row: an item rendering two rows makes a swipe's target ambiguous.
 internal fun entriesOf(histories: List<GripHistory>, expanded: String?): List<MaxEntry> =
     histories.flatMap { history ->
         if (expanded != history.key) listOf(MaxEntry.Current(history))
@@ -272,10 +252,8 @@ private fun DeletableRow(label: String, onDelete: () -> Unit, content: @Composab
     run.nuri.getagrip.ui.components.SwipeActionRow(onDelete = onDelete, deleteLabel = label, content = content)
 }
 
-/// One grip and hand, its current max, and — when there is a past — a tap that reveals it.
-///
-/// The row is only clickable when there is something to open. A control that draws like a
-/// control and does nothing is worse than a plain row.
+/// One grip and hand, its current max, and a tap revealing the past — clickable only when
+/// there is one.
 @Composable
 private fun GripRow(
     history: GripHistory,
@@ -306,15 +284,13 @@ private fun GripRow(
                 role = Role.Button,
                 onClick = onToggle,
             )
-                    // `scales = false`: a row-sized card that scaled on press would drag its
-                    // own backdrop out from under it.
+                    // `scales = false`: a row-sized card scaling on press drags its backdrop.
                     .pressFeedback(interaction, scales = false),
             )
             .semantics(mergeDescendants = true) {
                 contentDescription = spokenGrip(history)
-                // A row that opens and shuts has to SAY which it is: the chevron rotates and
-                // the earlier records appear, and neither of those reaches TalkBack. Only
-                // when there is something to disclose — a lone record has no state.
+                // Rotation and revealed records never reach TalkBack, so state the disclosure — only when
+                // there is something to disclose.
                 if (history.earlier.isNotEmpty()) {
                     stateDescription = L10n.tr(if (isExpanded) "Expanded" else "Collapsed")
                 }
@@ -363,14 +339,11 @@ private fun GripRow(
     }
 }
 
-/// A superseded record: indented, quieter, and dated, so the current one keeps the row's
-/// weight. It is here to be READ and to be DELETABLE — nothing more.
+/// A superseded record: indented, quieter, dated. Here to be READ and DELETABLE, nothing more.
 @Composable
 private fun EarlierRow(record: MaxRecordEntity, grip: GripSpec) {
     val palette = LocalGripPalette.current
-    // The grip is here for the SPOKEN row only: an indented "12.0 kg · 3 May" read on its
-    // own says nothing about which grip it belongs to. Read outside the semantics lambda,
-    // which is not composable.
+    // The grip is for the SPOKEN row: "12.0 kg · 3 May" alone says nothing of which grip.
     val spoken = WeightUnits.tr(
         "Earlier max for %s. %s kilograms, recorded %s.",
         grip.spoken,
@@ -380,8 +353,7 @@ private fun EarlierRow(record: MaxRecordEntity, grip: GripSpec) {
     Surface(
         shape = RoundedCornerShape(Metrics.radiusInner),
         color = palette.card,
-        // OUTSIDE the surface, so the indent is empty space rather than a wider card with
-        // its content pushed over.
+        // OUTSIDE the surface, so the indent is empty space, not a wider card.
         modifier = Modifier
             .padding(start = 22.dp)
             .widthIn(max = Metrics.maxContentWidth)
@@ -416,8 +388,7 @@ private fun EarlierRow(record: MaxRecordEntity, grip: GripSpec) {
 private fun AddRow(onAdd: () -> Unit) {
     val palette = LocalGripPalette.current
     val interaction = remember { MutableInteractionSource() }
-    // Captured HERE: a `drawBehind` lambda has no composition to read a CompositionLocal
-    // from, so the dash's ink is resolved beside the row rather than inside its draw.
+    // Captured HERE: a `drawBehind` lambda cannot read a CompositionLocal.
     val dashInk = palette.inkTertiary.copy(alpha = 0.45f)
     Row(
         Modifier
@@ -432,8 +403,7 @@ private fun AddRow(onAdd: () -> Unit) {
             )
             .pressFeedback(interaction, scales = false)
             .drawBehind {
-                // A DASHED outline rather than a filled card: this is an invitation to add,
-                // not one of the things that has been added.
+                // DASHED, not filled: an invitation to add, not something added.
                 val stroke = Stroke(
                     width = 1.2.dp.toPx(),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx())),
@@ -496,9 +466,8 @@ private fun EmptyCard() {
     }
 }
 
-/// Only the DEPARTURES from the default are marked — a named hand, and a measured
-/// provenance. "Both hands" and "typed" are the unremarkable cases, and labelling them would
-/// put two words on every row to distinguish nothing.
+/// Only DEPARTURES are marked (a named hand, measured provenance); labelling "Both hands" and
+/// "typed" would distinguish nothing.
 internal fun detailLine(history: GripHistory): String {
     val parts = mutableListOf(relative(history.current.recordedAt))
     if (history.current.side != Side.both) {
@@ -512,8 +481,7 @@ internal fun detailLine(history: GripHistory): String {
 internal fun spokenGrip(history: GripHistory): String {
     val hand = if (history.current.side == Side.both) ""
     else L10n.tr(", %s hand", history.current.side.displayName.lowercase(Locale.getDefault()))
-    // The trailing space is INSIDE the key, exactly as it is on iOS: French puts no space
-    // before the date the way English does not either, but the word itself is what varies.
+    // The trailing space is INSIDE the key, as on iOS, so each language decides its spacing.
     val provenance =
         if (history.current.source == MaxSource.measured) L10n.tr("measured ") else L10n.tr("recorded ")
     var sentence = WeightUnits.tr(

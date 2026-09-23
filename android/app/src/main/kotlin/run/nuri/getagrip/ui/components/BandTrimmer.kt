@@ -55,17 +55,12 @@ import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 
-/// A range set by DRAGGING A BAND — the clip-trimmer gesture everyone's hands already
-/// know: grab the middle to slide the whole band, grab an end to stretch it.
+/// A range set by DRAGGING A BAND — the clip-trimmer gesture: grab the middle to slide it,
+/// an end to stretch it.
 ///
-/// Built because the previous custom entry was two steppers, and "80 to 90" cost a dozen
-/// taps with no hold-to-repeat (Nuri, 2026-08-10: "a huge pain"). Here it is one drag with
-/// a detent click at every step.
-///
-/// Values snap DURING the drag, never on release: what you see settle is what you get, and
-/// each snap fires a selection click so the control counts for you. The numbers ride on the
-/// band's face — quotable exactly, because the steps are the same 5 % / 0.5 kg resolution
-/// the app rounds targets to anyway.
+/// It replaced two steppers that made "80 to 90" a dozen taps (Nuri, 2026-08-10: "a huge
+/// pain"). Values snap DURING the drag, never on release, each with a selection click, and
+/// the numbers ride on the band at the 5 % / 0.5 kg resolution targets round to.
 @Composable
 fun BandTrimmer(
     lo: Double,
@@ -88,8 +83,8 @@ fun BandTrimmer(
     val edgeGrabPx = with(density) { 44.dp.toPx() }
 
     var width by remember { mutableFloatStateOf(0f) }
-    /// Which part of the band the current drag owns — decided ONCE at first touch and
-    /// held, so a finger that drifts across an edge mid-drag cannot switch jobs.
+    /// Which part of the band the drag owns, decided ONCE at first touch so a drifting finger
+    /// cannot switch jobs.
     var grab by remember { mutableStateOf<Grab?>(null) }
     var startLo by remember { mutableStateOf(0.0) }
     var startHi by remember { mutableStateOf(0.0) }
@@ -126,23 +121,21 @@ fun BandTrimmer(
         }
     })
 
-    /// Whether the band can carry its own numbers. Fraction-of-scale, not pixels — the
-    /// decision has to be stable across widths without a geometry read outside the track.
+    /// Whether the band can carry its own numbers. A fraction of scale, not pixels, so it is
+    /// stable across widths with no geometry read.
     val narrow = (hi - lo) / span < 0.28
 
     Column(
         modifier
             .fillMaxWidth()
             .semantics(mergeDescendants = false) {
-                // The group needs a NAME or TalkBack announces two bare "Lower bound" /
-                // "Upper bound" stops with nothing saying what they bound.
+                // Named, or TalkBack reads bare "Lower bound" / "Upper bound" with no subject.
                 contentDescription = L10n.tr("Target range")
             },
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // RESERVED line for the numbers when the band is too narrow to carry them itself —
-        // floating the label above the track collided with whatever sat above the control.
-        // Always present so the layout never jumps mid-drag.
+        // RESERVED line for the numbers when the band is too narrow: floated above the track they
+        // collided with the control above. Always present, so nothing jumps mid-drag.
         Text(
             if (narrow) "${format(lo)}–${format(hi)}" else " ",
             style = MaterialTheme.typography.bodySmall,
@@ -159,17 +152,12 @@ fun BandTrimmer(
                     .height(TRACK_HEIGHT)
                     .onSizeChanged { width = it.width.toFloat() }
                     .clearAndSetSemantics {}
-                    // A tap moves THE NEARER EDGE to the tapped value — what a tap on a
-                    // trimmer means. Taps inside the band do nothing; the band is moved by
-                    // dragging it.
+                    // A tap moves THE NEARER EDGE there; taps inside the band do nothing.
                     .pointerInput(scale, step) {
                         detectTapGestures { offset -> tapAt(offset.x) }
                     }
-                    // See `DialTrack` for why this is `draggable(Horizontal)`: the axis gate
-                    // is what lets a full-width drag strip live inside a vertical scroll.
-                    // TRANSLATION rather than absolute position, because a band grabbed by
-                    // its middle has to keep the offset it was grabbed at — jumping the
-                    // band's centre under the finger would move it on touch-down.
+                    // `draggable(Horizontal)` for the axis gate — see `DialTrack`. TRANSLATION, not absolute
+                    // position: a band grabbed mid-body keeps its grab offset instead of jumping on touch-down.
                     .draggable(
                         state = rememberDraggableState { delta ->
                             travelled += delta
@@ -179,8 +167,7 @@ fun BandTrimmer(
                                 Grab.Lower -> setLo(startLo + moved)
                                 Grab.Upper -> setHi(startHi + moved)
                                 Grab.Whole -> {
-                                    // The band keeps its width against BOTH walls: sliding
-                                    // into an end compresses nothing and loses nothing.
+                                    // The band keeps its width against BOTH walls.
                                     val translated = BandTrimmerMath.translated(startLo, startHi, moved, scale, step)
                                     apply(translated.start, translated.endInclusive)
                                 }
@@ -209,8 +196,7 @@ fun BandTrimmer(
                     cornerRadius = CornerRadius(5.dp.toPx()),
                 )
 
-                // The band. Graphite, not bleu — this is an instruction being AUTHORED,
-                // not a measurement being taken.
+                // Graphite, not bleu: an instruction being AUTHORED, not a measurement.
                 val bandWidth = maxOf(hiX - loX, 24.dp.toPx())
                 val bandHeight = TRACK_HEIGHT.toPx() - 12.dp.toPx()
                 drawRoundRect(
@@ -220,8 +206,7 @@ fun BandTrimmer(
                     cornerRadius = CornerRadius(10.dp.toPx()),
                 )
 
-                // The two grab bars, drawn INSIDE the ends — the trimmer affordance,
-                // readable at any band width.
+                // Grab bars INSIDE the ends: the trimmer affordance, readable at any width.
                 listOf(loX + 5.dp.toPx(), loX + bandWidth - 8.dp.toPx()).forEach { x ->
                     drawRoundRect(
                         color = Color.White.copy(alpha = 0.55f),
@@ -232,8 +217,7 @@ fun BandTrimmer(
                 }
             }
 
-            // Rides the band while it fits; the reserved line above carries it once the
-            // band is too narrow.
+            // Rides the band while it fits; the reserved line takes over when narrow.
             if (!narrow) {
                 Text(
                     "${format(lo)}–${format(hi)}",
@@ -243,18 +227,15 @@ fun BandTrimmer(
                     maxLines = 1,
                     modifier = Modifier
                         .align(Alignment.CenterStart)
-                        // Centred on the band it rides, measured against the REAL track
-                        // width rather than a nominal one.
+                        // Centred on the band against the REAL track width.
                         .offset(x = bandLabelOffset(lo, hi, scale, trackWidth))
                         .clearAndSetSemantics {},
                 )
             }
 
-            // TWO INDEPENDENTLY ADJUSTABLE ELEMENTS, one per handle — because the control's
-            // whole purpose is choosing a RANGE, and a single combined element could only
-            // ever slide the band by applying one delta to both ends, never widen or narrow
-            // it. Semantics-only nodes: they take no hits, so tap-to-jump and grab-by-handle
-            // are untouched (which is exactly the regression iOS had to undo by hand).
+            // TWO ADJUSTABLE ELEMENTS, one per handle: a single element could only slide the band, never
+            // widen or narrow it. Semantics-only nodes take no hits, so tap and grab are untouched (the
+            // regression iOS had to undo).
             HandleProxy(tr("Lower bound"), format(lo), spokenUnit, lo, scale, step) { setLo(it) }
             HandleProxy(tr("Upper bound"), format(hi), spokenUnit, hi, scale, step) { setHi(it) }
         }
@@ -283,10 +264,8 @@ private fun HandleProxy(
 ) {
     Box(
         Modifier
-            // 44 dp, not 1: these carry NO pointer input (the trimmer's own drag owns the
-            // track) but they ARE TalkBack focus targets, and a 1 dp focus rectangle is
-            // unreachable by touch exploration and invisible when swiped to. Sized to the
-            // house floor so the focus ring lands on something.
+            // 44 dp, not 1: no pointer input, but a TalkBack focus target, and a 1 dp focus rectangle
+            // is unreachable by touch exploration.
             .size(44.dp)
             .semantics {
                 contentDescription = label
@@ -305,9 +284,8 @@ private fun HandleProxy(
 
 private val TRACK_HEIGHT = 44.dp
 
-/// Where the band's own label sits: centred on the band, clamped inside the track. It is a
-/// label riding a shape, so the half-width it backs off by is a nominal one — the text is
-/// short ("20–30 %", "8.0–12.0 kg") and centring it exactly would cost a measurement pass.
+/// The band label's offset: centred on the band, clamped inside the track. A nominal
+/// half-width, since the text is short and exact centring would cost a measure pass.
 internal fun bandLabelOffset(
     lo: Double,
     hi: Double,

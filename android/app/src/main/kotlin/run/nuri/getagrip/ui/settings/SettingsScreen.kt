@@ -103,23 +103,16 @@ import run.nuri.getagrip.ui.tour.LocalTourController
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_GAUGE_PICKER = "gauge-picker"
 
-/// The Settings tab: what the gauge is doing, a door to choosing one, a door to the live
-/// gauge, and the statements the app owes whoever is using it.
+/// The Settings tab: what the gauge is doing, a door to choosing one, and the statements the
+/// app owes whoever is using it.
 ///
-/// The live gauge lives HERE rather than on Today. Today is the ritual — one routine, one
-/// tap — and a second card offering a different, more interesting screen is the first
-/// millimetre of the library the whole app exists to avoid.
+/// TRANSLATION NOTE: iOS pushes onto the tab's own `NavigationStack`; here a NavHost scoped to
+/// this tab, so predictive back pops it and the tab bar stays put.
 ///
-/// TRANSLATION NOTE: iOS pushes these onto the tab's own `NavigationStack`. The Compose
-/// twin is a NavHost scoped to this tab, which is also what makes predictive back work
-/// unmodified: the system gesture pops this host, and the tab bar stays put.
-///
-/// **Every move is `dropUnlessResumed`, and back names where it goes.** A double tap on the
-/// row, or a tap on the picker's back arrow during the push animation, fired twice: the first
-/// pushed the picker twice (two backs to leave), the second popped past it — and a bare
-/// `popBackStack()` from a destination already on its way out pops SETTINGS itself, leaving
-/// the tab blank. Only a destination that is resumed may navigate; the push is single-top;
-/// back pops TO Settings, never below it.
+/// **Every move is `dropUnlessResumed`, and back names where it goes.** A double tap, or a
+/// back tap mid-push, fired twice: the picker pushed twice, or a bare `popBackStack()` from a
+/// departing destination popped SETTINGS itself and blanked the tab. Only a resumed
+/// destination navigates; the push is single-top; back pops TO Settings, never below.
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
@@ -136,7 +129,7 @@ fun SettingsScreen(
         composable(ROUTE_GAUGE_PICKER) {
             val back = dropUnlessResumed { nav.popBackStack(ROUTE_SETTINGS, inclusive = false) }
             InnerScreen(title = tr("Gauge"), onBack = back) { padding ->
-                // A tap applies AND dismisses — the same rule the grip picker follows.
+                // A tap applies AND dismisses, as in the grip picker.
                 GaugePickerScreen(Modifier.padding(padding), onSelected = back)
             }
         }
@@ -155,8 +148,7 @@ private fun SettingsRoot(
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        // `RootTabView`'s Scaffold has already inset this subtree for the status and
-        // navigation bars; a nested Scaffold that adds its own would pad both twice.
+        // `RootTabView`'s Scaffold already inset this subtree; a second inset would pad twice.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
@@ -181,18 +173,15 @@ private fun SettingsRoot(
                 .padding(bottom = Metrics.spacing + LocalFloatingTabBarInset.current),
             verticalArrangement = Arrangement.spacedBy(Metrics.spacing),
         ) {
-            // WHICH gauge, first, with a rim (Nuri, 2026-09-20). Eight gauges and one row
-            // to choose between them, and the row read as a status line — nobody with a
-            // WH-C06 could tell it was the place to say so. The bleu rim and the line
-            // under the name say "this is a choice"; the Device card that follows says
-            // what the chosen one is doing.
+            // WHICH gauge, first, with a rim (Nuri, 2026-09-20): as a plain row among eight gauges it
+            // read as a status line, and nobody with a WH-C06 saw it was the place to choose. The Device
+            // card below says what the chosen one is doing.
             NavRow(
                 icon = Icons.Outlined.SettingsInputAntenna,
                 iconTint = palette.bleu,
                 title = tr("Gauge"),
                 subtitle = if (device.isMock) tr("Demo device") else device.gaugeKind.displayName,
-                // Counted from the registry, like the makers sentence in About, so a
-                // ninth gauge cannot leave this line claiming eight.
+                // Counted from the registry, so a ninth gauge cannot leave this claiming eight.
                 note = tr("Tap to choose yours — Get a Grip works with %d different gauges.", GaugeKind.selectable.size),
                 outline = palette.bleu,
                 onClick = onOpenGaugePicker,
@@ -208,10 +197,8 @@ private fun SettingsRoot(
                 device.batteryFraction?.let {
                     LabelledValue(tr("Battery"), "${run.nuri.getagrip.ui.components.BatteryDisplay.percentage(it)}%")
                 }
-                // A synthetic number that looks like a measurement is worse than no number,
-                // so demo mode is never allowed to be ambiguous here. Otherwise this states
-                // the SELECTED gauge — the app drives eight of them, and one hardcoded
-                // "Tindeq Progressor" was a claim about only the first.
+                // A synthetic number that looks like a measurement is worse than none, so demo mode is
+                // never ambiguous. Otherwise this names the SELECTED gauge, not a hardcoded Progressor.
                 LabelledValue(
                     tr("Source"),
                     if (device.isMock) tr("Demo device") else device.gaugeKind.displayName,
@@ -220,8 +207,7 @@ private fun SettingsRoot(
 
             WeightUnitSetting(LocalSettingsStore.current)
 
-            // The live gauge used to have a row here. It is a button on Today's bar now
-            // (2026-09-20) — one door, on the screen that opens every day, not two.
+            // The live gauge is a button on Today's bar (2026-09-20): one door, not two.
 
             SupportCard(
                 gauge = device.gaugeKind.displayName + if (device.isMock) " (${tr("Demo device")})" else "",
@@ -242,14 +228,12 @@ private fun SettingsRoot(
 
 /// Which device the app measures with.
 ///
-/// A pushed screen rather than a card on Settings: eight rows, each owing a maker and — for
-/// seven of them — the same honest caveat, is 400 dp that has no business on a screen you
-/// open to check a battery level. It is also NOT a menu: a menu can show the names and
-/// nothing else, and the one thing this list has to carry is which of these devices has
-/// actually been tested.
+/// A pushed screen, not a card: eight rows with makers and caveats are 400 dp that do not
+/// belong where you check a battery. Not a menu either: a menu shows names only, and this
+/// list must carry which devices have actually been tested.
 ///
-/// Nothing connects: `selectGaugeKind` deliberately leaves that to a Connect tap, because
-/// constructing a client is what raises the Bluetooth prompt.
+/// Nothing connects: constructing a client raises the Bluetooth prompt, so that waits for a
+/// Connect tap.
 @Composable
 fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
     val device = LocalDeviceStore.current
@@ -257,9 +241,8 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
 
-    /// The kind whose first selection is waiting on its maker's note being read. Only the
-    /// Frez Dyno carries one, and only once: after Next the flag is persisted and the row
-    /// selects like any other, on this device forever.
+    /// The kind whose first selection waits on its maker's note (only the Frez Dyno, once; after
+    /// Next it is persisted on this device).
     var kindAwaitingIntro by remember { mutableStateOf<GaugeKind?>(null) }
 
     Column(
@@ -271,8 +254,7 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
             .padding(bottom = Metrics.spacing + LocalFloatingTabBarInset.current),
         verticalArrangement = Arrangement.spacedBy(Metrics.spacing),
     ) {
-        // ONE single-choice list, so TalkBack says "2 of 8" as you move through it — which
-        // it cannot infer from eight independent rows that merely happen to be selectable.
+        // ONE single-choice list, so TalkBack says "2 of 8", which eight separate rows cannot give.
         Card(contentPadding = 0.dp) {
           Column(Modifier.selectableGroup()) {
             GaugeKind.selectable.forEachIndexed { index, kind ->
@@ -282,8 +264,8 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
                         color = MaterialTheme.colorScheme.outlineVariant,
                     )
                 }
-                // Demo mode is a client, not a kind, so nothing reads as selected while it
-                // runs — and tapping the gauge you already had selected is how you leave it.
+                // Demo mode is a client, not a kind, so nothing reads selected; tapping the selected gauge
+                // leaves it.
                 val isSelected = device.gaugeKind == kind && !device.isMock
                 val interactionSource = remember { MutableInteractionSource() }
                 Row(
@@ -293,26 +275,21 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
                         .clickable(
                             interactionSource = interactionSource,
                             indication = null,
-                            // A one-of-eight list is a radio group, not eight buttons — the
-                            // role is what makes TalkBack say "selected" as a STATE of a
-                            // choice rather than as an adjective on a button.
+                            // A radio group: TalkBack says "selected" as the state of a choice, not an adjective.
                             role = Role.RadioButton,
                         ) {
                             if (kind.capabilities.requiresRemoteCalibration && !settings.frezIntroSeen) {
-                                // Nothing is selected yet, so nothing has happened to tick
-                                // about: the note is the first half of this tap.
+                                // Nothing selected yet, so no tick: the note is the first half of this tap.
                                 kindAwaitingIntro = kind
                                 return@clickable
                             }
                             device.selectGaugeKind(kind)
-                            // Feedback names its cause: the tick is the SELECTION, fired on
-                            // the tap rather than on the value settling.
+                            // Feedback names its cause: the tick fires on the SELECTION tap.
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSelected()
                         }
-                        // `scales = false`: this row shares one card with every other gauge,
-                        // and scaling it on press would shrink the row's content while the
-                        // card behind all of them stays put.
+                        // `scales = false`: the row shares a card, and scaling it would shrink the content while
+                        // the card stays put.
                         .pressFeedback(interactionSource, scales = false)
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                         .semantics { selected = isSelected },
@@ -347,8 +324,7 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
         Footnotes()
     }
 
-    // Next is the only way through, and it completes the selection the tap started — the
-    // note is read once, on the way in, never again.
+    // Next completes the selection the tap started; the note is read once, never again.
     kindAwaitingIntro?.let { kind ->
         FrezIntroSheet {
             settings.setFrezIntroSeen(true)
@@ -360,8 +336,8 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
     }
 }
 
-/// Maker, plus the one fact that changes how much to trust the numbers — and, for a
-/// protocol its maker published, that the caveat is about testing, not provenance.
+/// Maker, plus the one fact that changes how much to trust the numbers — for a published
+/// protocol, that the caveat is about testing, not provenance.
 private fun detail(kind: GaugeKind): String {
     val parts = mutableListOf(kind.maker)
     if (!kind.capabilities.hardwareVerified) {
@@ -376,24 +352,22 @@ private fun detail(kind: GaugeKind): String {
     return parts.joinToString(" · ")
 }
 
-/// ONE shared footnote for every unverified row, not a warning repeated eight times — and
-/// phrased FROM THE CAPABILITY FLAGS, so the day a device is verified the sentence changes
-/// with it instead of quietly lying.
+/// ONE shared footnote for every unverified row, phrased FROM THE CAPABILITY FLAGS so it
+/// changes the day a device is verified instead of quietly lying.
 @Composable
 private fun Footnotes() {
     val palette = LocalGripPalette.current
     val verified = GaugeKind.selectable.filter { it.capabilities.hardwareVerified }.map { it.displayName }
     val broadcast = GaugeKind.selectable.filter { it.capabilities.isBroadcast }.map { it.displayName }
-    // A protocol the maker published is a different kind of unknown from a port: the bytes
-    // are documented, only the device has not been in hand.
+    // A published protocol is a different unknown from a port: documented bytes, untested device.
     val official = GaugeKind.selectable
         .filter {
             it.capabilities.protocolSource == GaugeProtocolSource.vendorDocumented &&
                 !it.capabilities.hardwareVerified
         }
         .map { it.displayName }
-    // The one gauge that needs a lookup, and the only time the app talks to a server other
-    // than the platform's own — said here, once, in the place the choice is made.
+    // The one gauge needing a lookup — the app's only non-platform server — said once, where
+    // the choice is made.
     val calibrated = GaugeKind.selectable
         .filter { it.capabilities.requiresRemoteCalibration }
         .map { it.displayName }
@@ -430,12 +404,10 @@ private fun Footnotes() {
             )
         }
         if (broadcast.isNotEmpty()) {
-            // Broadcast gauges are a different shape of device, not a worse one, and the
-            // two consequences a climber actually meets are worth one sentence.
+            // Broadcast gauges are a different shape of device, not a worse one: one sentence for its two consequences.
             Text(
-                // ANDROID-ONLY WORDING: the iOS twin of this sentence names iOS. Same
-                // fact, different platform, so it is its own string in android_extra.json
-                // rather than a catalog key that would be wrong in one of the two apps.
+                // ANDROID-ONLY WORDING: the iOS twin names iOS, so this lives in android_extra.json rather
+                // than a catalog key that would be wrong in one app.
                 tr(
                     "%s broadcasts its weight instead of connecting, so there is nothing to pair and nothing to zero on the device — Tare subtracts what is hanging on it. Android stops delivering broadcasts while Get a Grip is in the background, so a session on one pauses when you leave the app.",
                     andList(broadcast),
@@ -447,10 +419,8 @@ private fun Footnotes() {
     }
 }
 
-/// **ICU's list formatter, not a hand-written " and ".** iOS spells this
-/// `.formatted(.list(type: .and))`; a literal conjunction would still say "and" in French,
-/// and the separators differ by language too. Same rule as every other sentence here: the
-/// words come from the locale, never from the code.
+/// **ICU's list formatter, not a hand-written " and "** (iOS `.formatted(.list(type: .and))`):
+/// conjunctions and separators differ by language, so the words come from the locale.
 private fun andList(items: List<String>): String = when (items.size) {
     0 -> ""
     1 -> items[0]
@@ -568,8 +538,7 @@ private fun AboutCard() {
     val settings = LocalSettingsStore.current
     val templates = LocalTemplateStore.current
     val tour = LocalTourController.current
-    // Both are one-shot LATCHES, not toggles: the row states what it did and stands down.
-    // Nothing here is undoable and nothing needs to be pressed twice.
+    // One-shot LATCHES, not toggles: the row states what it did and stands down.
     var guideReset by remember { mutableStateOf(false) }
     var tourReset by remember { mutableStateOf(false) }
     var diagnosticsCopied by remember { mutableStateOf(false) }
@@ -581,8 +550,8 @@ private fun AboutCard() {
         }
     }
     val inspecting = LocalInspectionMode.current
-    // Read from the INSTALLED package rather than a build constant: what this says is then
-    // what the phone actually has, which is the only version worth reporting in a bug.
+    // From the INSTALLED package, not a build constant: what the phone actually has is the only
+    // version worth reporting in a bug.
     val version = remember(context, inspecting) {
         if (inspecting) {
             "1.0"
@@ -613,10 +582,8 @@ private fun AboutCard() {
         }
 
         Spacer(Modifier.size(4.dp))
-        // Descriptive use only, and unconditional: the app is not made by, affiliated with,
-        // or endorsed by any of these makers, and this is the sentence that says so. **The
-        // list is built from the registry**, so adding a gauge cannot leave a maker unnamed
-        // in the one place they all have to appear.
+        // Descriptive use only: the app is not made by, affiliated with, or endorsed by any of these
+        // makers. **Built from the registry**, so a new gauge cannot leave a maker unnamed here.
         Text(
             tr(
                 "Get a Grip works with force gauges from %s. It is not made by, affiliated with, or endorsed by any of them.",
@@ -628,10 +595,8 @@ private fun AboutCard() {
 
         HorizontalDivider(color = palette.inkTertiary.copy(alpha = 0.25f))
 
-        // **TWO DIFFERENT THINGS**, and the old labels ("Show the setup guide again" / "Take
-        // the tour again") were close enough to read as one feature listed twice. This one is
-        // the step-by-step hints printed INSIDE the routine builder; the one below is the
-        // spotlight walkthrough of the whole app.
+        // **TWO DIFFERENT THINGS**, and the old labels read as one feature listed twice: this is the
+        // hints INSIDE the routine builder; the one below is the whole-app spotlight tour.
         ResetRow(
             done = guideReset,
             title = tr("Show the builder's hints again"),
@@ -641,15 +606,12 @@ private fun AboutCard() {
         ) {
             settings.setBuilderGuideDone(false)
             guideReset = true
-            // Back to Today, or the reset happens two tabs away from anywhere you could see
-            // it and reads as a dead button.
+            // Back to Today, or the reset happens two tabs away and reads as a dead button.
             tour.requestedTab = 0
         }
 
-        // The spotlight tour, not the builder's inline guide above. Both exist and teach
-        // different things, which is why they are two rows rather than one. `replay` clears
-        // ALL THREE `tour.seen.<act>` flags — the builder and session acts happen minutes or
-        // days later, and a replay that only restarted the intro would never reach them.
+        // The spotlight tour. `replay` clears ALL THREE `tour.seen.<act>` flags: the builder and
+        // session acts come later, and restarting only the intro would never reach them.
         ResetRow(
             done = tourReset,
             title = tr("Take the spotlight tour again"),
@@ -671,10 +633,7 @@ private fun AboutCard() {
 }
 
 /// A full-width row that does one irreversible-but-harmless thing and then says it did.
-///
-/// Disabled once fired, because the ONLY thing a second press could do is re-fire a reset that
-/// has already happened — and a row that keeps looking live after it worked is how people
-/// press it three times and wonder which one counted.
+/// Disabled once fired: a row that still looks live after working gets pressed three times.
 @Composable
 private fun ResetRow(
     done: Boolean,
@@ -689,7 +648,7 @@ private fun ResetRow(
     Row(
         Modifier
             .fillMaxWidth()
-            // A row that draws full-width and is only tappable on its words is half dead.
+            // Full-width but tappable only on its words is half dead.
             .heightIn(min = 44.dp)
             .clip(RoundedCornerShape(Metrics.radiusInner))
             .clickable(
@@ -699,9 +658,7 @@ private fun ResetRow(
                 role = Role.Button,
                 onClick = onClick,
             )
-            // `scales: false`, matching every other bare row on a shared card: a row with no
-            // background of its own scaling on press shrinks its content while the card's
-            // backdrop stays put.
+            // `scales: false`, like every bare row on a shared card (see the gauge picker).
             .pressFeedback(interaction, scales = false)
             .semantics(mergeDescendants = true) { contentDescription = spoken },
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -756,12 +713,10 @@ private fun LabelledValue(label: String, value: String) {
     }
 }
 
-/// A full-width row that opens something. **The whole row is the hit target**, 44 dp at
-/// minimum: a row that draws full-width and is only tappable on its words is half dead.
+/// A full-width row that opens something. **The whole row is the hit target**, 44 dp minimum.
 ///
-/// `note` is a third line in tertiary ink, and `outline` a two-point rim — a hairline is
-/// mostly antialiased edge and measured under 3:1 on iOS — for the one row on the screen
-/// that is a choice rather than a status.
+/// `note` is a third line in tertiary ink; `outline` a two-point rim (a hairline measured
+/// under 3:1 on iOS) for the one row that is a choice rather than a status.
 @Composable
 private fun NavRow(
     icon: ImageVector,
@@ -787,8 +742,7 @@ private fun NavRow(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                // A full-width row that opens something IS a button, and without this
-                // TalkBack announces the words and never the control type.
+                // Without the role TalkBack announces the words but never the control type.
                 role = Role.Button,
                 onClick = onClick,
             )

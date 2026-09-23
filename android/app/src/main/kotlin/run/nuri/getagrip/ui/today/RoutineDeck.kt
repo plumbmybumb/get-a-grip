@@ -69,36 +69,27 @@ import run.nuri.getagrip.ui.tour.tourAnchor
 
 /// The routines as a PAGED DECK — Music's Top Picks, not a browse feed.
 ///
-/// The card that used to sit under a rail of name-chips IS the chooser now: the next routine
-/// peeks in from the trailing edge, swiping to a card chooses it (the same day-scoped pin the
-/// old rail tap wrote), and a new day — or a fresher reminder — snaps the deck back to
-/// `upNext`, the card wearing the border. This folds two controls that were pretending not to
-/// be one: the chip NAMED a routine the card was already showing. The honest cost, accepted:
-/// sibling NAMES aren't readable without a swipe. At the two or three routines this app is
-/// built around, the peek plus each card's own done-dots carry what the rail carried.
+/// The card IS the chooser: the next routine peeks from the trailing edge, swiping to a card
+/// chooses it (a day-scoped pin), and a new day or fresher reminder snaps back to `upNext`,
+/// the bordered card. This replaced a rail of name-chips that only NAMED the card already
+/// shown. Accepted cost: sibling names need a swipe to read.
 ///
-/// **The deck exists the moment ANY routine does.** With one routine its only neighbour is
-/// the ghost card, and that peek is honest: there genuinely is something behind the ritual
-/// (creating the next one). Without it a single-routine user had no swipe to the ghost at
-/// all and "New routine" lived only in the ⋯ menu (Nuri, 2026-08-10).
+/// **The deck exists the moment ANY routine does.** With one routine its neighbour is the
+/// ghost card; without the deck "New routine" lived only in the ⋯ menu (Nuri, 2026-08-10).
 ///
-/// TRANSLATION NOTE: iOS is a paging `ScrollView` with `.viewAligned(limitBehavior: .always)`
-/// — one card per gesture however hard the flick, because every settle here is a deliberate
-/// pick rather than browsing. `HorizontalPager` is that behaviour by default (its snap
-/// distance is one page), so the rule needs no code, only this note so nobody "fixes" it into
-/// a momentum carousel.
+/// TRANSLATION NOTE: iOS pages with `.viewAligned(limitBehavior: .always)` — one card per
+/// gesture however hard the flick, because every settle is a deliberate pick.
+/// `HorizontalPager` does this by default; do not "fix" it into a momentum carousel.
 @Composable
 fun RoutineDeck(
     routines: List<SessionTemplateEntity>,
     templates: TemplateStore,
     modifier: Modifier = Modifier,
-    /// The card the app would front WITH NO HAND ON IT — the border wears this, never the
-    /// card currently in front, so swiping away to browse still answers "which one is being
-    /// asked of me right now".
+    /// The card the app would front WITH NO HAND ON IT. The border wears this, never the card in
+    /// front, so browsing still answers "which one is asked of me now".
     upNextID: UUID? = null,
-    /// Where the deck should be resting. A MIRROR of the selection rungs: programmatic moves
-    /// (a new day, a deleted routine) write it in, and only a settle on a card that is NOT
-    /// this one — i.e. a swipe a person made — reports back through `onSettled`.
+    /// Where the deck should rest — a MIRROR of the selection rungs. Programmatic moves write it;
+    /// only a settle on a different card (a person's swipe) reports back via `onSettled`.
     selectedID: UUID? = null,
     deviceState: ProgressorConnectionState = ProgressorConnectionState.Idle,
     battery: Double? = null,
@@ -110,11 +101,9 @@ fun RoutineDeck(
     onDuplicate: (SessionTemplateEntity) -> Unit = {},
     onNew: () -> Unit = {},
     onMakePrimary: (SessionTemplateEntity) -> Unit = {},
-    /// The routine as a QR code and a link. The host freezes the request at the tap, so the
-    /// deck can keep moving without changing the code somebody is pointing a camera at.
+    /// The routine as a QR code and link; the host freezes the request at the tap.
     onShare: (SessionTemplateEntity) -> Unit = {},
-    /// Read somebody ELSE's code — a fact about the app, not about this routine, which is
-    /// why it takes no argument.
+    /// Read somebody ELSE's code — about the app, not this routine, so it takes no argument.
     onScan: () -> Unit = {},
     onDelete: (SessionTemplateEntity) -> Unit = {},
     onDemo: () -> Unit = {},
@@ -130,39 +119,33 @@ fun RoutineDeck(
         (cardHeights[routines.lastOrNull()?.id] ?: cardHeights.values.maxOrNull() ?: 0).toDp()
     }
     val selectedIndex = routines.indexOfFirst { it.id == selectedID }.coerceAtLeast(0)
-    // The ghost is the LAST page, never a real routine's neighbour: the next thing waits
-    // BEHIND the things you have, so creating never sits at the same visual weight as the
-    // ritual (the rule the rail enforced by having no `+` at all).
+    // The ghost is the LAST page: creating waits BEHIND your routines, never at the ritual's
+    // visual weight.
     val state = rememberPagerState(initialPage = selectedIndex) { routines.size + 1 }
 
-    // Programmatic re-selection: the day rolling over, a save landing, a merge deleting the
-    // card under you. The swipe direction never loops through here — a settle on the page we
-    // are already on is filtered, and pinning is what makes `selectedID` equal the settle.
+    // Programmatic re-selection (day rolls, save lands, merge deletes the card). A settle on
+    // the current page is filtered, so a swipe never loops through here.
     LaunchedEffect(selectedID, routines.size) {
         val target = routines.indexOfFirst { it.id == selectedID }
         if (target >= 0 && target != state.currentPage) {
-            // Reduce Motion means NO TRAVEL, not a shorter one — a page that flies past
-            // three cards is exactly the motion the setting exists to refuse.
+            // Reduce Motion means NO TRAVEL, not a shorter one.
             if (reduceMotion) state.scrollToPage(target) else state.animateScrollToPage(target)
         }
     }
 
-    // A settle on a card someone swiped to is the old rail tap. The ghost is excluded on
-    // purpose: parking on it is browsing, not picking a ritual, and it must not survive as a
-    // stale pin.
+    // A settle on a swiped-to card is a pick. The ghost is excluded: parking on it is browsing
+    // and must not become a stale pin.
     //
     // **Read through `rememberUpdatedState`, never captured.** The collector outlives many
-    // compositions, so the `selectedID` and `onSettled` it closed over at launch went stale:
-    // a programmatic move to a NEW selection then read as a swipe away from the OLD one and
-    // pinned it (with a haptic tick nobody caused), and the host's callback — which carries
-    // `today` — pinned a choice to the day the deck first appeared.
+    // compositions: a stale `selectedID` made a programmatic move read as a swipe (pinning, with
+    // a tick nobody caused), and a stale `onSettled` pinned to the day the deck first appeared.
     val currentSelectedID by rememberUpdatedState(selectedID)
     val currentOnSettled by rememberUpdatedState(onSettled)
     LaunchedEffect(state, routines) {
         snapshotFlow { state.settledPage }.collect { page ->
             val routine = routines.getOrNull(page) ?: return@collect
             if (routine.id == currentSelectedID) return@collect
-            // The tick names its cause: a swipe that actually changed which routine is up.
+            // The tick names its cause: a swipe that changed which routine is up.
             haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
             currentOnSettled(routine.id)
         }
@@ -171,11 +154,9 @@ fun RoutineDeck(
     HorizontalPager(
         state = state,
         modifier = modifier.fillMaxWidth(),
-        // Full-bleed: the deck escapes the column's padding so the neighbour peeks at the
-        // SCREEN edge (the Music carousel move), then the content padding puts a settled card
-        // back on the house grid, aligned with the title above it. The trailing margin is
-        // deliberately 8 dp wider than the grid: peek = trailing margin − card gap, and 12 dp
-        // of neighbour was a hairline where 20 reads as a card.
+        // Full-bleed, so the neighbour peeks at the SCREEN edge; content padding puts a settled card
+        // back on the house grid. The trailing margin is 8 dp wider: peek = margin − card gap, and
+        // 12 dp of neighbour was a hairline where 20 reads as a card.
         contentPadding = PaddingValues(start = Metrics.hPadding, end = Metrics.hPadding + 8.dp),
         pageSpacing = 8.dp,
         key = { page -> routines.getOrNull(page)?.id?.toString() ?: "new-routine" },
@@ -196,8 +177,7 @@ fun RoutineDeck(
                 modifier = pageModifier.onSizeChanged { cardHeights[routine.id] = it.height },
                 summary = rememberRoutineSummary(templates, routine),
                 completionText = templates.completionText(routine),
-                // The border only exists where there are siblings to distinguish — with one
-                // routine it would mark the only real card there is.
+                // With one routine the border would mark the only real card.
                 isUpNext = routines.size > 1 && routine.id == upNextID,
                 deviceState = deviceState,
                 battery = battery,
@@ -217,9 +197,8 @@ fun RoutineDeck(
     }
 }
 
-/// Deliberately NOT a filled card: a hairline outline against the tonal surfaces of its
-/// neighbours is the same "provisional" reading as an unselected chip — this is a routine
-/// that COULD exist, next to ones that do.
+/// NOT a filled card: a hairline outline reads "provisional", like an unselected chip — a
+/// routine that COULD exist.
 @Composable
 private fun NewRoutineGhost(onNew: () -> Unit, onScan: () -> Unit, modifier: Modifier = Modifier) {
     val palette = LocalGripPalette.current
@@ -291,27 +270,21 @@ private fun SubtleScanAction(title: String, onClick: () -> Unit) {
     }
 }
 
-/// With no routine at all there is nothing to start, and a card offering to would be lying.
+/// With no routine there is nothing to start, and a card offering to would be lying.
 ///
-/// Exactly ONE PRIMARY button. No "start from a preset" second door — the prefill is the
-/// document's initial state INSIDE the builder, where it can be edited in place, and
-/// rendering six read-only set rows here would duplicate the document you are one tap from
-/// while pushing the button a screen and a half down at accessibility sizes.
+/// Exactly ONE PRIMARY button; no "start from a preset" door — that would duplicate the
+/// document one tap away and push the button off screen at accessibility sizes.
 ///
-/// **"Scan a shared routine" is the one exception, and it is not a second way to do the same
-/// thing.** The menu that normally carries it hangs off a routine CARD, and on this screen
-/// there is no card — so without this row somebody whose friend has just sent them a code
-/// has no door at all, on the one screen where they are most likely to be looking for one.
-/// It stays a small text action under the primary: building your own is what the app is for, and
-/// importing somebody else's is a thing you do once.
+/// **"Scan a shared routine" is the exception**: its usual menu hangs off a routine card, and
+/// here there is none, so a friend's code would have no door. It stays a small text action:
+/// importing is something you do once.
 @Composable
 fun EmptyRoutineCard(
     modifier: Modifier = Modifier,
-    /// Shown only while nothing is connected — it removes the "do I need the hardware in my
-    /// hand first?" hesitation at exactly the moment it occurs.
+    /// Only while nothing is connected: answers "do I need the hardware first?" when it arises.
     showsGaugeNote: Boolean = true,
     onBuild: () -> Unit,
-    /// Null in a preview, and null is what removes the row rather than drawing a dead one.
+    /// Null (previews) removes the row rather than drawing a dead one.
     onScan: (() -> Unit)? = null,
 ) {
     val palette = LocalGripPalette.current
@@ -342,9 +315,8 @@ fun EmptyRoutineCard(
                 color = palette.inkSecondary,
             )
 
-            // ACT ONE's only lit control. On a genuine first launch this card is all there
-            // is, so the tour hands you to the builder from here — and this step is
-            // `interactive`, so the scrim's hit region is punched and the tap actually lands.
+            // ACT ONE's only lit control: on first launch the tour hands you to the builder from here,
+            // and the step is `interactive`, so the tap lands.
             PrimaryButton(
                 tr("Build my routine"),
                 modifier = Modifier.tourAnchor(TourTarget.BuildRoutine),
@@ -376,12 +348,10 @@ private fun EmptyRoutineCardPreview() {
 
 /// `TemplateStore.summary`, folded only when something it reads has moved.
 ///
-/// A summary decodes the routine's set blob and walks the whole plan three times, and the deck
-/// asked for one per card on every composition — every page offset of a swipe, every tick of
-/// the device chip beside it. Keyed on exactly what `summary` reads from the store, so a
-/// session logged, a climb, a benchmark or a new max still redraws the card on the next
-/// frame. `nextReminder` is wall-clock and would go stale in a memo, which is safe only
-/// because no screen draws it from a summary: Today's header folds its own.
+/// A summary decodes the set blob and walks the plan three times, and the deck asked per card
+/// on every composition (every swipe offset, every device-chip tick). Keyed on what `summary`
+/// reads, so logs, climbs, benchmarks and maxes still redraw. `nextReminder` would go stale in
+/// a memo; safe only because Today's header folds its own.
 @Composable
 internal fun rememberRoutineSummary(templates: TemplateStore, routine: SessionTemplateEntity): RoutineSummary =
     remember(
