@@ -264,6 +264,9 @@ class TemplateStore(
     /// Bumped per recompute; the replan launched by an older one sees it moved and skips.
     private var replanGeneration = 0L
 
+    /// Every replan in the app is launched from here, so this one lock orders them all.
+    private val replanGate = Mutex()
+
     private suspend fun publishDerived(refoldingMaxes: Boolean) {
         val fetched = gateway.allRoutines() ?: return
         val ordered = fetched.sortedWith(routineOrder)
@@ -330,7 +333,8 @@ class TemplateStore(
         // than applied and immediately replaced — see `ReminderPlanner.replan`.
         val generation = ++replanGeneration
         scope.launch {
-            ReminderPlanner.replan(inputs, scheduler) { generation == replanGeneration }
+            ReminderPlanner.replan(inputs, scheduler, isCurrent = { generation == replanGeneration },
+                gate = replanGate)
         }
     }
 

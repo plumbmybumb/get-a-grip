@@ -157,17 +157,23 @@ object ReminderPlanner {
     private fun trainingDayMinute(slot: ReminderTime): Int =
         Math.floorMod(slot.minutesFromMidnight - DayStamp.ROLLOVER_HOUR * 60, 24 * 60)
 
-    private val gate = Mutex()
+    private val sharedGate = Mutex()
 
     ///
     /// `isCurrent` is asked INSIDE the lock: a plan computed by a recompute that has since
     /// been superseded is dropped rather than installed and immediately replaced, so the
     /// alarms never spend a moment on a stale day. Defaulted to "always current" for the
-    /// callers that replan exactly once (boot, tests).
+    /// callers that replan exactly once (tests).
+    ///
+    /// `gate` is the store's own in the app: `TemplateStore` is the one door every replan
+    /// goes through (the boot receiver included), so one lock per store serializes all of
+    /// them, and a lock that is not process-global cannot be left held by a coroutine
+    /// whose dispatcher has stopped running.
     suspend fun replan(
         routines: List<RoutinePlanInput>,
         scheduler: AlarmScheduler,
         isCurrent: () -> Boolean = { true },
+        gate: Mutex = sharedGate,
     ) {
         gate.withLock { if (isCurrent()) scheduler.apply(requests(routines)) }
     }
