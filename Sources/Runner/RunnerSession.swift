@@ -38,6 +38,14 @@ protocol RunnerCuePlaying: AnyObject {
     func end()
     func play(_ cue: RunnerCue)
     func gripChanged()
+    /// Where the player's own evidence goes — what the audio session found, an
+    /// interruption — so it lands in the session's diagnostics ring beside the link's.
+    func setDiagnosticSink(_ sink: @escaping (String) -> Void)
+}
+
+extension RunnerCuePlaying {
+    /// A player with nothing to report — the watch's haptics, silence, a test double.
+    func setDiagnosticSink(_ sink: @escaping (String) -> Void) {}
 }
 
 /// Nothing at all — the default where no player has been chosen, and what tests get.
@@ -212,13 +220,9 @@ final class RunnerSession {
         self.device = device
         self.liveActivity = liveActivity
         self.cues = cues
-        #if !os(watchOS)
         // The audio evidence lands in the same ring as the link's, so a session that
         // stopped somebody's podcast says so in the diagnostics export.
-        if let player = cues as? CuePlayer {
-            player.onDiagnostic = { [weak device] in device?.recordAudio($0) }
-        }
-        #endif
+        cues.setDiagnosticSink { [weak device] in device?.recordAudio($0) }
         self.draftStore = draftStore
         self.activityStartDelay = activityStartDelay
         self.timerOnly = timerOnly

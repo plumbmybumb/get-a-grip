@@ -6,7 +6,9 @@ import AVFoundation
 import CoreHaptics
 import Foundation
 
-extension CuePlayer: RunnerCuePlaying {}
+extension CuePlayer: RunnerCuePlaying {
+    func setDiagnosticSink(_ sink: @escaping (String) -> Void) { onDiagnostic = sink }
+}
 
 /// Plays what `SessionRunner` asks for — and nothing else.
 ///
@@ -65,9 +67,10 @@ final class CuePlayer {
     /// reset replaces the engine it was registered against.
     private var engineObserver: NSObjectProtocol?
 
-    /// Where audio evidence goes — the session's diagnostics ring. Optional: a test or a
-    /// preview has nowhere to send it, and output never depends on being observed.
-    var onDiagnostic: ((String) -> Void)?
+    /// Where audio evidence goes — the session's diagnostics ring, set through
+    /// `setDiagnosticSink`. Optional: a preview has nowhere to send it, and output never
+    /// depends on being observed.
+    private var onDiagnostic: ((String) -> Void)?
 
     init() {}
 
