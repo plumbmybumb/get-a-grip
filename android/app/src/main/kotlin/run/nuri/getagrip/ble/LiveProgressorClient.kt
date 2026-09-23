@@ -31,6 +31,7 @@ import run.nuri.getagrip.engine.ProgressorCommand
 import run.nuri.getagrip.engine.ProgressorEvent
 import run.nuri.getagrip.engine.ProgressorGATT
 import java.util.UUID
+import kotlin.math.ceil
 
 /// The real Tindeq Progressor, over Android BLE.
 ///
@@ -57,6 +58,8 @@ class LiveProgressorClient(
     context: Context,
     private val scope: CoroutineScope,
     private val clock: HostClock = SystemHostClock,
+    /// The app's shared count of scan starts — see `ScanStartBudget`.
+    private val scanBudget: ScanStartBudget = ScanStartBudget(),
 ) : ProgressorClient {
 
     override var onEvent: ((ProgressorEvent) -> Unit)? = null
@@ -87,6 +90,7 @@ class LiveProgressorClient(
         const val backoffMillis = 1_000L
         const val replyDeadlineMillis = 2_000L
         const val sleepFallbackMillis = 1_000L
+        const val quarantineFallbackMillis = 3_000L
 
         /// **REQUEST 517 BEFORE SUBSCRIBING.** A Progressor notification of eight samples
         /// is 2 + 8 × 8 = 66 bytes, and Android's default ATT MTU of 23 gives 20 bytes of
@@ -138,6 +142,32 @@ class LiveProgressorClient(
 
     private var isScanning = false
     private var sleepRequested = false
+
+    // MARK: - Reconnecting without a scan
+    //
+    // A scan is the wrong tool for getting BACK a gauge this client has already held: the
+    // platform pauses unfiltered scans with the screen off and rations the rest (see
+    // `ScanStartBudget`), and the old ladder — five scans, then give up — ended a locked-
+    // screen session's wait for its gauge after about a minute. The device the last link
+    // ran on is kept, and `AttemptRouting` decides how the next attempt uses it.
+
+    /// The device the last ESTABLISHED link ran on, for the life of this client.
+    private var remembered: BluetoothDevice? = null
+
+    /// An established link dropped and the user still wants it: wait for that device.
+    private var recovering = false
+
+    /// A quick direct try at `remembered` before an explicit Connect scans.
+    private var directTriesLeft = 0
+
+    /// Whether the link in flight was handed to the OS with `autoConnect`. Nordic keeps such
+    /// a link's GATT open after a loss and reconnects on its own, which would race this
+    /// client's own retry; that link is retired (closed) on loss instead — see
+    /// `handleDisconnect`.
+    private var linkUsesAutoConnect = false
+
+    private var scanStartJob: Job? = null
+    private var quarantineFallbackJob: Job? = null
 
     private val queue = ControlPointQueue(Transport())
 
@@ -201,6 +231,8 @@ class LiveProgressorClient(
         wantsConnection = true
         attemptsRemaining = attemptLimit
         refreshBudgetWhenPoweredOn = false
+        recovering = false
+        directTriesLeft = if (remembered != null) 1 else 0
 
         // LAZY on purpose, the twin of iOS constructing its central here: nothing about
         // Bluetooth is touched until a Connect tap asks for it. On Android the system
@@ -218,6 +250,8 @@ class LiveProgressorClient(
         wantsConnection = false
         refreshBudgetWhenPoweredOn = false
         pendingConnectionStart = false
+        recovering = false
+        directTriesLeft = 0
         attemptsRemaining = 0
         generation += 1uL
 
@@ -322,8 +356,18 @@ class LiveProgressorClient(
             return
         }
 
-        state = ProgressorConnectionState.Scanning
-        startScan(generation)
+        val target = remembered
+        when (AttemptRouting.route(target != null, recovering, directTriesLeft)) {
+            AttemptRoute.awaitInRange -> attach(target!!, generation, autoConnect = true)
+            AttemptRoute.direct -> {
+                directTriesLeft -= 1
+                attach(target!!, generation)
+            }
+            AttemptRoute.scan -> {
+                state = ProgressorConnectionState.Scanning
+                startScan(generation)
+            }
+        }
     }
 
     // MARK: - Scanning
@@ -333,14 +377,34 @@ class LiveProgressorClient(
     /// is five attempts with a one-second backoff, which is exactly the shape that trips
     /// it, so a running scan is REUSED rather than restarted: only the deadline is re-armed.
     /// iOS has no such quota and simply calls `scanForPeripherals` again.
+    ///
+    /// And when a scan DOES have to start, it asks the shared `ScanStartBudget` first: every
+    /// failed attempt stops the scan, so a ladder of connect timeouts used to restart one per
+    /// rung. A start the quota cannot afford waits, and the attempt's deadline starts only
+    /// once its scan does.
     private fun startScan(generation: ULong) {
         val scanner = adapter?.bluetoothLeScanner
         if (scanner == null) {
             failAttempt(L10n.tr("No Bluetooth"), cancelling = false)
             return
         }
+        if (isScanning) {
+            startScanDeadline(generation)
+            return
+        }
+        val wait = scanBudget.delaySeconds(clock.uptimeSeconds())
+        if (wait > 0) {
+            scanStartJob?.cancel()
+            scanStartJob = scope.launch(Dispatchers.Main.immediate) {
+                delay(ceil(wait * 1_000).toLong())
+                if (this@LiveProgressorClient.generation != generation) return@launch
+                if (scanGeneration != generation) return@launch
+                scanStartJob = null
+                startScan(generation)
+            }
+            return
+        }
         startScanDeadline(generation)
-        if (isScanning) return
         val filter = ScanFilter.Builder()
             .setServiceUuid(ParcelUuid(serviceUUID))
             .build()
@@ -354,6 +418,7 @@ class LiveProgressorClient(
         try {
             scanner.startScan(listOf(filter), settings, scanCallback)
             isScanning = true
+            scanBudget.recordStart(clock.uptimeSeconds())
         } catch (_: SecurityException) {
             state = ProgressorConnectionState.Unauthorized
         }
@@ -378,6 +443,9 @@ class LiveProgressorClient(
         override fun onScanFailed(errorCode: Int) {
             onMain {
                 stopScan()
+                if (errorCode == ScanStartBudget.scanTooFrequentError) {
+                    scanBudget.noteTooFrequent(clock.uptimeSeconds())
+                }
                 failAttempt(L10n.tr("No gauge found"), cancelling = false)
             }
         }
@@ -393,7 +461,10 @@ class LiveProgressorClient(
         attach(result.device, generation)
     }
 
-    private fun attach(found: BluetoothDevice, generation: ULong) {
+    /// `autoConnect` hands the device to the OS to connect whenever it is next in range, with
+    /// no timeout — see `AttemptRoute.awaitInRange`. Nordic tries a direct connection first,
+    /// so a gauge that is already there costs no more than before.
+    private fun attach(found: BluetoothDevice, generation: ULong, autoConnect: Boolean = false) {
         if (!wantsConnection || adapter?.isEnabled != true) return
         if (this.generation != generation || quarantined) return
 
@@ -419,12 +490,15 @@ class LiveProgressorClient(
         // `onDeviceFailedToConnect` with `REASON_TIMEOUT`. `retry(0)`: the retry ladder
         // above owns the budget, and letting the library retry too would spend five
         // attempts inside one of ours.
+        linkUsesAutoConnect = autoConnect
         try {
-            bleManager.connect(found)
-                .useAutoConnect(false)
+            val request = bleManager.connect(found)
+                .useAutoConnect(autoConnect)
                 .retry(0)
-                .timeout(connectTimeoutMillis)
-                .enqueue()
+            // No deadline on a wait for the gauge to come back into range: that wait is the
+            // point, and a rep never ends itself for a lost link either.
+            if (!autoConnect) request.timeout(connectTimeoutMillis)
+            request.enqueue()
         } catch (_: SecurityException) {
             state = ProgressorConnectionState.Unauthorized
         }
@@ -498,10 +572,22 @@ class LiveProgressorClient(
         onDiagnostic?.invoke(ProgressorClientDiagnostic.RetiringPeripheral)
         quarantined = true
         manager?.disconnect()?.enqueue()
+        // Belt to the terminal callback's braces. Retiring a link that is already DOWN (an
+        // autoConnect link Nordic was quietly reconnecting) has no connection to tear down,
+        // and a stack that answered with no callback at all would hold the quarantine — and
+        // every reconnect waiting behind it — forever.
+        quarantineFallbackJob?.cancel()
+        quarantineFallbackJob = scope.launch(Dispatchers.Main.immediate) {
+            delay(quarantineFallbackMillis)
+            quarantineFallbackJob = null
+            releaseQuarantine()
+        }
     }
 
     private fun releaseQuarantine() {
         if (!quarantined) return
+        quarantineFallbackJob?.cancel()
+        quarantineFallbackJob = null
         quarantined = false
         onDiagnostic?.invoke(ProgressorClientDiagnostic.QuarantineReleased)
         if (pendingConnectionStart) {
@@ -536,6 +622,8 @@ class LiveProgressorClient(
     private fun cancelAllJobs() {
         scanDeadlineJob?.cancel()
         scanDeadlineJob = null
+        scanStartJob?.cancel()
+        scanStartJob = null
         backoffJob?.cancel()
         backoffJob = null
         replyDeadlineJob?.cancel()
@@ -594,7 +682,13 @@ class LiveProgressorClient(
 
         val wasEstablished = state.isConnected
         val sleepCompleted = queue.issuedSleepID != null
+        val wasAutoConnect = linkUsesAutoConnect
+        linkUsesAutoConnect = false
         invalidateAttempt()
+        // An autoConnect link's GATT is still open and Nordic is already reconnecting it on
+        // its own — alongside the attempt this client is about to make. Close it; the
+        // quarantine holds the next attempt until the stack confirms.
+        if (wasAutoConnect) retireLink()
 
         // Radio state is authoritative. Its receiver already published the off or
         // unauthorized state, and a late disconnect must not overwrite or rescan it.
@@ -611,8 +705,10 @@ class LiveProgressorClient(
 
         if (wasEstablished) {
             // A successful notification subscription reset the budget, so a dropped
-            // established link begins a fresh five-attempt cycle immediately.
+            // established link begins a fresh five-attempt cycle immediately — waiting for
+            // the SAME gauge, not scanning for any (`AttemptRoute.awaitInRange`).
             attemptsRemaining = attemptLimit
+            recovering = remembered != null
             beginAttemptIfPossible()
         } else if (attemptsRemaining > 0) {
             scheduleRetry()
@@ -627,6 +723,9 @@ class LiveProgressorClient(
         val current = device ?: return
         if (!isCurrent(current)) return
         attemptsRemaining = attemptLimit
+        remembered = current
+        recovering = false
+        directTriesLeft = 0
         queue.linkEstablished()
         state = ProgressorConnectionState.Connected
         send(ProgressorCommand.getAppVersion)

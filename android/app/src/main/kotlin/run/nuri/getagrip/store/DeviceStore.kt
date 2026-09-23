@@ -33,6 +33,7 @@ import run.nuri.getagrip.ble.ProgressorClient
 import run.nuri.getagrip.ble.PacketBoundary
 import run.nuri.getagrip.ble.ProgressorClientDiagnostic
 import run.nuri.getagrip.ble.ProgressorConnectionState
+import run.nuri.getagrip.ble.ScanStartBudget
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
 import run.nuri.getagrip.ble.SystemHostClock
@@ -87,12 +88,16 @@ class AndroidGaugeClientFactory(
     private val scope: CoroutineScope,
     private val clock: HostClock = SystemHostClock,
 ) : GaugeClientFactory {
+    /// ONE count of scan starts for every client this app builds: Android's quota is per
+    /// app, so switching gauges must not forget what the phone has already counted.
+    private val scanBudget = ScanStartBudget()
+
     override fun make(kind: GaugeKind): ProgressorClient =
         when (GaugeClientRouting.shape(kind)) {
             GaugeClientShape.gatt ->
-                GattGaugeClient(context, scope, kind, kind.gatt!!, clock, calibration(kind))
-            GaugeClientShape.broadcast -> BroadcastGaugeClient(context, scope, clock)
-            GaugeClientShape.progressor -> LiveProgressorClient(context, scope)
+                GattGaugeClient(context, scope, kind, kind.gatt!!, clock, calibration(kind), scanBudget)
+            GaugeClientShape.broadcast -> BroadcastGaugeClient(context, scope, clock, scanBudget)
+            GaugeClientShape.progressor -> LiveProgressorClient(context, scope, clock, scanBudget)
         }
 
     /// The resolver exists only for a gauge that needs one. Every other kind gets null and

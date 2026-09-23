@@ -34,9 +34,15 @@ class BroadcastGaugeClient internal constructor(
     private val transport: BroadcastScanTransport,
     private val scope: CoroutineScope,
     private val clock: HostClock = SystemHostClock,
+    /// The app's shared count of scan starts — see `ScanStartBudget`.
+    private val scanBudget: ScanStartBudget = ScanStartBudget(),
 ) : ProgressorClient {
-    constructor(context: Context, scope: CoroutineScope, clock: HostClock = SystemHostClock) :
-        this(AndroidBroadcastScanTransport(context), scope, clock)
+    constructor(
+        context: Context,
+        scope: CoroutineScope,
+        clock: HostClock = SystemHostClock,
+        scanBudget: ScanStartBudget = ScanStartBudget(),
+    ) : this(AndroidBroadcastScanTransport(context), scope, clock, scanBudget)
 
     override var onEvent: ((ProgressorEvent) -> Unit)? = null
     override var onPacketBoundary: ((PacketBoundary) -> Unit)? = null
@@ -56,10 +62,6 @@ class BroadcastGaugeClient internal constructor(
         const val firstFrameDeadlineMillis = 15_000L
         const val silencePollMillis = 1_000L
         const val maximumAcquisitionAttempts = 3
-        // Below Android's five-start limit. An extra second avoids boundary rounding races.
-        const val scanRateWindowSeconds = 31.0
-        const val maximumScanStartsPerWindow = 4
-        const val scanTooFrequentError = 6
         // AOSP defaults to ten minutes, but the verified Realme uses five. Renew with a
         // one-minute margin; device-config access is privileged, so no permission or hidden
         // API dependency belongs in this app. Short stream watchdog checks never renew.
@@ -85,8 +87,6 @@ class BroadcastGaugeClient internal constructor(
     private var renewalJob: Job? = null
     private var acquisitionAttempts = 0
     private var acquisitionReason = "initial"
-    private val recentScanStarts = ArrayDeque<Double>()
-    private var scanCooldownUntil = 0.0
 
     override fun connect() {
         if (wantsConnection || state.isBusy || state.isConnected) return
@@ -164,16 +164,7 @@ class BroadcastGaugeClient internal constructor(
 
     /// Shared by acquisition and healthy renewal. Check BEFORE retiring a healthy scan,
     /// so a quota/cooldown wait cannot manufacture ten seconds of missing measurements.
-    private fun scanStartDelaySeconds(): Double {
-        val now = clock.uptimeSeconds()
-        while (recentScanStarts.isNotEmpty() && now - recentScanStarts.first() >= scanRateWindowSeconds) {
-            recentScanStarts.removeFirst()
-        }
-        val quotaDelay = if (recentScanStarts.size >= maximumScanStartsPerWindow) {
-            recentScanStarts.first() + scanRateWindowSeconds - now
-        } else 0.0
-        return max(0.0, max(quotaDelay, scanCooldownUntil - now))
-    }
+    private fun scanStartDelaySeconds(): Double = scanBudget.delaySeconds(clock.uptimeSeconds())
 
     private fun startScanAttempt(startedAt: Double) {
         if (acquisitionAttempts >= maximumAcquisitionAttempts) {
@@ -181,7 +172,7 @@ class BroadcastGaugeClient internal constructor(
             return
         }
         acquisitionAttempts += 1
-        recentScanStarts.addLast(startedAt)
+        scanBudget.recordStart(startedAt)
         val listener = object : BroadcastScanTransport.Listener {
             override fun onAdvertisement(advertisement: BroadcastAdvertisement) {
                 onMain { if (activeScan === this) didAdvertise(advertisement, startedAt) }
@@ -236,8 +227,8 @@ class BroadcastGaugeClient internal constructor(
     }
 
     private fun scanFailed(errorCode: Int) {
-        if (errorCode == scanTooFrequentError) {
-            scanCooldownUntil = max(scanCooldownUntil, clock.uptimeSeconds() + scanRateWindowSeconds)
+        if (errorCode == ScanStartBudget.scanTooFrequentError) {
+            scanBudget.noteTooFrequent(clock.uptimeSeconds())
         }
         attemptFailed("scan failed (code $errorCode)")
     }
