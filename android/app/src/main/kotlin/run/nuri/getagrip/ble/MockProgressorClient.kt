@@ -16,23 +16,17 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-/// A synthetic Progressor.
+/// A synthetic Progressor — the only way to run the app without a phone and a real gauge
+/// (**the emulator has no working Bluetooth**), and what demo mode uses, so someone without
+/// hardware can watch a whole session.
 ///
-/// This is not a convenience — it is the only way to run the app anywhere other than a
-/// physical phone with the real gauge attached, because **the emulator has no working
-/// Bluetooth stack**. It is also what demo mode uses, so someone without hardware (a Play
-/// reviewer, a curious climber) can see a whole session run.
+/// **Always compiled in**, and reached two ways: the `--ez mockDevice true` launch extra
+/// (iOS's `-mockDevice`, read by `DeviceStore`) and the "Try demo mode" button in the
+/// gauge's disconnected state. A debug-only mock would strand anyone without hardware.
 ///
-/// **Always compiled in.** A debug-only mock would leave anyone without hardware stuck on
-/// a screen that never connects, which is why it is reached two ways on purpose: the
-/// `--ez mockDevice true` launch extra (the twin of iOS's `-mockDevice` argument, read by
-/// `DeviceStore`) and the always-present "Try demo mode" button in the gauge's
-/// disconnected state.
-///
-/// TRANSLATION NOTE: Swift's `Task` inherits the class's `@MainActor` isolation; Kotlin
-/// takes the scope explicitly, and the app hands it one on `Dispatchers.Main.immediate`
-/// so every callback still arrives on the main thread. A test hands it a test scope,
-/// which is also why the scope is a constructor parameter rather than a field built here.
+/// TRANSLATION NOTE: Swift's `Task` inherits `@MainActor`; Kotlin takes the scope
+/// explicitly (the app passes `Dispatchers.Main.immediate`, a test its test scope), so it
+/// is a constructor parameter.
 class MockProgressorClient(
     private val scope: CoroutineScope,
     var profile: MockForceProfile = MockForceProfile.clean,
@@ -77,8 +71,8 @@ class MockProgressorClient(
         val generation = connectionGeneration
         state = ProgressorConnectionState.Scanning
         connectJob = scope.launch {
-            // A beat of latency so the connecting UI is actually exercised rather than
-            // skipped past in a single frame.
+            // A beat of latency so the connecting UI is exercised rather than skipped in
+            // one frame.
             delay(300)
             if (connectionGeneration != generation) return@launch
             state = ProgressorConnectionState.Connecting
@@ -108,13 +102,12 @@ class MockProgressorClient(
         if (!state.isConnected) return
         when (command) {
             ProgressorCommand.tare ->
-                // Tare zeroes whatever is on the gauge right now — the same trap as the
-                // real device: tare under load and every reading after it is wrong.
+                // Tare zeroes whatever is on the gauge now — the real device's trap: tare
+                // under load and every later reading is wrong.
                 tareOffsetKg = rawForceNow()
 
             ProgressorCommand.startWeightMeasurement -> {
-                // Starts need a cause so the diagnostic ring cannot claim a reason the
-                // caller never supplied; `startStreaming(cause)` is the only start path.
+                // Starts need a cause; `startStreaming(cause)` is the only start path.
             }
 
             ProgressorCommand.stopWeightMeasurement -> stopPump()
@@ -158,15 +151,14 @@ class MockProgressorClient(
     private fun stopPump() {
         pump?.cancel()
         pump = null
-        // A new demo stream replays from zero. Release the synthetic load before the
-        // next pre-start tare so it cannot capture the last session's loaded plateau.
+        // A new demo stream replays from zero; release the synthetic load first so the
+        // pre-start tare cannot capture the last plateau.
         elapsedSamples = 0uL
         tareOffsetKg = 0.0
     }
 
-    /// One notification's worth of samples, exactly as the device batches them — which is
-    /// what makes the runner's "accrue from device timestamps, not arrival time" rule
-    /// testable against something realistic.
+    /// One notification's worth of samples, batched as the device does, so "accrue from
+    /// device timestamps, not arrival time" is tested against something realistic.
     private fun emitBatch() = withPacket(clock.uptimeSeconds()) {
         for (index in 0 until batchSize) {
             val seconds = elapsedSamples.toDouble() / sampleHz
@@ -177,9 +169,8 @@ class MockProgressorClient(
                 ),
             )
             elapsedSamples += 1uL
-            // Wrapping on purpose: over a long session the real device's UInt32 µs clock
-            // rolls over at ~71.6 minutes, and the app must survive it. Kotlin's unsigned
-            // arithmetic wraps natively, so this IS Swift's `&+`.
+            // Wraps on purpose: the device's UInt32 µs clock rolls over at ~71.6 minutes.
+            // Kotlin unsigned arithmetic wraps natively (Swift's `&+`).
             deviceMicros += microsPerSample
         }
     }
@@ -190,15 +181,14 @@ class MockProgressorClient(
 
 // MARK: - Force profiles
 
-/// Scripted force traces. Pure functions of elapsed time, so a test can sample the same
-/// curve the UI sees without running any timers — and so the same peak recurs run to run,
-/// which is correct, not a bug.
+/// Scripted force traces as pure functions of elapsed time: tests sample the curve without
+/// timers, and the same peak recurs run to run (correct, not a bug).
 enum class MockForceProfile(val rawValue: String) {
     /// Textbook: sharp ramp, steady plateau, clean release.
     clean("clean"),
 
-    /// Wobbles across the threshold and briefly drops — the case that decides whether
-    /// hysteresis and dropout grace are tuned right.
+    /// Wobbles across the threshold and briefly drops — tests hysteresis and dropout
+    /// handling.
     shaky("shaky"),
 
     /// Fades through the hold, the way a real set's last rep does.
@@ -208,8 +198,8 @@ enum class MockForceProfile(val rawValue: String) {
     idle("idle");
 
     companion object {
-        /// Work + rest cycle, chosen to match the default no-hang shape (10 s on, 20 s
-        /// off) so a mock run lines up with a real routine.
+        /// Matches the default no-hang shape (10 s on, 20 s off) so a mock run lines up
+        /// with a real routine.
         const val workSeconds: Double = 10.0
         const val restSeconds: Double = 20.0
 

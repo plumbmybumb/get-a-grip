@@ -15,43 +15,34 @@ import androidx.core.content.ContextCompat
 
 /// **What keeps a session alive when the screen locks.**
 ///
-/// TRANSLATION NOTE (from the iOS `bluetooth-central` background mode): on iOS a session
-/// with a connected gauge survives backgrounding because the app declares that mode and
-/// CoreBluetooth keeps delivering notifications to a suspended-but-resumable process.
-/// Android has no equivalent capability bit — the only way to go on receiving GATT
-/// notifications with the app in the background is a FOREGROUND SERVICE, and the type that
-/// names this exact use is `connectedDevice`. So the rule "a connected session never
-/// pauses in the background" (`BackgroundPausePolicy`) is only TRUE on Android for as long
-/// as this service is running; without it the process is frozen, samples stop, and the rep
-/// silently stalls.
+/// TRANSLATION NOTE: iOS declares the `bluetooth-central` background mode and CoreBluetooth
+/// keeps delivering to a suspended process. Android's only way to keep receiving GATT
+/// notifications in the background is a FOREGROUND SERVICE of type `connectedDevice`, so "a
+/// connected session never pauses in the background" (`BackgroundPausePolicy`) holds only
+/// while this runs; without it the process freezes and the rep silently stalls.
 ///
-/// **The service's notification IS the Live Update.** A foreground service must show one,
-/// and a session already wants exactly one card on the lock screen — so rather than
-/// posting two, `AndroidActivityPublisher` builds the card and this adopts it under the
-/// same id. That is also why `pending` exists: `startForeground` needs a notification in
-/// the same breath as the start, and a placeholder would flash the wrong card for a frame.
+/// **The service's notification IS the Live Update.** A session wants exactly one
+/// lock-screen card, so `AndroidActivityPublisher` builds it and this adopts it under the
+/// same id — hence `pending`: `startForeground` needs a notification at once, and a
+/// placeholder would flash the wrong card.
 ///
-/// **Started only for a session that can actually use it** — measured, connected, and on a
-/// gauge whose capabilities say it sustains background streaming. A timer-only session has
-/// nothing to keep alive (see `RunnerLifecycle`, which pauses it outright), and a
-/// broadcast scale cannot stream backgrounded whatever we do.
+/// **Started only for a session that can use it** — measured, connected, and on a gauge
+/// that sustains background streaming. A timer-only session is paused outright
+/// (`RunnerLifecycle`); a broadcast scale cannot stream backgrounded anyway.
 ///
-/// **The gauge is never told to sleep.** Ending a session stops the stream and stops this
-/// service; the `sleep` opcode is not sent here or anywhere, because it powers the device
-/// off and costs a physical button press to wake — the wrong price for a session that just
-/// finished, when a second one is due the same day.
+/// **The gauge is never told to sleep.** The `sleep` opcode powers it off and costs a
+/// button press to wake — the wrong price when a second session is due the same day.
 class SessionForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = pending
         // **`startForeground` FIRST, on every path — including the one about to stop.**
-        // `startForegroundService` is a promise to call it within a few seconds, and the
-        // promise is the SERVICE's to keep whether or not it still wants to run: a stray
-        // start that went straight to `stopSelf()` crashed the whole process with
-        // `ForegroundServiceDidNotStartInTimeException` — reachable whenever a session ended
-        // (clearing `pending`) between the start request and this callback. So a stray is
-        // promoted on a placeholder and stopped in the same breath; the placeholder goes
-        // with it and is never on screen long enough to read.
+        // `startForegroundService` is a promise to call it within seconds, kept whether or
+        // not the service still wants to run: a stray start that went straight to
+        // `stopSelf()` crashed the process with
+        // `ForegroundServiceDidNotStartInTimeException` (a session ending between start
+        // request and this callback). A stray is promoted on a placeholder and stopped at
+        // once.
         ServiceCompat.startForeground(
             this,
             LiveUpdateNotification.NOTIFICATION_ID,
@@ -59,19 +50,17 @@ class SessionForegroundService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
         )
         if (notification == null) {
-            // Nothing to show means nothing to keep alive: a service that started with no
-            // card behind it is a stray, and stopping is the honest response. (This is the
-            // path a system-initiated restart would take, which is also why the return
-            // below is NOT_STICKY.) `onDestroy` removes the placeholder with the service.
+            // No card means nothing to keep alive: a stray, so stop. (A system restart
+            // would take this path too, hence NOT_STICKY.) `onDestroy` removes the
+            // placeholder.
             stopSelf(startId)
         }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
-        // REMOVE, not detach: a session that has ended must leave nothing behind, and a
-        // card still saying "Holding" on the lock screen is worse than no card at all —
-        // the same reason iOS ends its activity with `.immediate`.
+        // REMOVE, not detach: a lock-screen card still saying "Holding" after a session is
+        // worse than none (iOS ends with `.immediate`).
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
@@ -79,9 +68,8 @@ class SessionForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
-        /// The card to run in, set by `AndroidActivityPublisher` immediately BEFORE the
-        /// start so `startForeground` adopts the real one. Volatile because the service is
-        /// started asynchronously; it is only ever written from the main thread.
+        /// The card to run in, set by `AndroidActivityPublisher` just BEFORE the start.
+        /// Volatile: the service starts asynchronously; written only from the main thread.
         @Volatile
         internal var pending: Notification? = null
 
@@ -97,13 +85,10 @@ class SessionForegroundService : Service() {
             context.stopService(Intent(context, SessionForegroundService::class.java))
         }
 
-        /// **Called at process start, and that is the whole leak guard.**
-        ///
-        /// If the process is killed mid-session — force-stopped, or reclaimed by an
-        /// aggressive OEM battery manager — `RunnerSession.end()` never runs and the
-        /// ongoing card is never cancelled, so it would sit on the lock screen claiming a
-        /// session that is not happening. A process that has just started cannot have one
-        /// running, so the first thing a fresh process does is clear it.
+        /// **Called at process start — the whole leak guard.** A process killed mid-session
+        /// (force-stop, OEM battery manager) never ran `RunnerSession.end()`, so its card
+        /// would claim a session that is not happening. A fresh process cannot have one
+        /// running, so it clears it first.
         fun cancelStaleCard(context: Context) {
             NotificationManagerCompat.from(context)
                 .cancel(LiveUpdateNotification.NOTIFICATION_ID)
@@ -111,14 +96,12 @@ class SessionForegroundService : Service() {
     }
 }
 
-/// Where a session asks the OS to keep it alive.
-///
-/// One seam, for the same reason `CueSink` and `ActivityPublisher` are seams: a JVM test
-/// drives whole sessions through `RunnerSession`, and a `Service` needs a real Android
-/// runtime. The default does nothing, so nothing in the engine's timing depends on it.
+/// Where a session asks the OS to keep it alive. A seam like `CueSink` and
+/// `ActivityPublisher`: JVM tests drive whole sessions, and a `Service` needs a real
+/// runtime. The default does nothing, so no engine timing depends on it.
 interface SessionServiceController {
-    /// Idempotent by contract — `RunnerSession` calls this on `begin()` and again when a
-    /// link arrives later, and only one service may ever be running.
+    /// Idempotent: `RunnerSession` calls it on `begin()` and again when a link arrives;
+    /// only one service may run.
     fun begin()
 
     fun end()

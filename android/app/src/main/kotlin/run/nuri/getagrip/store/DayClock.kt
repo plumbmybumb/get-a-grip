@@ -24,47 +24,40 @@ import java.time.Instant
 
 /// The app's single source of "today".
 ///
-/// Reading `DayStamp.today()` straight from a composable only recomposes when Compose
-/// happens to invalidate that composable — so an app left open across local midnight
-/// keeps rendering yesterday's day: the ritual screen still says "1 of 2 today" for a
-/// session trained before midnight, and the streak strip still fills yesterday's cell.
-/// The day therefore gets observable state of its own, and every surface recomputes
+/// `DayStamp.today()` read in a composable only updates when Compose happens to recompose
+/// it, so an app open across midnight kept showing yesterday ("1 of 2 today", yesterday's
+/// strip cell). The day is observable state of its own, and every surface recomputes
 /// together.
 ///
-/// TRANSLATION NOTE (Sources/Store/DayClock.swift): UIKit posts ONE notification
-/// (`significantTimeChange`) at local midnight, for a manual clock change and for a
-/// time-zone crossing. Android splits that into three broadcasts —
-/// `ACTION_DATE_CHANGED` (local midnight), `ACTION_TIME_CHANGED` (the clock was set) and
-/// `ACTION_TIMEZONE_CHANGED` — so `DayClockReceiver` listens for all three and they land
-/// in the same `refresh()`. They are all protected, implicitly-broadcast system actions
-/// and must be registered at RUNTIME rather than in the manifest.
+/// TRANSLATION NOTE (Sources/Store/DayClock.swift): UIKit's one `significantTimeChange`
+/// becomes three Android broadcasts — `ACTION_DATE_CHANGED`, `ACTION_TIME_CHANGED`,
+/// `ACTION_TIMEZONE_CHANGED` — all landing in `refresh()`. They are protected implicit
+/// broadcasts, so registered at RUNTIME, not in the manifest.
 @Stable
 class DayClock(today: DayStamp = DayStamp.today()) {
 
-    /// The `today` parameter is a test seam. Crossing midnight is the single most
-    /// expensive behaviour in the app to verify by waiting for it.
+    /// `today` is a test seam: crossing midnight is the most expensive behaviour to verify
+    /// by waiting.
     var today: DayStamp by mutableStateOf(today)
         private set
 
-    /// Also called on resume: a device that was asleep across midnight may not deliver
-    /// the broadcast until the app is in the foreground again.
+    /// Also called on resume: a device asleep across midnight may not deliver the broadcast
+    /// until foregrounded.
     fun refresh() {
         val now = DayStamp.today()
         if (now != today) today = now
     }
 
-    /// Tests only in practice — nothing in the app calls it. Kept out of `refresh`'s path
-    /// deliberately, so no shipping code can pin the day to a value the system clock
-    /// disagrees with.
+    /// Tests only. Kept off `refresh`'s path so no shipping code can pin the day against
+    /// the system clock.
     fun advance(to: DayStamp) {
         if (to != today) today = to
     }
 
-    /// The training day turns at `DayStamp.ROLLOVER_HOUR` (04:00), an hour no system
-    /// broadcast marks — `ACTION_DATE_CHANGED` is midnight's. So the clock sleeps until
-    /// the next rollover, refreshes, tells the store, and goes back to sleep for the
-    /// life of the process; a process that is not running is caught by the resume
-    /// refresh instead, as before. The iOS twin is `DayClock.armRolloverRefresh`.
+    /// The training day turns at `DayStamp.ROLLOVER_HOUR` (04:00), which no broadcast
+    /// marks. So the clock sleeps until the next rollover, refreshes, tells the store, and
+    /// repeats for the process's life; a dead process is caught by the resume refresh. iOS:
+    /// `DayClock.armRolloverRefresh`.
     fun scheduleRolloverRefresh(scope: CoroutineScope, onDayMayHaveChanged: () -> Unit): Job =
         scope.launch {
             while (isActive) {
@@ -76,13 +69,9 @@ class DayClock(today: DayStamp = DayStamp.today()) {
         }
 }
 
-/// Registered by the Application for the life of the process.
-///
-/// **It refreshes the clock and THEN asks the store to recompute — never the other way
-/// round, and never the store on its own.** The store REACTS to the clock; pushing the
-/// clock from inside the store re-pins "today" to the system date on every call, which
-/// silently defeats `DayClock.advance(to:)` — the seam that makes crossing midnight
-/// testable at all. This is the same order `DoigtApp` uses on `scenePhase == .active`.
+/// Registered by the Application for the life of the process. **Refreshes the clock, THEN
+/// asks the store to recompute** — the store only REACTS to the clock (see
+/// `TemplateStore.refreshIfDayChanged`). `DoigtApp`'s `scenePhase == .active` order.
 class DayClockReceiver(
     private val clock: DayClock,
     private val onDayMayHaveChanged: () -> Unit,
@@ -93,10 +82,8 @@ class DayClockReceiver(
         onDayMayHaveChanged()
     }
 
-    /// `ContextCompat`, not `Context.registerReceiver(_:_:Int)` directly: the flags
-    /// overload has existed since API 26 but `RECEIVER_NOT_EXPORTED` only means what it
-    /// says from API 33, and minSdk here is 31. Not exported is right regardless — these
-    /// are protected system broadcasts and nothing else may fire them.
+    /// `ContextCompat`: `RECEIVER_NOT_EXPORTED` only means what it says from API 33 (minSdk
+    /// is 31). Not exported regardless — protected system broadcasts only.
     fun register(context: Context) {
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_DATE_CHANGED)

@@ -25,47 +25,39 @@ import kotlin.math.sin
 
 /// Plays what `SessionRunner` asks for — and nothing else.
 ///
-/// The runner returns `RunnerCue`s and never plays one itself, so this is the only place in
-/// the app where a workout makes a noise. Everything here is pure OUTPUT: no method throws,
-/// no failure propagates, and a phone with no audio route and no vibrator still runs the
-/// whole session in silence. A cue that cannot be played is not a reason for a set to stop.
+/// The runner returns `RunnerCue`s and never plays one, so this is the only place a workout
+/// makes a noise. Pure OUTPUT: nothing throws or propagates, and a phone with no audio
+/// route or vibrator runs the session in silence. An unplayable cue is no reason for a set
+/// to stop.
 ///
-/// The tones are synthesized on the audio worker, with no file loading or main-thread
-/// audio setup. They share one A-major frame so the cues read as a family; the alarm
-/// deliberately does not, which is what makes it read as wrong.
+/// Tones are synthesized on the audio worker (no file loading, no main-thread setup) in one
+/// A-major frame so the cues read as a family; the alarm deliberately does not, which is
+/// what makes it read as wrong.
 ///
 /// ## NEVER DISTURB WHAT THE USER IS LISTENING TO
 ///
-/// **Audio focus is never requested. Not once, not transiently, not `MAY_DUCK`.** That is
-/// the whole rule, and it is a named reason Nuri left Frez. `requestAudioFocus` with any
-/// transient gain ducks or pauses whatever is playing, and this app fires roughly one cue
-/// every five seconds across a twenty-minute session — a video that pulses for the entire
-/// workout is a smaller version of the same complaint, not a solution to it.
+/// **Audio focus is never requested. Not once, not transiently, not `MAY_DUCK`.** A named
+/// reason Nuri left Frez: any transient gain ducks or pauses other audio, and at roughly
+/// one cue every five seconds a video would pulse for the entire workout.
 ///
-/// **The stream is `USAGE_MEDIA` (content `SONIFICATION`), NOT `USAGE_ASSISTANCE_SONIFICATION`.**
-/// The iOS rule is that cues survive the mute switch (`.playback`, not `.ambient`). On Android
-/// the sonification usage rides the SYSTEM stream, which silent mode mutes outright — the
-/// first hardware session on the Realme (2026-09-04) produced no sound at all with the phone
-/// on silent. Media is the stream the user actually controls with the volume keys and the
-/// one the ringer mode leaves alone. Mixing is unchanged: with no focus request, other media
-/// keeps playing untouched.
+/// **The stream is `USAGE_MEDIA` (content `SONIFICATION`), NOT
+/// `USAGE_ASSISTANCE_SONIFICATION`.** iOS cues survive the mute switch (`.playback`, not
+/// `.ambient`). Android's sonification usage rides the SYSTEM stream, which silent mode
+/// mutes — the Realme on silent (2026-09-04) played nothing. Media follows the volume keys
+/// and ignores ringer mode; with no focus request, other media keeps playing.
 ///
-/// TRANSLATION NOTE (from Sources/Runner/CuePlayer.swift): `AVAudioEngine` + a scheduled
-/// `AVAudioPCMBuffer` per cue becomes ONE `AudioTrack` in `MODE_STREAM` that buffers are
-/// written into from a single background queue owner — which reproduces the property iOS got
-/// from `scheduleBuffer` without `.interrupts`: cues QUEUE rather than cutting each other
-/// off, because the runner returns them in batches (a final rep yields rep-end, set-end and
-/// session-end together) and interrupting would leave only the last one audible.
+/// TRANSLATION NOTE (Sources/Runner/CuePlayer.swift): `AVAudioEngine` with a buffer per cue
+/// becomes ONE `MODE_STREAM` `AudioTrack` fed from a single background queue owner. As with
+/// `scheduleBuffer` without `.interrupts`, cues QUEUE rather than cut each other off: a
+/// final rep yields rep-end, set-end and session-end together.
 ///
-/// **The track is kept FED between cues** (`CueKeepAlive`), because the iPhone's engine
-/// renders continuously from `begin()` to `end()` and a starved Android track does not:
-/// the output fell to standby during every rest and the next tick paid the wake-up —
-/// clipped on the speaker, lost on Bluetooth — and a fresh track held its first cue until
-/// its start threshold filled. Same tones, same envelopes, same pitches at the device's
-/// own sample rate; this is what makes them ARRIVE the way they do on the iPhone.
+/// **The track is kept FED between cues** (`CueKeepAlive`). The iPhone engine renders
+/// continuously; a starved Android track fell to standby every rest, so the next tick paid
+/// the wake-up (clipped on the speaker, lost on Bluetooth), and a fresh track held its
+/// first cue until its start threshold filled.
 ///
-/// `CHHapticEngine` patterns become `VibrationEffect`s — composition primitives where the
-/// vibrator has them, which is the nearest thing to a Core Haptics transient. See `CueHaptic`.
+/// `CHHapticEngine` patterns become `VibrationEffect`s — composition primitives where
+/// available, the nearest thing to a Core Haptics transient. See `CueHaptic`.
 class CuePlayer(
     context: Context,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -81,24 +73,23 @@ class CuePlayer(
         mainHandler.post { sink(event) }
     }
 
-    /// Every player the system reports as active, ours included once the track is open.
-    /// Other apps' players are anonymised, but they are COUNTED, which is all this needs.
+    /// Every active player the system reports, ours included once open. Others are
+    /// anonymised but COUNTED, which is all this needs.
     private fun activePlayers(): Int =
         runCatching { audioManager?.activePlaybackConfigurations?.size }.getOrNull() ?: -1
 
     private val appContext = context.applicationContext
 
     private var isRunning = false
-    /// The output's own rate, so the mixer never resamples a tone. The pitches are the
-    /// same at any rate — `ToneSynth.render` works in seconds — so a Pixel at 48 kHz and an
-    /// iPhone at 44.1 kHz play the identical figure.
+    /// The output's own rate, so the mixer never resamples. `ToneSynth.render` works in
+    /// seconds, so 48 kHz and 44.1 kHz play the identical figure.
     private val outputRate: Int by lazy {
         runCatching { AudioTrack.getNativeOutputSampleRate(AudioManager.STREAM_MUSIC) }
             .getOrNull()?.takeIf { it in 8_000..192_000 } ?: ToneSynth.SAMPLE_RATE
     }
 
-    /// Rendered once per tone and kept, as iOS builds its nine buffers once at `begin()`.
-    /// Concurrent because a new session's worker can start while the last one finishes.
+    /// Rendered once per tone and kept, as iOS builds its buffers at `begin()`. Concurrent:
+    /// a new session's worker can start while the last finishes.
     private val rendered = ConcurrentHashMap<ToneSynth.Tone, FloatArray>()
 
     private val audio = CueAudioQueue(
@@ -113,8 +104,8 @@ class CuePlayer(
         ),
     )
 
-    /// Null on a device with no vibrator — everything haptic short-circuits on it rather
-    /// than logging or throwing. That is the expected state of an emulator, not an error.
+    /// Null on a device with no vibrator; haptics short-circuit rather than log or throw
+    /// (the normal emulator state).
     private val vibrator: Vibrator? = runCatching {
         val manager = appContext.getSystemService(VibratorManager::class.java)
         manager?.defaultVibrator?.takeIf { it.hasVibrator() }
@@ -136,8 +127,8 @@ class CuePlayer(
 
     // MARK: - The one entry point
 
-    /// Every case is spelled out and there is NO `else` — a cue added to `RunnerCue` must be
-    /// a compile error here rather than a cue that silently never sounds.
+    /// Every case spelled out, NO `else`: a new `RunnerCue` must be a compile error here,
+    /// not a silent cue.
     override fun gripChanged() { sound(ToneSynth.Tone.gripChange) }
 
     override fun play(cue: RunnerCue) {
@@ -151,8 +142,8 @@ class CuePlayer(
             }
 
             is RunnerCue.RepStarted -> {
-                // Deliberately small: "go" already sounded, and this only confirms the clock
-                // caught the pull. Something louder here would compete with it.
+                // Small: "go" already sounded; this only confirms the clock caught the
+                // pull.
                 sound(ToneSynth.Tone.tick)
                 haptic(CueHaptic.crisp)
             }
@@ -178,8 +169,8 @@ class CuePlayer(
             }
 
             is RunnerCue.DropoutWarning -> {
-                // A dip is a warning, not a verdict — the rep is still alive, so this is the
-                // quiet, short form of the same alarm that ends one.
+                // A dip is a warning, not a verdict — the quiet, short form of the alarm
+                // that ends a rep.
                 sound(ToneSynth.Tone.alarmSoft)
                 haptic(CueHaptic.buzzSoft)
             }
@@ -191,9 +182,8 @@ class CuePlayer(
         }
     }
 
-    /// The most-heard cue in the app, and the one most able to ruin it: a beep per second
-    /// through a two-minute rest is unbearable, so only the last three seconds speak at all.
-    /// The final second is a higher pitch so "go" is anticipated rather than merely announced.
+    /// The most-heard cue: a beep per second through a two-minute rest is unbearable, so
+    /// only the last three seconds speak. The final one is higher, so "go" is anticipated.
     private fun tick(secondsRemaining: Int) {
         if (secondsRemaining !in ToneSynth.SPEAKING_TICKS) return
         val last = secondsRemaining == 1
@@ -211,9 +201,8 @@ class CuePlayer(
     private fun openTrack(): CueAudioOutput? {
         val built = runCatching {
             val attributes = AudioAttributes.Builder()
-                // **MEDIA usage, and no focus request anywhere in this file.** See the type's
-                // note: the system stream is muted by silent mode, the media stream is not,
-                // and these tones must carry over the user's music without touching it.
+                // **MEDIA usage, and no focus request anywhere in this file.** See the
+                // type's note.
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
@@ -227,18 +216,16 @@ class CuePlayer(
                 AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_FLOAT,
             ).coerceAtLeast(FALLBACK_BUFFER_BYTES)
-            // Room for the longest figure (the 0.52 s session chord) plus the keep-alive
-            // lead, so every cue lands in ONE write and a burst never has to wait on the
-            // poll loop mid-figure. Capacity is not latency: only what is queued plays
-            // before a cue, and the keep-alive holds that to tens of milliseconds.
+            // Room for the longest figure (the 0.52 s chord) plus the keep-alive lead, so
+            // every cue is ONE write. Capacity is not latency: only what is queued plays
+            // first, and the keep-alive holds that to tens of milliseconds.
             val bytes = maxOf(minBytes, outputRate * 3 / 4 * Float.SIZE_BYTES)
             AudioTrack.Builder()
                 .setAudioAttributes(attributes)
                 .setAudioFormat(format)
                 .setBufferSizeInBytes(bytes)
                 .setTransferMode(AudioTrack.MODE_STREAM)
-                // A request, not a guarantee: the system falls back to the normal mixer
-                // when it cannot grant a fast track, which is no worse than before.
+                // A request: without a fast track the system uses the normal mixer.
                 .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
                 .build()
         }.getOrNull() ?: return null
@@ -248,9 +235,8 @@ class CuePlayer(
         }
         // Counted before this track exists: whatever is playing now is somebody else's.
         val othersBefore = activePlayers()
-        // A new streaming track waits for its WHOLE buffer before it starts — which, with a
-        // buffer sized for the longest chord, would hold the first tick back indefinitely.
-        // Start on the first ~5 ms instead; the keep-alive fills behind it.
+        // A streaming track waits for its WHOLE buffer before starting, which would hold
+        // the first tick back; start on ~5 ms and let the keep-alive fill behind.
         runCatching { built.setStartThresholdInFrames(maxOf(1, outputRate / 200)) }
         if (runCatching { built.play() }.isFailure) {
             runCatching { built.release() }
@@ -261,8 +247,8 @@ class CuePlayer(
         report("cue output open, no audio focus requested, " +
             (if (othersBefore > 0) "$othersBefore other player(s) active" else "no other audio") + " at start")
         if (othersBefore > 0) {
-            // A podcast that was playing when the session started should STILL be playing a
-            // moment later. Ours is now one of the active players, hence the minus one.
+            // A podcast playing when the session started should STILL be playing a moment
+            // later. Ours is now active too, hence the minus one.
             mainHandler.postDelayed({
                 if (!isRunning) return@postDelayed
                 val others = activePlayers() - 1
@@ -278,7 +264,7 @@ class CuePlayer(
             }
 
             // The head position is an unsigned 32-bit frame count; masked, it cannot go
-            // negative across a wrap no session will ever reach.
+            // negative.
             override fun queuedFrames(): Int? {
                 val played = built.playbackHeadPosition.toLong() and 0xFFFF_FFFFL
                 return (framesWritten - played).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
@@ -295,8 +281,8 @@ class CuePlayer(
 
     // MARK: - Haptics
 
-    /// What this vibrator can actually express, asked once. Primitives are the closest
-    /// Android comes to Core Haptics' transients; amplitude control is the next best.
+    /// What this vibrator can express, asked once. Primitives are Android's closest to Core
+    /// Haptics transients; amplitude control is next best.
     private val hapticRange: HapticRange by lazy {
         val device = vibrator ?: return@lazy HapticRange.predefined
         val composed = runCatching {
@@ -319,25 +305,20 @@ class CuePlayer(
 /// How much of a haptic figure this device's vibrator can express.
 enum class HapticRange { composed, amplitude, predefined }
 
-/// The seven haptic figures, mapped onto what Android's vibrator can actually express.
+/// The seven haptic figures, mapped onto what Android's vibrator can express. iOS uses Core
+/// Haptics TRANSIENTS (intensity + sharpness) and CONTINUOUS events. Three tiers:
 ///
-/// iOS plays these through Core Haptics: TRANSIENTS (a tap with an intensity and a
-/// sharpness) and CONTINUOUS events (a buzz, a swell). Android gets as close as the
-/// hardware allows, in three tiers:
-///
-/// - **composed** — `VibrationEffect.Composition` primitives. A primitive CLICK or TICK is
-///   the device maker's own tuned transient, which is what a Core Haptics transient is on an
-///   iPhone; a fixed-length one-shot on the same motor is a short buzz, and at 10 ms on
-///   many motors it is felt as nothing at all. Intensity maps to the primitive's scale,
-///   sharpness chooses the primitive (sharp → CLICK/TICK, dull → LOW_TICK).
-/// - **amplitude** — one-shots and waveforms, intensity as amplitude and sharpness as
-///   DURATION: a sharp cue is a short tick, a dull one a longer buzz.
-/// - **predefined** — no amplitude control: `EFFECT_CLICK` and friends, which every
-///   device maps to something it can play, instead of one-shots whose amplitude would be
-///   silently ignored and leave every transient feeling the same.
+/// - **composed** — `VibrationEffect.Composition` primitives. A primitive CLICK/TICK is the
+///   maker's tuned transient, like a Core Haptics transient; a 10 ms one-shot is felt as
+///   nothing on many motors. Intensity maps to scale; sharpness picks the primitive (sharp
+///   → CLICK/TICK, dull → LOW_TICK).
+/// - **amplitude** — one-shots and waveforms: intensity as amplitude, sharpness as
+///   DURATION.
+/// - **predefined** — no amplitude control: `EFFECT_CLICK` and friends, which every device
+///   can play, rather than one-shots whose amplitude is silently ignored.
 ///
 /// The continuous figures (the "go" swell, the alarm buzz) stay waveforms in every tier
-/// that can shape them: no primitive is a sustained buzz.
+/// that can shape them: no primitive sustains.
 enum class CueHaptic {
     crisp,
     crispStrong,
@@ -359,12 +340,12 @@ enum class CueHaptic {
         when (this) {
             crisp -> composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.6f)
             crispStrong -> composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
-            // Soft and dull on iOS (intensity 0.45, sharpness 0.35). LOW_TICK is the dull
-            // primitive; it is also the faintest, so it gets more scale than 0.45 to land at
-            // the same felt weight.
+            // Soft and dull on iOS (0.45 intensity, 0.35 sharpness). LOW_TICK is the dull
+            // primitive but also the faintest, so it gets more scale for the same felt
+            // weight.
             soft -> composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.7f)
-            // Two knocks whose STARTS are 160 ms apart, as on iOS; the delay is measured from
-            // the end of the first primitive, which is ~10-20 ms long.
+            // Knock STARTS 160 ms apart, as on iOS; the delay counts from the end of the
+            // first (~10-20 ms) primitive.
             heavyDouble -> {
                 composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
                 composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 145)
@@ -406,8 +387,8 @@ enum class CueHaptic {
     }
 
     companion object {
-        /// Every primitive `composed()` uses: a device that lacks any of them gets the
-        /// amplitude tier for ALL figures, so one cue never feels unlike its family.
+        /// Every primitive `composed()` uses: lacking any one drops ALL figures to the
+        /// amplitude tier, so no cue feels unlike its family.
         val PRIMITIVES = intArrayOf(
             VibrationEffect.Composition.PRIMITIVE_CLICK,
             VibrationEffect.Composition.PRIMITIVE_LOW_TICK,
@@ -415,11 +396,9 @@ enum class CueHaptic {
     }
 }
 
-/// The nine cue tones, as pure arithmetic.
-///
-/// Split out from `CuePlayer` on purpose: rendering is the half worth testing (durations,
-/// sample counts, peak amplitude, the release ramp that stops a truncated sine clicking)
-/// and it needs no `AudioTrack`, no vibrator and no Android at all.
+/// The nine cue tones, as pure arithmetic. Split from `CuePlayer` because rendering is the
+/// half worth testing (durations, sample counts, peak amplitude, the release ramp) and it
+/// needs no Android.
 object ToneSynth {
 
     const val SAMPLE_RATE = 44_100
@@ -427,7 +406,7 @@ object ToneSynth {
     /// Only the last three seconds of a countdown speak. See `CuePlayer.tick`.
     val SPEAKING_TICKS = 1..3
 
-    /// ~4 ms of release on every note. The exponential tail never quite reaches zero, and a
+    /// ~4 ms release on every note: the exponential tail never reaches zero, and a
     /// truncated sine clicks.
     const val RELEASE_SECONDS = 0.004
 
@@ -436,8 +415,8 @@ object ToneSynth {
         val hz: List<Double>,
         val seconds: Double,
         val amplitude: Double,
-        /// Attack as a fraction of the note. Fast, but never zero — a hard edge on a sine is
-        /// an audible click through a phone speaker.
+        /// Attack as a fraction of the note. Fast, never zero: a hard edge on a sine clicks
+        /// through a phone speaker.
         val attack: Double = 0.02,
         /// Exponential decay constant as a fraction of the note. Smaller is drier.
         val decay: Double = 0.35,
@@ -456,23 +435,23 @@ object ToneSynth {
         gripChange,
     }
 
-    // A4 / C#5 / E5 / A5 — one chord's worth of pitches, so seven cues are tellable apart by
-    // interval rather than by volume, which is what survives a gym.
+    // A4 / C#5 / E5 / A5: one chord's pitches, so cues differ by interval rather than
+    // volume, which survives a gym.
     private const val A4 = 440.0
     private const val CS5 = 554.37
     private const val E5 = 659.25
     private const val A5 = 880.0
 
-    // The alarm's minor second, low. Sounded together the beating is unpleasant BY
-    // CONSTRUCTION, and unpleasant is the whole message.
+    // The alarm's low minor second: the beating is unpleasant BY CONSTRUCTION, which is the
+    // message.
     private const val ALARM_LO = 138.59
     private const val ALARM_HI = 146.83
 
     fun notes(tone: Tone): List<Note> = when (tone) {
         Tone.tick -> listOf(Note(listOf(A4), 0.06, 0.30, decay = 0.30))
         Tone.tickFinal -> listOf(Note(listOf(E5), 0.07, 0.45, decay = 0.30))
-        // Rising, because it means START. A falling figure for the same event read as "done"
-        // to everyone who heard it.
+        // Rising, because it means START; a falling figure read as "done" to everyone who
+        // heard it.
         Tone.go -> listOf(
             Note(listOf(A4), 0.09, 0.55, decay = 0.50),
             Note(listOf(A5), 0.12, 0.60, decay = 0.50),
@@ -486,8 +465,8 @@ object ToneSynth {
             Note(listOf(A5), 0.10, 0.45, attack = 0.10, decay = 0.50),
             Note(listOf(E5), 0.14, 0.45, attack = 0.10, decay = 0.50),
         )
-        // The one cue allowed past 250 ms — it is heard once, and it is the only thing
-        // telling someone with their eyes shut that they are finished.
+        // The one cue allowed past 250 ms: heard once, and it tells someone with their eyes
+        // shut they are finished.
         Tone.sessionComplete -> listOf(
             Note(listOf(A4), 0.15, 0.50, decay = 0.50),
             Note(listOf(CS5), 0.15, 0.50, decay = 0.50),
@@ -501,8 +480,8 @@ object ToneSynth {
         )
     }
 
-    /// Renders the notes end to end into ONE buffer, so a whole figure is a single write and
-    /// cannot be pulled apart by scheduling jitter.
+    /// Notes end to end in ONE buffer, so a figure is a single write that scheduling jitter
+    /// cannot pull apart.
     fun render(notes: List<Note>, rate: Int = SAMPLE_RATE): FloatArray {
         val counts = notes.map { maxOf(1, (it.seconds * rate).roundToInt()) }
         val total = counts.sum()
@@ -529,6 +508,6 @@ object ToneSynth {
     }
 }
 
-/// A last resort when `getMinBufferSize` reports an error code: 8192 float frames is well
-/// over the longest cue and small enough not to matter.
+/// Fallback when `getMinBufferSize` reports an error: 8192 float frames is well over the
+/// longest cue.
 private const val FALLBACK_BUFFER_BYTES = 8192 * Float.SIZE_BYTES

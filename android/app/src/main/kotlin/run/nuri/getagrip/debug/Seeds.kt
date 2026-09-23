@@ -22,21 +22,20 @@ import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
 import java.util.UUID
 
-/// Headless UI verification: `adb` cannot tap through a five-step builder, so the states
-/// worth screenshotting are reachable by launch extra.
+/// Headless UI verification: `adb` cannot tap through a five-step builder, so
+/// screenshot-worthy states are reachable by launch extra.
 ///
 /// ```
-/// adb shell am start -n run.nuri.getagrip/.MainActivity --ez seedTwoRoutines true --ez seedHistory true
+/// adb shell am start -n run.nuri.getagrip/.MainActivity --ez seedTwoRoutines true --ez
+/// seedHistory true
 /// ```
 ///
-/// **This is the ONLY thing in the app that inserts a routine without a user asking**, and
-/// it stays behind `BuildConfig.DEBUG` and behind an explicit extra for the same reason it
-/// does on iOS: a silent seed at launch leaves routines that read as a sync bug.
+/// **The ONLY thing that inserts a routine without a user asking**, so it stays behind
+/// `BuildConfig.DEBUG` and an explicit extra: a silent seed reads as a sync bug.
 ///
-/// TRANSLATION NOTE (`DoigtApp.applyLaunchSeeding`): iOS seeds BEFORE the store is built,
-/// so `TemplateStore.init`'s first `syncDerived()` already sees the seeded world. Android's
-/// store has no synchronous init to race — the Application seeds and then calls the first
-/// `syncDerived()` itself, in that order, which is the same guarantee.
+/// TRANSLATION NOTE (`DoigtApp.applyLaunchSeeding`): iOS seeds BEFORE building the store so
+/// its first `syncDerived()` sees the seed. Here the Application seeds, then calls the
+/// first `syncDerived()` itself — the same guarantee.
 object Seeds {
 
     fun requested(intent: Intent?): Boolean {
@@ -52,8 +51,8 @@ object Seeds {
         if (!requested(intent)) return
         val wants = { name: String -> intent?.getBooleanExtra(name, false) == true }
 
-        // Mutually exclusive, and "no routines" wins: a run that asks for the empty
-        // first-run state must never get a seeded one because both extras were passed.
+        // Mutually exclusive, and "no routines" wins: the empty first-run state must never
+        // get a seed.
         if (wants("seedNoRoutines")) {
             db.routines().deleteAll()
         } else if (wants("seedRoutine")) {
@@ -64,8 +63,8 @@ object Seeds {
             seedTwoRoutines(db)
         }
 
-        // History has nothing to draw until sessions exist, and driving three weeks of
-        // them by hand is not verification, it is typing.
+        // History has nothing to draw without sessions, and typing three weeks of them is
+        // not verification.
         if (wants("seedHistory")) {
             db.logs().deleteAll()
             db.maxes().deleteAll()
@@ -74,18 +73,17 @@ object Seeds {
         }
     }
 
-    /// The deck state: the ritual plus a max-day routine beside it — the same pair
-    /// `seedHistory` logs sessions for, so the two extras together give a coherent world.
+    /// The ritual plus a max-day routine — the pair `seedHistory` logs for, so the two
+    /// extras make a coherent world.
     private suspend fun seedTwoRoutines(db: GetAGripDatabase) {
-        // A percent band on the daily, so recording a max demonstrates the "targets that
-        // followed" half of the impact receipt…
+        // A percent band on the daily, so recording a max shows the "targets that followed"
+        // half of the receipt…
         var daily = RoutineDraft.starter
         daily = daily.copy(
             plan = daily.plan.copy(targetLoPercent = 0.18, targetHiPercent = 0.22)
         )
-        // The taper Nuri actually trains — the last crimp sets drop to 10 mm — so the demo
-        // also exercises the edge SPAN ("20–10 mm") and the compact glyphed stat row the
-        // span forces, not just the single-edge case.
+        // The taper Nuri trains (last crimp sets at 10 mm), exercising the edge SPAN
+        // ("20–10 mm") and its compact stat row.
         if (daily.plan.sets.size >= 2) {
             val sets = daily.plan.sets.toMutableList()
             for (index in sets.size - 2 until sets.size) {
@@ -95,9 +93,8 @@ object Seeds {
         }
         db.routines().upsert(SessionTemplateEntity.from(daily.normalized, 0))
 
-        // The C4 ladder as a WHENEVER routine — never owed, never reminded — with one
-        // TYPED kilogram band swapped onto a ramp set so the same seed also demonstrates
-        // the scale-with-the-new-max offer.
+        // The C4 ladder as a WHENEVER routine, with one TYPED kg band on a ramp set to
+        // demonstrate the scale-with-new-max offer.
         var maxDay = RoutineDraft.maxDay
         val maxSets = maxDay.plan.sets.toMutableList()
         maxSets[1] = maxSets[1].copy(
@@ -108,32 +105,26 @@ object Seeds {
         db.routines().upsert(SessionTemplateEntity.from(maxDay.normalized, 1))
     }
 
-    /// Eight weeks of plausible sessions: mostly twice a day, a few single days, a rest
-    /// day each week, and a load that drifts upward slowly — enough to exercise the month
-    /// grid, the trend line and the "holding steady" copy without pretending to be real
-    /// data.
+    /// Eight weeks of plausible sessions (mostly twice a day, a weekly rest day, slowly
+    /// rising load) — enough for the month grid, trend line and "holding steady" copy.
     private suspend fun seedHistory(db: GetAGripDatabase) {
         val plan = RoutineDraft.starter.normalized.plan.executable
         val slots = PlanMath.sequence(plan)
         val today = DayStamp.today()
-        // ATTACHED to the routines seeded a moment ago, by name. They used to be written
-        // with a null `templateID`, which quietly made the seeded world incoherent in
-        // three ways at once: Today's "0 of 2" counts completions BY ID and so could never
-        // move, History's trend deck fell back to grouping by name and never exercised the
-        // id path at all, and a rename could not be seen to propagate because there was no
-        // routine for a log to resolve against. Anything unmatched stays null, which is
-        // still a state worth having — it is what a deleted routine leaves.
+        // ATTACHED to the seeded routines by name. With a null `templateID`, Today's "0 of
+        // 2" (counted BY ID) could never move, History's trend deck never exercised the id
+        // path, and renames could not propagate. Unmatched stays null — what a deleted
+        // routine leaves.
         val ids = idsByName(db)
 
-        // 55 days, not 35: the month grid pages by 5-week windows, and a seed that fits
-        // inside one window could never demonstrate the swipe.
+        // 55 days, not 35: the month grid pages in 5-week windows, and the seed must
+        // demonstrate the swipe.
         for (daysAgo in 55 downTo 0) {
             val day = today - daysAgo
             if (daysAgo % 7 == 3) continue                  // a rest day each week
             val sessions = if (daysAgo % 5 == 1) 1 else 2   // some days only once
             for (session in 0 until sessions) {
-                // A slow upward drift plus a little day-to-day variation, so the trend has
-                // a direction without looking like a straight line.
+                // Slow upward drift plus daily variation: a direction, not a straight line.
                 val drift = (20 - daysAgo) * 0.08
                 val wobble = ((daysAgo * 7 + session * 3) % 5) * 0.2
                 val reps = slots.map { slot ->
@@ -160,19 +151,18 @@ object Seeds {
             }
         }
 
-        // A SECOND routine on the SAME grip at max intensity, every fourth day. This is
-        // the exact case the per-routine trend scope exists for: before the scope, these
-        // 30 kg sessions averaged into the 20 kg dailies and the "trend" was a zigzag
-        // tracking which routine ran, not how strong the fingers were getting.
+        // A SECOND routine on the SAME grip at max intensity, every fourth day — the case
+        // the per-routine trend scope exists for: without it these 30 kg sessions averaged
+        // into the 20 kg dailies as a zigzag.
         val maxPlan = SessionPlan(
             name = "Max pulls",
             sets = listOf(SetPlan(repsPerSide = 3)),
             handMode = HandMode.alternateEachRep,
             holdSeconds = 5,
             restSeconds = 90,
-            // The prescription its name claims — and what makes the demo show the rung's
-            // intensity ladder: a near-max band paints this card's mark alarm red while
-            // the untargeted daily stays bleu.
+            // The prescription its name claims, so the demo shows the intensity ladder: a
+            // near-max band paints this card's mark red while the untargeted daily stays
+            // bleu.
             targetLoPercent = 0.85,
             targetHiPercent = 1.0,
         )
@@ -203,19 +193,17 @@ object Seeds {
         }
     }
 
-    /// The routines just seeded, by name, so the logs above can point at them. Names are
-    /// unique within a seed by construction; a real store cannot promise that, but this
-    /// runs only behind a launch extra on a store the seed itself just wrote.
+    /// The routines just seeded, by name. Names are unique within a seed by construction
+    /// (not in a real store, but this runs only on a store the seed just wrote).
     private suspend fun idsByName(db: GetAGripDatabase): Map<String, UUID> {
         val out = HashMap<String, UUID>()
         for (template in db.routines().all()) out.putIfAbsent(template.name, template.id)
         return out
     }
 
-    /// The Maxes tab's world: a both-hands curve on the main grip, a hands-split pair on
-    /// a second, and the benchmark day the newest test landed on. The newest record is
-    /// exactly four weeks old, which is the soft nudge's threshold — so a seeded launch
-    /// demonstrates the pulsing icon too.
+    /// The Maxes tab's world: a both-hands curve, a hands-split pair on a second grip, and
+    /// the benchmark day of the newest test — exactly four weeks old, the soft nudge's
+    /// threshold, so the pulsing icon shows too.
     private suspend fun seedMaxes(db: GetAGripDatabase) {
         val plan = RoutineDraft.starter.normalized.plan.executable
         val slots = PlanMath.sequence(plan)
@@ -248,8 +236,7 @@ object Seeds {
             }
         }
 
-        // The day the newest test landed reads as a benchmark day — grid filled, History
-        // row present — exactly what `recordMax` would have written live.
+        // The newest test's day reads as a benchmark day, as `recordMax` would write live.
         val benchmarkDay = today - 28
         db.logs().upsert(
             WorkoutLogEntity.logged(

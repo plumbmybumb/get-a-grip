@@ -18,40 +18,33 @@ enum class TareTapDecision {
     blocked,
 
     /// **No live reading, so the load is UNKNOWN — waking the stream is the only safe
-    /// move.** `DeviceStore` forces `currentKg` to 0 when samples go stale while the link
-    /// stays up, which is exactly what an interruption produces. Treating that false zero
-    /// as "unloaded" would skip the confirmation and tare a climber still hanging on the
-    /// edge, corrupting every reading afterwards — the precise corruption the confirmation
-    /// exists to prevent, arriving through the very fault being diagnosed.
+    /// move.** `DeviceStore` forces `currentKg` to 0 when samples go stale on a live link,
+    /// which is what an interruption produces. Reading that false zero as "unloaded" would
+    /// skip the confirmation and tare a climber still on the edge — the corruption the
+    /// confirmation exists to prevent, arriving through the fault being diagnosed.
     ///
-    /// Waking rather than refusing also keeps the promise the empty state already makes:
-    /// "Connected, but no readings yet. Tap Tare to wake it."
+    /// Waking also keeps the empty state's promise: "Connected, but no readings yet. Tap
+    /// Tare to wake it."
     wakeStream,
 
     confirm,
     tare,
 }
 
-/// Pure policy for the runner's tare control. Keeping the load decision separate from the
-/// UI makes the confirmation threshold and its revalidation rule testable without
-/// pretending a JVM test can exercise a Bluetooth gauge.
+/// Pure policy for the runner's tare control, so the confirmation threshold and its
+/// revalidation are testable without a Bluetooth gauge.
 object TarePolicy {
     const val confirmationThresholdKg = 1.0
 
-    /// A named tolerance avoids exact-equality loops from sensor jitter while requiring a
-    /// signed load move large enough to invalidate the number shown in the alert.
+    /// Tolerates sensor jitter while requiring a signed load move large enough to
+    /// invalidate the number the alert showed.
     const val confirmationToleranceKg = 0.5
 
-    /// **Armed ALLOWS taring** (2026-08-18, Nuri: "I should be able to tare before I start
-    /// during the first pull. Assumably, that's when most of the taring would happen") —
-    /// and he is right about when: getting set up while the screen says PULL is exactly
-    /// the taring moment. It is also safe, for reasons the other machinery already
-    /// provides: nothing accrues during armed, so there is no clock for a tare to corrupt;
-    /// a load worth worrying about (≥1 kg) goes through the confirmation, which
-    /// revalidates the PHASE before writing — a pull that engaged mid-alert reads
-    /// `Working` and rejects; and the tap itself re-reads the phase, so a rep that just
-    /// started blocks on its own. `Working` and `Releasing` stay forbidden: one has the
-    /// clock running, the other a hand still on the edge.
+    /// **Armed ALLOWS taring** (Nuri, 2026-08-18): setting up while the screen says PULL is
+    /// exactly when people tare. It is safe: nothing accrues while armed; a load ≥1 kg goes
+    /// through the confirmation, which revalidates the PHASE (a pull that engaged mid-alert
+    /// reads `Working` and rejects); and the tap itself re-reads the phase. `Working` and
+    /// `Releasing` stay forbidden: clock running, or a hand still on the edge.
     fun phaseAllowsTare(phase: RunnerPhase): Boolean = when (phase) {
         is RunnerPhase.Paused -> phaseAllowsTare(phase.before)
         is RunnerPhase.Working, is RunnerPhase.Releasing -> false
@@ -63,29 +56,22 @@ object TarePolicy {
     fun readingIsStable(promptedKg: Double, currentKg: Double): Boolean =
         abs(currentKg - promptedKg) <= confirmationToleranceKg
 
-    /// How old the newest sample may be and still be treated as the live load.
-    ///
-    /// Much tighter than `DeviceStore.isSignalFresh`, deliberately. That diagnostic flag
-    /// only flips once a 500 ms watchdog observes a sample already
-    /// over a second old — so it can still say "fresh" ~1.5 s after the stream stopped,
-    /// which is long enough for a climber to load the edge against a reading frozen at
-    /// 0 kg. A tare is irreversible for the rest of the session; it gets its own bound.
+    /// How old the newest sample may be and still count as the live load. Much tighter than
+    /// `DeviceStore.isSignalFresh`, which can read "fresh" ~1.5 s after the stream stopped
+    /// (500 ms watchdog, one-second threshold) — long enough to load the edge against a
+    /// reading frozen at 0 kg. A tare is irreversible, so it gets its own bound.
     const val liveReadingMaxAgeSeconds = 0.3
 
-    /// **Staleness is checked BEFORE the phase, and that order is the point.** Waking the
-    /// stream never tares, so there is no phase in which it is unsafe — and the phases
-    /// that forbid taring (`Working`, `Releasing`) are exactly the ones where a dead
-    /// stream hurts most. Checking the phase first would disable the button during a pull
-    /// and leave "tap to wake it" impossible at the only moment it matters.
+    /// **Staleness is checked BEFORE the phase.** Waking never tares, so no phase makes it
+    /// unsafe, and the phases that forbid taring (`Working`, `Releasing`) are where a dead
+    /// stream hurts most. Phase first would disable "tap to wake it" at the only moment it
+    /// matters.
     ///
-    /// `isReadingLive` is the OBSERVABLE liveness, so one call computes the mode the
-    /// button draws AND the action it performs — label, glyph, enabled state and tap all
-    /// from a single decision per render.
+    /// `isReadingLive` is the OBSERVABLE liveness, so one decision per render gives the
+    /// button's label, glyph, enabled state and action.
     ///
-    /// **`isLoadedForTare` is a coarse Boolean, not the raw kilogram figure.** `currentKg`
-    /// changes at sample rate (~80 Hz); `DeviceStore` publishes this flag change-guarded,
-    /// the same shape as `isReadingLive`, so a render-path read of it cannot re-evaluate
-    /// the whole button body 80×/s the way reading `currentKg` directly used to.
+    /// **`isLoadedForTare` is a coarse Boolean, not raw kilograms**, change-guarded like
+    /// `isReadingLive`, so the render path cannot re-evaluate the button at ~80 Hz.
     fun tapDecision(
         phase: RunnerPhase,
         isReadingLive: Boolean,
@@ -96,15 +82,13 @@ object TarePolicy {
         return if (isLoadedForTare) TareTapDecision.confirm else TareTapDecision.tare
     }
 
-    /// The exact age, checked at ACTION time, after the rendered decision. The observable
-    /// flag lags by up to one watchdog tick; this closes that window in the safe direction
-    /// — a tap that was drawn as "Tare" wakes instead if the samples have actually
-    /// stopped. It can only ever downgrade, never authorize.
+    /// The exact age, checked at ACTION time. The observable flag lags by up to a watchdog
+    /// tick; this closes that window in the safe direction (a tap drawn as "Tare" wakes
+    /// instead). It can only downgrade, never authorize.
     ///
-    /// **`maxAgeSeconds` defaults to `liveReadingMaxAgeSeconds`** — this constant itself
-    /// stays the Tindeq's 0.3 s, untouched. A broadcast gauge's caller passes
-    /// `DeviceStore.tareReadingMaxAge` instead, so the same number that decides the
-    /// button's mode also decides what the tap does with it.
+    /// **`maxAgeSeconds` defaults to `liveReadingMaxAgeSeconds`** (the Tindeq's 0.3 s). A
+    /// broadcast gauge's caller passes `DeviceStore.tareReadingMaxAge`, so one number
+    /// decides both mode and action.
     fun isSafeToTareNow(
         sampleAge: Double?,
         maxAgeSeconds: Double = liveReadingMaxAgeSeconds,
@@ -113,10 +97,9 @@ object TarePolicy {
         return sampleAge <= maxAgeSeconds
     }
 
-    /// The exact sample age is checked here too, not only at the tap. The alert can be open
-    /// across the moment the samples stop, and a reading that went stale mid-alert
-    /// collapses to a false 0 kg, which would otherwise sail through the tolerance check
-    /// and authorize a tare against a load nobody can see.
+    /// The exact sample age is checked here too: samples can stop while the alert is open,
+    /// and a stale reading collapses to a false 0 kg that would pass the tolerance check
+    /// and authorize a tare against an unseen load.
     fun confirmationDecision(
         promptedKg: Double,
         currentKg: Double,
@@ -146,13 +129,10 @@ object TarePolicy {
         else -> null
     }
 
-    /// What the BUTTON says while it is disabled — the same reason as `disabledReason`,
-    /// cut to fit a half-width control.
-    ///
-    /// The reason has to be visible, not only spoken: a dimmed control with no explanation
-    /// is the failure this whole rule exists to correct, and swapping the label is the
-    /// only way to say it here without a caption line that would shove the row below it
-    /// down at every rep transition.
+    /// What the BUTTON says while disabled — `disabledReason` cut to a half-width control.
+    /// The reason must be visible: a dimmed control with no explanation is the failure this
+    /// rule corrects, and a caption line would shove the row below down at every rep
+    /// transition.
     fun disabledLabel(phase: RunnerPhase): String? = when (phase) {
         is RunnerPhase.Paused -> disabledLabel(phase.before)
         is RunnerPhase.Working -> L10n.tr("Pulling")
@@ -161,32 +141,27 @@ object TarePolicy {
     }
 }
 
-/// Pure policy for the runner's Pause/Resume and Skip controls — the same shape as
-/// `TarePolicy` above, for the same reason: keeping the enabled/disabled decision free of
-/// the UI makes it directly testable.
+/// Pure policy for the runner's Pause/Resume and Skip controls, testable like `TarePolicy`.
 ///
-/// **`Idle` is every session opened before the gauge has connected** (the screen reads
-/// CONNECTING, indefinitely if it never answers). Before this policy existed, Pause and
-/// both Skip buttons drew full press-down feedback there and silently did nothing:
-/// `SessionRunner.pause` returns an empty cue list for `Idle`, and `endCurrentRep`/
-/// `skipSet` both guard `!phase.isPaused` — which additionally makes Skip dead any time
-/// the session is paused. With chalk on your hands there is no way to tell "nothing
-/// happened" from "the app is broken" — a disabled control has to SAY why.
+/// **`Idle` is every session opened before the gauge connects** (CONNECTING, indefinitely
+/// if it never answers). Pause and both Skips once drew press feedback there and did
+/// nothing (`SessionRunner.pause` returns no cues for `Idle`; `endCurrentRep`/`skipSet`
+/// guard `!phase.isPaused`, so Skip was also dead while paused). With chalk on your hands
+/// "nothing happened" looks like "broken"; a disabled control has to SAY why.
 object RunnerControlPolicy {
-    /// Pause/Resume is the SAME button throughout a pause — resuming is what makes it live
-    /// again — so it stays enabled once paused. Only the pre-connect window disables it.
+    /// Pause/Resume is the SAME button throughout a pause, so it stays enabled once paused;
+    /// only pre-connect disables it.
     fun pauseEnabled(phase: RunnerPhase): Boolean = phase !is RunnerPhase.Idle
 
-    /// Skip is additionally dead while paused: `endCurrentRep`/`skipSet` both guard
-    /// `!phase.isPaused`, because skipping a rep whose clock the climber cannot see is
-    /// running would silently record an outcome for a hold that is not happening.
+    /// Skip is dead while paused: `endCurrentRep`/`skipSet` guard `!phase.isPaused`,
+    /// because skipping a rep whose clock is not visibly running would record an outcome
+    /// for a hold that is not happening.
     fun skipEnabled(phase: RunnerPhase): Boolean =
         phase !is RunnerPhase.Idle && !phase.isPaused
 
-    /// Full sentences, for the accessibility HINT — the buttons keep their identity labels
-    /// while disabled. Swapping the label spent the two Skip buttons' names on the same
-    /// word twice ("Paused" beside "Paused"), and the reason is already the largest text
-    /// on the screen.
+    /// Full sentences for the accessibility HINT; the buttons keep their labels while
+    /// disabled. Swapping labels put "Paused" beside "Paused", and the reason is already
+    /// the largest text on screen.
     fun pauseDisabledReason(phase: RunnerPhase): String? =
         if (pauseEnabled(phase)) null else L10n.tr("Pause is unavailable while connecting.")
 

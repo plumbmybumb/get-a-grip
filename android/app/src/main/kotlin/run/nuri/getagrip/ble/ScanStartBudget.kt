@@ -14,20 +14,17 @@ import kotlin.math.max
 
 /// **Android's scan quota, counted — shared by every client the app builds.**
 ///
-/// Five scan STARTS in thirty seconds and the platform stops delivering results for the
-/// next thirty, silently: no error, no callback, just a scan that finds nothing. The quota
-/// is per APP, not per client, so the factory hands one of these to every client it makes —
-/// switching gauges does not reset what the phone has already counted.
+/// Five scan STARTS in thirty seconds and the platform silently delivers nothing for the
+/// next thirty. The quota is per APP, so the factory shares one budget and switching gauges
+/// does not reset the count.
 ///
-/// Four starts per 31 s, not five per 30: one start under the limit and a second over the
-/// window, so a boundary rounded the wrong way cannot tip the phone over it. A start the
-/// platform refused as too frequent (`SCAN_FAILED_SCANNING_TOO_FREQUENTLY`, 6) buys a full
-/// window of cooldown, because by then the platform is already counting against us.
+/// Four per 31 s, not five per 30: one start and one second of margin, so a boundary
+/// rounded the wrong way cannot tip it. A `SCAN_FAILED_SCANNING_TOO_FREQUENTLY` (6) refusal
+/// buys a full cooldown window: the platform is already counting against us.
 ///
-/// The two connected clients need it as much as `BroadcastGaugeClient` does: every failed
-/// attempt stops their scan, so a retry ladder of connect timeouts restarts one scan per
-/// rung — exactly the shape that trips the quota. Reusing a RUNNING scan is not enough,
-/// because by the next rung none is running. See `BudgetedScanStart`.
+/// The connected clients need it too: every failed attempt stops their scan, so a ladder of
+/// connect timeouts restarts one scan per rung, and reusing a running scan does not help
+/// when none is running. See `BudgetedScanStart`.
 class ScanStartBudget(
     private val windowSeconds: Double = 31.0,
     private val maximumStarts: Int = 4,
@@ -61,10 +58,9 @@ class ScanStartBudget(
     }
 }
 
-/// **A connected client's scan start, asked of the budget first.** Both connected clients
-/// stop their scan on every failed attempt, so a retry ladder of connect timeouts would
-/// restart one scan per rung; a start the quota cannot afford waits here instead, and the
-/// attempt's deadline starts only once its scan does.
+/// **A connected client's scan start, asked of the budget first** (see `ScanStartBudget`).
+/// A start the quota cannot afford waits here, and the attempt's deadline starts only once
+/// its scan does.
 class BudgetedScanStart(
     private val scope: CoroutineScope,
     private val budget: ScanStartBudget,
@@ -73,9 +69,8 @@ class BudgetedScanStart(
 ) {
     private var deferred: Job? = null
 
-    /// True when the start has to WAIT: `retry` then runs once the budget can afford it,
-    /// provided `stillWanted()` — the attempt that asked may have been superseded meanwhile.
-    /// False means start now, and report it with `started()`.
+    /// True when the start must WAIT: `retry` runs once affordable, if `stillWanted()` (the
+    /// attempt may have been superseded). False means start now and report `started()`.
     fun deferIfOverBudget(stillWanted: () -> Boolean, retry: () -> Unit): Boolean {
         val wait = budget.delaySeconds(clock.uptimeSeconds())
         if (wait <= 0) return false

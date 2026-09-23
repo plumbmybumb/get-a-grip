@@ -19,49 +19,43 @@ import run.nuri.getagrip.engine.Side
 
 /// **Everything the Live Update draws, as a pure value.**
 ///
-/// TRANSLATION NOTE (from Widget/SessionLiveActivity.swift): iOS renders the card from a
-/// SwiftUI view in a separate widget process. Android's counterpart is an ongoing
-/// notification built in-process — so the "view" is a handful of strings and one colour,
-/// and the only way to test it without a device is to make that mapping a value.
-/// `LiveUpdateNotification` below is then a mechanical `NotificationCompat` assembly with
-/// no decisions left in it.
+/// TRANSLATION NOTE (Widget/SessionLiveActivity.swift): iOS renders the card in a widget
+/// process; Android posts an ongoing notification in-process, so the "view" is a few
+/// strings and one colour, made a value to be testable without a device.
+/// `LiveUpdateNotification` is then mechanical `NotificationCompat` assembly.
 ///
-/// The layout mirrors the lock-screen card line for line: the phase WORD is the title
-/// (what iOS draws in the phase tint), the grip line is the body, and the position line
-/// — "Set 2 of 6 · Pull 7 of 36" — is the sub-text that sits in the header beside the app
-/// name. The target band rides with the grip because it is the one load figure a surface
-/// that updates on state changes can state honestly (see `SessionActivityState`), and
-/// putting it beside the grip is what keeps it on the same line as the thing it applies to.
+/// It mirrors the lock-screen card: the phase WORD is the title, the grip line the body,
+/// and "Set 2 of 6 · Pull 7 of 36" the header sub-text. The target band rides with the
+/// grip: it is the one load figure a state-pushed surface can state honestly (see
+/// `SessionActivityState`), on the line it applies to.
 data class LiveUpdateContent(
     /// The phase word — plus, while armed, the length of the hold ahead. **Armed runs no
-    /// clock at all**, so there is no deadline to hand a chronometer; iOS draws the hold
-    /// length dimmed in the trailing column instead, and here it joins the title, which is
-    /// the only place on a notification that is read before anything else.
+    /// clock**, so there is no chronometer deadline; iOS draws the length dimmed, here it
+    /// joins the title, the first thing read.
     val title: String,
     /// The grip, with the rep's target band when it has one.
     val text: String,
-    /// Where you are in the session. **"Set 1 of 1" is dropped** — a constant dressed up
-    /// as a counter, and the pull count is what needs the room.
+    /// Where you are in the session. **"Set 1 of 1" is dropped**: a constant dressed as a
+    /// counter, taking the pull count's room.
     val subText: String,
-    /// API 36's promoted-ongoing strip: a few characters shown on the status bar chip.
-    /// The phase word, because that is the one thing worth reading at that size.
+    /// API 36's promoted-ongoing status-bar chip: the phase word, the one thing worth
+    /// reading at that size.
     val shortCriticalText: String,
-    /// The card's own background — **fixed hex, never a translucent wash of the accent.**
-    /// Carried straight from `SessionActivity.Phase.cardTint`: a translucent amber under
-    /// white text is a legibility coin-toss against whatever wallpaper is behind the lock
-    /// screen, and this surface has one job — being read from across a room, mid-hang.
+    /// The card's background — **fixed hex, never a translucent wash of the accent**
+    /// (`SessionActivity.Phase.cardTint`). Translucent amber under white text is a
+    /// legibility coin-toss against the wallpaper, and this surface must be read across a
+    /// room, mid-hang.
     val cardTintArgb: Int,
-    /// When the clock currently running runs out, as a wall-clock instant, or null when
-    /// nothing is counting. A DEADLINE and not a number of seconds, because a notification
-    /// chronometer then ticks itself down with no further pushes from the app — the single
-    /// choice that makes a twenty-minute session affordable.
+    /// When the running clock runs out, as a wall-clock instant, or null. A DEADLINE, not
+    /// seconds, so the chronometer ticks itself with no further pushes — what makes a
+    /// twenty-minute session affordable.
     val chronometerEndsAtMillis: Long?,
     /// Whether the phase reads as "do this NOW" rather than "this is what's coming".
     val isActive: Boolean,
 ) {
     companion object {
-        /// The colours are `SessionActivity.Phase.cardTint`, byte for byte. Opaque, because
-        /// a notification background has nothing to blend with.
+        /// `SessionActivity.Phase.cardTint`, byte for byte. Opaque: a notification
+        /// background has nothing to blend with.
         const val TINT_CALM = 0xFF161A20.toInt() // near-black slate: lead-in and rest
         const val TINT_ARMED = 0xFF3A2408.toInt() // deep amber: waiting on YOU
         const val TINT_PULLING = 0xFF0E2740.toInt() // deep bleu: the clock is running
@@ -83,8 +77,7 @@ data class LiveUpdateContent(
             SessionActivityPhase.paused -> TINT_PAUSED
         }
 
-        /// `nowMillis` is passed in rather than read, because the deadline guard below is
-        /// the one piece of this that has to be driven from a test.
+        /// `nowMillis` is passed in so the deadline guard below can be driven from a test.
         fun of(
             state: SessionActivityState,
             plannedReps: Int,
@@ -92,11 +85,10 @@ data class LiveUpdateContent(
             nowMillis: Long,
         ): LiveUpdateContent {
             val word = word(state.phase)
-            // **`endsAt > now` is a correctness guard, not tidiness.** A chronometer handed
-            // a deadline in the past counts UP from it, so a card nobody has pushed to in a
-            // while would sit there claiming a rep has been running for four minutes. iOS
-            // guards the same comparison because `Date.now...endsAt` traps outright. Paused
-            // is excluded for the plain reason that a paused session has no clock running.
+            // **`endsAt > now` is a correctness guard.** A chronometer given a past
+            // deadline counts UP, so a stale card would claim a rep running for four
+            // minutes (iOS guards it because `Date.now...endsAt` traps). Paused has no
+            // clock running.
             val endsAt = state.endsAtEpochMillis
                 ?.takeIf { it > nowMillis && state.phase.runsCountdown }
             val pending = state.pendingSeconds.takeIf { state.phase == SessionActivityPhase.armed }
@@ -116,9 +108,9 @@ data class LiveUpdateContent(
             )
         }
 
-        /// The hand leads, because a notification has no room for the hand MARK the iOS
-        /// card draws and losing "which hand" would make the line describe the wrong pull.
-        /// `both` is left off: it is the default and says nothing.
+        /// The hand leads: there is no room for the iOS hand MARK, and losing "which hand"
+        /// describes the wrong pull. `both` is the default and says nothing, so it is left
+        /// off.
         private fun gripLine(state: SessionActivityState): String {
             val grip = if (state.side == Side.both) {
                 state.grip.line
@@ -144,28 +136,24 @@ data class LiveUpdateContent(
 }
 
 /// Builds the ongoing notification that IS the Live Update — the twin of iOS's Live
-/// Activity, and the same notification the `connectedDevice` foreground service runs in.
+/// Activity, and the notification the `connectedDevice` foreground service runs in.
 ///
-/// **Push on STATE, never on the clock.** Nothing here is called on a tick: the countdown
-/// is a notification CHRONOMETER anchored to `setWhen(endsAtMillis)` and counting down, so
-/// the system ticks it once a second with no work from us. `RunnerSession` pushes only
-/// when its activity signature moves — a rep ending, a hand swapping — and
-/// `AndroidActivityPublisher` drops anything that would redraw the same card.
+/// **Push on STATE, never on the clock.** The countdown is a CHRONOMETER anchored by
+/// `setWhen(endsAtMillis)`, ticked by the system. `RunnerSession` pushes only when its
+/// activity signature moves, and `AndroidActivityPublisher` drops identical cards.
 ///
-/// **It cannot pulse, and nothing here pretends to.** A notification is an archived render
-/// exactly as a Live Activity is; what it gets is a fresh render on every real push, so
-/// the colour changes ON THE BEAT — armed, holding, rest — which is the only pulse worth
-/// having and the only one the platform can give.
+/// **It cannot pulse.** A notification is an archived render like a Live Activity; each
+/// real push re-renders, so the colour changes ON THE BEAT — armed, holding, rest — the
+/// only pulse the platform can give.
 object LiveUpdateNotification {
 
-    /// **Low importance, silent, and `setOnlyAlertOnce` on top of it.** The card updates a
-    /// few times a minute for twenty minutes; a channel that could make a sound would turn
-    /// a workout into a pager. It is also the reason the app can never disturb what you are
-    /// listening to from this surface — there is no sound to duck.
+    /// **Low importance, silent, and `setOnlyAlertOnce`.** The card updates a few times a
+    /// minute for twenty minutes; a sounding channel would turn a workout into a pager, and
+    /// with no sound there is nothing to duck.
     const val CHANNEL_ID = "session"
 
-    /// Shared with the foreground service, so `startForeground` adopts the card the
-    /// publisher already posted instead of flashing a placeholder first.
+    /// Shared with the foreground service, so `startForeground` adopts the posted card
+    /// instead of flashing a placeholder.
     const val NOTIFICATION_ID = 4207
 
     fun ensureChannel(context: Context) {
@@ -187,8 +175,7 @@ object LiveUpdateNotification {
     fun build(context: Context, content: LiveUpdateContent): Notification {
         ensureChannel(context)
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            // The app's own monochrome mark — the same one the reminder uses, and the same
-            // drawing the palm and the icon are.
+            // The app's monochrome mark, as on the reminder.
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(content.title)
             .setContentText(content.text)
@@ -196,41 +183,36 @@ object LiveUpdateNotification {
             .setContentIntent(openSession(context))
             .setOngoing(true)
             .setSilent(true)
-            // The whole card is tinted, which is `activityBackgroundTint` on iOS. Colorized
-            // is honoured for an ongoing FOREGROUND-SERVICE notification, which is exactly
-            // what a connected session's card is; without the service it degrades to an
-            // accent, which is why the tint is a full colour rather than a wash.
+            // Whole-card tint (`activityBackgroundTint` on iOS). Colorized is honoured for
+            // an ongoing FOREGROUND-SERVICE notification, which a connected session's card
+            // is; otherwise it degrades to an accent, hence a full colour rather than a
+            // wash.
             .setColorized(true)
             .setColor(content.cardTintArgb)
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            // **Never alert on an update.** Ten pushes across a session, each one a state
-            // change; any of them re-alerting would be the app shouting about its own
-            // bookkeeping.
+            // **Never alert on an update**: each push is a state change, and re-alerting
+            // would be the app shouting about its own bookkeeping.
             .setOnlyAlertOnce(true)
 
         val endsAt = content.chronometerEndsAtMillis
         if (endsAt != null) {
-            // THE CLOCK, and the app's whole update budget in three lines. `setWhen` is the
-            // anchor, `usesChronometer` makes the header a running timer instead of a
-            // timestamp, and `chronometerCountDown` runs it backwards — the twin of
-            // `Text(timerInterval:countsDown: true)`. Nothing pushes it; the system ticks it.
+            // THE CLOCK: `setWhen` anchors, `usesChronometer` makes the header a timer,
+            // `chronometerCountDown` runs it backwards — the twin of
+            // `Text(timerInterval:countsDown: true)`. The system ticks it.
             builder.setWhen(endsAt).setUsesChronometer(true).setChronometerCountDown(true)
             builder.setShowWhen(true)
         } else {
-            // Armed, paused, or finished: no clock. Showing `when` here would put a
-            // wall-clock time where a countdown was a second ago, which reads as a stopped
-            // timer rather than as no timer.
+            // Armed, paused, or finished: no clock. Showing `when` would put a wall-clock
+            // time where a countdown was, which reads as a stopped timer.
             builder.setShowWhen(false).setUsesChronometer(false)
         }
 
         if (Build.VERSION.SDK_INT >= 36) {
-            // **API 36's Live Update.** A promoted ongoing notification is pinned to the
-            // status bar and the lock screen with its own compact chip — the closest thing
-            // Android has to the Dynamic Island, and the reason this feature is shaped like
-            // a notification at all. Below 36 the same card is posted unpromoted, which is
-            // an ordinary ongoing notification and still exactly what the session needs.
+            // **API 36's Live Update.** A promoted ongoing notification is pinned to status
+            // bar and lock screen with its own chip — Android's closest thing to the
+            // Dynamic Island. Below 36 it posts unpromoted, still what the session needs.
             builder.setRequestPromotedOngoing(true)
             builder.setShortCriticalText(content.shortCriticalText)
         }
@@ -238,9 +220,8 @@ object LiveUpdateNotification {
         return builder.build()
     }
 
-    /// The card for a session that has FINISHED but is not saved yet — see
-    /// `AndroidActivityPublisher.showFinished`. The tint goes back to the calm slate: nothing
-    /// is being asked of the hands any more.
+    /// The card for a session FINISHED but not yet saved — see
+    /// `AndroidActivityPublisher.showFinished`. Calm slate: nothing is asked of the hands.
     fun finished(context: Context, routineName: String): Notification {
         ensureChannel(context)
         return NotificationCompat.Builder(context, CHANNEL_ID)
@@ -262,9 +243,9 @@ object LiveUpdateNotification {
             .build()
     }
 
-    /// The card a STRAY service start runs in for the instant before it stops — see
-    /// `SessionForegroundService.onStartCommand`. Silent, low-importance and titled with the
-    /// app's name, because it may flash on screen for a frame and must not claim a phase.
+    /// The card a STRAY service start runs in before it stops — see
+    /// `SessionForegroundService.onStartCommand`. Silent, titled with the app name: it may
+    /// flash for a frame and must not claim a phase.
     fun placeholder(context: Context): Notification {
         ensureChannel(context)
         return NotificationCompat.Builder(context, CHANNEL_ID)
@@ -279,8 +260,8 @@ object LiveUpdateNotification {
             .build()
     }
 
-    /// Tapping the card returns to the session. `singleTask` plus CLEAR_TOP means the
-    /// running Activity is brought forward rather than a second one created on top of it.
+    /// Tapping returns to the session: `singleTask` plus CLEAR_TOP brings the running
+    /// Activity forward rather than stacking another.
     private fun openSession(context: Context): PendingIntent = PendingIntent.getActivity(
         context,
         0,

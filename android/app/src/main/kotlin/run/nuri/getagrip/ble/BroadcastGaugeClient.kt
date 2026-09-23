@@ -74,10 +74,9 @@ class BroadcastGaugeClient internal constructor(
     private var lockedAddress: String? = null
     private var lastFrameUptime: Double? = null
 
-    /// The scale's display unit, as a diagnostic fact — named once per link and again
-    /// only when it changes, so a report from a scale set to pounds says so, and a unit
-    /// code the codec does not know is visible without a single payload byte in the
-    /// report. `WHC06Codec` converts the known units; the unknown ones read as kilograms.
+    /// The scale's display unit as a diagnostic fact, named once per link and on change, so
+    /// a report shows a pounds-mode scale or an unknown unit code without payload bytes.
+    /// `WHC06Codec` converts known units; unknown ones read as kilograms.
     private var lastUnitReport: String? = null
     private var lastAdvertisementUptime: Double? = null
     private val softwareTare = SoftwareTare()
@@ -407,9 +406,8 @@ class BroadcastGaugeClient internal constructor(
             ?: "scale unit byte absent, read as kilograms"
         if (report == lastUnitReport) return
         lastUnitReport = report
-        // The raw count the unit was read beside: one number, once per link and per unit
-        // change, so a report says what the scale sent in that mode without carrying
-        // payload bytes. It is what settles "is the count in display units or kilograms".
+        // The raw count read beside the unit, once per link and unit change: settles
+        // "display units or kilograms" without carrying payload bytes.
         val raw = WHC06Codec.rawCountFromManufacturerData(framed)
         diagnostic(if (raw != null) "$report (raw count $raw)" else report)
     }

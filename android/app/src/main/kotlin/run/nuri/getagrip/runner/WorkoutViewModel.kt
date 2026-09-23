@@ -15,11 +15,10 @@ import run.nuri.getagrip.GetAGripApplication
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.engine.RPE
 
-/// A screen can be recreated without ending the workout it displays. Retain the
-/// route, runner, coroutine scope and unsaved decisions together across that change.
-/// A RUNNING session is deliberately not restored after process death: there is no live
-/// gauge timeline to resume in a new process. A FINISHED one is — as a draft written at
-/// the last rep, which the next launch offers to save (`UnsavedSessionRecovery`).
+/// Retains the route, runner, scope and unsaved decisions across screen recreation. A
+/// RUNNING session is not restored after process death (no live gauge timeline to resume);
+/// a FINISHED one is, as the draft the next launch offers to save
+/// (`UnsavedSessionRecovery`).
 class WorkoutViewModel(application: Application) : AndroidViewModel(application) {
     var active: ActiveWorkout? by mutableStateOf(null)
         private set
@@ -35,8 +34,8 @@ class WorkoutViewModel(application: Application) : AndroidViewModel(application)
         session.onFinished = { outcome ->
             // The summary shows exactly the outcome the draft froze.
             workout.adopt(outcome)
-            // "A session nobody pulled in is not worth logging" — the Save path's own rule,
-            // so there is nothing to recover either.
+            // The Save path's own rule: a session nobody pulled in is not worth logging, or
+            // recovering.
             if (outcome.didAnyWork) drafts?.save(FinishedSessionDraft.of(outcome, template))
         }
         active = workout
@@ -44,10 +43,9 @@ class WorkoutViewModel(application: Application) : AndroidViewModel(application)
         return true
     }
 
-    /// The summary was resolved — saved, or discarded on purpose — so the draft goes with
-    /// the session. NOT from `onCleared`: a ViewModel cleared with the summary still open
-    /// (the task swiped away) left a session nobody decided about, and that is exactly what
-    /// the draft is for.
+    /// The summary was resolved (saved or discarded), so the draft goes. NOT from
+    /// `onCleared`: a ViewModel cleared with the summary open (task swiped away) leaves an
+    /// undecided session — what the draft is for.
     fun finish(workout: ActiveWorkout) {
         if (active !== workout) return
         workout.session.end()

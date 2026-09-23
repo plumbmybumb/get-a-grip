@@ -38,36 +38,30 @@ import kotlin.math.min
 
 /// Every connected gauge that is NOT a Tindeq Progressor.
 ///
-/// One client for six devices, because after the codec there is nothing device-specific
-/// left in the wire handling: discover the profile's service, subscribe to its notify
-/// characteristic (plus any `alternateNotifyCharacteristicUUIDs`), write
-/// `oneTimeSetupPayloads` once, write `streamStartPayloads` in order — paced by
-/// `startPayloadDelaySeconds` where a device needs it — and hand every notification to
-/// `kind.makeFrameDecoder()`. What differs between an Entralpi and a Motherboard lives
-/// entirely in `GaugeGattProfile` and the codec, which is the point of freezing those two
-/// shapes.
+/// One client for six devices: after the codec nothing device-specific is left. Discover
+/// the profile's service, subscribe to its notify characteristic (plus any
+/// `alternateNotifyCharacteristicUUIDs`), write `oneTimeSetupPayloads` once, write
+/// `streamStartPayloads` in order (paced by `startPayloadDelaySeconds` where needed), and
+/// hand every notification to `kind.makeFrameDecoder()`. The differences live in
+/// `GaugeGattProfile` and the codec.
 ///
-/// **Deliberately simpler than `LiveProgressorClient`.** The Tindeq client carries three
-/// mechanisms this one must not copy: serialized queries (its tag-0 replies carry no echo
-/// of the command they answer, so one outstanding query is the only safe number), the
-/// tare-integrity latch, and the peripheral quarantine. None of them applies here. A GATT
-/// read's reply names its own characteristic, so nothing can cross-pair; a tare is either
-/// one plain write or app-side arithmetic; and every one of these devices is a PORT of
-/// hangtime-grip-connect's documented protocol that this project has never held in its
-/// hands, so the honest shape is the small one, with the hard-won Tindeq machinery left
-/// where it was earned.
+/// **Deliberately simpler than `LiveProgressorClient`.** It must not copy the Tindeq's
+/// serialized queries (tag-0 replies carry no echo), tare-integrity latch or peripheral
+/// quarantine. A GATT read's reply names its characteristic, so nothing can cross-pair; a
+/// tare is one plain write or app-side arithmetic; and every device here is a PORT of a
+/// documented protocol never held in hand, so the honest shape is the small one.
 ///
-/// Protocol knowledge ported from hangtime-grip-connect (BSD-2-Clause, © 2024
-/// Stevie-Ray Hartog, https://github.com/Stevie-Ray/hangtime-grip-connect).
+/// Protocol knowledge ported from hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray
+/// Hartog, https://github.com/Stevie-Ray/hangtime-grip-connect).
 class GattGaugeClient(
     context: Context,
     private val scope: CoroutineScope,
     override val kind: GaugeKind,
     private val profile: GaugeGattProfile,
     private val clock: HostClock = SystemHostClock,
-    /// Answers the coefficient question for a gauge that `requiresRemoteCalibration`;
-    /// nil for every other kind, which never asks. See `FrezCalibration.kt` for the
-    /// rules that keep this the app's only non-platform network call.
+    /// Answers the coefficient question for a gauge that `requiresRemoteCalibration`; null
+    /// for every other kind. See `FrezCalibration.kt` for the rules keeping this the app's
+    /// only non-platform network call.
     private val calibration: GaugeCalibrationResolver? = null,
     /// The app's shared count of scan starts — see `ScanStartBudget`.
     private val scanBudget: ScanStartBudget = ScanStartBudget(),
@@ -94,35 +88,31 @@ class GattGaugeClient(
     private val serviceUUID: UUID = UUID.fromString(profile.serviceUUID)
     private val notifyUUID: UUID = UUID.fromString(profile.notifyCharacteristicUUID)
 
-    /// Extra characteristics to subscribe ALONGSIDE `notifyUUID` — the Entralpi's second
-    /// "rx", which the reference also subscribes to because its source cannot say which of
-    /// the two actually streams.
+    /// Extra characteristics subscribed ALONGSIDE `notifyUUID` — the Entralpi's second
+    /// "rx", which the reference also subscribes to because its source cannot say which one
+    /// streams.
     private val alternateNotifyUUIDs: List<UUID> =
         profile.alternateNotifyCharacteristicUUIDs.map { UUID.fromString(it) }
     private val writeUUID: UUID? = profile.writeCharacteristicUUID?.let { UUID.fromString(it) }
     private val tareUUID: UUID? = profile.tareCharacteristicUUID?.let { UUID.fromString(it) }
 
     private companion object {
-        /// The standard Battery Service. Read once at connect for the kinds whose
-        /// capabilities claim it; a device that does not advertise it simply has no battery
-        /// characteristic to find and the row stays blank, which is the honest answer.
+        /// The standard Battery Service, read once at connect for kinds that claim it. A
+        /// device without it leaves the row blank, which is the honest answer.
         val batteryLevelUUID: UUID = UUID.fromString("00002A19-0000-1000-8000-00805F9B34FB")
 
-        /// Firmware Revision String, in Device Information (0x180A). Every ported device's
-        /// service table in the reference lists it, so Settings' Firmware row can be filled
-        /// for free — one read, one event, and nothing depends on it arriving.
+        /// Firmware Revision String (Device Information, 0x180A). Every ported device lists
+        /// it; one read, and nothing depends on it arriving.
         val firmwareRevisionUUID: UUID =
             UUID.fromString("00002A26-0000-1000-8000-00805F9B34FB")
 
-        /// Software Revision String, the other Device Information slot a version can live
-        /// in. Read only when a device has no Firmware Revision to offer — Frez publishes
-        /// the Dyno's firmware/API version here.
+        /// Software Revision String, read only when there is no Firmware Revision — Frez
+        /// publishes the Dyno's version here.
         val softwareRevisionUUID: UUID =
             UUID.fromString("00002A28-0000-1000-8000-00805F9B34FB")
 
-        /// Serial Number String. Wanted by exactly one kind of gauge, the one whose counts
-        /// need a per-device coefficient that the serial is the key to; never read
-        /// otherwise.
+        /// Serial Number String, read only for a gauge whose per-device coefficient is
+        /// keyed by it.
         val serialNumberUUID: UUID =
             UUID.fromString("00002A25-0000-1000-8000-00805F9B34FB")
 
@@ -132,39 +122,31 @@ class GattGaugeClient(
         const val backoffMillis = 1_000L
 
         /// **A `withResponse` write that is never acknowledged must not wedge the queue for
-        /// the life of the link.** One lost ATT response left tare, stop and every later
-        /// re-kick undeliverable while notifications kept arriving perfectly — the store's
-        /// freshness watchdog and the runner's silence watchdog both see a healthy stream
-        /// and neither can repair this. Two seconds, the same deadline
-        /// `LiveProgressorClient` gives a query reply.
+        /// the life of the link.** One lost ATT response left tare, stop and every re-kick
+        /// undeliverable while notifications flowed normally, so neither silence watchdog
+        /// could repair it. Two seconds, like `LiveProgressorClient`'s query reply.
         const val writeResponseDeadlineMillis = 2_000L
 
-        /// See `LiveProgressorClient.requestedMtu`. These devices send smaller frames than
-        /// a Progressor batch, but the Motherboard splits one frame across notifications
-        /// and the CTS500 sends checksummed frames — a 20-byte payload ceiling is the wrong
-        /// bet on any of them, and asking costs one round trip per link.
+        /// See `LiveProgressorClient.requestedMtu`. The Motherboard splits frames across
+        /// notifications and the CTS500 sends checksummed frames, so a 20-byte ceiling is
+        /// the wrong bet; asking costs one round trip.
         const val requestedMtu = 517
 
-        /// **A gauge whose maker names an MTU gets that one.** Frez asks for 85 and a v1
-        /// Dyno notification is 74 bytes; the blanket 517 above is the right ask for a
-        /// board whose framing nobody here has documentation for, and the wrong one to
-        /// send a device that published a number. Either way the peripheral answers with
-        /// what it supports and nothing depends on the result.
+        /// **A gauge whose maker names an MTU gets that one.** Frez asks for 85 (a v1 Dyno
+        /// notification is 74 bytes); 517 is for boards with no documented framing. The
+        /// peripheral answers with what it supports and nothing depends on it.
         fun preferredMtu(kind: GaugeKind): Int = when (kind) {
             GaugeKind.frezdyno -> FrezDynoCodec.preferredMTU
             else -> requestedMtu
         }
 
-        /// **Service UUIDs that are evidence of a SERIAL MODULE, not of a device.** These
-        /// are the stock 16-bit vendor services (HM-10/JDY `FFF0` and `FFE0`) and the two
-        /// ubiquitous UART profiles (Nordic, Microchip), all of which ship on countless
-        /// unrelated products — this repo proves it: `entralpi` and `pb700bt` declare the
-        /// same `FFF0` AND the same `FFF4` notify characteristic. Matching a scan hit on
-        /// one of them alone would adopt a stranger's serial module and hand its bytes to a
-        /// codec that turns two of them into kilograms, which is the harm
-        /// `GaugeKind.selectable`'s PB-700BT exclusion exists to prevent. For these, the
-        /// advertised NAME has to agree as well; a long-form vendor-unique service (the
-        /// Force Board's) remains proof on its own.
+        /// **Service UUIDs that are evidence of a SERIAL MODULE, not a device**: the stock
+        /// 16-bit vendor services (HM-10/JDY `FFF0`, `FFE0`) and the Nordic/Microchip UART
+        /// profiles, shipped on countless products — `entralpi` and `pb700bt` even share
+        /// `FFF0` and `FFF4`. Matching on one alone would adopt a stranger's module and
+        /// decode its bytes as kilograms (the harm `GaugeKind.selectable`'s PB-700BT
+        /// exclusion prevents), so the advertised NAME must agree too. A long-form
+        /// vendor-unique service (the Force Board's) is proof on its own.
         val wellKnownServiceUUIDs: Set<String> = setOf(
             "0000FFF0-0000-1000-8000-00805F9B34FB", // HM-10 / JDY BLE-serial
             "0000FFE0-0000-1000-8000-00805F9B34FB", // the same family's other service
@@ -172,14 +154,11 @@ class GattGaugeClient(
             "49535343-FE7D-4AE5-8FA9-9FAFD205E455", // Microchip Transparent UART
         )
 
-        /// **Every ported device in the reference is filtered by NAME rather than by
-        /// advertised service.** Web Bluetooth's `requestDevice` takes `{ name }` /
-        /// `{ namePrefix }` filters, which is what hangtime-grip-connect uses for all six of
-        /// these; whether any of them also puts its primary service UUID in the
-        /// advertisement packet is UNVERIFIED. A service-filtered scan would therefore
-        /// silently find nothing on a device that keeps its service private, so the scan is
-        /// unfiltered and each hit is matched two ways: advertised service UUID, or
-        /// advertised name against the reference's own filter strings.
+        /// **The reference filters every ported device by NAME, not advertised service**
+        /// (Web Bluetooth `{ name }` / `{ namePrefix }`); whether any advertises its
+        /// primary service UUID is UNVERIFIED. A service-filtered scan could silently find
+        /// nothing, so the scan is unfiltered and each hit matches on advertised service
+        /// UUID or on the reference's name filters.
         fun nameHints(kind: GaugeKind): List<String> = when (kind) {
             GaugeKind.entralpi -> listOf("ENTRALPI")
             GaugeKind.forceboard -> listOf("Force Board")
@@ -201,9 +180,8 @@ class GattGaugeClient(
     private class WriteEntry(
         val payload: ByteArray,
         val target: WriteTarget,
-        /// Set on the LAST payload of a start sequence, so the ring's "start written"
-        /// breadcrumb means the whole sequence reached the device rather than its first
-        /// byte.
+        /// Set on the LAST payload of a start sequence, so "start written" means the whole
+        /// sequence reached the device.
         val startCause: StreamStartCause?,
     )
 
@@ -221,7 +199,7 @@ class GattGaugeClient(
     private var attemptsRemaining = 0
 
     /// Set only by an accepted explicit `connect()`, and kept across radio power loss so
-    /// switching Bluetooth back on resumes the same user intent — parity with
+    /// Bluetooth coming back resumes the intent — parity with
     /// `LiveProgressorClient.wantsConnection`.
     private var wantsConnection = false
     private var refreshBudgetWhenPoweredOn = false
@@ -233,16 +211,16 @@ class GattGaugeClient(
     /// A paced start sequence in flight. See `beginStartSequence`.
     private var startSequenceJob: Job? = null
 
-    /// The lookup in flight for THIS link. Cancelled with the link: a coefficient that
-    /// arrives for a connection that has since gone must not mint a decoder for the next.
+    /// The lookup in flight for THIS link, cancelled with it: a coefficient for a gone
+    /// connection must not mint the next one's decoder.
     private var calibrationJob: Job? = null
 
     private var isScanning = false
 
-    /// Reconnecting without a scan — see `RememberedGauge`. More urgent here than for the
-    /// Progressor: this client's scan is UNFILTERED (see `nameHints`), and Android pauses
-    /// unfiltered scans outright while the screen is off, so a link that dropped behind a
-    /// locked screen could never be found again by scanning.
+    /// Reconnecting without a scan — see `RememberedGauge`. More urgent than for the
+    /// Progressor: this client's scan is UNFILTERED, and Android pauses unfiltered scans
+    /// while the screen is off, so a link lost behind a locked screen could never be
+    /// rescanned.
     private val remembered = RememberedGauge<BluetoothDevice>()
     private val scanStarts = BudgetedScanStart(scope, scanBudget, clock)
 
@@ -252,13 +230,13 @@ class GattGaugeClient(
     /// Written once per LINK, after subscribing and before any start payload.
     private var oneTimeSetupWritten = false
 
-    /// Link-local, exactly as the protocol requires: a decoder holding half a reassembled
-    /// frame must never meet the next connection's bytes.
+    /// Link-local: a decoder holding half a reassembled frame must never meet the next
+    /// connection's bytes.
     private var decoder: GaugeFrameDecoder? = null
     private var publishedBatteryFraction: Double? = null
 
-    /// Used only when the profile names no hardware tare. Reset with the link, because an
-    /// offset captured against one connection's zero is meaningless on the next.
+    /// Used only when the profile names no hardware tare. Reset with the link: an offset
+    /// from one connection's zero is meaningless on the next.
     private val softwareTare = SoftwareTare()
 
     private var radioReceiver: BroadcastReceiver? = null
@@ -266,9 +244,8 @@ class GattGaugeClient(
     // MARK: - ProgressorClient
 
     override fun connect() {
-        // Same guard as the Tindeq client: `wantsConnection` covers the backoff and
-        // radio-off gaps, where the public state is not busy but the intent is live. A
-        // second tap must not replenish the retry budget.
+        // Same guard as the Tindeq client: `wantsConnection` covers backoff and radio-off
+        // gaps where the intent is live; a second tap must not replenish the retry budget.
         if (wantsConnection || state.isBusy || state.isConnected) return
 
         wantsConnection = true
@@ -304,10 +281,9 @@ class GattGaugeClient(
         state = ProgressorConnectionState.Disconnected(reason = null)
     }
 
-    /// **A plain disconnect.** No ported device documents a sleep opcode, and inventing a
-    /// write for one would be guessing at bytes on somebody else's hardware. Dropping the
-    /// link is also what actually saves the battery on these devices: they idle down on
-    /// their own schedule once nobody is subscribed.
+    /// **A plain disconnect.** No ported device documents a sleep opcode, and inventing one
+    /// guesses at bytes on somebody else's hardware. Dropping the link is what saves their
+    /// battery anyway: they idle down once nobody is subscribed.
     override fun sleepDevice() {
         disconnect()
     }
@@ -317,16 +293,14 @@ class GattGaugeClient(
             ProgressorCommand.tare -> tareNow()
 
             ProgressorCommand.startWeightMeasurement -> {
-                // Starts carry a cause through one funnel, so a later breadcrumb can never
-                // be a guess about who asked. `startStreaming(cause)` is the only start
-                // path.
+                // Starts carry a cause through one funnel (`startStreaming(cause)`), so a
+                // breadcrumb is never a guess about who asked.
             }
 
             ProgressorCommand.stopWeightMeasurement -> {
-                // The radio goes back to BALANCED whether or not this device has a stop
-                // payload to write — an Entralpi streams for as long as it is subscribed, so
-                // "stopped" here means "nobody is reading", which is exactly when the fast
-                // interval stops being worth its battery.
+                // The radio returns to BALANCED whether or not there is a stop payload: an
+                // Entralpi streams while subscribed, so "stopped" means "nobody is
+                // reading", when the fast interval stops being worth its battery.
                 profile.streamStopPayload?.let { enqueue(it, WriteTarget.stream) }
                 manager?.requestStreamingConnectionInterval(streaming = false)
             }
@@ -336,52 +310,45 @@ class GattGaugeClient(
             ProgressorCommand.getBatteryVoltage -> manager?.readStandardBatteryLevel()
 
             else -> {
-                // Tindeq control-point commands with no counterpart on any ported device.
-                // Silently ignored rather than mapped onto a plausible-looking write: these
-                // protocols are ports, and a speculative command is a write to hardware
-                // nobody here has tested.
+                // Tindeq commands with no counterpart on any ported device. Ignored, not
+                // mapped onto a plausible write: a speculative command is a write to
+                // untested hardware.
             }
         }
     }
 
-    /// **Never gated on an "is streaming" flag.** That flag can only ever cause the one
-    /// command a session depends on to be skipped, and re-sending a start to a device
-    /// already streaming is harmless — the rule the first hardware session taught the
-    /// Tindeq client, which applies identically here.
+    /// **Never gated on an "is streaming" flag** — that flag can only skip the one command
+    /// a session depends on, and re-sending a start is harmless (see `DeviceStore.tare`).
     ///
     /// **No engine timeline break belongs to a re-kick of THIS client.** The runner sends
-    /// `RunnerEvent.StreamRestarted` around the call only for a gauge with a clock of its
-    /// own; a synthetic stamp is host uptime, which no device restart can rewind, so there
-    /// is no epoch here to break — and the break would clear the accrual anchor and the
-    /// arming debounce for nothing.
+    /// `RunnerEvent.StreamRestarted` only for a gauge with its own clock; a synthetic stamp
+    /// is host uptime, which no device restart rewinds, and a break would clear the accrual
+    /// anchor and arming debounce for nothing.
     override fun startStreaming(cause: StreamStartCause) {
         val notifying = manager?.notifyingCount ?: 0
         if (!state.isConnected || notifying == 0) {
             onDiagnostic?.invoke(ProgressorClientDiagnostic.StreamStartDeferred(cause))
             return
         }
-        // Out-of-band link tuning cannot occupy the ATT command queue. Repeated
-        // watchdog starts are deduplicated for the lifetime of this connection.
+        // Link tuning is out of band and cannot occupy the ATT queue; repeated watchdog
+        // starts are deduplicated per connection.
         manager?.requestStreamingConnectionInterval(streaming = true)
         if (profile.streamStartPayloads.isEmpty()) {
-            // Subscribing IS the start on these devices (the Entralpi streams the moment
-            // notifications are on). The ring records the start as having reached the
-            // device, because it has: the subscription is the act that starts it. Staying
-            // silent instead would leave a request with no write in the one log that exists
-            // to explain a stalled stream.
+            // Subscribing IS the start on these devices (the Entralpi streams once
+            // notifications are on), so the ring records the start as written — otherwise
+            // the log that explains a stalled stream shows a request with no write.
             onDiagnostic?.invoke(ProgressorClientDiagnostic.StreamStartWritten(cause))
             return
         }
 
         if (profile.startPayloadDelaySeconds > 0) {
-            // **A SEQUENCE in flight absorbs further starts, and that is NOT the "never
-            // gate the start on isStreaming" mistake.** That rule is about a STATE FLAG,
-            // which can go stale and then skip the one command a session depends on
-            // forever. This is a time-bounded window that always runs to completion — every
-            // payload is written or the link is gone — so folding delays a redundant write
-            // by at most `startPayloadDelaySeconds`, and the Motherboard's whole reason for
-            // pacing is that the 500 ms watchdog would otherwise re-ask for the calibration
-            // table four times inside the 2.5 s it takes to arrive.
+            // **A SEQUENCE in flight absorbs further starts; this is NOT the "never gate on
+            // isStreaming" mistake.** That rule is about a STATE FLAG that can go stale and
+            // skip the start forever. This window always completes (every payload written,
+            // or the link gone), so folding delays a redundant write by at most
+            // `startPayloadDelaySeconds` — and without it the 500 ms watchdog would re-ask
+            // the Motherboard for its calibration table four times in the 2.5 s it takes to
+            // arrive.
             if (startSequenceJob != null) {
                 onDiagnostic?.invoke(ProgressorClientDiagnostic.StreamStartWritten(cause))
                 return
@@ -396,12 +363,10 @@ class GattGaugeClient(
         }
     }
 
-    /// Writes the start payloads with the profile's own wait between them.
-    ///
-    /// The Motherboard is why: its reference writes "C", waits up to 2500 ms for the
-    /// calibration dump, and only then writes "S30". Back-to-back through the paced queue
-    /// the two land milliseconds apart, which can put the start command in the middle of
-    /// the device's own reply.
+    /// Writes the start payloads with the profile's own wait between them. The
+    /// Motherboard's reference writes "C", waits up to 2500 ms for the calibration dump,
+    /// then writes "S30"; back to back, the start could land in the middle of the device's
+    /// reply.
     private fun beginStartSequence(cause: StreamStartCause) {
         val payloads = profile.streamStartPayloads
         val delaySeconds = profile.startPayloadDelaySeconds
@@ -415,14 +380,10 @@ class GattGaugeClient(
         }
     }
 
-    /// Enqueue one start payload, COALESCED against the queue.
-    ///
-    /// A byte-identical start payload still sitting unwritten is the write this cause is
-    /// asking for, so a second copy would only spend the radio twice: the watchdog re-kicks
-    /// every 500 ms while a stream is silent, and on the Motherboard that meant asking for
-    /// the calibration table again before the first ask had left the queue. The breadcrumb
-    /// is still recorded — the ring must not show a start requested with nothing delivering
-    /// it, when the queued write is what delivers it.
+    /// Enqueue one start payload, COALESCED against the queue. A byte-identical payload
+    /// still unwritten is already this write; the 500 ms watchdog re-kick would otherwise
+    /// re-ask the Motherboard for its calibration table before the first ask left. The
+    /// breadcrumb is still recorded, since the queued write is what delivers it.
     private fun enqueueStart(payload: ByteArray, cause: StreamStartCause?) {
         val alreadyQueued = writeQueue.any {
             it.target == WriteTarget.stream && it.payload.contentEquals(payload)
@@ -434,14 +395,12 @@ class GattGaugeClient(
         enqueue(payload, WriteTarget.stream, cause)
     }
 
-    /// Configuration written ONCE per link, right after subscribing and before any start
-    /// payload can be enqueued.
+    /// Configuration written ONCE per link, after subscribing and before any start payload.
     ///
-    /// `streamStartPayloads` is re-sent on every re-kick by design, so a device
-    /// configuration folded into it gets re-issued roughly 1500 times across a silent
-    /// twenty-minute session. The CTS500's sampling-rate command is EEPROM-class and
-    /// plausibly resets the ADC, which would make each re-kick prevent the stream it is
-    /// trying to revive.
+    /// `streamStartPayloads` is re-sent on every re-kick (~1500 times across a silent
+    /// twenty-minute session). The CTS500's sampling-rate command is EEPROM-class and
+    /// plausibly resets the ADC, so folded into the start it could prevent the stream it
+    /// tries to revive.
     private fun writeOneTimeSetupPayloadsIfNeeded() {
         if (oneTimeSetupWritten || profile.oneTimeSetupPayloads.isEmpty()) return
         oneTimeSetupWritten = true
@@ -450,10 +409,10 @@ class GattGaugeClient(
 
     // MARK: - Tare
 
-    /// Hardware tare when the profile names one, app-side arithmetic otherwise. **The two
-    /// are mutually exclusive on purpose:** a device that zeroes itself must not also have
-    /// an app-side offset subtracted, or the next reading is short by the load that was on
-    /// it — the same double-adjust the reference guards with `clearTareOffset()`.
+    /// Hardware tare when the profile names one, app-side arithmetic otherwise. **Mutually
+    /// exclusive:** a device that zeroes itself must not also have an offset subtracted, or
+    /// readings come out short by the load that was on it (the reference's
+    /// `clearTareOffset()` guards the same double-adjust).
     private fun tareNow() {
         val payload = profile.tarePayload
         if (manager?.tareCharacteristic != null && payload != null) {
@@ -461,13 +420,11 @@ class GattGaugeClient(
             enqueue(payload, WriteTarget.tare)
             return
         }
-        // Captures the newest reading as the offset. The reference averages five seconds of
-        // samples instead; that is wrong for this app, where Tare is a button whose effect
-        // must be visible in the frame it is tapped, and `TarePolicy` already refuses to
-        // tare against a reading that is not live. With no reading yet the offset is LEFT
-        // ALONE rather than zeroed: a fresh link has an offset of zero already, and
-        // silently discarding a good offset because the stream went quiet would move every
-        // later reading by the load that was on the gauge.
+        // Captures the newest reading as the offset. The reference averages five seconds;
+        // here Tare must take effect in the frame it is tapped, and `TarePolicy` already
+        // refuses a reading that is not live. With no reading the offset is LEFT ALONE, not
+        // zeroed: a fresh link is already zero, and discarding a good offset would shift
+        // every later reading.
         softwareTare.capture()
     }
 
@@ -482,14 +439,13 @@ class GattGaugeClient(
         drainWriteQueue()
     }
 
-    /// Queued and PACED, never fired back to back. The Motherboard's start is a text
-    /// command and the CTS500's is a checksummed frame; both would lose a payload if two
-    /// went out in one turn.
+    /// Queued and PACED, never back to back: the Motherboard's text start and the CTS500's
+    /// checksummed frame would lose a payload if two went out in one turn.
     ///
-    /// TRANSLATION NOTE: on iOS this loop also has to poll `canSendWriteWithoutResponse`,
-    /// because CoreBluetooth silently discards an unbuffered write. Nordic's request queue
-    /// removes that hazard; what remains is the app-level rule — ONE outstanding
-    /// acknowledged write, so a lost response cannot be mistaken for a delivered one.
+    /// TRANSLATION NOTE: iOS also polls `canSendWriteWithoutResponse` because CoreBluetooth
+    /// silently discards unbuffered writes; Nordic's request queue removes that. What
+    /// remains is ONE outstanding acknowledged write, so a lost response is never mistaken
+    /// for delivery.
     private fun drainWriteQueue() {
         val bleManager = manager ?: return
         if (!state.isConnected) return
@@ -500,9 +456,9 @@ class GattGaugeClient(
             val next = writeQueue.first()
             val characteristic = bleManager.characteristic(next.target)
             if (characteristic == null) {
-                // The link does not have what this write needs. Dropping it is better than
-                // holding the queue: the tare falls back to arithmetic and a stop payload
-                // for a missing characteristic was never going to arrive.
+                // The link lacks this write's characteristic. Drop rather than hold the
+                // queue: the tare falls back to arithmetic, and the stop could never
+                // arrive.
                 writeQueue.removeFirst()
                 continue
             }
@@ -524,10 +480,9 @@ class GattGaugeClient(
         }
     }
 
-    /// The one recovery from a write response that never comes. Expiry treats the write as
-    /// lost and drains, exactly as an acknowledgement would: a failed write is dropped
-    /// rather than retried here, and a lost start is re-sent by the store's silence
-    /// watchdog anyway.
+    /// The one recovery from a write response that never comes: treat it as lost and drain,
+    /// like an acknowledgement. Not retried here; the store's silence watchdog re-sends a
+    /// lost start.
     private fun armInFlightWriteDeadline() {
         val writeGeneration = generation
         writeDeadlineJob?.cancel()
@@ -566,9 +521,8 @@ class GattGaugeClient(
         generation += 1uL
         scanGeneration = generation
 
-        // BLE links belong to the system, not to this process, so after a relaunch the
-        // gauge may already be connected. Worth a try even though these devices may not
-        // advertise the service.
+        // BLE links belong to the system, so after a relaunch the gauge may already be
+        // connected. Worth trying even though these devices may not advertise the service.
         val hints = nameHints(kind)
         val known = try {
             bluetoothManager?.getConnectedDevices(BluetoothProfile.GATT)?.firstOrNull { candidate ->
@@ -594,12 +548,11 @@ class GattGaugeClient(
         }
     }
 
-    /// Unfiltered — see `nameHints`. **A running scan is REUSED, never restarted**, which
-    /// on Android is not a nicety: five scan starts in 30 seconds silences the scanner for
-    /// the next 30, with no error and no callback, and the retry ladder here is exactly the
-    /// shape that trips it.
+    /// Unfiltered — see `nameHints`. **A running scan is REUSED, never restarted:** five
+    /// starts in 30 seconds silences Android's scanner for the next 30 with no error or
+    /// callback, and the retry ladder is exactly that shape.
     ///
-    /// A start the shared budget cannot afford waits for it — see `BudgetedScanStart`.
+    /// A start the shared budget cannot afford waits — see `BudgetedScanStart`.
     private fun startScan(generation: ULong) {
         val scanner = adapter?.bluetoothLeScanner
         if (scanner == null) {
@@ -660,15 +613,13 @@ class GattGaugeClient(
         attach(result.device, generation)
     }
 
-    /// The scan is unfiltered, so THIS is the filter: the profile's service if the device
-    /// advertises it, otherwise the reference's own name filters.
+    /// The scan is unfiltered, so THIS is the filter: the profile's service if advertised,
+    /// otherwise the reference's name filters.
     ///
-    /// **A service-UUID match alone is only proof for a LONG-FORM vendor-unique service.**
-    /// The 16-bit serial services and the two UART profiles are shared by half the BLE
-    /// modules in existence (see `wellKnownServiceUUIDs`), so for those kinds the advertised
-    /// name has to agree as well — otherwise a stranger's HM-10 in range is adopted as an
-    /// Entralpi and its arbitrary bytes are decoded as kilograms, which then arm reps, bank
-    /// hang time and set a grip's percentage targets from a fabricated max.
+    /// **A service-UUID match alone proves only a LONG-FORM vendor-unique service.** For
+    /// the shared serial/UART services (`wellKnownServiceUUIDs`) the name must agree too,
+    /// or a stranger's HM-10 is adopted as an Entralpi and its bytes decoded as kilograms —
+    /// arming reps, banking hang time, setting targets from a fabricated max.
     private fun matches(result: ScanResult): Boolean {
         val record = result.scanRecord
         val advertisedName = record?.deviceName ?: try {
@@ -678,8 +629,7 @@ class GattGaugeClient(
         }
         val hints = nameHints(kind)
         // Prefix, not equality: the reference uses `namePrefix` for the Climbro and exact
-        // names elsewhere, and an exact name is its own prefix. A unit that appends a serial
-        // ("Force Board 214") still matches.
+        // names elsewhere, and a unit appending a serial ("Force Board 214") still matches.
         val nameMatches = advertisedName?.lowercase()?.let { folded ->
             hints.any { folded.startsWith(it.lowercase()) }
         } ?: false
@@ -687,8 +637,8 @@ class GattGaugeClient(
         val advertisesService =
             record?.serviceUuids?.any { it.uuid == serviceUUID } == true
         if (advertisesService) {
-            // With no name filter to lean on there is nothing better than the service, so
-            // it stands; that is only reachable by a kind this client does not drive.
+            // With no name filter the service stands; only reachable by a kind this client
+            // does not drive.
             if (hints.isEmpty()) return true
             if (!wellKnownServiceUUIDs.contains(profile.serviceUUID.uppercase())) return true
             return nameMatches
@@ -707,9 +657,8 @@ class GattGaugeClient(
         scanGeneration = null
         device = found
         activeGeneration = generation
-        // Never overwrite an advertised local name with a null device name: the
-        // advertisement is what the scan matched on, and on these devices it is often the
-        // only name there is until the link is up.
+        // Never overwrite an advertised name with a null device name: it is what the scan
+        // matched on, and often the only name until the link is up.
         deviceName = try {
             found.name
         } catch (_: SecurityException) {
@@ -752,10 +701,9 @@ class GattGaugeClient(
         }
         val retryGeneration = generation
         backoffJob?.cancel()
-        // One second, which is also what keeps this client honest without the Tindeq's
-        // quarantine slot: a cancelled link's terminal callback belongs to a superseded
-        // generation and is ignored, and the backoff means a rescan never races the
-        // cancellation it just issued.
+        // One second. This is also why no Tindeq-style quarantine slot is needed: a
+        // cancelled link's terminal callback belongs to a superseded generation and is
+        // ignored, and the backoff keeps a rescan from racing its own cancellation.
         backoffJob = scope.launch(Dispatchers.Main.immediate) {
             delay(backoffMillis)
             if (generation != retryGeneration) return@launch
@@ -807,17 +755,16 @@ class GattGaugeClient(
         manager?.forgetCharacteristics()
         oneTimeSetupWritten = false
         writeQueue.clear()
-        // The paced sequence belongs to this link: its remaining payloads mean nothing on
-        // the next one, and a job left in the slot would fold every future start into a
-        // sequence that has already returned.
+        // The paced sequence belongs to this link; a job left in the slot would fold every
+        // future start into a finished sequence.
         startSequenceJob?.cancel()
         startSequenceJob = null
         // A coefficient still in flight belongs to the link that asked for it.
         calibrationJob?.cancel()
         calibrationJob = null
         clearInFlightWrite()
-        // Both die with the link, and for the same reason: a half-reassembled frame and a
-        // captured zero are facts about one connection only.
+        // Both die with the link: a half-reassembled frame and a captured zero are facts
+        // about one connection.
         decoder = null
         publishedBatteryFraction = null
         softwareTare.reset()
@@ -899,12 +846,10 @@ class GattGaugeClient(
         }
     }
 
-    /// Every notify candidate has answered — the moment iOS's `pendingSubscriptions`
-    /// reaches zero.
-    ///
-    /// **The link is established when the primary OR any alternate is notifying.** One of
-    /// the Entralpi's two candidates may well refuse or stay mute; only ALL of them failing
-    /// is a device that cannot stream.
+    /// Every notify candidate has answered (iOS: `pendingSubscriptions` reaches zero).
+    /// **Established when the primary OR any alternate is notifying**; one Entralpi
+    /// candidate may refuse or stay mute, and only ALL failing is a device that cannot
+    /// stream.
     private fun subscriptionsSettled(settled: BluetoothDevice) {
         if (!isCurrent(settled)) return
         val bleManager = manager ?: return
@@ -914,15 +859,14 @@ class GattGaugeClient(
         }
         attemptsRemaining = attemptLimit
         remembered.established(settled)
-        // BEFORE publishing `Connected`, because that publish runs synchronously into
-        // `DeviceStore` and can reach `startStreaming` in the same turn — the setup writes
-        // have to be in the queue ahead of any start payload.
+        // BEFORE publishing `Connected`, which runs synchronously into `DeviceStore` and
+        // can reach `startStreaming` in the same turn: setup writes must be queued ahead of
+        // any start.
         writeOneTimeSetupPayloadsIfNeeded()
         state = ProgressorConnectionState.Connected
 
-        // Both reads are fire-and-forget and NOT serialized: unlike the Tindeq control
-        // point, a GATT read's reply names the characteristic it came from, so two
-        // outstanding reads cannot cross-pair the way a version reply once parsed as
+        // Fire-and-forget and NOT serialized: a GATT read's reply names its characteristic,
+        // so two reads cannot cross-pair the way a Tindeq version reply once parsed as
         // battery millivolts.
         bleManager.readStandardBatteryLevel()
         bleManager.readVersionString()
@@ -933,10 +877,9 @@ class GattGaugeClient(
     // MARK: - Remote calibration
 
     /// Frez's connection order, honoured exactly: subscribe, read the serial, fetch the
-    /// coefficient, and only then let counts become kilograms. The start payload may
-    /// already be queued — nothing gates the start, per the house rule — and until the
-    /// decoder exists the notifications it produces are dropped at `ingest`, which is the
-    /// fail-closed answer Frez asks for: no calibrated force without a coefficient.
+    /// coefficient, only then turn counts into kilograms. The start may already be queued
+    /// (nothing gates it), and until the decoder exists `ingest` drops its notifications —
+    /// the fail-closed answer Frez asks for.
     private fun beginCalibrationIfNeeded() {
         if (!capabilities.requiresRemoteCalibration) return
         val bleManager = manager ?: return
@@ -948,16 +891,16 @@ class GattGaugeClient(
         }
         reportCalibration(GaugeCalibrationStatus.WaitingForSerial)
         val readGeneration = generation
-        // The serial is the one read whose FAILURE has to be reported: a calibrated gauge
-        // left waiting on it would sit at "connected" with no force and no explanation.
+        // The serial's FAILURE must be reported, or a calibrated gauge sits at "connected"
+        // with no force and no explanation.
         bleManager.readSerialNumber { serial ->
             if (generation != readGeneration || !state.isConnected) return@readSerialNumber
             resolveCalibration(serial)
         }
     }
 
-    /// The serial arrived (or failed to). One lookup per link, tied to the generation that
-    /// asked, so an answer for a connection that has since gone mints nothing.
+    /// The serial arrived (or failed). One lookup per link, tied to the asking generation,
+    /// so an answer for a gone connection mints nothing.
     private fun resolveCalibration(rawSerial: String?) {
         val serial = rawSerial?.trim { it.isWhitespace() || it == '\u0000' } ?: ""
         if (serial.isEmpty()) {
@@ -1003,22 +946,21 @@ class GattGaugeClient(
         val wasEstablished = state.isConnected
         val wasAutoConnect = remembered.linkLost()
         invalidateAttempt()
-        // Close a lost autoConnect link (a cancel of a pending connection answers at once,
-        // and the superseded generation ignores that answer), and let the ordinary
-        // one-second backoff put the next attempt behind it. Why this differs from
-        // `LiveProgressorClient`: see `RememberedGauge`.
+        // Close a lost autoConnect link (cancelling a pending connection answers at once,
+        // and the superseded generation ignores it) and let the one-second backoff follow.
+        // Why this differs from `LiveProgressorClient`: see `RememberedGauge`.
         if (wasAutoConnect) manager?.disconnect()?.enqueue()
 
-        // Radio state is authoritative: its own receiver already published the off state,
-        // and a late disconnect must not overwrite it or rescan.
+        // Radio state is authoritative: its receiver already published off, and a late
+        // disconnect must not overwrite it or rescan.
         if (adapter?.isEnabled != true) return
 
         state = ProgressorConnectionState.Disconnected(reasonText(reason))
         if (!wantsConnection) return
 
         if (wasEstablished) {
-            // Subscribing successfully reset the budget, so a dropped established link
-            // begins a fresh cycle — waiting for the SAME gauge, not scanning for any.
+            // Subscribing reset the budget, so a dropped established link starts a fresh
+            // cycle, waiting for the SAME gauge.
             attemptsRemaining = attemptLimit
             remembered.awaitReturn()
             if (wasAutoConnect) scheduleRetry() else beginAttemptIfPossible()
@@ -1052,14 +994,12 @@ class GattGaugeClient(
 
         if (readings.isEmpty()) return@withPacket
 
-        // **One stamp per NOTIFICATION, shared by every reading it carried.** These devices
-        // tell us nothing about the spacing of samples inside a frame, and spreading them at
-        // the nominal rate would be inventing timing the engine then credits as hang time.
-        // Sharing the stamp keeps the arithmetic honest: interior deltas are zero and
-        // accrue nothing, and the next notification's delta carries the whole elapsed
-        // interval, so the SUM — which is what the engine accrues — is exactly the time that
-        // passed. `isBatchStart` marks the first reading, matching the Tindeq's meaning of
-        // one notification, one batch.
+        // **One stamp per NOTIFICATION, shared by every reading in it.** These devices say
+        // nothing about spacing inside a frame, and spreading at the nominal rate would
+        // invent timing the engine credits as hang time. Interior deltas are zero and the
+        // next notification's delta carries the whole interval, so the SUM the engine
+        // accrues is exactly the time that passed. `isBatchStart` marks the first reading
+        // (one notification, one batch, as on the Tindeq).
         val arrival = SyntheticSampleClock.micros(clock.uptimeSeconds())
         readings.forEachIndexed { index, reading ->
             val kg = softwareTare.value(reading.kg)
@@ -1081,11 +1021,10 @@ class GattGaugeClient(
 
     // MARK: - Nordic manager
 
-    /// **Discovery walks EVERY service, not just the profile's one**: the ForceBoard's write
-    /// and tare characteristics live in other services, and the Battery Service is a
-    /// separate service by definition. `GaugeGattProfile` names characteristics, not the
-    /// services that hold them, so the only way to honour it is to look everywhere. It costs
-    /// one extra round of discovery on a connect that happens twice a day.
+    /// **Discovery walks EVERY service**: the ForceBoard's write and tare characteristics
+    /// live in other services, and Battery is its own service. `GaugeGattProfile` names
+    /// characteristics, not services, so look everywhere; one extra discovery round, twice
+    /// a day.
     private inner class GaugeManager(context: Context) : BleManager(context) {
         var notifyCharacteristic: BluetoothGattCharacteristic? = null
         var controlCharacteristic: BluetoothGattCharacteristic? = null
@@ -1108,10 +1047,9 @@ class GattGaugeClient(
             val services = gatt.services ?: emptyList()
             if (services.none { it.uuid == serviceUUID }) return false
 
-            // Notify and write PREFER the profile's own service and fall back to a match
-            // anywhere: a 16-bit characteristic UUID like `fff4` is not unique across a
-            // device's service table, and subscribing to a same-numbered characteristic in
-            // the wrong service would look like a device that connects and never speaks.
+            // Notify and write PREFER the profile's own service and fall back to anywhere:
+            // a 16-bit UUID like `fff4` is not unique across a service table, and the wrong
+            // one looks like a device that connects and never speaks.
             var notifyElsewhere: BluetoothGattCharacteristic? = null
             var writeElsewhere: BluetoothGattCharacteristic? = null
             val alternates = ArrayList<BluetoothGattCharacteristic>()
@@ -1134,9 +1072,9 @@ class GattGaugeClient(
                             writeElsewhere = characteristic
                         }
                     }
-                    // Alternates are matched ANYWHERE outright: the Entralpi's second
-                    // candidate is declared under the Weight Scale service, not under the
-                    // UART one, which is the whole reason the reference subscribes to both.
+                    // Alternates match ANYWHERE: the Entralpi's second candidate sits under
+                    // the Weight Scale service, not the UART one — why the reference
+                    // subscribes to both.
                     if (alternateNotifyUUIDs.contains(uuid) && alternates.none { it === characteristic }) {
                         alternates.add(characteristic)
                     }
@@ -1165,9 +1103,9 @@ class GattGaugeClient(
             if (notifyCharacteristic == null) notifyCharacteristic = notifyElsewhere
             if (controlCharacteristic == null) controlCharacteristic = writeElsewhere
 
-            // The profile's own notify characteristic FIRST, then the alternates, keeping
-            // only the ones that can actually push. A characteristic present but mute is not
-            // a candidate, and on a device with alternates it is not a failure either.
+            // The profile's notify characteristic FIRST, then alternates, keeping only
+            // those that can push. A present-but-mute characteristic is not a candidate,
+            // nor a failure on a device with alternates.
             val candidates = ArrayList<BluetoothGattCharacteristic>()
             for (candidate in listOfNotNull(notifyCharacteristic) + alternates) {
                 val pushes = candidate.properties and (
@@ -1182,11 +1120,10 @@ class GattGaugeClient(
                 return false
             }
             streamCharacteristics = candidates
-            // The decoder is minted HERE, one per link, and dropped by `clearLinkState` —
-            // except for a gauge whose counts need a coefficient. That one gets its decoder
-            // the moment the coefficient is in hand (`resolveCalibration`) and none before:
-            // a decoder without a slope could only invent numbers, and Frez's rule is that
-            // no calibrated force is shown until the lookup has succeeded.
+            // Minted HERE, one per link, dropped by `clearLinkState` — except for a gauge
+            // needing a coefficient, which gets its decoder in `resolveCalibration` and
+            // none before: without a slope it could only invent numbers, and Frez's rule is
+            // no calibrated force until the lookup succeeds.
             decoder = if (capabilities.requiresRemoteCalibration) null else kind.makeFrameDecoder()
             return true
         }
@@ -1235,27 +1172,17 @@ class GattGaugeClient(
             notifyingCount = 0
         }
 
-        /// **The connection interval, measured on hardware and not guessed.**
+        /// The high-priority connection interval, requested while streaming — measured on
+        /// hardware and explained at
+        /// `LiveProgressorClient.ProgressorManager.requestStreamingConnectionInterval`.
         ///
-        /// First real session on the Realme RMX5079 (Android 16), from `adb logcat`: within
-        /// five seconds of connecting the phone renegotiated the link from a 7.5 ms interval
-        /// to **60 ms with slave latency 6** — OEM power saving — so notifications arrived
-        /// every ~180 ms in larger batches, and the readout lagged the hand by up to ~0.4 s.
-        /// iOS runs the same gauge at 30 ms.
-        ///
-        /// **It matters MORE here than it does for a Progressor.** These devices have no
-        /// clock of their own: their samples are stamped from host uptime at ingestion, so
-        /// arrival jitter is not just a display lag — it is the timebase the engine accrues
-        /// hang time from (`SamplePacing.syntheticClockGapCapSeconds` exists because of it).
-        /// A steadier interval is a more honest measurement.
-        ///
-        /// A REQUEST, never a guarantee: the peripheral and the controller can refuse it and
-        /// an aggressive OEM can renegotiate straight back, so nothing depends on it.
+        /// **It matters MORE here than for a Progressor.** These devices have no clock;
+        /// samples are stamped from host uptime, so arrival jitter IS the timebase hang
+        /// time accrues from (hence `SamplePacing.syntheticClockGapCapSeconds`). A request
+        /// only; nothing depends on it.
         fun requestStreamingConnectionInterval(streaming: Boolean) {
             val gatt = tuningGatt ?: return
-            // Connection parameters are a link-layer request, not an ATT write. Calling
-            // the platform directly avoids Nordic's queued negotiation holding up tare,
-            // start or stop. Failure is harmless; the next request can retry after cooldown.
+            // Platform call, not an ATT write — see the Progressor twin.
             streamingPriority.update(streaming, clock.uptimeSeconds()) { active ->
                 try {
                     gatt.requestConnectionPriority(
@@ -1282,10 +1209,9 @@ class GattGaugeClient(
                 BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
             }
             writeCharacteristic(characteristic, payload, type)
-                // A failed write is dropped rather than retried. The Tindeq client retries
-                // because its tare must be acknowledged before a stream may start; here a
-                // lost start is recovered by the store's silence watchdog, which re-sends
-                // it — one recovery path instead of two that can disagree.
+                // Dropped, not retried. The Tindeq client retries because its tare must be
+                // ACKed before a stream may start; here the store's silence watchdog
+                // re-sends a lost start — one recovery path, not two that can disagree.
                 .done { onMain { clearInFlightWrite(); drainWriteQueue() } }
                 .fail { _, _ -> onMain { clearInFlightWrite(); drainWriteQueue() } }
                 .enqueue()
@@ -1294,8 +1220,8 @@ class GattGaugeClient(
         fun readStandardBatteryLevel() {
             val characteristic = batteryCharacteristic ?: return
             readCharacteristic(characteristic).with { _, packet ->
-                // 0x2A19 is one byte of PERCENT, 0…100. Truncation-safe like every other
-                // decode here: an empty read is simply not a battery level.
+                // 0x2A19 is one byte of PERCENT, 0…100. An empty read is simply not a
+                // battery level.
                 val percent = packet.value?.firstOrNull() ?: return@with
                 val fraction = min(1.0, max(0.0, (percent.toInt() and 0xFF) / 100.0))
                 onMain {
@@ -1305,9 +1231,8 @@ class GattGaugeClient(
             }.enqueue()
         }
 
-        /// Firmware Revision, or Software Revision for a device that publishes its
-        /// version there instead. One read either way, nothing depends on it arriving, and
-        /// the event it produces is the same.
+        /// Firmware Revision, or Software Revision for a device that puts its version
+        /// there. One read; nothing depends on it.
         fun readVersionString() {
             val characteristic = firmwareCharacteristic ?: softwareRevisionCharacteristic ?: return
             readCharacteristic(characteristic).with { _, packet ->
@@ -1320,9 +1245,9 @@ class GattGaugeClient(
 
         val hasSerialCharacteristic: Boolean get() = serialCharacteristic != null
 
-        /// The serial, or null for a read that failed or came back empty. **Answers
-        /// either way**: the caller is a gauge that can show no force until this lands, so
-        /// a read that silently never calls back is a screen stuck on "connected".
+        /// The serial, or null for a failed or empty read. **Answers either way**: the
+        /// caller can show no force until this lands, and a read that never calls back is a
+        /// screen stuck on "connected".
         fun readSerialNumber(onAnswer: (String?) -> Unit) {
             val characteristic = serialCharacteristic ?: return onAnswer(null)
             readCharacteristic(characteristic)

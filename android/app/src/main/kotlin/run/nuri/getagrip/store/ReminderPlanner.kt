@@ -28,52 +28,41 @@ import java.util.UUID
 /// Wipe-and-reschedule local-notification planning for the daily ritual.
 ///
 /// Deterministic `doigt.routine.<uuid>.<slot>` identifiers plus a full replan on every
-/// change make scheduling idempotent — there is no incremental state to corrupt, and
-/// re-adding an identifier replaces the alarm in place, so editing 08:00 → 09:00 moves
-/// one reminder rather than accumulating two.
+/// change make scheduling idempotent: no incremental state to corrupt, and re-adding an
+/// identifier replaces the alarm in place, so 08:00 → 09:00 moves one reminder rather than
+/// adding a second.
 ///
-/// TRANSLATION NOTE (Sources/Store/ReminderPlanner.swift): `requests(for:)` is unchanged,
-/// character for character in its rules — it is the pure half and the whole thing the
-/// tests exercise. What changed is everything under it:
+/// TRANSLATION NOTE (Sources/Store/ReminderPlanner.swift): `requests(for:)`, the pure half
+/// the tests exercise, is unchanged in its rules. Underneath:
 ///
-/// - `UNUserNotificationCenter` becomes `AlarmManager` + a `BroadcastReceiver`, because
-///   Android has no "fire this notification at 08:00 daily" primitive. **`setWindow` with
-///   a 15-minute window, never `setExactAndAllowWhileIdle`**: an exact alarm needs
-///   `SCHEDULE_EXACT_ALARM`, a permission Google Play gates to alarm-clock and calendar
-///   apps, and a habit nudge that insists on the exact minute is the same overreach as
-///   `.timeSensitive` was on iOS — the reason iOS uses `.active` rather than piercing
-///   Focus.
-/// - A repeating iOS `UNCalendarNotificationTrigger` becomes a ONE-SHOT alarm that the
-///   receiver reschedules for tomorrow after it fires. Android's own `setRepeating` is
-///   inexact and un-cancellable per occurrence, and rescheduling on fire is what lets a
-///   session finished at 18:00 suppress the 19:00 slot for TODAY and restore it tomorrow.
-/// - The identifier can't be handed to the OS, so it is hashed into a stable request code
-///   (`requestCode`) that names the `PendingIntent`.
+/// - `UNUserNotificationCenter` becomes `AlarmManager` + a `BroadcastReceiver`.
+///   **`setWindow` with a 15-minute window, never `setExactAndAllowWhileIdle`**: exact
+///   alarms need `SCHEDULE_EXACT_ALARM`, which Play gates to alarm-clock and calendar apps,
+///   and a habit nudge insisting on the minute is the overreach `.timeSensitive` was on
+///   iOS.
+/// - iOS's repeating trigger becomes a ONE-SHOT alarm the receiver reschedules after
+///   firing. `setRepeating` is inexact and un-cancellable per occurrence; rescheduling on
+///   fire lets a session at 18:00 suppress TODAY's 19:00 slot and restore it tomorrow.
+/// - The identifier is hashed into a stable request code (`requestCode`) naming the
+///   `PendingIntent`.
 object ReminderPlanner {
 
-    /// One routine's reminder settings, flattened to value data so the whole plan can be
-    /// computed without touching a database row.
+    /// One routine's reminder settings as value data, so the plan is computed without a
+    /// database row.
     data class RoutinePlanInput(
         val id: UUID,
         val name: String,
         val reminders: List<ReminderTime>,
         val enabled: Boolean,
-        /// How many sessions today still owes. Zero means the day is already met and
-        /// every one of this routine's remaining slots is suppressed.
-        ///
-        /// The whole point of the ritual is that the app stops nagging once you have
-        /// done the thing. A reminder that fires after your second session of the day is
-        /// the app failing to notice you succeeded, and it is exactly the kind of thing
-        /// that gets notifications turned off for good.
+        /// How many sessions today still owes. Zero means the day is met and every
+        /// remaining slot is suppressed: a reminder after you have done the thing is how
+        /// notifications get turned off for good.
         val outstandingToday: Int = 1,
     )
 
-    /// A request, fully resolved but not yet handed to the system — which is what makes
-    /// the planning testable without an `AlarmManager`.
-    ///
-    /// `hour`/`minute` stand in for Swift's `DateComponents`: those are the only two
-    /// fields the iOS trigger ever set, and naming them keeps the type free of a
-    /// platform date class.
+    /// A request fully resolved but not yet handed to the system, so planning is testable
+    /// without `AlarmManager`. `hour`/`minute` stand in for the only two `DateComponents`
+    /// fields the iOS trigger set.
     data class PlannedReminder(
         val identifier: String,
         val title: String,
@@ -82,47 +71,39 @@ object ReminderPlanner {
         val minute: Int,
         val suppressToday: Boolean = false,
     ) {
-        /// `AlarmManager` addresses an alarm by its `PendingIntent`, and a `PendingIntent`
-        /// is identified by its request code — so the content-keyed identifier has to
-        /// collapse to an Int. `hashCode` over a string that already contains a UUID is
-        /// stable across processes (String's hash is specified) and its collision domain
-        /// is one app's own alarms.
+        /// `AlarmManager` addresses an alarm by `PendingIntent`, identified by request
+        /// code, so the identifier collapses to an Int. `String.hashCode` is specified
+        /// (stable across processes), and the collision domain is this app's own alarms.
         val requestCode: Int get() = identifier.hashCode()
     }
 
-    /// The namespace we own. Everything with this prefix is ours to cancel on a replan;
-    /// anything without it belongs to another feature and is left alone.
-    ///
-    /// Kept as `doigt.` rather than renamed with the app: it is the iOS identity, the
-    /// scheme is shared vocabulary between the two ports, and nothing user-visible reads
-    /// it.
+    /// The namespace we own: everything with this prefix is ours to cancel on a replan.
+    /// Kept as `doigt.` (the iOS identity, shared vocabulary between the ports, never
+    /// user-visible).
     const val identifierPrefix = "doigt.routine."
 
-    /// Content-keyed on both halves: the routine's UUID survives an undo-delete (which
-    /// restores the original id), and `slot` is derived from the TIME, so a slot moved
-    /// from 08:00 to 09:00 replaces its own request instead of leaving an orphan firing
-    /// at the old hour forever.
+    /// Content-keyed on both halves: the routine's UUID survives an undo-delete, and `slot`
+    /// derives from the TIME, so moving 08:00 to 09:00 replaces its own request rather than
+    /// leaving an orphan firing forever.
     fun identifier(routine: UUID, slot: ReminderTime): String =
         "$identifierPrefix${routine.toString().uppercase()}.${slot.slot}"
 
-    /// The whole plan, as a pure function of the routines — no clock, no notification
-    /// manager, no permission. Sorted and deduped, and a routine with reminders switched
-    /// off contributes nothing rather than contributing a disabled request.
+    /// The whole plan as a pure function of the routines — no clock, notification manager
+    /// or permission. Sorted and deduped; a routine with reminders off contributes nothing.
     fun requests(routines: List<RoutinePlanInput>): List<PlannedReminder> {
         val planned = mutableListOf<PlannedReminder>()
-        // Two routines cannot share an identifier (the UUID is in it), but a caller that
-        // passes the same routine twice must not produce a duplicate request.
+        // The UUID makes identifiers unique per routine; this only guards a caller passing
+        // one routine twice.
         val claimed = HashSet<String>()
 
         for (routine in routines) {
             if (!routine.enabled) continue
-            // Suppress from the FRONT of the day. Having trained once, the morning slot
-            // is the one you have satisfied; the evening one is still owed. Dropping the
-            // last slot instead would silence the reminder you still need.
-            //
-            // The front of the TRAINING day, which starts at `DayStamp.ROLLOVER_HOUR`: a
-            // 01:00 reminder is the last slot of the evening before, not the first of the
-            // morning, and counting it first would spend the morning's suppression on it.
+            // Suppress from the FRONT of the day: having trained once, the morning slot is
+            // satisfied and the evening one still owed. Dropping the last slot would
+            // silence the reminder you need.
+            // Front of the TRAINING day (from `DayStamp.ROLLOVER_HOUR`): a 01:00 reminder
+            // is the last slot of the evening before, and counting it first would spend the
+            // morning's suppression on it.
             val sorted = routine.reminders.toSet().sorted()
             val owed = maxOf(0, sorted.size - maxOf(0, routine.outstandingToday))
             val suppressed = sorted.sortedBy { trainingDayMinute(it) }.take(owed).toSet()
@@ -148,33 +129,30 @@ object ReminderPlanner {
     private fun trainingDayMinute(slot: ReminderTime): Int =
         Math.floorMod(slot.minutesFromMidnight - DayStamp.ROLLOVER_HOUR * 60, 24 * 60)
 
-    /// Compute the plan and hand it to the scheduler. **Not serialized here** — ordering is
-    /// the caller's job, and in the app there is exactly one caller: `TemplateStore`, the
-    /// one door every replan goes through (the boot receiver included), runs these through
-    /// its `replanLane`. A lock in here would have to be process-global to mean anything,
-    /// and a process-global lock can be left held by a coroutine whose dispatcher has
-    /// stopped running.
+    /// Compute the plan and hand it to the scheduler. **Not serialized here**: the one
+    /// caller, `TemplateStore` (the door for every replan, boot receiver included), runs
+    /// these through its `replanLane`. A lock here would have to be process-global, and one
+    /// can be left held by a coroutine whose dispatcher stopped.
     ///
-    /// TRANSLATION NOTE: iOS cancels its predecessor Task and awaits it. The lane is the
-    /// same guarantee with the opposite emphasis — nothing is cancelled, one plan is
-    /// applied at a time — which is the safer half here, because an `AlarmManager` write
-    /// abandoned halfway leaves a real alarm behind rather than an unsent request.
+    /// TRANSLATION NOTE: iOS cancels its predecessor Task. The lane cancels nothing and
+    /// applies one plan at a time — safer here, because an `AlarmManager` write abandoned
+    /// halfway leaves a real alarm behind.
     suspend fun replan(routines: List<RoutinePlanInput>, scheduler: AlarmScheduler) {
         scheduler.apply(requests(routines))
     }
 }
 
-/// What actually talks to the OS. An interface so `ReminderPlannerTests` can assert the
-/// plan against a fake, exactly as the iOS tests assert `requests(for:)` alone.
+/// What talks to the OS. An interface so `ReminderPlannerTests` can assert the plan against
+/// a fake.
 interface AlarmScheduler {
-    /// Add-before-remove: the new plan goes in FIRST and only then is the remainder
-    /// dropped. Wiping first leaves a window — however short — with zero reminders, and
-    /// process death inside that window makes it permanent.
+    /// Add-before-remove: install the new plan FIRST, then drop the remainder. Wiping first
+    /// leaves a window with zero reminders, and process death inside it makes that
+    /// permanent.
     suspend fun apply(planned: List<ReminderPlanner.PlannedReminder>)
 }
 
-/// Records what it was asked to schedule and nothing else — the tests' scheduler, and
-/// the one the app uses before any permission exists.
+/// Records what it was asked to schedule and nothing else — the tests' scheduler, and the
+/// app's before any permission exists.
 class RecordingAlarmScheduler : AlarmScheduler {
     var applied: List<ReminderPlanner.PlannedReminder> = emptyList()
         private set
@@ -184,8 +162,8 @@ class RecordingAlarmScheduler : AlarmScheduler {
     }
 }
 
-/// `AlarmManager.setWindow`, a notification channel, and the identifier bookkeeping
-/// Android forces on us because an alarm cannot be enumerated.
+/// `AlarmManager.setWindow`, a notification channel, and the identifier bookkeeping Android
+/// forces because alarms cannot be enumerated.
 class AndroidAlarmScheduler(
     context: Context,
     private val settings: RoutineSettings,
@@ -196,24 +174,22 @@ class AndroidAlarmScheduler(
     private val alarms = app.getSystemService(AlarmManager::class.java)
 
     override suspend fun apply(planned: List<ReminderPlanner.PlannedReminder>) {
-        // Note what we believe is already scheduled but DON'T cancel it yet — see
+        // Note what we believe is scheduled but DON'T cancel yet — see
         // `AlarmScheduler.apply`.
         val ours = settings.scheduledReminderIdentifiers
 
         if (planned.isEmpty()) {
-            // Every routine's reminders are off (or there are no routines): the correct
-            // plan is genuinely empty, and this is the one path that may clear without
-            // checking permission.
+            // All reminders off (or no routines): the plan is genuinely empty, the one path
+            // that may clear without checking permission.
             ours.forEach { cancel(it) }
             settings.setScheduledReminderIdentifiers(emptySet())
             return
         }
 
-        // A notification we are not allowed to post is an alarm that wakes the phone to
-        // do nothing. `POST_NOTIFICATIONS` is asked for on the first Save of a routine
-        // that wants reminders — see `NotificationPermissionGate` — and until it is
-        // granted the plan is simply not installed. Nothing is cancelled either: the
-        // user has not said no to the reminders, only not yet been asked.
+        // An alarm for a notification we may not post wakes the phone to do nothing. Until
+        // `POST_NOTIFICATIONS` is granted (asked on the first Save wanting reminders — see
+        // `NotificationPermissionGate`) the plan is not installed, and nothing is
+        // cancelled: the user has not said no.
         if (!canPost()) return
 
         val scheduled = HashSet<String>()
@@ -222,7 +198,7 @@ class AndroidAlarmScheduler(
             scheduled.add(item.identifier)
         }
 
-        // Now — and only now — drop what the new plan no longer covers.
+        // Only now drop what the new plan no longer covers.
         (ours - scheduled).forEach { cancel(it) }
         settings.setScheduledReminderIdentifiers(scheduled)
     }
@@ -250,9 +226,8 @@ class AndroidAlarmScheduler(
     }
 }
 
-/// The shared alarm plumbing — the intent shape, the window, and the "when is the next
-/// one" arithmetic — so the scheduler and the receiver that reschedules cannot disagree
-/// about any of it.
+/// Shared alarm plumbing — intent shape, window, "when is the next one" — so scheduler and
+/// rescheduling receiver cannot disagree.
 object ReminderAlarms {
     const val channelId = "reminders"
     const val action = "run.nuri.getagrip.REMINDER"
@@ -262,21 +237,19 @@ object ReminderAlarms {
     const val extraHour = "hour"
     const val extraMinute = "minute"
 
-    /// Fifteen minutes. A habit nudge does not need the exact minute, and asking for
-    /// `SCHEDULE_EXACT_ALARM` to get one would be the same overreach as claiming the
-    /// right to pierce a Focus mode.
+    /// Fifteen minutes: a habit nudge does not need the exact minute (see the planner's
+    /// note on `SCHEDULE_EXACT_ALARM`).
     const val windowMillis: Long = 15 * 60 * 1000L
 
-    /// The first firing of `hour:minute` after `from` — skipping it once more when it is
-    /// suppressed AND still inside the current training day.
+    /// The first firing of `hour:minute` after `from`, skipped once more when suppressed
+    /// AND still inside the current training day.
     ///
-    /// **Suppression is about the TRAINING day, and the old arithmetic was about the
-    /// calendar.** `suppressToday` used to push the slot past its next calendar occurrence
-    /// unconditionally, which is right at 18:00 and wrong after midnight: a session finished
-    /// at 00:30 settles the day that began at 04:00 YESTERDAY, so tomorrow-morning's 08:00 is
-    /// already the next training day's first reminder — and it was being skipped, leaving a
-    /// whole day unreminded. The same bug was found on iOS. A slot is now skipped only when
-    /// its next firing lands before the coming rollover.
+    /// **Suppression is about the TRAINING day, not the calendar.** Pushing the slot past
+    /// its next calendar occurrence unconditionally is right at 18:00 and wrong after
+    /// midnight: a session at 00:30 settles the day that began at 04:00 yesterday, so
+    /// tomorrow's 08:00 is the next training day's first reminder and was being skipped
+    /// (the same bug existed on iOS). A slot is skipped only when its next firing lands
+    /// before the coming rollover.
     fun nextOccurrence(hour: Int, minute: Int, zone: ZoneId, from: LocalDateTime? = null,
                        suppressToday: Boolean = false): Long {
         val now = from ?: LocalDateTime.now(zone)
@@ -286,9 +259,8 @@ object ReminderAlarms {
         return next.atZone(zone).toInstant().toEpochMilli()
     }
 
-    /// The coming `DayStamp.ROLLOVER_HOUR`, in local wall time — where the training day
-    /// `now` belongs to ends. Local-time arithmetic like the rest of this file, so a DST
-    /// night moves the hour with the clock rather than by a fixed number of hours.
+    /// The coming `DayStamp.ROLLOVER_HOUR` in local wall time, where `now`'s training day
+    /// ends. Local-time arithmetic, so a DST night moves the hour with the clock.
     fun trainingDayEnd(now: LocalDateTime): LocalDateTime {
         val rollover = now.toLocalDate().atTime(DayStamp.ROLLOVER_HOUR, 0)
         return if (now.isBefore(rollover)) rollover else rollover.plusDays(1)
@@ -314,15 +286,14 @@ object ReminderAlarms {
             context,
             item.requestCode,
             intent,
-            // UPDATE_CURRENT is what makes a replan idempotent: re-adding an identifier
-            // replaces the alarm in place rather than stacking a second one.
+            // UPDATE_CURRENT makes a replan idempotent: re-adding an identifier replaces
+            // the alarm in place.
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
 
-    /// NO_CREATE: if nothing is scheduled under this identifier there is nothing to
-    /// cancel, and minting a `PendingIntent` in order to cancel it would leave a fresh
-    /// one behind on some OEM builds.
+    /// NO_CREATE: with nothing scheduled there is nothing to cancel, and minting a
+    /// `PendingIntent` to cancel it leaves a fresh one behind on some OEM builds.
     fun cancelIntent(context: Context, identifier: String): PendingIntent? {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             action = ReminderAlarms.action
@@ -335,9 +306,8 @@ object ReminderAlarms {
         )
     }
 
-    /// **DEFAULT importance, never HIGH.** This is a habit nudge; a training app that
-    /// claims the right to a heads-up banner for a routine reminder is the kind of app
-    /// people turn notifications off for entirely. The iOS twin is
+    /// **DEFAULT importance, never HIGH.** A habit nudge claiming heads-up banners is how
+    /// people turn a whole app's notifications off. The iOS twin is
     /// `interruptionLevel = .active`.
     fun ensureChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -352,12 +322,10 @@ object ReminderAlarms {
     }
 }
 
-/// Posts one reminder and schedules the same slot for tomorrow.
-///
-/// The reschedule is what replaces iOS's repeating trigger. It happens here rather than
-/// at launch because a phone that is not opened for a week must still be reminded — and
-/// the next replan (any save, any finished session, midnight) overwrites this alarm in
-/// place, so the two cannot drift apart.
+/// Posts one reminder and schedules the same slot for tomorrow — the replacement for iOS's
+/// repeating trigger. Here rather than at launch because a phone unopened for a week must
+/// still be reminded; the next replan overwrites this alarm in place, so the two cannot
+/// drift.
 class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -420,14 +388,11 @@ class ReminderReceiver : BroadcastReceiver() {
 }
 
 /// **Asking for `POST_NOTIFICATIONS` belongs to the first Save of a routine that wants
-/// reminders, never to launch** — by then the user has been through the builder and seen
-/// both times on screen, so the OS dialog arrives with its reason already on the previous
-/// screen. The twin of `PermissionGate` in `DeviceStore`, and fulfilled the same way: the
-/// Activity lends one to the store.
+/// reminders, never to launch** — by then the reason is on the previous screen. The twin of
+/// `DeviceStore`'s `PermissionGate`: the Activity lends one to the store.
 ///
-/// Nothing installs a gate yet. `TemplateStore.askNotificationPermissionOnce` still runs
-/// its one-shot bookkeeping and simply has nobody to ask, which is deliberate — the
-/// dialog is wired by the wave that ships the builder.
+/// Nothing installs a gate yet; `TemplateStore.askNotificationPermissionOnce` does its
+/// bookkeeping with nobody to ask until the builder wires the dialog.
 fun interface NotificationPermissionGate {
     fun request(onResult: (Boolean) -> Unit)
 }

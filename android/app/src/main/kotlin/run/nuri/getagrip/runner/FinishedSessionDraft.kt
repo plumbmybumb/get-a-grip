@@ -22,20 +22,18 @@ import java.util.UUID
 
 /// **A finished session, written down the moment it finishes — before anyone taps Save.**
 ///
-/// Nothing reached the database until the summary's Save: the runner stopped its service and
-/// card at the last rep, and a finished workout then lived only in memory while the climber
-/// chalked up, drank, looked at the numbers. Android reclaims a backgrounded process without
-/// asking, and a twenty-minute session died unlogged with it. The draft is everything Save
-/// needs, frozen at the finish; Save and Discard delete it, and a launch that finds one asks
-/// what to do with it (`UnsavedSessionRecovery`). iOS gets the same draft and the same prompt.
+/// With nothing persisted until Save, a finished workout lived only in memory while the
+/// climber chalked up, and Android reclaiming the process took a twenty-minute session with
+/// it. The draft is everything Save needs, frozen at the finish; Save and Discard delete
+/// it, and a launch that finds one asks what to do (`UnsavedSessionRecovery`). iOS has the
+/// same draft and prompt.
 ///
-/// `id` is the id the session's `WorkoutLog` row is written under, from EITHER door — so a
-/// Save that landed just before the process died, and the recovery offered on the next
-/// launch, are one row rather than two.
+/// `id` is the session's `WorkoutLog` row id from EITHER door, so a Save just before death
+/// plus the next launch's recovery are one row.
 data class FinishedSessionDraft(
     val id: UUID,
-    /// Best-effort grouping, exactly as on the log: the routine may be gone by the time the
-    /// draft is saved, and its name and target below are the ones it had when it ran.
+    /// Best-effort grouping as on the log: the routine may be gone; name and target are as
+    /// it ran.
     val templateID: UUID?,
     val templateName: String,
     val sessionsPerDayTarget: Int,
@@ -62,8 +60,8 @@ data class FinishedSessionDraft(
     )
 
     companion object {
-        /// Bumped only if an old draft could no longer be read — it is a one-file format with
-        /// a lifetime of one unsaved session, never a migration.
+        /// Bumped only if an old draft could no longer be read: a one-file format that
+        /// lives for one session, never migrated.
         const val FORMAT_VERSION = 1
 
         fun of(outcome: SessionOutcome, template: SessionTemplateEntity?): FinishedSessionDraft {
@@ -81,9 +79,8 @@ data class FinishedSessionDraft(
             )
         }
 
-        /// Null for anything that is not a whole draft of a version this build reads. A
-        /// half-understood draft is not offered: a prompt promising a session it cannot
-        /// save is worse than none.
+        /// Null for anything but a whole draft of a readable version: a prompt promising a
+        /// session it cannot save is worse than none.
         fun fromJson(element: JsonElement?): FinishedSessionDraft? {
             val o = JsonRead.obj(element) ?: return null
             if (JsonRead.int(o["version"]) != FORMAT_VERSION) return null
@@ -104,14 +101,11 @@ data class FinishedSessionDraft(
     }
 }
 
-/// One draft, in one file, written ATOMICALLY: `AtomicFile` writes a sibling and renames it
-/// over the original only once the bytes are synced, so a process killed mid-write leaves
-/// the previous state intact rather than a truncated draft that decodes as nothing.
+/// One draft in one file, written ATOMICALLY (`AtomicFile` renames a synced sibling), so a
+/// kill mid-write leaves the previous state, not a truncated draft.
 ///
-/// Synchronous on purpose. The draft is a few kilobytes written once per session, and the
-/// order matters more than the thread: a write handed to a background queue could land
-/// AFTER the Discard that was meant to delete it, and resurrect a session the climber threw
-/// away.
+/// Synchronous on purpose: a few kilobytes once per session, and a background write could
+/// land AFTER the Discard meant to delete it, resurrecting a thrown-away session.
 class FinishedSessionDraftStore(file: File) {
     private val atomic = AtomicFile(file)
 
@@ -147,8 +141,8 @@ class FinishedSessionDraftStore(file: File) {
     }
 
     companion object {
-        /// In `filesDir`, not the cache: the system may clear a cache under storage pressure,
-        /// and this is a workout nobody has saved yet.
+        /// `filesDir`, not the cache, which the system may clear: this is a workout nobody
+        /// has saved.
         const val FILE_NAME = "finished-session-draft.json"
     }
 }

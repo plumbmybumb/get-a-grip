@@ -28,34 +28,28 @@ import java.util.UUID
 import run.nuri.getagrip.ui.units.WeightUnit
 import run.nuri.getagrip.ui.units.WeightUnits
 
-/// Which gauge the app is driving. Split out from the rest of the settings surface
-/// because `DeviceStore.init` chooses its client from the stored kind, so this one answer
-/// has to be available synchronously — see `SettingsStore`'s note.
+/// Which gauge the app is driving. Its own interface because `DeviceStore.init` chooses its
+/// client from it, so it must be available synchronously — see `SettingsStore`.
 interface GaugeKindStore {
     fun load(): GaugeKind
     fun save(kind: GaugeKind)
 }
 
-/// The slice of the settings surface `TemplateStore` and `AndroidAlarmScheduler` write to.
+/// The slice of settings `TemplateStore` and `AndroidAlarmScheduler` write to — its own
+/// interface so the hub is testable without a `Context`, a DataStore file, or cross-test
+/// preference bleed (iOS resets `UserDefaults` keys in `makeWorld()`).
 ///
-/// Named as its own interface for the same reason `GaugeKindStore` is: it keeps the hub
-/// testable without a `Context`, a DataStore file, or the cross-test bleed a real
-/// preference file causes — which on iOS is handled instead by resetting five
-/// `UserDefaults` keys inside `makeWorld()`.
-///
-/// TRANSLATION NOTE: `val` plus an explicit `setX(…)` rather than a `var`. A `var` in an
-/// interface would force the implementation's setter to be public, and these are all
-/// cached-then-persisted writes that must go through one door.
+/// TRANSLATION NOTE: `val` plus `setX(…)` rather than `var`, which would force a public
+/// setter; every write must go through the one cached-then-persisted door.
 interface RoutineSettings {
     val lastStartedRoutineID: UUID?
     val lastStartedDayRaw: Int
     val draftStash: String?
     val didAskNotificationPermission: Boolean
 
-    /// What the answer WAS. `didAskNotificationPermission` only says the dialog was raised;
-    /// this says it came back no, which is the difference between "you will be asked when
-    /// you save" and "reminders cannot fire". The builder needs to tell those apart, and the
-    /// live system check cannot: an app that has never been asked is also not permitted.
+    /// What the answer WAS: `didAskNotificationPermission` says the dialog was raised, this
+    /// says it came back no — "you will be asked when you save" versus "reminders cannot
+    /// fire". The live system check cannot tell them apart.
     val deniedNotifications: Boolean
     val scheduledReminderIdentifiers: Set<String>
 
@@ -105,27 +99,21 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 
 /// The handful of preferences that are not part of a routine.
 ///
-/// Backed by Preferences DataStore, NOT Room: a synced settings ROW means duplicate-row
-/// headaches on every device that creates "the" settings row, and none of these values
-/// wants to sync anyway.
+/// Preferences DataStore, NOT Room: a synced settings ROW means duplicate-row headaches on
+/// every device, and none of these values wants to sync.
 ///
-/// Everything in here is DEVICE-LOCAL by construction. That is a property two of these
-/// values depend on rather than an accident: a synced "the routine I last started" flag
-/// is the classic second-device bug, where the phone you left at home decides what your
-/// tablet opens on.
+/// DEVICE-LOCAL by construction, which two values depend on: a synced "routine I last
+/// started" is the classic second-device bug.
 ///
-/// **The first read BLOCKS.** `DeviceStore.init` picks its client from `gauge.kind`
-/// before any frame is drawn, which is what `UserDefaults` gives iOS for free and
-/// DataStore does not. One small file, once, at launch; everything afterwards is served
-/// from the in-memory cache and every write is fire-and-forget. Reads are Compose state,
-/// so a screen re-reads by observing rather than by polling.
+/// **The first read BLOCKS.** `DeviceStore.init` picks its client from `gauge.kind` before
+/// any frame (free with iOS's `UserDefaults`, not DataStore). One small file, once;
+/// afterwards reads come from the in-memory cache (Compose state) and writes are
+/// fire-and-forget.
 ///
-/// **Fire-and-forget, but IN ORDER.** Each write used to be its own `launch` on the
-/// multi-threaded IO pool, so two writes a millisecond apart raced to `edit` and the older
-/// one could land last: a stale draft stash came back after Save had cleared it, and a
-/// replan's reminder-id list could be overwritten by the plan before it — the list the NEXT
-/// replan cancels from. Writes now go through ONE `SerialWriteLane`, which persists them in
-/// the order they were made.
+/// **Fire-and-forget, but IN ORDER.** Separate `launch`es on the IO pool let an older write
+/// land last: a draft stash came back after Save cleared it, and a replan's reminder-id
+/// list (what the NEXT replan cancels from) was overwritten by its predecessor. All writes
+/// go through ONE `SerialWriteLane`.
 @Stable
 class SettingsStore(
     context: Context,
@@ -135,10 +123,8 @@ class SettingsStore(
     private val dataStore = context.applicationContext.settingsDataStore
 
     private companion object {
-        /// **These keys and the raw values they hold are a STORAGE FORMAT** — renaming
-        /// one silently resets somebody's chosen gauge, replays a tour they have seen, or
-        /// re-asks for notification permission. Same class of trap as the grip key's
-        /// letter order.
+        /// **These keys and raw values are a STORAGE FORMAT**: renaming one silently resets
+        /// a chosen gauge, replays a seen tour, or re-asks for notification permission.
         val weightUnitKey = stringPreferencesKey("weightUnit")
         val gaugeKindKey = stringPreferencesKey("gauge.kind")
         val builderGuideDoneKey = booleanPreferencesKey("builderGuideDone")
@@ -152,16 +138,14 @@ class SettingsStore(
         val scheduledRemindersKey = stringPreferencesKey("reminders.scheduled")
         val trainingDayRepairKey = intPreferencesKey("repair.trainingDays.version")
 
-        /// `tour.seen.<act>` — one key per act, holding a VERSION rather than a Bool.
-        /// When the tour gains an act, a bumped version is what lets it run again for
-        /// people who saw the old one, and a Bool would have no way to say that.
+        /// `tour.seen.<act>` — one key per act, holding a VERSION rather than a Bool, so a
+        /// bumped act can run again for people who saw the old one.
         fun tourSeenKey(act: String) = intPreferencesKey("tour.seen.$act")
 
         const val tourSeenPrefix = "tour.seen."
     }
 
-    /// One blocking read for every key — the alternative is one blocking read per
-    /// accessor, and they all land in the same file.
+    /// One blocking read for every key, rather than one per accessor on the same file.
     private val loaded: Preferences = runBlocking { dataStore.data.first() }
 
     init { WeightUnits.current = WeightUnit.fromRaw(loaded[weightUnitKey]) }
@@ -170,15 +154,15 @@ class SettingsStore(
 
     fun setWeightUnit(value: WeightUnit) {
         WeightUnits.current = value
-        // Rapid toggles need no generation guard any more: the lane persists them in the
-        // order they were made, so the last one written is the last one chosen.
+        // No generation guard needed: the lane persists writes in order, so the last
+        // written is the last chosen.
         write { it[weightUnitKey] = value.rawValue }
     }
 
     private var cachedGaugeKind: String? = loaded[gaugeKindKey]
 
-    // Backing state. `val` + `setX(…)` in public, so every write goes through the one
-    // door that updates the cache before it persists.
+    // Backing state. Public `val` + `setX(…)`, so every write updates the cache before
+    // persisting.
     private var guideDone: Boolean by mutableStateOf(loaded[builderGuideDoneKey] ?: false)
     private var asked: Boolean by mutableStateOf(loaded[didAskNotificationPermissionKey] ?: false)
     private var denied: Boolean by mutableStateOf(loaded[deniedNotificationsKey] ?: false)
@@ -201,65 +185,58 @@ class SettingsStore(
         }.toMap()
     )
 
-    /// The builder's five inline coach cards. Retired on the first save and replayable
-    /// from Settings › "Show the setup guide again", so it is a preference, not a flag.
+    /// The builder's five coach cards: retired on first save, replayable from Settings, so
+    /// a preference, not a flag.
     val builderGuideDone: Boolean get() = guideDone
 
-    /// One-shot: the contextual permission ask happens on the first Save with reminders
-    /// on, once. Never at launch, and never gating anything.
+    /// One-shot: the permission ask happens once, on the first Save with reminders on.
+    /// Never at launch, never gating anything.
     override val didAskNotificationPermission: Boolean get() = asked
 
-    /// The dialog was raised and came back NO. Observable, because the builder's reminder
-    /// rows are on screen when the answer arrives and the note under them has to appear
-    /// without a re-entry. Never cleared by the app: it is corrected by the system check
-    /// the moment the permission is granted in Settings — see `EveryDaySection`.
+    /// The dialog came back NO. Observable, because the builder's reminder rows are on
+    /// screen when the answer arrives. Never cleared by the app: the system check overrides
+    /// it once granted in Settings — see `EveryDaySection`.
     override val deniedNotifications: Boolean get() = denied
 
     /// Rung 2 of Today's selection rule: the routine started today on THIS device.
     override val lastStartedRoutineID: UUID? get() = routineID
 
-    /// `DayStamp.raw` of the day `lastStartedRoutineID` was written, which is what makes
-    /// the suggestion expire at midnight instead of persisting for a week. A raw Int
-    /// because that is what the preference store can hold; 0 is 1970-01-01, which is
-    /// never today, so a fresh install has no suggestion.
+    /// `DayStamp.raw` of the day `lastStartedRoutineID` was written, so the suggestion
+    /// expires at midnight. 0 is 1970-01-01, never today, so a fresh install suggests
+    /// nothing.
     override val lastStartedDayRaw: Int get() = dayRaw
 
-    /// A debounced rescue copy of an in-progress routine draft — create/first-run only,
-    /// cleared on BOTH Save and Cancel. Restoring a stale draft into an EDIT could
-    /// overwrite a merge the user never saw.
+    /// A debounced rescue copy of an in-progress draft — create/first-run only, cleared on
+    /// BOTH Save and Cancel. Restoring a stale draft into an EDIT could overwrite a merge
+    /// the user never saw.
     ///
-    /// TRANSLATION NOTE: `Data?` on iOS, a String here, because `BlobCodec` produces
-    /// canonical JSON TEXT and DataStore has no byte-array preference type.
+    /// TRANSLATION NOTE: `Data?` on iOS; a String here because `BlobCodec` produces JSON
+    /// TEXT and DataStore has no byte-array type.
     override val draftStash: String? get() = stash
 
     /// Which card the calendar share sheet draws — white, dark or frosted.
     val shareCardStyle: String get() = cardStyle
 
-    /// One-shot, like the notification ask: the note Frez asks to be shown the first time
-    /// the Dyno is selected has been read on this device. Never shown again after Next,
-    /// and never shown at all for any other gauge.
+    /// One-shot: the note Frez asks to show the first time the Dyno is selected has been
+    /// read on this device. Never shown for any other gauge.
     val frezIntroSeen: Boolean get() = frezIntro
 
-    /// The reminder identifiers this app believes it has scheduled.
-    ///
-    /// Android has no `pendingNotificationRequests()`: an `AlarmManager` alarm cannot be
-    /// enumerated, only replaced or cancelled through its own `PendingIntent`. So the
-    /// planner's "note what is already scheduled, add, THEN drop the remainder" rule needs
-    /// somewhere to keep that note across a process death — otherwise a relaunch would
-    /// have no way to cancel an alarm the new plan no longer covers.
+    /// The reminder identifiers this app believes it has scheduled. `AlarmManager` alarms
+    /// cannot be enumerated, so the planner's "note, add, THEN drop the remainder" rule
+    /// needs this note to survive process death, or a relaunch could not cancel an alarm
+    /// the new plan dropped.
     override val scheduledReminderIdentifiers: Set<String> get() = scheduled
 
     override val trainingDayRepairVersion: Int get() = repairVersion
 
-    /// The version of `act` the user has seen, or 0 for never. Kept in a map rather than
-    /// as three properties because `TourAct` is the tour's vocabulary, not this file's.
+    /// The version of `act` seen, or 0 for never. A map because `TourAct` is the tour's
+    /// vocabulary, not this file's.
     fun tourSeenVersion(act: String): Int = tourSeen[act] ?: 0
 
     // MARK: - Writes
     //
-    // Every setter updates the cache FIRST and persists after: a preference read a
-    // microsecond after it was written must answer with what was written, and DataStore's
-    // own read-back is a suspend away.
+    // Every setter updates the cache FIRST, then persists: a read right after a write must
+    // answer with it, and DataStore's read-back is a suspend away.
 
     fun setBuilderGuideDone(value: Boolean) {
         guideDone = value
@@ -327,10 +304,9 @@ class SettingsStore(
 
     // MARK: - GaugeKindStore
 
-    /// An unrecognised raw value — a kind written by a newer build, then a downgrade —
-    /// reads as the Progressor rather than refusing to build a client. That is the
-    /// CONSERVATIVE direction, the same rule `SessionKind` follows: under-serving one
-    /// device beats a screen that never connects.
+    /// An unrecognised raw value (a newer build's kind, then a downgrade) reads as the
+    /// Progressor rather than refusing to build a client — the CONSERVATIVE direction
+    /// `SessionKind` also follows.
     override fun load(): GaugeKind =
         cachedGaugeKind?.let { GaugeKind.fromRaw(it) } ?: GaugeKind.progressor
 
@@ -348,8 +324,8 @@ class SettingsStore(
     }
 }
 
-/// The in-memory counterpart of the gauge half, for tests and for the "relaunch" round
-/// trip: two stores built over one of these is exactly what a fresh launch reads.
+/// The in-memory gauge half, for tests and the "relaunch" round trip: two stores over one
+/// of these is what a fresh launch reads.
 class InMemoryGaugeKindStore(private var raw: String? = null) : GaugeKindStore {
     override fun load(): GaugeKind = raw?.let { GaugeKind.fromRaw(it) } ?: GaugeKind.progressor
 
@@ -357,8 +333,8 @@ class InMemoryGaugeKindStore(private var raw: String? = null) : GaugeKindStore {
         raw = kind.rawValue
     }
 
-    /// Writes a raw value the enum has never heard of — the only way to reproduce a kind
-    /// stored by a newer build, since no typed API can express it.
+    /// Writes a raw value the enum has never heard of — the only way to reproduce a newer
+    /// build's kind.
     fun writeRaw(value: String?) {
         raw = value
     }
