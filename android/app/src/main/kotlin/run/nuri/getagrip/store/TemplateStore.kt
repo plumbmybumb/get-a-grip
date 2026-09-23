@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -183,6 +184,13 @@ class TemplateStore(
 
     /// Set when a write fails. The failed change has already been rolled back — it was
     /// one transaction — by the time a view reads this.
+    ///
+    /// **DISPLAY ONLY — never the answer to "did MY write land?"** It used to be both: each
+    /// write reset it, ran, and its caller then read it back. Two writes in flight shared
+    /// the one field, so a failed save could be read as a success because a second write
+    /// had reset it in between — an Undo offered for a delete that never happened, a
+    /// session reported saved that was rolled back. Every write now answers for itself
+    /// (`persistAndSync` returns it); this is only the sentence a screen shows.
     var saveError: String? by mutableStateOf(null)
 
     /// A scanned routine (or the reason a scan failed), HELD rather than presented.
@@ -242,7 +250,21 @@ class TemplateStore(
     /// true so every external trigger (launch, midnight, the permission callback) still
     /// refolds unconditionally; only the internal write path opts out, and only where it
     /// can prove it wrote no max.
-    suspend fun syncDerived(refoldingMaxes: Boolean = true) {
+    suspend fun syncDerived(refoldingMaxes: Boolean = true) = syncLane.withLock {
+        publishDerived(refoldingMaxes)
+    }
+
+    /// **One recompute at a time, in the order they were asked for.** `syncDerived` reads
+    /// three tables across three suspensions and then publishes; two of them overlapping —
+    /// a save's and the midnight refresh's, say — could finish in the wrong order and leave
+    /// the OLDER world on screen, and hand the planner the older plan. Serialized, the later
+    /// call starts after the earlier one has published, so it reads a disk at least as new.
+    private val syncLane = Mutex()
+
+    /// Bumped per recompute; the replan launched by an older one sees it moved and skips.
+    private var replanGeneration = 0L
+
+    private suspend fun publishDerived(refoldingMaxes: Boolean) {
         val fetched = gateway.allRoutines() ?: return
         val ordered = fetched.sortedWith(routineOrder)
         val today = clock.today
@@ -304,8 +326,12 @@ class TemplateStore(
             )
         }
         // Off the caller's turn, exactly as iOS detaches it: an `AlarmManager` write per
-        // slot is not something a save should wait on.
-        scope.launch { ReminderPlanner.replan(inputs, scheduler) }
+        // slot is not something a save should wait on. Superseded plans are skipped rather
+        // than applied and immediately replaced — see `ReminderPlanner.replan`.
+        val generation = ++replanGeneration
+        scope.launch {
+            ReminderPlanner.replan(inputs, scheduler) { generation == replanGeneration }
+        }
     }
 
     // MARK: - Derived computations (pure over what was fetched)
@@ -606,8 +632,7 @@ class TemplateStore(
             draft = normalized,
             sortIndex = (siblings.maxOfOrNull { it.sortIndex } ?: -1) + 1,
         )
-        persistAndSync(maxesChanged = false) { it.putRoutine(row) }
-        if (saveError != null) return null
+        if (!persistAndSync(maxesChanged = false) { it.putRoutine(row) }) return null
         askNotificationPermissionOnce(normalized)
         return row
     }
@@ -619,8 +644,7 @@ class TemplateStore(
         // row again, which is worse — a delete the user made would silently undo itself.
         if (gateway.routine(template.id) == null) return false
         val normalized = draft.normalized
-        persistAndSync(maxesChanged = false) { it.putRoutine(template.applying(normalized)) }
-        if (saveError != null) return false
+        if (!persistAndSync(maxesChanged = false) { it.putRoutine(template.applying(normalized)) }) return false
         askNotificationPermissionOnce(normalized)
         return true
     }
@@ -722,13 +746,13 @@ class TemplateStore(
         // Its sessions go with it. A read that FAILS refuses the whole delete: deleting the
         // routine anyway would leave its sessions behind as orphans nothing can reach.
         val sessions = (gateway.allLogs() ?: return false).filter { it.templateID == template.id }
-        persistAndSync(maxesChanged = false) { writer ->
+        val deleted = persistAndSync(maxesChanged = false) { writer ->
             sessions.forEach { writer.removeLog(it.id) }
             writer.removeRoutine(template.id)
         }
         // Only offer undo for a delete that actually landed — the transaction rolled
         // back on failure, so the routine is still there and "Undo" would duplicate it.
-        if (saveError != null) return false
+        if (!deleted) return false
         lastDeleted = DeletedRoutine(restorable, sessions)
         armUndoExpiry()
         return true
@@ -758,7 +782,7 @@ class TemplateStore(
         // `updatedAt` is deliberately NOT restored: the restore is itself the most recent
         // thing that happened to this routine, and `recentGrips` reads that order.
         val row = restorable.routine.copy(updatedAt = storedNow())
-        persistAndSync(maxesChanged = false) { writer ->
+        val restored = persistAndSync(maxesChanged = false) { writer ->
             writer.putRoutine(row)
             // Its sessions come back with it, as the raw rows they were — never through
             // `WorkoutLogEntity.from`, which would re-derive their numbers.
@@ -768,7 +792,7 @@ class TemplateStore(
         // Only consume the undo once the restore has landed. Clearing it first would mean
         // a rolled-back save loses the routine for good — the one outcome the undo bar
         // exists to prevent.
-        if (saveError == null) lastDeleted = null else armUndoExpiry()
+        if (restored) lastDeleted = null else armUndoExpiry()
     }
 
     fun dismissUndo() {
@@ -857,8 +881,7 @@ class TemplateStore(
             fingerStrain = fingerStrain,
             notes = notes,
         )
-        persistAndSync(maxesChanged = false) { it.putLog(log) }
-        return if (saveError == null) log else null
+        return if (persistAndSync(maxesChanged = false) { it.putLog(log) }) log else null
     }
 
     /// **Re-file every session the app itself timed under the training day it started
@@ -916,11 +939,11 @@ class TemplateStore(
             finishedAt = finishedAt,
             day = clock.today,
         ).copy(rpe = rpe?.rawValue)
-        persistAndSync(maxesChanged = newMaxes.isNotEmpty()) { writer ->
+        val saved = persistAndSync(maxesChanged = newMaxes.isNotEmpty()) { writer ->
             writer.putLog(log)
             newMaxes.forEach { writer.putMax(it) }
         }
-        return if (saveError == null) log else null
+        return if (saved) log else null
     }
 
     /// Remove a session from history — the one destructive act on this data.
@@ -934,9 +957,8 @@ class TemplateStore(
         // Captured as the raw row, blobs included — see `undoDeleteSession`.
         val restorable = (gateway.allLogs() ?: return false).firstOrNull { it.id == log.id }
             ?: return false
-        persistAndSync(maxesChanged = false) { it.removeLog(log.id) }
         // Only offer undo for a delete that actually landed.
-        if (saveError != null) return false
+        if (!persistAndSync(maxesChanged = false) { it.removeLog(log.id) }) return false
         lastDeletedSession = restorable
         armSessionUndoExpiry()
         return true
@@ -954,8 +976,8 @@ class TemplateStore(
     suspend fun undoDeleteSession() {
         val restorable = lastDeletedSession ?: return
         sessionUndoExpiry?.cancel()
-        persistAndSync(maxesChanged = false) { it.putLog(restorable) }
-        if (saveError == null) lastDeletedSession = null else armSessionUndoExpiry()
+        val restored = persistAndSync(maxesChanged = false) { it.putLog(restorable) }
+        if (restored) lastDeletedSession = null else armSessionUndoExpiry()
     }
 
     fun dismissSessionUndo() {
@@ -1013,7 +1035,7 @@ class TemplateStore(
         // top would silently cancel the evening ritual.
         // A failed read is not evidence that today has no benchmark. Keep the max,
         // but don't invent a second day marker when the history cannot be checked.
-        persistAndSync { writer ->
+        return persistAndSync { writer ->
             val existing = checkNotNull(writer.allMaxes()) { "Couldn't read existing maxes" }
             val newest = newestPerGrip(existing)
             val previous = table(newest)
@@ -1038,13 +1060,11 @@ class TemplateStore(
             benchmarkLog?.let { writer.putLog(it) }
             snapshot?.invoke(previous, current, routines)
         }
-        return saveError == null
     }
 
     suspend fun deleteMax(record: MaxRecordEntity): Boolean {
         if ((gateway.allMaxes() ?: return false).none { it.id == record.id }) return false
-        persistAndSync { it.removeMax(record.id) }
-        return saveError == null
+        return persistAndSync { it.removeMax(record.id) }
     }
 
     // MARK: - What a new max moves
@@ -1275,7 +1295,6 @@ class TemplateStore(
             }
             updated.forEach { writer.putRoutine(it) }
         }
-        saveError == null
     }
 
     /// Apply the accepted rescale: every explicit-kg set on `grip` in the given routines,
@@ -1324,10 +1343,9 @@ class TemplateStore(
         if (updated.isEmpty()) return true
         // The new max was written and folded by `recordMax` before this offer was even
         // computed; this write moves routines only.
-        persistAndSync(maxesChanged = false) { writer ->
+        return persistAndSync(maxesChanged = false) { writer ->
             updated.forEach { writer.putRoutine(it) }
         }
-        return saveError == null
     }
 
     /// Half-kilogram rounding, same as the percent path resolves to — a scaled typed
@@ -1376,12 +1394,15 @@ class TemplateStore(
     /// Here the whole unit of work is a Room TRANSACTION, so a failure never wrote
     /// anything, and the `syncDerived` that follows republishes from the same disk. The
     /// rollback is structural rather than a call that could be forgotten.
+    ///
+    /// **Returns whether THIS write committed** — the only answer a caller may act on. See
+    /// `saveError` for why the shared field cannot be that answer.
     private suspend fun persistAndSync(
         maxesChanged: Boolean = true,
         work: suspend (StoreWriter) -> Unit,
-    ) {
+    ): Boolean {
         saveError = null
-        try {
+        val committed = try {
             gateway.write { writer ->
                 val audited = AuditingWriter(writer)
                 work(audited)
@@ -1392,10 +1413,15 @@ class TemplateStore(
                     )
                 }
             }
+            true
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
             saveError = L10n.tr("That change couldn't be saved — %s", error.message ?: "")
+            false
         }
         syncDerived(refoldingMaxes = maxesChanged)
+        return committed
     }
 
     /// Asked on the first Save of a routine that actually WANTS reminders — by then the

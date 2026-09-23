@@ -159,8 +159,17 @@ object ReminderPlanner {
 
     private val gate = Mutex()
 
-    suspend fun replan(routines: List<RoutinePlanInput>, scheduler: AlarmScheduler) {
-        gate.withLock { scheduler.apply(requests(routines)) }
+    ///
+    /// `isCurrent` is asked INSIDE the lock: a plan computed by a recompute that has since
+    /// been superseded is dropped rather than installed and immediately replaced, so the
+    /// alarms never spend a moment on a stale day. Defaulted to "always current" for the
+    /// callers that replan exactly once (boot, tests).
+    suspend fun replan(
+        routines: List<RoutinePlanInput>,
+        scheduler: AlarmScheduler,
+        isCurrent: () -> Boolean = { true },
+    ) {
+        gate.withLock { if (isCurrent()) scheduler.apply(requests(routines)) }
     }
 }
 
