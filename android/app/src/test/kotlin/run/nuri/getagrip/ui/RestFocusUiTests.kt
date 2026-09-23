@@ -158,8 +158,8 @@ class RestFocusUiTests {
             showRunner(h)
             val baseline = geometry()
             compose.runOnIdle {
+                // The session's own watcher reports the drop.
                 h.client.disconnect()
-                h.session.connectionChanged(false)
             }
             assertTrue(h.session.snapshot.hasSignal,
                 "An earlier sample must not suppress the warning after the link disappears")

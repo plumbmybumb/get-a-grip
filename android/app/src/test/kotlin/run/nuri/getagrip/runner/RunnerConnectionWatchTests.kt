@@ -58,8 +58,8 @@ class RunnerConnectionWatchTests {
         assertFalse(session.snapshot.linkIsDown, "and the return")
         assertEquals(before + 1, starts(client), "which re-kicks the stream once")
 
-        // A caller repeating what the watcher already reported changes nothing.
-        session.connectionChanged(true)
+        // The store repeating a state it already published is not a change.
+        client.setState(ProgressorConnectionState.Connected)
         assertEquals(before + 1, starts(client))
         session.end()
     }
