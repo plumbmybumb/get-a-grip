@@ -34,7 +34,8 @@ fun DebugSummaryPreview(onDone: () -> Unit) {
             sets = grips.map { SetPlan(grip = it, repsPerSide = 1) }, handMode = HandMode.bothHands)
         SessionOutcome(plan, plan.name, reps, Instant.now().minusSeconds(180), Instant.now(),
             17.0, 12.5, 60.0, 6, 6, false, GaugeKind.progressor, true,
-            reps.map { MaxCandidate(it.grip, it.side, it.peakKg, null) }.sortedByDescending { it.kg })
+            reps.map { MaxCandidate(it.grip, it.side, it.peakKg, null) }.sortedByDescending { it.kg },
+            id = java.util.UUID.randomUUID())
     }
     SessionSummaryScreen(outcome, 1,
         modifier = Modifier.fillMaxSize().background(LocalGripPalette.current.field).safeDrawingPadding()) { _, _ ->

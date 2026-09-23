@@ -19,6 +19,7 @@ import run.nuri.getagrip.runner.RunnerSession
 import run.nuri.getagrip.runner.CuePlayer
 import run.nuri.getagrip.runner.AndroidActivityPublisher
 import run.nuri.getagrip.runner.AndroidSessionServiceController
+import run.nuri.getagrip.store.LogIdentity
 import run.nuri.getagrip.store.LocalDeviceStore
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
@@ -203,7 +204,8 @@ fun RootTabView() {
                 if (decision.save && outcome.didAnyWork) {
                     val saved = templates.recordSession(
                         plan = outcome.plan,
-                        template = request.template,
+                        // The finished-session draft's id: a Save and a launch recovery are one row.
+                        identity = LogIdentity.of(request.template, outcome.plan, outcome.id),
                         reps = outcome.results,
                         startedAt = outcome.startedAt,
                         finishedAt = outcome.finishedAt,
@@ -212,8 +214,6 @@ fun RootTabView() {
                             run.nuri.getagrip.data.MaxRecordEntity.from(
                                 grip = it.grip, kg = it.kg, source = MaxSource.measured, side = it.side)
                         },
-                        // The finished-session draft's id: a Save and a launch recovery are one row.
-                        id = outcome.id,
                     )
                     if (saved != null) feed.refresh()
                     saved != null

@@ -14,6 +14,7 @@ import run.nuri.getagrip.engine.BlobCodec
 import run.nuri.getagrip.engine.JsonRead
 import run.nuri.getagrip.engine.RepSummary
 import run.nuri.getagrip.engine.SessionPlan
+import run.nuri.getagrip.store.LogIdentity
 import java.io.File
 import java.io.IOException
 import java.time.Instant
@@ -43,6 +44,9 @@ data class FinishedSessionDraft(
     val startedAt: Instant,
     val finishedAt: Instant,
 ) {
+    /// Who the session is filed under when it is saved — see `LogIdentity`.
+    val identity: LogIdentity get() = LogIdentity(id, templateID, templateName, sessionsPerDayTarget)
+
     fun toJson(): JsonElement = JsonObject(
         mapOf(
             "version" to JsonPrimitive(FORMAT_VERSION),
@@ -62,18 +66,20 @@ data class FinishedSessionDraft(
         /// a lifetime of one unsaved session, never a migration.
         const val FORMAT_VERSION = 1
 
-        fun of(outcome: SessionOutcome, template: SessionTemplateEntity?): FinishedSessionDraft =
-            FinishedSessionDraft(
-                id = outcome.id,
-                templateID = template?.id,
-                // The same fallbacks `TemplateStore.recordSession` applies to a null template.
-                templateName = template?.name ?: outcome.plan.name,
-                sessionsPerDayTarget = template?.sessionsPerDay ?: 1,
+        fun of(outcome: SessionOutcome, template: SessionTemplateEntity?): FinishedSessionDraft {
+            // The same identity the summary's Save files the session under.
+            val identity = LogIdentity.of(template, outcome.plan, outcome.id)
+            return FinishedSessionDraft(
+                id = identity.id,
+                templateID = identity.templateID,
+                templateName = identity.templateName,
+                sessionsPerDayTarget = identity.sessionsPerDayTarget,
                 plan = outcome.plan,
                 reps = outcome.results,
                 startedAt = outcome.startedAt,
                 finishedAt = outcome.finishedAt,
             )
+        }
 
         /// Null for anything that is not a whole draft of a version this build reads. A
         /// half-understood draft is not offered: a prompt promising a session it cannot

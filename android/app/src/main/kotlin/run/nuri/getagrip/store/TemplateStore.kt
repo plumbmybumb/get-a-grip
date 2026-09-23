@@ -975,39 +975,34 @@ class TemplateStore(
     /// used to split them: a session begun at 03:50 and saved at 04:10, or a summary left
     /// open overnight, landed on the next day.
     ///
-    /// `id` is the finished session's own identity when it has one — the draft a finished
-    /// session leaves behind (`FinishedSessionDraft`) — so saving it twice, once from the
-    /// summary and once from launch recovery, replaces one row rather than writing two.
+    /// `identity.id` is the finished session's own — the same id its draft
+    /// (`FinishedSessionDraft`) carries — so saving it twice, once from the summary and once
+    /// from launch recovery, replaces one row rather than writing two.
     suspend fun recordSession(
         plan: SessionPlan,
-        template: SessionTemplateEntity?,
+        identity: LogIdentity,
         reps: List<RepSummary>,
         startedAt: Instant,
         finishedAt: Instant,
         rpe: RPE?,
         newMaxes: List<MaxRecordEntity> = emptyList(),
-        id: UUID? = null,
-        templateID: UUID? = template?.id,
-        templateName: String = template?.name ?: plan.name,
-        sessionsPerDayTarget: Int = template?.sessionsPerDay ?: 1,
         zone: ZoneId = ZoneId.systemDefault(),
     ): WorkoutLogEntity? {
         if (newMaxes.any { !it.kg.isFinite() || it.kg <= 0 }) {
             saveError = L10n.tr("Couldn't save this workout. Please try again.")
             return null
         }
-        val built = WorkoutLogEntity.from(
+        val log = WorkoutLogEntity.from(
             plan = plan,
-            templateID = templateID,
+            templateID = identity.templateID,
             // FROZEN at save: renaming a routine later must not retro-rename history.
-            templateName = templateName,
-            sessionsPerDayTarget = sessionsPerDayTarget,
+            templateName = identity.templateName,
+            sessionsPerDayTarget = identity.sessionsPerDayTarget,
             reps = reps,
             startedAt = startedAt,
             finishedAt = finishedAt,
             day = DayStamp.trainingDayOf(startedAt, zone),
-        ).copy(rpe = rpe?.rawValue)
-        val log = if (id != null) built.copy(id = id) else built
+        ).copy(id = identity.id, rpe = rpe?.rawValue)
         val saved = persistAndSync(maxesChanged = newMaxes.isNotEmpty()) { writer ->
             writer.putLog(log)
             newMaxes.forEach { writer.putMax(it) }

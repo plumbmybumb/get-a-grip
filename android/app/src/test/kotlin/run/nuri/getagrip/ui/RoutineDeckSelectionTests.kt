@@ -106,7 +106,8 @@ class RoutineDeckSelectionTests {
         }
         compose.onNodeWithTag("done").assertTextEquals("0")
         runBlocking {
-            store.recordSession(plan = routine.plan, template = routine, reps = emptyList(),
+            store.recordSession(plan = routine.plan,
+                identity = LogIdentity.of(routine, routine.plan, java.util.UUID.randomUUID()), reps = emptyList(),
                 startedAt = Instant.now().minusSeconds(60), finishedAt = Instant.now(), rpe = null)
         }
         compose.onNodeWithTag("done").assertTextEquals("1")

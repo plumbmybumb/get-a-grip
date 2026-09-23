@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.time.Instant
+import java.util.UUID
 import kotlin.math.roundToInt
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.GripSpec
@@ -535,6 +536,7 @@ private fun previewOutcome(didWork: Boolean = true): SessionOutcome {
         } else {
             emptyList()
         },
+        id = UUID.randomUUID(),
     )
 }
 

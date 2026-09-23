@@ -20,10 +20,12 @@ import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SessionKind
 import run.nuri.getagrip.store.DayClock
 import run.nuri.getagrip.store.InMemoryRoutineSettings
+import run.nuri.getagrip.store.LogIdentity
 import run.nuri.getagrip.store.RecordingAlarmScheduler
 import run.nuri.getagrip.store.RoomStoreGateway
 import run.nuri.getagrip.store.StoreGateway
 import run.nuri.getagrip.store.TemplateStore
+import java.util.UUID
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.test.assertEquals
@@ -90,11 +92,13 @@ class StoreHistoryReadTests {
         val w = world()
         val routine = assertNotNull(w.store.create(RoutineDraft.starter))
         val logged = assertNotNull(w.store.recordSession(
-            plan = routine.plan, template = routine, reps = emptyList(),
+            plan = routine.plan, identity = LogIdentity.of(routine, routine.plan, UUID.randomUUID()),
+            reps = emptyList(),
             startedAt = java.time.Instant.now(), finishedAt = java.time.Instant.now(), rpe = null,
         ))
         val other = assertNotNull(w.store.recordSession(
-            plan = routine.plan, template = routine, reps = emptyList(),
+            plan = routine.plan, identity = LogIdentity.of(routine, routine.plan, UUID.randomUUID()),
+            reps = emptyList(),
             startedAt = java.time.Instant.now(), finishedAt = java.time.Instant.now(), rpe = null,
         ))
 
@@ -111,8 +115,9 @@ class StoreHistoryReadTests {
         val w = world()
         // Begun 03:50 on the 21st — still the 20th's training day — and saved at 04:10.
         val log = assertNotNull(w.store.recordSession(
-            plan = RoutineDraft.starter.normalized.plan, template = null, reps = emptyList(),
-            startedAt = at(21, 3, 50), finishedAt = at(21, 4, 10), rpe = null, zone = paris,
+            plan = RoutineDraft.starter.normalized.plan,
+            identity = LogIdentity.of(null, RoutineDraft.starter.normalized.plan, UUID.randomUUID()),
+            reps = emptyList(), startedAt = at(21, 3, 50), finishedAt = at(21, 4, 10), rpe = null, zone = paris,
         ))
         assertEquals(DayStamp.of(2026, 9, 20), log.day)
         assertEquals(0, w.store.repairTrainingDays(paris), "and the repair has nothing to say about it")
@@ -126,8 +131,9 @@ class StoreHistoryReadTests {
         val id = java.util.UUID.randomUUID()
         repeat(2) {
             assertNotNull(w.store.recordSession(
-                plan = RoutineDraft.starter.normalized.plan, template = null, reps = emptyList(),
-                startedAt = at(21, 18, 0), finishedAt = at(21, 18, 20), rpe = null, id = id,
+                plan = RoutineDraft.starter.normalized.plan,
+                identity = LogIdentity.of(null, RoutineDraft.starter.normalized.plan, id),
+                reps = emptyList(), startedAt = at(21, 18, 0), finishedAt = at(21, 18, 20), rpe = null,
             ))
         }
         assertEquals(listOf(id), w.db.logs().all().map { it.id })

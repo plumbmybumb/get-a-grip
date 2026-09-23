@@ -892,9 +892,10 @@ data class SessionOutcome(
     val gaugeKind: GaugeKind?,
     val didAnyWork: Boolean,
     val maxCandidates: List<MaxCandidate>,
-    /// The log row's id — see `RunnerSession.sessionID`. Last and defaulted, so a preview
-    /// or a test building an outcome positionally need not invent one.
-    val id: UUID = UUID.randomUUID(),
+    /// The log row's id — see `RunnerSession.sessionID`. Never defaulted: a fresh id minted
+    /// by whoever builds an outcome would break one-session-one-row between Save and
+    /// launch recovery.
+    val id: UUID,
 )
 
 /// What the summary decided. `save` false means the climber held the Discard button — the
