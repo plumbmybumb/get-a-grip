@@ -12,17 +12,13 @@ extension CuePlayer: RunnerCuePlaying {
 
 /// Plays what `SessionRunner` asks for — and nothing else.
 ///
-/// The runner returns `RunnerCue`s and never plays one itself, so this is the only
-/// place in the app where a workout makes a noise. Everything here is pure OUTPUT:
-/// no method throws, no failure propagates, and a phone with a dead audio session or
-/// no haptic hardware still runs the whole session in silence. A cue that cannot be
-/// played is not a reason for a set to stop.
+/// Everything here is pure OUTPUT: no method throws, no failure propagates, and a phone
+/// with a dead audio session or no haptic hardware still runs the whole session in
+/// silence. A cue that cannot be played is not a reason for a set to stop.
 ///
-/// The tones are SYNTHESISED, not shipped: nine short buffers built once at `begin()`
-/// cost ~2 ms and about 200 KB of Float32, which is cheaper than the smallest useful
-/// audio asset and removes a whole class of "the file didn't make it into the bundle"
-/// failures. They share one A-major frame so the cues read as a family; the alarm
-/// deliberately does not, which is what makes it read as wrong.
+/// The tones are SYNTHESISED, not shipped: built once at `begin()` for ~2 ms and ~200 KB,
+/// with no bundle asset to go missing. They share one A-major frame so the cues read as
+/// a family; the alarm does not, which is what makes it read as wrong.
 @MainActor
 final class CuePlayer {
 
@@ -41,10 +37,8 @@ final class CuePlayer {
     /// queue behind.
     private var audioStarting = false
     /// Which activation is the CURRENT one. Bumped whenever an in-flight activation stops
-    /// being wanted (a media-services reset, `end()`), so its completion — which still
-    /// arrives — is ignored instead of clearing `audioStarting` for a newer activation or
-    /// starting an engine nobody asked for. Two overlapping activations are otherwise
-    /// indistinguishable when they land.
+    /// being wanted (a media-services reset, `end()`), so its completion is ignored
+    /// instead of clearing `audioStarting` for a newer one or starting an unwanted engine.
     private var audioGeneration = 0
     /// When audio was last (re)started, so a cue arriving to a dead engine can retry
     /// without turning every tick of a rest into an audio-session round trip.
@@ -53,8 +47,7 @@ final class CuePlayer {
 
     // MARK: Haptics
 
-    /// False on every Simulator. Everything haptic below short-circuits on it rather
-    /// than logging or throwing.
+    /// False on every Simulator; everything haptic short-circuits on it.
     private let hapticsSupported = CHHapticEngine.capabilitiesForHardware().supportsHaptics
     private var hapticEngine: CHHapticEngine?
     private var hapticEngineRunning = false
@@ -67,27 +60,22 @@ final class CuePlayer {
     /// reset replaces the engine it was registered against.
     private var engineObserver: NSObjectProtocol?
 
-    /// Where audio evidence goes — the session's diagnostics ring, set through
-    /// `setDiagnosticSink`. Optional: a preview has nowhere to send it, and output never
-    /// depends on being observed.
+    /// Where audio evidence goes — the session's diagnostics ring, via
+    /// `setDiagnosticSink`. Optional: output never depends on being observed.
     private var onDiagnostic: ((String) -> Void)?
 
     init() {}
 
-    /// Activate the audio session and prepare both engines. Called ONCE per session:
-    /// starting an `AVAudioEngine` costs tens of milliseconds and doing it per cue
-    /// would put that latency between "go" and the first pull.
-    ///
-    /// The audio-session half runs OFF the main thread (`startAudio`): `setCategory` and
-    /// `setActive` are synchronous round trips to the audio server, and this is called
-    /// while the runner's cover is still presenting.
+    /// Activate the audio session and prepare both engines, ONCE per session: starting
+    /// an `AVAudioEngine` costs tens of milliseconds. The audio-session half runs OFF the
+    /// main thread (`startAudio`) — `setCategory`/`setActive` are synchronous round trips
+    /// to the audio server, called while the runner's cover is presenting.
     func begin() {
         guard !isRunning else { return }
         isRunning = true
         buildTones()
-        // The graph is built AFTER the session is configured (in `startAudio`), never
-        // before: preparing an engine under the default `.soloAmbient` category is an audio
-        // object created in a session that is NOT mixable, and nothing here may ever be.
+        // The graph is built AFTER the session is configured (in `startAudio`): preparing
+        // an engine under the default `.soloAmbient` category creates it non-mixable.
         installObservers()
         startAudio()
         prepareHaptics()
@@ -116,10 +104,8 @@ final class CuePlayer {
     func play(_ cue: RunnerCue) {
         switch cue {
         case .leadInTick(let seconds), .restTick(let seconds):
-            // The most-heard cue in the app, and the one most able to ruin it: a beep
-            // per second through a two-minute rest is unbearable, so only the last
-            // three seconds speak at all. The final second is a higher pitch so "go"
-            // is anticipated rather than merely announced.
+            // Only the last three seconds speak: a beep per second through a long rest is
+            // unbearable. The final one is higher so "go" is anticipated.
             guard (1...3).contains(seconds) else { return }
             let last = seconds == 1
             sound(last ? .tickFinal : .tick)
@@ -130,8 +116,7 @@ final class CuePlayer {
             haptic(.ramp)
 
         case .repStarted:
-            // Deliberately small: "go" already sounded, and this only confirms the
-            // clock caught the pull. Something louder here would compete with it.
+            // Small: "go" already sounded; this only confirms the clock caught the pull.
             sound(.tick)
             haptic(.crisp)
 
@@ -163,10 +148,8 @@ final class CuePlayer {
         }
     }
 
-    /// A short contrasting interval, separate from the engine's measurement cues; one
-    /// announcement per transition. The app has NO sound preference to gate it on: every
-    /// cue follows the same two rules instead — mixed with whatever else is playing and
-    /// never ducking it, and silent rather than failing.
+    /// A short contrasting interval, one announcement per transition. No sound
+    /// preference gates it: like every cue it mixes without ducking and fails silent.
     func gripChanged() { sound(.gripChange) }
 
     // MARK: - Audio session and graph
@@ -186,8 +169,7 @@ final class CuePlayer {
             guard let self, generation == self.audioGeneration else { return }
             self.audioStarting = false
             self.onDiagnostic?(report.summary)
-            // Ended while the session was activating: `end()` has already queued the
-            // deactivation behind us, and starting the engine now would outlive it.
+            // Ended while activating: `end()` queued the deactivation behind us.
             guard self.isRunning else { return }
             guard report.active else {
                 // Haptics-only until a later cue retries. The session keeps running.
@@ -252,11 +234,9 @@ final class CuePlayer {
     private func sound(_ tone: CueTone) {
         guard isRunning else { return }
         guard audioReady, engine.isRunning else {
-            // **A dead engine is retried, not left for the rest of the session.** Audio
-            // used to come back only when an interruption ended WITH `.shouldResume` —
-            // which a Siri request, an alarm or another app taking the session often does
-            // not send — so one phone call could silence a workout for good. This cue is
-            // lost; the next one, at most two seconds on, has a live engine.
+            // **A dead engine is retried.** Interruptions often end without
+            // `.shouldResume` (Siri, an alarm), so one phone call could otherwise silence
+            // a workout for good. This cue is lost; the next one has a live engine.
             if !audioStarting,
                ProcessInfo.processInfo.systemUptime - lastAudioAttempt >= Self.audioRetryInterval {
                 startAudio()
@@ -264,9 +244,8 @@ final class CuePlayer {
             return
         }
         guard let buffer = tones[tone] else { return }
-        // Queued, NOT `.interrupts`: the runner returns cues in batches (a final rep
-        // yields rep-end, set-end and session-end together) and interrupting would
-        // leave only the last one audible.
+        // Queued, NOT `.interrupts`: the runner returns cues in batches (rep-end, set-end,
+        // session-end together) and interrupting would leave only the last audible.
         player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
         if !player.isPlaying { player.play() }
     }
@@ -289,9 +268,8 @@ final class CuePlayer {
             Task { @MainActor in self?.handleInterruption(typeRaw: type, optionsRaw: options) }
         })
 
-        // The audio server restarted (it happens: a crash in mediaserverd, a route
-        // storm). Every AVAudio object from before is now a husk, and without this the
-        // session ran the rest of the workout in silence with nothing on screen to say so.
+        // The audio server restarted: every AVAudio object is now a husk, and the workout
+        // would otherwise run silent.
         observers.append(center.addObserver(
             forName: AVAudioSession.mediaServicesWereResetNotification,
             object: AVAudioSession.sharedInstance(),
@@ -326,9 +304,8 @@ final class CuePlayer {
         onDiagnostic?(type == .began ? "interrupted by another app" : "interruption ended")
         switch type {
         case .began:
-            // The system has already silenced us; tearing the graph down keeps a
-            // half-live engine from throwing on the next cue. The runner is untouched —
-            // a phone call must not cost the rep that is under way.
+            // Tear the graph down so a half-live engine cannot throw on the next cue. The
+            // runner is untouched — a phone call must not cost the rep under way.
             player.stop()
             engine.stop()
             audioReady = false
@@ -342,9 +319,8 @@ final class CuePlayer {
         }
     }
 
-    /// AirPods connecting mid-set stops the engine and drops the player's connection.
-    /// Without the rebuild the rest of the session is silent, which looks exactly like
-    /// a broken app rather than a route change.
+    /// AirPods connecting mid-set stops the engine and drops the player's connection;
+    /// without the rebuild the rest of the session is silent.
     private func handleConfigurationChange() {
         guard isRunning else { return }
         buildGraph()
@@ -361,10 +337,8 @@ final class CuePlayer {
         engine = AVAudioEngine()
         player = AVAudioPlayerNode()
         audioReady = false
-        // Whatever activation was in flight was talking to the dead server: retire it, so
-        // its completion can neither clear the flag for the one started below nor start an
-        // engine that no longer exists. No `buildGraph()` here — `startAudio` builds the
-        // graph once the session is configured again, the same order as `begin()`.
+        // Retire any activation in flight to the dead server (see `audioGeneration`). No
+        // `buildGraph()` here — `startAudio` builds it once configured, as in `begin()`.
         audioGeneration += 1
         audioStarting = false
         installEngineObserver()
@@ -374,16 +348,13 @@ final class CuePlayer {
     // MARK: - Haptics
 
     private func prepareHaptics() {
-        // No haptic hardware — every Simulator — is a silent no-op. Not an error, not
-        // a log: it is the expected state of half the machines this runs on.
+        // No haptic hardware (every Simulator) is a silent no-op.
         guard hapticsSupported, hapticEngine == nil else { return }
         hapticEngine = try? CHHapticEngine()
         // LOAD-BEARING for "never interrupt what the user is listening to".
-        // `CHHapticEngine` is built for haptics-AND-audio patterns, so by default it
-        // participates in the audio session and can take it over — which is exactly how
-        // a training app ends up pausing somebody's YouTube video without ever calling a
-        // single audio API for it. We render our own tones through AVAudioEngine, so this
-        // engine plays haptics ONLY and stays out of the session entirely.
+        // `CHHapticEngine` by default participates in the audio session and can take it
+        // over — pausing somebody's video without a single audio API call. Our tones go
+        // through AVAudioEngine, so this engine plays haptics ONLY.
         hapticEngine?.playsHapticsOnly = true
         // We own the lifetime through begin/end, so auto-shutdown would only add
         // start latency to the first tick after a long rest.
@@ -536,8 +507,7 @@ private enum CueHaptic {
         case .crispStrong: return [Self.transient(intensity: 1.0, sharpness: 0.75)]
         case .soft:        return [Self.transient(intensity: 0.45, sharpness: 0.35)]
         case .ramp:
-            // A swell, not a knock: "go" is a state you enter, and a ramp is still
-            // felt through a hand that is already closing on the edge.
+            // A swell, not a knock: still felt through a hand closing on the edge.
             return [CHHapticEvent(eventType: .hapticContinuous, parameters: [
                 CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.7),
                 CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.4),

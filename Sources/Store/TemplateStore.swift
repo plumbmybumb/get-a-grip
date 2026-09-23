@@ -56,10 +56,8 @@ final class TemplateStore {
 
     /// What each routine is called RIGHT NOW, by id.
     ///
-    /// History freezes a routine's name into every log, which it must — a deleted
-    /// routine still needs a name. But while the routine exists the frozen copy is a
-    /// stale label, so displays resolve through this and fall back to the frozen name:
-    /// a rename shows up everywhere at once and a deleted routine keeps its history.
+    /// Displays resolve a session's routine name through this and fall back to the
+    /// frozen copy — see `WorkoutLog.displayName(in:)`.
     private(set) var routineNames: [UUID: String] = [:]
     /// Newest `MaxRecord` per canonical grip key. `MaxRecord` is append-only, so
     /// "current" is a fold, never a mutable row.
@@ -442,9 +440,7 @@ final class TemplateStore {
         logs.hangCompletions(on: day)
     }
 
-    /// `.hangManual` ONLY — not every log with a nil `templateID`. A runner session
-    /// whose routine was later deleted also has no id and is dropped on purpose;
-    /// crediting those here would retroactively rescore old days.
+    /// `.hangManual` ONLY — see `Collection.unattributedHangs(on:)`.
     private static func unattributedHangs(in logs: [WorkoutLog], on day: DayStamp) -> Int {
         logs.unattributedHangs(on: day)
     }
