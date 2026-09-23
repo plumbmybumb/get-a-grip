@@ -52,9 +52,8 @@ enum StreamStartCause: String, Sendable, CaseIterable {
     case watchdog
     case tareRecovery
     case manualMeasurement
-    /// The human tapped Wake. Distinct from `.watchdog` on purpose: attributing a manual
-    /// recovery to the automatic one would make the breadcrumb report lie about who
-    /// revived the stream, in the one log that exists to explain exactly that.
+    /// The human tapped Wake. Distinct from `.watchdog`, so the breadcrumbs say who
+    /// revived the stream.
     case manualWake
 
     var label: String {
@@ -72,10 +71,8 @@ enum StreamStartCause: String, Sendable, CaseIterable {
 
 /// Why a stream stopped. The counterpart to `StreamStartCause`, and the reason the
 /// breadcrumb ring can tell a genuine stall from the app doing exactly what it should.
-/// **Deliberately has no default anywhere it is taken.** A defaulted cause is a cause
-/// that is wrong at the call sites nobody revisited, and a diagnostic that quietly
-/// mislabels an automatic stop as "stopped by hand" is worse than one that says nothing:
-/// it sends whoever reads the log looking for a user who was never there.
+/// **No default anywhere it is taken**: a defaulted cause is wrong at the call sites
+/// nobody revisited, and a mislabelled stop is worse than none.
 enum StreamStopCause: String, Sendable, CaseIterable {
     case sessionEnded
     case userStopped
@@ -121,13 +118,9 @@ enum ProgressorClientDiagnostic: Sendable {
 ///
 /// Marked `@MainActor` on the PROTOCOL so isolation propagates to every conformer:
 /// the live client passes `queue: .main` to CoreBluetooth, so its delegate callbacks
-/// genuinely arrive on the main thread and there is no isolation boundary to cross
-/// anywhere in the stack. At ~10 notifications/sec of microsecond-cheap TLV decoding
-/// there is nothing to gain from a second isolation domain, and plenty to lose.
-///
-/// Callback-style rather than `AsyncStream` for the same reason — the store wires
-/// `onEvent` the way the sibling apps wire their session callbacks, and every hop
-/// stays visible in one place.
+/// arrive on the main thread and there is no isolation boundary to cross. At ~10
+/// notifications/sec of microsecond-cheap decoding a second isolation domain gains
+/// nothing — which is also why this is callback-style rather than `AsyncStream`.
 @MainActor
 protocol ProgressorClient: AnyObject {
     var onEvent: ((ProgressorEvent) -> Void)? { get set }

@@ -12,9 +12,8 @@ import SwiftData
 /// otherwise have on a single mutable row (last-writer-wins on a *strength* number is
 /// exactly the wrong resolution).
 ///
-/// There is deliberately NO denormalized `gripKey` column: the key is always computed
-/// from the three components beside it, because a stored key that can drift out of step
-/// with them is a second source of truth for the one string the whole trend join hangs on.
+/// NO denormalized `gripKey` column: the key is always computed from its components, so
+/// the string the whole trend join hangs on has one source of truth.
 ///
 /// Same CloudKit rules as the other models: every attribute defaulted, nothing unique,
 /// no relationships.
@@ -28,10 +27,8 @@ final class MaxRecord {
     var kg: Double = 0
     var recordedAt: Date = Date.now
     var sourceRaw: String = "manual"
-    /// Which hand this was pulled with. **Defaulted to "both"**, which is what every
-    /// record written before this column existed means and what an untouched picker
-    /// still means — so the additive migration needs no backfill and the app behaves
-    /// exactly as it did for anyone who never opens the control.
+    /// Which hand this was pulled with. **Defaulted to "both"** — what every older record
+    /// and an untouched picker mean. Additive, no backfill.
     var sideRaw: String = "both"
     var note: String = ""
 
@@ -69,19 +66,16 @@ extension MaxRecord {
     /// against to find "your max on this grip".
     var gripKey: String { grip.key }
 
-    /// An unknown hand from a newer build reads as `.both`, which is the widest and
-    /// least surprising reading — the record still counts for every rep of that grip
-    /// rather than vanishing from a screen the user put it on.
+    /// An unknown hand from a newer build reads as `.both`, so the record still counts
+    /// rather than vanishing.
     var side: Side {
         get { Side(rawValue: sideRaw) ?? .both }
         set { sideRaw = newValue.rawValue }
     }
 
     /// **Identity for "the current max" is the grip AND the hand.** Folding on `gripKey`
-    /// alone would make a right-hand max supersede a left-hand one recorded a minute
-    /// earlier — the newest wins, and the other hand silently loses its number. That is
-    /// the whole reason this exists as its own property rather than being spelled out at
-    /// each fold site.
+    /// alone would let a right-hand max supersede the left-hand one, and one hand would
+    /// silently lose its number.
     var maxKey: String { MaxTable.key(grip: gripKey, side: side) }
 
     /// An unknown source from a newer build reads as `.manual`, which understates the
@@ -93,9 +87,7 @@ extension MaxRecord {
 }
 
 extension Collection where Element == MaxRecord {
-    /// Newest per GRIP **AND HAND** — see `maxKey`. Keyed on the grip alone, recording a
-    /// right-hand max would supersede the left-hand one you took a minute earlier, and
-    /// one of your two hands would silently lose its number.
+    /// Newest per GRIP **AND HAND** — see `maxKey`.
     ///
     /// Here rather than in the store so the watch's runner resolves loads against
     /// exactly the fold the phone's does.

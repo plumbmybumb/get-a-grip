@@ -3,9 +3,8 @@
 
 import SwiftUI
 
-// The runner's two GLASS SURFACES and the wells inside them — shared because the panel
-// and the dock are siblings by design, and a second copy of either value is how two
-// siblings stop matching.
+// The runner's two GLASS SURFACES and the wells inside them — shared so the panel and
+// the dock cannot stop matching.
 
 /// The glass vocabulary the runner's floating surfaces share.
 enum RunnerGlass {
@@ -16,8 +15,6 @@ enum RunnerGlass {
 
     /// Sheet radius, not card radius: a glass surface floating over content is the
     /// system's sheet vocabulary, and beside 56 pt capsules a 22 pt corner reads tight.
-    /// ONE shape for the panel and the dock, so the two cannot drift into different
-    /// radius families while both claiming to be siblings.
     static var surfaceShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: Metrics.radiusSheet, style: .continuous)
     }
@@ -46,18 +43,15 @@ extension View {
 
 // MARK: - Dock actions, as views
 
-/// A dock action as a VIEW — the same button `RunnerView.dockButton` draws for Pause and
-/// the Skips (full width in its slot, glass inside the label when it floats, a quiet ink
-/// well inside a dock), so a second screen with a dock is built from the runner's own
-/// parts rather than a lookalike. The gauge screen is that second screen.
+/// A dock action as a VIEW — the same button `RunnerView.dockButton` draws, so the
+/// gauge screen's dock is built from the runner's own parts rather than a lookalike.
 ///
 /// `enabled`/`disabledReason` dim AND disable, with the reason surfaced as the
 /// accessibility hint; the label is never swapped for it.
 ///
-/// `fillsRowHeight` is for a button INSIDE an `AdaptiveActionRow`, where the row bounds
-/// it and it merely matches its neighbours. Standing alone in a `VStack` the same
-/// `maxHeight: .infinity` claims every flexible point on the screen — the gauge's Stop
-/// button measured half the display that way (2026-09-20) — so it is off by default.
+/// `fillsRowHeight` is for a button INSIDE an `AdaptiveActionRow`, which bounds it.
+/// Alone in a `VStack` the same `maxHeight: .infinity` claims every flexible point
+/// (half the display, measured), so it is off by default.
 struct DockButton: View {
     var title: String
     var systemImage: String? = nil
@@ -104,10 +98,8 @@ struct DockButton: View {
 /// without becoming a second kind of surface. Bleu to start a measurement, alarm to
 /// stop one.
 ///
-/// `GlassTint`, not a bare `Color`: its `text` is the ink already chosen to stay
-/// legible over translucent surfaces. The first cut put the accent itself on a 16 %
-/// well and MEASURED 2.5:1 in dark mode and 2.6:1 for bleu in light — under the 3:1
-/// floor for a label this size — where this pair clears 4.5:1 (2026-09-20).
+/// `GlassTint`, not a bare `Color`: the accent itself on a 16 % well MEASURED 2.5:1 in
+/// dark mode, under the 3:1 floor; the tint's `text` ink clears 4.5:1.
 struct DockTintedButton: View {
     var title: String
     var systemImage: String? = nil
@@ -132,8 +124,7 @@ struct DockTintedButton: View {
             }
             .font(.system(.subheadline, weight: .semibold))
             .foregroundStyle(enabled ? tint.text : Ink.tertiary.opacity(0.5))
-            // Never `fillsRowHeight`: this one stands alone under the row — see
-            // `DockButton` for the half-a-screen it grew to otherwise.
+            // Never `fillsRowHeight`: this one stands alone — see `DockButton`.
             .actionLabelLayout(fullWidth: true)
             .background(Capsule().fill((tint.glass ?? Ink.primary).opacity(enabled ? 0.22 : 0.08)))
             .contentShape(.capsule)
