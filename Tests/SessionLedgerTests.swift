@@ -21,7 +21,7 @@ final class SessionLedgerTests: XCTestCase {
                                         cloudKitDatabase: .none)
         let container = try ModelContainer(for: Self.schema, configurations: [config])
         let clock = DayClock(today: today)
-        return (container, SessionLedger(context: container.mainContext, clock: clock), clock)
+        return (container, SessionLedger(context: container.mainContext), clock)
     }
 
     private func oneRep(of plan: SessionPlan, heldSeconds: Double = 7,
@@ -33,7 +33,7 @@ final class SessionLedgerTests: XCTestCase {
                           peakKg: 20, avgKg: 18, outcome: outcome)
     }
 
-    func testRecordSessionFreezesTheRoutineAndStampsTheClocksDay() throws {
+    func testRecordSessionFreezesTheRoutineAndStampsTheDayItStarted() throws {
         let world = try makeWorld()
         let template = SessionTemplate(draft: RoutineDraft.starter.normalized, sortIndex: 0)
         world.container.mainContext.insert(template)
@@ -43,7 +43,8 @@ final class SessionLedgerTests: XCTestCase {
             plan: plan, template: template, reps: [oneRep(of: plan)],
             startedAt: .now, finishedAt: .now, rpe: nil))
 
-        XCTAssertEqual(log.dayKey, world.clock.today.raw, "the day is the clock's, not the wall's")
+        XCTAssertEqual(log.dayKey, DayStamp(trainingDayOf: log.startedAt).raw,
+                       "the training day the session started in")
         XCTAssertEqual(log.templateID, template.id)
         XCTAssertEqual(log.templateName, template.name, "frozen at save")
         XCTAssertEqual(log.sessionsPerDayTarget, template.sessionsPerDay)
@@ -166,5 +167,105 @@ final class SessionLedgerTests: XCTestCase {
         XCTAssertEqual(morning.day, sept20, "a row already right is not touched")
         XCTAssertEqual(world.ledger.repairTrainingDays(calendar: paris), 0)
         XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutLog>()).count, 3)
+    }
+
+    private var paris: Calendar {
+        var paris = Calendar(identifier: .gregorian)
+        paris.timeZone = TimeZone(identifier: "Europe/Paris")!
+        return paris
+    }
+
+    private func parisDate(_ day: Int, _ hour: Int, _ minute: Int) -> Date {
+        paris.date(from: DateComponents(year: 2026, month: 9, day: day, hour: hour, minute: minute))!
+    }
+
+    /// A runner session as the midnight clock filed it: started late on the 19th,
+    /// stamped the calendar day it was SAVED on.
+    private func midnightStampedHang(startedAt: Date, day: DayStamp) -> WorkoutLog {
+        let plan = RoutineDraft.starter.normalized.plan.executable
+        return WorkoutLog(plan: plan, templateID: nil, templateName: "Daily burn",
+                          sessionsPerDayTarget: 2, reps: [oneRep(of: plan)],
+                          startedAt: startedAt, finishedAt: startedAt.addingTimeInterval(13 * 60),
+                          day: day)
+    }
+
+    /// The repair touches only rows the midnight clock itself wrote. A kind from a newer
+    /// build reads as `.hang` through `SessionKind(fallback:)` and used to be rewritten;
+    /// a row outside the midnight window was stamped by some other rule (another time
+    /// zone, most likely) and re-deriving it here is how travel moved history; a row
+    /// started after the cutoff came from the writer that already stamps the training
+    /// day. The benchmark marker, stamped by the app like a hang, is repaired.
+    func testRepairLeavesUnknownKindsForeignStampsAndLaterRowsAlone() throws {
+        let world = try makeWorld()
+        let context = world.container.mainContext
+        let sept17 = DayStamp(year: 2026, month: 9, day: 17)
+        let sept19 = DayStamp(year: 2026, month: 9, day: 19)
+        let sept20 = DayStamp(year: 2026, month: 9, day: 20)
+        let lateOn19 = parisDate(19, 23, 47)
+
+        let future = midnightStampedHang(startedAt: lateOn19, day: sept20)
+        future.kindRaw = "fingerYoga"
+        let foreign = midnightStampedHang(startedAt: lateOn19, day: sept17)
+        let later = midnightStampedHang(startedAt: parisDate(20, 2, 30), day: sept20)
+        let benchmark = WorkoutLog(logged: .benchmark, day: sept20, at: parisDate(20, 1, 30),
+                                   sessionsPerDayTarget: 2)
+        let stale = midnightStampedHang(startedAt: lateOn19, day: sept20)
+        for log in [future, foreign, later, benchmark, stale] { context.insert(log) }
+        try context.save()
+
+        XCTAssertEqual(world.ledger.repairTrainingDays(calendar: paris,
+                                                       before: parisDate(20, 2, 0)), 2)
+        XCTAssertEqual(stale.day, sept19, "the midnight-stamped hang moves")
+        XCTAssertEqual(benchmark.day, sept19, "01:30 belongs to the evening before")
+        XCTAssertEqual(future.dayKey, sept20.raw, "a newer build's kind is left as it wrote it")
+        XCTAssertEqual(future.kindRaw, "fingerYoga")
+        XCTAssertEqual(foreign.day, sept17, "not a midnight stamp in this zone: not ours to move")
+        XCTAssertEqual(later.day, sept20, "started after the cutoff: the new writer's row")
+    }
+
+    /// Once per install. A row that is wrong after the flag is set stays as it is — the
+    /// repair is not a launch-time rewrite of history any more.
+    func testRepairRunsOncePerInstallAndMarksItself() throws {
+        let world = try makeWorld()
+        let context = world.container.mainContext
+        let suite = "SessionLedgerTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let sept19 = DayStamp(year: 2026, month: 9, day: 19)
+        let sept20 = DayStamp(year: 2026, month: 9, day: 20)
+
+        let first = midnightStampedHang(startedAt: parisDate(19, 23, 47), day: sept20)
+        context.insert(first)
+        try context.save()
+        XCTAssertEqual(world.ledger.repairTrainingDaysIfNeeded(defaults: defaults, calendar: paris), 1)
+        XCTAssertEqual(first.day, sept19)
+        XCTAssertEqual(defaults.integer(forKey: SessionLedger.trainingDayRepairKey),
+                       SessionLedger.trainingDayRepairVersion)
+
+        let second = midnightStampedHang(startedAt: parisDate(19, 23, 48), day: sept20)
+        context.insert(second)
+        try context.save()
+        XCTAssertEqual(world.ledger.repairTrainingDaysIfNeeded(defaults: defaults, calendar: paris), 0)
+        XCTAssertEqual(second.day, sept20, "the one-shot has already run on this install")
+    }
+
+    /// The writer and the repair reach the same answer from the same column: a session
+    /// that started before 04:00 and finished after it is filed under the evening it
+    /// began in, and a repair afterwards has nothing to move.
+    func testTheWriterStampsWhatTheRepairWouldAndNeverTheSaveTimeDay() throws {
+        let world = try makeWorld()
+        let plan = RoutineDraft.starter.normalized.plan.executable
+        let calendar = Calendar.current
+        let started = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026, month: 9, day: 20, hour: 3, minute: 50)))
+        let finished = try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026, month: 9, day: 20, hour: 4, minute: 10)))
+
+        let log = try XCTUnwrap(world.ledger.recordSession(
+            plan: plan, template: nil, reps: [oneRep(of: plan)],
+            startedAt: started, finishedAt: finished, rpe: nil))
+
+        XCTAssertEqual(log.day, DayStamp(year: 2026, month: 9, day: 19))
+        XCTAssertEqual(world.ledger.repairTrainingDays(), 0)
     }
 }

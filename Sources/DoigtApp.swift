@@ -75,6 +75,10 @@ struct DoigtApp: App {
                 .environment(\.weightUnit, settings.weightUnit)
                 .environment(templates)
                 .environment(device)
+                // History-scaling work waits for the first frame — see
+                // `TemplateStore.runLaunchMaintenance`. Nothing in `init` above may
+                // grow with the number of sessions ever logged.
+                .task { templates.runLaunchMaintenance() }
                 #if DEBUG
                 .onAppear { DebugInteractionDump.scheduleIfRequested() }
                 // DEBUG builds keep the report Settings › About › Diagnostics copies in

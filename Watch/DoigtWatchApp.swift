@@ -38,10 +38,7 @@ struct DoigtWatchApp: App {
         // phone takes seed the same world here, before the first frame reads it.
         DebugSeeding.applyLaunchSeeding(context: container.mainContext)
         #endif
-        let ledger = SessionLedger(context: container.mainContext, clock: clock)
-        // The phone's launch repair, on the wrist too — the row may have been written
-        // here, by a build whose clock still turned at midnight.
-        ledger.repairTrainingDays()
+        let ledger = SessionLedger(context: container.mainContext)
         _clock = State(initialValue: clock)
         _ledger = State(initialValue: ledger)
     }
@@ -52,6 +49,12 @@ struct DoigtWatchApp: App {
                 .environment(clock)
                 .environment(ledger)
                 .environment(device)
+                // The phone's one-shot training-day repair, on the wrist too — the row
+                // may have been written here, by a build whose clock still turned at
+                // midnight. After the first frame, never in `init`: see
+                // `SessionLedger.repairTrainingDaysIfNeeded`. The screens read `@Query`,
+                // so a moved row redraws itself.
+                .task { ledger.repairTrainingDaysIfNeeded(defaults: .standard) }
                 .onChange(of: scenePhase) { _, phase in
                     device.recordScenePhase(String(describing: phase))
                     switch phase {

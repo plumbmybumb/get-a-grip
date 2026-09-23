@@ -24,8 +24,10 @@ final class WorkoutLog {
     /// Epoch day FROZEN at save — the TRAINING day, which turns at
     /// `DayStamp.rolloverHour`, so a 00:30 session stays on the evening it belonged to.
     /// It is the join for "2 of 2 today": a cheap Int predicate rather than a `Calendar`
-    /// pass over every log. Rewritten once, by `SessionLedger.repairTrainingDays`, for
-    /// rows stamped by the clock that used to turn at midnight.
+    /// pass over every log. Stamped from `startedAt` by `SessionLedger`; rows the older
+    /// midnight-turning clock stamped are re-filed by `SessionLedger.repairTrainingDays`,
+    /// which runs ONCE per install (versioned flag), touches only the kinds the app
+    /// stamps itself, and only rows still filed the midnight way.
     var dayKey: Int = 0
     /// Best-effort grouping ONLY. The routine may be gone; nothing here needs it back.
     var templateID: UUID? = nil

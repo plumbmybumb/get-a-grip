@@ -225,14 +225,23 @@ final class TemplateStore {
         self.clock = clock
         self.settings = settings
         self.storageMode = storageMode
-        self.ledger = SessionLedger(context: context, clock: clock)
+        self.ledger = SessionLedger(context: context)
         self.syncedDay = clock.today
         observeExternalChanges()
         clock.onDayChanged = { [weak self] in self?.refreshIfDayChanged() }
-        // Before the first derived world, so a session filed under the wrong day by the
-        // midnight-turning clock is counted on the right one from the first frame.
-        ledger.repairTrainingDays()
         syncDerived()
+    }
+
+    /// Work that scales with HISTORY rather than with today, run once the first frame is
+    /// up (`DoigtApp`'s root `.task`) instead of in `init`, which is on the launch path.
+    /// Today: the one-shot training-day repair (`SessionLedger.repairTrainingDaysIfNeeded`).
+    /// It used to run in `init`, before the first derived world, over every log ever
+    /// written; now it is once per install and bounded, so drawing one frame from the
+    /// rows as they stand costs at most a cell that fills a moment later — once, ever.
+    /// Recomputes only if a row actually moved.
+    func runLaunchMaintenance(defaults: UserDefaults = AppGroup.defaults ?? .standard) {
+        let moved = ledger.repairTrainingDaysIfNeeded(defaults: defaults)
+        if moved > 0 { syncDerived(refoldingMaxes: false) }
     }
 
     /// CloudKit imports merge on background contexts MID-session (a scenePhase hook
