@@ -8,15 +8,11 @@ import SwiftData
 /// The ONE way a finished session becomes a `WorkoutLog` — shared by the phone's
 /// `TemplateStore` and by the watch, which has no store of its own.
 ///
-/// Extracted from `TemplateStore.recordSession` (2026-09-19) so a session the watch ran
-/// is written by exactly the code the phone uses: the same frozen routine name, the same
-/// training day derived from the session's own start, the same refusal of a max that is
-/// not a number. Two hand-written copies of "how a session is saved" would eventually save two
-/// different sessions.
+/// One implementation, so the watch saves exactly what the phone would: the same frozen
+/// name, the same training day, the same refusal of a max that is not a number.
 ///
 /// Foundation, Observation and SwiftData only — no UIKit, no reminders, no derived state.
-/// The store composes it and recomputes its own world afterwards; the watch has no
-/// derived world to recompute, so the ledger is all it needs.
+/// The store composes it and recomputes its own world afterwards.
 @Observable @MainActor
 final class SessionLedger {
     private let context: ModelContext
@@ -36,10 +32,8 @@ final class SessionLedger {
     /// would make every percentage-of-max caption in the app lie.
     ///
     /// The day is the TRAINING day the session STARTED in — `DayStamp(trainingDayOf:)`,
-    /// never the clock's day at the moment of saving. The two differ for a session that
-    /// runs across 04:00 (or sits on its summary past it), and the stamp has to be the
-    /// same answer `repairTrainingDays` would reach from the same frozen column, or a
-    /// relaunch would move a session the writer had just filed.
+    /// never the clock's day at saving — the same answer `repairTrainingDays` reaches, or
+    /// a relaunch would move a session the writer had just filed.
     @discardableResult
     func recordSession(plan: SessionPlan,
                        template: SessionTemplate?,
@@ -70,9 +64,7 @@ final class SessionLedger {
         do {
             try context.save()
         } catch {
-            // Roll back so memory matches disk: a phantom session that dies with the
-            // process — while the day's count and the strip both confirm it — is far
-            // worse than a visible error.
+            // Roll back so memory matches disk: a phantom session is worse than an error.
             context.rollback()
             saveError = String(localized: "That change couldn't be saved — \(error.localizedDescription)")
             return nil
@@ -82,20 +74,15 @@ final class SessionLedger {
 
     /// Bumped only if the repair's RULE changes, which re-runs it once more everywhere.
     static let trainingDayRepairVersion = 1
-    /// Device-local on purpose: the flag describes what THIS install has already done to
-    /// the store it reads, and a synced flag would let a device that never ran the repair
-    /// believe it had.
+    /// Device-local: a synced flag would let a device that never ran the repair believe
+    /// it had.
     static let trainingDayRepairKey = "sessionLedger.trainingDayRepair"
 
-    /// **The repair runs ONCE per install**, not on every launch. It used to walk every
-    /// `WorkoutLog` ever written — blobs and all — before the first frame, every launch,
-    /// and re-derive each day in the device's CURRENT time zone: travel re-filed old
-    /// history, and two devices in different zones rewrote each other's rows over
-    /// CloudKit. What it repairs is finite (rows written by builds whose clock turned at
-    /// midnight), so once is enough: the last device to update repairs whatever the older
-    /// builds wrote, and every row written since is stamped by the same rule the repair
-    /// applies. The flag is set only when the repair completed — a failed fetch or save
-    /// retries next launch. Returns how many rows moved.
+    /// **The repair runs ONCE per install**, not on every launch: re-deriving every day
+    /// in the CURRENT time zone let travel re-file old history and two devices in
+    /// different zones rewrite each other's rows over CloudKit. What it repairs is finite
+    /// (rows from builds whose clock turned at midnight), so once is enough. The flag is
+    /// set only when the repair completed. Returns how many rows moved.
     @discardableResult
     func repairTrainingDaysIfNeeded(defaults: UserDefaults,
                                     calendar: Calendar = .current,
@@ -108,11 +95,9 @@ final class SessionLedger {
     }
 
     /// **Re-file sessions the app itself timed under the training day they started in.**
-    /// Until 2026-09-20 the clock turned at midnight, so a session that ran across it —
-    /// Nuri's 23:47 hang, finished 44 seconds into the 20th — was stamped with the
-    /// morning after, and one evening scored as two days. The day now turns at
-    /// `DayStamp.rolloverHour`, and this brings the rows written under the old rule into
-    /// line with it. Returns how many rows moved, or nil when the fetch or save failed.
+    /// The clock used to turn at midnight, so a 23:47 hang finished after it was stamped
+    /// with the morning after. The day now turns at `DayStamp.rolloverHour`. Returns how
+    /// many rows moved, or nil when the fetch or save failed.
     ///
     /// Narrow on purpose, because every row it touches is history somebody lived:
     /// - **Only the kinds the app stamps itself** — the runner's `.hang` and the
@@ -123,9 +108,8 @@ final class SessionLedger {
     ///   it come from this build's writer, which already stamps the training day.
     /// - **Only rows still filed the midnight way**: the calendar day of some instant
     ///   between the start and a save just after the finish. A row outside that window
-    ///   was not written by the old clock in this time zone — stamped by the new rule on
-    ///   a device elsewhere, most likely — and re-deriving it here is how travel used to
-    ///   move history.
+    ///   was not written by the old clock in this time zone, and re-deriving it is how
+    ///   travel used to move history.
     /// - **Four columns fetched, not the row.** The plan and rep blobs are never read.
     @discardableResult
     func repairTrainingDays(calendar: Calendar = .current, before cutoff: Date = .distantFuture) -> Int? {

@@ -35,12 +35,9 @@ struct TareButton: View {
                 // and the frozen reading says 0 kg however loaded the gauge actually is.
                 session.wakeStream()
             case .confirm, .tare:
-                // The rendered decision said the reading was live; confirm that against
-                // the exact clock before doing anything irreversible. See
-                // `TarePolicy.isSafeToTareNow` — this can only downgrade to a wake.
-                // Same bound the button's own mode was drawn from
-                // (`device.tareReadingMaxAge`), so the tap can never disagree with what
-                // it was shown.
+                // Confirm the rendered "live" against the exact clock before anything
+                // irreversible — `TarePolicy.isSafeToTareNow` can only downgrade to a
+                // wake, and uses the bound the button's mode was drawn from.
                 guard TarePolicy.isSafeToTareNow(
                     sampleAge: device.secondsSinceLastSample(),
                     maxAgeSeconds: device.tareReadingMaxAge) else {
@@ -58,9 +55,7 @@ struct TareButton: View {
                 Image(systemName: tapDecision == .wakeStream
                       ? "arrow.clockwise" : "arrow.counterclockwise")
                 // The label says what the tap will actually DO — "Wake" when the stream
-                // is dead, and the phase's reason while disabled (see
-                // `TarePolicy.disabledLabel`). A button reading "Tare" that restarts the
-                // stream instead would be lying about itself.
+                // is dead, the phase's reason while disabled (`TarePolicy.disabledLabel`).
                 Text(tapDecision == .wakeStream
                      ? String(localized: "Wake")
                      : (TarePolicy.disabledLabel(for: session.snapshot.phase) ?? String(localized: "Tare")))
@@ -87,10 +82,8 @@ struct TareButton: View {
     }
 
     private var tapDecision: TareTapDecision {
-        // `device.isLoadedForTare`, not `device.currentKg` — the coarse, change-guarded
-        // flag, so this computed property (read three times in `body`) does not register
-        // a dependency on a value moving at sample rate. See its doc comment on
-        // `DeviceStore` and `TarePolicy.tapDecision`.
+        // `device.isLoadedForTare`, not `device.currentKg`: no dependency on a value
+        // moving at sample rate — see `DeviceStore.currentKg`.
         TarePolicy.tapDecision(phase: session.snapshot.phase,
                                isReadingLive: device.isReadingLive,
                                isLoadedForTare: device.isLoadedForTare)
@@ -124,24 +117,17 @@ struct TareButton: View {
             maxAgeSeconds: device.tareReadingMaxAge
         ) {
         case .reject:
-            // Deliberately silent. A reject means the phase moved into a pull, the link
-            // changed, or the gauge went away — and in every one of those cases the
-            // screen behind the alert has already changed to say so, including the Tare
-            // button's own label. A second alert explaining why the first one did
-            // nothing would be noise stacked on noise.
+            // Silent: a reject means the phase, link or gauge changed, and the screen
+            // behind the alert already says so.
             return
         case .reask:
             // The quoted number is no longer safe to authorize. Re-arm with the fresh
-            // SIGNED reading on the next runloop pass: this button is inside the alert
-            // that is dismissing right now, and setting `showingConfirmation` back to
-            // true synchronously is swallowed by that dismissal.
+            // SIGNED reading on the next runloop pass: setting `showingConfirmation`
+            // synchronously is swallowed by the alert's own dismissal.
             //
-            // TRACKED, guarded and cancelled on the way out — the same treatment
-            // `MaxTareButton` gives its own re-ask. A yield is a suspension, so the
-            // phase can move into a pull and the link can go away before it resumes,
-            // and the reading is re-read AFTER the wait rather than quoted from before
-            // it. Leaving the screen cancels it, so a dismissed runner has nothing
-            // waiting to raise an alert.
+            // TRACKED, guarded and cancelled on the way out, as in `MaxTareButton`: the
+            // phase and link can move during the yield, so the reading is re-read AFTER
+            // it, and leaving the screen cancels it.
             reaskTask?.cancel()
             reaskTask = Task { @MainActor in
                 await Task.yield()

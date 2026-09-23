@@ -39,12 +39,8 @@ struct RunnerView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     /// The wide layout's glass column — the panel and the dock in the two left
-    /// corners at the phone's measured width, the graph filling the rest
-    /// (Nuri, 2026-09-19: *"offset the squares to one side, still big enough to see"*).
-    ///
-    /// The house token, not a literal of the same value: "the phone's measured width"
-    /// is exactly what `Metrics.maxContentWidth` means, and `liveContent` already caps
-    /// the stacked column with it. Two copies of 440 would be two places to change.
+    /// corners at the phone's measured width (`Metrics.maxContentWidth`, the same token
+    /// `liveContent` caps the stacked column with), the graph filling the rest.
     private static let wideColumnWidth: CGFloat = Metrics.maxContentWidth
     /// How much larger the identity block draws in the wide layout — the numbers,
     /// the hand word and the grip picture, read from a bench. 1.4 is what that
@@ -52,10 +48,9 @@ struct RunnerView: View {
     private static let wideScale: CGFloat = 1.4
 
     @State private var session: RunnerSession?
-    /// Whether the grip hangs off the Dynamic Island — which is a fact about the DEVICE,
-    /// resolved once the view is in a window (`IslandHand.isSupported` has nothing to read
-    /// before that). The layout below reshapes around it, so it is answered here and used
-    /// in both places rather than probed twice.
+    /// Whether the grip hangs off the Dynamic Island — a fact about the DEVICE, resolved
+    /// once the view is in a window (`IslandHand.isSupported` has nothing to read before
+    /// that). Answered once because both the overlay and the layout depend on it.
     @State private var hasIsland = false
     @State private var gripEmphasis = false
     @State private var gripBorderOpacity = 0.0
@@ -88,9 +83,8 @@ struct RunnerView: View {
                                        startedAt: session.startedAt,
                                        finishedAt: session.finishedAt ?? session.startedAt,
                                        didAnyWork: session.runner.didAnyWork) {
-                        // Saved or discarded — the summary's only two ways out, and a
-                        // failed save never gets here. Either way there is nothing left
-                        // to offer back at the next launch.
+                        // Saved or discarded (a failed save never gets here): nothing
+                        // left to offer back at the next launch.
                         session.clearDraft()
                         dismiss()
                     }
@@ -103,9 +97,8 @@ struct RunnerView: View {
             }
         }
         .background { AppBackground() }
-        // At the ROOT, so `ignoresSafeArea` actually reaches the top of the screen —
-        // attached inside `live` it was clipped to a frame the safe area had already
-        // shrunk, and drew nothing.
+        // At the ROOT, so `ignoresSafeArea` reaches the top of the screen — inside
+        // `live` it was clipped to the safe-area frame and drew nothing.
         .islandHand(grip: session?.isFinished == true ? nil : session?.snapshot.grip,
                     side: session?.snapshot.side,
                     isActive: !(session.map { isResting($0) } ?? true),
@@ -189,19 +182,17 @@ struct RunnerView: View {
                 return
             }
             #endif
-            // The maxes are read ONCE, here — a session's targets must not move under
-            // the climber because a max was recorded on another device mid-workout.
-            // `.standard` drafts: a finished session is on disk until it is saved or
-            // discarded, so a process that dies behind the summary does not take it along.
+            // The maxes are read ONCE, here — a session's targets must not move because
+            // a max was recorded on another device mid-workout. `.standard` drafts keep a
+            // finished session on disk until saved or discarded, surviving process death.
             let new = RunnerSession(template: template, device: device,
                                     maxes: templates.maxTable, timerOnly: timerOnly,
                                     draftStore: .standard)
             new.weightUnit = weightUnit
             session = new
             new.begin()
-            // AFTER the session exists, in the same block that made it. As its own
-            // `.onAppear` this ran first, found `session` nil, and started the tour over a
-            // workout that was still counting down behind the scrim.
+            // AFTER the session exists, in the same block: as its own `.onAppear` this ran
+            // first, found `session` nil, and taught over a workout still counting down.
             guard !timerOnly else { return }
             tour.beginIfUnseen(.session)
             if tour.isRunning { new.send(.pause) }
@@ -213,17 +204,11 @@ struct RunnerView: View {
                 // Bin whatever the radio buffered while we were away — see
                 // `DeviceStore.dropStaleTrace`.
                 device.dropStaleTrace()
-                // **AND KICK THE STREAM.** This is the one that actually mattered
-                // (Nuri, 2026-08-10: "when you first come back you get a little dot, then
-                // after a while the stream continues"). The gauge stops sending while the
-                // app is suspended, and the only thing that revived it was the stream
-                // RunnerSession watchdog, which checks every 500 ms and requires
-                // 0.8 s of Progressor silence (longer for sparse gauges). The dot was the one or
-                // two samples that made it through; everything after was the wait.
-                //
-                // Re-sending start to a stream that is already alive is harmless, which is
-                // why `startIfReady` sends it unconditionally. Not sending it is three dead
-                // seconds in the middle of a rep.
+                // **AND KICK THE STREAM.** The gauge stops sending while the app is
+                // suspended, and otherwise only the silence watchdog (500 ms checks,
+                // 0.8 s of Progressor silence) revives it — seen as "a little dot, then
+                // after a while the stream continues" (Nuri, 2026-08-10). Re-sending start
+                // to a live stream is harmless; not sending it is dead seconds mid-rep.
                 session?.startIfReady(cause: .foreground)
             } else if phase == .background, !timerOnly {
                 // Clear the device-time anchor BEFORE suspension. Backgrounding already
@@ -231,25 +216,16 @@ struct RunnerView: View {
                 // from inheriting a high-water mark across the foreground re-kick.
                 session?.send(.streamRestarted)
             }
-            // **Backgrounding no longer pauses a CONNECTED session.** With
-            // `bluetooth-central` the app stays alive while the Progressor is delivering
-            // notifications, so swiping home to change the music keeps the workout
-            // running and the Live Activity carries it (Nuri, 2026-08-09).
+            // **Backgrounding does not pause a CONNECTED session**: `bluetooth-central`
+            // keeps the app alive while the Progressor notifies, so the Live Activity
+            // carries the workout (Nuri, 2026-08-09). Disconnected — or on a broadcast
+            // gauge, whose advertisement scan does not survive backgrounding — iOS
+            // suspends us and a rep would silently stall, so it pauses. The rule lives
+            // in `BackgroundPausePolicy`.
             //
-            // Disconnected, the old rule still holds and still matters: with no BLE to
-            // keep the process alive iOS suspends us, samples stop, and a rep would
-            // silently stall at whatever it had accrued. Pausing says so. And a gauge
-            // whose "connection" is a duplicate-allowing advertisement scan is in exactly
-            // that position once backgrounded — hence the capability, not a device check.
-            // The whole rule lives in `BackgroundPausePolicy`.
-            //
-            // **`timerOnly` short-circuits the lot, whatever is connected.** A gauge-free
-            // session never streams — `begin()` skips the connect, and every stream path
-            // guards on it — so `bluetooth-central` keeps nothing alive even with a
-            // Progressor sitting there connected from earlier. The 100 ms ticker stops with
-            // the process and `holdTick` freezes with no PAUSED state to explain it, which
-            // is precisely the silent stall this guard exists to prevent. With no gauge in
-            // the loop, leaving the foreground always means losing the ability to measure.
+            // **`timerOnly` always pauses, whatever is connected.** A gauge-free session
+            // never streams, so nothing keeps the process alive; the ticker stops and
+            // `holdTick` would freeze with no PAUSED state to explain it.
             guard phase != .active,
                   timerOnly || BackgroundPausePolicy.pausesOnLeavingForeground(
                     isBackground: phase == .background,
@@ -264,11 +240,9 @@ struct RunnerView: View {
         }
         // Its own host: a full-screen cover draws over the root overlay.
         .tourHost(tour, act: .session)
-        // **The session PAUSES while the tour talks**, and resumes when it is done.
-        // Teaching over a running clock costs you the pull being explained, and a scrim
-        // that blocks Pause and Skip while a hold counts down is worse than no tutorial.
-        // Measured sessions only: with no gauge there is no lane to point at and the last
-        // step would light an empty graph.
+        // **The session PAUSES while the tour talks**, and resumes when it is done:
+        // a scrim that blocks Pause and Skip while a hold counts down is worse than no
+        // tutorial. Measured sessions only — gauge-free has no lane to point at.
         .onChange(of: tour.isRunning) { was, now in
             if was, !now { session?.send(.resume) }
         }
@@ -299,10 +273,9 @@ struct RunnerView: View {
                 }
             }
         } else {
-            // WIDE when the window is regular-width AND wider than tall: an iPad in
-            // landscape, or a foldable opened sideways. Size class and aspect, never the
-            // idiom — an iPad in portrait keeps the stacked column, and a Slide Over
-            // column is a phone. Apple's own guidance for the foldable says the same.
+            // WIDE when the window is regular-width AND wider than tall. Size class and
+            // aspect, never the idiom — an iPad in portrait keeps the stacked column, and
+            // a Slide Over column is a phone.
             GeometryReader { geometry in
                 let wide = sizeClass == .regular && geometry.size.width > geometry.size.height
                 liveContent(session, wide: wide)
@@ -328,32 +301,27 @@ struct RunnerView: View {
         // needs the gap bought for it — otherwise the grip name lands under the knuckles.
         .padding(.top, hasIsland ? (typeSize.isAccessibilitySize ? 0 : 46 + handPush) : 8)
         .padding(.bottom, Metrics.spacing)
-        // The stacked column keeps the PHONE's width even on a regular-width screen: the
-        // hero numeral, the ring and the button rows were all measured at 440, and an
-        // iPad in portrait shows that same picture with wider margins. The wide layout
-        // spans the room: its column is fixed and the graph takes whatever is left.
+        // The stacked column keeps the PHONE's width even on a regular-width screen —
+        // hero, ring and buttons were all measured at 440. The wide layout spans the
+        // room: its column is fixed and the graph takes the rest.
         .frame(maxWidth: wide ? .infinity : Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
     }
 
-    /// **The enlarged grip-change hand pushes the panel down** by exactly the distance
-    /// its fingertips grow (`IslandHand.tipDrop`), in the same transaction that grows
-    /// them, so the hand and the glass move as one thing and the fingers never reach
-    /// into the numbers (Nuri, 2026-09-19). The ordinary long-rest enlargement does
-    /// NOT push: that would move the graph at every REST→PULL boundary, which is the
-    /// jump the rest layout was measured to avoid, and at a fifth larger the tips still
-    /// clear the panel. A changed grip is rare and is meant to be felt. Reduce Motion
-    /// draws no enlarged hand, so there is nothing to make room for.
+    /// **The enlarged grip-change hand pushes the panel down** by the distance its
+    /// fingertips grow (`IslandHand.tipDrop`), in the same transaction, so the fingers
+    /// never reach into the numbers. The ordinary long-rest enlargement does NOT push:
+    /// that would move the graph at every REST→PULL boundary, and at a fifth larger the
+    /// tips still clear the panel. Reduce Motion draws no enlarged hand.
     private var handPush: CGFloat {
         gripEmphasis && !reduceMotion ? IslandHand.tipDrop(scale: IslandHand.emphasisScale) : 0
     }
 
     /// The phone's layout: identity, hero, graph, controls, top to bottom.
     ///
-    /// One `GlassEffectContainer` for the two glass surfaces on this screen — the
-    /// panel and the dock — so Liquid Glass renders them in a single pass rather than
-    /// blurring the live canvas twice. Nothing here changes shape between phases (the
-    /// panel reserves its geometry on purpose), so no morphing identities are needed.
+    /// One `GlassEffectContainer` for the panel and the dock, so Liquid Glass renders
+    /// them in a single pass rather than blurring the live canvas twice. Nothing changes
+    /// shape between phases, so no morphing identities are needed.
     private func stackedContent(_ session: RunnerSession) -> some View {
         GlassEffectContainer(spacing: 24) {
             VStack(spacing: 12) {
@@ -371,17 +339,12 @@ struct RunnerView: View {
     }
 
     /// The wide window (an iPad in landscape, a foldable opened flat): the graph fills
-    /// the whole screen and the phone's two objects sit in the two left corners — the
-    /// panel top-left, the dock bottom-left, at the phone's measured width — so the
-    /// curve's history slides under the glass and its newest seconds run in the clear
-    /// on the right (Nuri, 2026-09-19: *"the back being just the graph that fills the
-    /// whole screen, then offset the squares to one side, still big enough to see"*).
+    /// the whole screen and the panel and dock sit in the two left corners at the
+    /// phone's width, so the curve's history slides under the glass and its newest
+    /// seconds run in the clear on the right (Nuri, 2026-09-19).
     ///
-    /// The NEXT card that used to sit between them is gone (Nuri, same evening). It
-    /// only ever existed because the old layout had spare room; over a live graph every
-    /// glass surface is a place the curve cannot be read, a third object made "what
-    /// comes next" as heavy as the pull under way, and the phone has never had one —
-    /// the rest panel already names the next hand and grip.
+    /// No third NEXT card between them: over a live graph every glass surface hides
+    /// the curve, and the rest panel already names the next hand and grip.
     private func wideContent(_ session: RunnerSession) -> some View {
         GlassEffectContainer(spacing: 24) {
             HStack(alignment: .top, spacing: Metrics.spacing) {
@@ -414,22 +377,19 @@ struct RunnerView: View {
         isWorking(session) || isArmed(session) ? session.snapshot.targetBand : nil
     }
 
-    /// A connected gauge that is not sending is the one failure "0.0 kg" renders as a
-    /// lie — it reads as a device measuring nothing rather than an app receiving
-    /// nothing, and there is no way to tell them apart by looking. Say it, and say what
-    /// to do — the notice itself is drawn by `graphRegion`.
+    /// A connected gauge that is not sending would read "0.0 kg" — a device measuring
+    /// nothing rather than an app receiving nothing. Say it, and say what to do; the
+    /// notice itself is drawn by `graphRegion`.
     private func showsSignalNotice(_ session: RunnerSession) -> Bool {
         !session.snapshot.hasSignal
             || (showsRestFocus(session) && !restSignalIsAvailable(session))
     }
 
     /// **The countdown you can read from the wall.** While the clock is the only thing
-    /// happening — the count-in, a rest, a paused rest — the open graph is four
-    /// hundred points of nothing, so the seconds go there, huge and thin, and fade the
-    /// moment the trace has something to show (Nuri, 2026-09-19: *"clear understanding
-    /// of the app from a distance"*). It is THE rest countdown: the panel no longer
-    /// repeats it (see `RunnerRestFocusSummary`), so this numeral carries the
-    /// `runner.restFocus.countdown` identity and stays accessible.
+    /// happening — the count-in, a rest, a paused rest — the seconds fill the open
+    /// graph, huge and thin. It is THE rest countdown: the panel does not repeat it
+    /// (see `RunnerRestFocusSummary`), so it carries `runner.restFocus.countdown` and
+    /// stays accessible.
     private func showsAmbientCountdown(_ session: RunnerSession) -> Bool {
         switch session.snapshot.phase {
         case .resting, .leadIn: true
@@ -443,10 +403,8 @@ struct RunnerView: View {
     }
 
     private func ambientCountdown(_ session: RunnerSession) -> some View {
-        // A clock rolls — unless Reduce Motion or Low Power Mode says otherwise
-        // (`clockRolls`) — and it rolls WITHOUT `.numericText()`: see `RollingNumeral`.
-        // Measured at 0.75 the secondary ink clears 3:1 on the light field for a numeral
-        // this size.
+        // Rolls per `clockRolls`, WITHOUT `.numericText()` — see `RollingNumeral`.
+        // Secondary ink at 0.75 measured above 3:1 on the light field at this size.
         RollingNumeral(value: session.snapshot.secondsShown, countsDown: true,
                        rolls: clockRolls && !reduceMotion, shift: ambientSize * 0.25) { seconds in
             Text("\(seconds)")
@@ -465,28 +423,21 @@ struct RunnerView: View {
 
     // MARK: - The stacked layout: the graph is the screen, the numbers are glass
 
-    /// **The information panel** — the identity block on one Liquid Glass surface
-    /// floating over the graph (Nuri's sketch, 2026-09-19: *"a full background and a
-    /// liquid glass frame over the graph that has the info on it instead of two
-    /// distinct sections"*). The same `measuredTop` as before — grip, prompt, hero,
-    /// progress, counters, and the rest summary in their place — so nothing about what
-    /// the panel SAYS changed, only what it sits on.
+    /// **The information panel** — the identity block (`measuredTop`) on one Liquid
+    /// Glass surface floating over the graph (Nuri, 2026-09-19).
     ///
     /// `accessibleGlass`, never raw `.glassEffect`: under Reduce Transparency the panel
-    /// becomes an opaque card, which is the only way the numbers stay legible over a
-    /// live curve. The grip-change outline moves here from the graph's card — the panel
-    /// is where the changed grip is NAMED, and the open graph has no edge to draw it on.
+    /// becomes an opaque card, the only way the numbers stay legible over a live curve.
+    /// The grip-change outline lives here because the panel is where the grip is NAMED.
     private func infoPanel(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         measuredTop(session, scale: scale)
             .padding(.horizontal, 16)
             .padding(.top, 14)
             .padding(.bottom, 12)
             .frame(maxWidth: .infinity)
-            // The rim is applied BEFORE the glass, so it is part of the panel's content.
-            // Inside a `GlassEffectContainer` the glass is composited above anything
-            // applied after `.glassEffect`, and an overlay there vanished under the
-            // material — measured in pixels, not by eye, which had read a warm edge
-            // as the rim (2026-09-19).
+            // The rim is applied BEFORE the glass: inside a `GlassEffectContainer` the
+            // glass composites above anything applied after `.glassEffect`, and an
+            // overlay there vanished under the material (measured in pixels).
             .overlay {
                 RunnerGlass.surfaceShape
                     .strokeBorder(StatusTint.armed, lineWidth: 3)
@@ -506,10 +457,8 @@ struct RunnerView: View {
     /// plot inside it, plus what still belongs on the graph — the no-signal notice, the
     /// tour anchor, and the `runner.graph` element the UI tests measure the layout by.
     ///
-    /// NOT the grip-change chip. In the old card it sat in a corner; on an open graph
-    /// it floated loose thirty points under the panel, saying what the panel's amber
-    /// rim, its NEW GRIP badge and the orange hand already say — a stray box over the
-    /// trace for no new information (measured 2026-09-19). Neither layout draws it now.
+    /// NOT the grip-change chip: on an open graph it floated loose over the trace,
+    /// repeating what the panel's amber rim, NEW GRIP badge and the hand already say.
     private func graphRegion(_ session: RunnerSession, wide: Bool = false) -> some View {
         let notice = showsSignalNotice(session)
         let ambient = showsAmbientCountdown(session)
@@ -520,9 +469,8 @@ struct RunnerView: View {
             // must not hide it — it moves up and the notice takes the room below.
             VStack(spacing: 8) {
                 if ambient {
-                    // It materializes: a whisper of scale with the fade, critically
-                    // damped, so the numeral arrives rather than switches on. Under
-                    // Reduce Motion it is the cross-fade alone.
+                    // A whisper of scale with the fade; the cross-fade alone under
+                    // Reduce Motion.
                     ambientCountdown(session)
                         .transition(reduceMotion ? .opacity
                                                  : .opacity.combined(with: .scale(scale: 0.96)))
@@ -536,14 +484,10 @@ struct RunnerView: View {
         .animation(Motion.state(reduceMotion), value: ambient)
         .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil,
                maxHeight: .infinity)
-        // The trace is the region's own background, stretched sideways to the screen
-        // edges (the column's margins) so it still reads as the screen's graph, but
-        // never extended under the panel or the dock — see `backgroundTrace` for the
-        // measured reason. The plot keeps the card's small edge clearances; on a wide
-        // screen it keeps clear of the bezel.
+        // On the phone the trace is this region's background, stretched sideways to the
+        // screen edges but never under the panel or dock — see `backgroundTrace`. The
+        // wide layout's trace is the whole screen's background instead.
         .background {
-            // On the phone only: the wide layout's trace is the whole screen's background
-            // and runs under the glass column — see `backgroundTrace`.
             if !timerOnly, !wide {
                 liveTrace(session, plot: ForceTraceView.PlotInsets(top: 12, bottom: 6, trailing: 8))
                     .padding(.horizontal, -Metrics.hPadding)
@@ -565,9 +509,8 @@ struct RunnerView: View {
                   tint: tint(session),
                   plot: plot,
                   lit: true)
-            // The wash already cross-fades between phases; the trace snapped, and on an
-            // object this size a hard cut of colour is a jolt. The blend runs on the same
-            // house curve, so the two move as one thing.
+            // The wash cross-fades between phases, so the trace blends on the same house
+            // curve rather than cutting colour — on an object this size a cut is a jolt.
             .modifier(BlendedTint(fraction: traceTintFraction,
                                   from: traceTintFrom, to: traceTintTo))
             .onAppear {
@@ -586,23 +529,16 @@ struct RunnerView: View {
     ///
     /// The canvas runs edge to edge, under the status bar, the panel and the controls;
     /// the PLOT inside it is placed by the glass it runs beneath, see
-    /// `BackgroundTraceGeometry`. Only the graph's home changed: the same `LiveTrace`
-    /// leaf, the same lane, the same phase tint, still read from the store one level
-    /// down so a sample invalidates nothing but the canvas. Nothing force-shaped in a
-    /// gauge-free session, exactly as before.
+    /// `BackgroundTraceGeometry`. Still the `LiveTrace` leaf, reading the store one
+    /// level down so a sample invalidates nothing but the canvas.
     @ViewBuilder
     private func backgroundTrace(_ session: RunnerSession, wide: Bool) -> some View {
         if !timerOnly {
             // On the PHONE only the wash lives under the glass: the trace draws in the
-            // open region (`graphRegion`), edge to edge sideways, and the panel and dock
-            // sit on a fill that changes once per phase. On the iPad the trace IS the
-            // screen — it runs under the glass column and off the left edge, which is
-            // what a canvas this size is for (Nuri, 2026-09-19: "such a good opportunity
-            // to have it written behind the glass panes"). iOS re-blurs a glass backdrop
-            // every frame the layer beneath it changes, so that is a real cost on the
-            // M4: the line was once blamed for jitter on that account on the phone, and
-            // the cause turned out to be the playback clock; the iPad pays the blur and
-            // is measured for it.
+            // open region (`graphRegion`), and the panel and dock sit on a fill that
+            // changes once per phase. On the iPad the trace IS the screen and runs under
+            // the glass column (Nuri, 2026-09-19). iOS re-blurs a glass backdrop every
+            // frame the layer beneath changes; the iPad pays that and is measured for it.
             ZStack {
                 PhaseWash(tint: tint(session),
                           edge: wide ? .leading : .top,
@@ -677,10 +613,7 @@ struct RunnerView: View {
         }
     }
 
-    /// Pushed OUT to the screen edges and up a size (Nuri, 2026-08-09). They are the two
-    /// numbers you check from a metre away between pulls, and at 12 pt inside the house
-    /// 20 pt margin they were a caption. The negative padding cancels most of the
-    /// content margin for this row only, so they frame the island rather than crowding it.
+    /// Set and pull, sized to be checked from a metre away between pulls.
     private func counters(_ session: RunnerSession) -> some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
@@ -742,16 +675,10 @@ struct RunnerView: View {
 
     /// The grip, as a BIG CENTRED GLYPH over its own name.
     ///
-    /// It used to be a 9 pt glyph inline at the head of a left-aligned text row, and on
-    /// the wall that is the wrong size for the wrong thing (Nuri, 2026-08-08, from the
-    /// board: *"increase the size of each finger position while you're actually doing
-    /// this session, so you know exactly what you need to do"*). Which fingers go on the
-    /// edge is the one instruction you act on with chalk on your hands; the words beside
-    /// it are the confirmation, not the instruction. So the picture gets its own line,
-    /// centred, at roughly double size, and the sentence sits under it.
-    ///
-    /// The height comes out of the force trace, which absorbs the slack (`maxHeight:
-    /// .infinity`) — a graph is worth less than knowing which hand shape to make.
+    /// Which fingers go on the edge is the one instruction you act on with chalk on
+    /// your hands (Nuri, 2026-08-08); the words are the confirmation. So the picture
+    /// gets its own centred line and the sentence sits under it. The height comes out
+    /// of the force trace — a graph is worth less than knowing which hand shape to make.
     @ViewBuilder
     private func gripLine(_ session: RunnerSession, timerOnly: Bool = false,
                           scale: CGFloat = 1) -> some View {
@@ -769,26 +696,18 @@ struct RunnerView: View {
 
     /// The grip, and — during a rest — the fact that it is the one COMING UP.
     ///
-    /// The snapshot already looks forward while resting (`SessionRunner.displaySlot`), so
-    /// this row silently changed meaning between phases. "Next" is what makes that legible
-    /// instead of leaving you to work out which grip you are being shown.
+    /// The snapshot looks forward while resting (`SessionRunner.displaySlot`); "Next"
+    /// makes that change of meaning legible.
     @ViewBuilder
     private func nameRow(_ session: RunnerSession, timerOnly: Bool = false,
                          scale: CGFloat = 1) -> some View {
         if let grip = session.snapshot.grip {
             if timerOnly {
                 VStack(spacing: 6) {
-                    // The SAME badge as the measured layout, for the same two facts: the
-                    // grip named here is the UPCOMING one while resting, and amber text
-                    // inline could not pass contrast where a filled capsule can (see
-                    // `restBadge`). One vocabulary for the change of tense, both modes.
-                    //
-                    // RESERVED, not conditional — the same trick the target chip below
-                    // uses, and for the same measured reason: this block sits above the
-                    // dial, and a badge that exists only during rest changes the line's
-                    // height at every REST→WORK boundary, shifting the dial under the
-                    // climber's eye. The widest form is laid out hidden for the whole
-                    // session, so neither the phase nor Next↔New grip ever moves a pixel.
+                    // The SAME badge as the measured layout (see `restBadge`). RESERVED,
+                    // not conditional: a badge that exists only during rest changes this
+                    // line's height at every REST→WORK boundary and shifts the dial under
+                    // the climber's eye, so the widest form is laid out hidden throughout.
                     HStack(spacing: 8) {
                         ZStack {
                             badgeCapsule(String(localized: "New grip"), changing: true).hidden()
@@ -804,11 +723,9 @@ struct RunnerView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
-                    // `ViewThatFits`, not a plain `HStack`: three chips — and a band as
-                    // long as "100.0–120.0 kg" is reachable — cannot share one line at
-                    // accessibility sizes, and an HStack would squeeze the TEXT INSIDE
-                    // each capsule rather than move a whole chip to the next row. Whole
-                    // chips wrap or the capsules stop looking like capsules.
+                    // `ViewThatFits`, not a plain `HStack`: at accessibility sizes an
+                    // HStack squeezes the TEXT INSIDE each capsule rather than wrapping
+                    // whole chips to the next row.
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 8) { timerChips(session) }
                         VStack(spacing: 6) { timerChips(session) }
@@ -819,9 +736,8 @@ struct RunnerView: View {
                 .accessibilityLabel(spokenGrip(session, grip: grip) + String(localized: ", timing only"))
             } else {
                 ZStack {
-                    // Reserve the rest badge's height in every phase. Its padding
-                    // otherwise moves the graph a few points when REST becomes PULL.
-                    // The existing grip row is wider, so this adds no empty badge slot.
+                    // Reserve the rest badge's height in every phase, or its padding
+                    // moves the graph a few points when REST becomes PULL.
                     restBadge(session).hidden().accessibilityHidden(true)
                     HStack(spacing: 8) {
                         if isResting(session) {
@@ -844,27 +760,18 @@ struct RunnerView: View {
     }
 
     /// The rest screen's change of tense — and, when the pull ahead is on a different
-    /// grip, the whole cue that it is (Nuri, 2026-08-19: a grip change between sets is
-    /// easy to miss while you shake out). One badge, not a second mark beside it: the
-    /// row already carries the grip's name, and this is the word qualifying it.
+    /// grip, the whole cue that it is (a grip change between sets is easy to miss while
+    /// you shake out). Amber means "waiting on you"; the WORD changes with the colour,
+    /// so the cue survives greyscale and colourblindness.
     ///
-    /// Amber is the house colour for "waiting on you", which choosing a new grip during
-    /// a rest literally is — alarm red stays reserved for attention. The WORD changes
-    /// with the colour, so the cue survives greyscale and colourblindness on its own.
-    ///
-    /// A SOLID amber capsule with fixed dark ink, not amber TEXT: measured on the
-    /// pinned sim (2026-08-19), `StatusTint.armed` glyphs on the light field came out
-    /// 1.72:1 against a 4.5:1 floor — amber ink cannot carry small text on this
-    /// background in either scheme. Filling the capsule flips the arithmetic (~7:1),
-    /// and both colours are fixed literals, so the ratio cannot move with the scheme.
+    /// A SOLID amber capsule with fixed dark ink, not amber TEXT: `StatusTint.armed`
+    /// glyphs on the light field measured 1.72:1 against a 4.5:1 floor. The filled
+    /// capsule is ~7:1, and both colours are fixed literals so it cannot move with the
+    /// scheme.
     private func restBadge(_ session: RunnerSession) -> some View {
         let changing = session.snapshot.gripChangesNext
-        // The badge gets its OWN key rather than sharing the generic "Next" that the coach
-        // card and the tour use for their forward buttons: this is a runner STATE word in
-        // small caps beside a dial, and a language whose "next button" word is long (fr
-        // "Suivant") needs the short state word ("Suite") here without lengthening two
-        // buttons elsewhere. English is unchanged — `defaultValue` is what ships when a
-        // catalog has no entry.
+        // Its OWN key rather than the generic "Next" button word: this is a runner STATE
+        // word, and a language may need a shorter one here (fr "Suite", not "Suivant").
         return badgeCapsule(changing ? String(localized: "New grip")
                                      : String(localized: "runner.rest.badge.next", defaultValue: "Next"),
                             changing: changing)
@@ -948,9 +855,8 @@ struct RunnerView: View {
     /// be pulling right now.
     private func prompt(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         ZStack {
-            // Keep the original phase label's line height when a longer translated
-            // hand instruction scales to fit. The graph must not move at REST→PULL
-            // or REST→PAUSED just because one prompt needs smaller lettering.
+            // Keep the phase label's line height when a longer translated instruction
+            // scales to fit, so the graph cannot move at REST→PULL or REST→PAUSED.
             Text("REST").hidden().accessibilityHidden(true)
             Text(measuredPromptText(session))
         }
@@ -962,15 +868,10 @@ struct RunnerView: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: typeSize.isAccessibilitySize)
             .frame(maxWidth: .infinity)
-            // The one decision-critical word on this screen — PULL, RE-GRIP, EASE OFF,
-            // LET GO, PAUSED — was hidden from VoiceOver with no substitute anywhere
-            // else: `spokenState` speaks set/pull/hand/grip but never the phase, and the
-            // cues cannot stand in for it either (`.dropoutWarning` fires the identical
-            // tone for both RE-GRIP and EASE OFF — the cue means "the clock stopped",
-            // which is true either way, and only the screen has the words that tell the
-            // two apart; pause/resume emit no cue at all). An explicit
-            // label — matching what `timerDial`'s `spokenDialState` already does for the
-            // gauge-free fallback — replaces the old `.accessibilityHidden(true)`.
+            // The one decision-critical word — PULL, RE-GRIP, EASE OFF, LET GO, PAUSED —
+            // must reach VoiceOver: `spokenState` never speaks the phase, and the cues
+            // cannot stand in (`.dropoutWarning` is the same tone for RE-GRIP and EASE
+            // OFF; pause/resume emit none).
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(measuredPromptText(session))
             .accessibilityIdentifier("runner.prompt")
@@ -986,9 +887,7 @@ struct RunnerView: View {
     }
 
     /// The ladder itself is `RunnerPromptWords`, shared with the watch — this only
-    /// gathers the facts. `timerOnly` is one of them: a gauge-free session has nothing
-    /// to connect to, so its first second says GET READY rather than CONNECTING, which
-    /// is what the watch has always said and what this screen used not to.
+    /// gathers the facts. `timerOnly` makes the first second GET READY, not CONNECTING.
     private func promptText(_ session: RunnerSession) -> String {
         RunnerPromptWords.word(phase: session.snapshot.phase,
                                side: session.snapshot.side,
@@ -1003,9 +902,8 @@ struct RunnerView: View {
     /// Blue while the clock runs, amber while it waits on you, red when something needs
     /// attention, steel while resting. Read before any word is.
     private func tint(_ session: RunnerSession) -> Color {
-        // A gauge-free session is never "disconnected": there is nothing to be connected
-        // to, and painting REST in alarm red because of a device nobody asked for is the
-        // app raising an alarm about its own choice.
+        // A gauge-free session is never "disconnected" — painting REST in alarm red for
+        // a device nobody asked for would be an alarm about the app's own choice.
         if !timerOnly, !device.state.isConnected || session.snapshot.linkIsDown {
             return StatusTint.alarm
         }
@@ -1019,10 +917,8 @@ struct RunnerView: View {
 
     /// BOTH numbers, always: what you are pulling and how much longer.
     ///
-    /// They answer different questions and you need them at the same moment — the
-    /// force tells you whether to pull harder or ease off, the clock tells you whether
-    /// to hang on. An earlier build swapped one for the other and the load simply
-    /// vanished for the ten seconds it mattered most.
+    /// The force tells you whether to pull harder or ease off, the clock whether to hang
+    /// on, and you need both at the same moment.
     @ViewBuilder
     private func hero(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         VStack(alignment: .trailing, spacing: 4) {
@@ -1059,17 +955,14 @@ struct RunnerView: View {
 
     /// `rolls` is the difference between a CLOCK and a MEASUREMENT.
     ///
-    /// A countdown rolling digit-by-digit looks right — it is counting, and the motion
-    /// says so. The force readout is not counting, it is REPORTING, and at ~10 updates a
-    /// second the same animation turns the one number you are trying to read mid-pull
-    /// into a permanent blur. It snaps.
+    /// A countdown rolls because it is counting. The force readout is REPORTING at ~10
+    /// updates a second, where the same animation is a permanent blur, so it snaps.
     private func readout(value: String, unit: String, tint: Color,
                          rolls: Bool, caption: String? = nil, scale: CGFloat = 1) -> some View {
         HStack(alignment: .lastTextBaseline, spacing: 4) {
             ZStack(alignment: Alignment(horizontal: .center, vertical: .lastTextBaseline)) {
-                // Reserve the numeral's original line height even when horizontal
-                // pressure scales it down. A translated next-hand caption must neither
-                // split 20 into 2/0 nor move the graph when pausing a rest.
+                // Reserve the numeral's line height when horizontal pressure scales it
+                // down, so a translated caption cannot move the graph on pause.
                 Text("0").hidden().accessibilityHidden(true)
                 // A clock rolls without `.numericText()` — see `RollingNumeral`.
                 RollingNumeral(value: value, countsDown: true, rolls: rolls,
@@ -1120,45 +1013,22 @@ struct RunnerView: View {
     /// One definition, laid out twice by `ViewThatFits` — the chips must be identical in
     /// the one-row and stacked forms or the layout would change content as it wraps.
     ///
-    /// **A FIXED set of chips — fixed for the whole SESSION, not for the current slot —
-    /// and that is what stops the dial moving.**
-    ///
-    /// `Next` used to be a chip here, appearing only during rest — which meant the row
-    /// could hold three chips resting and two working. At REST→WORK that can flip
-    /// `ViewThatFits` from the stacked candidate back to the single row, or simply drop a
-    /// row; either way the identity block changes height and the dial below it shifts
-    /// underneath the climber's eye, every single rep. `Next` now lives on the grip line
-    /// as the rest badge, RESERVED at its widest form for the whole session (see
-    /// `nameRow`'s timer branch) — same constant-height property, achieved the same way
-    /// as the target chip below.
-    ///
-    /// Moving `Next` out was only half the fix: `targetBand` is per-slot, so a routine
-    /// carrying a target on some sets and not others still changed the chip count at a
-    /// phase boundary — and at accessibility sizes that can flip `ViewThatFits` between
-    /// its one-row and stacked candidates, changing the identity block's height and
-    /// shifting the dial under the climber's eye mid-session.
-    ///
-    /// So the slot is reserved for the SESSION: if any set in the plan has a target, the
-    /// chip is always laid out and merely invisible where this slot has none. A plan with
-    /// no targets anywhere reserves nothing, so it pays no empty space — in both cases
-    /// the count is constant, which is the property that matters.
+    /// **A FIXED set of chips for the whole SESSION, not the current slot — that is
+    /// what stops the dial moving.** A chip count that changes at a phase boundary can
+    /// flip `ViewThatFits` between candidates, changing the identity block's height and
+    /// shifting the dial under the climber's eye every rep. So `Next` lives on the grip
+    /// line as a reserved badge (see `nameRow`), and if any slot has a target the chip
+    /// is always laid out, merely invisible where this slot has none. A plan with no
+    /// targets reserves nothing.
     @ViewBuilder
     private func timerChips(_ session: RunnerSession) -> some View {
         let bands = sessionTargetBands(session)
         if !bands.isEmpty {
-            // **Every slot's chip occupies the SAME width — the widest this session can
-            // produce — whatever band it is currently showing.**
-            //
-            // A constant chip COUNT was not enough, and neither was a wide placeholder for
-            // the empty case: slots carrying different bands render different-width
-            // labels, so `5.0–10.0 kg` and `100.0–120.0 kg` could still pick different
-            // `ViewThatFits` candidates and change the block's height mid-session, moving
-            // the dial under the climber's eye.
-            //
-            // Laying every possible band out HIDDEN inside the ZStack settles it without
-            // guessing which label is longest — picking by `upperBound` gets that wrong
-            // ("0.0–120.0 kg" is wider-valued but narrower than "100.0–110.0 kg"). The
-            // stack simply takes the largest, and the real chip draws on top of it.
+            // **Every slot's chip occupies the widest width this session can produce**,
+            // or different-width bands could still pick different `ViewThatFits`
+            // candidates. Every band is laid out HIDDEN and the ZStack takes the largest —
+            // no guessing by `upperBound`, which gets it wrong ("0.0–120.0 kg" is narrower
+            // than "100.0–110.0 kg").
             ZStack {
                 ForEach(Array(bands.enumerated()), id: \.offset) { _, band in
                     LiveTargetChip(band: band, isWorking: false, timerOnly: true)
@@ -1175,12 +1045,9 @@ struct RunnerView: View {
 
     /// Every distinct band this session can show, from the RUNNER'S RESOLVED SLOTS.
     ///
-    /// Resolved, not `plan.sets`: the raw plan misses the plan-level percent band, which
-    /// the engine resolves onto sets carrying no target of their own and which stored
-    /// templates are not normalised for on read. A plan-level check would have reported
-    /// "no targets" for a session that shows one, deleting the chip outright. These are
-    /// the same slots the snapshot publishes, so the reservation cannot disagree with
-    /// what is drawn.
+    /// Resolved, not `plan.sets`: the raw plan misses the plan-level percent band the
+    /// engine resolves onto untargeted sets. These are the slots the snapshot publishes,
+    /// so the reservation cannot disagree with what is drawn.
     private func sessionTargetBands(_ session: RunnerSession) -> [ClosedRange<Double>] {
         var seen: Set<String> = []
         return session.runner.slots.compactMap(\.targetBand).filter {
@@ -1214,10 +1081,9 @@ struct RunnerView: View {
     /// The gauge-free hero: the countdown numeral and the phase's remaining time are one
     /// object, because proximity is the mapping that makes a timer readable at a glance.
     ///
-    /// The ring depletes per PHASE, not per rep: `repProgress` is hold-only and is zero
-    /// through all of lead-in and rest, which made the old ring empty exactly when the
-    /// timer-only user needed it most. The ring's fraction uses the same countdown
-    /// clock as the numeral, so the two channels cannot drift.
+    /// The ring depletes per PHASE, not per rep (`repProgress` is hold-only and zero
+    /// through lead-in and rest), on the same countdown clock as the numeral, so the two
+    /// cannot drift.
     private func timerDial(_ session: RunnerSession) -> some View {
         let lineWidth: CGFloat = isTimerWorking(session) ? 12 : 7
 
@@ -1250,21 +1116,15 @@ struct RunnerView: View {
             }
         }
         // **A PREFERRED size, not a fixed one.** `dialDiameter` is `@ScaledMetric`, so at
-        // accessibility sizes 240 becomes ~600 — half again wider than the screen — and a
-        // fixed frame drew a ring clipped off both edges while shoving the identity block
-        // up under the Dynamic Island's fingers. `aspectRatio(.fit)` keeps it circular
-        // inside whatever it is actually offered, so the dial shrinks to make room rather
-        // than overflowing. Measured at the largest accessibility size on the pinned sim.
+        // accessibility sizes 240 becomes ~600 — wider than the screen. `aspectRatio(.fit)`
+        // keeps it circular inside whatever it is offered, so it shrinks rather than
+        // clipping off both edges.
         .frame(maxWidth: dialDiameter, maxHeight: dialDiameter)
         .aspectRatio(1, contentMode: .fit)
-        // **THE COLUMN MUST STILL FILL THE SCREEN.** In the measured layout the open
-        // graph carries `maxHeight: .infinity`, and that is what made the whole VStack tall.
-        // Without an equivalent here the timer column hugged its content and got centred,
-        // which broke two things at once: a dead band above the identity block, and the
-        // Dynamic Island hand landing on top of the grip line — `.islandHand` is an
-        // `overlay(alignment: .top)` on the root, so it pins to the top of the CONTENT,
-        // and the content had walked down the screen. The dial is the hero, so it is the
-        // element that takes the slack.
+        // **THE COLUMN MUST STILL FILL THE SCREEN**, as the open graph's `maxHeight:
+        // .infinity` does in the measured layout. Otherwise the column hugs its content
+        // and centres, leaving a dead band on top and the island hand (pinned to the top
+        // of the CONTENT) landing on the grip line.
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(Motion.state(reduceMotion), value: session.snapshot.phase)
         .tourAnchor(.runnerClock)
@@ -1319,10 +1179,8 @@ struct RunnerView: View {
         }
     }
 
-    /// **Names the gauge that is actually selected, and does not promise a pairing that
-    /// does not exist.** A broadcast scale is never paired with — the app listens for its
-    /// advertisements — so telling somebody to pair with a Progressor they do not own is
-    /// wrong twice over.
+    /// Names the gauge actually selected, and never promises a pairing to a broadcast
+    /// scale — the app only listens for its advertisements.
     private var connectHint: String {
         if device.canCancelBroadcastSearch { return device.state.label }
         return device.gaugeCapabilities.isBroadcast
@@ -1333,8 +1191,7 @@ struct RunnerView: View {
     @ViewBuilder
     private func progress(_ session: RunnerSession) -> some View {
         if case .working = session.snapshot.phase {
-            // `LiveRepProgress`, not a `ProgressView` reading `session.snapshot` inline
-            // — see its own doc comment for why the value has to be read one level down.
+            // `LiveRepProgress` reads the value one level down — see its doc comment.
             LiveRepProgress(session: session)
                 .id(session.snapshot.phase.slotIndex)
         } else {
@@ -1346,12 +1203,9 @@ struct RunnerView: View {
     // MARK: - Controls
 
     /// **The dock** — the five actions on ONE glass surface, the way iOS 26 draws a
-    /// toolbar, instead of five separate glass capsules (Nuri, 2026-09-19). Inside it
-    /// each action sits in a quiet ink well rather than its own glass: glass on glass
-    /// is the one layering Liquid Glass asks you not to do, and five lozenges over a
-    /// live curve read as five objects where there is one control surface. Hold to
-    /// end keeps its red fill — the single tinted item, as a toolbar's one destructive
-    /// action would be.
+    /// toolbar. Each action sits in a quiet ink well rather than its own glass: glass
+    /// on glass is the layering Liquid Glass asks you not to do. Hold to end keeps its
+    /// red fill, as a toolbar's one destructive action would.
     private func controls(_ session: RunnerSession) -> some View {
         VStack(spacing: Self.dockSpacing) {
             AdaptiveActionRow(spacing: Self.dockSpacing) {
@@ -1375,11 +1229,9 @@ struct RunnerView: View {
 
     private static let dockSpacing: CGFloat = 8
 
-    /// The buttons KEEP their identity while disabled: the visible reason the house
-    /// rule demands is the prompt above them, which says PAUSED / CONNECTING at
-    /// large-title weight — swapping the labels spent the two Skips' names on the same
-    /// repeated word, and VoiceOver read "Paused, dimmed. Paused." twice with no way to
-    /// tell them apart. The full sentence rides the hint instead.
+    /// The buttons KEEP their labels while disabled: the visible reason is the prompt
+    /// above (PAUSED / CONNECTING), and swapping labels left VoiceOver reading "Paused,
+    /// dimmed" twice with no way to tell the Skips apart. The sentence rides the hint.
     private func pauseButton(_ session: RunnerSession, docked: Bool = false) -> some View {
         let phase = session.snapshot.phase
         return dockButton(phase.isPaused ? String(localized: "Resume") : String(localized: "Pause"),
@@ -1438,16 +1290,12 @@ struct RunnerView: View {
             .accessibilityIdentifier("runner.end")
     }
 
-    /// A dock action: FULL-WIDTH in its slot, not iPad-wide — both layouts use it,
-    /// and the name says which width it means. `SecondaryGlassButton` hugs its label,
-    /// which is right on a sheet and wrong here: three hugging buttons in one row
-    /// truncated "Pause" to "Pa…" on the pinned sim. Glass INSIDE the label, then
-    /// the content shape, then the style outside.
+    /// A dock action: FULL-WIDTH in its slot. `SecondaryGlassButton` hugs its label,
+    /// and three hugging buttons in one row truncated "Pause" to "Pa…". Glass INSIDE
+    /// the label, then the content shape, then the style outside.
     ///
-    /// `enabled`/`disabledReason` dim AND disable, with the reason surfaced as the
-    /// accessibility hint. The label is never swapped: sighted use reads the reason
-    /// off the screen's own PAUSED / CONNECTING prompt, and the hint carries the full
-    /// sentence for VoiceOver.
+    /// `enabled`/`disabledReason` dim AND disable, with the reason as the accessibility
+    /// hint; the label is never swapped (see `pauseButton`).
     private func dockButton(_ title: String, systemImage: String? = nil,
                             tint: Color = Ink.primary,
                             enabled: Bool = true, disabledReason: String? = nil,

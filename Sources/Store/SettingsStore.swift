@@ -10,10 +10,8 @@ import Observation
 /// means duplicate-row headaches (every device creates "the" settings row), and a future
 /// widget needs to read these without a store.
 ///
-/// Everything in here is DEVICE-LOCAL by construction — the App Group container never
-/// leaves the phone. That is a property two of these values depend on, not an accident:
-/// a synced "the routine I last started" flag is the classic second-device bug, where the
-/// phone you left at home decides what your iPad opens on.
+/// Everything in here is DEVICE-LOCAL by construction, and two values depend on it: a
+/// synced "the routine I last started" is the classic second-device bug.
 @Observable @MainActor
 final class SettingsStore {
     /// `.standard` only if the entitlement is broken. Note that
@@ -45,10 +43,8 @@ final class SettingsStore {
         }
     }
 
-    /// `DayStamp.raw` of the day `lastStartedRoutineID` was written, which is what makes
-    /// the suggestion expire at midnight instead of persisting for a week. A raw Int
-    /// rather than a `DayStamp` because that is what `UserDefaults` can hold; 0 is
-    /// 1970-01-01, which is never today, so a fresh install has no suggestion.
+    /// `DayStamp.raw` of the day `lastStartedRoutineID` was written, so the suggestion
+    /// expires with the day. 0 is 1970-01-01 — never today — so a fresh install has none.
     var lastStartedDayRaw: Int {
         didSet { store.set(lastStartedDayRaw, forKey: "lastStartedDayRaw") }
     }
@@ -70,12 +66,10 @@ final class SettingsStore {
         didSet { store.set(weightUnit.rawValue, forKey: "weightUnit") }
     }
 
-    /// Whether THIS device schedules the routine reminders. Device-local on purpose: the
-    /// routines sync, so without this every iPad and iPhone signed into the account
-    /// would fire the same 19:30 reminder at once. The phone defaults to on and an iPad
-    /// to off (the default is injected by the app, since the store knows no idiom);
-    /// either can be flipped in Settings. Off clears this device's pending reminders on
-    /// the next replan and asks for no notification permission.
+    /// Whether THIS device schedules the routine reminders. Device-local: the routines
+    /// sync, so otherwise every device would fire the same reminder at once. Phone on,
+    /// iPad off by default (injected by the app). Off clears this device's pending
+    /// reminders and asks for no permission.
     var remindsOnThisDevice: Bool {
         didSet { store.set(remindsOnThisDevice, forKey: "remindsOnThisDevice") }
     }

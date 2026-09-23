@@ -7,24 +7,19 @@ import WidgetKit
 
 /// The session, on the lock screen and in the Dynamic Island.
 ///
-/// **What it is for:** you swipe home mid-session — to change the music, to answer
-/// something — and the session keeps running. Without this it either pauses (which is
-/// what the app used to do) or it runs invisibly and you have to reopen it to know
-/// whether to be pulling. The island answers that from anywhere.
+/// **What it is for:** you swipe home mid-session and the session keeps running; the
+/// island tells you whether to be pulling from anywhere.
 ///
-/// **The hand is the point.** Compact leading draws the same mark that hangs off the
-/// island in-app, so the glance tells you which fingers before you read a word — and it
-/// mirrors with the hand you are pulling with, so LEFT and RIGHT are legible without one.
+/// **The hand is the point.** Compact leading draws the in-app island mark, mirrored with
+/// the pulling hand, so the glance says which fingers and which side before a word.
 ///
-/// **Every countdown is a `Text(timerInterval:)`.** The widget ticks it down itself, once
-/// a second, with no updates from the app at all. The app only pushes on real state
-/// changes — a rep ending, a hand swapping — which is what keeps a twenty-minute session
-/// inside ActivityKit's budget.
+/// **Every countdown is a `Text(timerInterval:)`**, ticked by the widget itself. The app
+/// pushes only on real state changes, which keeps a long session inside ActivityKit's
+/// budget.
 ///
-/// **The whole card is colour-coded by phase** — steel while resting, amber the moment
-/// it is on you, bleu while the clock runs — on the same ladder as the runner screen.
-/// See `SessionActivity.Phase.tint`: it changes on the push, which is the only "pulse" an
-/// archived render can have, and the only one worth having.
+/// **The whole card is colour-coded by phase**, on the runner's ladder
+/// (`SessionActivity.Phase.tint`). It changes on the push — the only "pulse" an archived
+/// render can have.
 struct SessionLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: SessionActivity.self) { context in
@@ -74,8 +69,7 @@ struct SessionLiveActivity: Widget {
                 }
             } compactLeading: {
                 // **The hand carries the colour in the compact island**, where there is
-                // no room for a word and no background to tint: four bars going amber and
-                // then blue is the entire state of the session, read without looking.
+                // no room for a word and no background to tint.
                 HandMark(fingers: context.state.grip.fingers,
                          position: context.state.grip.position,
                          side: context.state.side,
@@ -102,10 +96,8 @@ struct SessionLiveActivity: Widget {
 
     /// **A card past its stale date is a card whose app stopped pushing** — nearly
     /// always because the process died mid-session (see `ContentState.staleDate`). Its
-    /// phase, colour and countdown are all claims nobody is standing behind any more, so
-    /// none of them are drawn: the hand goes gray, the phase word becomes the one honest
-    /// instruction, and the card drops to the neutral slate. Tapping it opens the app,
-    /// which clears orphaned cards at launch.
+    /// phase, colour and countdown are claims nobody stands behind, so none are drawn.
+    /// Tapping it opens the app, which clears orphaned cards at launch.
     private static var staleWord: String { String(localized: "Open Get a Grip") }
 
     private func tint(_ context: ActivityViewContext<SessionActivity>) -> Color {
@@ -168,9 +160,8 @@ struct SessionLiveActivity: Widget {
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
             }
-            // The text column gets the slack. Without this the clock's reserved width
-            // squeezed it until the grip read "20 mm · 4 finger…" and the counters wrapped
-            // onto two lines — on the one surface whose whole job is a one-second glance.
+            // The text column gets the slack, or the clock's reserved width truncates the
+            // grip and wraps the counters.
             .layoutPriority(1)
 
             Spacer(minLength: 8)
@@ -193,9 +184,8 @@ struct SessionLiveActivity: Widget {
         .padding(.vertical, 12)
     }
 
-    /// Where you are in the session. **"Set 1 of 1" is dropped** when there is only one:
-    /// it is a constant dressed up as a counter, and it was costing the pull count the
-    /// room it needed to stay on one line.
+    /// Where you are in the session. **"Set 1 of 1" is dropped** — a constant dressed as
+    /// a counter, costing the pull count its room.
     private func positionLine(_ context: ActivityViewContext<SessionActivity>) -> String {
         let pulls = String(localized: "Pull \(context.state.repPosition) of \(context.attributes.plannedReps)")
         guard context.attributes.setCount > 1 else { return pulls }
@@ -207,10 +197,8 @@ struct SessionLiveActivity: Widget {
     @ViewBuilder
     private func countdown(_ context: ActivityViewContext<SessionActivity>,
                            font: Font) -> some View {
-        // `endsAt > .now` is a CRASH GUARD, not tidiness: `Date.now...endsAt` traps when
-        // the deadline has already passed, and a trapped widget process renders as a
-        // blank placeholder with no clue why. A deadline in the past means the app has
-        // not pushed in a while — show the dash and let the card say the rest.
+        // `endsAt > .now` is a CRASH GUARD: `Date.now...endsAt` traps on a past deadline,
+        // and a trapped widget renders as a blank placeholder with no clue why.
         if context.isStale {
             // Nothing is counting any more — the app that owned this clock is gone.
             Text("—").font(font).foregroundStyle(.secondary)
@@ -220,10 +208,8 @@ struct SessionLiveActivity: Widget {
                 .monospacedDigit()
                 .multilineTextAlignment(.trailing)
         } else if let pending = context.state.pendingSeconds {
-            // ARMED: the length of the hold ahead, not a clock. A STOPPED hold (off the
-            // edge, over the band, link lost): the seconds still owed. Either way no clock
-            // is running, so it is dimmed — a number sitting still must not be read as a
-            // countdown that is.
+            // ARMED: the hold ahead. A STOPPED hold: the seconds still owed. No clock is
+            // running either way, so it is dimmed rather than read as a countdown.
             Text("\(pending)s")
                 .font(font)
                 .monospacedDigit()

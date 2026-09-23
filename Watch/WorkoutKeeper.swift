@@ -7,17 +7,12 @@ import Observation
 
 /// Keeps the app — and with it the Bluetooth stream — running while the wrist is down.
 ///
-/// watchOS suspends an app the moment the screen sleeps, and a suspended app receives no
-/// force samples: the rep would stall silently at whatever it had accrued, which is the
-/// exact failure the phone's background rule exists to prevent. A running
-/// `HKWorkoutSession` is the one thing that keeps a watch app alive through a
-/// twenty-minute session, so every session runs inside one. It is also honest: a
-/// hangboard session IS a workout, and it lands in Fitness as one.
+/// watchOS suspends an app when the screen sleeps, and a rep would stall silently. A
+/// running `HKWorkoutSession` is the one thing that keeps a watch app alive through a
+/// session, so every session runs inside one — and a hangboard session IS a workout.
 ///
-/// Best-effort throughout. Health access refused, Health unavailable, a session that
-/// will not start — the runner still runs, and `state` says why the screen has to stay
-/// awake. A cue that cannot be played is not a reason for a set to stop, and neither is
-/// a workout that cannot be recorded.
+/// Best-effort throughout: if Health is refused, unavailable or will not start, the
+/// runner still runs and `state` says why the screen has to stay awake.
 @Observable @MainActor
 final class WorkoutKeeper {
     enum State: Equatable {
@@ -44,25 +39,22 @@ final class WorkoutKeeper {
     /// Whether a workout is WANTED right now — the caller's intent, as opposed to where
     /// the asynchronous start has got to.
     ///
-    /// The start is two callbacks deep (authorization, then the builder), and the runner
-    /// can end in between: a session aborted during the Health sheet, a screen dismissed
-    /// before the first frame. Checked at each hop, this is what stops a callback landing
-    /// after `end()` from starting a workout nobody will ever end — a phantom that keeps
-    /// the watch awake and lands in Fitness as an hour of "strength training".
+    /// The start is two callbacks deep and the runner can end in between. Checked at
+    /// each hop, so a callback landing after `end()` cannot start a phantom workout that
+    /// keeps the watch awake and lands in Fitness.
     @ObservationIgnored private var wanted = false
     /// Hears the system end a session we did not. Held strongly: `HKWorkoutSession`
     /// keeps its delegate weak. One per session, each with its own token.
     @ObservationIgnored private var sessionDelegate: WorkoutSessionDelegate?
-    /// Which session is current, by a token rather than by object identity: an old
-    /// session's late callback must never match a new session that happens to have been
-    /// allocated at the same address.
+    /// Which session is current, by a token rather than object identity, which a new
+    /// session at the same address could match.
     @ObservationIgnored private var sessionToken: UUID?
 
     /// Ask, then start. The ask is contextual — the first Start on the wrist is the
     /// moment a workout permission means something — and the system remembers the answer.
     ///
-    /// Idempotent while a start is in flight or a workout is running: a second `begin()`
-    /// used to request authorization again and start a SECOND workout session.
+    /// Idempotent while a start is in flight or a workout is running, so a second
+    /// `begin()` cannot start a SECOND workout session.
     func begin() {
         wanted = true
         guard state != .running, state != .starting else { return }
@@ -71,10 +63,9 @@ final class WorkoutKeeper {
             return
         }
         state = .starting
-        // Completion handlers rather than the async forms, deliberately: the builder and
-        // the session are not Sendable, and awaiting a nonisolated async method on them
-        // from the main actor is a send Swift 6 rejects. Callbacks hand back only value
-        // types, which hop home safely.
+        // Completion handlers, not the async forms: the builder and session are not
+        // Sendable, and awaiting their nonisolated async methods from the main actor is a
+        // send Swift 6 rejects. Callbacks hand back only value types.
         store.requestAuthorization(toShare: [.workoutType()], read: []) { [weak self] _, _ in
             Task { @MainActor in self?.startSession() }
         }
@@ -91,8 +82,7 @@ final class WorkoutKeeper {
             return
         }
         let configuration = HKWorkoutConfiguration()
-        // Strength, not climbing: a hangboard is finger strength work on a bench, and
-        // Fitness's climbing type implies a wall and a rope this session never sees.
+        // Strength, not climbing: Fitness's climbing type implies a wall and a rope.
         configuration.activityType = .functionalStrengthTraining
         configuration.locationType = .indoor
         do {

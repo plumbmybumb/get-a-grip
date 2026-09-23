@@ -6,12 +6,8 @@ import SwiftUI
 /// **The Dynamic Island as the palm, with your hand hanging off it** — the runner's
 /// grip display on any device that has one.
 ///
-/// Nuri's idea (2026-08-09), shipped as the default the same day. It began behind an
-/// `-islandHand` launch flag so it could be compared against the in-content glyph and
-/// thrown away without a trace; it won, and a flag nobody sets is just a way to lose the
-/// feature (which is exactly what happened the first time the app was launched without
-/// it). What replaced the flag is `isSupported` — a question about the DEVICE, which is
-/// the only thing that was ever really in question.
+/// Nuri's idea (2026-08-09). Gated on `isSupported` — the DEVICE — never on a flag: a
+/// launch flag nobody sets silently reverted it once.
 ///
 /// **The trick that makes it work:** the island is a hardware CUTOUT, not a view. No app
 /// may draw inside it — but it is always pure black, always the same capsule, and always
@@ -68,10 +64,8 @@ struct IslandHand: View {
     /// thickest digit on a hand, so a thin tab beside four fat bars reads as a mistake.
     private static let thumbLength: CGFloat = 38
     private static let thumbThickness: CGFloat = 22
-    /// Shallow, not diagonal. A steeper thumb read as a detached pill lying at an angle,
-    /// and it is the status bar that forces the choice: the cellular dots and the wifi
-    /// glyph sit at the island's waist, so anything leaving from higher up runs straight
-    /// into them. Low and shallow passes safely underneath.
+    /// Shallow, not diagonal: the status bar glyphs sit at the island's waist, so a
+    /// thumb leaving higher up runs into them, and a steeper one read as a stray pill.
     private static let thumbAngle: Double = 26
 
     /// The hand's frame and the point it grows about — kept below the physical island,
@@ -83,11 +77,8 @@ struct IslandHand: View {
     static let restFocusScale: CGFloat = 1.2
 
     /// **How far the fingertips reach down past their resting tip at `scale`** — the
-    /// growth the runner's layout makes room for, so a bigger hand PUSHES the panel
-    /// under it down rather than reaching into it (Nuri, 2026-09-19). `scaleEffect`
-    /// moves no layout on its own, which left the enlarged grip-change hand a few
-    /// points off the glass. Measured from the longest finger, about the same anchor
-    /// the drawing scales about.
+    /// growth the runner's layout makes room for (`scaleEffect` moves no layout on its
+    /// own). Measured from the longest finger, about the drawing's scale anchor.
     static func tipDrop(scale: CGFloat) -> CGFloat {
         let tip = islandBottom + gap + baseLength
         let anchor = frameHeight * growthAnchorY
@@ -97,11 +88,9 @@ struct IslandHand: View {
     /// **Does this device have a Dynamic Island?** The runner asks too — the layout
     /// underneath changes shape around the hand — so it is one answer, in one place.
     ///
-    /// Read from the WINDOW, not from a `GeometryReader`. A reader nested inside a view
-    /// whose parent has already applied the safe area reports insets of zero — which is
-    /// why the first version of this drew nothing at all. Call it from `onAppear` or
-    /// later: before the view is in a window there is no key window to ask, and the
-    /// honest answer to an unanswerable question is "no island".
+    /// Read from the WINDOW, not a `GeometryReader`: a reader inside a view whose parent
+    /// already applied the safe area reports zero insets. Call it from `onAppear` or
+    /// later — before there is a key window the answer is "no island".
     @MainActor
     static var isSupported: Bool { windowTopInset >= islandInset }
 
@@ -121,14 +110,12 @@ struct IslandHand: View {
     private var gripInk: Color { emphasized ? StatusTint.armed : .black }
 
     /// **Facing a LEFT palm, the thumb is on the right — and so the index finger is the
-    /// RIGHTMOST bar, not the leftmost.** Moving only the thumb was the bug: with the
-    /// thumb switched but the fingers left alone, a front-2 grip rendered on the little
-    /// side and read as back-2 (Nuri spotted it, 2026-08-09). The whole hand mirrors.
+    /// RIGHTMOST bar, not the leftmost.** Moving only the thumb rendered a front-2 grip on
+    /// the little side, reading as back-2. The whole hand mirrors.
     private var mirrored: Bool { drawn != .right }
 
     var body: some View {
-        // The reader is here for the screen WIDTH only — the island is centred, so the
-        // hand's origin depends on it. Whether to draw at all was already decided by the
+        // The reader is for the screen WIDTH only; whether to draw was decided by the
         // caller, from `isSupported`.
         GeometryReader { geo in
             hand(width: geo.size.width)
@@ -196,27 +183,22 @@ struct IslandHand: View {
             .offset(x: originX + CGFloat(slot) * (Self.barWidth + Self.barGap),
                     y: Self.islandBottom + Self.gap)
             // STAGGERED from the thumb side inward, so a grip change ripples across the
-            // hand instead of all four bars blinking at once. 45 ms is enough to read as
-            // a sequence and short enough that the last finger is not visibly late.
+            // hand; 45 ms reads as a sequence without the last finger looking late.
             .animation(reduceMotion ? Motion.reduced
                                     : Motion.state(false).delay(Double(slot) * 0.045),
                        value: grip)
     }
 
-    /// The island is a capsule — fully rounded, radius = half its height. The fingers
-    /// borrow that language rather than the app's closure-driven radius, because
-    /// cohesion with the hardware is the whole idea here and a squared-off full-crimp
-    /// bar beside a capsule cutout looks like a different drawing.
+    /// The island is a capsule — radius = half its height — and the fingers borrow that
+    /// language, because cohesion with the hardware is the whole idea here.
     private static var radius: CGFloat { barWidth / 2 }
 
     private func thumb(width: CGFloat) -> some View {
         let islandLeft = (width - Self.islandWidth) / 2
         let onRight = mirrored
 
-        // DETACHED, with the same clearance the fingers have. An earlier version pivoted
-        // INSIDE the island and sat above its bottom edge, so it grew straight out of the
-        // hardware — and a thumb welded to the palm is the one part of a hand nobody
-        // draws that way.
+        // DETACHED, with the same clearance the fingers have — a thumb growing straight
+        // out of the hardware read as welded to the palm.
         let pivotX = onRight ? islandLeft + Self.islandWidth + 2
                              : islandLeft - 2
         let pivotY = Self.islandBottom + Self.gap + 4
@@ -242,10 +224,8 @@ extension View {
     /// Hangs the current grip off the Dynamic Island.
     ///
     /// `enabled` is the CALLER's copy of `IslandHand.isSupported`, resolved once in
-    /// `onAppear` rather than re-probed here: the runner's layout branches on the same
-    /// answer, and a probe evaluated during the first body pass — before there is a key
-    /// window to ask — would say "no island" and leave the screen laid out for a hand
-    /// that then appears anyway.
+    /// `onAppear`: the layout branches on the same answer, and a probe in the first body
+    /// pass would say "no island".
     @ViewBuilder
     func islandHand(grip: GripSpec?, side: Side?, isActive: Bool, enabled: Bool,
                     emphasized: Bool = false, restFocused: Bool = false) -> some View {

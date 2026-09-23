@@ -29,10 +29,8 @@ enum ReminderPlanner {
         /// How many sessions today still owes. Zero means the day is already met and
         /// every one of this routine's remaining slots is suppressed.
         ///
-        /// The whole point of the ritual is that the app stops nagging once you have
-        /// done the thing. A reminder that fires after your second session of the day
-        /// is the app failing to notice you succeeded, and it is exactly the kind of
-        /// thing that gets notifications turned off for good.
+        /// A reminder that fires after the day's sessions is the app failing to notice
+        /// you succeeded — the thing that gets notifications turned off for good.
         var outstandingToday: Int = 1
     }
 
@@ -51,10 +49,9 @@ enum ReminderPlanner {
     /// `nonisolated` so the pure half of this enum stays callable from anywhere.
     nonisolated static let identifierPrefix = "doigt.routine."
 
-    /// Content-keyed on both halves: the routine's UUID survives an undo-delete (which
-    /// restores the original id), and `slot` is derived from the TIME, so a slot moved
-    /// from 08:00 to 09:00 replaces its own request instead of leaving an orphan
-    /// firing at the old hour forever.
+    /// Content-keyed on both halves: the routine's UUID survives an undo-delete, and
+    /// `slot` is derived from the TIME, so a moved slot replaces its own request
+    /// rather than leaving an orphan firing at the old hour.
     nonisolated static func identifier(routine: UUID, slot: ReminderTime) -> String {
         "\(identifierPrefix)\(routine.uuidString).\(slot.slot)"
     }
@@ -69,11 +66,9 @@ enum ReminderPlanner {
         var claimed: Set<String> = []
 
         for routine in routines where routine.enabled {
-            // Suppress from the FRONT of the day. Having trained once, the morning slot
-            // is the one you have satisfied; the evening one is still owed. Dropping the
-            // last slot instead would silence the reminder you still need. The front of
-            // the TRAINING day: a 01:00 slot is the last of the evening before, not the
-            // first of the morning, so it sorts after 23:00.
+            // Suppress from the FRONT of the TRAINING day: having trained once, the
+            // morning slot is satisfied and the evening one still owed. A 01:00 slot is
+            // the last of the evening before, so it sorts after 23:00.
             let sorted = Set(routine.reminders).sorted {
                 $0.trainingDayOrder < $1.trainingDayOrder
             }
@@ -94,15 +89,12 @@ enum ReminderPlanner {
     }
 
     /// Resolve the slot plan to future calendar dates. Every enabled slot returns
-    /// tomorrow even when today's target is met; deleting its repeating request used
-    /// to silence every future day until the app happened to replan again.
+    /// tomorrow even when today's target is met.
     ///
-    /// **Suppression is keyed to the TRAINING day each firing falls in**, never to the
-    /// calendar day. `outstandingToday` is counted for the training day, so a session
-    /// finished at 00:30 satisfied the evening before — and suppressing the new calendar
-    /// day's slots on the strength of it deleted the next morning's reminders from the
-    /// notification center (only obsolete ids are retired, and those were obsolete). The
-    /// same rule silences a 01:00 slot after a 23:30 session: it is still that evening.
+    /// **Suppression is keyed to the TRAINING day each firing falls in**, never the
+    /// calendar day: a session at 00:30 satisfied the evening before, and must not delete
+    /// the next morning's reminders. A 01:00 slot after a 23:30 session is still that
+    /// evening, so it is silenced.
     nonisolated static func scheduledRequests(for routines: [RoutinePlanInput],
                                               now: Date = .now,
                                               calendar: Calendar = .current,
@@ -147,12 +139,9 @@ enum ReminderPlanner {
     static func replan(_ routines: [RoutinePlanInput]) async {
         let predecessor = inflight
         predecessor?.cancel()
-        // DETACHED, deliberately: this enum is @MainActor, so a plain `Task {}` inherits
-        // the main actor — which is what put the equivalent computation in the sibling
-        // app on the main thread after every save, stepper tick and foreground (measured
-        // 70–200 ms), and it was felt as a hitch behind the sheet's dismiss animation.
-        // Everything the worker touches is Sendable value data or the thread-safe
-        // UNUserNotificationCenter.
+        // DETACHED: a plain `Task {}` inherits this enum's main actor, which in the
+        // sibling app cost 70–200 ms on the main thread after every save. The worker
+        // touches only Sendable values and the thread-safe UNUserNotificationCenter.
         let task = Task.detached(priority: .utility) {
             _ = await predecessor?.value
             await run(routines)
@@ -204,9 +193,7 @@ enum ReminderPlanner {
             content.title = item.title
             content.body = item.body
             content.sound = .default
-            // `.active`, not `.timeSensitive`: this is a habit nudge, and a training
-            // app that claims the right to pierce Focus for a routine reminder is the
-            // kind of app people turn notifications off for entirely.
+            // `.active`, not `.timeSensitive`: a habit nudge must not pierce Focus.
             content.interruptionLevel = .active
 
             let trigger = UNCalendarNotificationTrigger(dateMatching: item.components, repeats: false)
@@ -233,9 +220,7 @@ enum ReminderPlanner {
     /// the alert arrives before the user knows what the app does.
     static func requestAuthorizationIfNeeded(settings: SettingsStore) async {
         guard !settings.didAskNotificationPermission else { return }
-        // Set BEFORE the await, not after: two saves in quick succession would both see
-        // `false` and stack two OS alerts, and the second one is the one that reads as
-        // a bug.
+        // Set BEFORE the await: two quick saves would otherwise stack two OS alerts.
         settings.didAskNotificationPermission = true
         _ = try? await UNUserNotificationCenter.current()
             .requestAuthorization(options: [.alert, .sound, .badge])

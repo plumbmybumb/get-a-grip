@@ -7,17 +7,15 @@ import Foundation
 /// The real gauge, over CoreBluetooth.
 ///
 /// **Isolation.** The class is `@MainActor` and the central is created with
-/// `queue: .main`, so every delegate callback genuinely arrives on the main thread.
-/// The delegate methods below are therefore plain main-actor-isolated members: the
-/// CoreBluetooth delegate protocols are `@objc`, so Swift 6 witnesses them with
-/// isolated methods and inserts its own runtime isolation check (SE-0423) — the
-/// same accommodation that lets a `@MainActor` class be a `UITableViewDataSource`.
+/// `queue: .main`, so every delegate callback arrives on the main thread, and the
+/// `@preconcurrency` conformances let main-actor-isolated methods witness the `@objc`
+/// requirements with a runtime isolation check (SE-0423). `queue: .main` is
+/// load-bearing: a background queue makes every callback a race.
 ///
-/// The `queue: .main` argument is what makes that safe, so it is load-bearing: hand
-/// CoreBluetooth a background queue and every callback below becomes a race. Note
-/// that writing these as `nonisolated` + `MainActor.assumeIsolated` does NOT
-/// compile — passing a non-Sendable `CBPeripheral` into the closure is "sending"
-/// across an isolation boundary, which is exactly what the checker rejects.
+/// Two alternatives DO NOT COMPILE: plain isolated methods without `@preconcurrency`
+/// ("conformance … crosses into main actor-isolated code"), and `nonisolated` +
+/// `MainActor.assumeIsolated` ("sending 'peripheral' risks causing data races" —
+/// passing a non-Sendable `CBPeripheral` into the closure IS the boundary crossing).
 @MainActor
 final class LiveProgressorClient: NSObject, ProgressorClient {
     var onEvent: ((ProgressorEvent) -> Void)?
@@ -43,8 +41,7 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
     /// A deliberately cancelled peripheral stays quarantined until CoreBluetooth
     /// delivers its terminal callback. Reusing it earlier lets callbacks from the old
     /// generation satisfy the new connection attempt. See `PeripheralQuarantine` for the
-    /// three ways out — a quarantine with only the first one wedged every reconnect after
-    /// a Bluetooth power cycle until the app was relaunched.
+    /// three ways out.
     private var quarantine = PeripheralQuarantine<CBPeripheral>()
     private var quarantineReleaseTask: Task<Void, Never>?
     private var pendingConnectionStart = false
@@ -93,9 +90,8 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
         attemptsRemaining = Self.attemptLimit
         refreshBudgetWhenPoweredOn = false
 
-        // LAZY on purpose: constructing the central is what triggers the system
-        // Bluetooth permission dialog. Doing it at launch would ask before the user
-        // has seen what the app is for; doing it here ties the ask to a Connect tap.
+        // LAZY: constructing the central triggers the Bluetooth permission dialog, and
+        // the ask belongs to a Connect tap, not launch.
         guard let central else {
             central = CBCentralManager(delegate: self, queue: .main)
             return   // continues in centralManagerDidUpdateState
@@ -150,9 +146,7 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
     /// its identity across its single retry so a failed query can remove exactly its
     /// own pending-reply slot without shifting the FIFO.
     func send(_ command: ProgressorCommand) {
-        // Start writes carry a cause through the one public start funnel. Silently
-        // accepting an uncaused start here would make its later hardware breadcrumb a
-        // guess, so callers use `startStreaming(cause:)` instead.
+        // Starts go through `startStreaming(cause:)`, so every breadcrumb names its cause.
         guard command != .startWeightMeasurement else { return }
         enqueue(command)
     }
@@ -342,15 +336,13 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
     }
 
     /// How long a retired peripheral may wait for its terminal callback before the
-    /// quarantine gives up on it. CoreBluetooth answers a cancel in well under a second
-    /// on a live radio; five is far past that and far short of anyone concluding the
-    /// Connect button is broken.
+    /// quarantine gives up on it: far past a live radio's sub-second answer, far short
+    /// of anyone concluding Connect is broken.
     private static let quarantineSafetyRelease: Duration = .seconds(5)
 
     private func retire(_ retiring: CBPeripheral) {
-        // With no radio there is nothing to cancel — CoreBluetooth rejects the call as
-        // misuse — and no terminal callback will ever arrive to end a quarantine, so
-        // holding one here is what used to lock the gauge out until relaunch.
+        // With no radio there is nothing to cancel (misuse) and no terminal callback will
+        // ever end a quarantine, so holding one would lock the gauge out until relaunch.
         guard central?.state == .poweredOn else {
             retiring.delegate = nil
             return
@@ -403,12 +395,9 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
     }
 
     /// The radio went away (off, resetting, unauthorized). Everything tied to the link
-    /// dies here, the quarantine included: CoreBluetooth delivers no per-peripheral
-    /// callback after power loss — the state change IS the disconnect — so a peripheral
-    /// retired now would be held forever and `beginAttemptIfPossible` would refuse every
-    /// reconnect after Bluetooth came back (airplane mode was enough). Nothing is
-    /// cancelled either: the system has already torn the link down, and a cancel on an
-    /// unpowered central is rejected as misuse.
+    /// dies here, the quarantine included: no per-peripheral callback follows power loss,
+    /// so a retired peripheral would be held forever and every reconnect refused. Nothing
+    /// is cancelled either — a cancel on an unpowered central is misuse.
     private func handlePowerUnavailable(_ central: CBCentralManager) {
         refreshBudgetWhenPoweredOn = wantsConnection
         attemptsRemaining = 0
@@ -521,11 +510,9 @@ final class LiveProgressorClient: NSObject, ProgressorClient {
 
 // MARK: - CBCentralManagerDelegate
 
-// `@preconcurrency` is what lets main-actor-isolated methods witness CoreBluetooth's
-// nonisolated `@objc` requirements: the compiler inserts a dynamic isolation check
-// at each witness instead of rejecting the conformance outright (SE-0423). It is
-// sound here precisely because the central is constructed with `queue: .main`, so
-// the check can never fail — and would trap loudly if that ever changed.
+// `@preconcurrency`: the compiler inserts a dynamic isolation check at each witness
+// (SE-0423). Sound because the central uses `queue: .main`, so the check can never
+// fail — and would trap loudly if that changed.
 extension LiveProgressorClient: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard central.state == .poweredOn else {

@@ -8,10 +8,9 @@ import UIKit
 #endif
 
 #if os(watchOS)
-/// watchOS has no background-task assertion. `.invalid` is the only value there, so
-/// `beginBackgroundGrace` takes its DENIED branch — disconnect at once — which is the
-/// right rule for a watch: outside a workout session nothing keeps the app alive long
-/// enough for a grace to mean anything, and inside one the stream is left alone anyway.
+/// watchOS has no background-task assertion, so `beginBackgroundGrace` always takes
+/// its DENIED branch — disconnect at once. Right for a watch: outside a workout session
+/// nothing keeps the app alive for a grace, and inside one the stream is left alone.
 struct BackgroundAssertionID: Equatable, Sendable {
     static let invalid = BackgroundAssertionID()
 }
@@ -22,9 +21,8 @@ typealias BackgroundAssertionID = UIBackgroundTaskIdentifier
 /// Everything the app knows about the gauge right now: link state, the live force
 /// reading, the rolling trace the graph draws, and battery/firmware.
 ///
-/// `@Observable @MainActor` and injected via `.environment()` — the house store
-/// pattern. It owns the client and is the ONLY thing that talks to it, so there is
-/// exactly one place where wire events become app state.
+/// It owns the client and is the ONLY thing that talks to it, so there is exactly one
+/// place where wire events become app state.
 @Observable
 @MainActor
 final class DeviceStore {
@@ -66,20 +64,15 @@ final class DeviceStore {
             guard latestKg != newValue else { return }
             latestKg = newValue
             sampleStateChanged()
-            // Coarse and change-guarded, the same shape as `isReadingLive` below.
-            // `TareButton` used to read this raw figure directly, which re-evaluated its
-            // whole body — icon, label, `disabled`, the accessibility hint, the alert —
-            // at sample rate (~80 Hz) for the entire session to track a value that only
-            // ever matters at the ONE threshold `TarePolicy.shouldConfirm` cares about.
-            // `TarePolicy.tapDecision` now takes this Bool instead; the tap's own action
-            // closure can still read `currentKg` directly, since a read inside a closure
-            // creates no observation dependency.
+            // Coarse and change-guarded: `TareButton` reading the raw figure re-evaluated
+            // its whole body at ~80 Hz for a value that only matters at ONE threshold.
+            // The tap's action closure still reads `currentKg` directly — a read inside a
+            // closure creates no observation dependency.
             let loaded = abs(currentKg) >= TarePolicy.confirmationThresholdKg
             if loaded != isLoadedForTare { isLoadedForTare = loaded }
         }
     }
-    /// Whether the load is heavy enough that a tare needs confirming — see the `didSet`
-    /// on `currentKg` immediately above for why this is published as its own Bool.
+    /// Whether the load is heavy enough that a tare needs confirming — see `currentKg`.
     private(set) var isLoadedForTare = false
     /// Highest reading since the last `resetPeak()`.
     @ObservationIgnored private var latestPeak: Double = 0
@@ -90,16 +83,12 @@ final class DeviceStore {
     /// The rolling window the force trace draws, on a PLAYBACK timeline built here at
     /// ingestion — not on raw device timestamps.
     ///
-    /// The first hardware session killed the graph twice (connect-inside-the-runner,
-    /// and every tare) while the kg readout stayed alive, because the view anchored
-    /// itself to the device's µs counter and kept that anchor in view state. The
-    /// counter restarts on the device's own schedule — tare, a re-sent start command,
-    /// a reconnect — and a poisoned anchor had no path back. So the store, which SEES
-    /// those events, rebuilds a clean monotone clock instead: each point's `t` advances
-    /// by the wrap-safe device delta (clamped to one sample period when the delta is
-    /// nonsense, i.e. a counter reset), slewed gently toward wall time and snapped
-    /// after a genuine gap. The view just draws (now − t); there is nothing left in it
-    /// to poison.
+    /// The device's µs counter restarts on its own schedule — tare, a re-sent start, a
+    /// reconnect — and a view-held anchor to it was poisoned with no path back (the
+    /// graph died while the kg readout lived). So the store, which SEES those events,
+    /// builds a monotone clock: each `t` advances by the wrap-safe device delta (one
+    /// sample period when the delta is nonsense), slewed toward wall time and snapped
+    /// after a genuine gap. The view just draws (now − t); nothing in it can be poisoned.
     struct TracePoint: Equatable {
         var kg: Double
         /// Seconds, `timeIntervalSinceReferenceDate` epoch, strictly monotone.
@@ -110,23 +99,18 @@ final class DeviceStore {
     }
     /// How far the playback clock may run from wall time, either way, before the
     /// timeline is declared broken: contiguous data further BEHIND than this snaps
-    /// forward, and a buffer further AHEAD is dropped as a backlog. Bunched delivery
-    /// swings about half a clump either way around its average, so this tolerates
-    /// clumps of roughly twice its value — well past any radio stack's, far below a
-    /// suspended app's backlog.
+    /// forward, and a buffer further AHEAD is dropped as a backlog. Tolerates delivery
+    /// clumps of roughly twice this — past any radio stack's, far below a suspended
+    /// app's backlog.
     static let lateDeliveryLimitSeconds: TimeInterval = 3.0
     /// **NOTHING IS STAMPED IN THE FUTURE: a packet's newest reading lands at its arrival.**
     ///
-    /// The clock used to slew every reading toward wall time itself, whose equilibrium is a
-    /// packet CENTRED on its own arrival: its newest half stamped ahead of now, so the line
-    /// pinned to the newest point paused and lurched at each packet (the pre-redesign
-    /// behaviour), or — drawn only when due — waited for it. Two buffered designs followed
-    /// on 2026-09-19 (a glide one packet behind; a live pen with a connector) and Nuri
-    /// rejected both: the first felt behind his pull, the second looked wrong. The verdict
-    /// was "just take the raw data and feed it in", so the clock now targets wall time LESS
-    /// half a packet: a packet's newest reading is stamped at the moment it arrived, the
-    /// older readings sit behind it by their device deltas, and the trace draws all of it
-    /// at once. What smoothing remains is visual and lag-free — see `ForceTraceView`.
+    /// Slewing each reading toward wall time itself centres a packet on its arrival, so
+    /// its newest half is stamped ahead of now and the line lurches at each packet. Two
+    /// buffered designs were rejected on the phone (one felt behind the pull, one looked
+    /// wrong), so the clock targets wall time LESS half a packet: the newest reading is
+    /// stamped at arrival, older ones sit behind it by their device deltas, and the trace
+    /// draws all of it at once. Remaining smoothing is visual — see `ForceTraceView`.
     /// The running span of a packet, learned at packet starts, is what the alignment uses.
     @ObservationIgnored private var lastPacketArrival: TimeInterval?
     @ObservationIgnored private var lastPacketFirstT: TimeInterval?
@@ -175,74 +159,57 @@ final class DeviceStore {
 
 
     /// True when driven by `MockProgressorClient` rather than real hardware. The UI
-    /// must say so: a number that looks like a measurement but isn't is worse than
-    /// no number.
+    /// must say so.
     private(set) var isMock: Bool
 
     /// Which gauge the app is driving.
     ///
-    /// Persisted in the App Group container rather than in `SettingsStore` because this
-    /// store must know the answer BEFORE its first client exists — `init` chooses the
-    /// client from it, and the settings store is a sibling environment object built
-    /// alongside this one, not before it.
+    /// Persisted in the App Group container rather than `SettingsStore`, because `init`
+    /// chooses the client from it and the settings store is a sibling, not built first.
     private(set) var gaugeKind: GaugeKind
 
     /// **Gate behaviour on THESE flags, never on `gaugeKind` itself.** A rule keyed to a
-    /// capability survives the next device; a rule keyed to a device name is a bug waiting
-    /// in the one after. The runner reads this for its timing source and its background
-    /// policy; Settings reads it for the hardware-verification footnote.
+    /// capability survives the next device; one keyed to a device name does not.
     var gaugeCapabilities: GaugeCapabilities { gaugeKind.capabilities }
 
     /// How long the live reading survives without a sample before the UI calls it
-    /// stale and zeroes the number. One second is right for a CONNECTED stream, where
-    /// a missing second means dozens of missing samples; broadcast delivery is
-    /// best-effort and BURSTY — a real WH-C06's advertisements arrive in clumps with
-    /// multi-second holes (the reference library tolerates TEN seconds), so the
-    /// one-second rule made the kg readout and the waiting overlay flap in time with
-    /// the radio (Nuri's first hardware session, 2026-08-17). 3.5 s sits well under
-    /// the client's own 10 s disconnect, so a scale that genuinely left still reads
-    /// as gone.
+    /// stale and zeroes the number. One second suits a CONNECTED stream; broadcast
+    /// delivery is BURSTY — a real WH-C06's advertisements arrive in clumps with
+    /// multi-second holes, and one second made the readout flap with the radio
+    /// (hardware, 2026-08-17). 3.5 s sits well under the client's 10 s disconnect.
     var signalSilenceTolerance: TimeInterval {
         gaugeCapabilities.isBroadcast ? 3.5 : 1.0
     }
 
     /// How old the newest reading may be and still count as "live" for the Tare button —
-    /// its displayed MODE (`isReadingLive`, below) and the tap's own safety re-check
-    /// (`TarePolicy.isSafeToTareNow` / `.confirmationDecision`) must both read this same
-    /// number, or the two can disagree, which IS the bug this exists to fix.
+    /// its displayed MODE (`isReadingLive`) and the tap's safety re-check
+    /// (`TarePolicy.isSafeToTareNow` / `.confirmationDecision`) must read this same
+    /// number, or the two can disagree.
     ///
-    /// `TarePolicy.liveReadingMaxAgeSeconds` (0.3 s) is a Tindeq number — right for an
-    /// 80 Hz connected stream, where 0.3 s of silence is ~24 missing samples — and stays
-    /// untouched, since other call sites may still rely on exactly that meaning. A
-    /// broadcast gauge's advertisements arrive in clumps with multi-second holes, so 0.3 s
-    /// flipped the button to Wake and back "oscillating back and forth" in time with the
-    /// radio (Nuri, 2026-08-17) — and Wake is a no-op there anyway, since the scan never
-    /// stops, so the flip was pure noise. 3.5 s matches `signalSilenceTolerance` above,
-    /// this store's existing broadcast beat: a software tare captures the newest reading,
-    /// and on a scale that only refreshes every few seconds, a 3.5 s-old reading is the
-    /// freshest truth on offer. The ≥1 kg confirmation flow still guards a loaded tare
-    /// regardless of which bound let the button say "Tare".
+    /// `TarePolicy.liveReadingMaxAgeSeconds` (0.3 s) is a Tindeq number for an 80 Hz
+    /// stream. On a broadcast gauge's clumpy advertisements it flipped the button to
+    /// Wake and back with the radio (hardware, 2026-08-17), so broadcast uses 3.5 s,
+    /// matching `signalSilenceTolerance`: on a scale that refreshes every few seconds
+    /// that is the freshest truth on offer. The ≥1 kg confirmation still guards a
+    /// loaded tare either way.
     var tareReadingMaxAge: TimeInterval {
         gaugeCapabilities.isBroadcast ? 3.5 : TarePolicy.liveReadingMaxAgeSeconds
     }
 
     /// Every sample, in order, for whoever is running a session.
     ///
-    /// Deliberately a callback rather than something a view observes: `lastSample` is
-    /// a snapshot for rendering, and SwiftUI coalesces observable changes, so a view
-    /// watching it would see a handful of the ~80 samples that arrive each second and
-    /// under-count hang time by an order of magnitude. The runner needs all of them.
+    /// A callback, not observable state: SwiftUI coalesces observable changes, so a
+    /// view watching `lastSample` would see a handful of the ~80 samples a second and
+    /// under-count hang time by an order of magnitude.
     @ObservationIgnored var onSample: ((ForceSample) -> Void)?
 
     /// The same samples, carrying the store's own PLAYBACK time instead of the device's
     /// raw counter — see `playbackTime`, which is built to be monotone across tares,
     /// counter resets and reconnects.
     ///
-    /// A second callback rather than a wider `onSample`, because the two have genuinely
-    /// different needs: the runner accrues hang time from device deltas and must not be
-    /// handed a slewed clock, while anything measuring over a WINDOW OF SECONDS (the max
-    /// test) needs a timeline that cannot jump backwards mid-measurement. Adding a
-    /// parameter to `onSample` would have forced one of them to use the other's clock.
+    /// A second callback rather than a wider `onSample`: the runner accrues hang time
+    /// from device deltas and must not get a slewed clock, while anything measuring over
+    /// a WINDOW OF SECONDS (the max test) needs a timeline that cannot jump backwards.
     @ObservationIgnored var onTracePoint: ((TracePoint) -> Void)?
 
     @ObservationIgnored private var freshnessTask: Task<Void, Never>?
@@ -262,16 +229,12 @@ final class DeviceStore {
     /// Whether the reading is live enough to zero the gauge against — **observable, so
     /// the Tare button actually changes mode when it flips.**
     ///
-    /// This exists separately from `isSignalFresh` because they answer different
-    /// questions on different clocks. `isSignalFresh` records diagnostic transitions and tolerates a
-    /// full second of silence; this tolerates `tareReadingMaxAge`, because a tare cannot
-    /// be taken back for the rest of the session.
+    /// Separate from `isSignalFresh` (diagnostic, tolerates a second of silence): this
+    /// tolerates `tareReadingMaxAge`, because a tare cannot be taken back.
     ///
-    /// It is republished by the same 500 ms watchdog, so it lags the true boundary by up
-    /// to one tick. That lag is deliberately in the SAFE direction only: the tap
-    /// re-checks `secondsSinceLastSample()` exactly and downgrades to a wake, so the
-    /// worst case is a button that still says "Tare" for a moment and restarts the
-    /// stream instead — never one that says "Tare" and zeroes an unknown load.
+    /// Republished by the 500 ms watchdog, so it can lag by one tick — only in the SAFE
+    /// direction: the tap re-checks `secondsSinceLastSample()` exactly and downgrades to
+    /// a wake, never zeroing an unknown load.
     private(set) var isReadingLive = false
 
     private func refreshReadingLiveness(now: Date = .now) {
@@ -281,14 +244,10 @@ final class DeviceStore {
     }
     @ObservationIgnored private var diagnosticRing = DiagnosticBreadcrumbRing()
 
-    /// ~6 seconds of history — enough to see the shape of a pull without the trace
-    /// becoming an unreadable smear. Sized from the gauge's own rate: 480 points was
-    /// exactly six seconds of the Progressor's 80 Hz, and at the Dyno's 250 Hz the same
-    /// buffer would hold under two seconds, so the graph would end mid-pull.
-    /// Two seconds more than the window shows: the buffer's lead (a packet plus its
-    /// margin, up to ~1.6 s) is pending past the right edge, and a full buffer's oldest
-    /// point must still lie OFF the left edge or the fill's start ramp jitters on screen
-    /// as points age out (Nuri, 2026-09-19: "the shading disappears in a jittery way").
+    /// Sized in SECONDS from the gauge's own rate — a fixed 480 points is six seconds at
+    /// 80 Hz but under two at the Dyno's 250 Hz. Two seconds more than the ~6 s window
+    /// shows: the buffer's lead (up to ~1.6 s) is pending past the right edge, and the
+    /// oldest point must lie OFF the left edge or the fill's start jitters as points age out.
     private static let traceSeconds: Double = 8
     private static let minimumTraceCapacity = 480
     private var traceCapacity: Int {
@@ -300,13 +259,10 @@ final class DeviceStore {
         max(40, Int(0.5 * gaugeCapabilities.nominalSampleRate))
     }
 
-    /// **Trimmed in CHUNKS, not a point at a time.** `removeFirst` shifts every element
-    /// left, so trimming to the exact capacity on each sample moved the whole ~480–2000
-    /// point buffer 80–250 times a second to drop one point. Letting it overshoot by
-    /// `slack` and then cutting back to `capacity` does the same shift once per
-    /// half-second. The overshoot is all OLD points, past the window's left edge — the
-    /// capacity already holds two seconds more than the graph shows — so nothing drawn
-    /// changes.
+    /// **Trimmed in CHUNKS, not a point at a time.** `removeFirst` shifts every element,
+    /// so exact trimming moved the whole buffer 80–250 times a second. Overshooting by
+    /// `slack` does that shift once per half-second; the overshoot is all OLD points
+    /// past the window's left edge, so nothing drawn changes.
     nonisolated static func trimTrace<Point>(_ buffer: inout [Point], capacity: Int, slack: Int) {
         guard buffer.count > capacity + max(0, slack) else { return }
         buffer.removeFirst(buffer.count - capacity)
@@ -316,10 +272,9 @@ final class DeviceStore {
 
     init(useMock: Bool = DeviceStore.mockRequestedAtLaunch) {
         isMock = useMock
-        // **Demo mode reports the Progressor whatever is stored.** The mock scripts a
-        // Tindeq — device µs clock, hardware tare, background-capable — so reporting the
-        // stored kind would hand the runner capabilities the client running does not have.
-        // The stored choice is untouched and comes back the moment demo mode ends.
+        // **Demo mode reports the Progressor whatever is stored**: the mock scripts a
+        // Tindeq, and the stored kind would claim capabilities it lacks. The stored
+        // choice comes back when demo mode ends.
         let kind: GaugeKind = useMock ? .progressor : DeviceStore.persistedGaugeKind()
         gaugeKind = kind
         client = useMock ? MockProgressorClient(profile: DeviceStore.mockProfileRequestedAtLaunch)
@@ -330,10 +285,8 @@ final class DeviceStore {
     /// Injection seam for lifecycle policy tests; the app path above still chooses the
     /// real or scripted client from the launch mode.
     ///
-    /// The kind comes from the CLIENT rather than from storage: a test that injects a
-    /// synthetic-clock gauge is making a statement about what it is driving, and reading
-    /// the persisted key here would let one test's Settings choice change another's
-    /// capabilities.
+    /// The kind comes from the CLIENT rather than storage, so one test's persisted
+    /// choice cannot change another's capabilities.
     init(client: any ProgressorClient, isMock: Bool = false) {
         self.isMock = isMock
         self.gaugeKind = client.kind
@@ -347,15 +300,11 @@ final class DeviceStore {
         endBackgroundAssertion()
     }
 
-    /// `-mockDevice` is passed by `./build.sh run`, since a simulator build can never
-    /// reach real hardware. DEBUG only, exactly like `-mockProfile` below: a shipped
-    /// build must not be switchable to a scripted gauge by a launch argument, where a
-    /// session would record loads nobody pulled.
+    /// `-mockDevice` is passed by `./build.sh run`. DEBUG only: a shipped build must not
+    /// be switchable to a scripted gauge by a launch argument.
     ///
     /// This gates the ARGUMENT, never the mock: `MockProgressorClient` stays compiled
-    /// into every configuration, because the gauge's own "Try demo mode"
-    /// (`useMockDevice(_:)`) is how anyone without hardware — App Review included —
-    /// gets past a screen that would otherwise never connect.
+    /// into every configuration for "Try demo mode" — see `useMockDevice(_:)`.
     static var mockRequestedAtLaunch: Bool {
         #if DEBUG
         return ProcessInfo.processInfo.arguments.contains("-mockDevice")
@@ -384,14 +333,11 @@ final class DeviceStore {
 
     private static var gaugeDefaults: UserDefaults { AppGroup.defaults ?? .standard }
 
-    /// Internal rather than private so the persistence round-trip is testable — and so a
-    /// test can put the stored value back afterwards instead of leaving a gauge selected
-    /// for every later run.
+    /// Internal so the persistence round-trip is testable.
     ///
-    /// An unrecognised raw value reads as `.progressor`: that is the CONSERVATIVE
-    /// direction, the same rule `SessionKind` follows for a kind written by a newer build.
-    /// The alternative — refusing to build a client at all — would leave someone stuck on
-    /// a screen that never connects after a downgrade.
+    /// An unrecognised raw value reads as `.progressor` — the CONSERVATIVE direction,
+    /// as `SessionKind` does; refusing to build a client would strand a downgrade on a
+    /// screen that never connects.
     static func persistedGaugeKind() -> GaugeKind {
         guard let raw = gaugeDefaults.string(forKey: gaugeKindKey),
               let kind = GaugeKind(rawValue: raw) else { return .progressor }
@@ -402,16 +348,14 @@ final class DeviceStore {
         gaugeDefaults.set(kind.rawValue, forKey: gaugeKindKey)
     }
 
-    /// **The one place a kind becomes a client**, and it dispatches on CAPABILITIES rather
-    /// than on the case name: anything with a GATT profile gets the generic connected
-    /// client, a broadcast-only scale gets the scanner, and the Progressor keeps its own
-    /// battle-tested client. Adding a device is a codec plus a registry row — never a new
-    /// branch here.
+    /// **The one place a kind becomes a client**, dispatching on CAPABILITIES: a GATT
+    /// profile gets the generic connected client, a broadcast-only scale the scanner,
+    /// and the Progressor its own client. Adding a device is a codec plus a registry row.
     ///
     /// The Tindeq client is NOT the generic one on purpose: its serialized queries,
-    /// tare-integrity latch and peripheral quarantine were each earned by a specific
-    /// hardware failure of that protocol, and copying them into a client for devices this
-    /// project has never held would be borrowed confidence.
+    /// tare-integrity latch and peripheral quarantine were each earned by a hardware
+    /// failure of that protocol, and copying them to untested devices would be
+    /// borrowed confidence.
     static func makeClient(for kind: GaugeKind) -> any ProgressorClient {
         if let profile = kind.gatt {
             // The resolver exists only for a gauge that needs one. Every other kind gets
@@ -425,9 +369,8 @@ final class DeviceStore {
     }
 
     /// Switch gauges. Disconnects first, swaps the client, persists the choice — and
-    /// deliberately does NOT connect: constructing a client's central is what raises the
-    /// system Bluetooth prompt, and the house rule is that the ask arrives with a Connect
-    /// tap behind it.
+    /// does NOT connect: the system Bluetooth prompt must arrive with a Connect tap
+    /// behind it.
     func selectGaugeKind(_ kind: GaugeKind) {
         // `isMock` is in the guard because choosing a gauge while the demo device is
         // running has to do something even when the kind already matches.
@@ -447,9 +390,8 @@ final class DeviceStore {
     func disconnect() {
         // An explicit stop is a decision; it must not resurrect itself on foreground.
         resumeScanOnForeground = false
-        // Recorded here too: `disconnect` sets `isStreaming` directly rather than going
-        // through `stopStreaming`, so without this the ring would show a link going away
-        // with the stream apparently still running.
+        // Recorded here too: this bypasses `stopStreaming`, and the ring would otherwise
+        // show the link going away with the stream still running.
         if isStreaming { record(.streamStopped(.disconnecting)) }
         cancelBackgroundGrace(leavingBackground: false)
         client.disconnect()
@@ -459,16 +401,12 @@ final class DeviceStore {
     func tare() {
         guard state.isConnected else { return }
         client.tare()
-        // Re-issue the start command whenever a stream should be running. On the first
-        // hardware session, taring mid-stream killed the graph for good — whether the
-        // firmware stops the measurement or restarts its clock, re-sending start is
-        // harmless in every case and restores it in the bad one.
+        // Re-issue start whenever a stream should be running: on hardware, taring
+        // mid-stream killed the graph for good, and re-sending start is harmless.
         //
-        // **Not for a broadcast gauge.** There "restart the stream" is a scan bounce
-        // (`stopScan` then a fresh scan), and the failure it repairs cannot be caused by a
-        // tare: nothing was written to the scale, its advertisements never stopped, and the
-        // zero is app-side arithmetic. All it would buy is a visible gap in the readings at
-        // the moment the user asked for a clean zero.
+        // **Not for a broadcast gauge**, where a restart is a scan bounce and a tare is
+        // app-side arithmetic that cannot stop the advertisements — it would only buy a
+        // gap in the readings at the moment of the zero.
         if isStreaming, !gaugeCapabilities.isBroadcast { startStreaming(cause: .tareRecovery) }
         resetPeak(preservingTrace: true)
     }
@@ -481,9 +419,8 @@ final class DeviceStore {
 
     func startStreaming(cause: StreamStartCause) {
         guard state.isConnected else { return }
-        // A broadcast watchdog usually finds the existing scan already running.
-        // Preserve the client's actual scan facts without filling the ring with
-        // repeated requests that did not change anything on the radio.
+        // A broadcast watchdog usually finds the scan already running; don't fill the
+        // ring with requests that changed nothing on the radio.
         if !gaugeCapabilities.isBroadcast || cause != .watchdog {
             record(.streamStartRequested(cause))
         }
@@ -499,16 +436,12 @@ final class DeviceStore {
 
     /// How long the link survives after you leave the app.
     ///
-    /// **The battery rule used to fire the instant you backgrounded**, and it could not
-    /// tell a two-second "hey Siri" from putting the phone in a bag: both cost a full
-    /// disconnect and a 5–6 second `Searching… Connecting… Connected` on the way back.
-    /// Nuri's own breadcrumb logs are what proved it (2026-08-16) — one session where he
-    /// never backgrounded the app showed no disconnect at all, and the next dropped the
-    /// link within one second of `Scene: background`. That reconnect churn is what he
-    /// reported as "weird Bluetooth drops".
+    /// Disconnecting the instant you backgrounded could not tell a two-second "hey Siri"
+    /// from a phone put in a bag, and charged both a 5–6 s reconnect — the "weird
+    /// Bluetooth drops" the breadcrumb logs traced to `Scene: background` (2026-08-16).
     ///
-    /// 45 s is his call: long enough for Siri, a glance at a message, an app switch;
-    /// short enough that a phone genuinely put down still frees the gauge.
+    /// 45 s is Nuri's call: long enough for Siri or an app switch, short enough that a
+    /// phone genuinely put down still frees the gauge.
     private static let backgroundGraceSeconds: UInt64 = 45
 
     @ObservationIgnored private var isInBackground = false
@@ -519,38 +452,24 @@ final class DeviceStore {
     /// is reachable — an explicit `disconnect()` clears it.
     @ObservationIgnored private var resumeScanOnForeground = false
 
-    /// **The battery guarantee is preserved, not traded away.** The original rule fired
-    /// at `.background` precisely because a suspended process gets no further callback —
-    /// so a plain `Task.sleep` here would simply never run, and the gauge would stay
-    /// connected and awake until its battery died.
-    ///
-    /// The fix is to hold an explicit background assertion for the grace window. Its
-    /// EXPIRATION HANDLER is the real "last reliable moment": if iOS decides to suspend
-    /// us before the 45 s is up, that handler still runs and still disconnects. So the
-    /// window is `min(45 s, whatever iOS grants)`, and the failure mode is a shorter
-    /// grace — never a gauge left burning.
+    /// **The battery guarantee is preserved.** A suspended process gets no further
+    /// callback, so a plain `Task.sleep` would never run and the gauge would stay awake
+    /// until flat. So the grace holds a background assertion, and its EXPIRATION HANDLER
+    /// disconnects if iOS suspends us early: the window is `min(45 s, whatever iOS
+    /// grants)`, and the failure mode is a shorter grace — never a gauge left burning.
     func beginBackgroundGrace() {
         isInBackground = true
-        // **A gauge that cannot stream in the background gets no grace at all.** For a
-        // broadcast scale the "link" is an unfiltered allow-duplicates scan — the most
-        // power-hungry BLE mode there is — and iOS coalesces duplicates the moment we
-        // background, so it goes silent whatever we ask for. The client's own 10 s silence
-        // watchdog then flips the state to `.scanning` well inside this 45 s window, and
-        // `disconnectAfterGrace` only acts on a CONNECTED link: the disconnect could never
-        // fire while the scan burned on indefinitely. Reacquiring costs about a second of
-        // rescan, so the grace was buying nothing on either side of the trade.
-        //
-        // `state.isBusy` is in the guard on purpose — scanning and connecting are exactly
-        // the states this has to catch.
+        // **A gauge that cannot stream in the background gets no grace at all.** A
+        // broadcast "link" is an allow-duplicates scan — the most power-hungry BLE mode —
+        // that iOS silences on background anyway. Its 10 s silence watchdog would flip the
+        // state to `.scanning` inside the window, where `disconnectAfterGrace` (connected
+        // links only) never fires, and the scan would burn on. `state.isBusy` is in the
+        // guard to catch exactly scanning and connecting.
         if !gaugeCapabilities.sustainsBackgroundStreaming, state.isConnected || state.isBusy {
             disconnect()
-            // Consumed by `cancelBackgroundGrace` on the way back. "Connecting" a
-            // broadcast gauge is only scanning — no dialog, no write, no pairing — so
-            // resuming it automatically is safe, and NOT resuming would charge every
-            // app switch a manual Connect tap: the same reconnect churn the 45 s grace
-            // below exists to avoid, solved the opposite way round because the radio
-            // cost inverts (holding a Tindeq link is cheap; holding a scan is not).
-            // Set AFTER `disconnect()`, which clears it as an explicit stop.
+            // Consumed by `cancelBackgroundGrace` on the way back: resuming a scan is
+            // safe (no dialog, no write), and not resuming would charge every app switch
+            // a Connect tap. Set AFTER `disconnect()`, which clears it as an explicit stop.
             resumeScanOnForeground = true
             return
         }
@@ -561,12 +480,8 @@ final class DeviceStore {
             self?.disconnectAfterGrace()
         }
 
-        // **DENIED means disconnect immediately, not "try anyway".** UIKit returns
-        // `.invalid` when it will not grant background time, and with no assertion the
-        // sleeping task below simply never runs once we are suspended — leaving the gauge
-        // connected, awake, and draining until it is flat. That is the precise failure
-        // the original fire-at-background rule existed to prevent, so when there is no
-        // grace to be had we fall straight back to it.
+        // **DENIED means disconnect immediately.** With no assertion (`.invalid`) the
+        // sleeping task below never runs once suspended, leaving the gauge awake until flat.
         guard backgroundAssertion != .invalid else {
             disconnect()
             return
@@ -580,9 +495,8 @@ final class DeviceStore {
         }
     }
 
-    /// Injection seam. The Simulator cannot be made to refuse a background assertion on
-    /// demand, and "what happens when iOS says no" is the branch that protects the
-    /// gauge's battery — the one thing here that must not go untested.
+    /// Injection seam: the Simulator cannot refuse a background assertion on demand, and
+    /// the denied branch is what protects the gauge's battery.
     @ObservationIgnored
     var beginAssertion: (@escaping @MainActor () -> Void) -> BackgroundAssertionID = { handler in
         #if os(watchOS)
@@ -599,9 +513,8 @@ final class DeviceStore {
     /// restore — only the pending disconnect to call off.
     func cancelBackgroundGrace(leavingBackground: Bool = true) {
         if leavingBackground { isInBackground = false }
-        // The broadcast counterpart of cancelling the grace: the background rule tore
-        // the scan down outright (see `beginBackgroundGrace`), so the foreground return
-        // stands it back up. Before the grace guard — no grace was ever armed there.
+        // The broadcast counterpart: the background rule tore the scan down, so the
+        // foreground return stands it back up. Before the guard — no grace was armed.
         if resumeScanOnForeground {
             resumeScanOnForeground = false
             connect()
@@ -613,9 +526,8 @@ final class DeviceStore {
         record(.backgroundDisconnectCancelled)
     }
 
-    /// Internal rather than private so a test can drive it exactly as the expiration
-    /// handler does — see `beginAssertion`. Without that seam the grace tests could pass
-    /// while this never disconnected at all.
+    /// Internal so a test can drive it exactly as the expiration handler does — see
+    /// `beginAssertion`.
     func disconnectAfterGrace() {
         backgroundGraceTask?.cancel()
         backgroundGraceTask = nil
@@ -669,16 +581,11 @@ final class DeviceStore {
 
     /// **Throw the graph away when the app comes back to the foreground.**
     ///
-    /// While suspended the app receives nothing, and CoreBluetooth hands over whatever it
-    /// buffered the moment it wakes. `playbackTime` snaps the first of those to wall time
-    /// and then walks forward by their device deltas — so a burst representing half a
-    /// minute of real hanging gets replayed into a six-second window as one squashed,
-    /// flat line pinned to the right edge, with the graph's whole history replaced by
-    /// readings from when nobody was looking (Nuri, 2026-08-09). None of it is drawable:
-    /// the window only shows the last six seconds and none of this happened in them.
+    /// CoreBluetooth hands over everything it buffered while suspended, and
+    /// `playbackTime` replays it into the six-second window as one squashed flat line.
+    /// None of it happened in the window, so none of it is drawable.
     ///
-    /// The peak is deliberately KEPT — it is a fact about the session, not about the
-    /// graph, and the axis is scaled from it.
+    /// The peak is KEPT — it is a fact about the session, not the graph.
     func dropStaleTrace() {
         traceStorage.removeAll(keepingCapacity: true)
         sampleStateChanged()
@@ -694,20 +601,13 @@ final class DeviceStore {
     /// Delta comes from the device (wrap-safe), so batching never bunches points; a
     /// delta outside (0, 1 s] means the counter restarted or the timeline broke, and
     /// one sample period is the honest guess. The result is slewed toward the target
-    /// (wall time less half a packet, so the per-sample slew's centred equilibrium puts
-    /// the packet's last reading at now) by at most 0.5 ms per sample — enough to track
-    /// clock drift, too little to see — and snaps after a genuine stall, where slewing
-    /// would take seconds to converge.
+    /// (wall time less half a packet) by at most 0.5 ms per sample — enough to track
+    /// clock drift, too little to see — and snaps after a genuine stall.
     ///
-    /// **"One sample period" is THIS gauge's**, not the Tindeq's 12.5 ms. Every reading in
-    /// one notification carries the same stamp (see `GattGaugeClient.ingest`), so the
-    /// interior ones arrive here with a zero delta and take the fallback — and a packet of N
-    /// readings would then advance the clock by N × 12.5 ms whatever the real interval was.
-    /// On a device that declares its own sample count that can run the playback clock AHEAD
-    /// of wall time, which this timeline cannot represent: the trace is dropped every time
-    /// it happens, so the graph would clear itself every few seconds for the session's whole
-    /// life. Keyed to the nominal rate the arithmetic is identical for the Progressor at
-    /// 80 Hz and honest for the 8–40 Hz kinds.
+    /// **"One sample period" is THIS gauge's**, not the Tindeq's 12.5 ms. Readings in one
+    /// notification share a stamp (see `GattGaugeClient.ingest`) and take the fallback,
+    /// so at 12.5 ms a slower gauge's packets would run the clock AHEAD of wall time and
+    /// the trace would be dropped every few seconds.
     private func playbackTime(for sample: ForceSample, wallNow: TimeInterval) -> TimeInterval {
         // Half a packet BEHIND wall time: the slew settles a packet centred on its target,
         // which puts the packet's newest reading at the moment it arrived and nothing in
@@ -718,11 +618,9 @@ final class DeviceStore {
         let deltaMicros = sample.deviceMicros &- previous   // wrap-safe
         // The (0, 1 s] trust window is a DEVICE-clock rule: past it the counter
         // restarted and one period is the honest guess. A SYNTHETIC stamp is
-        // host-monotonic elapsed time and cannot be nonsense — and a broadcast
-        // scale's multi-second advertisement holes are ordinary delivery, not a
-        // reset — so it is trusted up to the 10 s the silence watchdog calls a
-        // disconnect. Compressing those real gaps to one period was part of why the
-        // sparse WH-C06 trace kept collapsing on hardware (2026-08-17).
+        // host-monotonic and cannot be nonsense, and a broadcast scale's multi-second
+        // holes are ordinary delivery, so it is trusted up to the 10 s silence
+        // disconnect — compressing those gaps collapsed the WH-C06 trace on hardware.
         let maxTrustedMicros: UInt32 = gaugeCapabilities.hasDeviceClock ? 1_000_000 : 10_000_000
         let trusted = deltaMicros > 0 && deltaMicros <= maxTrustedMicros
         let delta = trusted
@@ -736,25 +634,16 @@ final class DeviceStore {
         //   itself broke and one period was substituted. More than a second behind after
         //   that is a real stall — jump forward and carry on, which the graph draws as a
         //   break.
-        // - A TRUSTED delta means the data is contiguous; it merely arrived late. That is
-        //   what an iPad's Bluetooth stack does: it hands the stream over in CLUMPS of a
-        //   second or more, so the first sample of each clump is a whole clump behind
-        //   wall time while its timestamps are perfect. Snapping there (at 0.25 s, then
-        //   at 1.0 s) restarted the trace at every clump, and the dropped buffer on the
-        //   way back down (below) finished the job: Nuri's iPad drew no line at all
-        //   (2026-09-19; reproduced in the simulator with `-mockClumpMS 1200`).
-        //   Contiguous data may lag `lateDeliveryLimitSeconds` instead: the line stays
-        //   whole and runs a clump behind reality, which is what the readout beside it
-        //   already does.
+        // - A TRUSTED delta means the data is contiguous and merely arrived late — an
+        //   iPad's Bluetooth stack delivers in CLUMPS of a second or more. Snapping there
+        //   restarted the trace at every clump and the iPad drew no line at all
+        //   (2026-09-19; reproduce with `-mockClumpMS 1200`). Contiguous data may lag
+        //   `lateDeliveryLimitSeconds` instead and the line stays whole.
         if error > (trusted ? Self.lateDeliveryLimitSeconds : 1.0) { return target }
-        // Running AHEAD of the target is the other half of a clump — its last samples land
-        // before their time. `ForceTraceView` draws only what is due and lets the rest
-        // wait past its right edge, so being ahead by a clump is harmless; only a real
-        // backlog is dropped, by the caller — see `handle(_:)`. Crawling toward the target
-        // from far away was tried and was worse: it converges over tens of seconds, and the
-        // whole trace sits squashed into a few pixels the entire time (Nuri's 13.9 kg
-        // screenshot, 2026-08-09). The ±0.5 ms slew is a 4 % time-stretch: enough to
-        // follow the buffer depth as the delivery pattern changes, too little to see.
+        // Running AHEAD by a clump is harmless: `ForceTraceView` draws only what is due.
+        // A real backlog is dropped by the caller — see `handle(_:)`. Crawling toward the
+        // target from far away was worse: it converges over tens of seconds with the
+        // trace squashed into a few pixels. The ±0.5 ms slew is a 4 % time-stretch.
         return candidate + min(max(error, -0.0005), 0.0005)
     }
 
@@ -762,9 +651,7 @@ final class DeviceStore {
     /// Simulator). Always compiled in — a DEBUG-only mock leaves anyone without
     /// hardware, reviewers included, stuck on a screen that never connects.
     ///
-    /// Leaving demo mode returns to whatever gauge is SELECTED, not always the Progressor:
-    /// someone who chose a crane scale and then looked at the demo must land back on the
-    /// scale.
+    /// Leaving demo mode returns to whatever gauge is SELECTED, not always the Progressor.
     func useMockDevice(_ mock: Bool, profile: MockForceProfile = .clean) {
         isMock = mock
         gaugeKind = mock ? .progressor : Self.persistedGaugeKind()
@@ -902,25 +789,16 @@ final class DeviceStore {
             peakKg = max(peakKg, sample.kg)
             onSample?(sample)
 
-            // **A BACKLOG DELIVERED IN ONE BURST RESTARTS THE GRAPH.**
+            // **A BACKLOG DELIVERED IN ONE BURST RESTARTS THE GRAPH.** A few hundred
+            // queued notifications ingested in one frame walk the playback clock seconds
+            // into the FUTURE. Half a clump ahead is ordinary; past
+            // `lateDeliveryLimitSeconds` it proves the data did not happen now, so the
+            // buffer is dropped and the next sample starts fresh at wall time. During a
+            // long flush this keeps firing, which is correct.
             //
-            // CoreBluetooth queues notifications while the app is suspended and hands the
-            // lot over on wake. Each carries a device timestamp 12.5 ms after the last, so
-            // ingesting a few hundred of them in one frame walks the playback clock
-            // seconds into the FUTURE. A little of that is ordinary — the tail of a
-            // delivery clump is ahead by half a clump, and the graph now holds those
-            // points past its right edge until they are due — but seconds of it is proof
-            // that what just arrived did not happen now. So past `lateDeliveryLimitSeconds`
-            // the buffer is dropped and the next sample starts a fresh run at wall time.
-            // During a long flush this simply keeps firing, which is correct: nothing is
-            // drawn until samples are arriving at real-time pace again, and then the trace
-            // grows in from the right edge and fades up like any other fresh run.
-            //
-            // Self-healing, and it needs no `scenePhase` hook: a stalled main thread or a
-            // radio that buffers for its own reasons is the same fault and gets the same
-            // repair. `dropStaleTrace()` on foreground stays as the fast path.
-            // It was 0.5 s, sized against an iPhone's 100 ms batches — and it dropped the
-            // buffer at the tail of every iPad clump (Nuri's iPad, 2026-09-19).
+            // Self-healing with no `scenePhase` hook — a stalled main thread is the same
+            // fault; `dropStaleTrace()` on foreground stays as the fast path. (0.5 s,
+            // sized for an iPhone's batches, dropped every iPad clump.)
             let wallNow = Date().timeIntervalSinceReferenceDate
             if let lastT = traceStorage.last?.t,
                lastT > wallNow + Self.lateDeliveryLimitSeconds {
@@ -930,9 +808,8 @@ final class DeviceStore {
                 lastTraceMicros = nil
             }
 
-            // The packet span, learned at PACKET starts (a packet's first sample carries
-            // the mark; the rest of it arrives in the same turn): it is what aligns the
-            // clock so a packet's newest reading lands at its arrival.
+            // The packet span, learned at PACKET starts: it aligns the clock so a
+            // packet's newest reading lands at its arrival.
             if sample.isBatchStart {
                 if lastPacketArrival != nil, let firstT = lastPacketFirstT,
                    let lastT = traceStorage.last?.t, lastT >= firstT {
@@ -1023,8 +900,8 @@ final class DeviceStore {
         record(.signalFreshness(fresh))
     }
 
-    /// The cue player's door into the ring. It lives beside the gauge's own events so one
-    /// export tells the whole story of a session — link, stream AND sound.
+    /// The cue player's door into the ring, so one export tells the whole story of a
+    /// session — link, stream AND sound.
     func recordAudio(_ event: String) { record(.audio(event)) }
 
     private func record(_ event: DiagnosticBreadcrumb) {

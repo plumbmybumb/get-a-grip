@@ -8,14 +8,11 @@ import SwiftData
 ///
 /// Everything here that could have come from a `SessionTemplate` is a SNAPSHOT instead:
 /// the name, the plan, and every rep's own `GripSpec`. Editing a routine must never
-/// rewrite history — which is what makes edits cheap enough to offer behind a swipe and
-/// an undo bar rather than a dialog. Deleting one takes its sessions with it, and the
-/// same Undo puts them back (`TemplateStore.delete`, Nuri 2026-09-20).
+/// rewrite history. Deleting one takes its sessions with it, and the same Undo puts
+/// them back (`TemplateStore.delete`).
 ///
 /// Same CloudKit rules as `SessionTemplate`: every attribute defaulted or optional, no
 /// uniqueness constraint, no relationships, additive changes only.
-///
-/// Schema-only in M2 — the M3 runner is what writes these.
 @Model
 final class WorkoutLog {
     var id: UUID = UUID()
@@ -24,10 +21,8 @@ final class WorkoutLog {
     /// Epoch day FROZEN at save — the TRAINING day, which turns at
     /// `DayStamp.rolloverHour`, so a 00:30 session stays on the evening it belonged to.
     /// It is the join for "2 of 2 today": a cheap Int predicate rather than a `Calendar`
-    /// pass over every log. Stamped from `startedAt` by `SessionLedger`; rows the older
-    /// midnight-turning clock stamped are re-filed by `SessionLedger.repairTrainingDays`,
-    /// which runs ONCE per install (versioned flag), touches only the kinds the app
-    /// stamps itself, and only rows still filed the midnight way.
+    /// pass. Stamped from `startedAt` by `SessionLedger`; rows filed by the older
+    /// midnight-turning clock are re-filed once by `SessionLedger.repairTrainingDays`.
     var dayKey: Int = 0
     /// Best-effort grouping ONLY. The routine may be gone; nothing here needs it back.
     var templateID: UUID? = nil
@@ -52,9 +47,8 @@ final class WorkoutLog {
     /// carry a real `startedAt`/`finishedAt` span instead — see `sessionMinutes`.
     var durationMinutes: Int? = nil
     var notes: String = ""
-    /// What kind of training this was — see `SessionKind`. **Defaulted to "hang"**,
-    /// which is exactly what every row written before climbing existed means, so the
-    /// migration is additive with no backfill.
+    /// What kind of training this was — see `SessionKind`. **Defaulted to "hang"**, what
+    /// every row written before climbing existed means: additive, no backfill.
     var kindRaw: String = SessionKind.hang.rawValue
 
     init(plan: SessionPlan,
@@ -66,8 +60,7 @@ final class WorkoutLog {
          finishedAt: Date,
          day: DayStamp) {
         // `.executable` here rather than trusting the caller: `RepSummary.setIndex`
-        // indexes THIS list, so the invariant has to be true by construction. It is
-        // idempotent, so a runner that already froze the executable plan pays nothing.
+        // indexes THIS list. Idempotent, so an already-frozen plan pays nothing.
         let frozen = plan.executable
         let held = reps.reduce(0.0) { $0 + $1.heldSeconds }
 
@@ -85,8 +78,7 @@ final class WorkoutLog {
         // Time-weighted, not a mean of means: a rep that dropped off after one second
         // would otherwise weigh as much as a full ten-second hang.
         self.avgKg = held > 0 ? reps.reduce(0.0) { $0 + $1.avgKg * $1.heldSeconds } / held : 0
-        // `.completed` only. An early release is a pull that happened, not a pull that
-        // counted, and this number is what "the session is done" is measured against.
+        // `.completed` only: an early release is a pull that happened, not one that counted.
         self.completedReps = reps.filter { $0.outcome == .completed }.count
         self.plannedReps = PlanMath.totalReps(frozen)
         self.rpe = nil
@@ -98,9 +90,8 @@ extension Collection where Element == WorkoutLog {
     /// The climb logged on `day` — **hardest first**, so a limit session is what a day is
     /// remembered by even when an easy evening followed it.
     ///
-    /// ONE implementation. The store folds it for Today's strip and History folds its own
-    /// `@Query` for the 5-week grid, and two hand-written copies of this rule would
-    /// eventually draw two different calendars from the same rows.
+    /// ONE implementation, shared by the store's strip and History's 5-week grid, so the
+    /// two calendars cannot drift.
     func climb(on day: DayStamp) -> SessionKind? {
         let kinds = filter { $0.dayKey == day.raw && $0.kind.isClimb }.map(\.kind)
         return kinds.contains(.climbLimit) ? .climbLimit : kinds.first
@@ -119,14 +110,11 @@ extension Collection where Element == WorkoutLog {
         contains { $0.dayKey == day.raw && $0.kind == .benchmark }
     }
 
-    /// HANG sessions only, per routine, on `day` — the "1 of 2 today" join. A climb has
-    /// no routine to attribute to and does not fill a slot; it settles the whole day,
-    /// which is the separate question `climb(on:)` answers. A log whose routine was
-    /// deleted still counts as a session trained but has nothing to attribute to —
-    /// grouping is best-effort by design.
+    /// HANG sessions only, per routine, on `day` — the "1 of 2 today" join. A climb
+    /// settles the whole day instead (`climb(on:)`). A log whose routine was deleted has
+    /// nothing to attribute to — grouping is best-effort.
     ///
-    /// Here rather than in the store so the watch, which has no store, counts a day
-    /// exactly as the phone does.
+    /// Here rather than in the store so the watch counts a day exactly as the phone does.
     func hangCompletions(on day: DayStamp) -> [UUID: Int] {
         var counts: [UUID: Int] = [:]
         for log in self where log.dayKey == day.raw && !log.kind.isClimb {
@@ -136,17 +124,15 @@ extension Collection where Element == WorkoutLog {
         return counts
     }
 
-    /// `.hangManual` ONLY, deliberately — not every log with a nil `templateID`. A
-    /// runner session whose routine was later deleted also has no id, and it is dropped
-    /// on purpose (see `hangCompletions`); crediting those here would retroactively
-    /// change how old days score. A hand-logged hang never had a routine to begin with.
+    /// `.hangManual` ONLY — not every log with a nil `templateID`. A runner session whose
+    /// routine was later deleted also has no id and is dropped on purpose (see
+    /// `hangCompletions`); crediting those would retroactively rescore old days.
     func unattributedHangs(on day: DayStamp) -> Int {
         filter { $0.dayKey == day.raw && $0.kind == .hangManual }.count
     }
 
-    /// The all-time tally at the top of Settings (Nuri, 2026-09-20: "lifetime stats").
-    /// Folded from the DENORMALIZED columns only — never from the rep blobs — so it costs
-    /// a row per session, not a decode, and can be recomputed every time the tab opens.
+    /// The all-time tally at the top of Settings. Folded from the DENORMALIZED columns
+    /// only — never the rep blobs — so it costs a row per session, not a decode.
     var lifetime: LifetimeStats {
         var stats = LifetimeStats()
         var days = Set<Int>()
@@ -203,11 +189,9 @@ extension WorkoutLog {
     /// the same initializer even though it is written by `recordMax`, so this is about
     /// the shape of the row rather than who is allowed to create it.
     ///
-    /// Deliberately the same table as a hangboard session rather than a model of its
-    /// own: it is a session that happened, History is one list, and the consistency
-    /// grids fold over one stream. The blob columns are simply empty, which every
-    /// reader already tolerates (`plan` returns nil, `reps` returns []) because a
-    /// corrupt snapshot had to be survivable anyway.
+    /// The same table as a hangboard session rather than its own model: History is one
+    /// list and the grids fold one stream. The blob columns are empty, which every
+    /// reader already tolerates (`plan` nil, `reps` []).
     convenience init(logged kind: SessionKind, day: DayStamp, at when: Date,
                      sessionsPerDayTarget: Int, minutes: Int? = nil,
                      rpe: RPE? = nil, fingerStrain: FingerStrain? = nil,
@@ -230,18 +214,10 @@ extension WorkoutLog {
     /// What to CALL this session's routine — the routine's live name while it still
     /// exists, the frozen copy once it doesn't.
     ///
-    /// The log freezes `templateName` at save time and must keep doing so: a deleted
-    /// routine has to leave its history with something to be called. But that made a
-    /// rename invisible in History (Nuri, 2026-08-11) — rename "Daily no-hangs" to
-    /// "Morning ladder" and every past session stayed filed under a name that appeared
-    /// nowhere else in the app. Worse, it was already INCONSISTENT: the trend card titled
-    /// itself from the newest log in the group, so one new session made the card say the
-    /// new name while every row beneath it said the old one.
-    ///
-    /// Resolving at DISPLAY time rather than rewriting the logs is the cheaper and more
-    /// honest fix: renaming stays a routine edit instead of a write across the whole
-    /// history, renaming back needs no second migration, and what the session actually
-    /// WAS — its plan, its reps, its grips — is still frozen and still untouchable.
+    /// The log freezes `templateName`, since a deleted routine still needs a name — but
+    /// that alone made a rename invisible in History (Nuri, 2026-08-11). Resolving at
+    /// DISPLAY time rather than rewriting logs keeps a rename a routine edit, needs no
+    /// migration, and leaves what the session WAS frozen.
     ///
     /// `routineNames` is `TemplateStore.routineNames`. History's rows, its trend cards and
     /// the analysis export all name a session through this one rule.
@@ -272,12 +248,9 @@ extension WorkoutLog {
     var day: DayStamp { DayStamp(raw: dayKey) }
 
     /// The date History shows for this row: its TRAINING day, for every kind of row.
-    /// A hand log records when the entry was created, not when the training happened,
-    /// so its chosen day was always the one to show; a runner session used to show its
-    /// start instant instead, which is a different calendar day from the training day
-    /// for anything that began in the small hours — the row said the 19th while the grid
-    /// and the tally credited the 20th (Nuri, 2026-09-20). One date per row now, the
-    /// same one every other surface counts by.
+    /// Not the start instant, which for a small-hours session is a different calendar
+    /// day from the one the grid and tally credit — one date per row, the same one
+    /// every other surface counts by.
     func historyDate(calendar: Calendar = .current) -> Date {
         day.date(calendar: calendar)
     }
@@ -305,9 +278,8 @@ extension WorkoutLog {
     /// What this session asked of each grip, keyed by the CANONICAL key — the join
     /// between a pull made in March and one made in December.
     ///
-    /// Folded out of the frozen plan rather than counted off the reps, so the per-grip
-    /// line reads identically here and in the builder: one formatter, one set of totals.
-    /// `uniquingKeysWith` rather than `uniqueKeysWithValues` because a trap here would
+    /// Folded out of the frozen plan rather than the reps, so the per-grip line reads
+    /// identically here and in the builder. `uniquingKeysWith`, because a trap would
     /// take History down for one malformed blob.
     func totalsByGripKey() -> [String: PlanMath.GripTotals] {
         guard let plan else { return [:] }

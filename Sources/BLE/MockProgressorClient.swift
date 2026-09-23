@@ -5,11 +5,9 @@ import Foundation
 
 /// A synthetic Progressor.
 ///
-/// This is not a convenience — it is the only way to run the app anywhere other
-/// than a physical iPhone with the real gauge attached, because **the Simulator has
-/// no Bluetooth stack at all**. It is also what a demo mode uses, so someone
-/// without hardware (an App Store reviewer, a curious climber) can see a whole
-/// session run.
+/// The only way to run the app without a physical gauge — **the Simulator has no
+/// Bluetooth stack at all** — and what demo mode uses, so someone without hardware
+/// (an App Store reviewer included) can see a whole session run.
 ///
 /// Same `@MainActor` shape as the live client; the sample pump is a `Task` created
 /// in main-actor context, so it inherits that isolation.
@@ -33,8 +31,7 @@ final class MockProgressorClient: ProgressorClient {
     private static let microsPerSample: UInt32 = UInt32(1_000_000 / 80)
     /// `-mockClumpMS N` (DEBUG only): hand batches over in CLUMPS N ms apart instead of
     /// one every 100 ms — an iPad-style Bluetooth stack delivering notifications late and
-    /// together. The samples' device timestamps are untouched; only their arrival bunches,
-    /// which is exactly the shape that hid the trace on Nuri's iPad (2026-09-19).
+    /// together. Device timestamps are untouched; only arrival bunches.
     private static let clumpMS: Int = {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -48,9 +45,7 @@ final class MockProgressorClient: ProgressorClient {
 
     /// `-mockJitterMS N` (DEBUG only): each delivery is late by a random 0…N ms, with the
     /// batches that fell due meanwhile landing together — the real radio's p95 300 ms /
-    /// max 420 ms gaps between ~190 ms packets (Nuri's phone, 2026-09-19). The device
-    /// timestamps keep their 80 Hz; only arrival wobbles, which is what the trace has to
-    /// draw through.
+    /// max 420 ms gaps between ~190 ms packets. Device timestamps keep their 80 Hz.
     private static let jitterMS: Int = {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -129,8 +124,7 @@ final class MockProgressorClient: ProgressorClient {
             // real device: tare under load and every reading after it is wrong.
             tareOffsetKg = rawForceNow()
         case .startWeightMeasurement:
-            // Starts need a cause so the diagnostic ring cannot claim a reason that the
-            // caller never supplied; `startStreaming(cause:)` is the only start path.
+            // `startStreaming(cause:)` is the only start path.
             break
         case .stopWeightMeasurement:
             stopPump()
@@ -160,11 +154,9 @@ final class MockProgressorClient: ProgressorClient {
         elapsedSamples = 0
         deviceMicros = 0
         pump = Task { [weak self] in
-            // Batches fall due on the device's own 80 Hz schedule whatever the pump does;
-            // the pump only decides WHEN it hands them over. One per period by default;
-            // under `-mockClumpMS` it wakes once per clump, under `-mockJitterMS` each wake
-            // is late by a random amount — and every batch that fell due while it slept
-            // lands together, exactly as a radio stack delivers late notifications.
+            // Batches fall due on the device's own 80 Hz schedule; the pump only decides
+            // WHEN it hands them over, and every batch that fell due while it slept lands
+            // together, as a radio stack delivers late notifications.
             let batchMS = Int(1000 * Double(Self.batchSize) / Self.sampleHz)
             let batch = Duration.milliseconds(batchMS)
             let clump = Duration.milliseconds(max(Self.clumpMS, batchMS))
@@ -230,8 +222,8 @@ final class MockProgressorClient: ProgressorClient {
 enum MockForceProfile: String, CaseIterable, Sendable {
     /// Textbook: sharp ramp, steady plateau, clean release.
     case clean
-    /// Wobbles across the threshold and briefly drops — the case that decides
-    /// whether hysteresis and dropout grace are tuned right.
+    /// Wobbles across the threshold and briefly drops — exercises the hysteresis and
+    /// RE-GRIP handling.
     case shaky
     /// Fades through the hold, the way a real set's last rep does.
     case weak

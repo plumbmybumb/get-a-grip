@@ -7,10 +7,9 @@ import SwiftData
 /// A routine, as stored. One row per named routine ("Daily no-hangs", "Rest day").
 ///
 /// CloudKit rules are load-bearing: every attribute has a default, there is NO
-/// `#Unique` / `@Attribute(.unique)` (CloudKit cannot enforce uniqueness, and SwiftData
-/// then refuses to build the container with a CloudKit configuration at all — which
-/// fails SOFTLY, straight past the cloud rung into local-only, so the app looks fine and
-/// simply never syncs), and future schema changes must be additive-only.
+/// `#Unique` / `@Attribute(.unique)` (SwiftData then refuses a CloudKit configuration,
+/// and that fails SOFTLY into local-only — the app looks fine and never syncs), and
+/// future schema changes must be additive-only.
 ///
 /// ZERO relationships, which also sidesteps CloudKit's delete-rule limitations. The set
 /// list is a Codable blob instead: a CloudKit to-many relationship syncs as an UNORDERED
@@ -36,12 +35,9 @@ final class SessionTemplate {
     /// See `SessionPlan.waitForReleaseBeforeRest`. Defaulted `true`, so a routine that
     /// predates the column gains the behaviour rather than silently keeping the old one.
     var waitForReleaseBeforeRest: Bool = true
-    /// See `SessionPlan.pausesOutsideTargetBand`. The column arrived LATE (2026-08-19):
-    /// the plan field, its Fine-tuning toggle and the runner's gate all shipped first,
-    /// and every save silently dropped the switch back to true on the way to disk —
-    /// found by the QR share review, because the payload carried a field the store then
-    /// lost at both ends. Defaulted `true`, the plan's own default, so existing rows
-    /// keep the behaviour they were authored under. Additive migration, no backfill.
+    /// See `SessionPlan.pausesOutsideTargetBand`. Every plan field needs a column, or
+    /// each save silently resets it (this one did). Defaulted `true`, the plan's own
+    /// default, so existing rows keep their behaviour. Additive, no backfill.
     var pausesOutsideTargetBand: Bool = true
     /// TARGET LOAD as a fraction of each grip's own max — the routine-level default
     /// every set inherits. Optional because "no target" is a real, common answer, and a
@@ -57,8 +53,7 @@ final class SessionTemplate {
     /// scheduling notifications nobody asked for is the worse of the two failures.
     var remindersEnabled: Bool = false
     /// A WHENEVER routine: no daily target, no reminders, never owed. **Defaulted to
-    /// false**, which is what every routine written before this column existed was — a
-    /// ritual — so the additive migration needs no backfill.
+    /// false** — a ritual, what every older routine was. Additive, no backfill.
     var isOnDemand: Bool = false
     /// 0 is the primary routine — the one Today opens on.
     var sortIndex: Int = 0
@@ -90,9 +85,8 @@ extension SessionTemplate {
     }
 
     /// Reminder slots. Sorted and deduped on the way IN: a `ReminderTime`'s identity IS
-    /// its time, so two 08:00 slots are one slot, and the notification identifier is
-    /// content-keyed — duplicates would collapse at schedule time anyway, silently
-    /// disagreeing with what the editor shows.
+    /// its time, and duplicates would collapse at schedule time anyway, disagreeing with
+    /// what the editor shows.
     var reminders: [ReminderTime] {
         get { BlobCodec.decodeArray(ReminderTime.self, from: remindersData) }
         set {
@@ -180,10 +174,8 @@ extension SessionTemplate {
     }
 
     /// The raw is written verbatim, with ONE exception: when the stored raw is a mode
-    /// this build cannot read, the draft carries the FALLBACK rather than a choice the
-    /// user made — so an unconditional write would quietly downgrade a routine a newer
-    /// build wrote, on nothing more than an unrelated edit to the rep count. Any OTHER
-    /// mode in the draft IS a deliberate pick and wins.
+    /// this build cannot read, the draft carries the FALLBACK, and writing it would
+    /// downgrade a newer build's routine on an unrelated edit. Any OTHER mode wins.
     private func applyHandMode(_ picked: HandMode) {
         let rawIsUnreadable = handMode == nil
         if rawIsUnreadable && picked == HandMode(fallback: handModeRaw) { return }

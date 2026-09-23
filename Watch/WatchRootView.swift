@@ -33,11 +33,9 @@ struct WatchRootView: View {
             // session pushed on top — which may be mid-rest at 00:00 — is left untouched.
             .id(clock.today)
             .navigationTitle("Get a Grip")
-            // A PUSH with no back button, the way the system Workout app runs one — not
-            // a cover. watchOS gives every cover a close button, and that button would
-            // have ended a session with no summary and no save. The only way out is End
-            // on the controls page; the crown and the side button leave the app with
-            // the session running, which the workout session is there for.
+            // A PUSH with no back button, as the system Workout app runs one — not a
+            // cover, whose close button would end a session with no summary or save.
+            // The only way out is End; the crown leaves the session running.
             .navigationDestination(item: $running) { request in
                 WatchRunnerView(template: request.template, timerOnly: request.timerOnly)
                     .navigationBarBackButtonHidden(true)
@@ -78,17 +76,13 @@ private struct WatchTodayList: View {
 
     @Environment(DeviceStore.self) private var device
 
-    /// `sortIndex`, then creation — the phone's order — with the id as the in-memory
-    /// tiebreak `TemplateStore.routineOrder` applies: two devices that both reorder can
-    /// share a `sortIndex` over CloudKit, and a partial sort leaves the tie to fetch
-    /// order, so the same two routines would list in opposite orders on the two wrists.
+    /// `sortIndex`, then creation, then id — the phone's total order; see
+    /// `TemplateStore.routineOrder`.
     @Query(sort: [SortDescriptor(\SessionTemplate.sortIndex),
                   SortDescriptor(\SessionTemplate.createdAt)])
     private var routines: [SessionTemplate]
 
-    /// Today's rows only — the join for "1 of 2 today". `dayKey` is an Int column
-    /// precisely so this is a cheap predicate rather than a Calendar pass over every
-    /// log ever synced.
+    /// Today's rows only — the join for "1 of 2 today", a cheap Int predicate.
     @Query private var todayLogs: [WorkoutLog]
 
     init(storageMode: StorageMode, day: DayStamp, onStart: @escaping (RunRequest) -> Void) {
@@ -281,9 +275,7 @@ struct WatchRoutineScreen: View {
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("watch.startTimerOnly")
                 gaugeLine
-                // Always compiled in, like the phone's: a DEBUG-only demo would leave
-                // anyone without hardware — App Review included — on a screen that never
-                // connects.
+                // Always compiled in, like the phone's — see `DeviceStore.useMockDevice`.
                 if !device.state.isConnected, !device.isMock {
                     Button("Try demo mode") { device.useMockDevice(true) }
                         .buttonStyle(.plain)
