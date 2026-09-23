@@ -140,7 +140,7 @@ class FrezDynoIntegrationTests {
         )
         val request = assertNotNull(spy.requests.firstOrNull())
         assertEquals(
-            "https://api.frez.app/v1/dyno/coefficient?serial=FrezDyno-000123",
+            "https://api.frez.app/functions/v1/dyno-coefficient?serial=FrezDyno-000123",
             request.url,
         )
         assertEquals("k3y", request.headers["X-Frez-Access-Key"])

@@ -150,7 +150,7 @@ interface GaugeCalibrationResolver {
     suspend fun calibration(serial: String): GaugeCalibrationAnswer
 }
 
-/// `GET https://api.frez.app/v1/dyno/coefficient?serial=…` with the access key in a
+/// `GET https://api.frez.app/functions/v1/dyno-coefficient?serial=…` with the access key in a
 /// header, exactly one query parameter (Frez rejects both or neither), answered by
 /// `{"a": α}`.
 class FrezCoefficientResolver(
@@ -179,7 +179,7 @@ class FrezCoefficientResolver(
     }
 
     companion object {
-        const val endpoint = "https://api.frez.app/v1/dyno/coefficient"
+        const val endpoint = "https://api.frez.app/functions/v1/dyno-coefficient"
         const val accessKeyHeader = "X-Frez-Access-Key"
 
         /// **A storage format**, like every other preference file name: renaming it makes

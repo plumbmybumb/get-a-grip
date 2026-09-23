@@ -86,7 +86,7 @@ final class FrezDynoIntegrationTests: XCTestCase {
         XCTAssertEqual(result, .success(GaugeCalibration(coefficient: 0.000012345678, cached: false)))
         let request = try XCTUnwrap(spy.requests.first)
         XCTAssertEqual(request.url?.absoluteString,
-                       "https://api.frez.app/v1/dyno/coefficient?serial=FrezDyno-000123")
+                       "https://api.frez.app/functions/v1/dyno-coefficient?serial=FrezDyno-000123")
         XCTAssertEqual(request.httpMethod, "GET")
         XCTAssertEqual(request.value(forHTTPHeaderField: "X-Frez-Access-Key"), "k3y")
         XCTAssertEqual(request.timeoutInterval, 5)

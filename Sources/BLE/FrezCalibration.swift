@@ -104,14 +104,14 @@ protocol GaugeCalibrationResolver: AnyObject {
     func calibration(forSerial serial: String) async -> Result<GaugeCalibration, GaugeCalibrationFailure>
 }
 
-/// `GET https://api.frez.app/v1/dyno/coefficient?serial=…` with the access key in a
+/// `GET https://api.frez.app/functions/v1/dyno-coefficient?serial=…` with the access key in a
 /// header, exactly one query parameter (Frez rejects both or neither), answered by
 /// `{"a": α}`.
 @MainActor
 final class FrezCoefficientResolver: GaugeCalibrationResolver {
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
 
-    nonisolated static let endpoint = URL(string: "https://api.frez.app/v1/dyno/coefficient")!
+    nonisolated static let endpoint = URL(string: "https://api.frez.app/functions/v1/dyno-coefficient")!
     nonisolated static let accessKeyHeader = "X-Frez-Access-Key"
     /// The Info.plist key `project.yml` fills from the `FREZ_ACCESS_KEY` build setting.
     nonisolated static let infoPlistKey = "FrezAccessKey"
