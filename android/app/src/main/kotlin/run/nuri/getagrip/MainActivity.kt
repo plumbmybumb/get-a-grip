@@ -32,8 +32,7 @@ import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.tour.LocalTourController
 
 /// One activity, Compose all the way down. `enableEdgeToEdge()` before `super.onCreate` so
-/// the very first frame already draws behind the system bars — the slate field is the
-/// ground of every screen, including under the status bar.
+/// the first frame already draws the slate field behind the system bars.
 class MainActivity : ComponentActivity() {
 
     private lateinit var device: DeviceStore
@@ -41,17 +40,14 @@ class MainActivity : ComponentActivity() {
     private lateinit var clock: DayClock
 
     /// The one in-flight permission answer. A second Connect tap while the dialog is open
-    /// replaces it rather than queueing: there is one question on screen and one answer
-    /// coming back.
+    /// replaces it: one question on screen, one answer coming back.
     private var pendingPermissionResult: ((Boolean) -> Unit)? = null
 
     /// **The Connect tap behind an open permission dialog, remembered across recreation.**
-    /// The callback above is a closure and dies with this Activity; the answer does not —
-    /// the result API redelivers it to the NEXT instance (a rotation while the dialog is up,
-    /// or the process reclaimed behind it). That instance used to find no callback and drop
-    /// a GRANT on the floor, so the person had to tap Connect a second time for a question
-    /// they had just answered yes to. The flag rides in the saved state and turns a
-    /// callback-less grant into the connect it was asked for.
+    /// The callback above dies with this Activity, but the result API redelivers the answer
+    /// to the NEXT instance (rotation, or process reclaimed), which used to drop a GRANT
+    /// and make the person tap Connect again. This flag rides in the saved state and turns
+    /// a callback-less grant into the connect it was asked for.
     private var connectRequested = false
 
     private val requestBluetooth = registerForActivityResult(
@@ -74,9 +70,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private val gate = PermissionGate { onResult ->
-        // Already granted answers SYNCHRONOUSLY — a Connect tap on a permitted app must not
-        // cost a frame, and it is what makes `DeviceStore.connect()` behave exactly as the
-        // iOS one does once the prompt has been seen.
+        // Already granted answers SYNCHRONOUSLY: a Connect tap on a permitted app must not
+        // cost a frame, matching iOS's `DeviceStore.connect()` once the prompt has been
+        // seen.
         if (bluetoothPermissions.all(::isGranted)) {
             onResult(true)
         } else {
@@ -86,9 +82,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /// The notification answer, kept separately from the Bluetooth one. They are raised by
-    /// different taps on different screens and either can be on screen while the other is
-    /// not; one shared slot would let a Connect tap swallow a Save's answer.
+    /// The notification answer, in its own slot: raised by different taps on different
+    /// screens, and a shared slot would let a Connect tap swallow a Save's answer.
     private var pendingNotificationResult: ((Boolean) -> Unit)? = null
 
     private val requestNotifications = registerForActivityResult(
@@ -99,16 +94,13 @@ class MainActivity : ComponentActivity() {
         callback?.invoke(granted)
     }
 
-    /// **Asked on the first Save of a routine that actually wants reminders, never at
-    /// launch** — by then the user has been through the builder and seen both times on
-    /// screen, so the OS dialog arrives with its reason already on the previous screen. The
-    /// twin of the Bluetooth gate above, answered synchronously when already granted for
-    /// the same reason: a Save must not cost a frame.
+    /// **Asked on the first Save of a routine that wants reminders, never at launch** — see
+    /// `NotificationPermissionGate`. Answered synchronously when already granted, like the
+    /// Bluetooth gate.
     ///
-    /// This surface is ONLY for reminders. The session's Live Update needs the same
-    /// permission to be VISIBLE, but a foreground service runs whether or not it can be
-    /// seen — so a session never raises this dialog, and a denial costs the card, not the
-    /// workout.
+    /// ONLY for reminders. The Live Update needs the same permission to be VISIBLE, but a
+    /// foreground service runs regardless, so a session never raises this dialog and a
+    /// denial costs the card, not the workout.
     private val notificationGate = NotificationPermissionGate { onResult ->
         if (isGranted(Manifest.permission.POST_NOTIFICATIONS)) {
             onResult(true)
@@ -128,15 +120,15 @@ class MainActivity : ComponentActivity() {
         templates = app.templates
         clock = app.clock
         // **The gate belongs to the Activity, the store to the process.** A permission
-        // dialog needs a live Activity to come back to, so the store borrows one and gives
-        // it back below rather than holding a reference across a rotation.
+        // dialog needs a live Activity to return to, so the store borrows one and gives it
+        // back below rather than holding it across a rotation.
         device.permissionGate = gate
-        // Same loan, same reason: a permission dialog needs a live Activity to come back to.
+        // Same loan, same reason.
         templates.notificationPermissionGate = notificationGate
         // Seeders first, then the first derived publish — see `startStores`.
         app.startStores(intent)
-        // A shared routine that COLD-LAUNCHED the app. The inbox is filled before the first
-        // composition, and `TodayScreen` sweeps whatever is already waiting when it appears.
+        // A shared routine that COLD-LAUNCHED the app: queued before the first composition,
+        // swept by `TodayScreen` when it appears.
         receiveShareLink(intent)
 
         setContent {
@@ -147,9 +139,8 @@ class MainActivity : ComponentActivity() {
                     LocalSettingsStore provides app.settings,
                     LocalDayClock provides clock,
                     LocalHistoryFeed provides app.historyFeed,
-                    // ONE controller for the whole process, so the three acts — minutes or
-                    // days apart, and hosted by three different screens — are the same tour
-                    // rather than three that cannot see each other.
+                    // ONE controller for the process, so the three acts (days apart, three
+                    // screens) are one tour.
                     LocalTourController provides app.tour,
                 ) {
                     val preview = androidx.compose.runtime.remember {
@@ -173,26 +164,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /// The app is `singleTask`, so a link tapped while it is already running does NOT come
-    /// back through `onCreate` — it arrives here, on the existing instance, and a handler
-    /// that only read `onCreate`'s intent would silently drop every scan after the first.
+    /// The app is `singleTask`, so a link tapped while running arrives HERE, not in
+    /// `onCreate`; reading only `onCreate`'s intent would drop every scan after the first.
     ///
-    /// `setIntent` because `getIntent()` otherwise keeps returning the LAUNCHER intent for
-    /// the life of the activity, and anything asked later (the mock-device launch argument,
-    /// a future extra) would be answering about a launch two links ago.
+    /// `setIntent` because `getIntent()` otherwise keeps returning the LAUNCHER intent, and
+    /// later questions (the mock-device argument) would answer about an old launch.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         receiveShareLink(intent)
     }
 
-    /// **The URL handler NEVER presents anything.** It puts the link in the store's inbox and
-    /// stops; `TodayScreen` drains that inbox when it can see that nothing else holds the
-    /// screen. The iOS rule this mirrors was measured (2026-08-19): presenting from the root
-    /// while a descendant's full-screen cover was up TORE THE COVER DOWN — a running session
-    /// died unlogged, a dirty builder lost its edits. Compose tears down nothing, but the
-    /// second half of the rule still bites here: a sheet appearing over a live workout is
-    /// wrong however cleanly it draws.
+    /// **The URL handler NEVER presents anything.** It queues the link in the store's
+    /// inbox; `TodayScreen` drains it when nothing else holds the screen. On iOS
+    /// (2026-08-19) presenting from the root TORE DOWN a full-screen cover — a running
+    /// session died unlogged. Compose tears nothing down, but a sheet over a live workout
+    /// is still wrong.
     ///
     /// `isRoutineLink` is asked FIRST — see `ShareLinkRouting`.
     private fun receiveShareLink(intent: Intent?) {
@@ -200,13 +187,10 @@ class MainActivity : ComponentActivity() {
         templates.receiveShareLink(url)
     }
 
-    /// **Refresh the clock, THEN ask the store to recompute — in that order.**
-    ///
-    /// A phone left open past local midnight must flip "2 of 2 today" back to "0 of 2"
-    /// without a relaunch. The clock is refreshed HERE and not inside the store: a device
-    /// asleep across midnight may not deliver `ACTION_DATE_CHANGED` until it is active
-    /// again, and the store only ever REACTS to whatever day the clock reports. This is
-    /// `DoigtApp`'s `scenePhase == .active` order, line for line.
+    /// **Refresh the clock, THEN ask the store to recompute.** A phone open past midnight
+    /// must flip "2 of 2 today" to "0 of 2" without a relaunch. The clock is refreshed
+    /// here, not in the store: `ACTION_DATE_CHANGED` may not arrive until the device wakes,
+    /// and the store only REACTS to the clock. `DoigtApp`'s `scenePhase == .active` order.
     override fun onResume() {
         super.onResume()
         clock.refresh()
@@ -215,8 +199,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        // Compose observes uiMode and redraws in place. Refresh system-bar icon
-        // contrast too, while preserving the runner's transparent navigation bar.
+        // Compose redraws uiMode in place; refresh system-bar icon contrast too, keeping
+        // the runner's transparent navigation bar.
         val navigationContrast = window.isNavigationBarContrastEnforced
         enableEdgeToEdge()
         window.isNavigationBarContrastEnforced = navigationContrast
@@ -241,10 +225,9 @@ class MainActivity : ComponentActivity() {
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     private companion object {
-        /// minSdk is 31, so these two are always the right pair and there is no legacy
-        /// `BLUETOOTH` / `ACCESS_FINE_LOCATION` branch to carry. SCAN is declared
-        /// `neverForLocation` in the manifest, which is what keeps the location prompt out
-        /// of a finger-training app.
+        /// minSdk 31: always this pair, no legacy `BLUETOOTH`/`ACCESS_FINE_LOCATION`
+        /// branch. SCAN is `neverForLocation` in the manifest, keeping the location prompt
+        /// out.
         val bluetoothPermissions = arrayOf(
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
@@ -259,13 +242,12 @@ enum class BluetoothPermissionAnswer {
     /// The instance that asked is still here: hand it the answer.
     deliver,
 
-    /// The asking instance is gone but its Connect tap was remembered, and the answer is
-    /// yes: do what was asked. `DeviceStore.connect()` re-asks the gate, which now answers
-    /// synchronously.
+    /// The asking instance is gone, its Connect tap was remembered, and the answer is yes:
+    /// connect. `DeviceStore.connect()` re-asks the gate, which now answers synchronously.
     resumeConnect,
 
-    /// Nobody to tell, or a refusal — a refusal with no screen to report it to changes
-    /// nothing, and the next Connect tap asks again.
+    /// Nobody to tell, or a refusal with no screen to report it; the next Connect tap asks
+    /// again.
     drop;
 
     companion object {
@@ -278,22 +260,19 @@ enum class BluetoothPermissionAnswer {
     }
 }
 
-/// The intent → URL decision, as a pure function of the two strings an `Intent` carries, so
-/// the routing rule is a JVM test rather than something only an instrumented run can check.
+/// The intent → URL decision as a pure function, so routing is a JVM test.
 ///
-/// **A link that is not ours is left completely alone** — not refused, not alerted about,
-/// just ignored. `isRoutineLink` is the cheap shape-only question (scheme and host, no
-/// payload work), and asking it first is what stops the app answering for some other
-/// handler's link that happened to be routed here. A link that PASSES it and then fails to
-/// decode gets an error the user can read; that is the store's job, not this one's.
+/// **A link that is not ours is left completely alone** — not refused, not alerted.
+/// `isRoutineLink` is the cheap shape-only check (scheme and host), asked first so the app
+/// never answers for another handler's link. A link that passes and then fails to decode
+/// gets a readable error from the store.
 object ShareLinkRouting {
 
-    /// The URL to hand to `TemplateStore.receiveShareLink`, or null when this intent is not
-    /// a routine at all — a launcher tap, a notification, a foreign scheme.
+    /// The URL for `TemplateStore.receiveShareLink`, or null when this intent is not a
+    /// routine (launcher tap, notification, foreign scheme).
     ///
-    /// `ACTION_VIEW` only. A `getagrip://` URL can also ride an `ACTION_SEND` as plain text,
-    /// but the app declares no `SEND` filter, so accepting one here would be answering for a
-    /// door that does not exist.
+    /// `ACTION_VIEW` only: the app declares no `SEND` filter, so accepting a `getagrip://`
+    /// URL as `ACTION_SEND` text would answer for a door that does not exist.
     fun routineLink(action: String?, data: String?): String? {
         if (action != Intent.ACTION_VIEW) return null
         val url = data?.takeIf { it.isNotBlank() } ?: return null

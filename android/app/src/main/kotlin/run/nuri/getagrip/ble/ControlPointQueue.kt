@@ -18,13 +18,10 @@ enum class ControlWriteType {
 
 /// What the queue needs from the radio, and nothing else.
 ///
-/// TRANSLATION NOTE: on iOS this whole file is private state inside
-/// `LiveProgressorClient`, because `CBPeripheral` is directly reachable from the same
-/// main-actor class and a Simulator test could never exercise any of it anyway. Android
-/// has real JVM unit tests, and every rule below — the serialized query channel, the
-/// bypass for control commands, the poison latch, the tare-integrity ordering — is app
-/// logic rather than radio logic. Splitting it behind this three-method seam is what
-/// makes it testable without a `BluetoothGatt`; the live client is the only production
+/// TRANSLATION NOTE: on iOS this is private state inside `LiveProgressorClient`. Every rule
+/// below — serialized query channel, control-command bypass, poison latch, tare-integrity
+/// ordering — is app logic, not radio logic, so this three-method seam makes it
+/// JVM-testable without a `BluetoothGatt`. The live client is the only production
 /// implementation.
 interface ControlPointTransport {
     /// The link is up and the control point has been discovered.
@@ -36,13 +33,10 @@ interface ControlPointTransport {
 
     /// CoreBluetooth's `canSendWriteWithoutResponse`.
     ///
-    /// TRANSLATION NOTE: Nordic's `BleManager` owns the ATT-level pacing — a queued
-    /// `WriteRequest` is not handed to the stack until the previous operation has
-    /// completed, so there is no "buffer not ready, write silently discarded" failure to
-    /// guard against and the live client returns true here. The property survives because
-    /// the RULE it encodes is the one the first hardware session taught (2026-08-03): a
-    /// gauge takes one command per turn, and firing two in one runloop turn loses one.
-    /// Who enforces it moved; that it is enforced did not.
+    /// TRANSLATION NOTE: Nordic's `BleManager` hands a queued write to the stack only after
+    /// the previous operation completes, so there is no silent discard and the live client
+    /// returns true. The property survives because its RULE — one command per turn, or one
+    /// is lost (first hardware session, 2026-08-03) — still holds; only the enforcer moved.
     val isReadyForWriteWithoutResponse: Boolean
 
     fun write(command: ProgressorCommand, withResponse: Boolean)
@@ -65,22 +59,21 @@ interface ControlPointTransport {
     fun diagnostic(diagnostic: ProgressorClientDiagnostic)
 }
 
-/// The Tindeq control point: a paced write queue, a SERIALIZED tag-0 query channel and
-/// the tare-integrity ordering, all of which were earned by specific hardware failures.
+/// The Tindeq control point: a paced write queue, a SERIALIZED tag-0 query channel and the
+/// tare-integrity ordering, each earned by a specific hardware failure.
 ///
-/// - **Commands are queued and paced, never written straight through.** The gauge takes
-///   one command per turn; the runner sends `startWeight` and `tare` in the same turn.
-/// - **Tag-0 replies carry no echo of the command they answer, so queries are
-///   serialized — one outstanding, ever.** A single pending-query slot cross-paired the
-///   connect-time (version, battery) pair on real hardware: the version's ASCII reply was
-///   parsed as battery MILLIVOLTS. A deeper FIFO just moved the same desync to dropped
-///   replies.
+/// - **Commands are queued and paced.** The gauge takes one command per turn; the runner
+///   sends `startWeight` and `tare` in the same turn.
+/// - **Tag-0 replies carry no echo, so queries are serialized — one outstanding, ever.** A
+///   single pending-query slot cross-paired the connect-time (version, battery) pair on
+///   real hardware: the version's ASCII reply was parsed as battery MILLIVOLTS. A deeper
+///   FIFO just moved the desync to dropped replies.
 /// - **A ~2 s reply timeout POISONS the query channel for that physical connection.**
-///   Queries refuse until reconnect, so a late reply then pairs with nothing.
+///   Queries refuse until reconnect, so a late reply pairs with nothing.
 /// - **Control commands (tare/start/stop/sleep) bypass waiting queries**, so safety never
 ///   queues behind telemetry.
-/// - **All reply state dies with the link.** Replies owed by an old connection must never
-///   pair against the next one's queries.
+/// - **All reply state dies with the link.** An old connection's owed replies must never
+///   pair with the next one's queries.
 class ControlPointQueue(private val transport: ControlPointTransport) {
 
     class WriteEntry(
@@ -117,8 +110,8 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
 
     // MARK: - Enqueue
 
-    /// Each entry keeps its identity across its single retry so a failed query can remove
-    /// exactly its own pending-reply slot without shifting the FIFO.
+    /// Each entry keeps its identity across its single retry, so a failed query removes
+    /// exactly its own pending-reply slot.
     fun enqueue(command: ProgressorCommand, startCause: StreamStartCause? = null) {
         if (!transport.canWrite || command == ProgressorCommand.addCalibrationPoint) return
         nextWriteID += 1uL
@@ -131,8 +124,8 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
         }
 
         if (command == ProgressorCommand.tare) {
-            // Flip the latch before touching the queue. Any start already waiting to
-            // drain is pulled into the one deferred slot before this tare is appended.
+            // Flip the latch first; any start already waiting is pulled into the one
+            // deferred slot before this tare is appended.
             tareIntegrityLatch.tareEnqueued(entry.id)
             for (queued in writeQueue) {
                 if (queued.command != ProgressorCommand.startWeightMeasurement) continue
@@ -169,8 +162,8 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
                 if (writeQueue.isEmpty()) return
             }
 
-            // A waiting query must not hold safety/control commands behind it. Keep
-            // non-query order intact while bypassing only the serialized query entries.
+            // A waiting query must not hold control commands behind it: bypass only
+            // serialized query entries, keeping non-query order.
             val candidateIndex: Int
             if (pendingReplies.isEmpty()) {
                 candidateIndex = 0
@@ -224,12 +217,9 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
 
     // MARK: - Acknowledgements
 
-    /// A `withResponse` write completed — the exact entry is either acknowledged or
-    /// reinserted at the front once, preserving command order across the retry.
-    ///
-    /// `error` is nil on success. On the FIRST failure the entry goes back to the head of
-    /// the queue with its identity intact; a second failure is terminal, because a control
-    /// point that refuses the same write twice is not a link a session can trust.
+    /// A `withResponse` write completed. `error` is null on success. The FIRST failure puts
+    /// the entry back at the head with its identity; a second is terminal — a control point
+    /// refusing the same write twice cannot be trusted by a session.
     fun writeCompleted(error: String?) {
         val entry = inFlightWrite ?: return
         inFlightWrite = null
@@ -281,8 +271,8 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
         drain()
     }
 
-    /// A tag-0 reply landed: it consumes the one pending query. Weight notifications do
-    /// not, which is why the caller decides and this is not folded into the decode.
+    /// A tag-0 reply consumes the one pending query. Weight notifications do not, which is
+    /// why the caller decides.
     fun commandReplyReceived() {
         if (pendingReplies.isEmpty()) return
         pendingReplies.removeFirst()
@@ -290,8 +280,8 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
         drain()
     }
 
-    /// The 2 s deadline for `id` expired. Only the HEAD of the queue can time out — a
-    /// deadline belonging to anything else is stale and ignored.
+    /// The 2 s deadline for `id` expired. Only the HEAD can time out; any other deadline is
+    /// stale.
     fun replyDeadlineFired(id: ULong) {
         if (pendingReplies.firstOrNull()?.id != id) return
         pendingReplies.removeFirst()
@@ -307,16 +297,16 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
 
     fun writeDeadlineFired(id: ULong) {
         if (inFlightWrite?.id != id) return
-        // Completion is unknown: a retry could let a late ACK authorize the wrong
-        // command. Clear this physical link instead of continuing an ambiguous queue.
+        // Completion is unknown, and a retry could let a late ACK authorize the wrong
+        // command: clear this link instead.
         clearLinkState(clearDeferredStart = true)
         transport.failPermanently(L10n.tr("Gauge did not acknowledge the command. Reconnect and try again."))
     }
 
     // MARK: - Link lifecycle
 
-    /// A fresh link may query again. Called when notifications are confirmed on, which is
-    /// the moment the Swift publishes `.connected`.
+    /// A fresh link may query again. Called when notifications are on — where Swift
+    /// publishes `.connected`.
     fun linkEstablished() {
         queryChannelPoisoned = false
     }
@@ -329,15 +319,14 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
         transport.cancelWriteDeadline()
         issuedSleepID = null
         if (clearDeferredStart) deferredStart = null
-        // This latch is link-local: preserving it after the queue and its ACK died made
-        // every later start impossible, because only the retired link could release it.
+        // Link-local: a latch that survived its queue and ACK made every later start
+        // impossible, since only the retired link could release it.
         tareIntegrityLatch.clearForNewLink()
     }
 }
 
-/// TRANSLATION NOTE: Swift keeps this as a `private extension ProgressorCommand` beside
-/// the client. Kotlin has no private extensions on an enum from another module, so it is
-/// an internal extension property here — same text, same single call site.
+/// TRANSLATION NOTE: a `private extension ProgressorCommand` in Swift; internal here
+/// because Kotlin cannot add a private extension to another module's enum.
 internal val ProgressorCommand.writeFailureName: String
     get() = when (this) {
         ProgressorCommand.tare -> L10n.tr("tare")

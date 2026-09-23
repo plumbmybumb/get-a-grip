@@ -27,57 +27,47 @@ import java.util.concurrent.ConcurrentHashMap
 
 /// The two whole tables History and the Maxes tab draw from.
 ///
-/// TRANSLATION NOTE: iOS reads these with `@Query` — a live, sorted view of the store that
-/// costs nothing until a screen asks for it. `TemplateStore` deliberately publishes only
-/// what is DERIVED from more than one table (today's counts, the 14-day strip, the newest
-/// max per grip), and its `StoreGateway` is private, so there is no Android equivalent of
-/// "just query the table" for the two screens whose whole job is the raw ledger:
+/// TRANSLATION NOTE: iOS reads these with a live `@Query`. `TemplateStore` publishes only
+/// what is DERIVED from several tables and keeps its `StoreGateway` private, so the two
+/// raw-ledger screens need this:
 ///
-/// - History needs EVERY log (the 5-week deck walks back to the first one) and every max
-///   record, because the export's MAX HISTORY section is the append-only progression
-///   itself rather than the newest-per-grip fold.
-/// - The Maxes tab needs every max record for the same reason: a card IS one grip's rows
-///   drawn as a curve.
+/// - History needs EVERY log (the 5-week deck walks back to the first) and every max record
+///   (the export's MAX HISTORY is the append-only progression, not the newest-per-grip
+///   fold).
+/// - The Maxes tab needs every max record: a card IS one grip's rows drawn as a curve.
 ///
-/// So this is the `@Query` twin: two published lists, refreshed on demand. It is a READER
-/// and never a writer — every mutation still goes through `TemplateStore` so the
-/// derived-recompute and reminder-replan pipeline can never be skipped. Screens call
-/// `refresh()` after a store write lands, which is the Android price for not having a live
-/// query.
+/// A READER, never a writer — mutations still go through `TemplateStore`. Screens call
+/// `refresh()` after a write lands, the Android price for no live query.
 @Stable
 class HistoryFeed(
     private val source: HistorySource,
     private val scope: CoroutineScope,
     private val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    /// The store's write counter (`TemplateStore.writeRevision`), read — never observed — so
-    /// the feed can tell a tab switch from a change. Zero forever for a feed over fixed lists.
+    /// The store's write counter, read (never observed) so a tab switch can be told from a
+    /// change. Zero forever over fixed lists.
     private val revision: () -> Long = { 0L },
 ) {
 
-    /// **Newest first**, matching iOS's `@Query(sort: startedAt, order: .reverse)` — the
-    /// session you are most likely looking for is the one you just did.
+    /// **Newest first**, like iOS's `@Query(sort: startedAt, order: .reverse)`.
     var logs: List<WorkoutLogEntity> by mutableStateOf(emptyList())
         private set
 
-    /// **Oldest first**, matching iOS's max query: each grip's slice is then already in
-    /// chart order, and the export wants the progression in the order it happened.
+    /// **Oldest first**, like iOS's max query: each grip's slice is in chart order, and the
+    /// export wants the order it happened.
     var maxRecords: List<MaxRecordEntity> by mutableStateOf(emptyList())
         private set
 
-    /// False until the first successful read. A screen that drew its empty state before
-    /// the first fetch landed would flash "nothing here yet" over a full history — and,
-    /// worse, a READ THAT FAILED is not "there are nothing": `HistorySource` returns null
-    /// for a failure and this stays false, so the last good lists keep being drawn rather
-    /// than being replaced by a blank world.
+    /// False until the first successful read, so a screen does not flash "nothing here yet"
+    /// over a full history. A FAILED read (`HistorySource` null) leaves this and the last
+    /// good lists alone rather than publishing a blank world.
     var hasLoaded: Boolean by mutableStateOf(false)
         private set
 
     // MARK: - Folded with the read, off the main thread
     //
-    // Each of these is a pass over the whole ledger. They used to be `remember`ed in the
-    // screens, which a tab switch throws away — so every visit to History or Maxes walked the
-    // entire history on the main thread again, however long ago it last changed. They are
-    // computed beside the sort now and published with the lists they describe.
+    // Each is a pass over the whole ledger. `remember`ed in the screens, a tab switch threw
+    // them away and every visit re-walked history on the main thread; now they are computed
+    // beside the sort and published with their lists.
 
     /// The odometer — columns only, never a blob.
     var lifetime: LifetimeStats by mutableStateOf(LifetimeStats())
@@ -87,32 +77,26 @@ class HistoryFeed(
     var maxGroups: List<MaxGripGroup> by mutableStateOf(emptyList())
         private set
 
-    /// The grip each session opened on, decoded from its rep blob here rather than by a row
-    /// scrolling into view on the main thread.
+    /// The grip each session opened on, decoded here rather than on the main thread as a
+    /// row scrolls in.
     private var leadingGrips: Map<UUID, GripSpec?> by mutableStateOf(emptyMap())
 
     fun leadingGrip(log: WorkoutLogEntity): GripSpec? = leadingGrips[log.id]
 
-    /// Decoded rep blobs, once per log EVER.
+    /// Decoded rep blobs, once per log EVER. `resultsData` is write-once, so this never
+    /// invalidates; without it every recomposition re-decodes the history and the tab gets
+    /// slower every week you train. Concurrent (the fold and the export fill it off the
+    /// main thread); not observable (filling must invalidate nothing).
     ///
-    /// `WorkoutLogEntity.resultsData` is write-once, so this cache never invalidates — and
-    /// without it every recomposition would re-decode the whole history: a screen that
-    /// walks every log's JSON on the main thread is a tab that gets slower every week you
-    /// train, which is the house rule this exists to obey. Concurrent, because the fold above
-    /// and the export both fill it OFF the main thread; not observable, because filling it
-    /// must not invalidate anything.
-    ///
-    /// A deleted log leaves its entry behind, which is deliberate rather than a leak: undo
-    /// re-inserts the SAME id carrying byte-identical `resultsData`, so the stale entry is
-    /// still the right answer and the restored row draws without re-decoding.
+    /// A deleted log's entry stays, deliberately: undo re-inserts the SAME id with
+    /// byte-identical `resultsData`, so it is still right.
     private val repsByID = ConcurrentHashMap<UUID, List<RepSummary>>()
 
     fun reps(log: WorkoutLogEntity): List<RepSummary> =
         repsByID[log.id] ?: log.reps.also { repsByID.putIfAbsent(log.id, it) }
 
-    /// The month grid's fold, kept for the lists it was folded from. Asked for from
-    /// composition; answered from the memo whenever the ledger and the day have not moved,
-    /// and refolded off the main thread by `refresh` for the day it was last asked about.
+    /// The month grid's fold, memoized for the lists it came from; refolded off the main
+    /// thread by `refresh` for the day last asked about.
     fun ledger(today: DayStamp, trackingSince: DayStamp?): DayLedger {
         val memo = ledgerMemo
         if (memo != null && memo.logs === logs && memo.today == today && memo.trackingSince == trackingSince) {
@@ -133,15 +117,14 @@ class HistoryFeed(
     private var refreshJob: Job? = null
     private var refreshGeneration = 0L
 
-    /// The store revision the published lists were read at, and the one the read in flight
-    /// started from. Captured BEFORE the read, so a write that lands during it leaves the
-    /// feed one behind and the next look reads again.
+    /// The store revision the lists were read at, and the one the in-flight read started
+    /// from. Captured BEFORE the read, so a write during it leaves the feed one behind and
+    /// the next look rereads.
     private var loadedRevision = -1L
     private var requestedRevision = -1L
 
-    /// **Read only when something was written since the last read.** Screens call this on
-    /// the way in; a tab switch with nothing written is free. A never-loaded or failed feed
-    /// always reads.
+    /// **Read only when something was written since the last read.** A tab switch with
+    /// nothing written is free; a never-loaded or failed feed always reads.
     fun refreshIfStale() {
         val current = revision()
         if (hasLoaded && current == loadedRevision) return
@@ -149,9 +132,9 @@ class HistoryFeed(
         refresh()
     }
 
-    /// Superseded reads must not overwrite a newer delete/undo/save. Cancel their work
-    /// and check the generation too, for sources whose read ignores cancellation.
-    /// Sorting the unbounded history belongs off the UI thread — and so does every fold of it.
+    /// A superseded read must not overwrite a newer delete/undo/save: cancel it and check
+    /// the generation too, for sources that ignore cancellation. Sorting and folding the
+    /// unbounded history stay off the UI thread.
     fun refresh() {
         val generation = ++refreshGeneration
         val readAt = revision()
@@ -198,8 +181,7 @@ class HistoryFeed(
     )
 
     companion object {
-        /// A feed over two fixed lists — previews, and any screen that wants to draw a
-        /// world without a database behind it.
+        /// A feed over two fixed lists, for previews and screens without a database.
         fun of(
             logs: List<WorkoutLogEntity>,
             maxRecords: List<MaxRecordEntity>,
@@ -214,13 +196,12 @@ class HistoryFeed(
 /// One grip's records, every hand mixed — the per-side slices are cut in the card.
 data class MaxGripGroup(val key: String, val grip: GripSpec, val records: List<MaxRecordEntity>)
 
-/// Most recently tested grip first — the one you are mid-progression on leads. Ties break on
-/// the key, so two grips tested in one sitting don't swap places between launches.
+/// Most recently tested grip first; ties break on the key so two grips tested together
+/// don't swap between launches.
 ///
-/// Grouped on `gripKey` and NOT on `maxKey`, unlike the management list: a CARD is about one
-/// grip and draws both hands as two lines on one chart, where a ROW is about one number and
-/// must keep the hands apart. Folded here, beside the read, so the Maxes tab never walks the
-/// table on the main thread.
+/// Grouped on `gripKey`, NOT `maxKey` (unlike the management list): a CARD draws both hands
+/// as two lines on one chart, while a ROW is one number and keeps them apart. Folded beside
+/// the read, off the main thread.
 internal fun groupsOf(records: List<MaxRecordEntity>): List<MaxGripGroup> {
     val byKey = LinkedHashMap<String, MutableList<MaxRecordEntity>>()
     // `records` arrive oldest first, so each bucket is already in chart order.
@@ -232,19 +213,18 @@ internal fun groupsOf(records: List<MaxRecordEntity>): List<MaxGripGroup> {
         )
 }
 
-/// The read half of the store, named as its own interface so a preview can satisfy it with
-/// two lists.
+/// The read half of the store, its own interface so a preview can satisfy it with two
+/// lists.
 ///
-/// **Null means the read FAILED, which is not the same fact as "there is nothing".** Same
-/// contract as `StoreGateway`, and for the same reason: collapsing the two blanks a screen
-/// on a transient error.
+/// **Null means the read FAILED, not "there is nothing"** — the `StoreGateway` contract;
+/// collapsing them blanks a screen on a transient error.
 interface HistorySource {
     suspend fun allLogs(): List<WorkoutLogEntity>?
     suspend fun allMaxes(): List<MaxRecordEntity>?
 }
 
-/// Narrow a `StoreGateway` to the two reads this feed makes. The gateway is the app's one
-/// door to Room; this borrows it rather than opening a second.
+/// Narrow a `StoreGateway` to this feed's two reads: the app's one door to Room, borrowed
+/// rather than a second one opened.
 fun StoreGateway.asHistorySource(): HistorySource = object : HistorySource {
     override suspend fun allLogs(): List<WorkoutLogEntity>? = this@asHistorySource.allLogs()
     override suspend fun allMaxes(): List<MaxRecordEntity>? = this@asHistorySource.allMaxes()

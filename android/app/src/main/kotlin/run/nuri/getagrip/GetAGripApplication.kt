@@ -43,16 +43,15 @@ import run.nuri.getagrip.ui.tour.TourController
 /// Process-wide setup lives here, the engine's string lookup included.
 class GetAGripApplication : Application() {
 
-    /// **Every gauge callback lands on the main thread**, which is the Android twin of the
-    /// iOS client protocol being `@MainActor`. `immediate` and not plain `Main`: a client
-    /// that can answer in the same turn must publish its state before the caller looks.
+    /// **Every gauge callback lands on the main thread**, the twin of iOS's `@MainActor`
+    /// client protocol. `immediate`: a client answering in the same turn must publish
+    /// before the caller looks.
     val gaugeScope: CoroutineScope by lazy {
         CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     }
 
-    /// The store's own scope: undo timers, the reminder replan, and whatever else outlives
-    /// the call that started it. Main, because everything it touches is snapshot state a
-    /// composition reads.
+    /// The store's own scope for undo timers, the reminder replan and other outliving work.
+    /// Main, because it touches snapshot state.
     val storeScope: CoroutineScope by lazy {
         CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     }
@@ -68,26 +67,22 @@ class GetAGripApplication : Application() {
         FinishedSessionDraftStore(java.io.File(filesDir, FinishedSessionDraftStore.FILE_NAME))
     }
 
-    /// THE SPOTLIGHT TOUR — one controller for the whole PROCESS, not one per Activity.
-    ///
-    /// Its three acts happen minutes or days apart and are hosted by three different screens,
-    /// so they have to be the same tour; and a rotation must not restart an act you were
-    /// halfway through, which is exactly what an Activity-scoped controller would do. The
-    /// `seen` flags live one level down again, in `SettingsStore`, so a relaunch honours a
-    /// Skip.
+    /// THE SPOTLIGHT TOUR — one controller per PROCESS: three acts days apart on three
+    /// screens are one tour, and a rotation must not restart an act mid-way. The `seen`
+    /// flags live in `SettingsStore`, so a relaunch honours a Skip.
     val tour: TourController by lazy { TourController(SettingsTourSeenStore(settings)) }
 
     private val scheduler: AlarmScheduler by lazy { AndroidAlarmScheduler(this, settings) }
 
-    /// The ONE door to Room. The store writes through it and the history feed reads through
-    /// it, so both share the same serial lane and a read can never overtake a write.
+    /// The ONE door to Room. Store writes and feed reads share its serial lane, so a read
+    /// can never overtake a write.
     private val gateway: StoreGateway by lazy { RoomStoreGateway(database) }
 
     /// The read side for whole tables (History, Maxes) — the `@Query` twin.
     val historyFeed: HistoryFeed by lazy { HistoryFeed(gateway.asHistorySource(), storeScope, revision = { templates.writeRevision }) }
 
-    /// The hub. Built lazily and held for the life of the PROCESS, not the Activity, so a
-    /// rotation neither rebuilds the world nor drops the ten-second undo offer.
+    /// The hub, held for the PROCESS's life so a rotation neither rebuilds the world nor
+    /// drops the undo offer.
     val templates: TemplateStore by lazy {
         TemplateStore(
             gateway = gateway,
@@ -99,17 +94,15 @@ class GetAGripApplication : Application() {
         )
     }
 
-    /// **Seed, THEN publish.** The debug seeders run before the first `syncDerived()`, so
-    /// the first frame already renders the seeded world — otherwise a headless screenshot
-    /// catches the pre-seed state. `intent` comes from the Activity, which is where a
-    /// launch extra arrives.
+    /// **Seed, THEN publish.** Debug seeders run before the first `syncDerived()` so the
+    /// first frame (and a headless screenshot) shows the seeded world. `intent` comes from
+    /// the Activity.
     fun startStores(intent: Intent?) {
         if (started) return
         started = true
         ReminderAlarms.ensureChannel(this)
-        // The session channel exists from launch so the very first Live Update has somewhere
-        // to post: creating a channel is idempotent and free, and a notification posted to a
-        // channel that does not exist yet is silently dropped.
+        // The session channel exists from launch, so the first Live Update has somewhere to
+        // post; a notification to a missing channel is silently dropped.
         LiveUpdateNotification.ensureChannel(this)
         dayClockReceiver.register(this)
         clock.scheduleRolloverRefresh(storeScope) {
@@ -120,10 +113,9 @@ class GetAGripApplication : Application() {
             Seeds.apply(database, intent)
             templates.syncDerived()
             historyFeed.refresh()
-            // AFTER the first derived world, not before it: the repair reads the whole
-            // history's day columns, and the first frame must not wait on a read that grows
-            // with every week trained. It runs once per device (see
-            // `repairTrainingDaysOnce`), and republishes only if a row actually moved.
+            // AFTER the first derived world: the repair reads every row's day column, and
+            // the first frame must not wait on a read that grows each week. Once per device
+            // (`repairTrainingDaysOnce`), republishing only if a row moved.
             if (templates.repairTrainingDaysOnce() > 0) {
                 templates.syncDerived()
                 historyFeed.refresh()
@@ -133,32 +125,29 @@ class GetAGripApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Before anything can ask a grip for its name. `:engine` is pure Kotlin and owns
-        // no resources, so this is the seam that gives it the app's — see `L10n`.
+        // Before anything asks a grip for its name: `:engine` owns no resources, so this
+        // gives it the app's — see `L10n`.
         installStringLookup()
-        // **A process that has just started cannot have a session running.** If the last one
-        // was killed mid-workout — force-stopped, or reclaimed by an OEM battery manager —
-        // `RunnerSession.end()` never ran and its ongoing card was never cancelled, so it
-        // would still be sitting on the lock screen saying "Holding". This is the one moment
-        // that can be sure it is stale.
+        // **A process that has just started cannot have a session running.** A session
+        // killed mid-workout (force-stop, OEM battery manager) never ran
+        // `RunnerSession.end()`, so its card would still say "Holding" on the lock screen.
+        // This is the one moment sure it is stale.
         SessionForegroundService.cancelStaleCard(this)
     }
 
     /// **The engine's display strings resolve through the app's string resources.**
     ///
-    /// `L10n.tr`'s key is the ENGLISH sentence with Java specifiers — the same key the UI's
-    /// own `tr(…)` uses and the same one iOS hands `String(localized:)` — so `STRING_KEYS`
-    /// answers for both. What comes back is the TEMPLATE, not a formatted string: `L10n.tr`
-    /// does the formatting, and `getString(id)` with no arguments deliberately does not.
+    /// `L10n.tr`'s key is the ENGLISH sentence with Java specifiers — the UI's `tr(…)` key
+    /// and iOS's `String(localized:)` key — so `STRING_KEYS` answers both. It returns the
+    /// TEMPLATE; `L10n.tr` formats, and `getString(id)` with no arguments must not.
     ///
     /// Re-installed on every configuration change. `getResources()` is re-read inside the
-    /// lambda rather than captured, so a locale switched under a running process is already
-    /// answered by the time this fires — the re-install is the belt to that braces, for a
-    /// host that hands the app a genuinely new `Resources`.
+    /// lambda, so a locale switch is already answered; the re-install covers a host that
+    /// hands over a genuinely new `Resources`.
     private fun installStringLookup() {
         L10n.lookup = { key -> STRING_KEYS[key]?.let { resources.getString(it) } }
-        // The same resources, for the one thing a key-only lookup cannot do: choose a
-        // plural form. See `trQuantity`.
+        // The same resources for plural forms, which a key-only lookup cannot choose. See
+        // `trQuantity`.
         AppResources.current = resources
     }
 
@@ -168,21 +157,16 @@ class GetAGripApplication : Application() {
     }
 
     /// **The 45 s background grace hangs off the PROCESS's lifecycle, not an Activity's.**
+    /// A rotation stops and restarts an Activity, and a per-Activity observer would
+    /// schedule a disconnect for a gauge nobody put down; `ProcessLifecycleOwner` reports
+    /// STOP only when no Activity is visible. Here rather than in `MainActivity` because
+    /// the link belongs to the process.
     ///
-    /// An Activity stopping is not the app leaving the foreground: a rotation stops and
-    /// restarts one, and a per-Activity observer would schedule a disconnect for a gauge
-    /// nobody put down. `ProcessLifecycleOwner` debounces exactly that — it reports STOP
-    /// only when no Activity in the process is visible. It lives here rather than in
-    /// `MainActivity` for the same reason `DeviceStore` does: the link belongs to the
-    /// process.
+    /// **A streaming session takes the store's `none` branch**, so this only concerns an
+    /// idle gauge; `SessionForegroundService` keeps real sessions alive.
     ///
-    /// **A session streaming takes the `none` branch inside the store**, so this is only
-    /// ever about an idle gauge left connected by a screen somebody walked away from. What
-    /// keeps a real session alive is `SessionForegroundService`.
-    ///
-    /// Only wired once a store has been built — `deviceStore` is created by the Activity,
-    /// and asking for one here would construct a Bluetooth client for a process that may
-    /// only be servicing a boot broadcast.
+    /// Wired only once a store exists: building `deviceStore` here would construct a
+    /// Bluetooth client for a process maybe only servicing a boot broadcast.
     private fun observeProcessLifecycle() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
@@ -206,21 +190,20 @@ class GetAGripApplication : Application() {
 
     private var started = false
 
-    /// Time, zone and midnight broadcasts. Registered here rather than in the Activity so
-    /// a day that rolls while the app is backgrounded is already correct when it returns.
+    /// Time, zone and midnight broadcasts, registered here so a day rolled while
+    /// backgrounded is correct on return.
     private val dayClockReceiver: DayClockReceiver by lazy {
         DayClockReceiver(clock) {
             storeScope.launch { templates.refreshIfDayChanged() }
         }
     }
 
-    /// **One store for the process, built lazily.** It owns the client and is the ONLY
-    /// thing that talks to it. Built here rather than in the Activity so a rotation does
-    /// not drop a live link; the Activity lends it a `PermissionGate` and takes it back in
-    /// `onDestroy`.
+    /// **One store for the process, built lazily**, the ONLY thing that talks to the
+    /// client. Here rather than the Activity so a rotation keeps the link; the Activity
+    /// lends a `PermissionGate` and takes it back in `onDestroy`.
     ///
-    /// `useMock` is decided by the Activity's launch Intent, so it is passed in rather than
-    /// read here — see `DeviceStore.mockRequestedAtLaunch`.
+    /// `useMock` comes from the Activity's launch Intent — see
+    /// `DeviceStore.mockRequestedAtLaunch`.
     fun deviceStore(useMock: Boolean): DeviceStore = existing ?: DeviceStore(
         useMock = useMock,
         scope = gaugeScope,
@@ -232,7 +215,7 @@ class GetAGripApplication : Application() {
 
     private var existing: DeviceStore? = null
 
-    /// The store if one was ever built — the grace backstop's receiver must not construct a
-    /// Bluetooth client for a process woken only to deliver its alarm.
+    /// The store if ever built: the grace backstop's receiver must not construct a
+    /// Bluetooth client for a process woken only for its alarm.
     val existingDeviceStore: DeviceStore? get() = existing
 }

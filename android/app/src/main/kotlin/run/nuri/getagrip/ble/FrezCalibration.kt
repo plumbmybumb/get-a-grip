@@ -19,23 +19,21 @@ import java.net.URLEncoder
 
 // Remote calibration for a gauge whose stream is raw counts (`requiresRemoteCalibration`).
 //
-// The Frez Dyno sends signed ADC values and leaves the conversion to the client, with
-// one per-device slope that only Frez's coefficient API knows. This file is the ONLY
-// place the app talks to a server that is not the platform's own, so its rules are
-// spelled out:
+// The Frez Dyno sends signed ADC values; the per-device slope is known only to Frez's
+// coefficient API. This is the ONLY place the app talks to a non-platform server, so its
+// rules:
 //
-// - Nothing here runs unless the selected gauge needs it AND a unit is connected. Every
-//   other gauge never constructs any of it.
-// - One request per serial, EVER. The slope is a property of the load cell; once it is
-//   in hand it is cached on the device and the network is never asked again for that
-//   Dyno. That is also what keeps the account's device and rate limits honest.
-// - The connection is one-shot: opened for the request, disconnected after it. No
-//   networking stack lives in the process between requests.
-// - The access key is a build setting that lives only in a private Gradle property (see
-//   app/build.gradle.kts and BUILDING.md). A build without one still connects and says
-//   why there is no force.
-// - Failure is fail-closed, as Frez asks: no coefficient, no calibrated force, and the
-//   reason is shown rather than a guess at a number.
+// - Nothing runs unless the selected gauge needs it AND a unit is connected; other gauges
+//   never construct any of it.
+// - One request per serial, EVER. The slope belongs to the load cell; once cached on the
+//   device the network is never asked again for that Dyno, which also respects the
+//   account's device and rate limits.
+// - One-shot connection: opened for the request, closed after. No networking stack lives
+//   between requests.
+// - The access key lives only in a private Gradle property (see app/build.gradle.kts and
+//   BUILDING.md). A build without one still connects and says why there is no force.
+// - Fail-closed, as Frez asks: no coefficient, no calibrated force, and the reason shown
+//   rather than a guessed number.
 
 /// The per-device slope, and where it came from.
 data class GaugeCalibration(
@@ -44,11 +42,10 @@ data class GaugeCalibration(
     val cached: Boolean,
 )
 
-/// Why calibrated force is, or is not, available. Published by the store so the gauge
-/// screen and the runner can say so instead of showing a silent 0.0 kg.
+/// Why calibrated force is, or is not, available — so the gauge screen and runner can say
+/// so instead of a silent 0.0 kg.
 ///
-/// TRANSLATION NOTE: Swift's enum with associated values becomes a sealed interface, as
-/// every other one in this package does.
+/// TRANSLATION NOTE: Swift's enum with associated values becomes a sealed interface.
 sealed interface GaugeCalibrationStatus {
     /// Every gauge that reports kilograms itself.
     data object NotRequired : GaugeCalibrationStatus
@@ -110,8 +107,8 @@ sealed interface GaugeCalibrationFailure {
     /// The request never completed: offline, timed out, TLS.
     data class Network(val message: String) : GaugeCalibrationFailure
 
-    /// One line for the gauge screen. Every case names what to DO where there is
-    /// something to do; the rest name whose problem it is.
+    /// One line for the gauge screen: what to DO where there is something to do, otherwise
+    /// whose problem it is.
     val label: String
         get() = when (this) {
             MissingSerial ->
@@ -135,23 +132,22 @@ sealed interface GaugeCalibrationFailure {
 
 /// What the resolver answers.
 ///
-/// TRANSLATION NOTE: Swift returns `Result<GaugeCalibration, GaugeCalibrationFailure>`,
-/// which has no Kotlin twin — `kotlin.Result` types its failure as a `Throwable`, and a
-/// calibration that could not be fetched is an ANSWER, not an exception thrown past the
-/// client. Two cases say the same thing and keep the failure typed at the call site.
+/// TRANSLATION NOTE: Swift returns `Result<GaugeCalibration, GaugeCalibrationFailure>`.
+/// `kotlin.Result` types failure as `Throwable`, and an unfetched calibration is an ANSWER,
+/// not an exception, so two cases keep the failure typed.
 sealed interface GaugeCalibrationAnswer {
     data class Resolved(val calibration: GaugeCalibration) : GaugeCalibrationAnswer
     data class Unavailable(val failure: GaugeCalibrationFailure) : GaugeCalibrationAnswer
 }
 
-/// The seam between the client and whatever answers the coefficient question — Frez's
-/// API in the app, a scripted answer in tests.
+/// The seam between the client and whatever answers the coefficient question: Frez's API in
+/// the app, a script in tests.
 interface GaugeCalibrationResolver {
     suspend fun calibration(serial: String): GaugeCalibrationAnswer
 }
 
-/// `GET https://api.frez.app/functions/v1/dyno-coefficient?serial=…` with the access key in a
-/// header, exactly one query parameter (Frez rejects both or neither), answered by
+/// `GET https://api.frez.app/functions/v1/dyno-coefficient?serial=…` with the access key in
+/// a header, exactly one query parameter (Frez rejects both or neither), answered by
 /// `{"a": α}`.
 class FrezCoefficientResolver(
     private val accessKey: String? = bundledAccessKey,
@@ -161,10 +157,9 @@ class FrezCoefficientResolver(
 
     /// The request as this app makes it and the answer as it reads it.
     ///
-    /// TRANSLATION NOTE: Swift hands the transport a `URLRequest` and takes back
-    /// `(Data, HTTPURLResponse)`. `HttpURLConnection` is a live socket, not a value a
-    /// test can hand back, so the seam is these two records instead — the same two
-    /// halves, minus the parts of the platform types nothing here reads.
+    /// TRANSLATION NOTE: Swift's transport takes a `URLRequest` and returns
+    /// `(Data, HTTPURLResponse)`. `HttpURLConnection` is a live socket, not a value a test
+    /// can return, so the seam is these two records.
     data class Request(
         val url: String,
         val headers: Map<String, String>,
@@ -182,27 +177,24 @@ class FrezCoefficientResolver(
         const val endpoint = "https://api.frez.app/functions/v1/dyno-coefficient"
         const val accessKeyHeader = "X-Frez-Access-Key"
 
-        /// **A storage format**, like every other preference file name: renaming it makes
-        /// every already-calibrated Dyno spend a request it has already spent. One slope
-        /// per serial, kept beside the app's other small local answers.
+        /// **A storage format**: renaming it makes every calibrated Dyno spend a request it
+        /// already spent. One slope per serial.
         const val preferencesName = "getagrip.calibration"
 
-        /// Frez's own example uses five seconds; a first-time lookup on a slow link is
-        /// worth waiting that long for, and a stuck one must not hold the gauge screen
-        /// hostage.
+        /// Frez's own example uses five seconds: long enough for a slow first lookup, short
+        /// enough that a stuck one does not hold the gauge screen hostage.
         const val timeoutSeconds: Double = 5.0
 
         fun cacheKey(serial: String): String = "frez.coefficient.$serial"
 
-        /// The build's key, or nil when it carries none. An empty string is "none":
-        /// `app/build.gradle.kts` defaults the property to "" so forks and CI build
-        /// without a key.
+        /// The build's key, or null. An empty string is "none": `app/build.gradle.kts`
+        /// defaults the property to "" so forks and CI build without one.
         val bundledAccessKey: String?
             get() = BuildConfig.FREZ_ACCESS_KEY.trim().ifEmpty { null }
 
-        /// `{"a": 0.000012345678}`. A number, or a numeric string — and only a finite,
-        /// POSITIVE one: a zero or negative slope would turn every pull into nothing or
-        /// into its opposite, which is a corrupt answer, not a calibration.
+        /// `{"a": 0.000012345678}` — a number or numeric string, and only finite and
+        /// POSITIVE: a zero or negative slope would turn every pull into nothing or its
+        /// opposite.
         fun coefficient(body: String): Double? {
             val root = runCatching { Json.parseToJsonElement(body) }.getOrNull() as? JsonObject
                 ?: return null
@@ -225,9 +217,8 @@ class FrezCoefficientResolver(
             else -> GaugeCalibrationFailure.BadResponse
         }
 
-        /// One request, one connection, disconnected on the way out. `HttpURLConnection`
-        /// on `Dispatchers.IO`: the platform's own client, nothing added to the app, and
-        /// nothing left running between requests.
+        /// One request, one connection, closed on the way out: `HttpURLConnection` on
+        /// `Dispatchers.IO`, the platform's own client, nothing left running.
         val oneShotTransport = Transport { request ->
             withContext(Dispatchers.IO) {
                 val connection = URL(request.url).openConnection() as HttpURLConnection
@@ -241,8 +232,8 @@ class FrezCoefficientResolver(
                         connection.setRequestProperty(name, value)
                     }
                     val status = connection.responseCode
-                    // A 4xx/5xx body arrives on the ERROR stream, and reading the wrong
-                    // one throws — which would report a named status as a network fault.
+                    // A 4xx/5xx body is on the ERROR stream; reading the wrong one throws
+                    // and would report a named status as a network fault.
                     val stream: InputStream? =
                         if (status in 200..299) connection.inputStream else connection.errorStream
                     val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
@@ -255,8 +246,8 @@ class FrezCoefficientResolver(
     }
 
     override suspend fun calibration(serial: String): GaugeCalibrationAnswer {
-        // The cache first, and before the key check on purpose: a Dyno calibrated on a
-        // build that had a key keeps working on one that does not.
+        // The cache first, before the key check: a Dyno calibrated on a keyed build keeps
+        // working on one without.
         val key = cacheKey(serial)
         val cached = preferences.getString(key, null)?.toDoubleOrNull()
         if (cached != null && isUsable(cached)) {
@@ -286,9 +277,8 @@ class FrezCoefficientResolver(
         }
         val coefficient = coefficient(response.body)
             ?: return GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.BadResponse)
-        // TRANSLATION NOTE: `UserDefaults` stores a Double; SharedPreferences has no
-        // double, and `putFloat` would round a slope whose whole magnitude is in its
-        // exponent. `Double.toString` round-trips exactly and stays readable in a dump.
+        // TRANSLATION NOTE: SharedPreferences has no double, and `putFloat` would round a
+        // slope whose magnitude is all exponent. `Double.toString` round-trips exactly.
         preferences.edit().putString(key, coefficient.toString()).apply()
         return GaugeCalibrationAnswer.Resolved(
             GaugeCalibration(coefficient = coefficient, cached = false),
