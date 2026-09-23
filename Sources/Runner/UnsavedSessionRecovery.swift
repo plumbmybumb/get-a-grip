@@ -5,9 +5,15 @@ import SwiftUI
 
 extension View {
     /// Offers back, once per launch, every session that finished but was never saved or
-    /// discarded — see `UnsavedSessionDraft`. Hung on the app's root.
-    func unsavedSessionRecovery(store: UnsavedSessionDraftStore = .standard) -> some View {
-        modifier(UnsavedSessionRecovery(store: store))
+    /// discarded — see `UnsavedSessionDraft`. Hung on the app's root, phone and watch.
+    ///
+    /// `record` is the platform's own Save path — `TemplateStore.recordSession` on the
+    /// phone, `SessionLedger.recordSession` on the watch — and answers whether the write
+    /// landed. Everything else (the queue, the copy, when to ask) is one implementation,
+    /// so the two apps cannot drift apart in what they say or when they say it.
+    func unsavedSessionRecovery(store: UnsavedSessionDraftStore = .standard,
+                                record: @escaping @MainActor (UnsavedSessionDraft) -> Bool) -> some View {
+        modifier(UnsavedSessionRecovery(store: store, record: record))
     }
 }
 
@@ -15,14 +21,13 @@ extension View {
 ///
 /// An ALERT, not a sheet or a cover, on purpose: it asks one yes-or-no question, it
 /// presents nothing that could fight the runner's own cover for the root's presenting
-/// controller, and there is nothing to edit. Save goes through the summary's own path,
-/// `TemplateStore.recordSession`, with no grade — History offers the grade afterwards,
-/// exactly as it does for the watch's sessions — and without the new-max review, which
-/// asked a question the draft cannot answer.
+/// controller, and there is nothing to edit. Save goes through the summary's own path
+/// with no grade — History offers the grade afterwards — and without the new-max review,
+/// which asked a question the draft cannot answer.
 private struct UnsavedSessionRecovery: ViewModifier {
     let store: UnsavedSessionDraftStore
+    let record: @MainActor (UnsavedSessionDraft) -> Bool
 
-    @Environment(TemplateStore.self) private var templates
     @State private var queue: [UnsavedSessionDraft] = []
     @State private var isPresented = false
     @State private var didLoad = false
@@ -52,15 +57,9 @@ private struct UnsavedSessionRecovery: ViewModifier {
         // Re-read: another window may have answered this draft while ours was up, and a
         // second Save would log the session twice.
         if store.load(id: draft.id) != nil {
-            let template = draft.templateID.flatMap { templates.routine(id: $0) }
-            let log = templates.recordSession(plan: draft.plan, template: template,
-                                              reps: draft.reps,
-                                              startedAt: draft.startedAt,
-                                              finishedAt: draft.finishedAt,
-                                              rpe: nil)
-            // A failed save keeps the draft: the store's own alert says why, and the
+            // A failed save keeps the draft: the store's own error says why, and the
             // next launch asks again rather than the session silently going.
-            if log != nil { store.delete(id: draft.id) }
+            if record(draft) { store.delete(id: draft.id) }
         }
         advance()
     }

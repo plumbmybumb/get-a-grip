@@ -110,7 +110,14 @@ struct RootTabView: View {
         .environment(tour)
         // A session that finished but was neither saved nor discarded before the app
         // died is offered back once, at launch — see `UnsavedSessionDraft`.
-        .unsavedSessionRecovery()
+        .unsavedSessionRecovery { draft in
+            templates.recordSession(plan: draft.plan,
+                                    template: draft.templateID.flatMap { templates.routine(id: $0) },
+                                    reps: draft.reps,
+                                    startedAt: draft.startedAt,
+                                    finishedAt: draft.finishedAt,
+                                    rpe: nil) != nil
+        }
         // Deliberately NO scenePhase observer: DoigtApp owns the single one, and a
         // second would run `clock.refresh()` + `refreshIfDayChanged()` twice per
         // activation.
