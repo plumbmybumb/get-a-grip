@@ -45,12 +45,32 @@ class MainActivity : ComponentActivity() {
     /// coming back.
     private var pendingPermissionResult: ((Boolean) -> Unit)? = null
 
+    /// **The Connect tap behind an open permission dialog, remembered across recreation.**
+    /// The callback above is a closure and dies with this Activity; the answer does not —
+    /// the result API redelivers it to the NEXT instance (a rotation while the dialog is up,
+    /// or the process reclaimed behind it). That instance used to find no callback and drop
+    /// a GRANT on the floor, so the person had to tap Connect a second time for a question
+    /// they had just answered yes to. The flag rides in the saved state and turns a
+    /// callback-less grant into the connect it was asked for.
+    private var connectRequested = false
+
     private val requestBluetooth = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { granted ->
+        val allGranted = bluetoothPermissions.all { granted[it] == true }
         val callback = pendingPermissionResult
         pendingPermissionResult = null
-        callback?.invoke(bluetoothPermissions.all { granted[it] == true })
+        val answer = BluetoothPermissionAnswer.of(
+            hasCallback = callback != null,
+            connectRequested = connectRequested,
+            allGranted = allGranted,
+        )
+        connectRequested = false
+        when (answer) {
+            BluetoothPermissionAnswer.deliver -> callback?.invoke(allGranted)
+            BluetoothPermissionAnswer.resumeConnect -> device.connect()
+            BluetoothPermissionAnswer.drop -> Unit
+        }
     }
 
     private val gate = PermissionGate { onResult ->
@@ -61,6 +81,7 @@ class MainActivity : ComponentActivity() {
             onResult(true)
         } else {
             pendingPermissionResult = onResult
+            connectRequested = true
             requestBluetooth.launch(bluetoothPermissions)
         }
     }
@@ -100,6 +121,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        connectRequested = savedInstanceState?.getBoolean(CONNECT_REQUESTED_KEY) ?: false
 
         val app = application as GetAGripApplication
         device = app.deviceStore(useMock = DeviceStore.mockRequestedAtLaunch(intent))
@@ -200,6 +222,11 @@ class MainActivity : ComponentActivity() {
         window.isNavigationBarContrastEnforced = navigationContrast
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(CONNECT_REQUESTED_KEY, connectRequested)
+    }
+
     override fun onDestroy() {
         if (device.permissionGate === gate) device.permissionGate = null
         if (templates.notificationPermissionGate === notificationGate) {
@@ -222,6 +249,32 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
         )
+
+        const val CONNECT_REQUESTED_KEY = "connectRequested"
+    }
+}
+
+/// What a Bluetooth permission answer turns into — the rule on its own, so it is a JVM test.
+enum class BluetoothPermissionAnswer {
+    /// The instance that asked is still here: hand it the answer.
+    deliver,
+
+    /// The asking instance is gone but its Connect tap was remembered, and the answer is
+    /// yes: do what was asked. `DeviceStore.connect()` re-asks the gate, which now answers
+    /// synchronously.
+    resumeConnect,
+
+    /// Nobody to tell, or a refusal — a refusal with no screen to report it to changes
+    /// nothing, and the next Connect tap asks again.
+    drop;
+
+    companion object {
+        fun of(hasCallback: Boolean, connectRequested: Boolean, allGranted: Boolean): BluetoothPermissionAnswer =
+            when {
+                hasCallback -> deliver
+                connectRequested && allGranted -> resumeConnect
+                else -> drop
+            }
     }
 }
 
