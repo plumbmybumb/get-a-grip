@@ -29,14 +29,18 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/// **The builder's cost is INVALIDATION, and this counts it.** The 13 mini lag was every
-/// section and every set row redrawing for one keystroke (iOS: 15 bodies → 3). A recomposition
+/// **The builder's cost is INVALIDATION, and this counts it.** The lag this guards against
+/// was every section and every set row redrawing for one keystroke (iOS: 15 bodies → 3). A recomposition
 /// count is the only honest check — a screenshot of a document that redrew six rows looks
 /// exactly like one that redrew one.
 ///
 /// Counted with the Compose runtime's own trace hook: the compiler brackets the BODY of every
 /// restartable composable with a trace event, emitted only when the body actually runs, so a
 /// skipped row contributes nothing.
+///
+/// **It keys on composable FUNCTION NAMES** as they appear in those trace events. Renaming a
+/// section or row composable breaks these tests — a count of zero for a name that no longer
+/// exists — so rename the string here with it.
 @OptIn(InternalComposeTracingApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w400dp-h2000dp-mdpi")

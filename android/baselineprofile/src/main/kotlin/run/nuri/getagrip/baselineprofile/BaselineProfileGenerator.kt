@@ -14,8 +14,12 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/// **The journeys the shipped profile is recorded from** — the three the review measured as
-/// slow on a cold process: launching onto Today, switching tabs, and opening the builder.
+/// **The journeys the shipped profile is recorded from** — the three that are slowest on a
+/// cold process: launching onto Today, switching tabs, and opening the builder.
+///
+/// **Screens are found by their ENGLISH text** ("Today", "Skip", "Build my routine"), so run
+/// the generator on a device or emulator whose language is English — on any other locale
+/// the steps find nothing, are skipped, and the profile silently shrinks to the launch.
 ///
 /// Every step is written to survive the app's first-launch state (the intro tour, no
 /// routine yet) and every later one (tour seen, a routine saved by nobody), because the rule
@@ -26,18 +30,21 @@ import org.junit.runner.RunWith
 class BaselineProfileGenerator {
     @get:Rule val rule = BaselineProfileRule()
 
-    @Test fun startupTabsAndBuilder() = rule.collect(
+    /// **Launch onto Today, and nothing else** — the one journey also written as the STARTUP
+    /// profile, which lays the dex out so the classes the first frame needs are read
+    /// together. Only launch belongs there: a startup profile that also carried the tabs and
+    /// the builder would spread the first frame's classes across everything else, which is
+    /// the layout it exists to prevent.
+    @Test fun startup() = rule.collect(
         packageName = PACKAGE,
-        // Startup is also written as the STARTUP profile, which lays the dex out so the
-        // classes the first frame needs are read together.
         includeInStartupProfile = true,
     ) {
-        pressHome()
-        startActivityAndWait()
-        // On a fresh install the intro tour arrives a beat AFTER the first frame (it waits to
-        // learn whether a routine exists), and its scrim swallows taps meant for the page.
-        device.wait(Until.hasObject(By.text("Today")), TIMEOUT)
-        skipTourIfShown(firstLaunch = true)
+        launchOntoToday()
+    }
+
+    /// **The tabs and the builder**, after a launch — the baseline profile only.
+    @Test fun tabsAndBuilder() = rule.collect(packageName = PACKAGE) {
+        launchOntoToday()
 
         // The builder, from Today's own door — the first-run card or the deck's ghost card.
         if (openBuilder() || (skipTourIfShown() && openBuilder())) {
@@ -67,6 +74,15 @@ class BaselineProfileGenerator {
         }
         tabBar("Today")?.click()
         device.waitForIdle()
+    }
+
+    private fun MacrobenchmarkScope.launchOntoToday() {
+        pressHome()
+        startActivityAndWait()
+        // On a fresh install the intro tour arrives a beat AFTER the first frame (it waits to
+        // learn whether a routine exists), and its scrim swallows taps meant for the page.
+        device.wait(Until.hasObject(By.text("Today")), TIMEOUT)
+        skipTourIfShown(firstLaunch = true)
     }
 
     private fun MacrobenchmarkScope.find(selector: BySelector) =

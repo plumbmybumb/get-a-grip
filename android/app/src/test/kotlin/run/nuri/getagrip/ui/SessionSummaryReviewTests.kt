@@ -32,7 +32,8 @@ class SessionSummaryReviewTests {
     private fun outcome(): SessionOutcome {
         val candidates = (10..15).map { MaxCandidate(GripSpec(edgeMM = it), Side.left, 12.0, null) }
         return SessionOutcome(SessionPlan(), "Daily", emptyList(), Instant.now(), Instant.now(),
-            12.0, 10.0, 60.0, 6, 6, false, GaugeKind.progressor, true, candidates)
+            12.0, 10.0, 60.0, 6, 6, false, GaugeKind.progressor, true, candidates,
+            id = java.util.UUID.randomUUID())
     }
 
     private fun sameGripOutcome(): SessionOutcome = outcome().copy(

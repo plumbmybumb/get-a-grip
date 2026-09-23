@@ -21,6 +21,9 @@ import run.nuri.getagrip.ui.builder.BuilderMode
 import run.nuri.getagrip.ui.builder.RoutineBuilderHost
 import run.nuri.getagrip.ui.share.RoutineImportSheet
 import run.nuri.getagrip.ui.theme.GetAGripTheme
+import java.time.Instant
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 
 /// A new routine has no id until the store writes it, so every Save that reaches the store is
@@ -36,8 +39,27 @@ class DoubleSaveTests {
     private val settingsScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
     private val gate = CompletableDeferred<Unit>()
     private val room = RoomStoreGateway(db)
+
+    /// Gateway calls in flight. A second save is always either one of these or a main-thread
+    /// hop between two of them, so "the main thread is idle and this is zero" is the store
+    /// having settled — a signal, where a fixed sleep only hoped.
+    private val inFlight = AtomicInteger()
+
+    private suspend fun <T> counted(block: suspend () -> T): T {
+        inFlight.incrementAndGet()
+        try { return block() } finally { inFlight.decrementAndGet() }
+    }
+
     private val gateway = object : StoreGateway by room {
-        override suspend fun write(work: suspend (StoreWriter) -> Unit) {
+        override suspend fun allRoutines() = counted { room.allRoutines() }
+        override suspend fun routine(id: UUID) = counted { room.routine(id) }
+        override suspend fun logsFrom(dayKey: Int) = counted { room.logsFrom(dayKey) }
+        override suspend fun allLogs() = counted { room.allLogs() }
+        override suspend fun allMaxes() = counted { room.allMaxes() }
+        override suspend fun log(id: UUID) = counted { room.log(id) }
+        override suspend fun logsFor(templateID: UUID) = counted { room.logsFor(templateID) }
+        override suspend fun dayStamps(before: Instant) = counted { room.dayStamps(before) }
+        override suspend fun write(work: suspend (StoreWriter) -> Unit) = counted {
             gate.await()
             room.write(work)
         }
@@ -51,10 +73,10 @@ class DoubleSaveTests {
 
     private fun releaseAndSettle() {
         compose.runOnIdle { gate.complete(Unit) }
-        compose.waitUntil(5_000) { routineCount() > 0 }
+        compose.waitUntil(5_000) { routineCount() > 0 && inFlight.get() == 0 }
+        // Drain the main thread: a second save waiting there would now be in a gateway call.
         compose.waitForIdle()
-        runBlocking { delay(100) }
-        compose.waitForIdle()
+        compose.waitUntil(5_000) { inFlight.get() == 0 }
     }
 
     @Test fun doubleTappingSaveInTheBuilderCreatesOneRoutine() {

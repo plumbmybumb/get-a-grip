@@ -7,7 +7,6 @@ import android.content.Intent
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -186,19 +185,17 @@ class TemplateStore(
     /// Set when a write fails. The failed change has already been rolled back — it was
     /// one transaction — by the time a view reads this.
     ///
-    /// **DISPLAY ONLY — never the answer to "did MY write land?"** It used to be both: each
-    /// write reset it, ran, and its caller then read it back. Two writes in flight shared
-    /// the one field, so a failed save could be read as a success because a second write
-    /// had reset it in between — an Undo offered for a delete that never happened, a
-    /// session reported saved that was rolled back. Every write now answers for itself
-    /// (`persistAndSync` returns it); this is only the sentence a screen shows.
+    /// **DISPLAY ONLY — never the answer to "did MY write land?"** Two writes in flight
+    /// share the one field, so a caller reading it back could take a failed save for a
+    /// success because a second write reset it in between — an Undo offered for a delete
+    /// that never happened, a session reported saved that was rolled back. Every write
+    /// answers for itself (`persistAndSync` returns it); this is only the sentence a screen
+    /// shows.
     var saveError: String? by mutableStateOf(null)
 
-    /// Counts writes through `persistAndSync`, so a reader of the raw tables (`HistoryFeed`)
-    /// can tell whether anything changed since it last read. Observable, so a screen keyed on
-    /// it rereads when a write lands under it.
-    var writeRevision: Long by mutableLongStateOf(0L)
-        private set
+    /// The database's write counter — see `StoreGateway.writeRevision`. Observable, so a
+    /// screen keyed on it rereads when a write lands under it.
+    val writeRevision: Long get() = gateway.writeRevision
 
     /// A scanned routine (or the reason a scan failed), HELD rather than presented.
     ///
@@ -268,11 +265,17 @@ class TemplateStore(
     /// call starts after the earlier one has published, so it reads a disk at least as new.
     private val syncLane = Mutex()
 
-    /// Bumped per recompute; the replan launched by an older one sees it moved and skips.
-    private var replanGeneration = 0L
-
-    /// Every replan in the app is launched from here, so this one lock orders them all.
-    private val replanGate = Mutex()
+    /// **Every reminder replan in the app goes through this one lane**, so they are applied
+    /// one at a time and in the order the recomputes published them — a superseded run's
+    /// in-flight alarm writes can never land after its successor's.
+    ///
+    /// LATEST WINS: whatever queued while a plan was being installed arrives as one batch,
+    /// and only its newest plan is applied. The older ones describe a world already
+    /// replaced on screen; installing them just to overwrite them a moment later would put
+    /// the alarms on a stale day for that moment.
+    private val replanLane = SerialWriteLane<List<ReminderPlanner.RoutinePlanInput>>(scope) { batch ->
+        ReminderPlanner.replan(batch.last(), scheduler)
+    }
 
     private suspend fun publishDerived(refoldingMaxes: Boolean) {
         val fetched = gateway.allRoutines() ?: return
@@ -337,12 +340,8 @@ class TemplateStore(
         }
         // Off the caller's turn, exactly as iOS detaches it: an `AlarmManager` write per
         // slot is not something a save should wait on. Superseded plans are skipped rather
-        // than applied and immediately replaced — see `ReminderPlanner.replan`.
-        val generation = ++replanGeneration
-        scope.launch {
-            ReminderPlanner.replan(inputs, scheduler, isCurrent = { generation == replanGeneration },
-                gate = replanGate)
-        }
+        // than applied and immediately replaced — see `replanLane`.
+        replanLane.submit(inputs)
     }
 
     // MARK: - Derived computations (pure over what was fetched)
@@ -973,39 +972,34 @@ class TemplateStore(
     /// used to split them: a session begun at 03:50 and saved at 04:10, or a summary left
     /// open overnight, landed on the next day.
     ///
-    /// `id` is the finished session's own identity when it has one — the draft a finished
-    /// session leaves behind (`FinishedSessionDraft`) — so saving it twice, once from the
-    /// summary and once from launch recovery, replaces one row rather than writing two.
+    /// `identity.id` is the finished session's own — the same id its draft
+    /// (`FinishedSessionDraft`) carries — so saving it twice, once from the summary and once
+    /// from launch recovery, replaces one row rather than writing two.
     suspend fun recordSession(
         plan: SessionPlan,
-        template: SessionTemplateEntity?,
+        identity: LogIdentity,
         reps: List<RepSummary>,
         startedAt: Instant,
         finishedAt: Instant,
         rpe: RPE?,
         newMaxes: List<MaxRecordEntity> = emptyList(),
-        id: UUID? = null,
-        templateID: UUID? = template?.id,
-        templateName: String = template?.name ?: plan.name,
-        sessionsPerDayTarget: Int = template?.sessionsPerDay ?: 1,
         zone: ZoneId = ZoneId.systemDefault(),
     ): WorkoutLogEntity? {
         if (newMaxes.any { !it.kg.isFinite() || it.kg <= 0 }) {
             saveError = L10n.tr("Couldn't save this workout. Please try again.")
             return null
         }
-        val built = WorkoutLogEntity.from(
+        val log = WorkoutLogEntity.from(
             plan = plan,
-            templateID = templateID,
+            templateID = identity.templateID,
             // FROZEN at save: renaming a routine later must not retro-rename history.
-            templateName = templateName,
-            sessionsPerDayTarget = sessionsPerDayTarget,
+            templateName = identity.templateName,
+            sessionsPerDayTarget = identity.sessionsPerDayTarget,
             reps = reps,
             startedAt = startedAt,
             finishedAt = finishedAt,
             day = DayStamp.trainingDayOf(startedAt, zone),
-        ).copy(rpe = rpe?.rawValue)
-        val log = if (id != null) built.copy(id = id) else built
+        ).copy(id = identity.id, rpe = rpe?.rawValue)
         val saved = persistAndSync(maxesChanged = newMaxes.isNotEmpty()) { writer ->
             writer.putLog(log)
             newMaxes.forEach { writer.putMax(it) }
@@ -1486,9 +1480,6 @@ class TemplateStore(
             saveError = L10n.tr("That change couldn't be saved — %s", error.message ?: "")
             false
         }
-        // AFTER the transaction, landed or not: a read that started during it is then one
-        // behind and rereads, where a bump before it could mark pre-write rows as current.
-        writeRevision++
         syncDerived(refoldingMaxes = maxesChanged)
         return committed
     }

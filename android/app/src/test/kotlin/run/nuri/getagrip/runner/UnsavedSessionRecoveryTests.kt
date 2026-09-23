@@ -118,9 +118,8 @@ class UnsavedSessionRecoveryTests {
         val written = draft()
         drafts.save(written)
         assertNotNull(store.recordSession(
-            plan = written.plan, template = null, reps = written.reps,
+            plan = written.plan, identity = written.identity, reps = written.reps,
             startedAt = written.startedAt, finishedAt = written.finishedAt, rpe = RPE.solid,
-            id = written.id,
         ))
 
         assertNull(UnsavedSessionRecovery(drafts, store).pending())

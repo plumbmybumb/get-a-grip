@@ -40,6 +40,7 @@ import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.store.DayClock
 import run.nuri.getagrip.store.InMemoryRoutineSettings
+import run.nuri.getagrip.store.LogIdentity
 import run.nuri.getagrip.store.RecordingAlarmScheduler
 import run.nuri.getagrip.store.RoomStoreGateway
 import run.nuri.getagrip.store.StoreGateway
@@ -1476,7 +1477,8 @@ class TemplateStoreTests {
         assertTrue(w.store.update(live, w.store.draft(live)))
         val log = assertNotNull(
             w.store.recordSession(
-                plan = live.plan, template = live, reps = emptyList(),
+                plan = live.plan, identity = LogIdentity.of(live, live.plan, UUID.randomUUID()),
+                reps = emptyList(),
                 startedAt = Instant.now(), finishedAt = Instant.now(), rpe = null,
             )
         )
@@ -1826,12 +1828,12 @@ class TemplateStoreTests {
         for (allowsSave in listOf(true, false)) {
             val w = makeWorld(allowsSave = allowsSave)
             val grip = GripSpec()
-            val rejected = w.store.recordSession(plan = SessionPlan(), template = null, reps = emptyList(),
+            val rejected = w.store.recordSession(plan = SessionPlan(), identity = anonymousIdentity(), reps = emptyList(),
                 startedAt = Instant.now(), finishedAt = Instant.now(), rpe = null,
                 newMaxes = listOf(MaxRecordEntity.from(grip = grip, kg = Double.POSITIVE_INFINITY, source = MaxSource.measured, side = Side.left)))
             assertNull(rejected)
             assertEquals(0, workoutLogs(w).size)
-            val result = w.store.recordSession(plan = SessionPlan(), template = null, reps = emptyList(),
+            val result = w.store.recordSession(plan = SessionPlan(), identity = anonymousIdentity(), reps = emptyList(),
                 startedAt = Instant.now(), finishedAt = Instant.now(), rpe = null,
                 newMaxes = listOf(MaxRecordEntity.from(grip = grip, kg = 12.0, source = MaxSource.measured, side = Side.left)))
             assertEquals(allowsSave, result != null)
@@ -1850,14 +1852,14 @@ class TemplateStoreTests {
         val w = makeWorld()
         val grip = GripSpec()
         val shared = MaxRecordEntity.from(grip = grip, kg = 40.0, source = MaxSource.manual, side = Side.both)
-        assertNotNull(w.store.recordSession(plan = SessionPlan(), template = null, reps = emptyList(),
+        assertNotNull(w.store.recordSession(plan = SessionPlan(), identity = anonymousIdentity(), reps = emptyList(),
             startedAt = Instant.now(), finishedAt = Instant.now(), rpe = null, newMaxes = listOf(shared)))
 
         val handPeaks = listOf(
             MaxRecordEntity.from(grip = grip, kg = 35.0, source = MaxSource.measured, side = Side.left),
             MaxRecordEntity.from(grip = grip, kg = 30.0, source = MaxSource.measured, side = Side.right),
         )
-        assertNotNull(w.store.recordSession(plan = SessionPlan(), template = null, reps = emptyList(),
+        assertNotNull(w.store.recordSession(plan = SessionPlan(), identity = anonymousIdentity(), reps = emptyList(),
             startedAt = Instant.now(), finishedAt = Instant.now(), rpe = null, newMaxes = handPeaks))
 
         assertEquals(mapOf("left" to 35.0, "right" to 30.0, "both" to 40.0),
@@ -2155,3 +2157,6 @@ class RoutineSummaryValueTests {
         assertNull(summary(emptyList()).edgeLine)
     }
 }
+
+/// A session with no routine behind it, under a fresh id.
+private fun anonymousIdentity() = LogIdentity.of(null, SessionPlan(), UUID.randomUUID())

@@ -20,7 +20,7 @@ import kotlin.test.*
 @RunWith(RobolectricTestRunner::class)
 class DataAuditStoreTests {
     @Test fun failedHistoryReadDoesNotInventAnotherBenchmarkDay() = runTest {
-        val gateway = MemoryGateway()
+        val gateway = MemoryStoreGateway()
         val clock = DayClock()
         gateway.logs += WorkoutLogEntity.logged(SessionKind.benchmark, clock.today, Instant.now(), 1)
         gateway.failLogReads = true
@@ -31,7 +31,7 @@ class DataAuditStoreTests {
     }
 
     @Test fun sameNamedRoutinesHaveDistinctPercentReceiptIdentity() = runTest {
-        val gateway = MemoryGateway()
+        val gateway = MemoryStoreGateway()
         val store = TemplateStore(gateway, DayClock(), InMemoryRoutineSettings(), RecordingAlarmScheduler(), backgroundScope)
         val blank = RoutineDraft.blank("Same name")
         val draft = blank.copy(plan = blank.plan.copy(handMode = HandMode.bothHands,
@@ -62,28 +62,5 @@ class DataAuditStoreTests {
         val line = progressLine(group)
         assertTrue(line.contains("60.0"))
         assertTrue(line.contains("25.0"))
-    }
-
-    private class MemoryGateway : StoreGateway, StoreWriter {
-        val routines = mutableListOf<SessionTemplateEntity>()
-        val logs = mutableListOf<WorkoutLogEntity>()
-        val maxes = mutableListOf<MaxRecordEntity>()
-        var failLogReads = false
-        override suspend fun allRoutines() = routines.toList()
-        override suspend fun routine(id: UUID) = routines.firstOrNull { it.id == id }
-        override suspend fun logsFrom(dayKey: Int) = if (failLogReads) null else logs.filter { it.dayKey >= dayKey }
-        override suspend fun allLogs() = logs.toList()
-        override suspend fun allMaxes() = maxes.toList()
-        override suspend fun write(work: suspend (StoreWriter) -> Unit) = work(this)
-        override suspend fun putRoutine(row: SessionTemplateEntity) { routines.removeAll { it.id == row.id }; routines.add(row) }
-        override suspend fun removeRoutine(id: UUID) { routines.removeAll { it.id == id } }
-        override suspend fun putLog(row: WorkoutLogEntity) { logs.removeAll { it.id == row.id }; logs.add(row) }
-        override suspend fun removeLog(id: UUID) { logs.removeAll { it.id == id } }
-        override suspend fun refileLog(id: UUID, dayKey: Int) {
-            val index = logs.indexOfFirst { it.id == id }
-            if (index >= 0) logs[index] = logs[index].copy(dayKey = dayKey)
-        }
-        override suspend fun putMax(row: MaxRecordEntity) { maxes.removeAll { it.id == row.id }; maxes.add(row) }
-        override suspend fun removeMax(id: UUID) { maxes.removeAll { it.id == id } }
     }
 }

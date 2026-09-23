@@ -24,8 +24,11 @@ straight to `gradlew`.
 
 `./android/build.sh :app:generateBaselineProfile`, with an emulator or phone attached,
 re-records the shipped baseline profile (`app/src/main/generated/baselineProfiles/`) from
-the journeys in `baselineprofile/`: launch, the four tabs, the builder. Regenerate it when
-those screens change shape, and commit the result; no ordinary build needs a device.
+the journeys in `baselineprofile/`: launch (also written as the startup profile), then the
+four tabs and the builder. Regenerate it when those screens change shape, and commit the
+result; no ordinary build needs a device. **Run it on a device or emulator set to English**:
+the journeys find screens by their English text, and on any other language every step past
+the launch is silently skipped.
 
 ## Toolchain
 

@@ -202,9 +202,8 @@ class RunnerSession(
     private var streamWatchdog: Job? = null
     private var connectionWatch: Job? = null
 
-    /// What this session was last TOLD about the link — `connectionChanged` acts on a change
-    /// of this, never on a repeat, so the watcher and a direct call cannot double an event.
-    private var reportedConnected: Boolean? = null
+    /// The link the watcher last saw. It reports a CHANGE of this, never a repeat, so the
+    /// engine hears each drop and each return exactly once.
     private var lastLink: DeviceStore.Link? = null
     private var hasStarted = false
     private var hasBegun = false
@@ -253,7 +252,6 @@ class RunnerSession(
             // Captured BEFORE anything can connect, so a link that comes up during `begin()`
             // itself is a change the watcher reports rather than a baseline it swallows.
             lastLink = device.link.value
-            reportedConnected = device.state.isConnected
         }
 
         if (timerOnly) {
@@ -495,15 +493,12 @@ class RunnerSession(
         }
     }
 
-    fun connectionChanged(isConnected: Boolean) {
+    /// Reported by `watchConnection`, which has already filtered repeats — the one caller
+    /// in the app. Internal only so a test on an inert scope can stand in for the watcher.
+    internal fun connectionChanged(isConnected: Boolean) {
         // A gauge waking up in your bag must not silently take over a session you chose to
         // run without it — the clock would suddenly start waiting for force.
         if (timerOnly) return
-        // A change, never a repeat: the session's own watcher reports every transition, and
-        // a caller repeating one must not send the engine a second restore (and a second
-        // stream re-kick) for a link that never moved.
-        if (reportedConnected == isConnected) return
-        reportedConnected = isConnected
         send(if (isConnected) RunnerEvent.ConnectionRestored else RunnerEvent.ConnectionLost)
         if (isConnected) {
             startIfReady(if (hasStarted) StreamStartCause.reconnect else StreamStartCause.initial)
@@ -897,9 +892,10 @@ data class SessionOutcome(
     val gaugeKind: GaugeKind?,
     val didAnyWork: Boolean,
     val maxCandidates: List<MaxCandidate>,
-    /// The log row's id — see `RunnerSession.sessionID`. Last and defaulted, so a preview
-    /// or a test building an outcome positionally need not invent one.
-    val id: UUID = UUID.randomUUID(),
+    /// The log row's id — see `RunnerSession.sessionID`. Never defaulted: a fresh id minted
+    /// by whoever builds an outcome would break one-session-one-row between Save and
+    /// launch recovery.
+    val id: UUID,
 )
 
 /// What the summary decided. `save` false means the climber held the Discard button — the

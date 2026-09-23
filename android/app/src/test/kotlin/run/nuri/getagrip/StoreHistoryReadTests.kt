@@ -20,10 +20,12 @@ import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SessionKind
 import run.nuri.getagrip.store.DayClock
 import run.nuri.getagrip.store.InMemoryRoutineSettings
+import run.nuri.getagrip.store.LogIdentity
 import run.nuri.getagrip.store.RecordingAlarmScheduler
 import run.nuri.getagrip.store.RoomStoreGateway
 import run.nuri.getagrip.store.StoreGateway
 import run.nuri.getagrip.store.TemplateStore
+import java.util.UUID
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.test.assertEquals
@@ -90,11 +92,13 @@ class StoreHistoryReadTests {
         val w = world()
         val routine = assertNotNull(w.store.create(RoutineDraft.starter))
         val logged = assertNotNull(w.store.recordSession(
-            plan = routine.plan, template = routine, reps = emptyList(),
+            plan = routine.plan, identity = LogIdentity.of(routine, routine.plan, UUID.randomUUID()),
+            reps = emptyList(),
             startedAt = java.time.Instant.now(), finishedAt = java.time.Instant.now(), rpe = null,
         ))
         val other = assertNotNull(w.store.recordSession(
-            plan = routine.plan, template = routine, reps = emptyList(),
+            plan = routine.plan, identity = LogIdentity.of(routine, routine.plan, UUID.randomUUID()),
+            reps = emptyList(),
             startedAt = java.time.Instant.now(), finishedAt = java.time.Instant.now(), rpe = null,
         ))
 
@@ -111,8 +115,9 @@ class StoreHistoryReadTests {
         val w = world()
         // Begun 03:50 on the 21st — still the 20th's training day — and saved at 04:10.
         val log = assertNotNull(w.store.recordSession(
-            plan = RoutineDraft.starter.normalized.plan, template = null, reps = emptyList(),
-            startedAt = at(21, 3, 50), finishedAt = at(21, 4, 10), rpe = null, zone = paris,
+            plan = RoutineDraft.starter.normalized.plan,
+            identity = LogIdentity.of(null, RoutineDraft.starter.normalized.plan, UUID.randomUUID()),
+            reps = emptyList(), startedAt = at(21, 3, 50), finishedAt = at(21, 4, 10), rpe = null, zone = paris,
         ))
         assertEquals(DayStamp.of(2026, 9, 20), log.day)
         assertEquals(0, w.store.repairTrainingDays(paris), "and the repair has nothing to say about it")
@@ -126,8 +131,9 @@ class StoreHistoryReadTests {
         val id = java.util.UUID.randomUUID()
         repeat(2) {
             assertNotNull(w.store.recordSession(
-                plan = RoutineDraft.starter.normalized.plan, template = null, reps = emptyList(),
-                startedAt = at(21, 18, 0), finishedAt = at(21, 18, 20), rpe = null, id = id,
+                plan = RoutineDraft.starter.normalized.plan,
+                identity = LogIdentity.of(null, RoutineDraft.starter.normalized.plan, id),
+                reps = emptyList(), startedAt = at(21, 18, 0), finishedAt = at(21, 18, 20), rpe = null,
             ))
         }
         assertEquals(listOf(id), w.db.logs().all().map { it.id })
@@ -148,7 +154,11 @@ class StoreHistoryReadTests {
         val unknown = hang(19, 23, 47, filedUnder = sept20).copy(kindRaw = "fromTheFuture")
         listOf(crossed, deliberate, unknown).forEach { w.db.logs().upsert(it) }
 
+        val revision = w.store.writeRevision
         assertEquals(1, w.store.repairTrainingDaysOnce(paris))
+        // The repair writes around the store's own write path, and History still has to
+        // hear that the ledger moved.
+        assertEquals(revision + 1, w.store.writeRevision, "the repair counts as a write")
         val after = w.db.logs().all().associateBy { it.id }
         assertEquals(sept19, after.getValue(crossed.id).day)
         assertEquals(DayStamp.of(2026, 9, 1), after.getValue(deliberate.id).day)
@@ -185,5 +195,17 @@ class StoreHistoryReadTests {
         val climb = WorkoutLogEntity.logged(SessionKind.climbLimit, DayStamp.of(2026, 9, 20), at(19, 23, 50), 2)
         w.db.logs().upsert(climb)
         assertEquals(0, w.store.repairTrainingDays(paris))
+    }
+
+    /// A write that failed still moves the revision: the feed rereading a disk that did not
+    /// change costs a read, and a feed that missed a change shows a stale ledger.
+    @Test
+    fun everyGatewayWriteMovesTheRevisionLandedOrNot() = runTest {
+        val w = world()
+        val before = w.gateway.writeRevision
+        w.gateway.write { it.putLog(hang(19, 18, 0, filedUnder = DayStamp.of(2026, 9, 19))) }
+        assertEquals(before + 1, w.gateway.writeRevision)
+        runCatching { w.gateway.write { error("disk full") } }
+        assertEquals(before + 2, w.gateway.writeRevision)
     }
 }

@@ -3,6 +3,9 @@
 
 package run.nuri.getagrip.store
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
 import androidx.room.withTransaction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -40,25 +43,31 @@ interface StoreGateway {
     suspend fun allMaxes(): List<MaxRecordEntity>?
 
     /// One session by id. Null when it is absent OR the read failed — every caller treats
-    /// the two alike (there is nothing to delete either way). Defaulted through `allLogs`
-    /// so a test double need not care; Room answers it with an indexed point read.
-    suspend fun log(id: UUID): WorkoutLogEntity? = allLogs()?.firstOrNull { it.id == id }
+    /// the two alike (there is nothing to delete either way). A point read: no path that
+    /// touches one session may read the whole history.
+    suspend fun log(id: UUID): WorkoutLogEntity?
 
     /// A routine's sessions. Null when the read FAILED, as everywhere here.
-    suspend fun logsFor(templateID: UUID): List<WorkoutLogEntity>? =
-        allLogs()?.filter { it.templateID == templateID }
+    suspend fun logsFor(templateID: UUID): List<WorkoutLogEntity>?
 
     /// The day-filing columns of every session started before `before` — the repair's only
     /// read, and a projection so it never decodes a blob. Null when the read failed.
-    suspend fun dayStamps(before: Instant): List<LogDayStamp>? =
-        allLogs()?.filter { it.startedAt.isBefore(before) }?.map {
-            LogDayStamp(it.id, it.startedAt, it.finishedAt, it.dayKey, it.kindRaw)
-        }
+    suspend fun dayStamps(before: Instant): List<LogDayStamp>?
 
     /// One atomic unit of work. It THROWS when it could not be committed — the caller
     /// (`TemplateStore.persistAndSync`) is the one place that turns that into a
     /// `saveError`, so no write path can forget to report one.
     suspend fun write(work: suspend (StoreWriter) -> Unit)
+
+    /// Counts calls to `write`, landed or not, so a reader of the raw tables (`HistoryFeed`)
+    /// can tell whether the database may have changed since it last read. Observable, so a
+    /// screen keyed on it rereads when a write lands under it.
+    ///
+    /// Kept HERE, by the one door every write goes through, rather than by one of the
+    /// callers: the store's write path is not the only writer (the training-day repair
+    /// writes straight through the gateway), and a counter kept by a caller silently misses
+    /// every write that did not come through it.
+    val writeRevision: Long
 }
 
 /// The mutations, named one by one rather than exposed as a live DAO: it is what makes
@@ -82,11 +91,10 @@ interface StoreWriter {
 
 /// Room, one call at a time.
 ///
-/// **The lane is a `Mutex`, not the dispatcher.** This used to claim that
-/// `Dispatchers.IO.limitedParallelism(1)` made it "one serial lane", and it did not: a lane
-/// of one THREAD still interleaves at every suspension point, and `withTransaction`
-/// suspends — so a read queued behind a write could run while the write's transaction was
-/// still open and read the disk as it stood before it. The mutex holds the lane across
+/// **The lane is a `Mutex`, not the dispatcher.** `Dispatchers.IO.limitedParallelism(1)`
+/// is not one serial lane: a lane of one THREAD still interleaves at every suspension
+/// point, and `withTransaction` suspends — so a read queued behind a write could run while
+/// the write's transaction was still open and read the disk as it stood before it. The mutex holds the lane across
 /// the whole call, which is what "a read can never overtake a write" (the history feed
 /// relies on it) actually requires. What it does NOT give is atomicity across two calls:
 /// a read-then-write in the store (renumber, import-then-deconflict) is two turns of the
@@ -101,6 +109,9 @@ class RoomStoreGateway(
 ) : StoreGateway {
 
     private val lane = Mutex()
+
+    override var writeRevision: Long by mutableLongStateOf(0L)
+        private set
 
     override suspend fun allRoutines(): List<SessionTemplateEntity>? =
         read { db.routines().all() }
@@ -125,8 +136,15 @@ class RoomStoreGateway(
 
     override suspend fun write(work: suspend (StoreWriter) -> Unit) {
         lane.withLock {
-            withContext(dispatcher) {
-                db.withTransaction { work(RoomWriter(db)) }
+            try {
+                withContext(dispatcher) {
+                    db.withTransaction { work(RoomWriter(db)) }
+                }
+            } finally {
+                // AFTER the transaction, landed or not, and still inside the lane: a read
+                // that started before it is then one revision behind and reads again, where
+                // a bump before the transaction could mark pre-write rows as current.
+                writeRevision++
             }
         }
     }

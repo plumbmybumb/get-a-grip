@@ -5,13 +5,18 @@ package run.nuri.getagrip.runner
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ChannelResult
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.onTimeout
+import kotlinx.coroutines.selects.select
 
 /** One owner performs every native audio operation, including teardown. Cancelling a
  * coroutine cannot interrupt JNI: releasing its track on another thread can segfault.
@@ -45,15 +50,21 @@ internal class CueKeepAlive(
     /// The lead kept queued while idle. Small, because a cue queues BEHIND it: this is
     /// the latency added to every cue, so it is tens of milliseconds, not hundreds.
     val lowWaterFrames: Int,
+    /// How often an idle output is checked. A cue never waits for this: it wakes the
+    /// worker the moment it is queued.
     val pollMillis: Long,
-)
+) {
+    /// An empty chunk has nothing to feed, so the worker never wakes for it and waits on
+    /// cues alone — the shape the queue's own tests use.
+    val feeds: Boolean get() = silence.isNotEmpty() && pollMillis > 0
+}
 
 internal class CueAudioQueue(
     private val dispatcher: CoroutineDispatcher,
     private val enabled: () -> Boolean,
     private val render: (ToneSynth.Tone) -> FloatArray,
     private val open: () -> CueAudioOutput?,
-    private val keepAlive: CueKeepAlive? = null,
+    private val keepAlive: CueKeepAlive,
 ) {
     private var queue: Channel<ToneSynth.Tone>? = null
     private var worker: Job? = null
@@ -62,83 +73,10 @@ internal class CueAudioQueue(
         if (queue != null) return
         val channel = Channel<ToneSynth.Tone>(16, BufferOverflow.DROP_OLDEST)
         queue = channel
-        worker = CoroutineScope(dispatcher).launch {
-            // Never share the native handle with callers or a subsequent session.
-            var output: CueAudioOutput? = null
-            fun close() {
-                val previous = output
-                output = null
-                runCatching { previous?.close() }
-            }
-            // One tone, written in full. Partial writes are completed; a failed route is
-            // rebuilt once and the samples already written are kept.
-            suspend fun writeTone(tone: ToneSynth.Tone) {
-                val buffer = render(tone)
-                var offset = 0
-                var stalls = 0
-                var rebuilt = false
-                while (offset < buffer.size && enabled()) {
-                    currentCoroutineContext().ensureActive()
-                    if (output == null) output = runCatching(open).getOrNull()
-                    val active = output ?: break
-                    val written = runCatching { active.write(buffer, offset, buffer.size - offset) }.getOrDefault(-1)
-                    when {
-                        written > 0 && written <= buffer.size - offset -> {
-                            offset += written
-                            stalls = 0
-                        }
-                        written == 0 && ++stalls < 200 -> delay(5)
-                        else -> {
-                            close()
-                            if (rebuilt || written == 0) break
-                            rebuilt = true
-                        }
-                    }
-                }
-            }
-            // Idle: top the lead up with silence. One nonblocking attempt — a short write
-            // of silence is simply less silence, and a failing route closes so the next
-            // pass (or cue) opens a fresh one.
-            // Polls to skip before trying to open again after a failed open: with no usable
-            // route, retrying every poll would be a hundred native calls a second. Two
-            // seconds matches the iPhone's retry of a dead engine.
-            var openBackoff = 0
-            fun feed(feed: CueKeepAlive) {
-                if (!enabled()) return
-                if (output == null) {
-                    if (openBackoff > 0) { openBackoff--; return }
-                    output = runCatching(open).getOrNull()
-                    if (output == null) openBackoff = (2_000 / feed.pollMillis.coerceAtLeast(1)).toInt()
-                }
-                val active = output ?: return
-                val queued = runCatching { active.queuedFrames() }.getOrNull() ?: return
-                if (queued >= feed.lowWaterFrames) return
-                val written = runCatching { active.write(feed.silence, 0, feed.silence.size) }.getOrDefault(-1)
-                if (written < 0) close()
-            }
-            try {
-                val feed = keepAlive
-                if (feed == null) {
-                    for (tone in channel) {
-                        if (enabled()) writeTone(tone)
-                    }
-                } else {
-                    while (true) {
-                        val next = channel.tryReceive()
-                        if (next.isClosed) break
-                        val tone = next.getOrNull()
-                        if (tone != null) {
-                            if (enabled()) writeTone(tone)
-                        } else {
-                            feed(feed)
-                            delay(feed.pollMillis)
-                        }
-                    }
-                }
-            } finally {
-                close()
-            }
-        }
+        // A new worker per session: the native handle is never shared with callers or with
+        // a subsequent session.
+        val owner = Worker(channel, enabled, render, open, keepAlive)
+        worker = CoroutineScope(dispatcher).launch { owner.run() }
     }
 
     @Synchronized fun play(tone: ToneSynth.Tone) { queue?.trySend(tone) }
@@ -149,5 +87,96 @@ internal class CueAudioQueue(
         worker?.cancel()
         worker = null
         // The worker's finally block releases only after its last native call returns.
+    }
+
+    /** The one owner of a session's output: every write, every top-up and the release. */
+    private class Worker(
+        private val channel: ReceiveChannel<ToneSynth.Tone>,
+        private val enabled: () -> Boolean,
+        private val render: (ToneSynth.Tone) -> FloatArray,
+        private val open: () -> CueAudioOutput?,
+        private val feed: CueKeepAlive,
+    ) {
+        private var output: CueAudioOutput? = null
+
+        /// Polls to skip before trying to open again after a failed open: with no usable
+        /// route, retrying every poll would be a hundred native calls a second. Two seconds
+        /// matches the iPhone's retry of a dead engine.
+        private var openBackoff = 0
+
+        /// ONE loop: wait for a cue or for the poll to elapse, whichever comes first. A
+        /// queued cue wakes it at once — never a poll interval later — and an idle output is
+        /// topped up on every poll.
+        @OptIn(ExperimentalCoroutinesApi::class)
+        suspend fun run() {
+            try {
+                while (true) {
+                    val next = select<ChannelResult<ToneSynth.Tone>?> {
+                        channel.onReceiveCatching { it }
+                        if (feed.feeds) onTimeout(feed.pollMillis) { null }
+                    }
+                    when {
+                        next == null -> topUp()
+                        next.isClosed -> break
+                        else -> {
+                            val tone = next.getOrNull() ?: continue
+                            if (enabled()) writeTone(tone)
+                        }
+                    }
+                }
+            } finally {
+                close()
+            }
+        }
+
+        /// One tone, written in full. Partial writes are completed; a failed route is
+        /// rebuilt once and the samples already written are kept.
+        private suspend fun writeTone(tone: ToneSynth.Tone) {
+            val buffer = render(tone)
+            var offset = 0
+            var stalls = 0
+            var rebuilt = false
+            while (offset < buffer.size && enabled()) {
+                currentCoroutineContext().ensureActive()
+                if (output == null) output = runCatching(open).getOrNull()
+                val active = output ?: break
+                val written = runCatching { active.write(buffer, offset, buffer.size - offset) }.getOrDefault(-1)
+                when {
+                    written > 0 && written <= buffer.size - offset -> {
+                        offset += written
+                        stalls = 0
+                    }
+                    written == 0 && ++stalls < 200 -> delay(5)
+                    else -> {
+                        close()
+                        if (rebuilt || written == 0) break
+                        rebuilt = true
+                    }
+                }
+            }
+        }
+
+        /// Idle: top the lead up with silence. One nonblocking attempt — a short write of
+        /// silence is simply less silence, and a failing route closes so the next pass (or
+        /// cue) opens a fresh one.
+        private fun topUp() {
+            if (!enabled()) return
+            if (output == null) {
+                if (openBackoff > 0) { openBackoff--; return }
+                output = runCatching(open).getOrNull()
+                if (output == null) openBackoff = (2_000 / feed.pollMillis.coerceAtLeast(1)).toInt()
+            }
+            val active = output ?: return
+            val queued = runCatching { active.queuedFrames() }.getOrNull() ?: return
+            if (queued >= feed.lowWaterFrames) return
+            val written = runCatching { active.write(feed.silence, 0, feed.silence.size) }.getOrDefault(-1)
+            if (written < 0) close()
+        }
+
+        private fun close() {
+            val previous = output
+            output = null
+            runCatching { previous?.close() }
+        }
     }
 }

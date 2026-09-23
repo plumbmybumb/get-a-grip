@@ -35,15 +35,11 @@ class UnsavedSessionRecovery(
     suspend fun save(draft: FinishedSessionDraft): Boolean {
         val saved = templates.recordSession(
             plan = draft.plan,
-            template = null,
+            identity = draft.identity,
             reps = draft.reps,
             startedAt = draft.startedAt,
             finishedAt = draft.finishedAt,
             rpe = null,
-            id = draft.id,
-            templateID = draft.templateID,
-            templateName = draft.templateName,
-            sessionsPerDayTarget = draft.sessionsPerDayTarget,
         ) != null
         if (saved) drafts.clear()
         return saved
