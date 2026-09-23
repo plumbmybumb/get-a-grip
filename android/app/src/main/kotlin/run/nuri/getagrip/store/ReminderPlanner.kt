@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import run.nuri.getagrip.MainActivity
 import run.nuri.getagrip.R
+import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.ReminderTime
 import java.time.LocalDate
@@ -120,9 +121,14 @@ object ReminderPlanner {
             // Suppress from the FRONT of the day. Having trained once, the morning slot
             // is the one you have satisfied; the evening one is still owed. Dropping the
             // last slot instead would silence the reminder you still need.
+            //
+            // The front of the TRAINING day, which starts at `DayStamp.ROLLOVER_HOUR`: a
+            // 01:00 reminder is the last slot of the evening before, not the first of the
+            // morning, and counting it first would spend the morning's suppression on it.
             val sorted = routine.reminders.toSet().sorted()
-            val suppressed = maxOf(0, sorted.size - maxOf(0, routine.outstandingToday))
-            for ((index, slot) in sorted.withIndex()) {
+            val owed = maxOf(0, sorted.size - maxOf(0, routine.outstandingToday))
+            val suppressed = sorted.sortedBy { trainingDayMinute(it) }.take(owed).toSet()
+            for (slot in sorted) {
                 val id = identifier(routine.id, slot)
                 if (!claimed.add(id)) continue
                 planned.add(
@@ -132,7 +138,7 @@ object ReminderPlanner {
                         body = L10n.tr("Time for a session."),
                         hour = slot.hour,
                         minute = slot.minute,
-                        suppressToday = index < suppressed,
+                        suppressToday = slot in suppressed,
                     )
                 )
             }
@@ -147,6 +153,10 @@ object ReminderPlanner {
     /// same guarantee with the opposite emphasis — nothing is cancelled, everything runs
     /// in order — which is the safer half here, because an `AlarmManager` write abandoned
     /// halfway leaves a real alarm behind rather than an unsent request.
+    /// Minutes since the training day began — the order slots are OWED in.
+    private fun trainingDayMinute(slot: ReminderTime): Int =
+        Math.floorMod(slot.minutesFromMidnight - DayStamp.ROLLOVER_HOUR * 60, 24 * 60)
+
     private val gate = Mutex()
 
     suspend fun replan(routines: List<RoutinePlanInput>, scheduler: AlarmScheduler) {
@@ -257,12 +267,31 @@ object ReminderAlarms {
     /// right to pierce a Focus mode.
     const val windowMillis: Long = 15 * 60 * 1000L
 
+    /// The first firing of `hour:minute` after `from` — skipping it once more when it is
+    /// suppressed AND still inside the current training day.
+    ///
+    /// **Suppression is about the TRAINING day, and the old arithmetic was about the
+    /// calendar.** `suppressToday` used to push the slot past its next calendar occurrence
+    /// unconditionally, which is right at 18:00 and wrong after midnight: a session finished
+    /// at 00:30 settles the day that began at 04:00 YESTERDAY, so tomorrow-morning's 08:00 is
+    /// already the next training day's first reminder — and it was being skipped, leaving a
+    /// whole day unreminded. The same bug was found on iOS. A slot is now skipped only when
+    /// its next firing lands before the coming rollover.
     fun nextOccurrence(hour: Int, minute: Int, zone: ZoneId, from: LocalDateTime? = null,
                        suppressToday: Boolean = false): Long {
         val now = from ?: LocalDateTime.now(zone)
         var next = LocalDateTime.of(now.toLocalDate(), java.time.LocalTime.of(hour, minute))
-        if (suppressToday || !next.isAfter(now)) next = next.plusDays(1)
+        if (!next.isAfter(now)) next = next.plusDays(1)
+        if (suppressToday && next.isBefore(trainingDayEnd(now))) next = next.plusDays(1)
         return next.atZone(zone).toInstant().toEpochMilli()
+    }
+
+    /// The coming `DayStamp.ROLLOVER_HOUR`, in local wall time — where the training day
+    /// `now` belongs to ends. Local-time arithmetic like the rest of this file, so a DST
+    /// night moves the hour with the clock rather than by a fixed number of hours.
+    fun trainingDayEnd(now: LocalDateTime): LocalDateTime {
+        val rollover = now.toLocalDate().atTime(DayStamp.ROLLOVER_HOUR, 0)
+        return if (now.isBefore(rollover)) rollover else rollover.plusDays(1)
     }
 
     fun tomorrow(hour: Int, minute: Int, zone: ZoneId, today: LocalDate): Long =
