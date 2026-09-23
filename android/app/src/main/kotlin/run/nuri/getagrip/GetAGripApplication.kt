@@ -77,7 +77,7 @@ class GetAGripApplication : Application() {
     private val gateway: StoreGateway by lazy { RoomStoreGateway(database) }
 
     /// The read side for whole tables (History, Maxes) — the `@Query` twin.
-    val historyFeed: HistoryFeed by lazy { HistoryFeed(gateway.asHistorySource(), storeScope) }
+    val historyFeed: HistoryFeed by lazy { HistoryFeed(gateway.asHistorySource(), storeScope, revision = { templates.writeRevision }) }
 
     /// The hub. Built lazily and held for the life of the PROCESS, not the Activity, so a
     /// rotation neither rebuilds the world nor drops the ten-second undo offer.

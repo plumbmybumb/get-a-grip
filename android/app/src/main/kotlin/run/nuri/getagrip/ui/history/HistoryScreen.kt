@@ -71,6 +71,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 import kotlinx.coroutines.launch
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.WorkoutLogEntity
@@ -81,7 +82,6 @@ import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.l10n.trQuantity
 import run.nuri.getagrip.store.AnalysisExportAssembler
 import run.nuri.getagrip.store.DayLedger
-import run.nuri.getagrip.data.lifetime
 import run.nuri.getagrip.store.HistoryFeed
 import run.nuri.getagrip.store.LocalDayClock
 import run.nuri.getagrip.store.LocalHistoryFeed
@@ -139,26 +139,27 @@ fun HistoryScreen(
     var exportRequest by remember { mutableStateOf<AnalysisExportRequest?>(null) }
     var shareRequest by remember { mutableStateOf<ShareCalendarRequest?>(null) }
 
-    // The feed has no live query behind it, so a screen that draws the ledger asks for it
-    // once on the way in and again after every write it makes.
-    LaunchedEffect(feed) { feed.refresh() }
+    // The feed has no live query behind it, so a screen that draws the ledger asks for it on
+    // the way in — and it READS only when a write landed since the last read, so switching
+    // tabs costs nothing. Keyed on the revision, so a write made while History is up (a
+    // cascade from a deleted routine, a session logged from its own sheet) still reaches it.
+    LaunchedEffect(feed, templates.writeRevision) { feed.refreshIfStale() }
 
     val logs = feed.logs
     val today = clock.today
     // Folded ONCE and handed down, rather than each of the ~200 questions a card asks
     // re-scanning the whole log list. See `DayLedger`: every cell used to answer its own
     // questions by filtering every log, which is on the order of two hundred whole-array
-    // passes per 35-day card.
+    // passes per 35-day card. The feed keeps it (and refolds it off the main thread with each
+    // read), so coming back to this tab does not fold it again.
     val trackingSince = templates.trackingSince
-    val ledger = remember(logs, today, trackingSince) { DayLedger(logs, today, trackingSince) }
-    // The odometer, folded once from the same feed — columns only, no blobs.
-    val lifetime = remember(logs) { logs.lifetime }
+    val ledger = feed.ledger(today, trackingSince)
+    // The odometer, folded by the feed beside the read — columns only, no blobs.
+    val lifetime = feed.lifetime
     val windowCount = HistoryWindows.pageCount(ledger.trackingSince, today)
+    val routineNames = templates.routineNames
 
-    fun displayName(log: WorkoutLogEntity): String {
-        val id = log.templateID ?: return log.templateName
-        return templates.routineNames[id] ?: log.templateName
-    }
+    fun displayName(log: WorkoutLogEntity): String = sessionDisplayName(log, routineNames)
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -188,7 +189,7 @@ fun HistoryScreen(
                     // there is nothing to export, which is a better answer than a toolbar
                     // item that is present on some launches and missing on others.
                     IconButton(onClick = {
-                        exportRequest = buildExportRequest(feed, ::displayName, today)
+                        exportRequest = buildExportRequest(feed, routineNames, today)
                     }) {
                         Icon(
                             Icons.Outlined.Description,
@@ -253,8 +254,8 @@ fun HistoryScreen(
                     SwipeableSessionRow(
                         log = log,
                         name = displayName(log),
-                        leadingGrip = feed.reps(log).firstOrNull()?.grip,
-                        onExport = { exportRequest = buildExportRequest(feed, ::displayName, today, log) },
+                        leadingGrip = feed.leadingGrip(log),
+                        onExport = { exportRequest = buildExportRequest(feed, routineNames, today, log) },
                         onDelete = {
                             scope.launch {
                                 // The row only leaves the list once the store says the
@@ -314,22 +315,35 @@ fun HistoryScreen(
 
 private const val RECENT_SESSION_LIMIT = 10
 
-/// Freeze the selected model values using the feed's rep cache. The sheet formats
-/// these values on a background dispatcher when the user chooses a range.
+/// The routine's live name where it still exists, falling back to the name frozen into the
+/// log — a pure function of a snapshot, so the export can ask it off the main thread.
+private fun sessionDisplayName(log: WorkoutLogEntity, routineNames: Map<UUID, String>): String {
+    val id = log.templateID ?: return log.templateName
+    return routineNames[id] ?: log.templateName
+}
+
+/// **Freeze WHAT to export at the tap; assemble it once the sheet is up.** Assembling walked
+/// every log's plan and rep blobs on the main thread before the sheet could even appear — an
+/// export button that got slower every week of training. The lists and names are captured
+/// here, on the main thread, as the values they are right now; the sheet runs `assemble` on a
+/// background dispatcher and says "Preparing export…" meanwhile.
 private fun buildExportRequest(
     feed: HistoryFeed,
-    displayName: (WorkoutLogEntity) -> String,
+    routineNames: Map<UUID, String>,
     today: DayStamp,
     workout: WorkoutLogEntity? = null,
 ): AnalysisExportRequest {
-    val input = AnalysisExportAssembler.input(
-        logs = workout?.let { listOf(it) } ?: feed.logs,
-        maxRecords = feed.maxRecords,
-        reps = { feed.reps(it) },
-        displayName = displayName,
-        today = today,
-    )
-    return AnalysisExportRequest(input = input, isWorkout = workout != null)
+    val logs = workout?.let { listOf(it) } ?: feed.logs
+    val maxRecords = feed.maxRecords
+    return AnalysisExportRequest(isWorkout = workout != null) {
+        AnalysisExportAssembler.input(
+            logs = logs,
+            maxRecords = maxRecords,
+            reps = feed::reps,
+            displayName = { sessionDisplayName(it, routineNames) },
+            today = today,
+        )
+    }
 }
 
 // MARK: - The five-week windows

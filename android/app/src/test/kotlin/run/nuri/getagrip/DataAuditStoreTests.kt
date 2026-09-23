@@ -10,7 +10,7 @@ import run.nuri.getagrip.data.*
 import run.nuri.getagrip.engine.*
 import run.nuri.getagrip.store.*
 import run.nuri.getagrip.ui.components.spokenSession
-import run.nuri.getagrip.ui.maxes.MaxGripGroup
+import run.nuri.getagrip.store.MaxGripGroup
 import run.nuri.getagrip.ui.maxes.presentSides
 import run.nuri.getagrip.ui.maxes.progressLine
 import java.time.Instant
