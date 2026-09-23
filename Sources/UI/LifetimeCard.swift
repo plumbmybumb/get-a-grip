@@ -25,7 +25,7 @@ struct LifetimeCard: View {
     @Environment(\.weightUnit) private var weightUnit
 
     var body: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(title)
                 if stats.isEmpty {

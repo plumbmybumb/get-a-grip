@@ -471,7 +471,7 @@ struct HistoryView: View {
     // MARK: - Empty
 
     private var emptyCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "Nothing here yet"))
                 Image(systemName: "chart.xyaxis.line")
@@ -588,7 +588,7 @@ struct HistoryView: View {
     /// Five weeks ending 35×`window` days ago. Window 0 is home — the last five weeks.
     private func monthCard(_ window: Int, _ ledger: DayLedger) -> some View {
         let days = monthDays(window)
-        return MaterialCard {
+        return MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     CapsLabel(windowTitle(window, days: days))
@@ -766,7 +766,7 @@ struct HistoryView: View {
         // draw one chart.
         let grips = gripOptions(in: logs, routineKey: option.key)
         let selected = currentGrip(among: grips)
-        return MaterialCard {
+        return MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "Load per grip"))
                 // The page's identity — what the old menu stated in the corner, said at
@@ -799,7 +799,7 @@ struct HistoryView: View {
 
     /// Sessions exist but none carried kilograms — every pull so far was gauge-free.
     private var emptyTrendCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "Load per grip"))
                 Text("No measured pulls to chart yet.")

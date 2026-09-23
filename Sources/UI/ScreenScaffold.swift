@@ -86,8 +86,11 @@ struct MaterialCard<Content: View>: View {
     /// Overridable only where a screen has to fit — see `ConsistencyCard`. Everything
     /// else keeps 16 on all four sides.
     var verticalPadding: CGFloat = 16
-    /// `.flat` where many cards share one scrolling screen and get animated while
-    /// someone is editing — the builder. `CardSurface` has the measured reason.
+    /// `.flat` where many cards share one scrolling screen over `AppBackground` — the
+    /// builder, History, Maxes and Settings. A blur is re-rendered every frame a card
+    /// moves, and a scroll moves every card on the screen; over the static field the
+    /// fitted fill is indistinguishable from the material. `CardSurface` has the
+    /// measured reason.
     var surface: CardSurface = .material
     @ViewBuilder var content: Content
 

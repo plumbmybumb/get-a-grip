@@ -149,11 +149,10 @@ struct MaxesView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial,
-                    in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        .cardSurface(.flat, in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         // MANDATORY when this face is a Button's label: it holds a Spacer and draws
         // full-width, and SwiftUI's default hit area is the label's OPAQUE content — the
-        // material and the padding contribute nothing to it.
+        // fill and the padding contribute nothing to it.
         .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenGrip(history))
@@ -179,8 +178,7 @@ struct MaxesView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial,
-                    in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
+        .cardSurface(.flat, in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
         // OUTSIDE the background, so the indent is empty space rather than a wider card
         // with its content pushed over.
         .padding(.leading, 22)
@@ -223,7 +221,7 @@ struct MaxesView: View {
     // MARK: - Chrome
 
     private var emptyCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "NO MAXES YET"))
 
