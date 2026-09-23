@@ -1,21 +1,53 @@
 # Release record and the queue behind it
 
-The submitted versions are **iOS 1.1.1 (11)** and **Android 1.0.2 (12)**, built
-from `7f2dc3e` and sent for review on **20 September 2026**. App Store Connect shows
-**Waiting for Review**; Play Console shows **Changes in review** for Closed testing -
-Alpha at 100%, with quick checks running. Their records retain the requested
-21 September release labels: [iOS](releases/notes/RELEASE_2026-09-21_IOS_1.1.1.md)
-and [Android](releases/notes/RELEASE_2026-09-21_ANDROID_12.md).
+The next versions are **iOS 1.1.2 (12)** and **Android 1.1.0 (13)**, prepared on
+**23 September 2026** and not yet built. They must be live before **30 September 2026
+00:00 UTC**, when Frez retires the old Dyno coefficient endpoint the released builds call.
 
-The previously released builds remain **iOS 1.1.0 (10)** and **Android 1.0.1 (11)**
-until approval. The development plan is kept in
+The released builds are **iOS 1.1.1 (11)** (App Store) and **Android 1.0.2 (12)** (Closed
+testing - Alpha), both approved. Android production access was applied for after the
+two-week closed test and is awaiting Google's decision. The development plan is kept in
 [history/RELEASE_1.1.0_PLAN.md](history/RELEASE_1.1.0_PLAN.md).
+
+## iOS 1.1.2 (12) and Android 1.1.0 (13) — the Frez endpoint, reliability, speed
+
+Status: **prepared, not built.** What's New: [docs/releases/1.1.2/](releases/1.1.2/) (iOS,
+English and French) and [ANDROID_1.1.0_WHATS_NEW.txt](releases/notes/ANDROID_1.1.0_WHATS_NEW.txt).
+
+- **Frez Dyno calibration moves to `/functions/v1/dyno-coefficient`.** Frez retires
+  `/v1/dyno/coefficient` on 30 September 2026 00:00 UTC; the key, header, query and
+  response are unchanged. A unit calibrated before the cutoff keeps its stored
+  coefficient, so on an old build only a Dyno connecting for the FIRST time fails.
+- **A finished session survives the app dying on its summary.** It is written to disk at
+  the finish and offered back on the next launch (both platforms).
+- **The session lets go at the finish** — stream, heartbeat, idle-timer lock, cue output —
+  instead of when the summary is dismissed.
+- **The 04:00 training day, finished properly:** reminders suppress by training day (a
+  session finished at 00:30 no longer silenced the next day), sessions are stamped by the
+  day they started, and the repair runs once per device rather than on every launch.
+- **Android cues match the iPhone's:** the output is kept fed between cues (it slept during
+  rests and clipped the next tick), and haptics use the vibrator's own tuned primitives.
+- **Speed:** saves no longer re-render every tab; History and Export stop decoding the
+  whole history on the main thread; the Android builder redraws only the row you edit;
+  Android ships a baseline profile.
+- **Reliability:** Progressor reconnect after a Bluetooth power cycle (iOS); direct
+  reconnect with the screen off and a shared scan budget (Android); rotation keeps open
+  work and a double tap cannot save twice (Android); the Live Activity stops counting
+  while the hold clock is stopped and goes stale if the app dies.
+- **Audio diagnostics:** whether other audio was playing when a session started, and
+  whether it still was two seconds later — evidence for the "a session paused my podcast"
+  report, which the code does not explain.
+
+Owed on hardware before release: a Frez Dyno first-time calibration against the new
+endpoint; Bluetooth off/on with a Progressor (iOS); screen-locked reconnect (Android);
+the recovery prompt after killing the app on a summary; Android cues on speaker and
+Bluetooth.
 
 ## iOS 1.1.1 (11) and Android 1.0.2 (12) — the training day, deleted routines, the gauge as a screen
 
-Status: **submitted for review on 20 September 2026**. iOS **1.1.1 (11)** is
-**Waiting for Review**, with What's New from [docs/releases/1.1.1/](releases/1.1.1/).
-Android **1.0.2 (12)** is **Changes in review**, Closed testing - Alpha at 100%.
+Status: **approved and released.** iOS **1.1.1 (11)** is on the App Store, with What's New
+from [docs/releases/1.1.1/](releases/1.1.1/). Android **1.0.2 (12)** is live on Closed
+testing - Alpha at 100%.
 The previous iOS 1.1.0 (10) was approved and released, so 1.1.1 is its own version.
 Android carries the day rule, the cascading delete, the odometer in History, the rimmed
 gauge picker and the gauge button on Today; its working screens (runner and gauge) keep

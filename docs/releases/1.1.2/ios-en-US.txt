@@ -1,0 +1,7 @@
+• A finished session is kept safe until you save it. If the app closes on the summary, it offers the session back the next time you open it.
+• Frez Dyno: calibration now uses Frez's new service. Update before 30 September to keep adding new Dynos.
+• History, Today and Export open faster, however long your history is.
+• A session finished after midnight no longer silences the next day's reminders.
+• The Live Activity stops counting while you're off the edge, and dims if the app closes mid-session.
+• Turning Bluetooth off and on no longer leaves the Progressor unable to reconnect.
+• Apple Watch: finishing a workout ends it right away, and Discard is now a hold.

@@ -1,0 +1,7 @@
+• Une séance terminée est conservée jusqu'à ce que vous l'enregistriez. Si l'app se ferme sur le résumé, elle vous la propose à la prochaine ouverture.
+• Frez Dyno : l'étalonnage utilise le nouveau service de Frez. Mettez à jour avant le 30 septembre pour continuer à ajouter de nouveaux Dyno.
+• L'historique, Aujourd'hui et l'export s'ouvrent plus vite, quelle que soit la longueur de votre historique.
+• Une séance terminée après minuit ne coupe plus les rappels du lendemain.
+• L'activité en direct s'arrête de compter quand vous lâchez la prise, et s'estompe si l'app se ferme en pleine séance.
+• Couper puis rallumer le Bluetooth n'empêche plus le Progressor de se reconnecter.
+• Apple Watch : terminer un entraînement le clôt aussitôt, et Supprimer se fait désormais par un appui maintenu.
