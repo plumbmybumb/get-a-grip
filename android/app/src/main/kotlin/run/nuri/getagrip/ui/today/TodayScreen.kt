@@ -358,7 +358,7 @@ fun TodayScreen(
     overview?.let { routine ->
         RoutineOverviewSheet(
             routine = routine,
-            summary = templates.summary(routine),
+            summary = rememberRoutineSummary(templates, routine),
             onClose = { overviewID = null; drainImportInbox() },
             onEdit = {
                 // Clear the sheet before opening the existing full-screen builder.
