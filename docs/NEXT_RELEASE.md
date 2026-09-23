@@ -1,7 +1,8 @@
 # Release record and the queue behind it
 
-The next versions are **iOS 1.1.2 (12)** and **Android 1.1.0 (13)**, prepared on
-**23 September 2026** and not yet built. They must be live before **30 September 2026
+**iOS 1.1.2 (12)** and **Android 1.1.0 (13)** were built and submitted for review on
+**23 September 2026** ([iOS record](releases/notes/RELEASE_2026-09-23_IOS_1.1.2.md),
+[Android record](releases/notes/RELEASE_2026-09-23_ANDROID_13.md)). They must be live before **30 September 2026
 00:00 UTC**, when Frez retires the old Dyno coefficient endpoint the released builds call.
 
 The released builds are **iOS 1.1.1 (11)** (App Store) and **Android 1.0.2 (12)** (Closed
@@ -11,7 +12,7 @@ two-week closed test and is awaiting Google's decision. The development plan is 
 
 ## iOS 1.1.2 (12) and Android 1.1.0 (13) — the Frez endpoint, reliability, speed
 
-Status: **prepared, not built.** What's New: [docs/releases/1.1.2/](releases/1.1.2/) (iOS,
+Status: **submitted for review on 23 September 2026.** What's New: [docs/releases/1.1.2/](releases/1.1.2/) (iOS,
 English and French) and [ANDROID_1.1.0_WHATS_NEW.txt](releases/notes/ANDROID_1.1.0_WHATS_NEW.txt).
 
 - **Frez Dyno calibration moves to `/functions/v1/dyno-coefficient`.** Frez retires

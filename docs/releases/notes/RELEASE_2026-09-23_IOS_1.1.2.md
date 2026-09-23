@@ -32,5 +32,8 @@ then `xcodebuild -exportArchive` with `destination: upload`; options copied unch
 
 ## App Store Connect
 
-Pending: version 1.1.2 created, What's New from `docs/releases/1.1.2/ios-en-US.txt`, build
-12 attached, submitted for review.
+Version 1.1.2 created; What's New (English) from `docs/releases/1.1.2/ios-en-US.txt`;
+promotional text restored (the new version's field came up blank, as on 1.1.1); build 12
+attached; screenshots, description, keywords and review notes carried over. Release:
+automatic, all users at once (unchanged). **Submitted for review 2026-09-23 15:43 CEST.**
+Build 12 is also on TestFlight in the internal "Test" group.
