@@ -146,6 +146,12 @@ object ReminderPlanner {
         return planned
     }
 
+    /// Minutes since the training day began — the order slots are OWED in.
+    private fun trainingDayMinute(slot: ReminderTime): Int =
+        Math.floorMod(slot.minutesFromMidnight - DayStamp.ROLLOVER_HOUR * 60, 24 * 60)
+
+    private val sharedGate = Mutex()
+
     /// Replans are fully serialized: one runs at a time, so a superseded run's in-flight
     /// adds can never land after the successor's wipe.
     ///
@@ -153,12 +159,6 @@ object ReminderPlanner {
     /// same guarantee with the opposite emphasis — nothing is cancelled, everything runs
     /// in order — which is the safer half here, because an `AlarmManager` write abandoned
     /// halfway leaves a real alarm behind rather than an unsent request.
-    /// Minutes since the training day began — the order slots are OWED in.
-    private fun trainingDayMinute(slot: ReminderTime): Int =
-        Math.floorMod(slot.minutesFromMidnight - DayStamp.ROLLOVER_HOUR * 60, 24 * 60)
-
-    private val sharedGate = Mutex()
-
     ///
     /// `isCurrent` is asked INSIDE the lock: a plan computed by a recompute that has since
     /// been superseded is dropped rather than installed and immediately replaced, so the
