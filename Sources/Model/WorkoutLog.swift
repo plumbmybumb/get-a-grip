@@ -227,6 +227,35 @@ extension WorkoutLog {
         self.notes = notes
     }
 
+    /// What to CALL this session's routine — the routine's live name while it still
+    /// exists, the frozen copy once it doesn't.
+    ///
+    /// The log freezes `templateName` at save time and must keep doing so: a deleted
+    /// routine has to leave its history with something to be called. But that made a
+    /// rename invisible in History (Nuri, 2026-08-11) — rename "Daily no-hangs" to
+    /// "Morning ladder" and every past session stayed filed under a name that appeared
+    /// nowhere else in the app. Worse, it was already INCONSISTENT: the trend card titled
+    /// itself from the newest log in the group, so one new session made the card say the
+    /// new name while every row beneath it said the old one.
+    ///
+    /// Resolving at DISPLAY time rather than rewriting the logs is the cheaper and more
+    /// honest fix: renaming stays a routine edit instead of a write across the whole
+    /// history, renaming back needs no second migration, and what the session actually
+    /// WAS — its plan, its reps, its grips — is still frozen and still untouchable.
+    ///
+    /// `routineNames` is `TemplateStore.routineNames`. History's rows, its trend cards and
+    /// the analysis export all name a session through this one rule.
+    func displayName(in routineNames: [UUID: String]) -> String {
+        Self.displayName(templateID: templateID, templateName: templateName, in: routineNames)
+    }
+
+    /// The same rule for a session already copied off its model, where the trend fold
+    /// works on values off the main actor.
+    static func displayName(templateID: UUID?, templateName: String,
+                            in routineNames: [UUID: String]) -> String {
+        templateID.flatMap { routineNames[$0] } ?? templateName
+    }
+
     /// An unknown kind from a newer build reads as `.hang` — see `SessionKind`.
     var kind: SessionKind {
         get { SessionKind(fallback: kindRaw) }

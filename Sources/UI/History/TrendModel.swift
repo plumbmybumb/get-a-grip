@@ -118,7 +118,9 @@ struct TrendModel: Equatable, Sendable {
             // named from that session; a routine deleted from the store gets none.
             let live = row.templateID.map { routineNames[$0] != nil } ?? true
             if chartedAny, live, group.name == nil {
-                group.name = row.templateID.flatMap { routineNames[$0] } ?? row.templateName
+                group.name = WorkoutLog.displayName(templateID: row.templateID,
+                                                    templateName: row.templateName,
+                                                    in: routineNames)
                 order.append(key)
             }
             groups[key] = group

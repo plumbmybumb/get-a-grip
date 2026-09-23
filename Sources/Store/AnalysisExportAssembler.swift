@@ -49,7 +49,7 @@ enum AnalysisExportAssembler {
         /// One session, or nil for the whole history.
         let workoutID: UUID?
         /// The routines' live names at the tap, so a renamed routine exports under the
-        /// name History shows — the same rule as `HistoryView.displayName(of:)`.
+        /// name History shows — `WorkoutLog.displayName(in:)`.
         let routineNames: [UUID: String]
         let today: DayStamp
     }
@@ -69,9 +69,7 @@ enum AnalysisExportAssembler {
             FetchDescriptor<MaxRecord>(sortBy: [SortDescriptor(\.recordedAt)]))
         let names = source.routineNames
         return build(logs: fetchedLogs, maxRecords: fetchedMaxes,
-                     displayName: { log in
-                         log.templateID.flatMap { names[$0] } ?? log.templateName
-                     },
+                     displayName: { $0.displayName(in: names) },
                      today: source.today, calendar: calendar)
     }
 
