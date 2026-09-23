@@ -49,8 +49,10 @@ struct HistoryView: View {
     /// `WorkoutLog.resultsData` is write-once, so this cache never invalidates. Only the
     /// session rows read it now — one leading grip per VISIBLE row — since the trend deck
     /// decodes its own copy off the main actor (`TrendModel`); without the cache every
-    /// body evaluation re-decoded each visible row's JSON on the main thread. A reference type mutated during body, deliberately outside
-    /// observation — the same trick as ForceTraceView's AxisMemory.
+    /// body evaluation re-decoded each visible row's JSON on the main thread.
+    ///
+    /// A reference type mutated during body, deliberately outside observation — the same
+    /// trick as ForceTraceView's AxisMemory.
     ///
     /// A deleted log leaves its entry behind, which is deliberate rather than a leak:
     /// undo re-inserts the SAME id carrying byte-identical `resultsData`, so the stale
