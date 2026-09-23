@@ -19,6 +19,7 @@ import run.nuri.getagrip.debug.Seeds
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.l10n.AppResources
 import run.nuri.getagrip.l10n.STRING_KEYS
+import run.nuri.getagrip.runner.FinishedSessionDraftStore
 import run.nuri.getagrip.runner.LiveUpdateNotification
 import run.nuri.getagrip.runner.SessionForegroundService
 import run.nuri.getagrip.store.AlarmGraceBackstop
@@ -61,6 +62,11 @@ class GetAGripApplication : Application() {
     val database: GetAGripDatabase by lazy { GetAGripDatabase.open(this) }
 
     val clock: DayClock by lazy { DayClock() }
+
+    /// The one finished-but-unsaved session, if any — see `FinishedSessionDraft`.
+    val finishedSessionDrafts: FinishedSessionDraftStore by lazy {
+        FinishedSessionDraftStore(java.io.File(filesDir, FinishedSessionDraftStore.FILE_NAME))
+    }
 
     /// THE SPOTLIGHT TOUR — one controller for the whole PROCESS, not one per Activity.
     ///

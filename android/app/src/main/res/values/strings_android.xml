@@ -49,4 +49,7 @@
     <string name="a_open_in_a_browser">Open in a browser</string>
     <string name="a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose">Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice.</string>
     <string name="a_use_to_add_a_max_each_grip_has_an_edit_button_for_changi">Use + to add a max. Each grip has an Edit button for changing hand values and reviewing earlier records. Your charts and percentage targets use these same numbers.</string>
+    <string name="a_open_get_a_grip_to_save_it">Open Get a Grip to save it.</string>
+    <string name="a_unsaved_session_from_s">Unsaved session from %s</string>
+    <string name="a_this_session_finished_but_the_app_closed_before_it_was_s">This session finished, but the app closed before it was saved.</string>
 </resources>

@@ -205,6 +205,8 @@ fun RootTabView() {
                             run.nuri.getagrip.data.MaxRecordEntity.from(
                                 grip = it.grip, kg = it.kg, source = MaxSource.measured, side = it.side)
                         },
+                        // The finished-session draft's id: a Save and a launch recovery are one row.
+                        id = outcome.id,
                     )
                     if (saved != null) feed.refresh()
                     saved != null
@@ -434,6 +436,10 @@ fun RootTabView() {
     if (loggingSession) {
         SessionLogSheet(onClose = { loggingSession = false })
     }
+
+    // A session that finished but was never saved — offered only here, below the runner's
+    // early return, so it can never appear over a workout that is still going.
+    UnsavedSessionPrompt()
 
 }
 

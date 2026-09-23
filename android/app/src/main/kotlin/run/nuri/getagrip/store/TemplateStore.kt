@@ -449,6 +449,9 @@ class TemplateStore(
 
     suspend fun routine(id: UUID): SessionTemplateEntity? = gateway.routine(id)
 
+    /// One logged session by id — a point read. Null when absent or when the read failed.
+    suspend fun session(id: UUID): WorkoutLogEntity? = gateway.log(id)
+
     fun plan(template: SessionTemplateEntity): SessionPlan = template.plan
 
     /// null means "new", and a new routine is BLANK — never `.starter`. No screen offers

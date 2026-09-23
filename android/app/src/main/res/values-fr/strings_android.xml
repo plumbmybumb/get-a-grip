@@ -48,4 +48,7 @@
     <string name="a_open_in_a_browser">Ouvrir dans un navigateur</string>
     <string name="a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose">Get a Grip n’est pas un dispositif médical et ne diagnostique, ne traite, ne guérit ni ne prévient aucune affection. Consultez un professionnel de santé pour un avis médical.</string>
     <string name="a_use_to_add_a_max_each_grip_has_an_edit_button_for_changi">Utilisez + pour ajouter un max. Chaque prise a un bouton Modifier pour ajuster les valeurs de chaque main et consulter les anciens tests. Ces mêmes valeurs servent aux graphiques et aux cibles en pourcentage.</string>
+    <string name="a_open_get_a_grip_to_save_it">Ouvre Get a Grip pour l\'enregistrer.</string>
+    <string name="a_unsaved_session_from_s">Séance non enregistrée du %s</string>
+    <string name="a_this_session_finished_but_the_app_closed_before_it_was_s">Cette séance s\'est terminée, mais l\'app s\'est fermée avant qu\'elle soit enregistrée.</string>
 </resources>
