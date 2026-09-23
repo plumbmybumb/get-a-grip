@@ -24,7 +24,7 @@ import UIKit
 /// scroll. `completionText` comes in from `TemplateStore` for the same reason it exists
 /// there: the spoken sentence and the "1 of 2" fragment beside it must never be able to
 /// drift apart, and rebuilding the sentence here would be a second source of truth.
-struct RoutineCard: View {
+struct RoutineCard: View, Equatable {
     let summary: RoutineSummary
     /// `TemplateStore.completionText(_:)` — a whole sentence, which is what VoiceOver
     /// reads in place of the numeral fragment.
@@ -34,9 +34,9 @@ struct RoutineCard: View {
     /// graphite line, so swiping away to browse and back still answers "which one is
     /// being asked of me right now". Never set on a single-routine screen, where it
     /// would distinguish the only thing there is.
-    var isUpNext: Bool = false
-    var deviceState: ProgressorConnectionState = .idle
-    var battery: Double? = nil
+    let isUpNext: Bool
+    let deviceState: ProgressorConnectionState
+    let battery: Double?
 
     var onStart: () -> Void
     /// The same session with no gauge — timers, count-in and hand prompts only.
@@ -51,6 +51,18 @@ struct RoutineCard: View {
     var onMakePrimary: () -> Void
     var onDelete: () -> Void
     var onDemo: () -> Void
+
+    /// Compared on what the card DRAWS, never on the closures — eleven of them, which
+    /// made the card unequal to itself on every Today render. Each closure acts on the
+    /// routine `summary.id` names, so two cards with equal values act identically. The
+    /// house pattern from the builder (`BuilderInputs`): values plus closures, no
+    /// `Binding`, `==` nonisolated over `let` Sendable inputs. A new drawn input has to
+    /// join this list the day the card starts reading it.
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        a.summary == b.summary && a.completionText == b.completionText
+            && a.isUpNext == b.isUpNext && a.deviceState == b.deviceState
+            && a.battery == b.battery
+    }
 
     @Environment(\.openURL) private var openURL
     /// Only consulted by `planRow`, to swap the glyphed stats for the plain sentence at
