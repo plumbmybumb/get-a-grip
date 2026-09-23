@@ -7,20 +7,17 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/// **One writer at a time, in submission order.** The fix for fire-and-forget writes that
-/// raced each other on a multi-threaded pool — see `SettingsStore` — and the one ordering
-/// mechanism for reminder replans — see `TemplateStore.replanLane`.
+/// **One writer at a time, in submission order** — for `SettingsStore`'s writes and
+/// `TemplateStore.replanLane`.
 ///
-/// Not `limitedParallelism(1)`: a lane of one THREAD still interleaves at every suspension
-/// point, and `DataStore.edit` suspends, so two launched writes could still commit out of
-/// order. Here a second write is not even looked at until the first one's `apply` returns.
+/// Not `limitedParallelism(1)`: one THREAD still interleaves at every suspension, and
+/// `DataStore.edit` suspends, so writes could commit out of order. Here a second write
+/// waits for the first's `apply` to return.
 ///
-/// Whatever queued up while one batch was being written is applied as the NEXT batch, in
-/// order — so a burst (a draft stash per keystroke) costs one file write rather than one
-/// per change, and the file still ends up holding the last value written. The drain is a
-/// coroutine that exists only while there is something to write, never a consumer parked
-/// forever on the store's scope: a scope's children finishing is how a caller (and a test)
-/// knows the writes it made have landed.
+/// Values queued during a write are applied as the NEXT batch, in order, so a burst (a
+/// draft stash per keystroke) costs one file write and still ends on the last value. The
+/// drain coroutine exists only while there is work, never parked on the store's scope, so a
+/// scope's children finishing tells a caller (or test) the writes landed.
 internal class SerialWriteLane<T>(
     private val scope: CoroutineScope,
     private val apply: suspend (List<T>) -> Unit,
@@ -41,9 +38,9 @@ internal class SerialWriteLane<T>(
         try {
             while (true) {
                 val batch = synchronized(lock) {
-                    // Cleared under the SAME lock that saw the queue empty. Clearing it
-                    // afterwards left a gap in which a `submit` saw a drain still running,
-                    // queued its value and started nothing — and nothing ever wrote it.
+                    // Cleared under the SAME lock that saw the queue empty; clearing after
+                    // left a gap where a `submit` queued behind a finishing drain and
+                    // nothing ever wrote it.
                     if (pending.isEmpty()) { draining = false; return }
                     ArrayList(pending).also { pending.clear() }
                 }
@@ -52,13 +49,12 @@ internal class SerialWriteLane<T>(
                 } catch (error: CancellationException) {
                     throw error
                 } catch (_: Throwable) {
-                    // A failed write must not take the lane down with it: every later write
-                    // would then be silently dropped for the life of the process.
+                    // A failed write must not kill the lane, or every later write is
+                    // silently dropped.
                 }
             }
         } catch (error: Throwable) {
-            // Only cancellation reaches here. Whatever is still pending stays queued for
-            // the next `submit` to drain.
+            // Only cancellation reaches here; pending values wait for the next `submit`.
             synchronized(lock) { draining = false }
             throw error
         }

@@ -14,12 +14,9 @@ class UnsavedSessionRecovery(
     private val drafts: FinishedSessionDraftStore,
     private val templates: TemplateStore,
 ) {
-    /// The draft to offer, or null.
-    ///
-    /// **A draft whose row already exists is not offered — it is quietly finished.** That
-    /// is a Save that landed a moment before the process died, ahead of the delete that
-    /// should have followed it; offering it again would ask the climber to save a session
-    /// History already shows, and saving it would overwrite the RPE they gave it with none.
+    /// The draft to offer, or null. **A draft whose row already exists is quietly finished,
+    /// not offered**: a Save landed just before the process died, and saving again would
+    /// overwrite the RPE given with none.
     suspend fun pending(): FinishedSessionDraft? {
         val draft = withContext(Dispatchers.IO) { drafts.load() } ?: return null
         if (templates.session(draft.id) != null) {
@@ -29,9 +26,9 @@ class UnsavedSessionRecovery(
         return draft
     }
 
-    /// Through the ordinary recording path, under the draft's own id, with no effort
-    /// reading — nobody answered the summary's question, and a guess is not an answer. The
-    /// draft is deleted only once the row has landed, so a failed save can be retried.
+    /// Through the ordinary recording path, under the draft's id, with no effort reading (a
+    /// guess is not an answer). Deleted only once the row lands, so a failed save can
+    /// retry.
     suspend fun save(draft: FinishedSessionDraft): Boolean {
         val saved = templates.recordSession(
             plan = draft.plan,

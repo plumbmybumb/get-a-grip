@@ -8,13 +8,12 @@ enum class TareStartDecision {
     deferred,
 }
 
-/// The tare/start ordering rule belongs to one physical link. Keeping this decision pure
-/// makes the link reset explicit: preserving the latch after the link died turned the
-/// safety stop into a process-wide stream stop because the ACK that could release it was
-/// on the retired connection.
+/// The tare/start ordering rule belongs to one physical link. Pure, so the link reset is
+/// explicit: a latch that outlived its link became a process-wide stream stop, because the
+/// releasing ACK was on the retired connection.
 ///
-/// TRANSLATION NOTE: Swift's `struct` with `mutating func`s becomes a class, per the
-/// house type mapping — the caller drives it and nothing here wants value semantics.
+/// TRANSLATION NOTE: Swift's `mutating` struct becomes a class; nothing here wants value
+/// semantics.
 class TareIntegrityLatch {
     var isConfirmed: Boolean = true
         private set
@@ -40,12 +39,9 @@ class TareIntegrityLatch {
     }
 
     fun clearForNewLink() {
-        // The queue, ACKs and deferred start all die with the physical link; this latch
-        // must die with them or every later start remains stranded for the process life.
-        //
-        // Mutation-checked 2026-08-16 on iOS: making this a no-op (the behaviour where the
-        // latch survived the link) fails `lostLinkResetsTareLatchSoTheNextStartIsWritten`
-        // with no `startWeightMeasurement` ever written — which is the reported bug.
+        // Queue, ACKs and deferred start die with the link; the latch must too, or every
+        // later start is stranded. Mutation-checked on iOS: a no-op here fails
+        // `lostLinkResetsTareLatchSoTheNextStartIsWritten`.
         isConfirmed = true
         latestTareID = null
     }

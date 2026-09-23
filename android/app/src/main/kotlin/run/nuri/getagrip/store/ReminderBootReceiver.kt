@@ -9,21 +9,15 @@ import android.content.Intent
 import kotlinx.coroutines.launch
 import run.nuri.getagrip.GetAGripApplication
 
-/// **An alarm that dies with a reboot is a reminder that silently stops.**
+/// **An alarm that dies with a reboot is a reminder that silently stops.** `AlarmManager`
+/// drops pending alarms on restart while the routine still shows its times with the switch
+/// on. iOS's `UNUserNotificationCenter` keeps its schedule; on Android it is the app's to
+/// rebuild, here.
 ///
-/// `AlarmManager` drops every pending alarm when the phone restarts, and there is nothing
-/// on screen to say so — the routine still shows its two times, the switch is still on,
-/// and the nudge simply never comes again. iOS has no counterpart to this file because
-/// `UNUserNotificationCenter` owns the schedule across restarts; on Android the schedule is
-/// the app's to keep, so it is rebuilt here.
+/// **Replans through the store, never by re-reading alarms** (which cannot be enumerated):
+/// `syncDerived()`, the path every save, session and midnight uses. One plan, one writer.
 ///
-/// **It replans through the store, never by re-reading the alarms.** Android cannot
-/// enumerate pending alarms, so `syncDerived()` — the same call a save, a finished session
-/// and midnight all go through — is the only thing that knows what the plan should be. One
-/// plan, one writer; a second scheduling path here is how the two would drift apart.
-///
-/// `MY_PACKAGE_REPLACED` is in the filter for the same reason: an in-place update also
-/// clears pending alarms.
+/// `MY_PACKAGE_REPLACED` too: an in-place update also clears pending alarms.
 class ReminderBootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -34,17 +28,15 @@ class ReminderBootReceiver : BroadcastReceiver() {
         }
         val app = context.applicationContext as? GetAGripApplication ?: return
 
-        // `goAsync` is what buys the Room read: a receiver's `onReceive` returns on the
-        // main thread within seconds, and the replan has to open the database. The result
-        // is finished on the store's own scope so the write lane is the one every other
-        // writer uses.
+        // `goAsync` buys time for the Room read (`onReceive` must return within seconds);
+        // finished on the store's scope so the replan uses the usual write lane.
         val result = goAsync()
         app.storeScope.launch {
             try {
                 app.templates.syncDerived()
             } finally {
-                // Always, on every path. A `goAsync` result never finished holds a wake
-                // lock until the system times it out.
+                // On every path: an unfinished `goAsync` result holds a wake lock until the
+                // system times out.
                 result.finish()
             }
         }
