@@ -15,6 +15,8 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import run.nuri.getagrip.ble.BroadcastGaugeClient
@@ -156,8 +158,33 @@ class DeviceStore(
 
     // MARK: - Published state
 
-    var state: ProgressorConnectionState by mutableStateOf(ProgressorConnectionState.Idle)
-        private set
+    var state: ProgressorConnectionState
+        get() = stateValue
+        private set(value) {
+            stateValue = value
+            linkFlow.value = Link(value.isConnected, connectionEpoch)
+        }
+    private var stateValue: ProgressorConnectionState by mutableStateOf(ProgressorConnectionState.Idle)
+
+    /// The link as a stream a SESSION can follow on its own scope — connected or not, and
+    /// which connection. See `RunnerSession.watchConnection`.
+    ///
+    /// **Why a flow and not the Compose state above.** The runner used to learn about a
+    /// dropped or restored link from a `LaunchedEffect` on its screen, and a composition
+    /// stops running effects once the Activity stops — so a session the foreground service
+    /// was keeping alive with the screen locked never heard `ConnectionLost` or
+    /// `ConnectionRestored`, and the one thing the service exists for (reconnecting and
+    /// re-kicking the stream behind a locked screen) never reached the engine. A
+    /// `StateFlow` is written synchronously from the client's callback and collected on the
+    /// session's own scope, which no screen can pause.
+    ///
+    /// The epoch rides along because a flow CONFLATES: a drop and a reconnect landing
+    /// between two collections would otherwise look like no change at all, and the engine
+    /// would never break its timeline across a link it did not see go.
+    data class Link(val isConnected: Boolean, val epoch: ULong)
+
+    private val linkFlow = MutableStateFlow(Link(isConnected = false, epoch = 0uL))
+    val link: StateFlow<Link> get() = linkFlow
 
     /// Increments when a new connected link is published. A tare confirmation carries this
     /// epoch so an alert from an old link cannot authorize a write on a new one.

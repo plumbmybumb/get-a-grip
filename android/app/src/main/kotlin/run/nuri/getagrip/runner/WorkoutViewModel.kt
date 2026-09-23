@@ -45,7 +45,6 @@ class WorkoutViewModel : ViewModel() {
 class ActiveWorkout(val template: SessionTemplateEntity, val session: RunnerSession) {
     val summary = WorkoutSummaryState()
     var pausedByTour = false
-    var lastConnected: Boolean? = null
     private var finishedOutcome: SessionOutcome? = null
 
     fun outcome(): SessionOutcome = finishedOutcome ?: session.outcome().also { finishedOutcome = it }
