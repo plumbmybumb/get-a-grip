@@ -3,6 +3,9 @@
 
 package run.nuri.getagrip.store
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
 import androidx.room.withTransaction
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -55,6 +58,16 @@ interface StoreGateway {
     /// (`TemplateStore.persistAndSync`) is the one place that turns that into a
     /// `saveError`, so no write path can forget to report one.
     suspend fun write(work: suspend (StoreWriter) -> Unit)
+
+    /// Counts calls to `write`, landed or not, so a reader of the raw tables (`HistoryFeed`)
+    /// can tell whether the database may have changed since it last read. Observable, so a
+    /// screen keyed on it rereads when a write lands under it.
+    ///
+    /// Kept HERE, by the one door every write goes through, rather than by one of the
+    /// callers: the store's write path is not the only writer (the training-day repair
+    /// writes straight through the gateway), and a counter kept by a caller silently misses
+    /// every write that did not come through it.
+    val writeRevision: Long
 }
 
 /// The mutations, named one by one rather than exposed as a live DAO: it is what makes
@@ -97,6 +110,9 @@ class RoomStoreGateway(
 
     private val lane = Mutex()
 
+    override var writeRevision: Long by mutableLongStateOf(0L)
+        private set
+
     override suspend fun allRoutines(): List<SessionTemplateEntity>? =
         read { db.routines().all() }
 
@@ -120,8 +136,15 @@ class RoomStoreGateway(
 
     override suspend fun write(work: suspend (StoreWriter) -> Unit) {
         lane.withLock {
-            withContext(dispatcher) {
-                db.withTransaction { work(RoomWriter(db)) }
+            try {
+                withContext(dispatcher) {
+                    db.withTransaction { work(RoomWriter(db)) }
+                }
+            } finally {
+                // AFTER the transaction, landed or not, and still inside the lane: a read
+                // that started before it is then one revision behind and reads again, where
+                // a bump before the transaction could mark pre-write rows as current.
+                writeRevision++
             }
         }
     }

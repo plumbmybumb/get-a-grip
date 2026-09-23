@@ -93,6 +93,7 @@ private class PreviewGateway(
         LogDayStamp(it.id, it.startedAt, it.finishedAt, it.dayKey, it.kindRaw)
     }
     override suspend fun write(work: suspend (StoreWriter) -> Unit) = Unit
+    override val writeRevision: Long = 0L
 
     fun asPreviewSource(): HistorySource = object : HistorySource {
         override suspend fun allLogs() = logs

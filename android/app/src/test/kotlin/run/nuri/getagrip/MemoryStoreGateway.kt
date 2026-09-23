@@ -36,7 +36,12 @@ internal open class MemoryStoreGateway : StoreGateway, StoreWriter {
         logs.filter { it.startedAt.isBefore(before) }.map {
             LogDayStamp(it.id, it.startedAt, it.finishedAt, it.dayKey, it.kindRaw)
         }
-    override suspend fun write(work: suspend (StoreWriter) -> Unit) = work(this)
+    final override var writeRevision = 0L
+        private set
+
+    override suspend fun write(work: suspend (StoreWriter) -> Unit) {
+        try { work(this) } finally { writeRevision++ }
+    }
 
     override suspend fun putRoutine(row: SessionTemplateEntity) {
         routines.removeAll { it.id == row.id }; routines.add(row)
