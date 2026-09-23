@@ -11,10 +11,12 @@ import UserNotifications
 /// re-adding an identifier replaces the request in place, so editing 08:00 → 09:00
 /// moves one reminder rather than accumulating two.
 ///
-/// Satisfied slots are suppressed for TODAY only. iOS has no start date for a daily
-/// repeating calendar trigger, so we fill its available 64-request budget with dated
-/// one-shot requests, earliest first. Normal app activity replenishes this finite
-/// horizon; opening the app is required before the queued horizon runs out.
+/// Satisfied slots are suppressed for TODAY only — the TRAINING day, which turns at
+/// `DayStamp.rolloverHour`, because that is the day `outstandingToday` was counted for.
+/// iOS has no start date for a daily repeating calendar trigger, so we fill its
+/// available 64-request budget with dated one-shot requests, earliest first. Normal app
+/// activity replenishes this finite horizon; opening the app is required before the
+/// queued horizon runs out.
 @MainActor
 enum ReminderPlanner {
     /// One routine's reminder settings, flattened to Sendable value data so the whole
@@ -69,8 +71,12 @@ enum ReminderPlanner {
         for routine in routines where routine.enabled {
             // Suppress from the FRONT of the day. Having trained once, the morning slot
             // is the one you have satisfied; the evening one is still owed. Dropping the
-            // last slot instead would silence the reminder you still need.
-            let sorted = Set(routine.reminders).sorted()
+            // last slot instead would silence the reminder you still need. The front of
+            // the TRAINING day: a 01:00 slot is the last of the evening before, not the
+            // first of the morning, so it sorts after 23:00.
+            let sorted = Set(routine.reminders).sorted {
+                trainingDayOrder($0) < trainingDayOrder($1)
+            }
             let suppressed = max(0, sorted.count - max(0, routine.outstandingToday))
             for (index, slot) in sorted.enumerated() {
                 let id = identifier(routine: routine.id, slot: slot)
@@ -87,9 +93,22 @@ enum ReminderPlanner {
         return planned
     }
 
+    /// Minutes since the training day began — the order a day's slots are lived in.
+    nonisolated static func trainingDayOrder(_ time: ReminderTime) -> Int {
+        let rollover = DayStamp.rolloverHour * 60
+        return (time.minutesFromMidnight - rollover + 1440) % 1440
+    }
+
     /// Resolve the slot plan to future calendar dates. Every enabled slot returns
     /// tomorrow even when today's target is met; deleting its repeating request used
     /// to silence every future day until the app happened to replan again.
+    ///
+    /// **Suppression is keyed to the TRAINING day each firing falls in**, never to the
+    /// calendar day. `outstandingToday` is counted for the training day, so a session
+    /// finished at 00:30 satisfied the evening before — and suppressing the new calendar
+    /// day's slots on the strength of it deleted the next morning's reminders from the
+    /// notification center (only obsolete ids are retired, and those were obsolete). The
+    /// same rule silences a 01:00 slot after a 23:30 session: it is still that evening.
     nonisolated static func scheduledRequests(for routines: [RoutinePlanInput],
                                               now: Date = .now,
                                               calendar: Calendar = .current,
@@ -98,15 +117,18 @@ enum ReminderPlanner {
         guard !slots.isEmpty, limit > 0 else { return [] }
         let budget = min(64, limit)
         let today = calendar.startOfDay(for: now)
+        let trainingToday = DayStamp(trainingDayOf: now, calendar: calendar)
         var result: [PlannedReminder] = []
         for offset in 0...budget {
             guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
             var candidates: [(Date, PlannedReminder)] = []
-            for slot in slots where offset > 0 || !slot.suppressToday {
+            for slot in slots {
                 guard let hour = slot.components.hour, let minute = slot.components.minute,
                       let fire = calendar.date(bySettingHour: hour, minute: minute, second: 0,
                                                of: day), fire > now,
                       calendar.isDate(fire, inSameDayAs: day) else { continue }
+                if slot.suppressToday,
+                   DayStamp(trainingDayOf: fire, calendar: calendar) == trainingToday { continue }
                 let components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second],
                                                          from: fire)
                 let dated = PlannedReminder(

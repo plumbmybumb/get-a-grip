@@ -85,6 +85,79 @@ final class ReminderPlannerTests: XCTestCase {
         XCTAssertEqual(planned, replanned, "replanning must replace the same dated IDs")
     }
 
+    // MARK: - The training day, not the calendar day
+
+    /// The dates the plan fires at, in `calendar`, as (day of month, hour, minute).
+    private func firings(_ planned: [ReminderPlanner.PlannedReminder],
+                         _ calendar: Calendar) throws -> [[Int]] {
+        try planned.map {
+            let date = try XCTUnwrap(calendar.date(from: $0.components))
+            let c = calendar.dateComponents([.day, .hour, .minute], from: date)
+            return [c.day!, c.hour!, c.minute!]
+        }
+    }
+
+    /// Finishing the day's last session at 00:15 satisfied the EVENING BEFORE — that is
+    /// the training day `outstandingToday` is counted for. Suppressing by calendar day
+    /// silenced the new morning's 08:00 and 19:00 instead, and the replan then retired
+    /// them from the notification center.
+    func testASessionAfterMidnightDoesNotSilenceTheComingDay() throws {
+        let calendar = DayStamp.utcCalendar
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 21,
+                                                                   hour: 0, minute: 30)))
+        let routines = [input(routineA, "Daily", [ReminderTime(hour: 8, minute: 0),
+                                                 ReminderTime(hour: 19, minute: 0)], outstanding: 0)]
+        let planned = ReminderPlanner.scheduledRequests(for: routines, now: now,
+                                                        calendar: calendar, limit: 3)
+        XCTAssertEqual(try firings(planned, calendar), [[21, 8, 0], [21, 19, 0], [22, 8, 0]])
+    }
+
+    /// At 23:30 the training day still has until 04:00 to run, so a finished day
+    /// silences a 01:00 slot on the next calendar date too — and nothing past 04:00.
+    func testAFinishedEveningAlsoSilencesItsSmallHoursSlot() throws {
+        let calendar = DayStamp.utcCalendar
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 20,
+                                                                   hour: 23, minute: 30)))
+        let routines = [input(routineA, "Late", [ReminderTime(hour: 23, minute: 45),
+                                                ReminderTime(hour: 1, minute: 0),
+                                                ReminderTime(hour: 8, minute: 0)], outstanding: 0)]
+        let planned = ReminderPlanner.scheduledRequests(for: routines, now: now,
+                                                        calendar: calendar, limit: 4)
+        XCTAssertEqual(try firings(planned, calendar),
+                       [[21, 8, 0], [21, 23, 45], [22, 1, 0], [22, 8, 0]])
+
+        // Nothing done yet: the same evening keeps every slot it still has.
+        let owed = [input(routineA, "Late", [ReminderTime(hour: 23, minute: 45),
+                                            ReminderTime(hour: 1, minute: 0)], outstanding: 2)]
+        XCTAssertEqual(try firings(ReminderPlanner.scheduledRequests(for: owed, now: now,
+                                                                     calendar: calendar, limit: 2),
+                                   calendar),
+                       [[20, 23, 45], [21, 1, 0]])
+    }
+
+    /// Past the rollover it is a new training day: one session of two done at 04:15
+    /// silences that morning and leaves the evening owed.
+    func testAfterTheRolloverTheMorningIsTheOneSatisfied() throws {
+        let calendar = DayStamp.utcCalendar
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 21,
+                                                                   hour: 4, minute: 30)))
+        let routines = [input(routineA, "Daily", [ReminderTime(hour: 8, minute: 0),
+                                                 ReminderTime(hour: 19, minute: 0)], outstanding: 1)]
+        let planned = ReminderPlanner.scheduledRequests(for: routines, now: now,
+                                                        calendar: calendar, limit: 2)
+        XCTAssertEqual(try firings(planned, calendar), [[21, 19, 0], [22, 8, 0]])
+    }
+
+    /// "The front of the day" is the front of the TRAINING day: with one of two done,
+    /// the 08:00 is the satisfied one and the 01:00 — the end of that evening — is owed.
+    func testSuppressionCountsFromTheRolloverNotFromMidnight() {
+        let requests = ReminderPlanner.requests(
+            for: [input(routineA, "Owl", [ReminderTime(hour: 1, minute: 0),
+                                          ReminderTime(hour: 8, minute: 0)], outstanding: 1)])
+        XCTAssertEqual(requests.map { $0.components.hour }, [8, 1])
+        XCTAssertEqual(requests.map(\.suppressToday), [true, false])
+    }
+
     // MARK: - Identity
 
     /// `ReminderTime` has no UUID: identity IS the time. That makes the notification id
