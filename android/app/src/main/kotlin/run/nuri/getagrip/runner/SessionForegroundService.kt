@@ -44,20 +44,27 @@ class SessionForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = pending
+        // **`startForeground` FIRST, on every path — including the one about to stop.**
+        // `startForegroundService` is a promise to call it within a few seconds, and the
+        // promise is the SERVICE's to keep whether or not it still wants to run: a stray
+        // start that went straight to `stopSelf()` crashed the whole process with
+        // `ForegroundServiceDidNotStartInTimeException` — reachable whenever a session ended
+        // (clearing `pending`) between the start request and this callback. So a stray is
+        // promoted on a placeholder and stopped in the same breath; the placeholder goes
+        // with it and is never on screen long enough to read.
+        ServiceCompat.startForeground(
+            this,
+            LiveUpdateNotification.NOTIFICATION_ID,
+            notification ?: LiveUpdateNotification.placeholder(this),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
+        )
         if (notification == null) {
             // Nothing to show means nothing to keep alive: a service that started with no
             // card behind it is a stray, and stopping is the honest response. (This is the
             // path a system-initiated restart would take, which is also why the return
-            // below is NOT_STICKY.)
-            stopSelf()
-            return START_NOT_STICKY
+            // below is NOT_STICKY.) `onDestroy` removes the placeholder with the service.
+            stopSelf(startId)
         }
-        ServiceCompat.startForeground(
-            this,
-            LiveUpdateNotification.NOTIFICATION_ID,
-            notification,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
-        )
         return START_NOT_STICKY
     }
 

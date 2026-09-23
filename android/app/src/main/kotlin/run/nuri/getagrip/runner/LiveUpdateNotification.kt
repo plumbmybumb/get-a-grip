@@ -238,6 +238,23 @@ object LiveUpdateNotification {
         return builder.build()
     }
 
+    /// The card a STRAY service start runs in for the instant before it stops — see
+    /// `SessionForegroundService.onStartCommand`. Silent, low-importance and titled with the
+    /// app's name, because it may flash on screen for a frame and must not claim a phase.
+    fun placeholder(context: Context): Notification {
+        ensureChannel(context)
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle(context.getString(R.string.app_name))
+            .setContentIntent(openSession(context))
+            .setOngoing(true)
+            .setSilent(true)
+            .setShowWhen(false)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
     /// Tapping the card returns to the session. `singleTask` plus CLEAR_TOP means the
     /// running Activity is brought forward rather than a second one created on top of it.
     private fun openSession(context: Context): PendingIntent = PendingIntent.getActivity(
