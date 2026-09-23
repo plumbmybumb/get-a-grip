@@ -51,35 +51,26 @@ import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
 
-/// A frozen share request, exactly like `ShareCalendarRequest`. The deck behind the sheet
-/// can keep moving — a swipe, an edit landing, a delete — and what is on screen stays the
-/// routine whose menu was tapped. The sheet observes NO store for the same reason: the code
-/// it draws and the name beside it must describe one thing.
+/// A frozen share request, like `ShareCalendarRequest`: the deck can keep moving and the sheet
+/// observes NO store, so the code and the name beside it describe one thing.
 data class RoutineShareRequest(
     val name: String,
     val metaLine: String,
     val signatureFingers: FingerSet?,
-    /// Carried so the mark here wears the SAME rung colour as the card it was opened from —
-    /// bleu specifically means "nothing resolves", and a max-day routine whose card burns
-    /// red must not turn bleu one presentation later.
+    /// The card's own rung colour: bleu means "nothing resolves", so a red max-day card must not
+    /// turn bleu here.
     val peakIntensity: Double?,
     val url: String,
 )
 
-/// The routine as a QR code. The code IS the routine — there is no server, no account and
-/// no link that can rot: everything the recipient's app needs rides in the payload, and
-/// percentage targets resolve against THEIR maxes, which is the point of prescribing a
-/// fraction rather than a kilogram.
+/// The routine as a QR code. The code IS the routine — no server, no account, no link to rot —
+/// and percentage targets resolve against THEIR maxes.
 ///
-/// TRANSLATION NOTE: iOS shares a rendered PNG card through `ShareLink`, because the iPhone
-/// share sheet is where an image goes and AirDrop is the common hop between two phones in
-/// the same room. Android shares the **LINK** instead (`ACTION_SEND`, `text/plain`), which
-/// is the honest thing on this platform: a link pasted into any messenger is tappable and
-/// opens the app directly through the intent filter, while a PNG of a QR code is something
-/// the recipient has to photograph off their own screen with a second phone. The QR above
-/// stays, because pointing a camera at a screen IS the in-the-room case. One consequence
-/// worth knowing: a routine too large to draw as a code (the format allows 4 KB compressed;
-/// a level-M QR holds far less) can still be shared and imported as a link.
+/// TRANSLATION NOTE: iOS shares a rendered PNG via `ShareLink` (AirDrop between phones in a
+/// room). Android shares the **LINK** (`ACTION_SEND`, `text/plain`): pasted into any messenger
+/// it opens the app via the intent filter, where a PNG of a QR would need a second phone. The
+/// QR stays for the in-the-room case. A routine too large for a code (4 KB format vs a level-M
+/// QR's capacity) still shares as a link.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutineShareSheet(request: RoutineShareRequest, onClose: () -> Unit) {
@@ -89,9 +80,7 @@ fun RoutineShareSheet(request: RoutineShareRequest, onClose: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     var copied by remember { mutableStateOf(false) }
-    // The receipt describes ONE link. Nothing can change the payload while this sheet is up
-    // (the request is frozen), but keying the reset to it is what stops a second
-    // presentation opening on a stale "Link copied".
+    // Keyed to the link, so a second presentation never opens on a stale "Link copied".
     LaunchedEffect(request.url) { copied = false }
 
     ModalBottomSheet(
@@ -113,10 +102,8 @@ fun RoutineShareSheet(request: RoutineShareRequest, onClose: () -> Unit) {
                 color = palette.inkPrimary,
             )
 
-            // The card's own anatomy — mark, name, plan line — so the sheet reads as the
-            // card it was opened from rather than as a second description of the same
-            // routine. One TalkBack stop, like the import sheet's twin of this header.
-            // Read outside the semantics lambda, which is not composable.
+            // The card's own anatomy (mark, name, plan line), so the sheet reads as the card it came
+            // from. One TalkBack stop; read outside the non-composable semantics lambda.
             val spoken = tr("%s. %s", request.name, request.metaLine)
             Column(
                 Modifier.clearAndSetSemantics {
@@ -157,10 +144,8 @@ fun RoutineShareSheet(request: RoutineShareRequest, onClose: () -> Unit) {
                 color = palette.inkSecondary,
             )
 
-            // Two doors, side by side and equal: the code is for a phone in the same room,
-            // the link is for one that is not. Neither is the primary — which one you want
-            // is a fact about where the other person is, not about which action matters
-            // more, so neither wears the filled treatment.
+            // Two equal doors: the code for a phone in the room, the link for one that is not. Which you
+            // want depends on where the other person is, so neither is filled.
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SecondaryButton(
                     title = if (copied) tr("Link copied") else tr("Copy link"),
@@ -169,10 +154,8 @@ fun RoutineShareSheet(request: RoutineShareRequest, onClose: () -> Unit) {
                 ) {
                     if (copyLink(context, request.name, request.url)) {
                         copied = true
-                        // The haptic names its cause: the copy LANDED. A clipboard write
-                        // can fail (a locked device policy, a null service on a stripped
-                        // ROM), and a confirm buzz over a clipboard that did not change is
-                        // the app telling a small lie about something the user cannot see.
+                        // The haptic names its cause: the copy LANDED. Clipboard writes can fail (device policy,
+                        // stripped ROM), and a buzz over an unchanged clipboard is a small lie.
                         haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                     }
                 }
@@ -190,24 +173,19 @@ fun RoutineShareSheet(request: RoutineShareRequest, onClose: () -> Unit) {
     }
 }
 
-/// The link on the clipboard, labelled with the routine's name — the label is what a
-/// clipboard manager shows in its history, and "getagrip://routine#H4sIA…" is not something
-/// anyone can pick out of a list.
+/// The link on the clipboard, labelled with the routine's name, since a clipboard manager
+/// shows the label and "getagrip://routine#H4sIA…" is unrecognisable.
 ///
-/// Android 13 and up shows its own copy confirmation, so the in-app receipt is the second
-/// one there. It stays: the system's toast is not guaranteed on every OEM skin, and the
-/// button state is also what a screen reader hears.
+/// Android 13+ confirms copies itself; the in-app receipt stays because OEM skins vary and the
+/// button state is what a screen reader hears.
 private fun copyLink(context: Context, name: String, url: String): Boolean = runCatching {
     val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return false
     clipboard.setPrimaryClip(ClipData.newPlainText(name, url))
     true
 }.getOrDefault(false)
 
-/// `ACTION_SEND` with `text/plain` — a LINK, not an image. See the header note.
-///
-/// `EXTRA_SUBJECT` is what an email client puts on the subject line and what some
-/// messengers title the share with; without it a routine arrives as a bare scheme URL with
-/// nothing saying what it is.
+/// `ACTION_SEND` with `text/plain` — a LINK, not an image (see the header). `EXTRA_SUBJECT`
+/// titles emails and some messengers, or the routine arrives as a bare scheme URL.
 private fun shareLink(context: Context, name: String, url: String) {
     runCatching {
         val send = Intent(Intent.ACTION_SEND).apply {

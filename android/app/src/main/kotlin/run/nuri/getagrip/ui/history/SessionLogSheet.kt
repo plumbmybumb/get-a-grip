@@ -57,33 +57,29 @@ import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
 
-/// Everything the log sheet is deciding, as a VALUE — so the Save rule and the day
-/// arithmetic can be asserted without a UI tree.
+/// Everything the log sheet decides, as a VALUE, so the Save rule and day arithmetic are
+/// testable without a UI tree.
 ///
-/// **Save stays enabled after two taps.** Kind + day alone is a complete log; the two strain
-/// axes are optional and store nil, because the fast path must cost exactly what it costs
-/// today. `daysAgo` is clamped rather than validated: a negative would file training in the
-/// future, and the store clamps it again on the way in.
+/// **Save stays enabled after two taps.** Kind + day alone is a complete log; the strain axes
+/// are optional and store nil. `daysAgo` is clamped (a negative files training in the future),
+/// and the store clamps again.
 data class SessionLogDraft(
-    /// No default. Volume and limit are genuinely different days and the app cannot guess
-    /// which you had — pre-selecting one would get it wrong half the time and silently
-    /// mis-describe the week, which is exactly what this feature exists to fix.
+    /// No default: volume and limit are different days, and a pre-selection would mis-describe
+    /// the week half the time.
     val kind: SessionKind? = null,
     val daysAgo: Int = 0,
-    /// Two hours is pre-filled: a close-enough duration is more useful to the load model than
-    /// nothing at all, and it is visible and one drag from right.
+    /// Two hours pre-filled: close enough beats nothing for the load model, and is one drag from right.
     val minutes: Int = 120,
     val rpe: RPE? = null,
     val fingerStrain: FingerStrain? = null,
 ) {
-    /// The whole Save rule, in one place. `isLoggedByHand` is the engine's own gate — `hang`
-    /// belongs to the runner and `benchmark` to `recordMax`, and neither may be created here.
+    /// The whole Save rule. `isLoggedByHand` is the engine's gate: `hang` belongs to the runner and
+    /// `benchmark` to `recordMax`.
     val canSave: Boolean get() = kind?.isLoggedByHand == true
 
     fun day(today: DayStamp): DayStamp = today - daysAgo.coerceAtLeast(0)
 
-    /// States the rule on the screen that invokes it. A climb settles the day; a manual hang
-    /// only fills one session share, so this copy must follow the selected kind.
+    /// A climb settles the day; a manual hang fills one session share — so the copy follows the kind.
     val consequence: String
         get() {
             val day = if (daysAgo == 0) L10n.tr("today") else L10n.tr("yesterday")
@@ -103,8 +99,7 @@ data class SessionLogDraft(
         }
 
     companion object {
-        /// The stops the dial offers. Minutes, and the ladder is what makes the control
-        /// quotable — every duration it can produce is readable without touching it.
+        /// The dial's stops, in minutes; the ladder states every duration it can produce.
         val durationStops: List<Double> = listOf(30.0, 45.0, 60.0, 90.0, 120.0, 150.0, 180.0, 240.0)
 
         val kinds: List<SessionKind> =
@@ -126,17 +121,12 @@ data class SessionLogDraft(
 
 /// Logging a session after the fact — at the climbing gym or away from the gauge.
 ///
-/// There is deliberately nothing to start and nothing to time automatically. You are on the
-/// wall for two hours with the phone in a bag; the app cannot watch it, cannot measure it,
-/// and pretending otherwise would mean a timer running in your pocket that you have to
-/// remember to stop. So this is a record of something that already happened — which is also
-/// why it can name yesterday: the realistic moment to log Tuesday's session is Wednesday
-/// morning.
+/// Nothing to start or time: on the wall for two hours with the phone in a bag, the app cannot
+/// watch, and a pocket timer is one more thing to stop. It records what already happened,
+/// which is why it can name yesterday.
 ///
-/// TRANSLATION NOTE: iOS presents a `NavigationStack` sheet with Cancel/Save in the toolbar.
-/// The Android house answer is a `ModalBottomSheet` whose actions sit at the foot of its own
-/// content — a bottom sheet has no toolbar, and a confirm button under the thumb is the
-/// platform's own shape for a short form.
+/// TRANSLATION NOTE: iOS uses a `NavigationStack` sheet with toolbar Cancel/Save. A bottom
+/// sheet has no toolbar, so the actions sit at its foot, under the thumb.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionLogSheet(onClose: () -> Unit) {
@@ -165,13 +155,11 @@ fun SessionLogSheet(onClose: () -> Unit) {
                 fingerStrain = submitted.fingerStrain,
             )
             if (log == null) {
-                // The sheet STAYS OPEN on a rollback: dismissing on failure loses the two
-                // decisions and tells the user it worked.
+                // STAYS OPEN on a rollback: dismissing loses the two decisions and implies success.
                 failed = true
                 return@launch
             }
-            // Everything History draws is folded from the feed, which has no live query
-            // behind it — a write that skipped this would land and stay invisible.
+            // The feed has no live query; a write that skipped this would stay invisible.
             feed.refresh()
             // The haptic names its cause: the session that actually landed.
             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -196,9 +184,8 @@ fun SessionLogSheet(onClose: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 KindBlock(draft.kind) { draft = draft.copy(kind = it) }
 
-                /// Today or yesterday, and nothing further back. A full date picker would be the
-                /// heaviest control on this fast log to serve a case — logging Thursday's session
-                /// on Sunday — that barely happens and that History can already show is missing.
+                /// Today or yesterday only. A full date picker would be the heaviest control here, for a case
+                /// that barely happens and that History already shows as missing.
                 val dayChoices: @Composable () -> Unit = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Chip(tr("Today"), draft.daysAgo == 0, Modifier.weight(1f)) { draft = draft.copy(daysAgo = 0) }
@@ -223,9 +210,8 @@ fun SessionLogSheet(onClose: () -> Unit) {
                             style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
                             fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
                     }
-                    // Tap-to-type belongs on a row that needs it. Two hours versus two hours
-                    // fifteen is noise inside a five-point self-report, and a keyboard would cost
-                    // the fast path this sheet is built around.
+                    // No tap-to-type: fifteen minutes is noise in a five-point self-report, and a keyboard would
+                    // cost the fast path.
                     DialTrack(
                         value = draft.minutes.toDouble(),
                         values = SessionLogDraft.durationStops,
@@ -278,9 +264,7 @@ private fun KindBlock(selected: SessionKind?, onSelect: (SessionKind) -> Unit) {
                 Icon(Icons.Outlined.Info, tr("About session types"), tint = palette.inkSecondary)
             }
         }
-        // `ChipGrid`, not a plain Row: a third chip is what tips this row over at
-        // accessibility sizes, and the grid wraps where a row would squeeze three labels past
-        // legibility.
+        // `ChipGrid`: a third chip tips a plain Row past legibility at accessibility sizes.
         ChipGrid(
             base = 3,
             content = SessionLogDraft.kinds.map { option ->
@@ -289,9 +273,8 @@ private fun KindBlock(selected: SessionKind?, onSelect: (SessionKind) -> Unit) {
                 }
             },
         )
-        // The explainer for the SELECTED one, or all of them while undecided — "volume" and
-        // "limit" are jargon somebody may only half-know, and a mis-picked chip quietly
-        // mis-describes the week this screen exists to describe honestly.
+        // The SELECTED kind's explainer, or all while undecided: "volume" and "limit" are jargon, and
+        // a mis-picked chip mis-describes the week.
         if (expanded) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             (selected?.let { listOf(it) } ?: SessionLogDraft.kinds).forEach { option ->
                 Text(
