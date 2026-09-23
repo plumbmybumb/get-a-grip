@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui.today
 
+import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,8 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import run.nuri.getagrip.engine.DayRecord
 import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.L10n
@@ -139,7 +138,7 @@ fun ConsistencyCard(
     }
 }
 
-private val AXIS_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+private val AXIS_DATE = LocalizedPattern("d MMM")
 
 @Composable
 private fun LogSessionButton(onLogSession: () -> Unit) {

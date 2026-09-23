@@ -112,6 +112,9 @@ fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
     /// keyed to that, the sheet would open already wearing the accusation whenever an
     /// earlier, unrelated write had failed.
     var saveFailed by remember { mutableStateOf(false) }
+    /// An add in flight. The imported draft has no id, so every tap that reaches the store
+    /// is another routine: a second tap inside the write used to add the same one twice.
+    var adding by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -148,19 +151,25 @@ fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
                 )
             }
 
-            PrimaryButton(tr("Add to my routines"), icon = Icons.Outlined.Add) {
+            PrimaryButton(tr("Add to my routines"), icon = Icons.Outlined.Add, enabled = !adding) {
+                if (adding) return@PrimaryButton
+                adding = true
                 scope.launch {
-                    // The new card appears on Today by itself — the routine list is store
-                    // state, so nothing has to be handed back through the presentation.
-                    if (templates.importRoutine(draft) != null) {
-                        saveFailed = false
-                        onClose()
-                    } else {
-                        // Surfaced INLINE, and the store's copy of the failure is consumed:
-                        // the global "Couldn't save" surface watches the same field, and one
-                        // rollback stated twice reads as two.
-                        saveFailed = true
-                        templates.saveError = null
+                    try {
+                        // The new card appears on Today by itself — the routine list is store
+                        // state, so nothing has to be handed back through the presentation.
+                        if (templates.importRoutine(draft) != null) {
+                            saveFailed = false
+                            onClose()
+                        } else {
+                            // Surfaced INLINE, and the store's copy of the failure is consumed:
+                            // the global "Couldn't save" surface watches the same field, and one
+                            // rollback stated twice reads as two.
+                            saveFailed = true
+                            templates.saveError = null
+                        }
+                    } finally {
+                        adding = false
                     }
                 }
             }

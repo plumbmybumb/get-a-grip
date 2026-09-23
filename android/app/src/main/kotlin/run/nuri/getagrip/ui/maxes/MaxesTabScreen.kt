@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.units.WeightUnits
 
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
@@ -52,8 +53,6 @@ import androidx.compose.ui.unit.dp
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.engine.Fmt
 import run.nuri.getagrip.engine.GripSpec
@@ -61,6 +60,7 @@ import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.store.HistoryFeed
 import run.nuri.getagrip.store.LocalHistoryFeed
+import run.nuri.getagrip.store.MaxGripGroup
 import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.FingerGlyph
@@ -118,11 +118,13 @@ private fun MaxesOverview(
     val templates = LocalTemplateStore.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
-    LaunchedEffect(feed) { feed.refresh() }
+    // Reread only when a write landed since the last read — a tab switch is free. Keyed on
+    // the revision too, so a write made while this tab is up still reaches it.
+    LaunchedEffect(feed, templates.writeRevision) { feed.refreshIfStale() }
 
-    val records = feed.maxRecords
-    val groups = remember(records) { groupsOf(records) }
-    val tested = remember(records) { records.map { it.gripKey }.toSet() }
+    // Grouped by the feed, off the main thread, beside the read — not here on every visit.
+    val groups = feed.maxGroups
+    val tested = remember(groups) { groups.mapTo(HashSet()) { it.key } }
     // Grips your routines train that have never seen a number — an invitation, not a
     // reproach, and only once routines exist at all.
     val invitations = if (templates.routines.isEmpty()) emptyList()
@@ -200,27 +202,7 @@ private fun MaxesOverview(
     }
 }
 
-// MARK: - Grouping
-
-/// One grip's records, every hand mixed — the per-side slices are cut in the card.
-data class MaxGripGroup(val key: String, val grip: GripSpec, val records: List<MaxRecordEntity>)
-
-/// Most recently tested grip first — the one you are mid-progression on leads. Ties break on
-/// the key, so two grips tested in one sitting don't swap places between launches.
-///
-/// Grouped on `gripKey` and NOT on `maxKey`, unlike the management list: a CARD is about one
-/// grip and draws both hands as two lines on one chart, where a ROW is about one number and
-/// must keep the hands apart.
-internal fun groupsOf(records: List<MaxRecordEntity>): List<MaxGripGroup> {
-    val byKey = LinkedHashMap<String, MutableList<MaxRecordEntity>>()
-    // `records` arrive oldest first, so each bucket is already in chart order.
-    for (record in records) byKey.getOrPut(record.gripKey) { mutableListOf() }.add(record)
-    return byKey
-        .map { (key, rows) -> MaxGripGroup(key, rows.last().grip, rows) }
-        .sortedWith(
-            compareByDescending<MaxGripGroup> { it.records.last().recordedAt }.thenBy { it.key },
-        )
-}
+// MARK: - Grouping (`MaxGripGroup` and `groupsOf` live beside the read, in `HistoryFeed`)
 
 /// Which hands this grip has records for, in a fixed order so the readout never reshuffles.
 internal fun presentSides(group: MaxGripGroup): List<Side> =
@@ -257,7 +239,7 @@ internal fun progressLine(group: MaxGripGroup): String {
     return parts.joinToString(" · ")
 }
 
-private val SHORT_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+private val SHORT_DATE = LocalizedPattern("d MMM")
 
 /// Plain relative wording, the twin of iOS's `.relative(presentation: .named)`. Deliberately
 /// coarse: the useful fact about a max is that it is weeks old, never that it is 19 days old.

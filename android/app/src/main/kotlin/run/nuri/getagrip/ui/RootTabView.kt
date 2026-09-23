@@ -24,10 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
@@ -133,22 +130,32 @@ enum class Tab(private val key: String, val icon: ImageVector) {
 /// staleness subtitle carries the same fact in words, so nothing is lost by holding still.
 ///
 /// TRANSLATION NOTE: SF Symbols animates the GLYPH; Compose has no symbol effect, so the same
-/// beat is a scale on the icon. `infiniteRepeatable` with `RepeatMode.Reverse` gives one
-/// continuous breath rather than a sawtooth that snaps back every cycle. It is deliberately
-/// NOT routed through `Motion`: the ladder is three TRANSITION curves between states, and a
-/// heartbeat is neither a transition nor a state.
+/// beat is a scale on the icon, out and back so it breathes rather than snapping. It is
+/// deliberately NOT routed through `Motion`: the ladder is three TRANSITION curves between
+/// states, and a heartbeat is neither a transition nor a state.
+///
+/// **A few beats each time the bar appears, then still.** It used to breathe FOREVER, which
+/// kept the frame clock running for as long as the tab bar was on screen — an app drawing
+/// sixty frames a second to sit on Today, for weeks, until somebody measured a max. A nudge
+/// that has been seen has done its job; the staleness line on the tab still says it in words.
 @Composable
-private fun Modifier.benchmarkPulse(active: Boolean): Modifier {
-    if (!active) return this
-    val transition = rememberInfiniteTransition(label = "benchmarkNudge")
-    val pulse = transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.14f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "benchmarkNudgeScale",
-    )
-    return this.graphicsLayer { scaleX = pulse.value; scaleY = pulse.value }
+internal fun Modifier.benchmarkPulse(active: Boolean): Modifier {
+    val scale = remember { Animatable(1f) }
+    LaunchedEffect(active) {
+        if (!active) {
+            scale.snapTo(1f)
+            return@LaunchedEffect
+        }
+        repeat(BENCHMARK_PULSE_BEATS) {
+            scale.animateTo(1.14f, tween(900))
+            scale.animateTo(1f, tween(900))
+        }
+    }
+    return this.graphicsLayer { scaleX = scale.value; scaleY = scale.value }
 }
+
+/// Enough to catch an eye moving across the bar, few enough to stop before it is wallpaper.
+internal const val BENCHMARK_PULSE_BEATS = 3
 
 @Composable
 fun RootTabView() {
@@ -229,7 +236,9 @@ fun RootTabView() {
         return
     }
 
-    var building by remember { mutableStateOf<BuilderMode?>(null) }
+    // Which screen the root is presenting survives a rotation — see `RootPresentation`.
+    val presentation: RootPresentation = viewModel { RootPresentation() }
+    var building by presentation::building
     val builderMode = building
     if (builderMode != null) {
         TourHost(TourAct.Builder) {
@@ -240,11 +249,11 @@ fun RootTabView() {
 
     // Keep the grip composer above each child destination: Cancel returns to the same
     // grip, while a successful save closes the whole creation flow after its receipt.
-    var newMax by remember { mutableStateOf<NewMaxDraft?>(null) }
-    var editingMax by remember { mutableStateOf<MaxEditRequest?>(null) }
-    var editingSharedMax by remember { mutableStateOf<MaxEditRequest?>(null) }
-    var measuring by remember { mutableStateOf<MeasureRequest?>(null) }
-    var measurementSaved by remember(measuring) { mutableStateOf(false) }
+    var newMax by presentation::newMax
+    var editingMax by presentation::editingMax
+    var editingSharedMax by presentation::editingSharedMax
+    var measuring by presentation::measuring
+    var measurementSaved by presentation::measurementSaved
     val measure = measuring
     if (measure != null) {
         MaxMeasureScreen(
@@ -291,7 +300,7 @@ fun RootTabView() {
     // The log sheet is one sheet with two doors — History's row and Today's consistency card
     // — because it writes one kind of row and a second copy would be a second set of rules
     // about what settles a day.
-    var loggingSession by remember { mutableStateOf(false) }
+    var loggingSession by presentation::loggingSession
 
     // **"Take me to that tab."** Settings sits two tabs away from everything it can restart,
     // and a step that lives on History has to BE on History. `requestedTab` is how anything
@@ -442,12 +451,3 @@ fun RootTabView() {
     UnsavedSessionPrompt()
 
 }
-
-private data class MaxEditRequest(val grip: GripSpec, val fromNew: Boolean = false)
-
-/** Both individual hands are measured in one visit; shared measurement is explicitly chosen. */
-private data class MeasureRequest(
-    val grip: GripSpec,
-    val side: Side,
-    val fromNew: Boolean = false,
-)

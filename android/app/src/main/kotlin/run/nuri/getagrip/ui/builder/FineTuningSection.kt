@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -64,6 +65,7 @@ import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.RoutineDraft
+import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.IntValueRow
@@ -87,15 +89,18 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 /// knows what is in there.
 @Composable
 fun FineTuningSection(
-    draft: RoutineDraft,
+    /// Only what this card draws — see `FineTuningValues`.
+    values: FineTuningValues,
     modifier: Modifier = Modifier,
-    onChange: (RoutineDraft) -> Unit,
+    update: DraftUpdate,
 ) {
     val palette = LocalGripPalette.current
+    fun edit(transform: (SessionPlan) -> SessionPlan) = update { it.copy(plan = transform(it.plan)) }
     val reduceMotion = rememberReduceMotion()
     /// View-local and unpersisted BY CONSTRUCTION — a fresh section is built every time the
-    /// builder opens, so "collapsed on every open" needs no resetting logic.
-    var isOpen by remember { mutableStateOf(false) }
+    /// builder opens, so "collapsed on every open" needs no resetting logic. Saved only across
+    /// a rotation, which is not an open.
+    var isOpen by rememberSaveable { mutableStateOf(false) }
     val chevron by animateFloatAsState(
         targetValue = if (isOpen) 180f else 0f,
         animationSpec = Motion.state(reduceMotion),
@@ -175,7 +180,7 @@ fun FineTuningSection(
                         )
                         ValueRow(
                             title = tr("A pull counts above"),
-                            value = WeightUnits.fromKg(draft.plan.thresholdKg),
+                            value = WeightUnits.fromKg(values.thresholdKg),
                             range = WeightUnits.sliderRange(0.5..10.0, 0.1),
                             unit = WeightUnits.symbol,
                             limit = WeightUnits.fromKg(0.5..run.nuri.getagrip.engine.SessionPlan.thresholdRange.endInclusive),
@@ -183,8 +188,8 @@ fun FineTuningSection(
                             presets = if (WeightUnits.current == run.nuri.getagrip.ui.units.WeightUnit.kg) listOf(1.0, 2.0, 3.0, 5.0) else listOf(2.0, 4.0, 6.0, 10.0),
                             decimals = 1,
                             caption = tr("Below this, the clock stops."),
-                        ) { onChange(draft.copy(plan = draft.plan.copy(thresholdKg = WeightUnits.toKg(it)))) }
-                        ThresholdGaugeStrip(draft.plan.thresholdKg)
+                        ) { shown -> edit { it.copy(thresholdKg = WeightUnits.toKg(shown)) } }
+                        ThresholdGaugeStrip(values.thresholdKg)
                     }
 
                     // Sits between the threshold and the lead-in on purpose: all three
@@ -192,13 +197,13 @@ fun FineTuningSection(
                     // question where the threshold above is the floor's half.
                     ToggleRow(
                         title = tr("Pause when I'm out of range"),
-                        checked = draft.plan.pausesOutsideTargetBand,
-                        explainer = if (draft.plan.pausesOutsideTargetBand) {
+                        checked = values.pausesOutsideTargetBand,
+                        explainer = if (values.pausesOutsideTargetBand) {
                             tr("The clock only runs while you are inside the target range.")
                         } else {
                             tr("The clock runs whenever you are on the edge, whatever the load — the range is still drawn, it just stops judging. Letting go still stops the rep.")
                         },
-                    ) { onChange(draft.copy(plan = draft.plan.copy(pausesOutsideTargetBand = it))) }
+                    ) { pauses -> edit { it.copy(pausesOutsideTargetBand = pauses) } }
 
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
@@ -209,14 +214,14 @@ fun FineTuningSection(
                         )
                         IntValueRow(
                             title = tr("Lead-in before each set"),
-                            value = draft.plan.leadInSeconds,
+                            value = values.leadInSeconds,
                             range = 0..20,
                             unit = tr("s"),
                             limit = 0..60,
                             step = 5,
                             presets = listOf(0, 3, 5, 10),
                             caption = tr("Time to get your fingers on the edge."),
-                        ) { onChange(draft.copy(plan = draft.plan.copy(leadInSeconds = it))) }
+                        ) { seconds -> edit { it.copy(leadInSeconds = seconds) } }
                     }
                 }
             }
@@ -401,7 +406,7 @@ private fun FineTuningSectionPreview() {
     GetAGripTheme {
         var draft by remember { mutableStateOf(RoutineDraft.starter) }
         Column(Modifier.padding(16.dp)) {
-            FineTuningSection(draft) { draft = it }
+            FineTuningSection(FineTuningValues.of(draft.plan)) { draft = it(draft) }
         }
     }
 }

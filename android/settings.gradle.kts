@@ -23,3 +23,6 @@ dependencyResolutionManagement {
 rootProject.name = "GetAGrip"
 include(":engine")
 include(":app")
+// Generates `app/src/main/generated/baselineProfiles` from real journeys on a device or
+// emulator: `./gradlew :app:generateBaselineProfile`. Never part of a normal build.
+include(":baselineprofile")

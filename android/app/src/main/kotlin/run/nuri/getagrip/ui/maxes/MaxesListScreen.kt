@@ -117,7 +117,7 @@ fun MaxesListScreen(
     var expanded by remember { mutableStateOf<String?>(null) }
     var deleteFailed by remember { mutableStateOf(false) }
 
-    LaunchedEffect(feed) { feed.refresh() }
+    LaunchedEffect(feed, templates.writeRevision) { feed.refreshIfStale() }
 
     // Newest first, which is what makes the fold below correct: the first record in each
     // bucket is that grip-and-hand's CURRENT max.

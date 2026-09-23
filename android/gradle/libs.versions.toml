@@ -27,6 +27,13 @@ zxing = "3.5.4"
 zxing-embedded = "4.3.0"
 junit-jupiter = "5.13.4"
 robolectric = "4.16.1"
+# Startup performance: the installer that applies the shipped baseline profile on devices
+# without Play's cloud profiles, and the plugin + Macrobenchmark runner that GENERATE it
+# from real journeys in `:baselineprofile`.
+profileinstaller = "1.4.1"
+benchmark = "1.5.0"
+uiautomator = "2.3.0"
+androidx-test-junit = "1.3.0"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -71,10 +78,16 @@ datastore-preferences = { module = "androidx.datastore:datastore-preferences", v
 nordic-ble-ktx = { module = "no.nordicsemi.android:ble-ktx", version.ref = "nordic-ble" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 zxing-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxing-embedded" }
+profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
+benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
+uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
+androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-junit" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

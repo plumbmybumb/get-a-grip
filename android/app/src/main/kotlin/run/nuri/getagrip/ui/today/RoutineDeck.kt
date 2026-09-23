@@ -26,7 +26,9 @@ import run.nuri.getagrip.ui.theme.InstrumentSurface as Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalConfiguration
@@ -51,6 +53,7 @@ import run.nuri.getagrip.ble.ProgressorConnectionState
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.L10n
+import run.nuri.getagrip.engine.RoutineSummary
 import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.FingerGlyph
@@ -147,13 +150,21 @@ fun RoutineDeck(
     // A settle on a card someone swiped to is the old rail tap. The ghost is excluded on
     // purpose: parking on it is browsing, not picking a ritual, and it must not survive as a
     // stale pin.
+    //
+    // **Read through `rememberUpdatedState`, never captured.** The collector outlives many
+    // compositions, so the `selectedID` and `onSettled` it closed over at launch went stale:
+    // a programmatic move to a NEW selection then read as a swipe away from the OLD one and
+    // pinned it (with a haptic tick nobody caused), and the host's callback — which carries
+    // `today` — pinned a choice to the day the deck first appeared.
+    val currentSelectedID by rememberUpdatedState(selectedID)
+    val currentOnSettled by rememberUpdatedState(onSettled)
     LaunchedEffect(state, routines) {
         snapshotFlow { state.settledPage }.collect { page ->
             val routine = routines.getOrNull(page) ?: return@collect
-            if (routine.id == selectedID) return@collect
+            if (routine.id == currentSelectedID) return@collect
             // The tick names its cause: a swipe that actually changed which routine is up.
             haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-            onSettled(routine.id)
+            currentOnSettled(routine.id)
         }
     }
 
@@ -183,7 +194,7 @@ fun RoutineDeck(
         } else {
             RoutineCard(
                 modifier = pageModifier.onSizeChanged { cardHeights[routine.id] = it.height },
-                summary = templates.summary(routine),
+                summary = rememberRoutineSummary(templates, routine),
                 completionText = templates.completionText(routine),
                 // The border only exists where there are siblings to distinguish — with one
                 // routine it would mark the only real card there is.
@@ -362,3 +373,22 @@ private fun EmptyRoutineCardPreview() {
         Box(Modifier.padding(20.dp)) { EmptyRoutineCard(onBuild = {}) }
     }
 }
+
+/// `TemplateStore.summary`, folded only when something it reads has moved.
+///
+/// A summary decodes the routine's set blob and walks the whole plan three times, and the deck
+/// asked for one per card on every composition — every page offset of a swipe, every tick of
+/// the device chip beside it. Keyed on exactly what `summary` reads from the store, so a
+/// session logged, a climb, a benchmark or a new max still redraws the card on the next
+/// frame. `nextReminder` is wall-clock and would go stale in a memo, which is safe only
+/// because no screen draws it from a summary: Today's header folds its own.
+@Composable
+internal fun rememberRoutineSummary(templates: TemplateStore, routine: SessionTemplateEntity): RoutineSummary =
+    remember(
+        routine,
+        templates.completionsToday,
+        templates.unattributedHangsToday,
+        templates.climbToday,
+        templates.benchmarkedToday,
+        templates.maxTable,
+    ) { templates.summary(routine) }

@@ -43,6 +43,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -143,23 +144,38 @@ fun RoutineBuilderHost(
     }
 
     val editableSeed = remember(seed) { BuilderDraft.editable(seed) }
-    var draft by remember(seed) { mutableStateOf(editableSeed) }
+    // **SAVED, not remembered — for creating AND editing.** A rotation recreates the Activity
+    // and destroys every `remember`, and the create-only rescue stash is up to half a second
+    // behind and does not exist at all for an edit, so turning the phone used to throw the
+    // document away. The draft round-trips through the same frozen JSON the stash writes.
+    val draftState = rememberSaveable(seed, stateSaver = RoutineDraftSaver) { mutableStateOf(editableSeed) }
+    var draft by draftState
     /// The seed, kept only to answer "is this dirty".
     val initialDraft = editableSeed
+    /// Every section writes through this ONE remembered door — see `DraftUpdate`.
+    val update: DraftUpdate = remember(draftState) { { transform -> draftState.value = transform(draftState.value) } }
 
     /// At most ONE open set row. The accordion is not only a readability device: it is what
     /// guarantees exactly one dense control cluster can exist on screen at a time.
-    var expanded by remember { mutableStateOf<UUID?>(null) }
+    var expanded by rememberSaveable { mutableStateOf<UUID?>(null) }
 
     /// Which set's grip the panel is editing. It lives HERE, not on the token: the panel
     /// hangs off the top of the screen, and nothing inside a scrolling set row can reach it.
-    var editingSet by remember { mutableStateOf<UUID?>(null) }
+    var editingSet by rememberSaveable { mutableStateOf<UUID?>(null) }
 
-    var coachStep by remember { mutableStateOf(BuilderDraft.retiredCoachStep) }
+    var coachStep by rememberSaveable { mutableStateOf(BuilderDraft.retiredCoachStep) }
+    /// Whether this document has already been OPENED — seeded its guide step and swept the
+    /// rescue stash. Saved with the draft, so the rotation that recreates this screen does not
+    /// restart the guide or swap the document for a stash up to half a second older than it.
+    var opened by rememberSaveable { mutableStateOf(false) }
     /// Held with its ORIGINAL id and original index, so Undo puts the same row back where it
     /// was rather than an equal-looking new one two places down.
     var removedSet by remember { mutableStateOf<RemovedSet?>(null) }
-    var showDiscard by remember { mutableStateOf(false) }
+    var showDiscard by rememberSaveable { mutableStateOf(false) }
+    /// A Save in flight. Both Saves go dim and a second tap is refused, because the store's
+    /// write is not instant and a new draft has no id yet: two taps inside it used to create
+    /// the routine TWICE.
+    var saving by remember { mutableStateOf(false) }
 
     val reduceMotion = rememberReduceMotion()
     val scrollState = rememberScrollState()
@@ -181,6 +197,8 @@ fun RoutineBuilderHost(
     // The guide's starting step, once. Reading it during the first composition rather than in
     // a remembered initializer keeps the store read out of the state's constructor.
     LaunchedEffect(mode) {
+        if (opened) return@LaunchedEffect
+        opened = true
         coachStep = BuilderDraft.startingCoachStep(mode, settings.builderGuideDone)
         // The rescue copy only exists if a previous session died mid-build: Save and Cancel
         // both clear it. `initialDraft` deliberately stays at the seed, so a restored
@@ -239,14 +257,21 @@ fun RoutineBuilderHost(
             duration = androidx.compose.material3.SnackbarDuration.Long,
         )
         if (result == SnackbarResult.ActionPerformed) {
-            val sets = draft.plan.sets.toMutableList()
-            sets.add(minOf(removed.index, sets.size), removed.set)
-            draft = draft.copy(plan = draft.plan.copy(sets = sets))
+            update { current ->
+                current.withSets { sets ->
+                    sets.toMutableList().apply { add(minOf(removed.index, size), removed.set) }
+                }
+            }
         }
         removedSet = null
     }
 
     val isDirty = BuilderDraft.isDirty(draft, initialDraft)
+    // Folded ONCE per draft, not once per reader: the title, the top-bar Save and the foot
+    // of the document all ask, and each ask walks the plan's executable sets.
+    val validationIssue = draft.validationIssue
+    val canSave = validationIssue == null
+    val subtitle = validationIssue ?: PlanMath.subtitleLine(draft.plan)
 
     fun discard() {
         // A stash that outlives an explicit Cancel returns as a ghost the next time the
@@ -261,18 +286,23 @@ fun RoutineBuilderHost(
 
     fun save() {
         focus.clearFocus()
-        if (!BuilderDraft.canSave(draft)) return
+        if (!canSave || saving) return
+        saving = true
         scope.launch {
-            // ONE entry point, so the builder never has to know whether it is creating or
-            // editing — and the store's own `create`/`update` are what ask for notification
-            // permission, once, on the first Save of a routine that wants reminders.
-            val saved = templates.save(draft)
-            // A rolled-back save leaves the document OPEN with the error inline, and the
-            // rescue copy has to survive for the retry — the store only clears it on success.
-            if (saved == null) return@launch
-            // The guide has done its job the moment a routine exists.
-            settings.setBuilderGuideDone(true)
-            onDone(saved.id)
+            try {
+                // ONE entry point, so the builder never has to know whether it is creating or
+                // editing — and the store's own `create`/`update` are what ask for notification
+                // permission, once, on the first Save of a routine that wants reminders.
+                val saved = templates.save(draft)
+                // A rolled-back save leaves the document OPEN with the error inline, and the
+                // rescue copy has to survive for the retry — the store only clears it on success.
+                if (saved == null) return@launch
+                // The guide has done its job the moment a routine exists.
+                settings.setBuilderGuideDone(true)
+                onDone(saved.id)
+            } finally {
+                saving = false
+            }
         }
     }
 
@@ -306,10 +336,10 @@ fun RoutineBuilderHost(
                             // swaps to the validation issue the instant Save refuses, right
                             // next to the control that refused.
                             Text(
-                                BuilderDraft.subtitle(draft),
+                                subtitle,
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Medium,
-                                color = if (BuilderDraft.canSave(draft)) {
+                                color = if (canSave) {
                                     palette.inkSecondary
                                 } else {
                                     palette.armed
@@ -327,7 +357,7 @@ fun RoutineBuilderHost(
                         // have scrolled to, which is the only place a spotlight can find it.
                         TextButton(
                             onClick = { save() },
-                            enabled = BuilderDraft.canSave(draft),
+                            enabled = canSave && !saving,
                             modifier = Modifier.tourAnchor(TourTarget.BuilderFinish),
                         ) {
                             Text(tr("Save"), fontWeight = FontWeight.SemiBold)
@@ -364,63 +394,63 @@ fun RoutineBuilderHost(
                 // share the same first screenful.
                 Block(BuilderAnchor.Name, anchors) {
                     Coach(coachStep, 1, scope, settings, { coachStep = it }, ::scrollTo)
-                    NameSection(draft.plan.name) {
-                        draft = draft.copy(plan = draft.plan.copy(name = it))
+                    NameSection(draft.plan.name) { name ->
+                        update { it.copy(plan = it.plan.copy(name = name)) }
                     }
                 }
 
                 Block(BuilderAnchor.Rhythm, anchors, Modifier.tourAnchor(TourTarget.BuilderRhythm)) {
                     Coach(coachStep, 2, scope, settings, { coachStep = it }, ::scrollTo)
-                    RhythmSection(draft) { draft = it }
+                    RhythmSection(RhythmValues.of(draft.plan), update = update)
                 }
 
                 Block(BuilderAnchor.Sets, anchors, Modifier.tourAnchor(TourTarget.BuilderSets)) {
                     Coach(coachStep, 3, scope, settings, { coachStep = it }, ::scrollTo)
                     val percentBandsVary = BuilderDraft.percentBandsVary(draft)
+                    // What every row resolves against, folded once and compared by VALUE: a
+                    // keystroke in the name leaves it equal, so no row redraws for it, and an
+                    // edit to one set redraws that one row.
+                    val rowContext = SetRowContext.of(draft.plan)
+                    val sets = draft.plan.sets
                     // A plain row, never a pinned section header.
                     CapsLabel(tr("SETS"))
-                    draft.plan.sets.forEachIndexed { index, set ->
+                    sets.forEachIndexed { index, set ->
+                        // Keyed by the set's id, so a reorder MOVES a row's state with it rather
+                        // than handing the open accordion to whichever set lands in its slot.
                         key(set.id) {
+                            val id = set.id
                             Box(
-                                Modifier.onGloballyPositioned { anchors.placed(set.id, it) },
+                                Modifier.onGloballyPositioned { anchors.placed(id, it) },
                             ) {
                                 SetRowView(
-                                    plan = StablePlan(draft.plan),
-                                    setID = set.id,
-                                    isExpanded = expanded == set.id,
+                                    set = set,
+                                    context = rowContext,
+                                    isExpanded = expanded == id,
                                     maxes = templates.maxTable,
                                     percentBandsVary = percentBandsVary,
                                     canMoveUp = index > 0,
-                                    canMoveDown = index < draft.plan.sets.size - 1,
-                                    onTap = { expanded = if (expanded == set.id) null else set.id },
-                                    onEditGrip = { editingSet = set.id },
-                                    onMoveUp = { draft = draft.movingSet(index, -1) },
-                                    onMoveDown = { draft = draft.movingSet(index, 1) },
+                                    canMoveDown = index < sets.size - 1,
+                                    onTap = { expanded = if (expanded == id) null else id },
+                                    onEditGrip = { editingSet = id },
+                                    onMoveUp = { update { it.movingSet(id, -1) } },
+                                    onMoveDown = { update { it.movingSet(id, 1) } },
                                     onDuplicate = {
-                                        val copy = set.copy(id = UUID.randomUUID())
-                                        val sets = draft.plan.sets.toMutableList()
-                                        sets.add(index + 1, copy)
-                                        draft = draft.copy(plan = draft.plan.copy(sets = sets))
-                                        expanded = copy.id
+                                        val copyID = UUID.randomUUID()
+                                        update { it.duplicatingSet(id, copyID) }
+                                        expanded = copyID
                                     },
                                     onRemove = {
-                                        val sets = draft.plan.sets.toMutableList()
-                                        sets.removeAt(index)
-                                        draft = draft.copy(plan = draft.plan.copy(sets = sets))
-                                        if (expanded == set.id) expanded = null
-                                        removedSet = RemovedSet(index, set)
+                                        val current = draftState.value.plan.sets
+                                        val at = current.indexOfFirst { it.id == id }
+                                        if (at >= 0) {
+                                            update { draft -> draft.withSets { all -> all.filterNot { it.id == id } } }
+                                            if (expanded == id) expanded = null
+                                            removedSet = RemovedSet(at, current[at])
+                                        }
                                     },
-                                    onSetChange = { updated ->
-                                        // Writes back BY ID, so an edit in flight while the list
-                                        // reorders lands on the set it came from.
-                                        draft = draft.copy(
-                                            plan = draft.plan.copy(
-                                                sets = draft.plan.sets.map {
-                                                    if (it.id == updated.id) updated else it
-                                                },
-                                            ),
-                                        )
-                                    },
+                                    // Writes back BY ID, so an edit in flight while the list
+                                    // reorders lands on the set it came from.
+                                    onSetChange = { updated -> update { it.replacingSet(updated) } },
                                 )
                             }
                         }
@@ -429,9 +459,9 @@ fun RoutineBuilderHost(
                         // Duplicates the previous set AND opens it, because editing the copy
                         // is unambiguously the next thing you will do — and a uniform routine
                         // then costs nothing extra to author.
-                        val new = (draft.plan.sets.lastOrNull() ?: SetPlan())
+                        val new = (draftState.value.plan.sets.lastOrNull() ?: SetPlan())
                             .copy(id = UUID.randomUUID())
-                        draft = draft.copy(plan = draft.plan.copy(sets = draft.plan.sets + new))
+                        update { draft -> draft.withSets { it + new } }
                         expanded = new.id
                         // NEXT frame, once the row exists to scroll to: the tap otherwise
                         // leaves you parked at the bottom of the list while the new set opens
@@ -445,22 +475,26 @@ fun RoutineBuilderHost(
 
                 Block(BuilderAnchor.Totals, anchors) {
                     Coach(coachStep, 4, scope, settings, { coachStep = it }, ::scrollTo)
-                    TotalsBar(draft, maxes = templates.maxTable)
+                    val maxes = templates.maxTable
+                    val totals = remember(draft, maxes) { TotalsValues.of(draft, maxes) }
+                    TotalsBar(totals)
                 }
 
                 Block(BuilderAnchor.EveryDay, anchors) {
                     Coach(coachStep, 5, scope, settings, { coachStep = it }, ::scrollTo)
                     EveryDaySection(
-                        draft,
+                        EveryDayValues.of(draft),
                         notificationsRefused = settings.deniedNotifications,
-                    ) { draft = it }
+                        update = update,
+                    )
                 }
 
-                FineTuningSection(draft) { draft = it }
+                FineTuningSection(FineTuningValues.of(draft.plan), update = update)
 
                 Block(BuilderAnchor.Finish, anchors) {
                     FinishBlock(
-                        draft = draft,
+                        validationIssue = validationIssue,
+                        saving = saving,
                         mode = mode,
                         templates = templates,
                         showsClosingCard = coachStep == BuilderDraft.closingCoachStep,
@@ -477,14 +511,14 @@ fun RoutineBuilderHost(
         // state that opens it lives at this root, not on the token.
         val editingID = editingSet
         if (editingID != null) {
-            val index = draft.plan.sets.indexOfFirst { it.id == editingID }
-            if (index >= 0) {
+            val editing = draft.plan.sets.firstOrNull { it.id == editingID }
+            if (editing != null) {
                 GripPanel(
-                    grip = draft.plan.sets[index].grip,
+                    grip = editing.grip,
                     onChange = { grip ->
-                        val sets = draft.plan.sets.toMutableList()
-                        sets[index] = sets[index].copy(grip = grip)
-                        draft = draft.copy(plan = draft.plan.copy(sets = sets))
+                        update { draft ->
+                            draft.withSets { sets -> sets.map { if (it.id == editingID) it.copy(grip = grip) else it } }
+                        }
                     },
                     onClose = { editingSet = null },
                 )
@@ -599,7 +633,8 @@ private fun AddSetRow(onAdd: () -> Unit) {
 
 @Composable
 private fun FinishBlock(
-    draft: RoutineDraft,
+    validationIssue: String?,
+    saving: Boolean,
     mode: BuilderMode,
     templates: TemplateStore,
     showsClosingCard: Boolean,
@@ -610,7 +645,7 @@ private fun FinishBlock(
     val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        draft.validationIssue?.let { issue ->
+        validationIssue?.let { issue ->
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.Top,
@@ -667,7 +702,7 @@ private fun FinishBlock(
             PrimaryButton(
                 title = tr("Save routine"),
                 icon = Icons.Filled.Check,
-                enabled = BuilderDraft.canSave(draft),
+                enabled = validationIssue == null && !saving,
                 onClick = onSave,
             )
         }
@@ -676,17 +711,6 @@ private fun FinishBlock(
 
 /// The one set the undo bar can put back — held with its ORIGINAL index.
 private data class RemovedSet(val index: Int, val set: SetPlan)
-
-/// Reordering, as a value. Out of bounds is a no-op rather than a crash: the buttons that
-/// call it are already disabled at the ends, and a belt is cheap.
-private fun RoutineDraft.movingSet(index: Int, offset: Int): RoutineDraft {
-    val target = index + offset
-    if (index !in plan.sets.indices || target !in plan.sets.indices) return this
-    val sets = plan.sets.toMutableList()
-    val moved = sets.removeAt(index)
-    sets.add(target, moved)
-    return copy(plan = plan.copy(sets = sets))
-}
 
 @Preview(name = "Builder · first run", showBackground = true, widthDp = 400, heightDp = 900)
 @Composable
@@ -728,13 +752,14 @@ private fun BuilderDocumentPreview(seed: RoutineDraft, coachStep: Int) {
         if (coachStep == 1) {
             CoachCard(1, 5, coachScript[0].title, coachScript[0].message, onNext = {}, onSkip = {})
         }
+        val update: DraftUpdate = { transform -> draft = transform(draft) }
         NameSection(draft.plan.name) { draft = draft.copy(plan = draft.plan.copy(name = it)) }
-        RhythmSection(draft) { draft = it }
+        RhythmSection(RhythmValues.of(draft.plan), update = update)
         CapsLabel(tr("SETS"))
         draft.plan.sets.forEachIndexed { index, set ->
             SetRowView(
-                plan = StablePlan(draft.plan),
-                setID = set.id,
+                set = set,
+                context = SetRowContext.of(draft.plan),
                 isExpanded = expanded == set.id,
                 maxes = run.nuri.getagrip.engine.MaxTable(),
                 percentBandsVary = BuilderDraft.percentBandsVary(draft),
@@ -750,8 +775,8 @@ private fun BuilderDocumentPreview(seed: RoutineDraft, coachStep: Int) {
             )
         }
         AddSetRow {}
-        TotalsBar(draft)
-        EveryDaySection(draft) { draft = it }
-        FineTuningSection(draft) { draft = it }
+        TotalsBar(TotalsValues.of(draft, run.nuri.getagrip.engine.MaxTable()))
+        EveryDaySection(EveryDayValues.of(draft), update = update)
+        FineTuningSection(FineTuningValues.of(draft.plan), update = update)
     }
 }

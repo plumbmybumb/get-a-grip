@@ -68,7 +68,8 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 /// deliberately no second surface where reminder times live.
 @Composable
 fun EveryDaySection(
-    draft: RoutineDraft,
+    /// Only what this card draws — see `EveryDayValues`.
+    values: EveryDayValues,
     modifier: Modifier = Modifier,
     /// **Whether the permission dialog was raised and came back NO.** Arrives as a VALUE,
     /// exactly like the palette and the grip list do, so this section still never touches a
@@ -78,7 +79,7 @@ fun EveryDaySection(
     /// SAVE of a routine with reminders on, so a first-run builder is always unpermitted and
     /// has simply not been asked yet. See the two branches at the foot of the section.
     notificationsRefused: Boolean = false,
-    onChange: (RoutineDraft) -> Unit,
+    update: DraftUpdate,
 ) {
     val palette = LocalGripPalette.current
     val context = LocalContext.current
@@ -103,8 +104,9 @@ fun EveryDaySection(
     // count on its face promises. The guard keeps the common path from marking an untouched
     // document dirty.
     LaunchedEffect(Unit) {
-        if (draft.reminders.size != draft.sessionsPerDay) {
-            onChange(draft.setSessionsPerDay(draft.sessionsPerDay))
+        update { draft ->
+            if (draft.reminders.size != draft.sessionsPerDay) draft.setSessionsPerDay(draft.sessionsPerDay)
+            else draft
         }
     }
 
@@ -121,19 +123,19 @@ fun EveryDaySection(
                     modifier = Modifier.semantics { contentDescription = L10n.tr("How often") },
                     content = listOf(
                         { cell: Modifier ->
-                            Chip(tr("Daily ritual"), !draft.isOnDemand, cell) {
-                                onChange(draft.copy(isOnDemand = false))
+                            Chip(tr("Daily ritual"), !values.isOnDemand, cell) {
+                                update { it.copy(isOnDemand = false) }
                             }
                         },
                         { cell: Modifier ->
-                            Chip(tr("Whenever"), draft.isOnDemand, cell) {
-                                onChange(draft.copy(isOnDemand = true))
+                            Chip(tr("Whenever"), values.isOnDemand, cell) {
+                                update { it.copy(isOnDemand = true) }
                             }
                         },
                     ),
                 )
 
-                if (draft.isOnDemand) {
+                if (values.isOnDemand) {
                     // The whole scheduling story, declined in one sentence. The times are
                     // KEPT in the draft — flipping back to a ritual restores them — so
                     // nothing here is destroyed, only quiet.
@@ -155,19 +157,19 @@ fun EveryDaySection(
                         // user's own 19:15 instead of resetting it to the 19:00 default.
                         IntChipRow(
                             values = listOf(1, 2, 3, 4),
-                            selection = draft.sessionsPerDay,
+                            selection = values.sessionsPerDay,
                             // The chips speak as bare numerals, which means nothing on their
                             // own; the container label makes "2" a sentence.
                             modifier = Modifier.semantics { contentDescription = L10n.tr("Sessions a day") },
-                        ) { onChange(draft.setSessionsPerDay(it)) }
+                        ) { count -> update { it.setSessionsPerDay(count) } }
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         ToggleRow(
                             title = tr("Remind me"),
-                            checked = draft.remindersEnabled,
+                            checked = values.remindersEnabled,
                             explainer = null,
-                        ) { onChange(draft.copy(remindersEnabled = it)) }
+                        ) { enabled -> update { it.copy(remindersEnabled = enabled) } }
 
                         // The times are what the toggle is about, so they follow it rather
                         // than sitting there inert while it is off. The values stay in the
@@ -176,7 +178,7 @@ fun EveryDaySection(
         // Reduce Motion. Compose's own default here is an unguarded 400 ms tween nothing in
         // this app chose.
         AnimatedVisibility(
-            visible = draft.remindersEnabled,
+            visible = values.remindersEnabled,
             enter = expandVertically(Motion.state(rememberReduceMotion())) +
                 fadeIn(Motion.state(rememberReduceMotion())),
             exit = shrinkVertically(Motion.state(rememberReduceMotion())) +
@@ -186,20 +188,22 @@ fun EveryDaySection(
                                 // Bounded by the LIST itself, never by the count alone: a
                                 // mismatched draft must degrade to one row fewer, never to
                                 // an index crash.
-                                val rows = minOf(draft.sessionsPerDay, draft.reminders.size)
+                                val rows = minOf(values.sessionsPerDay, values.reminders.size)
                                 repeat(rows) { index ->
                                     ReminderRow(
                                         index = index,
-                                        time = draft.reminders[index],
+                                        time = values.reminders[index],
                                     ) { newTime ->
                                         // Deliberately NOT sorted or deduped here:
                                         // re-ordering the list under the finger would swap
                                         // the row being edited with the one below it.
                                         // `RoutineDraft.normalized` tidies on the way into
                                         // the store.
-                                        val next = draft.reminders.toMutableList()
-                                        next[index] = newTime
-                                        onChange(draft.copy(reminders = next))
+                                        update { draft ->
+                                            if (index !in draft.reminders.indices) draft
+                                            else draft.copy(reminders = draft.reminders.toMutableList()
+                                                .also { it[index] = newTime })
+                                        }
                                     }
                                 }
                                 if (showDenied) {
@@ -337,7 +341,7 @@ private fun EveryDaySectionPreview() {
     GetAGripTheme {
         var draft by remember { mutableStateOf(RoutineDraft.starter) }
         Column(Modifier.padding(16.dp)) {
-            EveryDaySection(draft) { draft = it }
+            EveryDaySection(EveryDayValues.of(draft)) { draft = it(draft) }
         }
     }
 }

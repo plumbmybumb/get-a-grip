@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -192,6 +193,12 @@ class TemplateStore(
     /// session reported saved that was rolled back. Every write now answers for itself
     /// (`persistAndSync` returns it); this is only the sentence a screen shows.
     var saveError: String? by mutableStateOf(null)
+
+    /// Counts writes through `persistAndSync`, so a reader of the raw tables (`HistoryFeed`)
+    /// can tell whether anything changed since it last read. Observable, so a screen keyed on
+    /// it rereads when a write lands under it.
+    var writeRevision: Long by mutableLongStateOf(0L)
+        private set
 
     /// A scanned routine (or the reason a scan failed), HELD rather than presented.
     ///
@@ -1479,6 +1486,9 @@ class TemplateStore(
             saveError = L10n.tr("That change couldn't be saved — %s", error.message ?: "")
             false
         }
+        // AFTER the transaction, landed or not: a read that started during it is then one
+        // behind and rereads, where a bump before it could mark pre-write rows as current.
+        writeRevision++
         syncDerived(refoldingMaxes = maxesChanged)
         return committed
     }

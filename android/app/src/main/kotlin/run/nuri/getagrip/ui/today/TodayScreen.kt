@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui.today
 
+import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -43,8 +44,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -59,6 +58,7 @@ import run.nuri.getagrip.store.LocalDayClock
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.store.LocalHistoryFeed
 import run.nuri.getagrip.store.LocalTemplateStore
+import run.nuri.getagrip.ui.builder.OptionalRoutineDraftSaver
 import run.nuri.getagrip.ui.components.DeviceChip
 import run.nuri.getagrip.ui.components.UndoSnackbar
 import run.nuri.getagrip.ui.components.UndoSnackbarEffect
@@ -154,8 +154,11 @@ fun TodayScreen(
     /// `drainImportInbox`. It lives here — not in `MainActivity`, where the link actually
     /// arrives — because this is the one place that can see whether anything else holds the
     /// screen.
-    var importPreview by remember { mutableStateOf<RoutineDraft?>(null) }
-    var importError by remember { mutableStateOf<String?>(null) }
+    ///
+    /// SAVED across a rotation: claiming it EMPTIED the inbox, so a preview that died with the
+    /// Activity was a shared routine gone for good — rescanning is somebody else's phone away.
+    var importPreview by rememberSaveable(stateSaver = OptionalRoutineDraftSaver) { mutableStateOf<RoutineDraft?>(null) }
+    var importError by rememberSaveable { mutableStateOf<String?>(null) }
     /// The scanner could not be opened at all — no Play services, or the module has never
     /// downloaded. Separate from `importError`, which is about a code that WAS read.
     var scannerError by remember { mutableStateOf<String?>(null) }
@@ -354,7 +357,7 @@ fun TodayScreen(
     overview?.let { routine ->
         RoutineOverviewSheet(
             routine = routine,
-            summary = templates.summary(routine),
+            summary = rememberRoutineSummary(templates, routine),
             onClose = { overviewID = null; drainImportInbox() },
             onEdit = {
                 // Clear the sheet before opening the existing full-screen builder.
@@ -489,7 +492,7 @@ private fun Header(
 /// that was left open.
 private fun dateLine(today: DayStamp): String = DATE_LINE.format(today.localDate())
 
-private val DATE_LINE: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault())
+private val DATE_LINE = LocalizedPattern("EEEE d MMMM")
 
 /// Wraps to tomorrow's first slot rather than going blank once the day's last reminder has
 /// passed: at 22:00 the honest answer is still "next at 08:00", and a row that empties itself

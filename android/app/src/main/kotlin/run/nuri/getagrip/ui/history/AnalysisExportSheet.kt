@@ -51,8 +51,10 @@ import kotlinx.coroutines.launch
 import run.nuri.getagrip.engine.AnalysisExport
 import java.util.UUID
 
-/** A frozen snapshot; formatting never runs during composition or on the UI thread. */
-data class AnalysisExportRequest(val input: AnalysisExport.Input, val isWorkout: Boolean = false)
+/** What to export, frozen at the tap. `assemble` turns the captured rows into the export's
+ * input — a pass over every log's blobs — so it and the formatting both run on a background
+ * dispatcher once the sheet is up, never during composition or on the UI thread. */
+class AnalysisExportRequest(val isWorkout: Boolean = false, val assemble: () -> AnalysisExport.Input)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,9 +67,14 @@ fun AnalysisExportSheet(request: AnalysisExportRequest, onClose: () -> Unit) {
     var range by remember { mutableStateOf(AnalysisExport.CSVScope.recent) }
     var detail by remember { mutableStateOf(AnalysisExport.CSVDetail.summary) }
     val selected = if (request.isWorkout) AnalysisExport.CSVScope.workout else range
-    val document by produceState<AnalysisExport.CSVDocument?>(null, request, selected, detail) {
+    // The sheet is up the instant it is asked for; the rows are assembled behind it.
+    val input by produceState<AnalysisExport.Input?>(null, request) {
+        value = withContext(Dispatchers.Default) { request.assemble() }
+    }
+    val document by produceState<AnalysisExport.CSVDocument?>(null, input, selected, detail) {
         value = null
-        value = withContext(Dispatchers.Default) { AnalysisExport.csv(request.input, selected, detail) }
+        val ready = input ?: return@produceState
+        value = withContext(Dispatchers.Default) { AnalysisExport.csv(ready, selected, detail) }
     }
     var justCopied by remember(selected, detail) { mutableStateOf(false) }
     var shareFailed by remember(selected, detail) { mutableStateOf(false) }
@@ -82,7 +89,7 @@ fun AnalysisExportSheet(request: AnalysisExportRequest, onClose: () -> Unit) {
             Text(tr(if (request.isWorkout) "Export workout" else "Export for analysis"),
                 style = MaterialTheme.typography.titleLarge, color = palette.inkPrimary)
             if (request.isWorkout) {
-                request.input.sessions.firstOrNull()?.let {
+                input?.sessions?.firstOrNull()?.let {
                     Text(it.routineName, style = MaterialTheme.typography.titleMedium, color = palette.inkPrimary)
                     Text(AnalysisExport.isoDay(it.day), style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
                 }
