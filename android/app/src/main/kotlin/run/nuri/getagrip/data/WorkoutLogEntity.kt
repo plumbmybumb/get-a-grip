@@ -22,11 +22,10 @@ import kotlin.math.roundToInt
 
 /// One finished session, frozen.
 ///
-/// Everything here that could have come from a `SessionTemplateEntity` is a SNAPSHOT
-/// instead: the name, the plan, and every rep's own `GripSpec`. Editing a routine must
-/// never rewrite history — which is what makes edits cheap enough to offer behind a swipe
-/// and an undo bar rather than a dialog. Deleting one takes its sessions with it, and the
-/// same Undo puts them back (`TemplateStore.delete`, Nuri 2026-09-20).
+/// Everything that could come from a `SessionTemplateEntity` is a SNAPSHOT: the name, the
+/// plan, every rep's own `GripSpec`. Editing a routine must never rewrite history, which is
+/// what makes edits cheap enough to offer without a dialog. Deleting a routine takes its
+/// sessions, and the same Undo restores them (`TemplateStore.delete`, Nuri 2026-09-20).
 ///
 /// Same schema rules as `SessionTemplateEntity`: every column defaulted or nullable, no
 /// uniqueness beyond the primary key, no relationships, additive changes only.
@@ -35,11 +34,10 @@ data class WorkoutLogEntity(
     @PrimaryKey val id: UUID = UUID.randomUUID(),
     val startedAt: Instant = storedNow(),
     val finishedAt: Instant = storedNow(),
-    /// Epoch day FROZEN at save — the TRAINING day, which turns at
-    /// `DayStamp.ROLLOVER_HOUR`, so a 00:30 session stays on the evening it belonged to.
-    /// It is the join for "2 of 2 today": a cheap Int predicate rather than a calendar
-    /// pass over every log. Rewritten once, by `TemplateStore.repairTrainingDays`, for
-    /// rows stamped by the clock that used to turn at midnight.
+    /// Epoch day FROZEN at save — the TRAINING day (turns at `DayStamp.ROLLOVER_HOUR`), so
+    /// a 00:30 session stays on its evening. The cheap Int join for "2 of 2 today".
+    /// Rewritten once by `TemplateStore.repairTrainingDays` for rows stamped under the old
+    /// midnight rule.
     val dayKey: Int = 0,
     /// Best-effort grouping ONLY. The routine may be gone; nothing here needs it back.
     val templateID: UUID? = null,
@@ -47,8 +45,8 @@ data class WorkoutLogEntity(
     val templateName: String = "",
     val planData: String = "",      // SessionPlan (already .executable), write-once
     val resultsData: String = "",   // [RepSummary], write-once
-    /// What "a full day" meant when this was logged — a later change to sessions-a-day
-    /// must not re-score days already lived.
+    /// What "a full day" meant when logged; changing sessions-a-day must not rescore days
+    /// already lived.
     val sessionsPerDayTarget: Int = 1,
     val totalHeldSeconds: Double = 0.0,
     /// Denormalized at save so History can draw a list without decoding a blob per row.
@@ -60,13 +58,12 @@ data class WorkoutLogEntity(
     val rpe: Int? = null,
     /// The LOCAL strain axis; `rpe` is reused as the systemic one. null = not answered.
     val fingerStrainRaw: Int? = null,
-    /// Wall-clock length of a session logged BY HAND. null for runner sessions, which
-    /// carry a real `startedAt`/`finishedAt` span instead — see `sessionMinutes`.
+    /// Length of a session logged BY HAND. null for runner sessions, which have a real span
+    /// — see `sessionMinutes`.
     val durationMinutes: Int? = null,
     val notes: String = "",
-    /// What kind of training this was — see `SessionKind`. **Defaulted to "hang"**,
-    /// which is exactly what every row written before climbing existed means, so the
-    /// migration is additive with no backfill.
+    /// What kind of training this was — see `SessionKind`. **Defaulted to "hang"**, what
+    /// every pre-climbing row means, so the migration is additive with no backfill.
     val kindRaw: String = SessionKind.hang.rawValue,
 ) {
 
@@ -76,18 +73,15 @@ data class WorkoutLogEntity(
     /// Write-once, so read-only: nothing may re-encode a session after it happened.
     val reps: List<RepSummary> get() = BlobCodec.decodeArray(resultsData) { RepSummary.fromJson(it) }
 
-    /// null when the snapshot is missing or unreadable. History then falls back to the
-    /// denormalized columns, which is why they exist.
+    /// null when the snapshot is missing or unreadable; History then uses the denormalized
+    /// columns.
     val plan: SessionPlan? get() = BlobCodec.decode(planData) { SessionPlan.fromJson(it) }
 
     val day: DayStamp get() = DayStamp(dayKey)
 
-    /// The date History shows for this row: its TRAINING day, for every kind of row. A
-    /// hand log records when the entry was created, so its chosen day was always the one
-    /// to show; a runner session used to show its start instant, which is a different
-    /// calendar day from the training day for anything begun in the small hours — the
-    /// row said the 19th while the grid and the tally credited the 20th. One date per row,
-    /// the same one every other surface counts by.
+    /// The date History shows: the TRAINING day, for every kind of row. A runner session
+    /// used to show its start instant, which for small-hours sessions disagreed with the
+    /// grid and tally (19th vs 20th). One date per row, the one every surface counts by.
     @Suppress("UNUSED_PARAMETER")
     fun historyDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate = day.localDate()
 
@@ -96,9 +90,8 @@ data class WorkoutLogEntity(
 
     val fingerStrain: FingerStrain? get() = fingerStrainRaw?.let { FingerStrain.fromRaw(it) }
 
-    /// One duration for every kind of session. A hand-entered duration wins; runner
-    /// sessions already have a real span, so their existing rows gain a duration
-    /// without a backfill or a migration.
+    /// One duration for every kind: a hand-entered one wins; runner sessions have a real
+    /// span, so no backfill or migration.
     val sessionMinutes: Int?
         get() {
             durationMinutes?.let { if (it > 0) return it }
@@ -110,13 +103,10 @@ data class WorkoutLogEntity(
 
     val wasCompleted: Boolean get() = plannedReps > 0 && completedReps >= plannedReps
 
-    /// What this session asked of each grip, keyed by the CANONICAL key — the join
-    /// between a pull made in March and one made in December.
-    ///
-    /// Folded out of the frozen plan rather than counted off the reps, so the per-grip
-    /// line reads identically here and in the builder: one formatter, one set of totals.
-    /// First key wins on a collision, because a trap here would take History down for
-    /// one malformed blob.
+    /// What this session asked of each grip, by CANONICAL key (the join between March and
+    /// December). Folded from the frozen plan, not the reps, so the per-grip line matches
+    /// the builder's formatter. First key wins on a collision: a malformed blob must not
+    /// take History down.
     fun totalsByGripKey(): Map<String, PlanMath.GripTotals> {
         val frozen = plan ?: return emptyMap()
         val out = LinkedHashMap<String, PlanMath.GripTotals>()
@@ -125,8 +115,8 @@ data class WorkoutLogEntity(
     }
 
     companion object {
-        /// The twin of `WorkoutLog.init(plan:…)`, and the only place the denormalized
-        /// columns are derived. Nothing else may recompute them — see `undoDeleteSession`.
+        /// The twin of `WorkoutLog.init(plan:…)` and the only place the denormalized
+        /// columns are derived — see `undoDeleteSession`.
         fun from(
             plan: SessionPlan,
             templateID: UUID?,
@@ -137,9 +127,8 @@ data class WorkoutLogEntity(
             finishedAt: Instant,
             day: DayStamp,
         ): WorkoutLogEntity {
-            // `.executable` here rather than trusting the caller: `RepSummary.setIndex`
-            // indexes THIS list, so the invariant has to be true by construction. It is
-            // idempotent, so a runner that already froze the executable plan pays nothing.
+            // `.executable` rather than trusting the caller: `RepSummary.setIndex` indexes
+            // THIS list. Idempotent, so an already-executable plan costs nothing.
             val frozen = plan.executable
             val held = reps.sumOf { it.heldSeconds }
             return WorkoutLogEntity(
@@ -154,12 +143,11 @@ data class WorkoutLogEntity(
                 sessionsPerDayTarget = maxOf(1, sessionsPerDayTarget),
                 totalHeldSeconds = held,
                 peakKg = reps.maxOfOrNull { it.peakKg } ?: 0.0,
-                // Time-weighted, not a mean of means: a rep that dropped off after one
-                // second would otherwise weigh as much as a full ten-second hang.
+                // Time-weighted, not a mean of means: a rep dropped after one second must
+                // not weigh like a full hang.
                 avgKg = if (held > 0) reps.sumOf { it.avgKg * it.heldSeconds } / held else 0.0,
-                // `.completed` only. An early release is a pull that happened, not a pull
-                // that counted, and this number is what "the session is done" is measured
-                // against.
+                // `.completed` only: an early release happened but did not count, and this
+                // is what "the session is done" is measured against.
                 completedReps = reps.count { it.outcome == RepOutcome.completed },
                 plannedReps = PlanMath.totalReps(frozen),
                 rpe = null,
@@ -167,15 +155,13 @@ data class WorkoutLogEntity(
             )
         }
 
-        /// A logged session with no plan, no reps and no gauge behind it. `.benchmark`
-        /// uses the same builder even though it is written by `recordMax`, so this is
-        /// about the SHAPE of the row rather than who is allowed to create it.
+        /// A logged session with no plan, reps or gauge. `.benchmark` (written by
+        /// `recordMax`) uses it too: this is about the row's SHAPE.
         ///
-        /// Deliberately the same table as a hangboard session rather than a model of its
-        /// own: it is a session that happened, History is one list, and the consistency
-        /// grids fold over one stream. The blob columns are simply empty, which every
-        /// reader already tolerates (`plan` returns null, `reps` returns []) because a
-        /// corrupt snapshot had to be survivable anyway.
+        /// The same table as a hangboard session, not a model of its own: History is one
+        /// list and the grids fold one stream. The blob columns are empty, which every
+        /// reader tolerates (`plan` null, `reps` []) because a corrupt snapshot had to be
+        /// survivable anyway.
         fun logged(
             kind: SessionKind,
             day: DayStamp,
@@ -206,20 +192,19 @@ data class WorkoutLogEntity(
 
 // MARK: - Folds over a collection of logs
 
-/// The climb logged on `day` — **hardest first**, so a limit session is what a day is
-/// remembered by even when an easy evening followed it.
+/// The climb logged on `day` — **hardest first**, so a limit session names the day even if
+/// an easy evening followed.
 ///
-/// ONE implementation. The store folds it for Today's strip and History folds its own
-/// query for the 5-week grid, and two hand-written copies of this rule would eventually
-/// draw two different calendars from the same rows.
+/// ONE implementation for Today's strip and History's 5-week grid; two copies would
+/// eventually draw two calendars from the same rows.
 fun Collection<WorkoutLogEntity>.climb(on: DayStamp): SessionKind? {
     val kinds = filter { it.dayKey == on.raw && it.kind.isClimb }.map { it.kind }
     return if (kinds.contains(SessionKind.climbLimit)) SessionKind.climbLimit else kinds.firstOrNull()
 }
 
-/// Whether anything logged on `day` SETTLES it — a climb or a benchmark. The grid and the
-/// tally fill on this; the notch and the gym copy still key on `climb(on:)`, because a
-/// benchmark is a full day but not a climbing day.
+/// Whether anything on `day` SETTLES it — a climb or a benchmark. Grid and tally fill on
+/// this; the notch and gym copy key on `climb(on:)`, since a benchmark day is not a
+/// climbing day.
 fun Collection<WorkoutLogEntity>.settled(on: DayStamp): Boolean =
     any { it.dayKey == on.raw && it.kind.settlesDay }
 
@@ -228,10 +213,9 @@ fun Collection<WorkoutLogEntity>.settled(on: DayStamp): Boolean =
 fun Collection<WorkoutLogEntity>.benchmark(on: DayStamp): Boolean =
     any { it.dayKey == on.raw && it.kind == SessionKind.benchmark }
 
-/// What a lifetime of sessions adds up to — see `Collection<WorkoutLogEntity>.lifetime` and
-/// History's `LifetimeCard`. Hangboard sessions the app ran or that were logged by hand
-/// count as sessions; a climb is a day at the gym; a benchmark day is a day trained and
-/// nothing else.
+/// A lifetime of sessions — see `lifetime` and History's `LifetimeCard`. Hang sessions (run
+/// or hand-logged) count as sessions; a climb is a gym day; a benchmark day is a day
+/// trained and nothing else.
 data class LifetimeStats(
     val sessions: Int = 0,
     /// Completed pulls only — a skipped pull is a pull that did not happen.
@@ -251,9 +235,8 @@ data class LifetimeStats(
     val isEmpty: Boolean get() = sessions == 0 && climbDays == 0 && daysTrained == 0
 }
 
-/// The all-time tally in History (Nuri, 2026-09-20: "lifetime stats"). Folded from the
-/// DENORMALIZED columns only — never from the rep blobs — so it costs a row per session,
-/// not a decode, and can be recomputed on every refresh of the feed.
+/// The all-time tally in History (Nuri, 2026-09-20). Folded from the DENORMALIZED columns
+/// only, never the rep blobs, so it is cheap enough to recompute on every feed refresh.
 val Collection<WorkoutLogEntity>.lifetime: LifetimeStats
     get() {
         var sessions = 0
@@ -272,9 +255,8 @@ val Collection<WorkoutLogEntity>.lifetime: LifetimeStats
                     sessions += 1
                     pulls += log.completedReps
                     held += log.totalHeldSeconds
-                    // The lifting convention — load × reps, added up — from the session's
-                    // time-weighted mean and its completed count. Exact when every hold in
-                    // a session ran its full length, which is what a completed pull means.
+                    // Load × reps from the time-weighted mean and completed count; exact
+                    // when every completed hold ran its full length.
                     volume += log.avgKg * log.completedReps
                     heaviest = maxOf(heaviest, log.peakKg)
                 }

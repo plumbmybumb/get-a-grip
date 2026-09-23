@@ -1172,22 +1172,17 @@ class GattGaugeClient(
             notifyingCount = 0
         }
 
-        /// **The connection interval, measured on hardware, not guessed.** On a Realme
-        /// RMX5079 (Android 16) the phone renegotiated from 7.5 ms to **60 ms with slave
-        /// latency 6** within five seconds (OEM power saving): notifications every ~180 ms,
-        /// readout lagging by up to ~0.4 s. iOS runs the same gauge at 30 ms.
+        /// The high-priority connection interval, requested while streaming — measured on
+        /// hardware and explained at
+        /// `LiveProgressorClient.ProgressorManager.requestStreamingConnectionInterval`.
         ///
         /// **It matters MORE here than for a Progressor.** These devices have no clock;
         /// samples are stamped from host uptime, so arrival jitter IS the timebase hang
-        /// time accrues from (hence `SamplePacing.syntheticClockGapCapSeconds`).
-        ///
-        /// A REQUEST, never a guarantee: peripheral, controller or OEM can refuse or
-        /// renegotiate back, so nothing depends on it.
+        /// time accrues from (hence `SamplePacing.syntheticClockGapCapSeconds`). A request
+        /// only; nothing depends on it.
         fun requestStreamingConnectionInterval(streaming: Boolean) {
             val gatt = tuningGatt ?: return
-            // A link-layer request, not an ATT write: calling the platform directly keeps
-            // Nordic's queued negotiation from holding up tare, start or stop. Failure is
-            // harmless; retry after cooldown.
+            // Platform call, not an ATT write — see the Progressor twin.
             streamingPriority.update(streaming, clock.uptimeSeconds()) { active ->
                 try {
                     gatt.requestConnectionPriority(

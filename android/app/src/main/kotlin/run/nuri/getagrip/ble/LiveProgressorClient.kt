@@ -34,25 +34,20 @@ import java.util.UUID
 
 /// The real Tindeq Progressor, over Android BLE.
 ///
-/// **Isolation.** iOS marks the class `@MainActor` and hands CoreBluetooth `queue: .main`,
-/// so every delegate callback genuinely arrives on the main thread and there is no
-/// isolation boundary anywhere in the stack. Android's scan and GATT callbacks arrive on
-/// binder/handler threads, so the same guarantee is kept by hand: every entry point below
-/// hops to `Dispatchers.Main.immediate` before it touches state or calls a callback. It is
-/// `immediate` and not plain `Main` because a `connect()` that can answer in the same turn
-/// (a reattach to a live link) must publish its state before the caller looks.
+/// **Isolation.** iOS runs CoreBluetooth on `queue: .main`, so every callback is on the
+/// main thread. Android's scan and GATT callbacks arrive on binder/handler threads, so
+/// every entry point below hops to `Dispatchers.Main.immediate` before touching state —
+/// `immediate` because a `connect()` that answers in the same turn (reattach to a live
+/// link) must publish before the caller looks.
 ///
-/// TRANSLATION NOTE — **what Nordic's library owns and what stays ours.** The Swift client
-/// hand-rolls a write queue because CoreBluetooth silently DISCARDS a `.withoutResponse`
-/// write when its buffer is not ready and accepts one `.withResponse` write at a time; the
-/// first hardware session (2026-08-03) lost one of the `startWeight`/`tare` pair to exactly
-/// that. Nordic's `BleManager` already serializes GATT operations — a queued request is not
-/// handed to the stack until the previous one has completed — so the ATT-level pacing moved
-/// to the library. **Everything above ATT stayed:** `ControlPointQueue` still owns the
-/// serialized tag-0 query channel, the poison latch, the bypass that keeps control commands
-/// from queueing behind telemetry, and the tare-integrity ordering. None of those is a
-/// radio rule; they exist because the PROTOCOL's replies carry no echo of what they answer,
-/// and no transport library can know that.
+/// TRANSLATION NOTE — **what Nordic's library owns and what stays ours.** iOS hand-rolls a
+/// write queue because CoreBluetooth silently DISCARDS an unready `.withoutResponse` write
+/// and takes one `.withResponse` write at a time (the first hardware session lost one of
+/// `startWeight`/`tare` that way). Nordic's `BleManager` serializes GATT operations, so ATT
+/// pacing moved to the library. **Everything above ATT stayed:** `ControlPointQueue` owns
+/// the serialized tag-0 query channel, the poison latch, the control-command bypass and
+/// tare-integrity ordering — protocol rules (replies carry no echo), which no transport
+/// library can know.
 class LiveProgressorClient(
     context: Context,
     private val scope: CoroutineScope,
@@ -91,15 +86,14 @@ class LiveProgressorClient(
         const val sleepFallbackMillis = 1_000L
         const val quarantineFallbackMillis = 3_000L
 
-        /// **REQUEST 517 BEFORE SUBSCRIBING.** A Progressor notification of eight samples
-        /// is 2 + 8 × 8 = 66 bytes, and Android's default ATT MTU of 23 gives 20 bytes of
-        /// payload — every batch would arrive truncated, and the codec would (correctly)
-        /// stop the walk and drop it. iOS negotiates the MTU itself and never had to ask.
+        /// **REQUEST 517 BEFORE SUBSCRIBING.** An eight-sample notification is 2 + 8 × 8 =
+        /// 66 bytes; Android's default MTU of 23 leaves 20 bytes of payload, so every batch
+        /// would arrive truncated and be dropped by the codec. iOS negotiates this itself.
         const val requestedMtu = 517
 
-        /// The advertised name is `Progressor_<serial>`, which varies per unit — so the
-        /// SCAN filters on the service, exactly as iOS does. This prefix is used only for
-        /// the reattach path, where Android offers no service filter at all.
+        /// The advertised name is `Progressor_<serial>`, so the SCAN filters on the
+        /// service, as on iOS. The prefix serves only the reattach path, where Android
+        /// offers no service filter.
         const val namePrefix = "Progressor"
     }
 
@@ -111,14 +105,12 @@ class LiveProgressorClient(
     private var device: BluetoothDevice? = null
 
     /// A deliberately cancelled link stays quarantined until the stack delivers its
-    /// terminal callback. Reusing it earlier lets callbacks from the old generation satisfy
-    /// the new connection attempt.
+    /// terminal callback; reusing it earlier lets old-generation callbacks satisfy the new
+    /// attempt.
     ///
-    /// TRANSLATION NOTE: iOS holds the retired `CBPeripheral` itself. Nordic's `BleManager`
-    /// binds to one device at a time and refuses a second `connect()` while the first is
-    /// live, so the quarantine here is a BOOLEAN plus the generation counter — the
-    /// breadcrumb vocabulary is unchanged, because the store's ring is read against iOS
-    /// logs and the two must stay comparable.
+    /// TRANSLATION NOTE: iOS holds the retired `CBPeripheral`. Nordic's `BleManager` binds
+    /// one device at a time, so here it is a BOOLEAN plus the generation counter; the
+    /// breadcrumb vocabulary is unchanged so the ring stays comparable with iOS logs.
     private var quarantined = false
     private var pendingConnectionStart = false
 
@@ -129,7 +121,7 @@ class LiveProgressorClient(
     private var attemptsRemaining = 0
 
     /// Set only by an accepted explicit `connect()`, and retained across radio power loss
-    /// so powering Bluetooth back on resumes the same user intent.
+    /// so Bluetooth coming back resumes the intent.
     private var wantsConnection = false
     private var refreshBudgetWhenPoweredOn = false
 
@@ -154,12 +146,10 @@ class LiveProgressorClient(
 
     private var radioReceiver: BroadcastReceiver? = null
 
-    /// TRANSLATION NOTE: CoreBluetooth publishes radio state through
-    /// `centralManagerDidUpdateState`, which is also where iOS resumes a connect that was
-    /// waiting on the radio. Android has no such callback on the scanner, so this receiver
-    /// IS that delegate method — registered lazily with the first `connect()`, for exactly
-    /// the reason the central is created lazily there: nothing about Bluetooth happens
-    /// until a tap asks for it.
+    /// TRANSLATION NOTE: this receiver IS iOS's `centralManagerDidUpdateState` (where iOS
+    /// also resumes a connect waiting on the radio). Registered lazily with the first
+    /// `connect()`, as the iOS central is: nothing about Bluetooth happens until a tap asks
+    /// for it.
     private fun registerRadioReceiver() {
         if (radioReceiver != null) return
         val receiver = object : BroadcastReceiver() {
@@ -202,9 +192,8 @@ class LiveProgressorClient(
     // MARK: - ProgressorClient
 
     override fun connect() {
-        // `wantsConnection` covers the backoff and radio-off gaps, when the public state is
-        // not busy but the original user intent is still active. A duplicate tap must not
-        // replenish its retry budget.
+        // `wantsConnection` covers backoff and radio-off gaps where the intent is still
+        // live; a duplicate tap must not replenish the retry budget.
         if (wantsConnection || state.isBusy || state.isConnected) return
 
         wantsConnection = true
@@ -212,10 +201,8 @@ class LiveProgressorClient(
         refreshBudgetWhenPoweredOn = false
         remembered.connectRequested()
 
-        // LAZY on purpose, the twin of iOS constructing its central here: nothing about
-        // Bluetooth is touched until a Connect tap asks for it. On Android the system
-        // prompt belongs to `DeviceStore`'s `PermissionGate`, which has already run by the
-        // time this is called.
+        // LAZY, the twin of iOS constructing its central here. The permission prompt
+        // belongs to `DeviceStore`'s `PermissionGate`, which has already run.
         registerRadioReceiver()
         if (adapter?.isEnabled != true) {
             state = radioState()
@@ -247,8 +234,8 @@ class LiveProgressorClient(
     }
 
     override fun sleepDevice() {
-        // Sleep is a terminal user intent. Clear reconnect intent before the command enters
-        // the queue so a device-initiated shutdown cannot start a rescan.
+        // Sleep is a terminal intent. Clear reconnect intent before queueing so the
+        // device's shutdown cannot start a rescan.
         wantsConnection = false
         refreshBudgetWhenPoweredOn = false
         pendingConnectionStart = false
@@ -264,26 +251,24 @@ class LiveProgressorClient(
     }
 
     override fun send(command: ProgressorCommand) {
-        // Start writes carry a cause through the one public start funnel. Silently
-        // accepting an uncaused start here would make its later hardware breadcrumb a
-        // guess, so callers use `startStreaming(cause)` instead.
+        // Starts go through `startStreaming(cause)`, so a later hardware breadcrumb is
+        // never a guess about who asked.
         if (command == ProgressorCommand.startWeightMeasurement) return
         queue.enqueue(command)
     }
 
-    /// **Never gated on an "is streaming" flag.** That flag can only ever cause the one
-    /// command a session depends on to be SKIPPED. Re-sending `startWeight` to a streaming
-    /// device is harmless; not sending it is a dead workout. The µs-epoch semantics of a
-    /// re-kick — the `streamRestarted` timeline break — belong to the store and the runner;
-    /// this client just writes the start again.
+    /// **Never gated on an "is streaming" flag**: it can only SKIP the command a session
+    /// depends on, and re-sending `startWeight` is harmless. The µs-epoch semantics of a
+    /// re-kick (`streamRestarted`) belong to the store and runner; this just writes the
+    /// start.
     override fun startStreaming(cause: StreamStartCause) {
         queue.enqueue(ProgressorCommand.startWeightMeasurement, startCause = cause)
         manager?.requestStreamingConnectionInterval(streaming = true)
     }
 
-    /// **Hand the radio back when the stream stops.** The high-priority interval is a
-    /// sensor-grade request; holding it while nothing is streaming spends battery on a link
-    /// nobody is reading — see `requestStreamingConnectionInterval`.
+    /// **Hand the radio back when the stream stops**: holding the high-priority interval
+    /// with nothing streaming spends battery on a link nobody reads — see
+    /// `requestStreamingConnectionInterval`.
     override fun stopStreaming() {
         send(ProgressorCommand.stopWeightMeasurement)
         manager?.requestStreamingConnectionInterval(streaming = false)
@@ -314,14 +299,12 @@ class LiveProgressorClient(
         generation += 1uL
         scanGeneration = generation
 
-        // BLE links are owned by the system, not by this process, so after a relaunch the
-        // device may already be connected — reattaching is instant and skips the scan
-        // entirely.
+        // BLE links are owned by the system, so after a relaunch the device may already be
+        // connected; reattaching skips the scan.
         //
-        // TRANSLATION NOTE: iOS filters `retrieveConnectedPeripherals` by SERVICE. Android's
-        // `getConnectedDevices(GATT)` takes no service filter and reports every GATT-linked
-        // device on the phone, so the name prefix is the only filter available here. It is
-        // never the scan's filter — the scan matches the service, exactly as iOS does.
+        // TRANSLATION NOTE: iOS filters `retrieveConnectedPeripherals` by SERVICE.
+        // Android's `getConnectedDevices(GATT)` has no service filter, so the name prefix
+        // is all there is here. The scan still matches the service.
         val known = try {
             bluetoothManager?.getConnectedDevices(BluetoothProfile.GATT)
                 ?.firstOrNull { it.name?.startsWith(namePrefix) == true }
@@ -346,14 +329,12 @@ class LiveProgressorClient(
 
     // MARK: - Scanning
 
-    /// **SCAN-RATE DISCIPLINE.** Android returns nothing at all for 30 seconds after five
-    /// scan starts in 30 seconds, silently — no error, no callback. The retry ladder here
-    /// is five attempts with a one-second backoff, which is exactly the shape that trips
-    /// it, so a running scan is REUSED rather than restarted: only the deadline is re-armed.
-    /// iOS has no such quota and simply calls `scanForPeripherals` again.
+    /// **SCAN-RATE DISCIPLINE.** Android silently returns nothing for 30 s after five scan
+    /// starts in 30 s. The retry ladder (five attempts, one-second backoff) is exactly that
+    /// shape, so a running scan is REUSED and only its deadline re-armed. iOS has no such
+    /// quota.
     ///
-    /// And when a scan DOES have to start, it asks the shared budget first — see
-    /// `BudgetedScanStart`.
+    /// A scan that must start asks the shared budget first — see `BudgetedScanStart`.
     private fun startScan(generation: ULong) {
         val scanner = adapter?.bluetoothLeScanner
         if (scanner == null) {
@@ -372,10 +353,9 @@ class LiveProgressorClient(
         val filter = ScanFilter.Builder()
             .setServiceUuid(ParcelUuid(serviceUUID))
             .build()
-        // CALLBACK_TYPE_ALL_MATCHES (the default) rather than FIRST_MATCH: first-match
-        // needs offloaded filtering, which not every chipset has, and `startScan` throws
-        // outright where it is missing. The `device != null` guard in `didDiscover` is
-        // what makes the first hit the only one that matters.
+        // ALL_MATCHES (the default), not FIRST_MATCH: first-match needs offloaded filtering
+        // some chipsets lack, where `startScan` throws. The `device != null` guard in
+        // `didDiscover` makes the first hit the only one that matters.
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
@@ -414,8 +394,8 @@ class LiveProgressorClient(
     }
 
     private fun didDiscover(result: ScanResult) {
-        // Scanning is already filtered to the Progressor service, so the first hit is the
-        // device. (Only one gauge is ever in play.)
+        // The scan is filtered to the Progressor service, so the first hit is the device
+        // (only one gauge is ever in play).
         if (adapter?.isEnabled != true || !wantsConnection) return
         if (state != ProgressorConnectionState.Scanning) return
         if (device != null || quarantined) return
@@ -423,9 +403,9 @@ class LiveProgressorClient(
         attach(result.device, generation)
     }
 
-    /// `autoConnect` hands the device to the OS to connect whenever it is next in range, with
-    /// no timeout — see `AttemptRoute.awaitInRange`. Nordic tries a direct connection first,
-    /// so a gauge that is already there costs no more than before.
+    /// `autoConnect` lets the OS connect whenever the device is next in range, with no
+    /// timeout — see `AttemptRoute.awaitInRange`. Nordic tries a direct connection first,
+    /// so a gauge already present costs nothing extra.
     private fun attach(found: BluetoothDevice, generation: ULong, autoConnect: Boolean = false) {
         if (!wantsConnection || adapter?.isEnabled != true) return
         if (this.generation != generation || quarantined) return
@@ -447,18 +427,16 @@ class LiveProgressorClient(
             it.setConnectionObserver(observer)
             manager = it
         }
-        // TRANSLATION NOTE: the 8 s connect deadline is Nordic's own `timeout`, not a
-        // hand-rolled task — the library cancels the pending connection itself and reports
-        // `onDeviceFailedToConnect` with `REASON_TIMEOUT`. `retry(0)`: the retry ladder
-        // above owns the budget, and letting the library retry too would spend five
-        // attempts inside one of ours.
+        // TRANSLATION NOTE: the 8 s connect deadline is Nordic's `timeout`, which cancels
+        // and reports `REASON_TIMEOUT` itself. `retry(0)`: the ladder above owns the
+        // budget; library retries would spend five attempts inside one of ours.
         remembered.attaching(autoConnect)
         try {
             val request = bleManager.connect(found)
                 .useAutoConnect(autoConnect)
                 .retry(0)
-            // No deadline on a wait for the gauge to come back into range: that wait is the
-            // point, and a rep never ends itself for a lost link either.
+            // No deadline while waiting for the gauge to come back into range: the wait is
+            // the point, as a rep never ends itself for a lost link.
             if (!autoConnect) request.timeout(connectTimeoutMillis)
             request.enqueue()
         } catch (_: SecurityException) {
@@ -527,17 +505,16 @@ class LiveProgressorClient(
         clearLinkState(clearDeferredStart = true)
     }
 
-    /// There can only be one gauge. If an earlier deliberate cancellation is still awaiting
-    /// its terminal callback, never replace its quarantine with another.
+    /// There can only be one gauge. A cancellation still awaiting its terminal callback
+    /// keeps its quarantine; never replace it.
     private fun retireLink() {
         if (quarantined) return
         onDiagnostic?.invoke(ProgressorClientDiagnostic.RetiringPeripheral)
         quarantined = true
         manager?.disconnect()?.enqueue()
-        // Belt to the terminal callback's braces. Retiring a link that is already DOWN (an
-        // autoConnect link Nordic was quietly reconnecting) has no connection to tear down,
-        // and a stack that answered with no callback at all would hold the quarantine — and
-        // every reconnect waiting behind it — forever.
+        // Backstop for the terminal callback. Retiring a link already DOWN (an autoConnect
+        // link Nordic was reconnecting) tears nothing down, and a stack that never calls
+        // back would hold the quarantine, and every reconnect behind it, forever.
         quarantineFallbackJob?.cancel()
         quarantineFallbackJob = scope.launch(Dispatchers.Main.immediate) {
             delay(quarantineFallbackMillis)
@@ -649,8 +626,8 @@ class LiveProgressorClient(
         // stack confirms. Why this differs from `GattGaugeClient`: see `RememberedGauge`.
         if (wasAutoConnect) retireLink()
 
-        // Radio state is authoritative. Its receiver already published the off or
-        // unauthorized state, and a late disconnect must not overwrite or rescan it.
+        // Radio state is authoritative: its receiver already published off/unauthorized,
+        // and a late disconnect must not overwrite it or rescan.
         if (adapter?.isEnabled != true) return
 
         if (sleepCompleted) {
@@ -663,9 +640,8 @@ class LiveProgressorClient(
         if (!wantsConnection) return
 
         if (wasEstablished) {
-            // A successful notification subscription reset the budget, so a dropped
-            // established link begins a fresh five-attempt cycle immediately — waiting for
-            // the SAME gauge, not scanning for any (`AttemptRoute.awaitInRange`).
+            // Subscribing reset the budget, so a dropped established link begins a fresh
+            // five-attempt cycle, waiting for the SAME gauge (`AttemptRoute.awaitInRange`).
             attemptsRemaining = attemptLimit
             remembered.awaitReturn()
             beginAttemptIfPossible()
@@ -732,8 +708,8 @@ class LiveProgressorClient(
                 }
             }
 
-        /// Always ready: Nordic's request queue is what paces write-without-response, so
-        /// there is no "buffer not ready" state to poll. See the class comment.
+        /// Always ready: Nordic's request queue paces write-without-response. See the class
+        /// comment.
         override val isReadyForWriteWithoutResponse: Boolean get() = true
 
         override fun write(command: ProgressorCommand, withResponse: Boolean) {
@@ -854,29 +830,24 @@ class LiveProgressorClient(
             dataCharacteristic = null
         }
 
-        /// **The connection interval, measured on hardware and not guessed.**
+        /// **The connection interval, measured on hardware, not guessed.** On a Realme
+        /// RMX5079 (Android 16) the phone renegotiated from 7.5 ms to **60 ms with slave
+        /// latency 6** within five seconds (OEM power saving): notifications every ~180 ms
+        /// carrying ~14 samples. Nothing was LOST (hang time accrues from the Progressor's
+        /// own µs deltas), but readout and trace lagged the hand by up to ~0.4 s; iOS runs
+        /// the same gauge at 30 ms.
         ///
-        /// First real session on the Realme RMX5079 (Android 16), from `adb logcat`: within
-        /// five seconds of connecting the phone renegotiated the link from a 7.5 ms interval
-        /// to **60 ms with slave latency 6** — OEM power saving — so notifications arrived
-        /// every ~180 ms carrying ~14 samples each instead of every ~12 ms carrying one. No
-        /// samples were LOST (the Progressor stamps its own microseconds, and the engine
-        /// accrues from those deltas, so hang time is exact either way), but the readout and
-        /// the trace lag the hand by up to ~0.4 s, and iOS runs the same gauge at 30 ms.
+        /// `CONNECTION_PRIORITY_HIGH` asks for ~11.25–15 ms with no slave latency, the
+        /// closest to CoreBluetooth's default. A REQUEST: peripheral, controller or OEM can
+        /// refuse or renegotiate back, so nothing depends on it.
         ///
-        /// `CONNECTION_PRIORITY_HIGH` asks for ~11.25–15 ms with no slave latency, which is
-        /// the closest Android gets to what CoreBluetooth negotiates by default. It is a
-        /// REQUEST — the peripheral and the controller can refuse it, and an aggressive OEM
-        /// can renegotiate straight back — so nothing depends on it succeeding.
-        ///
-        /// Dropped back to BALANCED the moment the stream stops, because the whole cost of
-        /// a fast interval is battery on both ends, and a connected-but-idle gauge (the live
-        /// gauge screen closed, a session finished) is reading nothing.
+        /// Dropped to BALANCED when the stream stops: a fast interval costs battery on both
+        /// ends, and an idle connected gauge reads nothing.
         fun requestStreamingConnectionInterval(streaming: Boolean) {
             val gatt = tuningGatt ?: return
-            // Connection parameters are a link-layer request, not an ATT write. Calling
-            // the platform directly avoids Nordic's queued negotiation holding up tare,
-            // start or stop. Failure is harmless; the next request can retry after cooldown.
+            // A link-layer request, not an ATT write: calling the platform directly keeps
+            // Nordic's queued negotiation from holding up tare, start or stop. Failure is
+            // harmless; retry after cooldown.
             streamingPriority.update(streaming, clock.uptimeSeconds()) { active ->
                 try {
                     gatt.requestConnectionPriority(
@@ -904,8 +875,7 @@ class LiveProgressorClient(
     }
 }
 
-/// TRANSLATION NOTE: Swift keeps this as a `private extension ProgressorEvent` beside the
-/// client; Kotlin makes it an internal extension property in the same file.
+/// TRANSLATION NOTE: a `private extension ProgressorEvent` beside the Swift client.
 internal val ProgressorEvent.isCommandReply: Boolean
     get() = this is ProgressorEvent.Battery ||
         this is ProgressorEvent.AppVersion ||
