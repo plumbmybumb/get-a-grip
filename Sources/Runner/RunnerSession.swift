@@ -162,6 +162,12 @@ final class RunnerSession {
     @ObservationIgnored private var hasStarted = false
     @ObservationIgnored private var hasBegun = false
     @ObservationIgnored private var hasEnded = false
+    /// Everything that only a LIVE workout needs has been let go — see `quiesce`. Set once,
+    /// at the finish, or by `end()` for a session left before it finished.
+    @ObservationIgnored private var isQuiesced = false
+    /// The cue engines' deferred shutdown, so the finish chord is not cut off mid-note.
+    @ObservationIgnored private var cueShutdown: Task<Void, Never>?
+    @ObservationIgnored private var cuesEnded = false
     @ObservationIgnored private var activityStart: Task<Void, Never>?
     @ObservationIgnored private let activityStartDelay: Duration?
     @ObservationIgnored private var streamWatchdog: Task<Void, Never>?
@@ -299,7 +305,7 @@ final class RunnerSession {
         // (`CuePlayer.begin()` also moves the audio-session activation off the main
         // thread entirely — see there.)
         Task { @MainActor [weak self] in
-            guard let self, !self.hasEnded else { return }
+            guard let self, !self.hasEnded, !self.isQuiesced else { return }
             self.cues.begin()
         }
         if !timerOnly {
@@ -366,7 +372,7 @@ final class RunnerSession {
         activityStart = nil
         // A session already over by the time the delay ran out gets no card at all: it
         // would only be ended again on the next line of somebody's lock screen.
-        guard !hasEnded, !runner.isFinished,
+        guard !hasEnded, !isQuiesced, !runner.isFinished,
               let grip = runner.displaySlot?.grip ?? plan.executable.sets.first?.grip else { return }
         let state = activityState(grip: grip)
         liveActivity.start(routineName: template.name,
@@ -383,23 +389,75 @@ final class RunnerSession {
         // session, which looks exactly like a dead gauge.
         guard hasBegun, !hasEnded else { return }
         hasEnded = true
-
-        activityStart?.cancel()
-        activityStart = nil
-        ticker?.cancel()
-        ticker = nil
-        streamWatchdog?.cancel()
-        streamWatchdog = nil
-        device.onSample = nil
-        // Never leave the gauge streaming behind us: it drains its own battery for ten
-        // minutes and the user blames the app.
-        if device.isStreaming { device.stopStreaming(cause: .sessionEnded) }
-        // Ended with the session, not left to expire: a card still saying "Pull" on the
-        // lock screen after you have finished is worse than no card at all.
-        Task { await liveActivity.end() }
-        cues.end()
-        IdleTimerLock.release()
+        // A finished session already let go of everything live at the finish; this only
+        // undoes what is left — at most the cue engines' deferred shutdown, brought
+        // forward. A session left BEFORE it finished gets the whole teardown here.
+        quiesce(cueTail: nil)
     }
+
+    /// **Let go of everything that only a LIVE workout needs, the moment it stops being
+    /// one.** Called once at the finish, and by `end()` for a session left unfinished.
+    ///
+    /// It used to wait for the view to disappear, and the summary is a view that can sit
+    /// open for minutes. All that time the gauge kept streaming, the watchdog kept
+    /// re-kicking it, the 10 Hz ticker kept running and the screen never slept — and
+    /// because `isStreaming` stayed true, `DeviceStore.beginBackgroundGrace` never
+    /// disconnected, so `bluetooth-central` kept the app alive in a pocket, draining the
+    /// phone and the gauge for a workout that was already over.
+    ///
+    /// `cueTail` delays only the cue engines' shutdown, so the finish chord that the same
+    /// event just queued is heard in full; nil ends them now. Idempotent: everything else
+    /// happens once, and a second call can only bring a pending cue shutdown forward.
+    private func quiesce(cueTail: Duration?) {
+        // A session driven without `begin()` — the engine tests do this — acquired
+        // nothing, so it has nothing to let go of; releasing the idle lock here would
+        // unbalance somebody else's.
+        guard hasBegun else { return }
+        if !isQuiesced {
+            isQuiesced = true
+            activityStart?.cancel()
+            activityStart = nil
+            ticker?.cancel()
+            ticker = nil
+            streamWatchdog?.cancel()
+            streamWatchdog = nil
+            device.onSample = nil
+            // Never leave the gauge streaming behind us: it drains its own battery for ten
+            // minutes and the user blames the app. Stopping it here is also what lets the
+            // background grace disconnect a gauge nobody is using any more.
+            if device.isStreaming { device.stopStreaming(cause: .sessionEnded) }
+            // Ended with the session, not left to expire: a card still saying "Pull" on
+            // the lock screen after you have finished is worse than no card at all.
+            Task { await liveActivity.end() }
+            IdleTimerLock.release()
+        }
+        guard !cuesEnded else { return }
+        cueShutdown?.cancel()
+        cueShutdown = nil
+        guard let cueTail else {
+            endCues()
+            return
+        }
+        // The player strongly as well as `self` weakly: a session released during the
+        // tail must still let its player go, rather than leave an audio session active.
+        let cues = self.cues
+        cueShutdown = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: cueTail)
+            guard !Task.isCancelled else { return }
+            if let self { self.endCues() } else { cues.end() }
+        }
+    }
+
+    private func endCues() {
+        guard !cuesEnded else { return }
+        cuesEnded = true
+        cueShutdown = nil
+        cues.end()
+    }
+
+    /// Long enough for `sessionCompleted`, the longest cue in the app (~0.5 s), to sound
+    /// out before the audio session is released.
+    static let finishCueTail: Duration = .seconds(1)
 
     /// The session's real first phase is connect-and-tare, which is why Start on Today
     /// is deliberately enabled while the gauge is still asleep.
@@ -572,8 +630,9 @@ final class RunnerSession {
         if runner.isFinished, finishedAt == nil {
             finishedAt = startedAt.addingTimeInterval(runner.finishedElapsedSeconds ?? 0)
             // The summary may stay open for minutes. Its unfinished save is not a live
-            // workout, and must not leave a lock-screen countdown running behind it.
-            Task { await liveActivity.end() }
+            // workout: no lock-screen countdown, no stream, no ticker, no awake screen.
+            // The cues below still play — the tail keeps the engines up for the chord.
+            quiesce(cueTail: Self.finishCueTail)
         }
         publish()
         if let id = runner.newGripID, announcedGrips.insert(id).inserted {

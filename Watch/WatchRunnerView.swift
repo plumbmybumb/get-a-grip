@@ -111,6 +111,16 @@ struct WatchRunnerView: View {
             keeper.end()
             readout.end()
         }
+        // **The finish lets go of the wrist too**, not the screen's disappearance. The
+        // summary can sit there with the watch on a bench for as long as it likes; the
+        // workout session was keeping the app awake — and a workout running in Fitness —
+        // for a session that was already over. `RunnerSession` quiesces the gauge and the
+        // ticker at the same instant; see `RunnerSession.quiesce`.
+        .onChange(of: session?.isFinished ?? false) { _, finished in
+            guard finished else { return }
+            keeper.end()
+            readout.end()
+        }
         .onChange(of: device.state.isConnected) { _, connected in
             session?.connectionChanged(isConnected: connected)
         }
