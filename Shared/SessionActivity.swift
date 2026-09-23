@@ -77,6 +77,25 @@ struct SessionActivity: ActivityAttributes {
         var targetBand: ClosedRange<Double>? {
             SetPlan.band(lo: targetLoKg, hi: targetHiKg)
         }
+
+        /// **When this card stops being trustworthy if no further push arrives** — which
+        /// is exactly what happens when the app dies mid-session: the card outlived its
+        /// process and went on saying "Pull" on the lock screen until someone swiped it.
+        /// Handed to ActivityKit with every request and update, so the widget can draw
+        /// `context.isStale` as what it is.
+        ///
+        /// A countdown gets its own deadline plus a minute — every countdown ends in a
+        /// phase change the app pushes, so a card a minute past its zero was not pushed.
+        /// A phase with no clock (armed, let-go, paused) can legitimately sit still for a
+        /// long time, so it gets ten minutes; a genuinely long wait is re-pushed on its
+        /// next change with a fresh date.
+        func staleDate(now: Date = .now) -> Date {
+            if let endsAt { return max(endsAt, now).addingTimeInterval(Self.staleAfterCountdown) }
+            return now.addingTimeInterval(Self.staleWithoutCountdown)
+        }
+
+        static let staleAfterCountdown: TimeInterval = 60
+        static let staleWithoutCountdown: TimeInterval = 10 * 60
     }
 
     /// What the session is doing, reduced to the states worth telling someone who is

@@ -85,4 +85,20 @@ final class LiveActivityClockTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(300))
         XCTAssertEqual(gone.starts, 0, "A card for a session already over would only be ended again")
     }
+
+    func testStaleDatesFollowTheClockTheCardIsShowing() {
+        let now = Date(timeIntervalSince1970: 10_000)
+        var state = SessionActivity.ContentState(
+            grip: GripSpec(), side: .both, phase: .resting, setNumber: 1, repPosition: 1,
+            endsAt: now.addingTimeInterval(20))
+        XCTAssertEqual(state.staleDate(now: now), now.addingTimeInterval(80),
+                       "A countdown is stale a minute after its own zero")
+        state.endsAt = now.addingTimeInterval(-5)
+        XCTAssertEqual(state.staleDate(now: now), now.addingTimeInterval(60),
+                       "Never a stale date already in the past")
+        state.endsAt = nil
+        state.phase = .armed
+        XCTAssertEqual(state.staleDate(now: now), now.addingTimeInterval(600),
+                       "No clock: ten minutes, re-pushed on the next change")
+    }
 }

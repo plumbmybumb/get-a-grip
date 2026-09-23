@@ -28,9 +28,15 @@ import WidgetKit
 struct SessionLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: SessionActivity.self) { context in
-            lockScreen(context)
-                .activityBackgroundTint(context.state.phase.cardTint)
-                .activitySystemActionForegroundColor(.white)
+            Group {
+                if context.isStale {
+                    staleLockScreen(context)
+                } else {
+                    lockScreen(context)
+                }
+            }
+            .activityBackgroundTint(cardTint(context))
+            .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -38,7 +44,7 @@ struct SessionLiveActivity: Widget {
                              position: context.state.grip.position,
                              side: context.state.side,
                              barWidth: 11,
-                             tint: context.state.phase.tint)
+                             tint: tint(context))
                         .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
@@ -46,20 +52,24 @@ struct SessionLiveActivity: Widget {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text(context.state.phase.word.uppercased())
+                    Text(context.isStale ? Self.staleWord.uppercased()
+                                         : context.state.phase.word.uppercased())
                         .font(.system(.caption, weight: .semibold))
-                        .foregroundStyle(context.state.phase.tint)
+                        .foregroundStyle(tint(context))
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 8) {
-                        Text(context.state.grip.shortName)
+                        Text(context.isStale ? context.attributes.routineName
+                                             : context.state.grip.shortName)
                             .font(.system(.footnote, weight: .medium))
                             .lineLimit(1)
                         Spacer(minLength: 6)
-                        Text("Pull \(context.state.repPosition) of \(context.attributes.plannedReps)")
-                            .font(.system(.footnote))
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                        if !context.isStale {
+                            Text("Pull \(context.state.repPosition) of \(context.attributes.plannedReps)")
+                                .font(.system(.footnote))
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             } compactLeading: {
@@ -70,11 +80,11 @@ struct SessionLiveActivity: Widget {
                          position: context.state.grip.position,
                          side: context.state.side,
                          barWidth: 4.5,
-                         tint: context.state.phase.tint)
+                         tint: tint(context))
             } compactTrailing: {
                 countdown(context, font: .system(.caption, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(context.state.phase.tint)
+                    .foregroundStyle(tint(context))
             } minimal: {
                 // One glyph only — the minimal presentation is a circle barely wider
                 // than a glyph, so four bars is all that can survive in it.
@@ -82,10 +92,53 @@ struct SessionLiveActivity: Widget {
                          position: context.state.grip.position,
                          side: context.state.side,
                          barWidth: 3.5,
-                         tint: context.state.phase.tint)
+                         tint: tint(context))
             }
-            .keylineTint(context.state.phase.tint)
+            .keylineTint(tint(context))
         }
+    }
+
+    // MARK: - Stale
+
+    /// **A card past its stale date is a card whose app stopped pushing** — nearly
+    /// always because the process died mid-session (see `ContentState.staleDate`). Its
+    /// phase, colour and countdown are all claims nobody is standing behind any more, so
+    /// none of them are drawn: the hand goes gray, the phase word becomes the one honest
+    /// instruction, and the card drops to the neutral slate. Tapping it opens the app,
+    /// which clears orphaned cards at launch.
+    private static var staleWord: String { String(localized: "Open Get a Grip") }
+
+    private func tint(_ context: ActivityViewContext<SessionActivity>) -> Color {
+        context.isStale ? .gray : context.state.phase.tint
+    }
+
+    private func cardTint(_ context: ActivityViewContext<SessionActivity>) -> Color {
+        context.isStale ? SessionActivity.Phase.resting.cardTint : context.state.phase.cardTint
+    }
+
+    private func staleLockScreen(_ context: ActivityViewContext<SessionActivity>) -> some View {
+        HStack(spacing: 14) {
+            HandMark(fingers: context.state.grip.fingers,
+                     position: context.state.grip.position,
+                     side: context.state.side,
+                     barWidth: 13,
+                     tint: .gray)
+                .opacity(0.5)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(Self.staleWord)
+                    .font(.system(.headline, weight: .semibold))
+                    .foregroundStyle(.white)
+                Text(context.attributes.routineName)
+                    .font(.system(.footnote))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .layoutPriority(1)
+            Spacer(minLength: 8)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     // MARK: - Lock screen
@@ -158,7 +211,10 @@ struct SessionLiveActivity: Widget {
         // the deadline has already passed, and a trapped widget process renders as a
         // blank placeholder with no clue why. A deadline in the past means the app has
         // not pushed in a while — show the dash and let the card say the rest.
-        if let endsAt = context.state.endsAt, endsAt > .now, context.state.phase.runsCountdown {
+        if context.isStale {
+            // Nothing is counting any more — the app that owned this clock is gone.
+            Text("—").font(font).foregroundStyle(.secondary)
+        } else if let endsAt = context.state.endsAt, endsAt > .now, context.state.phase.runsCountdown {
             Text(timerInterval: Date.now...endsAt, countsDown: true)
                 .font(font)
                 .monospacedDigit()
