@@ -11,9 +11,8 @@ import Foundation
 //
 // - Nothing here runs unless the selected gauge needs it AND a unit is connected. Every
 //   other gauge never constructs any of it.
-// - One request per serial, EVER. The slope is a property of the load cell; once it is
-//   in hand it is cached on the device and the network is never asked again for that
-//   Dyno. That is also what keeps the account's device and rate limits honest.
+// - One request per serial, EVER. The slope is a property of the load cell, cached on
+//   the device once in hand — which also keeps the account's rate limits honest.
 // - The session is one-shot: built for the request, invalidated after it. No networking
 //   stack lives in the process between requests.
 // - The access key is a build setting that lives only in ignored files (see project.yml
@@ -115,9 +114,8 @@ final class FrezCoefficientResolver: GaugeCalibrationResolver {
     nonisolated static let accessKeyHeader = "X-Frez-Access-Key"
     /// The Info.plist key `project.yml` fills from the `FREZ_ACCESS_KEY` build setting.
     nonisolated static let infoPlistKey = "FrezAccessKey"
-    /// Frez's own example uses five seconds; a first-time lookup on a slow link is worth
-    /// waiting that long for, and a stuck one must not hold the gauge screen hostage.
-    /// `nonisolated` because the one-shot transport reads it off the main actor.
+    /// Frez's own example uses five seconds. `nonisolated` because the one-shot
+    /// transport reads it off the main actor.
     nonisolated static let timeoutSeconds: TimeInterval = 5
 
     nonisolated static func cacheKey(serial: String) -> String { "frez.coefficient.\(serial)" }
