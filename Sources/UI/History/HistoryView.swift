@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
 
-import Charts
 import SwiftData
 import SwiftUI
 
@@ -31,13 +30,13 @@ struct HistoryView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Half of the wide-layout gate; the view's own aspect is the other half. See `body`.
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// The other half — wider than tall — and the width the wide layout divides. Written
+    /// by `onGeometryChange`, each only when ITS answer changes, where a screen-level
+    /// `GeometryReader` used to rebuild everything inside it on any geometry change at
+    /// all: the undo bar's inset arriving was one.
+    @State private var isLandscape = false
+    @State private var viewWidth: CGFloat = 0
 
-    /// Which grip's trend is on screen. nil means "the most-trained one". ONE selection
-    /// shared across every card in the trend deck, deliberately: picking "20 mm 4F HC"
-    /// on one routine's card keeps it picked as you swipe to the next, which is exactly
-    /// how you compare one grip across routines. Cards where the grip does not exist
-    /// fall back to their own most-trained one — and remember nothing.
-    @State private var selectedGripKey: String?
     @State private var undoTick = 0
     /// Expanded stays expanded while the tab lives; collapsing back is just scrolling
     /// up, so there is no "show fewer".
@@ -47,10 +46,10 @@ struct HistoryView: View {
 
     /// Decoded rep blobs, once per log EVER.
     ///
-    /// `WorkoutLog.resultsData` is write-once, so this cache never invalidates — and
-    /// without it every body evaluation re-decoded the whole history: tapping a trend
-    /// chip walked every log's JSON on the main thread, a button that gets slower every
-    /// week you train. A reference type mutated during body, deliberately outside
+    /// `WorkoutLog.resultsData` is write-once, so this cache never invalidates. Only the
+    /// session rows read it now — one leading grip per VISIBLE row — since the trend deck
+    /// decodes its own copy off the main actor (`TrendModel`); without the cache every
+    /// body evaluation re-decoded each visible row's JSON on the main thread. A reference type mutated during body, deliberately outside
     /// observation — the same trick as ForceTraceView's AxisMemory.
     ///
     /// A deleted log leaves its entry behind, which is deliberate rather than a leak:
@@ -68,37 +67,57 @@ struct HistoryView: View {
         return decoded
     }
 
-    /// One generation of chart results. Preparing it once per body avoids hashing the
-    /// entire history for every card and every grip lookup. Dropping the old generation
-    /// also keeps repeated delete/undo/save cycles from accumulating stale series.
-    private final class TrendCache {
-        var logIDs: [UUID] = []
-        var gripOptions: [String: [GripOption]] = [:]
-        var series: [String: [TrendPoint]] = [:]
+    /// The column-only folds over the whole history — the month grid's ledger and the
+    /// odometer — kept for as long as the query hands back the SAME rows.
+    ///
+    /// They were rebuilt on every body evaluation, and this body re-runs for things that
+    /// change none of their inputs: "Show earlier", the undo bar, a sheet. The key is the
+    /// rows' IDENTITY (a pointer compare per row, touching no attribute — nothing is
+    /// faulted to answer it) plus the day and the tracking start. A new, deleted or
+    /// restored session is a different object, so the key cannot miss a change the
+    /// folds read; the one field edited in place on a saved log is its grade, which
+    /// neither fold reads. `generation` counts the rebuilds, which is what `TrendDeck`
+    /// compares itself on.
+    private final class DerivedCache {
+        private var rows: [WorkoutLog] = []
+        private var today: DayStamp?
+        private var trackingSince: DayStamp?
+        private(set) var generation = 0
+        private(set) var ledger: DayLedger?
+        private(set) var lifetime = LifetimeStats()
 
-        func prepare(logIDs: [UUID]) {
-            guard self.logIDs != logIDs else { return }
-            self.logIDs = logIDs
-            gripOptions.removeAll(keepingCapacity: true)
-            series.removeAll(keepingCapacity: true)
+        func refresh(logs: [WorkoutLog], today: DayStamp, trackingSince: DayStamp?) {
+            let sameRows = rows.count == logs.count
+                && zip(rows, logs).allSatisfy { $0 === $1 }
+            if !sameRows {
+                rows = logs
+                generation += 1
+                lifetime = logs.lifetime
+                ledger = nil
+            }
+            if ledger == nil || self.today != today || self.trackingSince != trackingSince {
+                self.today = today
+                self.trackingSince = trackingSince
+                ledger = DayLedger(logs: logs, today: today, trackingSince: trackingSince)
+            }
         }
     }
-    @State private var trendCache = TrendCache()
+    @State private var derived = DerivedCache()
 
     var body: some View {
-        trendCache.prepare(logIDs: logs.map(\.id))
-        return NavigationStack {
+        NavigationStack {
             // TWO PANES when the window is regular-width AND wider than tall: an iPad in
             // landscape, or a foldable opened sideways. Size class and aspect, never the
             // idiom — an iPad in portrait keeps the single column, and a Slide Over column
             // is a phone. Apple's own guidance for the foldable says the same, and
             // `RunnerView.live(_:)` gates its wide layout on exactly this expression.
-            GeometryReader { geometry in
-                content(wide: sizeClass == .regular
-                            && geometry.size.width > geometry.size.height,
-                        width: geometry.size.width)
-            }
-            .navigationTitle("History")
+            content(wide: sizeClass == .regular && isLandscape, width: viewWidth)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onGeometryChange(for: Bool.self, of: { $0.size.width > $0.size.height }) {
+                    isLandscape = $0
+                }
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { viewWidth = $0 }
+                .navigationTitle("History")
             .navigationSubtitle(subtitle)
             // The screen-level action belongs on the screen's own bar: the month card's
             // share button exports ONE five-week calendar as a picture, and this exports
@@ -140,24 +159,17 @@ struct HistoryView: View {
             // disturbs the safe-area layout and the title creeps under the status bar.
             .background { AppBackground() }
         } else {
-            // Folded ONCE per body evaluation and handed down, rather than each of the
-            // ~200 questions a card asks re-scanning the whole log array. See `DayLedger`.
-            let ledger = DayLedger(logs: logs, today: clock.today, trackingSince: templates.trackingSince)
-            // Bound once: it walks every log, and reading it three times in one body
-            // evaluation walked them three times.
-            let routines = routineOptions
-            // Indexed once for the deck. Each card then scans only its own sessions for
-            // grip options and series instead of filtering the entire history once per
-            // routine, per chip tap.
-            let logsByRoutine = routineLogIndex
-            // The odometer, folded once from the same query — columns only, no blobs.
-            let lifetime = logs.lifetime
+            // Folded once per CHANGE to the rows, not per body evaluation, and handed
+            // down rather than each of the ~200 questions a card asks re-scanning the
+            // whole log array. See `DerivedCache` and `DayLedger`.
+            let _ = derived.refresh(logs: logs, today: clock.today,
+                                    trackingSince: templates.trackingSince)
+            let ledger = derived.ledger ?? DayLedger(logs: logs, today: clock.today,
+                                                     trackingSince: templates.trackingSince)
             if wide {
-                twoPane(ledger: ledger, routines: routines, logsByRoutine: logsByRoutine,
-                        lifetime: lifetime, width: width)
+                twoPane(ledger: ledger, lifetime: derived.lifetime, width: width)
             } else {
-                singleColumn(ledger: ledger, routines: routines, logsByRoutine: logsByRoutine,
-                             lifetime: lifetime)
+                singleColumn(ledger: ledger, lifetime: derived.lifetime)
             }
         }
     }
@@ -169,13 +181,10 @@ struct HistoryView: View {
     /// Maxes is one: swipe-to-delete, the row-slide physics and the full-swipe commit all
     /// come from UIKit, and a hand-rolled drag gesture never matches them. The summary
     /// cards are just rows; nothing here needs `scrollTo`.
-    private func singleColumn(ledger: DayLedger,
-                              routines: [RoutineOption],
-                              logsByRoutine: [String: [WorkoutLog]],
-                              lifetime: LifetimeStats) -> some View {
+    private func singleColumn(ledger: DayLedger, lifetime: LifetimeStats) -> some View {
         List {
             monthBlock(ledger).summaryListRow(top: 12, bottom: 6)
-            trendBlock(routines, logsByRoutine: logsByRoutine).summaryListRow(top: 6, bottom: 6)
+            trendBlock().summaryListRow(top: 6, bottom: 6)
             // THIRD, above the log and below the two pictures (Nuri, 2026-09-20): the
             // month says how often, the trend says how hard, the odometer says how much,
             // all of it — and the sessions it adds up sit right under it.
@@ -198,8 +207,6 @@ struct HistoryView: View {
     /// column that scrolls on its own is the point: the grid and the trend stay put while
     /// years of sessions go past them.
     private func twoPane(ledger: DayLedger,
-                         routines: [RoutineOption],
-                         logsByRoutine: [String: [WorkoutLog]],
                          lifetime: LifetimeStats,
                          width: CGFloat) -> some View {
         HStack(spacing: 0) {
@@ -207,8 +214,7 @@ struct HistoryView: View {
                 // 12 between the blocks and 12 above the first, so the column keeps the
                 // rhythm the `List` rows have today.
                 VStack(spacing: 12) {
-                    summaryBlocks(ledger: ledger, routines: routines,
-                                  logsByRoutine: logsByRoutine, lifetime: lifetime, wide: true)
+                    summaryBlocks(ledger: ledger, lifetime: lifetime, wide: true)
                 }
                 .padding(.top, 12)
                 .padding(.bottom, 24)
@@ -271,33 +277,14 @@ struct HistoryView: View {
         .staggerIn(0)
     }
 
-    /// One trend card per routine with measured pulls, and the deck only exists once a
-    /// second routine has data to swipe to — the same rule as Today's: a permanent sliver
-    /// of "more" on a screen with one routine would say there is more when there isn't.
-    @ViewBuilder
-    private func trendBlock(_ routines: [RoutineOption],
-                            logsByRoutine: [String: [WorkoutLog]],
-                            wide: Bool = false) -> some View {
-        Group {
-            if routines.count > 1, wide {
-                // The wide pane is tall and scrolls: every routine's trend simply
-                // stands under the last, and nothing peeks or pages.
-                VStack(spacing: 12) {
-                    ForEach(routines, id: \.key) { option in
-                        trendCard(option, logs: logsByRoutine[option.key, default: []])
-                    }
-                }
-                .padding(.horizontal, Metrics.hPadding)
-            } else if routines.count > 1 {
-                trendDeck(routines, logsByRoutine: logsByRoutine)
-            } else if let only = routines.first {
-                trendCard(only, logs: logsByRoutine[only.key, default: []])
-                    .padding(.horizontal, Metrics.hPadding)
-            } else {
-                emptyTrendCard.padding(.horizontal, Metrics.hPadding)
-            }
-        }
-        .staggerIn(1)
+    /// One trend card per routine with measured pulls — see `TrendDeck`, which owns the
+    /// grip selection and builds its model off the main actor, so a chip tap re-runs
+    /// that block alone and never this screen.
+    private func trendBlock(wide: Bool = false) -> some View {
+        TrendDeck(generation: derived.generation, logs: logs,
+                  routineNames: templates.routineNames, wide: wide)
+            .equatable()
+            .staggerIn(1)
     }
 
     /// Both summaries, in order, for the wide layout's left column. The single column
@@ -305,12 +292,10 @@ struct HistoryView: View {
     /// entrance — so the two layouts cannot drift apart.
     @ViewBuilder
     private func summaryBlocks(ledger: DayLedger,
-                               routines: [RoutineOption],
-                               logsByRoutine: [String: [WorkoutLog]],
                                lifetime: LifetimeStats,
                                wide: Bool = false) -> some View {
         monthBlock(ledger, wide: wide)
-        trendBlock(routines, logsByRoutine: logsByRoutine, wide: wide)
+        trendBlock(wide: wide)
         lifetimeBlock(lifetime)
     }
 
@@ -720,190 +705,7 @@ struct HistoryView: View {
         return summary
     }
 
-    // MARK: - Trend
-
-    /// Average load per session for ONE grip, WITHIN ONE ROUTINE — one CARD per
-    /// routine, swiped exactly like Today's deck (Nuri, 2026-08-10: cards, "so you can
-    /// swipe to see your history on each routine"; it replaced a scope menu in the
-    /// header). Per routine because the same grip at two intensities is two different
-    /// training lines: a 12 kg repeater and a 30 kg max pull share a chip and nothing
-    /// else, and averaging them drew a zigzag that tracked which routine ran, not how
-    /// strong the fingers were getting. Averaged rather than peak because this is
-    /// volume training: a peak is one moment and mostly noise, while the mean across
-    /// the session is what the fingers actually absorbed.
-    ///
-    /// Three horizontal gestures share this screen — the deck, each card's grip chips,
-    /// and swipe-to-delete on the rows below — which is why the deck moves ONE card
-    /// per swipe (each page is a destination, not a distance) and the chip row hands
-    /// the drag back to the deck whenever its chips fit (`.basedOnSize`).
-    private func trendDeck(_ options: [RoutineOption],
-                           logsByRoutine: [String: [WorkoutLog]]) -> some View {
-        ScrollView(.horizontal) {
-            HStack(alignment: .top, spacing: 8) {
-                ForEach(options, id: \.key) { option in
-                    trendCard(option, logs: logsByRoutine[option.key, default: []])
-                        .containerRelativeFrame(.horizontal)
-                }
-            }
-            .scrollTargetLayout()
-        }
-        .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
-        .scrollIndicators(.hidden)
-        // Today's deck geometry, verbatim: settled cards on the house grid, the
-        // neighbour peeking 20 pt at the screen edge.
-        .contentMargins(.leading, Metrics.hPadding, for: .scrollContent)
-        .contentMargins(.trailing, Metrics.hPadding + 8, for: .scrollContent)
-    }
-
-    /// One routine's trend. `maxHeight: .infinity` makes every card in the deck stand
-    /// the deck's full height — a half-mast "one session so far" card beside a full
-    /// chart would read as a rendering fault, not as less data.
-    private func trendCard(_ option: RoutineOption, logs: [WorkoutLog]) -> some View {
-        // Computed ONCE per card and handed down. `gripOptions` scans this routine's
-        // indexed slice and decodes its reps, and it used to be called afresh by the picker,
-        // twice more by `currentGripKey` — itself called per CHIP — and again by
-        // `trendSeries`: a five-chip card walked the whole history a dozen times over to
-        // draw one chart.
-        let grips = gripOptions(in: logs, routineKey: option.key)
-        let selected = currentGrip(among: grips)
-        return MaterialCard(surface: .flat) {
-            VStack(alignment: .leading, spacing: 12) {
-                CapsLabel(String(localized: "Load per grip"))
-                // The page's identity — what the old menu stated in the corner, said at
-                // card weight now that swiping is how the other routines are reached.
-                Text(option.name)
-                    .font(.system(.title3, weight: .semibold))
-                    .foregroundStyle(Ink.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-
-                gripPicker(grips, selected: selected)
-
-                let series = trendSeries(in: logs, grip: selected, routineKey: option.key)
-                if series.count < 2 {
-                    Text("One session so far. A second gives this a direction.")
-                        .font(.system(.subheadline))
-                        .foregroundStyle(Ink.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    chart(series)
-                    Text(trendSummary(series))
-                        .font(.system(.footnote))
-                        .monospacedDigit()
-                        .foregroundStyle(Ink.tertiary)
-                }
-            }
-            .frame(maxHeight: .infinity, alignment: .top)
-        }
-    }
-
-    /// Sessions exist but none carried kilograms — every pull so far was gauge-free.
-    private var emptyTrendCard: some View {
-        MaterialCard(surface: .flat) {
-            VStack(alignment: .leading, spacing: 12) {
-                CapsLabel(String(localized: "Load per grip"))
-                Text("No measured pulls to chart yet.")
-                    .font(.system(.subheadline))
-                    .foregroundStyle(Ink.secondary)
-            }
-        }
-    }
-
-    private func gripPicker(_ options: [GripOption], selected: String?) -> some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                ForEach(options, id: \.key) { option in
-                    Chip(title: option.grip.shortName,
-                         isSelected: option.key == selected) {
-                        selectedGripKey = option.key
-                    }
-                    // Chips fill their container by default, which is right in a grid and
-                    // wrong in a horizontal scroller.
-                    .fixedSize()
-                    .accessibilityLabel(option.grip.spoken)
-                }
-            }
-            .padding(.vertical, 2)
-        }
-        .scrollIndicators(.hidden)
-        // MANDATORY inside the deck, not polish: without it a chip row that FITS still
-        // claims every horizontal drag that starts on it, and on a one-chip card that
-        // is a dead stripe where the page gesture silently stops working.
-        .scrollBounceBehavior(.basedOnSize)
-        // Every other Chip-driven selection in the codebase ticks on the choice
-        // (`IntChipRow`, `PositionChipRow`, `HandModeChipRow`, `MaxSideChipRow`) — this
-        // was the one selection tap on the screen with no tactile confirmation.
-        .sensoryFeedback(.selection, trigger: selectedGripKey)
-    }
-
-    private func chart(_ series: [TrendPoint]) -> some View {
-        Chart(series) { point in
-            // The runner's own brush: the trace fills under its curve with bleu
-            // 0.28 → 0.02 (ForceTraceView), and these are the same species of data —
-            // measured kilograms — so they get the same ink. A naked hairline here
-            // made History read as a second, thinner instrument.
-            AreaMark(x: .value("Date", point.date), y: .value("Load", weightUnit.fromKg(point.avgKg)))
-                .interpolationMethod(.monotone)
-                .foregroundStyle(LinearGradient(
-                    colors: [Accent.bleu.opacity(0.28), Accent.bleu.opacity(0.02)],
-                    startPoint: .top, endPoint: .bottom))
-            LineMark(x: .value("Date", point.date), y: .value("Load", weightUnit.fromKg(point.avgKg)))
-                .interpolationMethod(.monotone)
-                .foregroundStyle(Accent.bleu)
-            PointMark(x: .value("Date", point.date), y: .value("Load", weightUnit.fromKg(point.avgKg)))
-                .foregroundStyle(Accent.bleu)
-                .symbolSize(28)
-        }
-        .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
-                AxisValueLabel(format: .dateTime.day().month(.abbreviated))
-            }
-        }
-        .chartYAxisLabel(weightUnit.symbol)
-        .chartYAxis {
-            AxisMarks { _ in
-                AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
-                AxisValueLabel()
-            }
-        }
-        .frame(height: 170)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(trendSummary(series))
-    }
-
-    private func trendSummary(_ series: [TrendPoint]) -> String {
-        guard let first = series.first, let last = series.last else { return "" }
-        let delta = last.avgKg - first.avgKg
-        let magnitude = weightUnit.number(abs(delta))
-        // Under half a kilo across a whole series is inside the noise of how you happened
-        // to grip it that morning, and calling that progress would be flattery.
-        guard abs(delta) >= 0.5 else {
-            return String(localized: "Holding steady around \(weightUnit.number(last.avgKg)) \(weightUnit.symbol).")
-        }
-        return delta > 0
-            ? String(localized: "Up \(magnitude) \(weightUnit.symbol) across \(series.count) sessions.")
-            : String(localized: "Down \(magnitude) \(weightUnit.symbol) across \(series.count) sessions.")
-    }
-
     // MARK: - Derived
-
-    /// A rep the LOAD chart may count: it finished, and a gauge was actually watching.
-    /// The second half exists because gauge-free sessions log their reps at 0 kg —
-    /// nothing was measured, which is the truth — and charting those zeros dragged a
-    /// grip's line to the floor every time the Progressor stayed in the drawer. The
-    /// month grid still counts those sessions in full; only the KILOGRAM chart ignores
-    /// them, because they carry no kilograms.
-    private func chartable(_ rep: RepSummary) -> Bool {
-        rep.outcome == .completed && rep.avgKg > 0
-    }
-
-    /// The grouping key: the frozen `templateID` when the log has one, else the frozen
-    /// name. ID first so a renamed routine keeps ONE line (both spellings share the ID);
-    /// the name catches logs from before IDs were recorded.
-    private func routineKey(of log: WorkoutLog) -> String {
-        log.templateID?.uuidString ?? log.templateName
-    }
 
     /// What to CALL this session's routine — the routine's live name while it still
     /// exists, the frozen copy once it doesn't.
@@ -923,119 +725,6 @@ struct HistoryView: View {
     private func displayName(of log: WorkoutLog) -> String {
         guard let id = log.templateID else { return log.templateName }
         return templates.routineNames[id] ?? log.templateName
-    }
-
-    private struct RoutineOption: Hashable {
-        let key: String
-        /// The routine's live name where it still exists, else the newest frozen one in
-        /// the group — the closest thing to "what it's called now" that survives the
-        /// routine being deleted.
-        let name: String
-    }
-
-    /// Every routine with at least one chartable pull, most recently trained first —
-    /// so the deck's FRONT card is the routine you are in the middle of caring about.
-    private var routineOptions: [RoutineOption] {
-        var names: [String: String] = [:]
-        var order: [String] = []
-        // `logs` is newest-first, so first sighting fixes both the order and the name.
-        for log in logs where log.kind == .hang {
-            // No card for a routine that no longer exists (Nuri, 2026-09-20: "Daily
-            // no-hangs" was long deleted and still had a Load per grip card). Deleting a
-            // routine now takes its sessions with it, so this only catches rows written
-            // before that rule and rows a CloudKit import delivered ahead of their
-            // routine; both still list below, under the frozen name.
-            if let id = log.templateID, templates.routineNames[id] == nil { continue }
-            let key = routineKey(of: log)
-            guard names[key] == nil else { continue }
-            guard reps(for: log).contains(where: chartable) else { continue }
-            names[key] = displayName(of: log)
-            order.append(key)
-        }
-        return order.map { RoutineOption(key: $0, name: names[$0] ?? "") }
-    }
-
-    /// Newest-first slices, matching `logs`. Built once beside the trend deck and then
-    /// shared by every card, so total indexing cost stays linear in history size.
-    private var routineLogIndex: [String: [WorkoutLog]] {
-        var result: [String: [WorkoutLog]] = [:]
-        for log in logs where log.kind == .hang {
-            result[routineKey(of: log), default: []].append(log)
-        }
-        return result
-    }
-
-    private struct GripOption: Hashable {
-        let key: String
-        let grip: GripSpec
-        let count: Int
-    }
-
-    /// Every grip in ONE routine with at least one chartable rep, most-trained first —
-    /// so the chip you want is usually already the selected one.
-    ///
-    /// Memoised per routine in the current history generation: without it, every tap in
-    /// the deck re-walked and re-decoded this routine's whole chartable history again.
-    private func gripOptions(in logs: [WorkoutLog], routineKey: String) -> [GripOption] {
-        let cacheKey = routineKey
-        if let cached = trendCache.gripOptions[cacheKey] { return cached }
-        var counts: [String: (grip: GripSpec, count: Int)] = [:]
-        for log in logs {
-            for rep in reps(for: log) where chartable(rep) {
-                counts[rep.grip.key] = (rep.grip, (counts[rep.grip.key]?.count ?? 0) + 1)
-            }
-        }
-        // The annotation is load-bearing: un-anchored, this map-plus-ternary-sort chain
-        // sends the type checker past its time budget and the file stops compiling.
-        let result: [GripOption] = counts
-            .map { GripOption(key: $0.key, grip: $0.value.grip, count: $0.value.count) }
-            // Count descending, then key ascending, so the order is stable rather than
-            // shuffling between launches when two grips tie.
-            .sorted { $0.count == $1.count ? $0.key < $1.key : $0.count > $1.count }
-        trendCache.gripOptions[cacheKey] = result
-        return result
-    }
-
-    /// Membership-checked per card, so a card whose routine never trained the shared
-    /// selection falls back to its own most-trained grip — and the card that DID train
-    /// it keeps your chip chosen as you swipe back.
-    private func currentGrip(among options: [GripOption]) -> String? {
-        if let selected = selectedGripKey, options.contains(where: { $0.key == selected }) {
-            return selected
-        }
-        return options.first?.key
-    }
-
-    struct TrendPoint: Identifiable, Hashable {
-        let id: UUID
-        let date: Date
-        let avgKg: Double
-    }
-
-    /// One point per session of one routine, oldest first, time-weighted within the
-    /// session for the same reason `WorkoutLog.avgKg` is: a rep that dropped off after
-    /// a second must not weigh as much as a full hang.
-    ///
-    /// Memoised per routine and grip in the current generation; the held/weighted sums
-    /// fold in ONE pass per log rather than a `.filter` followed by two `.reduce`s over
-    /// the filtered result — the same "walked a dozen times to draw one chart" cost the
-    /// cache above exists to spare, now closed at both ends.
-    private func trendSeries(in logs: [WorkoutLog], grip: String?, routineKey: String) -> [TrendPoint] {
-        guard let grip else { return [] }
-        let cacheKey = "\(routineKey)|\(grip)"
-        if let cached = trendCache.series[cacheKey] { return cached }
-        let result = logs.reversed().compactMap { log -> TrendPoint? in
-            var held = 0.0
-            var weighted = 0.0
-            for rep in reps(for: log) where rep.grip.key == grip && chartable(rep) {
-                held += rep.heldSeconds
-                weighted += rep.avgKg * rep.heldSeconds
-            }
-            guard held > 0 else { return nil }
-            return TrendPoint(id: log.id, date: log.startedAt, avgKg: weighted / held)
-        }
-        trendCache.series[cacheKey] = result
-        return result
     }
 }
 
