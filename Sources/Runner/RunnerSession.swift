@@ -747,6 +747,12 @@ final class RunnerSession {
 
     /// Everything that should force a push. Deliberately excludes the clock and the live
     /// load: both move continuously and neither is something the widget needs told.
+    ///
+    /// **`clockStopped` is in it**, because a hold clock standing still IS a change of
+    /// state — and it used to be missing. Coming off the edge mid-hold stops the rep's
+    /// clock (RE-GRIP; EASE OFF over a band; a lost link), but the card had already been
+    /// handed a deadline and `Text(timerInterval:)` counted on to zero regardless: the lock
+    /// screen said the hold was over while the app was still waiting for it.
     private struct ActivitySignature: Equatable {
         var grip: GripSpec
         var side: Side
@@ -754,6 +760,7 @@ final class RunnerSession {
         var setNumber: Int
         var repPosition: Int
         var weightUnit: WeightUnit
+        var clockStopped: Bool
     }
 
     private func activitySignature(grip: GripSpec) -> ActivitySignature {
@@ -762,14 +769,18 @@ final class RunnerSession {
                           phase: activityPhase,
                           setNumber: snapshot.setNumber ?? 1,
                           repPosition: snapshot.pullPosition,
-                          weightUnit: weightUnit)
+                          weightUnit: weightUnit,
+                          clockStopped: snapshot.holdClockIsStopped)
     }
 
     private func activityState(grip: GripSpec) -> SessionActivity.ContentState {
         let phase = activityPhase
-        // ARMED runs no clock — it waits on you, with no timeout, by design. So the
-        // deadline goes out nil and the hold LENGTH goes out instead; see `pendingSeconds`.
-        let isArmed = phase == .armed
+        // ARMED runs no clock — it waits on you, with no timeout, by design — and neither
+        // does a hold whose clock has STOPPED. Both send the deadline nil and the seconds
+        // the screen shows instead, drawn dimmed; see `pendingSeconds`. A stopped hold's
+        // number is what is still owed, frozen, and the push that restarts the clock
+        // brings a fresh deadline with it.
+        let showsPending = phase == .armed || snapshot.holdClockIsStopped
         let remainingInterval = runner.countdownRemainingInterval(
             at: ProcessInfo.processInfo.systemUptime) ?? Double(snapshot.secondsShown)
         return SessionActivity.ContentState(
@@ -782,10 +793,10 @@ final class RunnerSession {
             targetHiKg: snapshot.targetBand?.upperBound,
             // An ABSOLUTE deadline, recomputed from the same countdown the screen shows.
             // Converting to a Date here is what lets the widget tick without us.
-            endsAt: phase.runsCountdown && remainingInterval > 0
+            endsAt: phase.runsCountdown && !showsPending && remainingInterval > 0
                 ? Date.now.addingTimeInterval(remainingInterval)
                 : nil,
-            pendingSeconds: isArmed ? snapshot.secondsShown : nil,
+            pendingSeconds: showsPending ? snapshot.secondsShown : nil,
             displayWeightUnit: weightUnit)
     }
 
@@ -888,4 +899,12 @@ struct RunnerSnapshot: Equatable {
     /// 1 because "Pull 0 of 12" says a session has not started, and by the time anyone
     /// can read it, it has.
     var pullPosition: Int { max(1, min(completedRepCount + 1, plannedRepCount)) }
+
+    /// A rep is under way but its clock is NOT running: off the edge (RE-GRIP), over the
+    /// band (EASE OFF), or the link gone. Only ever while working — a rest runs on the wall
+    /// clock whatever the gauge is doing, and armed never had a clock to stop.
+    var holdClockIsStopped: Bool {
+        guard case .working = phase else { return false }
+        return isDropped || isOverTarget || linkIsDown
+    }
 }

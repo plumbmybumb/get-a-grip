@@ -163,9 +163,11 @@ struct SessionLiveActivity: Widget {
                 .font(font)
                 .monospacedDigit()
                 .multilineTextAlignment(.trailing)
-        } else if context.state.phase == .armed, let pending = context.state.pendingSeconds {
-            // ARMED: the length of the hold ahead, not a clock. Dimmed, so a number
-            // sitting still cannot be read as a countdown that has stopped.
+        } else if let pending = context.state.pendingSeconds {
+            // ARMED: the length of the hold ahead, not a clock. A STOPPED hold (off the
+            // edge, over the band, link lost): the seconds still owed. Either way no clock
+            // is running, so it is dimmed — a number sitting still must not be read as a
+            // countdown that is.
             Text("\(pending)s")
                 .font(font)
                 .monospacedDigit()

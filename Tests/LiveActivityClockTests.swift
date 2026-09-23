@@ -7,6 +7,60 @@ import XCTest
 /// What the Live Activity is told, and when it may be told anything at all.
 @MainActor
 final class LiveActivityClockTests: XCTestCase {
+    func testAStoppedHoldClockStopsTheCardsCountdownToo() async throws {
+        let client = RecordingProgressorClient()
+        let device = DeviceStore(client: client)
+        client.setState(.connected)
+        let activity = RunnerActivityRecorder()
+        let session = RunnerSession(
+            template: RunnerFixtures.template(holdSeconds: 10), device: device,
+            liveActivity: activity, cues: RunnerCueRecorder(),
+            activityStartDelay: nil)
+        session.begin()
+        defer { session.end() }
+
+        RunnerFixtures.pull(session, kg: 10, samples: 40, from: 1)
+        await Task.yield()
+        guard case .working = session.snapshot.phase else { return XCTFail("Expected a running hold") }
+        XCTAssertFalse(session.snapshot.holdClockIsStopped)
+        XCTAssertEqual(activity.states.last?.phase, .pulling)
+        XCTAssertNotNil(activity.states.last?.endsAt)
+        XCTAssertNil(activity.states.last?.pendingSeconds)
+
+        // Off the edge: RE-GRIP. The rep is alive, its clock is not.
+        RunnerFixtures.pull(session, kg: 0, samples: 8, from: 41)
+        await Task.yield()
+        XCTAssertTrue(session.snapshot.isDropped)
+        XCTAssertTrue(session.snapshot.holdClockIsStopped)
+        let stopped = try XCTUnwrap(activity.states.last)
+        XCTAssertEqual(stopped.phase, .pulling)
+        XCTAssertNil(stopped.endsAt, "A deadline would count on to zero while nothing is held")
+        XCTAssertEqual(stopped.pendingSeconds, session.snapshot.secondsShown,
+                       "The card freezes on exactly what the runner shows")
+
+        // Back on: a fresh deadline, and the frozen number goes.
+        RunnerFixtures.pull(session, kg: 10, samples: 16, from: 49)
+        await Task.yield()
+        XCTAssertFalse(session.snapshot.holdClockIsStopped)
+        XCTAssertNotNil(activity.states.last?.endsAt)
+        XCTAssertNil(activity.states.last?.pendingSeconds)
+    }
+
+    func testALostLinkMidHoldIsAStoppedClockButARestIsNot() {
+        var snapshot = RunnerSnapshot()
+        snapshot.phase = .working(slot: 0)
+        snapshot.linkIsDown = true
+        XCTAssertTrue(snapshot.holdClockIsStopped)
+        snapshot.phase = .resting(slot: 0)
+        XCTAssertFalse(snapshot.holdClockIsStopped, "A rest runs on the wall clock whatever the gauge does")
+        snapshot.phase = .armed(slot: 0)
+        snapshot.linkIsDown = false
+        snapshot.isOverTarget = true
+        XCTAssertFalse(snapshot.holdClockIsStopped, "Armed never had a clock to stop")
+        snapshot.phase = .working(slot: 0)
+        XCTAssertTrue(snapshot.holdClockIsStopped, "EASE OFF stops it as surely as RE-GRIP")
+    }
+
     func testTheCardStartsOffThePresentingFrameAndNotAtAllForASessionAlreadyGone() async throws {
         let device = DeviceStore(client: RecordingProgressorClient())
         let activity = RunnerActivityRecorder()

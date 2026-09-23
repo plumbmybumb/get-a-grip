@@ -67,6 +67,9 @@ struct SessionActivity: ActivityAttributes {
         /// still chalking up) and a dash says nothing. The length of the hold you are about
         /// to do is the honest answer, drawn dimmed so a static number cannot be mistaken
         /// for a stalled one.
+        ///
+        /// The same field carries a hold whose clock has STOPPED mid-rep (off the edge,
+        /// over the band, link lost): the seconds still owed, frozen, with no deadline.
         var pendingSeconds: Int?
 
         var displayWeightUnit: WeightUnit? = nil
