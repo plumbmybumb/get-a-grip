@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui.today
 
+import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -43,8 +44,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -493,7 +492,7 @@ private fun Header(
 /// that was left open.
 private fun dateLine(today: DayStamp): String = DATE_LINE.format(today.localDate())
 
-private val DATE_LINE: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault())
+private val DATE_LINE = LocalizedPattern("EEEE d MMMM")
 
 /// Wraps to tomorrow's first slot rather than going blank once the day's last reminder has
 /// passed: at 22:00 the honest answer is still "next at 08:00", and a row that empties itself

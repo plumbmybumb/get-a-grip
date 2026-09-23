@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.units.WeightUnits
 
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
@@ -52,8 +53,6 @@ import androidx.compose.ui.unit.dp
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.engine.Fmt
 import run.nuri.getagrip.engine.GripSpec
@@ -240,7 +239,7 @@ internal fun progressLine(group: MaxGripGroup): String {
     return parts.joinToString(" · ")
 }
 
-private val SHORT_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+private val SHORT_DATE = LocalizedPattern("d MMM")
 
 /// Plain relative wording, the twin of iOS's `.relative(presentation: .named)`. Deliberately
 /// coarse: the useful fact about a max is that it is weeks old, never that it is 19 days old.

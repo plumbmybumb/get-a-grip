@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui.history
 
+import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,8 +70,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.launch
 import run.nuri.getagrip.data.MaxRecordEntity
@@ -392,7 +391,7 @@ object HistoryWindows {
         return L10n.tr("%d of %d days trained since you started", count, tracked.size)
     }
 
-    private val RANGE_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+    private val RANGE_DATE = LocalizedPattern("d MMM")
 }
 
 /// LAZY, unlike the other decks: the page count grows with the training history and a

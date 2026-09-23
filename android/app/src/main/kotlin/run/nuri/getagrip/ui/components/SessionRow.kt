@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui.components
 
+import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.units.WeightUnits
 
 import androidx.compose.foundation.background
@@ -33,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import run.nuri.getagrip.data.WorkoutLogEntity
@@ -219,14 +219,12 @@ private fun durationText(minutes: Int): String = when {
     else -> L10n.tr("%dm", minutes)
 }
 
-private val SHORT_DATE: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())
+private val SHORT_DATE = LocalizedPattern("EEE d MMM")
 
 private fun shortDate(log: WorkoutLogEntity): String =
     SHORT_DATE.format(log.historyDate())
 
-private val LONG_DATE: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault())
+private val LONG_DATE = LocalizedPattern("EEEE d MMMM")
 
 private fun longDate(log: WorkoutLogEntity): String =
     LONG_DATE.format(log.historyDate())
