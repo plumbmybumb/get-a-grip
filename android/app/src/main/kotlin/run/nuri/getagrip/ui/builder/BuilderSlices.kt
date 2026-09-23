@@ -23,9 +23,8 @@ import run.nuri.getagrip.engine.Side
 /// transform reads the CURRENT draft when it runs — so a callback built three edits ago
 /// still writes on top of the latest one.
 ///
-/// The iOS twin is the keypath projection that replaced a subscript binding after the
-/// 13 mini lag (2026-09-18): 15 → 3 view bodies per keystroke. This is the same cure in
-/// Compose's terms.
+/// The iOS twin is the keypath projection that replaced a subscript binding there: 15 → 3
+/// view bodies per keystroke. This is the same cure in Compose's terms.
 typealias DraftUpdate = ((RoutineDraft) -> RoutineDraft) -> Unit
 
 // MARK: - What each section actually reads

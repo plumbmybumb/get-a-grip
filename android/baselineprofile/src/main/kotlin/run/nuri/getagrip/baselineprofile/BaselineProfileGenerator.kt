@@ -14,8 +14,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/// **The journeys the shipped profile is recorded from** — the three the review measured as
-/// slow on a cold process: launching onto Today, switching tabs, and opening the builder.
+/// **The journeys the shipped profile is recorded from** — the three that are slowest on a
+/// cold process: launching onto Today, switching tabs, and opening the builder.
 ///
 /// Every step is written to survive the app's first-launch state (the intro tour, no
 /// routine yet) and every later one (tour seen, a routine saved by nobody), because the rule

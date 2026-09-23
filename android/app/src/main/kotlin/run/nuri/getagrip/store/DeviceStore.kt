@@ -593,9 +593,8 @@ class DeviceStore(
     /// once for exactly the same reason. **Android has the same hazard under another name.**
     /// A process the OS KILLS takes its GATT link with it, but one it merely FREEZES (the
     /// cached-apps freezer, seconds after the app leaves the screen) keeps its link up while
-    /// its threads — and this timer — stand still. This used to claim the worst case here
-    /// was a grace cut short; the real worst case was a gauge left awake indefinitely. So
-    /// the window is armed twice: this coroutine, and a `BackgroundGraceBackstop` alarm the
+    /// its threads — and this timer — stand still. The worst case is therefore not a grace
+    /// cut short but a gauge left awake indefinitely. So the window is armed twice: this coroutine, and a `BackgroundGraceBackstop` alarm the
     /// system delivers to a frozen app — whichever fires first disconnects. (A session that
     /// must genuinely survive backgrounding runs a `connectedDevice` foreground service
     /// instead — see `SessionForegroundService` — and that session is streaming, so it takes

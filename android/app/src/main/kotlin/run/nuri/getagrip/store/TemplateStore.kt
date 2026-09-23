@@ -186,12 +186,12 @@ class TemplateStore(
     /// Set when a write fails. The failed change has already been rolled back — it was
     /// one transaction — by the time a view reads this.
     ///
-    /// **DISPLAY ONLY — never the answer to "did MY write land?"** It used to be both: each
-    /// write reset it, ran, and its caller then read it back. Two writes in flight shared
-    /// the one field, so a failed save could be read as a success because a second write
-    /// had reset it in between — an Undo offered for a delete that never happened, a
-    /// session reported saved that was rolled back. Every write now answers for itself
-    /// (`persistAndSync` returns it); this is only the sentence a screen shows.
+    /// **DISPLAY ONLY — never the answer to "did MY write land?"** Two writes in flight
+    /// share the one field, so a caller reading it back could take a failed save for a
+    /// success because a second write reset it in between — an Undo offered for a delete
+    /// that never happened, a session reported saved that was rolled back. Every write
+    /// answers for itself (`persistAndSync` returns it); this is only the sentence a screen
+    /// shows.
     var saveError: String? by mutableStateOf(null)
 
     /// Counts writes through `persistAndSync`, so a reader of the raw tables (`HistoryFeed`)

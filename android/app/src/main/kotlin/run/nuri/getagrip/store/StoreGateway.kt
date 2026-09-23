@@ -82,11 +82,10 @@ interface StoreWriter {
 
 /// Room, one call at a time.
 ///
-/// **The lane is a `Mutex`, not the dispatcher.** This used to claim that
-/// `Dispatchers.IO.limitedParallelism(1)` made it "one serial lane", and it did not: a lane
-/// of one THREAD still interleaves at every suspension point, and `withTransaction`
-/// suspends — so a read queued behind a write could run while the write's transaction was
-/// still open and read the disk as it stood before it. The mutex holds the lane across
+/// **The lane is a `Mutex`, not the dispatcher.** `Dispatchers.IO.limitedParallelism(1)`
+/// is not one serial lane: a lane of one THREAD still interleaves at every suspension
+/// point, and `withTransaction` suspends — so a read queued behind a write could run while
+/// the write's transaction was still open and read the disk as it stood before it. The mutex holds the lane across
 /// the whole call, which is what "a read can never overtake a write" (the history feed
 /// relies on it) actually requires. What it does NOT give is atomicity across two calls:
 /// a read-then-write in the store (renumber, import-then-deconflict) is two turns of the
