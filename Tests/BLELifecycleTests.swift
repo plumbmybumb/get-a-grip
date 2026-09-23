@@ -84,7 +84,7 @@ final class BLELifecycleTests: XCTestCase {
         )
     }
 
-    /// REGRESSION (audit rank 18, verified): `DeviceStore.isLoadedForTare` has to be the
+    /// REGRESSION: `DeviceStore.isLoadedForTare` has to be the
     /// coarse, change-guarded flag `tapDecision` actually consumes — computed straight
     /// from `TarePolicy.shouldConfirm`'s own threshold, so the two can never disagree.
     func testIsLoadedForTareMatchesTheShouldConfirmThreshold() {
@@ -146,7 +146,7 @@ final class BLELifecycleTests: XCTestCase {
         XCTAssertFalse(device.isLoadedForTare, "and it drops back once the load clears")
     }
 
-    // MARK: - Pause/Skip controls (audit rank 2)
+    // MARK: - Pause/Skip controls
 
     /// `.idle` is every session opened before the gauge has connected — indefinitely, if
     /// it never answers. Pause/Resume stays enabled once paused (it is the button that

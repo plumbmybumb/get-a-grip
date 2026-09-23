@@ -599,7 +599,7 @@ struct TodayView: View {
             }
         }
         // 8, not 4: the bar sat close enough to the tab bar that a reach for Undo
-        // could land on the tab strip instead (rank 3 audit finding).
+        // could land on the tab strip instead.
         .padding(.bottom, 8)
         .animation(Motion.state(reduceMotion),
                    value: templates.lastDeleted)
