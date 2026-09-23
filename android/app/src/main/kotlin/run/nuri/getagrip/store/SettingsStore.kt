@@ -61,12 +61,17 @@ interface RoutineSettings {
     val deniedNotifications: Boolean
     val scheduledReminderIdentifiers: Set<String>
 
+    /// Which version of the one-shot training-day repair has run on this device; 0 = never.
+    /// See `TemplateStore.repairTrainingDaysOnce`.
+    val trainingDayRepairVersion: Int
+
     fun setLastStartedRoutineID(value: UUID?)
     fun setLastStartedDayRaw(value: Int)
     fun setDraftStash(value: String?)
     fun setDidAskNotificationPermission(value: Boolean)
     fun setDeniedNotifications(value: Boolean)
     fun setScheduledReminderIdentifiers(value: Set<String>)
+    fun setTrainingDayRepairVersion(value: Int)
 }
 
 /// The in-memory counterpart, for tests. A fresh one is exactly a fresh install.
@@ -77,6 +82,7 @@ class InMemoryRoutineSettings : RoutineSettings {
     private var asked: Boolean = false
     private var denied: Boolean = false
     private var scheduled: Set<String> = emptySet()
+    private var repairVersion: Int = 0
 
     override val lastStartedRoutineID: UUID? get() = routineID
     override val lastStartedDayRaw: Int get() = dayRaw
@@ -84,6 +90,7 @@ class InMemoryRoutineSettings : RoutineSettings {
     override val didAskNotificationPermission: Boolean get() = asked
     override val deniedNotifications: Boolean get() = denied
     override val scheduledReminderIdentifiers: Set<String> get() = scheduled
+    override val trainingDayRepairVersion: Int get() = repairVersion
 
     override fun setLastStartedRoutineID(value: UUID?) { routineID = value }
     override fun setLastStartedDayRaw(value: Int) { dayRaw = value }
@@ -91,6 +98,7 @@ class InMemoryRoutineSettings : RoutineSettings {
     override fun setDidAskNotificationPermission(value: Boolean) { asked = value }
     override fun setDeniedNotifications(value: Boolean) { denied = value }
     override fun setScheduledReminderIdentifiers(value: Set<String>) { scheduled = value }
+    override fun setTrainingDayRepairVersion(value: Int) { repairVersion = value }
 }
 
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -144,6 +152,7 @@ class SettingsStore(
         val shareCardStyleKey = stringPreferencesKey("shareCardStyle")
         val frezIntroSeenKey = booleanPreferencesKey("frezIntroSeen")
         val scheduledRemindersKey = stringPreferencesKey("reminders.scheduled")
+        val trainingDayRepairKey = intPreferencesKey("repair.trainingDays.version")
 
         /// `tour.seen.<act>` — one key per act, holding a VERSION rather than a Bool.
         /// When the tour gains an act, a bumped version is what lets it run again for
@@ -186,6 +195,7 @@ class SettingsStore(
         loaded[scheduledRemindersKey]?.split('\n')?.filter { it.isNotEmpty() }?.toSet()
             ?: emptySet()
     )
+    private var repairVersion: Int = loaded[trainingDayRepairKey] ?: 0
     private var tourSeen: Map<String, Int> by mutableStateOf(
         loaded.asMap().mapNotNull { (key, value) ->
             if (!key.name.startsWith(tourSeenPrefix)) return@mapNotNull null
@@ -240,6 +250,8 @@ class SettingsStore(
     /// somewhere to keep that note across a process death — otherwise a relaunch would
     /// have no way to cancel an alarm the new plan no longer covers.
     override val scheduledReminderIdentifiers: Set<String> get() = scheduled
+
+    override val trainingDayRepairVersion: Int get() = repairVersion
 
     /// The version of `act` the user has seen, or 0 for never. Kept in a map rather than
     /// as three properties because `TourAct` is the tour's vocabulary, not this file's.
@@ -297,6 +309,11 @@ class SettingsStore(
     override fun setScheduledReminderIdentifiers(value: Set<String>) {
         scheduled = value
         write { it[scheduledRemindersKey] = value.joinToString("\n") }
+    }
+
+    override fun setTrainingDayRepairVersion(value: Int) {
+        repairVersion = value
+        write { it[trainingDayRepairKey] = value }
     }
 
     fun setTourSeenVersion(act: String, version: Int) {

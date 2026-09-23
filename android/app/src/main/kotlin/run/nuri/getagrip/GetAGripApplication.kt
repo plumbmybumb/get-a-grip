@@ -111,11 +111,16 @@ class GetAGripApplication : Application() {
         observeProcessLifecycle()
         storeScope.launch {
             Seeds.apply(database, intent)
-            // Before the first derived world, so a session filed under the wrong day by
-            // the midnight-turning clock is counted on the right one from the first frame.
-            templates.repairTrainingDays()
             templates.syncDerived()
             historyFeed.refresh()
+            // AFTER the first derived world, not before it: the repair reads the whole
+            // history's day columns, and the first frame must not wait on a read that grows
+            // with every week trained. It runs once per device (see
+            // `repairTrainingDaysOnce`), and republishes only if a row actually moved.
+            if (templates.repairTrainingDaysOnce() > 0) {
+                templates.syncDerived()
+                historyFeed.refresh()
+            }
         }
     }
 

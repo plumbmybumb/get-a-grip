@@ -11,9 +11,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import run.nuri.getagrip.data.GetAGripDatabase
+import run.nuri.getagrip.data.LogDayStamp
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.data.WorkoutLogEntity
+import java.time.Instant
 import java.util.UUID
 
 /// Everything `TemplateStore` is allowed to do to the database, and the seam the
@@ -37,6 +39,22 @@ interface StoreGateway {
     suspend fun allLogs(): List<WorkoutLogEntity>?
     suspend fun allMaxes(): List<MaxRecordEntity>?
 
+    /// One session by id. Null when it is absent OR the read failed — every caller treats
+    /// the two alike (there is nothing to delete either way). Defaulted through `allLogs`
+    /// so a test double need not care; Room answers it with an indexed point read.
+    suspend fun log(id: UUID): WorkoutLogEntity? = allLogs()?.firstOrNull { it.id == id }
+
+    /// A routine's sessions. Null when the read FAILED, as everywhere here.
+    suspend fun logsFor(templateID: UUID): List<WorkoutLogEntity>? =
+        allLogs()?.filter { it.templateID == templateID }
+
+    /// The day-filing columns of every session started before `before` — the repair's only
+    /// read, and a projection so it never decodes a blob. Null when the read failed.
+    suspend fun dayStamps(before: Instant): List<LogDayStamp>? =
+        allLogs()?.filter { it.startedAt.isBefore(before) }?.map {
+            LogDayStamp(it.id, it.startedAt, it.finishedAt, it.dayKey, it.kindRaw)
+        }
+
     /// One atomic unit of work. It THROWS when it could not be committed — the caller
     /// (`TemplateStore.persistAndSync`) is the one place that turns that into a
     /// `saveError`, so no write path can forget to report one.
@@ -56,6 +74,8 @@ interface StoreWriter {
     suspend fun removeRoutine(id: UUID)
     suspend fun putLog(row: WorkoutLogEntity)
     suspend fun removeLog(id: UUID)
+    /// Move one session to another training day, touching nothing else about the row.
+    suspend fun refileLog(id: UUID, dayKey: Int)
     suspend fun putMax(row: MaxRecordEntity)
     suspend fun removeMax(id: UUID)
 }
@@ -95,6 +115,14 @@ class RoomStoreGateway(
 
     override suspend fun allMaxes(): List<MaxRecordEntity>? = read { db.maxes().all() }
 
+    override suspend fun log(id: UUID): WorkoutLogEntity? = read { db.logs().byId(id) }
+
+    override suspend fun logsFor(templateID: UUID): List<WorkoutLogEntity>? =
+        read { db.logs().byTemplate(templateID) }
+
+    override suspend fun dayStamps(before: Instant): List<LogDayStamp>? =
+        read { db.logs().dayStamps(before) }
+
     override suspend fun write(work: suspend (StoreWriter) -> Unit) {
         lane.withLock {
             withContext(dispatcher) {
@@ -126,6 +154,7 @@ private class RoomWriter(private val db: GetAGripDatabase) : StoreWriter {
     override suspend fun removeRoutine(id: UUID) = db.routines().delete(id)
     override suspend fun putLog(row: WorkoutLogEntity) = db.logs().upsert(row)
     override suspend fun removeLog(id: UUID) = db.logs().delete(id)
+    override suspend fun refileLog(id: UUID, dayKey: Int) = db.logs().refile(id, dayKey)
     override suspend fun putMax(row: MaxRecordEntity) = db.maxes().upsert(row)
     override suspend fun removeMax(id: UUID) = db.maxes().delete(id)
 }

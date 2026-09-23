@@ -91,7 +91,35 @@ interface WorkoutLogDao {
 
     @Query("DELETE FROM WorkoutLog")
     suspend fun deleteAll()
+
+    // MARK: - Point reads
+    //
+    // A delete needs ONE row and a routine's delete needs ITS rows; both used to load every
+    // session ever logged and filter in memory, a cost that grows with every week trained.
+
+    @Query("SELECT * FROM WorkoutLog WHERE id = :id")
+    suspend fun byId(id: UUID): WorkoutLogEntity?
+
+    @Query("SELECT * FROM WorkoutLog WHERE templateID = :templateID ORDER BY startedAt ASC")
+    suspend fun byTemplate(templateID: UUID): List<WorkoutLogEntity>
+
+    /// The four columns the training-day repair reads — no blobs, whatever the history's size.
+    @Query("SELECT id, startedAt, finishedAt, dayKey, kindRaw FROM WorkoutLog WHERE startedAt < :before")
+    suspend fun dayStamps(before: Instant): List<LogDayStamp>
+
+    @Query("UPDATE WorkoutLog SET dayKey = :dayKey WHERE id = :id")
+    suspend fun refile(id: UUID, dayKey: Int)
 }
+
+/// The slice of a `WorkoutLog` row that says which day it is filed under, and why — see
+/// `TemplateStore.repairTrainingDays`.
+data class LogDayStamp(
+    val id: UUID,
+    val startedAt: Instant,
+    val finishedAt: Instant,
+    val dayKey: Int,
+    val kindRaw: String,
+)
 
 /// Maxes, oldest first — `newestPerGrip` and `lastMeasuredMaxAt` both read that order.
 @Dao

@@ -745,7 +745,7 @@ class TemplateStore(
         val restorable = gateway.routine(template.id) ?: return false
         // Its sessions go with it. A read that FAILS refuses the whole delete: deleting the
         // routine anyway would leave its sessions behind as orphans nothing can reach.
-        val sessions = (gateway.allLogs() ?: return false).filter { it.templateID == template.id }
+        val sessions = gateway.logsFor(template.id) ?: return false
         val deleted = persistAndSync(maxesChanged = false) { writer ->
             sessions.forEach { writer.removeLog(it.id) }
             writer.removeRoutine(template.id)
@@ -888,33 +888,80 @@ class TemplateStore(
     /// in.** Until 2026-09-20 the clock turned at midnight, so a session that ran across it
     /// was stamped with the morning after, and one evening scored as two days. The day now
     /// turns at `DayStamp.ROLLOVER_HOUR`, and this brings the rows written under the old
-    /// rule into line with it. Hand-logged sessions are left alone: their day is the one
-    /// the person chose. Deterministic from a frozen column, so a row already right is never
-    /// touched — which is what makes it safe, and cheap, to run on every launch. Returns how
-    /// many rows moved; 0 when the read fails. Straight through the gateway rather than
-    /// `persistAndSync`: the launch sequence derives the world right after.
-    suspend fun repairTrainingDays(zone: ZoneId = ZoneId.systemDefault()): Int {
-        val logs = gateway.allLogs() ?: return 0
-        val moved = logs.filter { !it.kind.isLoggedByHand }
-            .mapNotNull { log ->
-                val day = DayStamp.trainingDayOf(log.startedAt, zone).raw
-                if (log.dayKey == day) null else log.copy(dayKey = day)
-            }
+    /// rule into line with it. Returns how many rows moved; 0 when the read fails.
+    ///
+    /// **Narrow on purpose, because it rewrites history.** It used to read every log ever
+    /// written, blobs and all, on EVERY cold launch, ahead of the first frame. Now:
+    ///
+    /// - only rows started before `before` — the moment this device first ran a build that
+    ///   stamps by the start's training day (`repairTrainingDaysOnce` passes its own launch),
+    ///   because nothing written since can be on the old rule;
+    /// - only rows still filed under the OLD rule — a calendar day the session started or
+    ///   finished on — so a row some other path filed deliberately is never second-guessed;
+    /// - never a hand-logged row (its day is the one the person chose), and never a KIND this
+    ///   build does not know: `SessionKind.fallback` reads an unknown kind as a hang, and
+    ///   moving a newer build's hand-logged row on that guess would be rewriting a choice;
+    /// - through a four-column projection and an `UPDATE` of one column, so no blob is read
+    ///   or rewritten.
+    ///
+    /// Straight through the gateway rather than `persistAndSync`: the caller republishes.
+    suspend fun repairTrainingDays(
+        zone: ZoneId = ZoneId.systemDefault(),
+        before: Instant = storedNow(),
+    ): Int = refileTrainingDays(zone, before) ?: 0
+
+    /// The pass itself; null when it could not run (the read or the write failed), which the
+    /// one-shot must not mistake for "nothing to move".
+    private suspend fun refileTrainingDays(zone: ZoneId, before: Instant): Int? {
+        val stamps = gateway.dayStamps(before) ?: return null
+        val moved = stamps.mapNotNull { row ->
+            val kind = SessionKind.fromRaw(row.kindRaw) ?: return@mapNotNull null
+            if (kind.isLoggedByHand) return@mapNotNull null
+            val day = DayStamp.trainingDayOf(row.startedAt, zone).raw
+            if (row.dayKey == day) return@mapNotNull null
+            val oldRule = row.dayKey == DayStamp.of(row.startedAt, zone).raw ||
+                row.dayKey == DayStamp.of(row.finishedAt, zone).raw
+            if (!oldRule) return@mapNotNull null
+            row.id to day
+        }
         if (moved.isEmpty()) return 0
         try {
-            gateway.write { writer -> moved.forEach { writer.putLog(it) } }
+            gateway.write { writer -> moved.forEach { (id, day) -> writer.refileLog(id, day) } }
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
-            return 0
+            return null
         }
         return moved.size
+    }
+
+    /// The launch-time door to `repairTrainingDays`: ONCE per device, behind a versioned
+    /// flag, and only marked done when the pass actually ran — a failed read leaves the flag
+    /// alone so the next launch tries again. Returns how many rows moved, so the caller
+    /// republishes only when something did.
+    ///
+    /// Called AFTER the first `syncDerived`, never before: the first frame must not wait on a
+    /// history-sized read, and a row it moves is republished by the caller a moment later.
+    suspend fun repairTrainingDaysOnce(zone: ZoneId = ZoneId.systemDefault()): Int {
+        if (settings.trainingDayRepairVersion >= trainingDayRepairVersion) return 0
+        val moved = refileTrainingDays(zone, before = storedNow()) ?: return 0
+        settings.setTrainingDayRepairVersion(trainingDayRepairVersion)
+        return moved
     }
 
     /// Write a finished session. Goes through the hub like every other mutation, so the
     /// completion count on Today and the consistency strip update in the same breath — a
     /// session that vanished until relaunch would read as lost work.
     ///
-    /// `day` comes from the app's own `DayClock`, not the wall clock, so a session
-    /// finished at 00:30 lands on the day the climber actually lived through.
+    /// Filed under the training day it STARTED in — `DayStamp.trainingDayOf(startedAt)`,
+    /// the same rule `repairTrainingDays` applies, so the writer and the repair can never
+    /// disagree about a row (iOS makes the same change). Stamping `clock.today` at SAVE time
+    /// used to split them: a session begun at 03:50 and saved at 04:10, or a summary left
+    /// open overnight, landed on the next day.
+    ///
+    /// `id` is the finished session's own identity when it has one — the draft a finished
+    /// session leaves behind (`FinishedSessionDraft`) — so saving it twice, once from the
+    /// summary and once from launch recovery, replaces one row rather than writing two.
     suspend fun recordSession(
         plan: SessionPlan,
         template: SessionTemplateEntity?,
@@ -923,22 +970,28 @@ class TemplateStore(
         finishedAt: Instant,
         rpe: RPE?,
         newMaxes: List<MaxRecordEntity> = emptyList(),
+        id: UUID? = null,
+        templateID: UUID? = template?.id,
+        templateName: String = template?.name ?: plan.name,
+        sessionsPerDayTarget: Int = template?.sessionsPerDay ?: 1,
+        zone: ZoneId = ZoneId.systemDefault(),
     ): WorkoutLogEntity? {
         if (newMaxes.any { !it.kg.isFinite() || it.kg <= 0 }) {
             saveError = L10n.tr("Couldn't save this workout. Please try again.")
             return null
         }
-        val log = WorkoutLogEntity.from(
+        val built = WorkoutLogEntity.from(
             plan = plan,
-            templateID = template?.id,
+            templateID = templateID,
             // FROZEN at save: renaming a routine later must not retro-rename history.
-            templateName = template?.name ?: plan.name,
-            sessionsPerDayTarget = template?.sessionsPerDay ?: 1,
+            templateName = templateName,
+            sessionsPerDayTarget = sessionsPerDayTarget,
             reps = reps,
             startedAt = startedAt,
             finishedAt = finishedAt,
-            day = clock.today,
+            day = DayStamp.trainingDayOf(startedAt, zone),
         ).copy(rpe = rpe?.rawValue)
+        val log = if (id != null) built.copy(id = id) else built
         val saved = persistAndSync(maxesChanged = newMaxes.isNotEmpty()) { writer ->
             writer.putLog(log)
             newMaxes.forEach { writer.putMax(it) }
@@ -955,8 +1008,7 @@ class TemplateStore(
     /// write rather than deleting from the screen.
     suspend fun deleteSession(log: WorkoutLogEntity): Boolean {
         // Captured as the raw row, blobs included — see `undoDeleteSession`.
-        val restorable = (gateway.allLogs() ?: return false).firstOrNull { it.id == log.id }
-            ?: return false
+        val restorable = gateway.log(log.id) ?: return false
         // Only offer undo for a delete that actually landed.
         if (!persistAndSync(maxesChanged = false) { it.removeLog(log.id) }) return false
         lastDeletedSession = restorable
@@ -1456,6 +1508,10 @@ class TemplateStore(
         private const val consistencyDays = 14
         private const val recentGripLimit = 6
 
+        /// Bump to run the training-day repair once more on every device — only if its
+        /// rule itself changes. See `repairTrainingDaysOnce`.
+        const val trainingDayRepairVersion = 1
+
         const val defaultUndoWindowMillis = 10_000L
         private const val longUndoWindowMillis = 600_000L
 
@@ -1508,6 +1564,7 @@ private class AuditingWriter(private val inner: StoreWriter) : StoreWriter {
     override suspend fun removeRoutine(id: UUID) = inner.removeRoutine(id)
     override suspend fun putLog(row: WorkoutLogEntity) = inner.putLog(row)
     override suspend fun removeLog(id: UUID) = inner.removeLog(id)
+    override suspend fun refileLog(id: UUID, dayKey: Int) = inner.refileLog(id, dayKey)
     override suspend fun putMax(row: MaxRecordEntity) {
         touchedMax = true
         inner.putMax(row)
