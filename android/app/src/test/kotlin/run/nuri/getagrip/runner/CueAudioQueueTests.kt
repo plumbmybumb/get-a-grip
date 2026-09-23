@@ -19,6 +19,9 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CueAudioQueueTests {
+    /// Cues only, no keep-alive: the worker waits on the channel alone.
+    private val noFeed = CueKeepAlive(silence = FloatArray(0), lowWaterFrames = 0, pollMillis = 0)
+
     @Test fun burstCuesStayInOrderAndPartialWritesAreCompleted() = runTest {
         val samples = mutableListOf<Float>()
         var closes = 0
@@ -30,7 +33,7 @@ class CueAudioQueueTests {
                     }
                     override fun close() { closes++ }
                 }
-            })
+            }, noFeed)
         queue.begin()
         val tones = listOf(ToneSynth.Tone.repComplete, ToneSynth.Tone.setComplete, ToneSynth.Tone.gripChange)
         tones.forEach(queue::play)
@@ -53,7 +56,7 @@ class CueAudioQueueTests {
                 }
                 override fun close() { closed.countDown() }
             }
-        })
+        }, noFeed)
         try {
             queue.begin(); queue.play(ToneSynth.Tone.go)
             assertTrue(entered.await(5, TimeUnit.SECONDS))
@@ -77,7 +80,7 @@ class CueAudioQueueTests {
                 }
                 override fun close() { closes++ }
             }
-        })
+        }, noFeed)
         queue.begin(); queue.play(ToneSynth.Tone.go); runCurrent()
         assertEquals(listOf(1f, 2f, 3f), received)
         assertEquals(2, opens)
@@ -92,7 +95,7 @@ class CueAudioQueueTests {
                 override fun write(buffer: FloatArray, offset: Int, count: Int): Int { writes++; return 0 }
                 override fun close() { closes++ }
             }
-        })
+        }, noFeed)
         queue.begin(); queue.play(ToneSynth.Tone.go); advanceUntilIdle()
         assertEquals(200, writes); assertEquals(1, closes)
         queue.end(); runCurrent(); assertEquals(1, closes)
@@ -108,7 +111,7 @@ class CueAudioQueueTests {
                 override fun write(buffer: FloatArray, offset: Int, count: Int): Int { writes++; return count }
                 override fun close() { closes++ }
             }
-        })
+        }, noFeed)
         queue.begin(); queue.play(ToneSynth.Tone.go); runCurrent()
         repeat(10) { queue.play(ToneSynth.Tone.alarm) }
         queue.end(); runCurrent()
@@ -123,7 +126,7 @@ class CueAudioQueueTests {
         val opens = AtomicInteger()
         val queue = CueAudioQueue(StandardTestDispatcher(testScheduler), { enabled }, { floatArrayOf(1f) }, {
             opens.incrementAndGet(); null
-        })
+        }, noFeed)
         queue.begin(); queue.play(ToneSynth.Tone.go); enabled = false; runCurrent()
         assertEquals(0, opens.get())
         queue.end(); runCurrent()
@@ -185,6 +188,20 @@ class CueAudioQueueTests {
         advanceTimeBy(50); runCurrent()
         queue.play(ToneSynth.Tone.go)
         advanceTimeBy(9); runCurrent()
+        assertEquals(ToneSynth.Tone.go.ordinal + 1, track.writes.last())
+        queue.end(); runCurrent()
+    }
+
+    /// The poll is for the idle top-up only: a cue wakes the worker the moment it is queued,
+    /// rather than waiting out the rest of an 8 ms poll.
+    @Test fun aCueArrivingWhileIdleIsWrittenWithoutWaitingForThePoll() = runTest {
+        val track = FakeTrack()
+        val queue = CueAudioQueue(StandardTestDispatcher(testScheduler), { true },
+            { floatArrayOf(it.ordinal.toFloat() + 1) }, { track }, feed)
+        queue.begin()
+        advanceTimeBy(50); runCurrent()
+        queue.play(ToneSynth.Tone.go)
+        runCurrent()
         assertEquals(ToneSynth.Tone.go.ordinal + 1, track.writes.last())
         queue.end(); runCurrent()
     }
