@@ -33,7 +33,6 @@ import run.nuri.getagrip.engine.ProgressorCommand
 import run.nuri.getagrip.engine.ProgressorEvent
 import run.nuri.getagrip.engine.SyntheticSampleClock
 import java.util.UUID
-import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 
@@ -240,24 +239,12 @@ class GattGaugeClient(
 
     private var isScanning = false
 
-    // MARK: - Reconnecting without a scan
-    //
-    // The same rule as `LiveProgressorClient`, and more urgent here: this client's scan is
-    // UNFILTERED (see `nameHints`), and Android pauses unfiltered scans outright while the
-    // screen is off. A link that dropped behind a locked screen therefore rescanned five
-    // times into silence, set `wantsConnection = false`, and never came back — while the
-    // foreground service kept a session alive waiting for it. The device a link last ran
-    // on is kept, and a dropped link is handed to the OS to reconnect directly
-    // (`AttemptRoute.awaitInRange`), which needs no scan at all.
-
-    /// The device the last ESTABLISHED link ran on, for the life of this client.
-    private var remembered: BluetoothDevice? = null
-    private var recovering = false
-    private var directTriesLeft = 0
-
-    /// See `LiveProgressorClient.linkUsesAutoConnect`.
-    private var linkUsesAutoConnect = false
-    private var scanStartJob: Job? = null
+    /// Reconnecting without a scan — see `RememberedGauge`. More urgent here than for the
+    /// Progressor: this client's scan is UNFILTERED (see `nameHints`), and Android pauses
+    /// unfiltered scans outright while the screen is off, so a link that dropped behind a
+    /// locked screen could never be found again by scanning.
+    private val remembered = RememberedGauge<BluetoothDevice>()
+    private val scanStarts = BudgetedScanStart(scope, scanBudget, clock)
 
     private val writeQueue = ArrayDeque<WriteEntry>()
     private var inFlightWrite: WriteEntry? = null
@@ -287,8 +274,7 @@ class GattGaugeClient(
         wantsConnection = true
         attemptsRemaining = attemptLimit
         refreshBudgetWhenPoweredOn = false
-        recovering = false
-        directTriesLeft = if (remembered != null) 1 else 0
+        remembered.connectRequested()
 
         registerRadioReceiver()
         if (adapter?.isEnabled != true) {
@@ -301,8 +287,7 @@ class GattGaugeClient(
     override fun disconnect() {
         wantsConnection = false
         refreshBudgetWhenPoweredOn = false
-        recovering = false
-        directTriesLeft = 0
+        remembered.released()
         attemptsRemaining = 0
         generation += 1uL
 
@@ -598,13 +583,10 @@ class GattGaugeClient(
             return
         }
 
-        val target = remembered
-        when (AttemptRouting.route(target != null, recovering, directTriesLeft)) {
+        val target = remembered.device
+        when (remembered.route()) {
             AttemptRoute.awaitInRange -> attach(target!!, generation, autoConnect = true)
-            AttemptRoute.direct -> {
-                directTriesLeft -= 1
-                attach(target!!, generation)
-            }
+            AttemptRoute.direct -> attach(target!!, generation)
             AttemptRoute.scan -> {
                 state = ProgressorConnectionState.Scanning
                 startScan(generation)
@@ -617,9 +599,7 @@ class GattGaugeClient(
     /// the next 30, with no error and no callback, and the retry ladder here is exactly the
     /// shape that trips it.
     ///
-    /// A start the shared `ScanStartBudget` cannot afford waits for it, and the attempt's
-    /// deadline starts only once its scan does — reusing a RUNNING scan was never enough,
-    /// because every failed attempt stops it.
+    /// A start the shared budget cannot afford waits for it — see `BudgetedScanStart`.
     private fun startScan(generation: ULong) {
         val scanner = adapter?.bluetoothLeScanner
         if (scanner == null) {
@@ -630,18 +610,10 @@ class GattGaugeClient(
             startScanDeadline(generation)
             return
         }
-        val wait = scanBudget.delaySeconds(clock.uptimeSeconds())
-        if (wait > 0) {
-            scanStartJob?.cancel()
-            scanStartJob = scope.launch(Dispatchers.Main.immediate) {
-                delay(ceil(wait * 1_000).toLong())
-                if (this@GattGaugeClient.generation != generation) return@launch
-                if (scanGeneration != generation) return@launch
-                scanStartJob = null
-                startScan(generation)
-            }
-            return
-        }
+        val deferred = scanStarts.deferIfOverBudget(
+            stillWanted = { this.generation == generation && scanGeneration == generation },
+        ) { startScan(generation) }
+        if (deferred) return
         startScanDeadline(generation)
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
@@ -649,7 +621,7 @@ class GattGaugeClient(
         try {
             scanner.startScan(emptyList(), settings, scanCallback)
             isScanning = true
-            scanBudget.recordStart(clock.uptimeSeconds())
+            scanStarts.started()
         } catch (_: SecurityException) {
             state = ProgressorConnectionState.Unauthorized
         }
@@ -673,9 +645,7 @@ class GattGaugeClient(
         override fun onScanFailed(errorCode: Int) {
             onMain {
                 stopScan()
-                if (errorCode == ScanStartBudget.scanTooFrequentError) {
-                    scanBudget.noteTooFrequent(clock.uptimeSeconds())
-                }
+                scanStarts.failed(errorCode)
                 failAttempt(L10n.tr("No %s found", kind.displayName))
             }
         }
@@ -751,7 +721,7 @@ class GattGaugeClient(
             it.setConnectionObserver(observer)
             manager = it
         }
-        linkUsesAutoConnect = autoConnect
+        remembered.attaching(autoConnect)
         try {
             val request = bleManager.connect(found)
                 .useAutoConnect(autoConnect)
@@ -856,8 +826,7 @@ class GattGaugeClient(
     private fun cancelAllJobs() {
         scanDeadlineJob?.cancel()
         scanDeadlineJob = null
-        scanStartJob?.cancel()
-        scanStartJob = null
+        scanStarts.cancel()
         backoffJob?.cancel()
         backoffJob = null
         writeDeadlineJob?.cancel()
@@ -944,9 +913,7 @@ class GattGaugeClient(
             return
         }
         attemptsRemaining = attemptLimit
-        remembered = settled
-        recovering = false
-        directTriesLeft = 0
+        remembered.established(settled)
         // BEFORE publishing `Connected`, because that publish runs synchronously into
         // `DeviceStore` and can reach `startStreaming` in the same turn — the setup writes
         // have to be in the queue ahead of any start payload.
@@ -1034,13 +1001,12 @@ class GattGaugeClient(
         if (!isCurrent(disconnected)) return
 
         val wasEstablished = state.isConnected
-        val wasAutoConnect = linkUsesAutoConnect
-        linkUsesAutoConnect = false
+        val wasAutoConnect = remembered.linkLost()
         invalidateAttempt()
-        // An autoConnect link's GATT stays open after a loss while Nordic reconnects it on
-        // its own. Close it (a cancel of a pending connection answers at once, and the
-        // superseded generation ignores that answer), and let the ordinary one-second
-        // backoff put the next attempt behind it.
+        // Close a lost autoConnect link (a cancel of a pending connection answers at once,
+        // and the superseded generation ignores that answer), and let the ordinary
+        // one-second backoff put the next attempt behind it. Why this differs from
+        // `LiveProgressorClient`: see `RememberedGauge`.
         if (wasAutoConnect) manager?.disconnect()?.enqueue()
 
         // Radio state is authoritative: its own receiver already published the off state,
@@ -1054,7 +1020,7 @@ class GattGaugeClient(
             // Subscribing successfully reset the budget, so a dropped established link
             // begins a fresh cycle — waiting for the SAME gauge, not scanning for any.
             attemptsRemaining = attemptLimit
-            recovering = remembered != null
+            remembered.awaitReturn()
             if (wasAutoConnect) scheduleRetry() else beginAttemptIfPossible()
         } else if (attemptsRemaining > 0) {
             scheduleRetry()
