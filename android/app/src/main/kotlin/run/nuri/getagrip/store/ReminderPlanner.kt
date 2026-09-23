@@ -15,8 +15,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import run.nuri.getagrip.MainActivity
 import run.nuri.getagrip.R
 import run.nuri.getagrip.engine.DayStamp
@@ -150,32 +148,19 @@ object ReminderPlanner {
     private fun trainingDayMinute(slot: ReminderTime): Int =
         Math.floorMod(slot.minutesFromMidnight - DayStamp.ROLLOVER_HOUR * 60, 24 * 60)
 
-    private val sharedGate = Mutex()
-
-    /// Replans are fully serialized: one runs at a time, so a superseded run's in-flight
-    /// adds can never land after the successor's wipe.
+    /// Compute the plan and hand it to the scheduler. **Not serialized here** — ordering is
+    /// the caller's job, and in the app there is exactly one caller: `TemplateStore`, the
+    /// one door every replan goes through (the boot receiver included), runs these through
+    /// its `replanLane`. A lock in here would have to be process-global to mean anything,
+    /// and a process-global lock can be left held by a coroutine whose dispatcher has
+    /// stopped running.
     ///
-    /// TRANSLATION NOTE: iOS cancels its predecessor Task and awaits it. A `Mutex` is the
-    /// same guarantee with the opposite emphasis — nothing is cancelled, everything runs
-    /// in order — which is the safer half here, because an `AlarmManager` write abandoned
-    /// halfway leaves a real alarm behind rather than an unsent request.
-    ///
-    /// `isCurrent` is asked INSIDE the lock: a plan computed by a recompute that has since
-    /// been superseded is dropped rather than installed and immediately replaced, so the
-    /// alarms never spend a moment on a stale day. Defaulted to "always current" for the
-    /// callers that replan exactly once (tests).
-    ///
-    /// `gate` is the store's own in the app: `TemplateStore` is the one door every replan
-    /// goes through (the boot receiver included), so one lock per store serializes all of
-    /// them, and a lock that is not process-global cannot be left held by a coroutine
-    /// whose dispatcher has stopped running.
-    suspend fun replan(
-        routines: List<RoutinePlanInput>,
-        scheduler: AlarmScheduler,
-        isCurrent: () -> Boolean = { true },
-        gate: Mutex = sharedGate,
-    ) {
-        gate.withLock { if (isCurrent()) scheduler.apply(requests(routines)) }
+    /// TRANSLATION NOTE: iOS cancels its predecessor Task and awaits it. The lane is the
+    /// same guarantee with the opposite emphasis — nothing is cancelled, one plan is
+    /// applied at a time — which is the safer half here, because an `AlarmManager` write
+    /// abandoned halfway leaves a real alarm behind rather than an unsent request.
+    suspend fun replan(routines: List<RoutinePlanInput>, scheduler: AlarmScheduler) {
+        scheduler.apply(requests(routines))
     }
 }
 

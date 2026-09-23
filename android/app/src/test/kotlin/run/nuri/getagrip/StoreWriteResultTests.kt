@@ -6,12 +6,11 @@ package run.nuri.getagrip
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Test
@@ -22,14 +21,17 @@ import run.nuri.getagrip.data.GetAGripDatabase
 import run.nuri.getagrip.data.WorkoutLogEntity
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SessionKind
+import run.nuri.getagrip.store.AlarmScheduler
 import run.nuri.getagrip.store.DayClock
 import run.nuri.getagrip.store.InMemoryRoutineSettings
 import run.nuri.getagrip.store.RecordingAlarmScheduler
+import run.nuri.getagrip.store.ReminderPlanner
 import run.nuri.getagrip.store.RoomStoreGateway
 import run.nuri.getagrip.store.StoreGateway
 import run.nuri.getagrip.store.StoreWriter
 import run.nuri.getagrip.store.TemplateStore
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -119,40 +121,100 @@ class StoreWriteResultTests {
         assertEquals(listOf(SessionKind.climbLimit), db.logs().all().map { it.kind })
     }
 
+    /// Room-free and single-threaded: the held read and the lanes all run on the test
+    /// scheduler, so "the newer recompute got no further" is proven by `runCurrent()`.
+    private class HeldMemoryGateway : MemoryStoreGateway() {
+        var logsGate: CompletableDeferred<Unit>? = null
+
+        override suspend fun logsFrom(dayKey: Int): List<WorkoutLogEntity>? {
+            logsGate?.let { logsGate = null; it.await() }
+            return super.logsFrom(dayKey)
+        }
+    }
+
+    /// Every plan the store installed, in order — `RecordingAlarmScheduler` keeps only the
+    /// last, and "latest wins" is a claim about the ones that did NOT land too.
+    private class HistoryScheduler : AlarmScheduler {
+        val installed = mutableListOf<List<ReminderPlanner.PlannedReminder>>()
+        override suspend fun apply(planned: List<ReminderPlanner.PlannedReminder>) {
+            installed.add(planned)
+        }
+    }
+
     /// **An older recompute cannot publish over a newer one.** The first `syncDerived`
     /// read the routines, then stalled; a routine was created and its own recompute ran.
     /// Unserialized, the stalled one finished LAST and put the world without the new
     /// routine back on screen — and its plan back in the alarm scheduler.
     @Test
     fun anOlderRecomputeCannotPublishAfterANewerOne() = runTest {
-        val (_, gateway, pair) = world()
-        val (store, scheduler) = pair
+        val gateway = HeldMemoryGateway()
+        val scheduler = HistoryScheduler()
+        val lanes = StandardTestDispatcher(testScheduler)
+        val store = TemplateStore(
+            gateway = gateway,
+            clock = DayClock(),
+            settings = InMemoryRoutineSettings(),
+            scheduler = scheduler,
+            scope = CoroutineScope(lanes),
+        )
 
         gateway.logsGate = CompletableDeferred()
         val held = gateway.logsGate!!
-        val older = async(UnconfinedTestDispatcher(testScheduler)) { store.syncDerived() }
-        gateway.gateReached.await()
+        val older = async(lanes) { store.syncDerived() }
+        runCurrent()
 
-        val draft = RoutineDraft(remindersEnabled = true)
-        val created = async(UnconfinedTestDispatcher(testScheduler)) { store.create(draft) }
-        gateway.wrote.await()
-        // Give the newer recompute real time to run past the stalled one, as it did before
-        // recomputes were serialized; serialized, it waits here instead and times out.
-        withContext(Dispatchers.Default) { withTimeoutOrNull(500) { created.await() } }
+        val created = async(lanes) { store.create(RoutineDraft(remindersEnabled = true)) }
+        runCurrent()
+        assertEquals(1, gateway.routines.size, "the newer write committed")
+        assertFalse(created.isCompleted,
+            "and its recompute waits behind the stalled one instead of running past it")
+
         held.complete(Unit)
         older.await()
-
         val routine = assertNotNull(created.await())
+        advanceUntilIdle()
+
         assertEquals(listOf(routine.id), store.routines.map { it.id },
             "the newest world is the one left on screen")
-        // The replan is launched off the recompute (as on iOS), so it lands a beat later.
-        // Wait for it rather than racing it: under a loaded full-suite run it had not yet
-        // applied anything, which read as "no plan" rather than "the wrong plan".
-        withContext(Dispatchers.Default) {
-            withTimeoutOrNull(5_000) { while (scheduler.applied.isEmpty()) delay(10) }
-        }
-        assertTrue(scheduler.applied.isNotEmpty() &&
-            scheduler.applied.all { it.identifier.contains(routine.id.toString().uppercase()) },
+        val newest = scheduler.installed.last()
+        assertTrue(newest.isNotEmpty() &&
+            newest.all { it.identifier.contains(routine.id.toString().uppercase()) },
             "and the newest plan is the one left in the scheduler")
+    }
+
+    /// **Replans are latest-wins.** Plans that queued behind one being installed describe a
+    /// world already replaced on screen, so only the newest of them is applied.
+    @Test
+    fun plansQueuedBehindAnInstallCollapseToTheNewest() = runTest {
+        val gateway = MemoryStoreGateway()
+        val installGate = CompletableDeferred<Unit>()
+        val installed = mutableListOf<List<ReminderPlanner.PlannedReminder>>()
+        val scheduler = object : AlarmScheduler {
+            override suspend fun apply(planned: List<ReminderPlanner.PlannedReminder>) {
+                if (installed.isEmpty()) installGate.await()
+                installed.add(planned)
+            }
+        }
+        val lanes = StandardTestDispatcher(testScheduler)
+        val store = TemplateStore(
+            gateway = gateway,
+            clock = DayClock(),
+            settings = InMemoryRoutineSettings(),
+            scheduler = scheduler,
+            scope = CoroutineScope(lanes),
+        )
+
+        store.syncDerived()
+        runCurrent() // the first plan (no routines) is now held mid-install
+        val first = assertNotNull(store.create(RoutineDraft(remindersEnabled = true)))
+        val second = assertNotNull(store.create(RoutineDraft(remindersEnabled = true)))
+        installGate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(2, installed.size, "the held plan, then ONE plan for everything queued")
+        val ids = installed.last().map { it.identifier }
+        assertTrue(ids.any { it.contains(first.id.toString().uppercase()) } &&
+            ids.any { it.contains(second.id.toString().uppercase()) },
+            "and it is the newest plan, which knows both routines")
     }
 }

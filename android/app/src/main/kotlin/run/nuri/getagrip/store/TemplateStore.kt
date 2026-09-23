@@ -268,11 +268,17 @@ class TemplateStore(
     /// call starts after the earlier one has published, so it reads a disk at least as new.
     private val syncLane = Mutex()
 
-    /// Bumped per recompute; the replan launched by an older one sees it moved and skips.
-    private var replanGeneration = 0L
-
-    /// Every replan in the app is launched from here, so this one lock orders them all.
-    private val replanGate = Mutex()
+    /// **Every reminder replan in the app goes through this one lane**, so they are applied
+    /// one at a time and in the order the recomputes published them — a superseded run's
+    /// in-flight alarm writes can never land after its successor's.
+    ///
+    /// LATEST WINS: whatever queued while a plan was being installed arrives as one batch,
+    /// and only its newest plan is applied. The older ones describe a world already
+    /// replaced on screen; installing them just to overwrite them a moment later would put
+    /// the alarms on a stale day for that moment.
+    private val replanLane = SerialWriteLane<List<ReminderPlanner.RoutinePlanInput>>(scope) { batch ->
+        ReminderPlanner.replan(batch.last(), scheduler)
+    }
 
     private suspend fun publishDerived(refoldingMaxes: Boolean) {
         val fetched = gateway.allRoutines() ?: return
@@ -337,12 +343,8 @@ class TemplateStore(
         }
         // Off the caller's turn, exactly as iOS detaches it: an `AlarmManager` write per
         // slot is not something a save should wait on. Superseded plans are skipped rather
-        // than applied and immediately replaced — see `ReminderPlanner.replan`.
-        val generation = ++replanGeneration
-        scope.launch {
-            ReminderPlanner.replan(inputs, scheduler, isCurrent = { generation == replanGeneration },
-                gate = replanGate)
-        }
+        // than applied and immediately replaced — see `replanLane`.
+        replanLane.submit(inputs)
     }
 
     // MARK: - Derived computations (pure over what was fetched)
