@@ -15,8 +15,8 @@ gates, serialized untagged query replies, and connection-epoch cleanup. Gate gau
 behavior on capabilities. Unverified protocols must remain labeled unverified.
 
 Use shared Motion tokens, honor reduced motion and accessibility text sizes, keep
-backgrounds static, and keep feedback out of the live metrics' space. Sound must
-respect the existing setting and must not interrupt other audio.
+backgrounds static, and keep feedback out of the live metrics' space. Cues mix with
+other audio on both platforms and never pause or duck it.
 
 Run platform tests for changed code, and shared replay fixtures when changing
 engine behavior or formats. See README.md and BUILDING.md for commands. Never
