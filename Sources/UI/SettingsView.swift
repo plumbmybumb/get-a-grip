@@ -76,7 +76,7 @@ struct SettingsView: View {
     private var remindersCard: some View {
         @Bindable var settings = settings
         let isPad = UIDevice.current.userInterfaceIdiom == .pad
-        return MaterialCard {
+        return MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 Toggle(isOn: $settings.remindsOnThisDevice) {
                     Text(isPad ? "Remind on this iPad" : "Remind on this iPhone")
@@ -94,7 +94,7 @@ struct SettingsView: View {
 
     private var weightUnitsCard: some View {
         @Bindable var settings = settings
-        return MaterialCard {
+        return MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Weight units").font(.system(.headline, weight: .semibold))
                 Picker("Weight units", selection: $settings.weightUnit) {
@@ -113,7 +113,7 @@ struct SettingsView: View {
     // MARK: - Device
 
     private var deviceCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "Device"))
                 LabeledContent("Status") { Text(device.state.label) }
@@ -152,7 +152,7 @@ struct SettingsView: View {
         NavigationLink {
             GaugePickerView()
         } label: {
-            MaterialCard {
+            MaterialCard(surface: .flat) {
                 HStack(spacing: 14) {
                     Image(systemName: "dot.radiowaves.left.and.right")
                         .font(.system(.title2))
@@ -216,7 +216,7 @@ struct SettingsView: View {
     }
 
     private var openSourceCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             SettingsDisclosure("Open source & community") {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Get a Grip is open source under the Mozilla Public License 2.0.")
@@ -289,7 +289,7 @@ struct SettingsView: View {
     // MARK: - About
 
     private var aboutCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 10) {
                 CapsLabel(String(localized: "About"))
 
@@ -503,7 +503,7 @@ private struct SupportCard: View {
     private static let bugSubject = String(localized: "Get a Grip — Bug report")
 
     var body: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 10) {
                 CapsLabel(String(localized: "Support"))
 
@@ -754,7 +754,7 @@ private struct GaugePickerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Metrics.spacing) {
-                MaterialCard {
+                MaterialCard(surface: .flat) {
                     VStack(spacing: 0) {
                         ForEach(Array(GaugeKind.selectable.enumerated()), id: \.element) { index, kind in
                             if index > 0 {

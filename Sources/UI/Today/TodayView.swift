@@ -131,6 +131,8 @@ struct TodayView: View {
     }
 
     var body: some View {
+        // Folded ONCE per evaluation and handed down — see `TodayDeck`.
+        let deck = makeDeck()
         // spacing 16, not the house 22: three or four blocks that must land inside one
         // screen without being as dense as Schengen's dashboard.
         // 12 rather than the house 22, and rather than the 16 it carried before: Today has
@@ -138,7 +140,7 @@ struct TodayView: View {
         // when the page had to fit under a large title without scrolling.
         ScreenScaffold(title: String(localized: "Today"), subtitle: dateLine, spacing: 12,
                        fitsOnePage: true, gridsOnWideScreens: true) {
-            header
+            header(deck)
                 .staggerIn(0)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -158,26 +160,26 @@ struct TodayView: View {
             // single-routine user had no swipe to the ghost at all and "New routine"
             // lived only in the ⋯ menu (Nuri, 2026-08-10).
             Group {
-                if ordered.isEmpty {
+                if deck.ordered.isEmpty {
                     emptyCard
                 } else if sizeClass == .regular {
                     // A wide window shows the routines SIDE BY SIDE instead of paging:
                     // the peek was the deck's answer to a screen that fits one card, and
                     // a tablet fits two, so every card is simply there.
-                    routineGrid
+                    routineGrid(deck)
                 } else {
-                    routineDeck
+                    routineDeck(deck)
                 }
             }
             // Motion.state, not .snappy: a deck appearing is a state change nobody
             // flicked, so it has earned no bounce — and the token already carries the
             // Reduce Motion branch this line used to hand-retype.
-            .animation(Motion.state(reduceMotion), value: ordered.count)
+            .animation(Motion.state(reduceMotion), value: deck.ordered.count)
             .staggerIn(1)
 
             // With no routine there is no ritual, and nothing the strip could honestly
             // describe.
-            if !ordered.isEmpty {
+            if !deck.ordered.isEmpty {
                 ConsistencyCard(days: templates.consistency,
                                 onLogClimb: { loggingSession = true },
                                 onShowHistory: onShowHistory)
@@ -231,7 +233,7 @@ struct TodayView: View {
         // routine list arrives through a `@Query`, so "is there a routine" is not knowable
         // on the first frame — reading it once in `onAppear` would show the empty-handed
         // act to somebody who has six routines.
-        .onChange(of: ordered.count, initial: true) { _, _ in
+        .onChange(of: deck.ordered.count, initial: true) { _, _ in
             syncTour()
             #if DEBUG
             // Headless verification: `-previewBuilder` opens the first routine's editor,
@@ -320,7 +322,7 @@ struct TodayView: View {
         .onChange(of: scenePhase) { _, phase in
             // A new day always re-asserts `upNext` — that is literally "this is what
             // meets you every time you open the app". (Within a day, becoming active
-            // also refreshes `recentlyCalled`, so answering a reminder lands on the
+            // also refreshes which routine is calling, so answering a reminder lands on the
             // routine that sent it even while yesterday's pin is long gone.)
             guard phase == .active, chosenOnDay != clock.today else { return }
             chosenRoutineID = nil
@@ -330,11 +332,11 @@ struct TodayView: View {
 
     // MARK: - Header
 
-    private var header: some View {
+    private func header(_ deck: Deck) -> some View {
         HStack(spacing: 10) {
             DeviceChip()
             Spacer(minLength: 8)
-            if let next = summary?.nextReminder {
+            if let next = deck.selectedSummary?.nextReminder {
                 Label(next.displayText(), systemImage: "bell")
                     .font(.system(.footnote))
                     .monospacedDigit()
@@ -362,11 +364,10 @@ struct TodayView: View {
     /// two wide where the window allows. No pin and no settle — with every routine on
     /// screen there is nothing to choose, and the up-next border still says which one
     /// Today opens on.
-    private var routineGrid: some View {
+    private func routineGrid(_ deck: Deck) -> some View {
         CardGrid {
-            ForEach(ordered) { routine in
-                routineCard(routine,
-                            isUpNext: ordered.count > 1 && routine.id == upNext?.id)
+            ForEach(deck.ordered) { routine in
+                routineCard(routine, deck: deck)
             }
             newRoutineGhost
                 .id(Self.ghostID)
@@ -384,14 +385,11 @@ struct TodayView: View {
     /// honest cost, accepted: sibling NAMES aren't readable without a swipe. At the
     /// two-or-three routines this app is built around, the peek plus each card's own
     /// done-dots carry what the rail carried.
-    private var routineDeck: some View {
+    private func routineDeck(_ deck: Deck) -> some View {
         ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: 8) {
-                ForEach(ordered) { routine in
-                    // The border only exists where there are siblings to distinguish —
-                    // with one routine it would mark the only real card there is.
-                    routineCard(routine,
-                                isUpNext: ordered.count > 1 && routine.id == upNext?.id)
+                ForEach(deck.ordered) { routine in
+                    routineCard(routine, deck: deck)
                         .containerRelativeFrame(.horizontal)
                 }
                 // The quiet door at the end of the deck — the same grammar as the
@@ -436,12 +434,12 @@ struct TodayView: View {
         .contentMargins(.trailing, Metrics.hPadding + 8, for: .scrollContent)
         // Placed, never animated, on first layout — the deck must simply BE on the
         // day's routine, not visibly travel there.
-        .onAppear { deckPosition = selected?.id }
+        .onAppear { deckPosition = deck.selectedID }
         // Programmatic re-selection: the day rolling over, a save landing, a CloudKit
         // merge deleting the card under you. The swipe direction never loops through
         // here — a settle on `selected` itself is filtered below, and pinning writes
         // `chosenRoutineID`, which makes `selected` equal the settle target.
-        .onChange(of: selected?.id) { _, id in
+        .onChange(of: deck.selectedID) { _, id in
             guard let id, deckPosition != id else { return }
             withAnimation(Motion.state(reduceMotion)) { deckPosition = id }
         }
@@ -449,8 +447,8 @@ struct TodayView: View {
         // check keeps the ghost from being "chosen": parking on it is browsing, not
         // picking a ritual, and it must not survive as a stale rung-1 pin.
         .onChange(of: deckPosition) { _, id in
-            guard let id, id != selected?.id,
-                  ordered.contains(where: { $0.id == id }) else { return }
+            guard let id, id != deck.selectedID,
+                  deck.ordered.contains(where: { $0.id == id }) else { return }
             chosenRoutineID = id
             selectTick += 1
             chosenOnDay = clock.today
@@ -508,11 +506,17 @@ struct TodayView: View {
 
     // MARK: - Cards
 
-    private func routineCard(_ routine: SessionTemplate, isUpNext: Bool = false) -> some View {
+    /// VALUE-COMPARED (`.equatable()`): the card takes eleven closures, so as a plain
+    /// view it never compared equal and every Today render — a swipe settling, the gauge
+    /// state ticking — re-ran every card's body. It compares on what it draws; the
+    /// closures only ever act on `routine`, which the summary's `id` pins.
+    private func routineCard(_ routine: SessionTemplate, deck: Deck) -> some View {
         RoutineCard(
-            summary: templates.summary(for: routine),
+            summary: deck.summaries[routine.id] ?? templates.summary(for: routine),
             completionText: templates.completionText(routine),
-            isUpNext: isUpNext,
+            // The border only exists where there are siblings to distinguish — with one
+            // routine it would mark the only real card there is.
+            isUpNext: deck.ordered.count > 1 && routine.id == deck.upNextID,
             deviceState: device.state,
             battery: device.batteryFraction,
             onStart: { start(routine) },
@@ -532,6 +536,7 @@ struct TodayView: View {
             onDelete: { _ = templates.delete(routine) },
             onDemo: { device.useMockDevice(true) }
         )
+        .equatable()
         .matchedTransitionSource(id: routine.id.uuidString, in: zoom)
     }
 
@@ -626,70 +631,61 @@ struct TodayView: View {
         }
     }
 
-    /// Four rungs, in order:
-    /// 1. an explicit tap or swipe made TODAY — cleared by a day change, never persisted;
-    /// 2. the routine whose reminder CALLED most recently (see `recentlyCalled`);
-    /// 3. the routine started today on this device, so doing the rest-day one this
-    ///    morning means the evening open shows it again;
-    /// 4. the primary (lowest `sortIndex`).
-    ///
-    /// Rung 4 is also what self-heals when a CloudKit merge deletes the chosen routine:
-    /// the `first(where:)` above simply misses and the rule falls through.
-    private var selected: SessionTemplate? {
-        if let id = chosenRoutineID, chosenOnDay == clock.today,
-           let match = ordered.first(where: { $0.id == id }) {
-            return match
-        }
-        return upNext
+    /// Everything the body asks about the routines, folded once per evaluation.
+    private struct Deck {
+        let ordered: [SessionTemplate]
+        /// Rungs 2–4 — see `TodayDeck.upNextID`. Split from `selectedID` because the
+        /// border must ignore rung 1: swipe away to browse and the border stays put on
+        /// the called card, which is what makes it information ("this one is being
+        /// asked of you") rather than decoration on whatever is in front.
+        let upNextID: UUID?
+        /// Four rungs, in order:
+        /// 1. an explicit tap or swipe made TODAY — cleared by a day change, never
+        ///    persisted;
+        /// 2. the routine whose reminder CALLED most recently;
+        /// 3. the routine started today on this device, so doing the rest-day one this
+        ///    morning means the evening open shows it again;
+        /// 4. the primary (lowest `sortIndex`).
+        ///
+        /// Rung 4 is also what self-heals when a CloudKit merge deletes the chosen
+        /// routine: rung 1 simply misses and the rule falls through.
+        let selectedID: UUID?
+        /// One summary per routine — each decodes the plan and the reminders, so the
+        /// card and the header share the one built here.
+        let summaries: [UUID: RoutineSummary]
+
+        var selectedSummary: RoutineSummary? { selectedID.flatMap { summaries[$0] } }
     }
 
-    /// Rungs 2–4: the routine the app would front WITH NO HAND ON IT — the deck's home
-    /// card, and the one wearing the up-next border. Split from `selected` because the
-    /// border must ignore rung 1: swipe away to browse and the border stays put on the
-    /// called card, which is what makes it information ("this one is being asked of
-    /// you") rather than decoration on whatever is in front.
-    private var upNext: SessionTemplate? {
-        if let called = recentlyCalled { return called }
-        if let id = templates.suggestedRoutineID,
-           let match = ordered.first(where: { $0.id == id }) {
-            return match
-        }
-        return ordered.first
-    }
-
-    /// The routine whose reminder fired most recently today and whose day is still
-    /// owed — opening the app off the back of a notification should land on the
-    /// routine that sent it (Nuri, 2026-08-10).
-    ///
-    /// Computed from the SCHEDULE, deliberately not from the delivered-notification
-    /// list: the schedule is synchronous (the deck must not jump a frame after
-    /// appearing while an async query lands), it still works with notifications off —
-    /// at 13:05 it is Max o'clock whether or not a banner said so — and the planner's
-    /// suppression of already-trained days is mirrored by the `isDoneForToday` filter:
-    /// a routine you finished has been answered and cannot be "calling".
+    /// "Calling" is computed from the SCHEDULE, deliberately not from the delivered-
+    /// notification list: the schedule is synchronous (the deck must not jump a frame
+    /// after appearing while an async query lands), it still works with notifications
+    /// off — at 13:05 it is Max o'clock whether or not a banner said so — and the
+    /// planner's suppression of already-trained days is mirrored by the
+    /// `isDoneForToday` filter: a routine you finished has been answered.
     ///
     /// Freshness rides on re-render: `scenePhase` is read by this view, so returning
     /// to the app — the notification-tap path — recomputes this and the deck's sync
     /// scroll animates over to whoever called. A crossing that happens while the app
     /// sits open foregrounded is picked up on the next render, which is soon enough
     /// for a heuristic about attention.
-    private var recentlyCalled: SessionTemplate? {
-        let comps = Calendar.current.dateComponents([.hour, .minute], from: Date())
-        let now = (comps.hour ?? 0) * 60 + (comps.minute ?? 0)
-        var best: (routine: SessionTemplate, firedAt: Int)?
-        for routine in ordered
-        where routine.remindersEnabled && !templates.isDoneForToday(routine) {
-            guard let fired = routine.reminders.map(\.minutesFromMidnight)
-                .filter({ $0 <= now }).max() else { continue }
-            // Strictly greater, so a tie goes to the earlier routine in `ordered` —
-            // stable, and biased toward the primary.
-            if best == nil || fired > best!.firedAt { best = (routine, fired) }
+    private func makeDeck() -> Deck {
+        let ordered = self.ordered
+        let candidates = ordered.map { routine in
+            TodayDeck.Candidate(
+                id: routine.id,
+                callingMinutes: routine.remindersEnabled && !templates.isDoneForToday(routine)
+                    ? routine.reminders.map(\.minutesFromMidnight) : [])
         }
-        return best?.routine
-    }
-
-    private var summary: RoutineSummary? {
-        selected.map { templates.summary(for: $0) }
+        let upNextID = TodayDeck.upNextID(candidates, suggestedID: templates.suggestedRoutineID,
+                                          nowMinutes: TodayDeck.minutesNow())
+        let selectedID = TodayDeck.selectedID(chosenID: chosenRoutineID,
+                                              chosenToday: chosenOnDay == clock.today,
+                                              among: candidates.map(\.id), upNextID: upNextID)
+        var summaries: [UUID: RoutineSummary] = [:]
+        for routine in ordered { summaries[routine.id] = templates.summary(for: routine) }
+        return Deck(ordered: ordered, upNextID: upNextID, selectedID: selectedID,
+                    summaries: summaries)
     }
 
     // MARK: - Starting

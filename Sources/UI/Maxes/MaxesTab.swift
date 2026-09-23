@@ -150,7 +150,7 @@ struct MaxesTab: View {
 
     private func gripCard(_ group: GripGroup) -> some View {
         let sides = presentSides(in: group)
-        return MaterialCard {
+        return MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
                     glyphTile(group.grip)
@@ -197,7 +197,7 @@ struct MaxesTab: View {
     }
 
     private func invitationCard(_ grip: GripSpec) -> some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             HStack(spacing: 12) {
                 glyphTile(grip)
                 VStack(alignment: .leading, spacing: 2) {
@@ -217,7 +217,7 @@ struct MaxesTab: View {
     }
 
     private var emptyCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "No maxes yet"))
                 Image(systemName: "scalemass")

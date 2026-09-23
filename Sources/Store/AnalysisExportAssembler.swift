@@ -3,9 +3,11 @@
 import Foundation
 import SwiftData
 
-/// Copy model fields on their actor; decode the unbounded history on a worker.
-/// Data is a value copy, so dismissing the sheet or deleting a log cannot invalidate
-/// the detached export's input. No SwiftData model crosses the actor boundary.
+/// Copy model fields on the context that owns them; decode the unbounded history on a
+/// worker. Data is a value copy, so dismissing the sheet or deleting a log cannot
+/// invalidate the detached export's input. No SwiftData model crosses an actor boundary:
+/// the app's path (`Source`) fetches on the worker's own context, and the main-actor
+/// path copies values out before anything leaves.
 enum AnalysisExportAssembler {
     struct SessionSnapshot: Sendable {
         let metadata: AnalysisExport.Session
@@ -37,10 +39,53 @@ enum AnalysisExportAssembler {
         }
     }
 
+    /// What an export covers, frozen at the tap: an address and a few small values, no
+    /// model and no blob. Building a `Snapshot` read both blob columns of EVERY log on
+    /// the main actor before the sheet could even open — a toolbar button that got
+    /// slower every week of training. The worker resolves this instead, on its own
+    /// context, while the sheet is already on screen.
+    struct Source: Sendable {
+        let container: ModelContainer
+        /// One session, or nil for the whole history.
+        let workoutID: UUID?
+        /// The routines' live names at the tap, so a renamed routine exports under the
+        /// name History shows — the same rule as `HistoryView.displayName(of:)`.
+        let routineNames: [UUID: String]
+        let today: DayStamp
+    }
+
+    /// Fetches on a context of its own, so it is safe off the main actor: the models it
+    /// reads never leave this call, and only values come out.
+    static func snapshot(from source: Source, calendar: Calendar = .current) throws -> Snapshot {
+        let context = ModelContext(source.container)
+        var logs = FetchDescriptor<WorkoutLog>(sortBy: [SortDescriptor(\.startedAt, order: .reverse)])
+        if let id = source.workoutID {
+            logs.predicate = #Predicate<WorkoutLog> { $0.id == id }
+            logs.fetchLimit = 1
+        }
+        let fetchedLogs = try context.fetch(logs)
+        try Task.checkCancellation()
+        let fetchedMaxes = try context.fetch(
+            FetchDescriptor<MaxRecord>(sortBy: [SortDescriptor(\.recordedAt)]))
+        let names = source.routineNames
+        return build(logs: fetchedLogs, maxRecords: fetchedMaxes,
+                     displayName: { log in
+                         log.templateID.flatMap { names[$0] } ?? log.templateName
+                     },
+                     today: source.today, calendar: calendar)
+    }
+
     @MainActor
     static func snapshot(logs: [WorkoutLog], maxRecords: [MaxRecord],
                          displayName: (WorkoutLog) -> String, today: DayStamp,
                          calendar: Calendar = .current) -> Snapshot {
+        build(logs: logs, maxRecords: maxRecords, displayName: displayName,
+              today: today, calendar: calendar)
+    }
+
+    private static func build(logs: [WorkoutLog], maxRecords: [MaxRecord],
+                              displayName: (WorkoutLog) -> String, today: DayStamp,
+                              calendar: Calendar) -> Snapshot {
         let sessions = logs.map { log in
             SessionSnapshot(metadata: AnalysisExport.Session(
                 id: log.id, day: log.day, startedAt: log.startedAt,
@@ -65,14 +110,34 @@ enum AnalysisExportAssembler {
 /// One worker per open export. Rapid scope/detail changes queue only current work;
 /// the decoded history is reused instead of walking every JSON blob on every tap.
 actor AnalysisExportWorker {
-    private let snapshot: AnalysisExportAssembler.Snapshot
+    private enum Origin {
+        case snapshot(AnalysisExportAssembler.Snapshot)
+        case source(AnalysisExportAssembler.Source)
+    }
+    private let origin: Origin
+    private var fetched: AnalysisExportAssembler.Snapshot?
     private var prepared: AnalysisExport.Input?
 
-    init(snapshot: AnalysisExportAssembler.Snapshot) { self.snapshot = snapshot }
+    init(snapshot: AnalysisExportAssembler.Snapshot) { origin = .snapshot(snapshot) }
+    /// The store-backed export: the fetch and the blob copies happen HERE, the first
+    /// time a document is asked for, never on the tap that opened the sheet.
+    init(source: AnalysisExportAssembler.Source) { origin = .source(source) }
 
     func document(scope: AnalysisExport.CSVScope, detail: AnalysisExport.CSVDetail) throws -> AnalysisExport.CSVDocument {
         try Task.checkCancellation()
-        if prepared == nil { prepared = try snapshot.input() }
+        if prepared == nil {
+            let snapshot: AnalysisExportAssembler.Snapshot
+            switch origin {
+            case .snapshot(let frozen): snapshot = frozen
+            case .source(let source):
+                // Kept once fetched, so a selection change that cancels the decode
+                // below does not pay for the fetch a second time.
+                snapshot = try fetched ?? AnalysisExportAssembler.snapshot(from: source)
+                fetched = snapshot
+            }
+            try Task.checkCancellation()
+            prepared = try snapshot.input()
+        }
         try Task.checkCancellation()
         let result = AnalysisExport.csv(prepared!, scope: scope, detail: detail)
         try Task.checkCancellation()

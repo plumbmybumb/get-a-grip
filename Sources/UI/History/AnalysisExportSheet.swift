@@ -7,17 +7,25 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
 
-/// Freeze model values at the tap; format the selected range off the main actor.
+/// Freeze an ADDRESS at the tap; fetch, decode and format off the main actor.
+///
+/// The tap copies nothing that scales with history — the sheet opens at once and the
+/// worker reads the store behind its "Preparing export…" line.
 struct AnalysisExportRequest: Identifiable {
-    let id = UUID()
-    let snapshot: AnalysisExportAssembler.Snapshot
-    let worker: AnalysisExportWorker
-    var isWorkout = false
+    /// What the one-workout header says, read off the one row at the tap.
+    struct Workout {
+        let name: String
+        let day: DayStamp
+    }
 
-    init(snapshot: AnalysisExportAssembler.Snapshot, isWorkout: Bool = false) {
-        self.snapshot = snapshot
-        self.worker = AnalysisExportWorker(snapshot: snapshot)
-        self.isWorkout = isWorkout
+    let id = UUID()
+    let worker: AnalysisExportWorker
+    let workout: Workout?
+    var isWorkout: Bool { workout != nil }
+
+    init(source: AnalysisExportAssembler.Source, workout: Workout? = nil) {
+        self.worker = AnalysisExportWorker(source: source)
+        self.workout = workout
     }
 }
 
@@ -43,10 +51,10 @@ struct AnalysisExportSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    if request.isWorkout, let session = request.snapshot.sessions.first?.metadata {
-                        Text(session.routineName)
+                    if let workout = request.workout {
+                        Text(workout.name)
                             .font(.headline)
-                        Text(AnalysisExport.isoDay(session.day))
+                        Text(AnalysisExport.isoDay(workout.day))
                             .font(.subheadline).foregroundStyle(Ink.secondary)
                     } else {
                         Picker("Date range", selection: $scope) {

@@ -26,8 +26,11 @@ struct RoutineBuilderView: View {
     /// single keystroke typed into any field here.
     var onClose: () -> Void
 
-    @Query(sort: [SortDescriptor(\SessionTemplate.sortIndex), SortDescriptor(\SessionTemplate.createdAt)])
-    private var routines: [SessionTemplate]
+    /// Looked up through the store rather than a `@Query`: a query here re-ran this
+    /// wrapper — and with it the whole document below — on every CloudKit merge that
+    /// touched ANY routine, while someone was typing. The seed is read once, so a fetch
+    /// that observes nothing is all it needs.
+    @Environment(TemplateStore.self) private var templates
 
     init(mode: BuilderMode,
          onClose: @escaping () -> Void,
@@ -38,7 +41,7 @@ struct RoutineBuilderView: View {
     }
 
     var body: some View {
-        // The seed can only be resolved from `@Query`/the environment, and `@State`
+        // The seed can only be resolved from the environment, and `@State`
         // cannot be initialised from either. So the document is a CHILD view seeded
         // through its `init`: SwiftUI keeps a child's `@State` across re-evaluations of
         // this wrapper, so the draft is built exactly once and the sheet never renders a
@@ -69,7 +72,7 @@ struct RoutineBuilderView: View {
             // Missing means a CloudKit merge deleted it while Today still showed it.
             // A blank draft is the non-destructive answer: `store.save` will create
             // rather than resurrect, and nothing the user typed is thrown away.
-            return routines.first(where: { $0.id == id })?.draft ?? .blank()
+            return templates.routine(id: id)?.draft ?? .blank()
         }
     }
 }
@@ -99,9 +102,6 @@ private struct BuilderDocument: View {
     /// Read once per window shape, never per keystroke — the size class only changes
     /// when the window does, so it costs the document nothing the way `dismiss` did.
     @Environment(\.horizontalSizeClass) private var sizeClass
-
-    @Query(sort: [SortDescriptor(\SessionTemplate.sortIndex), SortDescriptor(\SessionTemplate.createdAt)])
-    private var routines: [SessionTemplate]
 
     /// The document is a DRAFT VALUE. Nothing here touches SwiftData until Save, which
     /// is what makes reordering, removing and experimenting free: Cancel IS undo, and a
@@ -762,7 +762,9 @@ private struct BuilderDocument: View {
     }
 
     private func deleteRoutine(_ id: UUID) {
-        guard let template = routines.first(where: { $0.id == id }) else {
+        // Looked up at the tap, not held in a `@Query`: the only reader was this one
+        // button, and the query re-rendered the whole document on every CloudKit merge.
+        guard let template = templates.routine(id: id) else {
             onClose()
             return
         }

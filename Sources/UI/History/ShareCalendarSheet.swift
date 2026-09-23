@@ -133,6 +133,9 @@ struct ShareCalendarSheet: View {
     @State private var savedToPhotos = false
     @State private var photosAccessDenied = false
     @State private var photoSaveSuccessTick = 0
+    /// Whether a bake has run in this presentation: the first waits for the sheet to
+    /// settle, the rest only debounce.
+    @State private var hasRendered = false
 
     private var renderOptions: RenderOptions {
         RenderOptions(style: cardStyle, weightUnit: weightUnit, includesBestPull: includeBestPull)
@@ -186,7 +189,20 @@ struct ShareCalendarSheet: View {
         }
         .presentationDetents([.medium, .large])
         .task(id: renderOptions) {
+            // The first bake waits out the presentation and every later one is
+            // debounced, so a run of style taps costs one render — see
+            // `ShareRenderTiming`. The stale image is withdrawn at once regardless:
+            // `renderedImage` gates on the options synchronously.
+            // Cleared BEFORE the wait: "Saved" belongs to the image that was saved, and
+            // the previous options must never be shared while the new PNG is pending.
+            savedToPhotos = false
+            photosAccessDenied = false
+            preparedImage = nil
+            let delay = hasRendered ? ShareRenderTiming.afterOptionChange
+                                    : ShareRenderTiming.afterPresentation
+            guard await ShareRenderTiming.wait(delay) else { return }
             await renderImage()
+            hasRendered = true
         }
         .sensoryFeedback(.success, trigger: photoSaveSuccessTick)
     }
@@ -350,16 +366,13 @@ struct ShareCalendarSheet: View {
             style: cardStyle, weightUnit: weightUnit)
     }
 
-    /// Rendering happens only when the sheet appears or the one export option changes.
+    /// Rendering happens only once the sheet has settled, and after the export options
+    /// stop changing.
     /// The renderer is explicitly non-opaque, so the clear canvas — including the
     /// frosted panel's 0.72 alpha — survives all the way to the share sheet.
     @MainActor
     private func renderImage() async {
         let options = renderOptions
-        savedToPhotos = false
-        photosAccessDenied = false
-        // Never share the previous options while the new PNG is being compressed.
-        preparedImage = nil
         let renderer = ImageRenderer(content: exportCard)
         renderer.isOpaque = false
         renderer.scale = 3

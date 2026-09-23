@@ -337,10 +337,67 @@ struct TourAnchorKey: PreferenceKey {
     }
 }
 
+extension EnvironmentValues {
+    /// Whether a tour is running over this subtree — published by `tourHost`, read by
+    /// every `tourAnchor`. See `TourAnchorModifier` for why the anchors need to know.
+    @Entry var tourAnchorsLive: Bool = false
+}
+
+/// Registers a frame only while a tour is running.
+///
+/// An `anchorPreference` recomputes its value on every frame the anchored view MOVES —
+/// a scroll, a deck swipe, a row expanding — and every new value re-ran the host's
+/// overlay and its `GeometryReader`, on every screen, with no tour anywhere. The
+/// modifier is always applied, so switching the flag never changes the view's
+/// identity; only its VALUE goes quiet, and an empty dictionary every frame is a
+/// preference that never changes.
+private struct TourAnchorModifier: ViewModifier {
+    let target: TourTarget
+    @Environment(\.tourAnchorsLive) private var live
+
+    func body(content: Content) -> some View {
+        content.anchorPreference(key: TourAnchorKey.self, value: .bounds) { [live, target] anchor in
+            live ? [target: [anchor]] : [:]
+        }
+    }
+}
+
+/// The overlay half of `tourHost`, as its own view so that only IT observes the
+/// controller: read from the host's caller, `tour.current` would re-evaluate the whole
+/// screen on every step.
+private struct TourHostModifier: ViewModifier {
+    let tour: TourController
+    let act: TourAct
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.tourAnchorsLive, tour.isRunning)
+            .overlayPreferenceValue(TourAnchorKey.self) { anchors in
+                // Out before the GeometryReader: another act (or none) means this host
+                // draws nothing, and a reader built to draw nothing still lays out.
+                if tour.act == act, let step = tour.current {
+                    GeometryReader { proxy in
+                        TourOverlay(
+                            step: step,
+                            spotlight: step.target.flatMap { visibleRect(for: $0, in: anchors, proxy: proxy) },
+                            progress: tour.progress,
+                            isLast: tour.index == tour.steps.count - 1,
+                            canGoBack: tour.index > 0,
+                            onBack: tour.back,
+                            onNext: tour.advance,
+                            onSkip: tour.finish)
+                    }
+                    .ignoresSafeArea()
+                }
+            }
+    }
+}
+
 extension View {
-    /// Register this view as something the tour can point at. Free when no tour is running.
+    /// Register this view as something the tour can point at. Free when no tour is
+    /// running — see `TourAnchorModifier`.
     func tourAnchor(_ target: TourTarget) -> some View {
-        anchorPreference(key: TourAnchorKey.self, value: .bounds) { [target: [$0]] }
+        modifier(TourAnchorModifier(target: target))
     }
 
     /// Draw the tour over this container. Attach it at the ROOT of a screen, above the
@@ -351,22 +408,7 @@ extension View {
     /// rendered its steps over the session that "Save and start training" had just opened.
     /// A host only ever shows the act it belongs to.
     func tourHost(_ tour: TourController, act: TourAct) -> some View {
-        overlayPreferenceValue(TourAnchorKey.self) { anchors in
-            GeometryReader { proxy in
-                if tour.act == act, let step = tour.current {
-                    TourOverlay(
-                        step: step,
-                        spotlight: step.target.flatMap { visibleRect(for: $0, in: anchors, proxy: proxy) },
-                        progress: tour.progress,
-                        isLast: tour.index == tour.steps.count - 1,
-                        canGoBack: tour.index > 0,
-                        onBack: tour.back,
-                        onNext: tour.advance,
-                        onSkip: tour.finish)
-                }
-            }
-            .ignoresSafeArea()
-        }
+        modifier(TourHostModifier(tour: tour, act: act))
     }
 }
 
