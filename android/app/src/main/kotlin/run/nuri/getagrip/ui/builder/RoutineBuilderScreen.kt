@@ -172,6 +172,10 @@ fun RoutineBuilderHost(
     /// was rather than an equal-looking new one two places down.
     var removedSet by remember { mutableStateOf<RemovedSet?>(null) }
     var showDiscard by rememberSaveable { mutableStateOf(false) }
+    /// A Save in flight. Both Saves go dim and a second tap is refused, because the store's
+    /// write is not instant and a new draft has no id yet: two taps inside it used to create
+    /// the routine TWICE.
+    var saving by remember { mutableStateOf(false) }
 
     val reduceMotion = rememberReduceMotion()
     val scrollState = rememberScrollState()
@@ -282,18 +286,23 @@ fun RoutineBuilderHost(
 
     fun save() {
         focus.clearFocus()
-        if (!canSave) return
+        if (!canSave || saving) return
+        saving = true
         scope.launch {
-            // ONE entry point, so the builder never has to know whether it is creating or
-            // editing — and the store's own `create`/`update` are what ask for notification
-            // permission, once, on the first Save of a routine that wants reminders.
-            val saved = templates.save(draft)
-            // A rolled-back save leaves the document OPEN with the error inline, and the
-            // rescue copy has to survive for the retry — the store only clears it on success.
-            if (saved == null) return@launch
-            // The guide has done its job the moment a routine exists.
-            settings.setBuilderGuideDone(true)
-            onDone(saved.id)
+            try {
+                // ONE entry point, so the builder never has to know whether it is creating or
+                // editing — and the store's own `create`/`update` are what ask for notification
+                // permission, once, on the first Save of a routine that wants reminders.
+                val saved = templates.save(draft)
+                // A rolled-back save leaves the document OPEN with the error inline, and the
+                // rescue copy has to survive for the retry — the store only clears it on success.
+                if (saved == null) return@launch
+                // The guide has done its job the moment a routine exists.
+                settings.setBuilderGuideDone(true)
+                onDone(saved.id)
+            } finally {
+                saving = false
+            }
         }
     }
 
@@ -348,7 +357,7 @@ fun RoutineBuilderHost(
                         // have scrolled to, which is the only place a spotlight can find it.
                         TextButton(
                             onClick = { save() },
-                            enabled = canSave,
+                            enabled = canSave && !saving,
                             modifier = Modifier.tourAnchor(TourTarget.BuilderFinish),
                         ) {
                             Text(tr("Save"), fontWeight = FontWeight.SemiBold)
@@ -485,6 +494,7 @@ fun RoutineBuilderHost(
                 Block(BuilderAnchor.Finish, anchors) {
                     FinishBlock(
                         validationIssue = validationIssue,
+                        saving = saving,
                         mode = mode,
                         templates = templates,
                         showsClosingCard = coachStep == BuilderDraft.closingCoachStep,
@@ -624,6 +634,7 @@ private fun AddSetRow(onAdd: () -> Unit) {
 @Composable
 private fun FinishBlock(
     validationIssue: String?,
+    saving: Boolean,
     mode: BuilderMode,
     templates: TemplateStore,
     showsClosingCard: Boolean,
@@ -691,7 +702,7 @@ private fun FinishBlock(
             PrimaryButton(
                 title = tr("Save routine"),
                 icon = Icons.Filled.Check,
-                enabled = validationIssue == null,
+                enabled = validationIssue == null && !saving,
                 onClick = onSave,
             )
         }
