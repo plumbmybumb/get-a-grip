@@ -258,7 +258,7 @@ final class BLELifecycleTests: XCTestCase {
         let client = RecordingProgressorClient()
         let device = DeviceStore(client: client)
         let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                     device: device)
+                                     device: device, draftStore: nil)
         session.begin()
         defer { session.end() }
 
@@ -303,7 +303,7 @@ final class BLELifecycleTests: XCTestCase {
         let client = RecordingProgressorClient()
         let device = DeviceStore(client: client)
         let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                    device: device)
+                                    device: device, draftStore: nil)
         session.begin()
         defer { session.end() }
 
@@ -339,7 +339,7 @@ final class BLELifecycleTests: XCTestCase {
             let client = RecordingProgressorClient(kind: kind)
             let device = DeviceStore(client: client)
             let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                        device: device)
+                                        device: device, draftStore: nil)
             session.begin()
             defer { session.end() }
 
@@ -366,7 +366,7 @@ final class BLELifecycleTests: XCTestCase {
             let client = RecordingProgressorClient(kind: kind)
             let device = DeviceStore(client: client)
             let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                        device: device)
+                                        device: device, draftStore: nil)
             client.setState(.connected)
             session.begin()
             defer { session.end() }
@@ -406,7 +406,8 @@ final class BLELifecycleTests: XCTestCase {
             let client = RecordingProgressorClient()
             let device = DeviceStore(client: client)
             client.setState(.connected)
-            let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0), device: device)
+            let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
+                                        device: device, draftStore: nil)
             session.begin()
             defer { session.end() }
             session.checkStaleBatches(at: ProcessInfo.processInfo.systemUptime + 6)
@@ -447,7 +448,7 @@ final class BLELifecycleTests: XCTestCase {
 
         let scale = DeviceStore(client: RecordingProgressorClient(kind: .whc06))
         let session = RunnerSession(template: SessionTemplate(draft: .starter, sortIndex: 0),
-                                    device: scale)
+                                    device: scale, draftStore: nil)
         XCTAssertEqual(session.silenceRestartSeconds, 3.0, accuracy: 1e-9,
                        "read once at init, from the capability table — and a broadcast "
                        + "session gets the 3 s floor, not the rate-derived 1 s")

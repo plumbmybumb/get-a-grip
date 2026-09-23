@@ -53,7 +53,7 @@ final class RunnerSnapshotPositionTests: XCTestCase {
                            SetPlan(grip: GripSpec(), repsPerSide: 2)]
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
                                     device: DeviceStore(client: RecordingProgressorClient()),
-                                    timerOnly: true)
+                                    timerOnly: true, draftStore: nil)
         session.send(.start)
         let planned = session.snapshot.plannedRepCount
         XCTAssertGreaterThan(planned, 0)

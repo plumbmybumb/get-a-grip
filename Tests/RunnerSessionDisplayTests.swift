@@ -29,7 +29,7 @@ final class RunnerSessionDisplayTests: XCTestCase {
         let template = SessionTemplate(draft: draft, sortIndex: 0)
         return RunnerSession(template: template,
                              device: DeviceStore(client: RecordingProgressorClient()),
-                             timerOnly: true)
+                             timerOnly: true, draftStore: nil)
     }
 
     func testMeasuredProgressRetainsSubPercentStepsWithoutInvalidatingTheScreen() {
@@ -39,7 +39,7 @@ final class RunnerSessionDisplayTests: XCTestCase {
         draft.plan.handMode = .bothHands
         draft.plan.sets = [SetPlan(grip: GripSpec(), repsPerSide: 2)]
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
-                                    device: DeviceStore(client: RecordingProgressorClient()))
+                                    device: DeviceStore(client: RecordingProgressorClient()), draftStore: nil)
         // Drive the real measured funnel, without a wall-clock ticker or audio engine.
         session.send(.start)
         var previous = session.snapshot
@@ -98,7 +98,7 @@ final class RunnerSessionDisplayTests: XCTestCase {
         draft.plan.setBreakSeconds = 0
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
                                     device: DeviceStore(client: RecordingProgressorClient()),
-                                    timerOnly: true)
+                                    timerOnly: true, draftStore: nil)
         session.begin()
         defer { session.end() }
         session.startIfReady(cause: .initial)
@@ -123,7 +123,7 @@ final class RunnerSessionDisplayTests: XCTestCase {
         draft.plan.setBreakSeconds = 1
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
                                     device: DeviceStore(client: RecordingProgressorClient()),
-                                    timerOnly: true)
+                                    timerOnly: true, draftStore: nil)
         session.begin()
         defer { session.end() }
         session.startIfReady(cause: .initial)

@@ -93,7 +93,7 @@ final class RunnerTrainingGuidanceTests: XCTestCase {
         draft.plan.sets = [SetPlan(repsPerSide: reps),
                            SetPlan(grip: GripSpec(edgeMM: 15), repsPerSide: reps)]
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
-                                    device: DeviceStore(client: RecordingProgressorClient()))
+                                    device: DeviceStore(client: RecordingProgressorClient()), draftStore: nil)
         session.send(.start)
         return session
     }

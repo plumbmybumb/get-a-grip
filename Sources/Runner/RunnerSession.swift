@@ -174,10 +174,16 @@ final class RunnerSession {
     /// at the finish, or by `end()` for a session left before it finished.
     @ObservationIgnored private var isQuiesced = false
     /// The cue engines' deferred shutdown, so the finish chord is not cut off mid-note.
-    @ObservationIgnored private var cueShutdown: Task<Void, Never>?
+    /// Readable so a test can await it rather than sleep past it.
+    @ObservationIgnored private(set) var cueShutdown: Task<Void, Never>?
     @ObservationIgnored private var cuesEnded = false
-    @ObservationIgnored private var activityStart: Task<Void, Never>?
+    /// The delayed Live Activity start — readable for the same reason.
+    @ObservationIgnored private(set) var activityStart: Task<Void, Never>?
+    /// The most recent push to the Live Activity (an update or the end). Pushes are
+    /// fire-and-forget; this is only what a test awaits to see one land.
+    @ObservationIgnored private(set) var lastActivityPush: Task<Void, Never>?
     @ObservationIgnored private let activityStartDelay: Duration?
+    @ObservationIgnored private let finishCueTail: Duration?
     @ObservationIgnored private let draftStore: UnsavedSessionDraftStore?
     /// Names this session's on-disk draft — see `UnsavedSessionDraft`.
     let sessionID = UUID()
@@ -204,17 +210,23 @@ final class RunnerSession {
     /// because the screen shares one view, and because a session started without a gauge
     /// must not start quietly using one that happens to be connected.
     ///
-    /// `draftStore` is where a finished-but-unsaved session is kept until Save or Discard.
-    /// nil — the default, which tests and the in-memory previews get — writes nothing.
+    /// Every default below is PRODUCTION's; tests and previews pass their own.
+    ///
+    /// `draftStore` is where a finished-but-unsaved session is kept until Save or Discard;
+    /// nil writes nothing.
     ///
     /// `activityStartDelay` holds the Live Activity back off the presenting frame; nil
     /// starts it inside `begin()`, which is what tests that read the first card use.
+    ///
+    /// `finishCueTail` keeps the cue engines up after the finish for the chord that
+    /// announces it; nil ends them at the finish.
     init(template: SessionTemplate, device: DeviceStore, maxes: MaxTable = MaxTable(),
          timerOnly: Bool = false,
          liveActivity: any RunnerActivityPublishing = RunnerSession.defaultLiveActivity(),
          cues: any RunnerCuePlaying = RunnerSession.defaultCues(),
-         draftStore: UnsavedSessionDraftStore? = nil,
-         activityStartDelay: Duration? = RunnerSession.liveActivityStartDelay) {
+         draftStore: UnsavedSessionDraftStore? = .standard,
+         activityStartDelay: Duration? = RunnerSession.liveActivityStartDelay,
+         finishCueTail: Duration? = RunnerSession.standardFinishCueTail) {
         self.template = template
         self.plan = template.plan
         self.device = device
@@ -225,6 +237,7 @@ final class RunnerSession {
         cues.setDiagnosticSink { [weak device] in device?.recordAudio($0) }
         self.draftStore = draftStore
         self.activityStartDelay = activityStartDelay
+        self.finishCueTail = finishCueTail
         self.timerOnly = timerOnly
         // Read ONCE, like the timing policy below: what this session is driving must not
         // change under it because a different gauge was selected in Settings mid-workout.
@@ -447,7 +460,7 @@ final class RunnerSession {
             if device.isStreaming { device.stopStreaming(cause: .sessionEnded) }
             // Ended with the session, not left to expire: a card still saying "Pull" on
             // the lock screen after you have finished is worse than no card at all.
-            Task { await liveActivity.end() }
+            lastActivityPush = Task { await liveActivity.end() }
             IdleTimerLock.release()
         }
         guard !cuesEnded else { return }
@@ -476,7 +489,7 @@ final class RunnerSession {
 
     /// Long enough for `sessionCompleted`, the longest cue in the app (~0.5 s), to sound
     /// out before the audio session is released.
-    static let finishCueTail: Duration = .seconds(1)
+    static let standardFinishCueTail: Duration = .seconds(1)
 
     // MARK: - The unsaved-session draft
 
@@ -676,7 +689,7 @@ final class RunnerSession {
             // The summary may stay open for minutes. Its unfinished save is not a live
             // workout: no lock-screen countdown, no stream, no ticker, no awake screen.
             // The cues below still play — the tail keeps the engines up for the chord.
-            quiesce(cueTail: Self.finishCueTail)
+            quiesce(cueTail: finishCueTail)
         }
         publish()
         if let id = runner.newGripID, announcedGrips.insert(id).inserted {
@@ -753,7 +766,7 @@ final class RunnerSession {
         let state = activityState(grip: grip)
         // The task carries only this controller and a value type; the `Activity` handle
         // itself never crosses an isolation boundary — see `SessionActivityController`.
-        Task { await liveActivity.update(state) }
+        lastActivityPush = Task { await liveActivity.update(state) }
     }
 
     /// Everything that should force a push. Deliberately excludes the clock and the live

@@ -23,7 +23,7 @@ final class RestFocusPresentationTests: XCTestCase {
         ]
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
                                     device: DeviceStore(client: RecordingProgressorClient()),
-                                    timerOnly: timerOnly)
+                                    timerOnly: timerOnly, draftStore: nil)
         // Exercise the production publication funnel without starting a wall-clock
         // task, a gauge subscription or a Live Activity.
         session.send(.start)
