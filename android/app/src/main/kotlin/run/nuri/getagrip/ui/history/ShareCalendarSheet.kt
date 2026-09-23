@@ -109,9 +109,8 @@ data class ShareCalendarRequest(
     val bestPull: ShareCalendarBestPull?,
 )
 
-/// A VALUE snapshot of the winning current max. The sheet observes no store, so recording a
-/// max behind it cannot change the preview and the shared file out from under the person
-/// looking at them.
+/// A VALUE snapshot of the winning current max: the sheet observes no store, so a max
+/// recorded behind it cannot change the preview or file.
 data class ShareCalendarBestPull(
     val kg: Double,
     val grip: GripSpec,
@@ -131,8 +130,7 @@ data class ShareCalendarBestPull(
         }
 }
 
-/// The three ways the card can be inked. Persisted, because whoever picks Dark once has a
-/// camera roll that looks a particular way and should not have to re-pick it every month.
+/// The three inks. Persisted: whoever picks Dark once should not re-pick it every month.
 enum class ShareCardStyle(val rawValue: String, val title: String, val spoken: String) {
     white("white", L10n.tr("White"), L10n.tr("White ink")),
     dark("dark", L10n.tr("Dark ink"), L10n.tr("Dark ink")),
@@ -145,18 +143,14 @@ enum class ShareCardStyle(val rawValue: String, val title: String, val spoken: S
 
 /// Preview and export for one five-week History card.
 ///
-/// TRANSLATION NOTE: iOS renders with `ImageRenderer(scale: 3)` and saves through
-/// `PHPhotoLibrary`. Here the card is drawn once, into a `GraphicsLayer`, at a FORCED
-/// density of 3 — see `EXPORT_DENSITY` — and saved through `MediaStore`, which needs no
-/// permission at all from API 29 up. Sharing uses the system chooser.
+/// TRANSLATION NOTE: iOS uses `ImageRenderer(scale: 3)` and `PHPhotoLibrary`. Here the card
+/// is drawn once into a `GraphicsLayer` at a FORCED density of 3 (`EXPORT_DENSITY`) and saved
+/// through `MediaStore` (no permission from API 29). Sharing uses the system chooser.
 ///
-/// **UNVERIFIED ON HARDWARE: the transparency.** iOS renders with `isOpaque = false` and
-/// ships a PNG whose background — and whose punched notches and bores — are genuinely
-/// clear. `GraphicsLayer.toImageBitmap()` returns an ARGB bitmap, so the alpha SHOULD
-/// survive both the `BlendMode.Clear` glyphs and the card's own unpainted ground, but that
-/// is a claim about the platform's capture path rather than something this file can prove.
-/// Check one saved card against a dark and a light photo before shipping; if it comes back
-/// with a black ground, the fix is to paint the ground rather than to change the glyphs.
+/// **UNVERIFIED ON HARDWARE: the transparency.** iOS ships a PNG with a genuinely clear ground,
+/// notches and bores. `GraphicsLayer.toImageBitmap()` is ARGB, so alpha SHOULD survive, but
+/// that is a claim about the platform's capture path. Check a saved card on dark and light
+/// photos; if the ground comes back black, paint the ground rather than change the glyphs.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
@@ -166,8 +160,8 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
-    // Persisted per the iOS `@AppStorage("shareCardStyle")`. Held in a plain preference file
-    // rather than the app's `SettingsStore`, which is not this wave's to extend.
+    // Persisted like iOS `@AppStorage("shareCardStyle")`, in its own preference file rather
+    // than `SettingsStore`.
     var style by remember { mutableStateOf(loadCardStyle(context)) }
     var includeBestPull by remember { mutableStateOf(true) }
     var saved by remember { mutableStateOf(false) }
@@ -176,8 +170,7 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
 
     val layer = rememberGraphicsLayer()
 
-    // Any change to what the card SAYS invalidates a "Saved" receipt: the file in Photos is
-    // no longer the picture on screen.
+    // Any change to what the card SAYS voids a "Saved" receipt.
     LaunchedEffect(style, includeBestPull) { saved = false }
 
     ModalBottomSheet(
@@ -218,10 +211,8 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
             }
 
             if (request.bestPull != null) {
-                // THE WHOLE ROW IS THE SWITCH — the same rule as the builder's
-                // `ToggleRow`. A bare Switch beside a Text is two stops, the second of which
-                // TalkBack can only call "Switch, off", and a 32 dp target beside a full-width
-                // sentence nobody can tap.
+                // THE WHOLE ROW IS THE SWITCH, like the builder's `ToggleRow`: a bare Switch is a second
+                // TalkBack stop called "Switch, off" and a 32 dp target.
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -236,8 +227,7 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
                 ) {
                     androidx.compose.material3.Switch(
                         checked = includeBestPull,
-                        // The row owns the tap and the semantics; a second handler here would
-                        // fire the change twice.
+                        // The row owns tap and semantics; a second handler would fire twice.
                         onCheckedChange = null,
                     )
                     Text(
@@ -303,20 +293,18 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
     }
 }
 
-/// The KEY, not the sentence — a `const val` is folded at compile time and could not
-/// carry a translation. It is resolved at every use site through `L10n.tr`.
+/// The KEY, not the sentence: a `const val` cannot carry a translation, so `L10n.tr`
+/// resolves it at each use.
 private const val COULD_NOT_RENDER = "Couldn't render the card. Try again."
 
 // MARK: - The card
 
-/// The transparent export shown over a deliberately image-like tonal field, scaled as ONE
-/// unit so it never clips on a narrow phone.
+/// The transparent export over an image-like tonal field, scaled as ONE unit so it never
+/// clips on a narrow phone.
 ///
-/// **This is the same composable the export captures.** The preview and the file cannot
-/// drift, because there is only one drawing: the card is laid out at its natural 360 dp
-/// under a FORCED density of 3 (so it measures exactly 1080 px on every device, whatever
-/// the screen's own density is), recorded into a `GraphicsLayer` at that size, and only
-/// then scaled down by `graphicsLayer` to fit the box you are looking at.
+/// **The same composable the export captures**, so preview and file cannot drift: laid out
+/// at 360 dp under a FORCED density of 3 (1080 px on every device), recorded into a
+/// `GraphicsLayer`, then scaled down by `graphicsLayer` to fit.
 @Composable
 private fun CardPreview(
     request: ShareCalendarRequest,
@@ -343,8 +331,7 @@ private fun CardPreview(
     ) {
         val boxSide = maxWidth
         val deviceDensity = LocalDensity.current
-        // The card is 360 dp wide under density 3 → 1080 px. The visible box is `boxSide`
-        // dp under the DEVICE's density. The scale is the ratio of the two in pixels.
+        // 360 dp at density 3 = 1080 px; the box is `boxSide` dp at DEVICE density. Scale = the ratio.
         val exportPx = ShareCalendarGrid.EXPORT_SIDE * EXPORT_DENSITY
         val boxPx = with(deviceDensity) { boxSide.toPx() }
         val scale = boxPx / exportPx
@@ -354,16 +341,14 @@ private fun CardPreview(
         ) {
             Box(
                 Modifier
-                    // `requiredSize` ignores the parent's constraints, so the card keeps its
-                    // natural export size and only the layer transform shrinks it.
+                    // `requiredSize` ignores parent constraints: natural export size, shrunk only by the layer.
                     .requiredSize(ShareCalendarGrid.EXPORT_SIDE.dp)
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
                         transformOrigin = TransformOrigin.Center
                     }
-                    // Recorded INSIDE the scaling layer, so what lands in the file is the
-                    // unscaled 1080 px drawing rather than the thumbnail on screen.
+                    // Recorded INSIDE the scaling layer, so the file is the unscaled 1080 px drawing.
                     .drawWithContent {
                         layer.record { this@drawWithContent.drawContent() }
                         drawLayer(layer)
@@ -401,11 +386,8 @@ private fun ShareCalendarExportCard(
     ) {
         Column(
             Modifier
-                // Width pinned to the GRID's exact span — 7 fixed cells plus 6 gaps — and
-                // centred, so the title, the summary, the best-pull line and the wordmark
-                // all share the grid's edges. Text aligned to the card's padding instead sat
-                // ~13 pt left of the first column and read as pushed into the corner (Nuri,
-                // 2026-08-12).
+                // Pinned to the GRID's span and centred, so all text shares the grid's edges; aligned to
+                // the card padding it sat ~13 pt left of the first column (Nuri, 2026-08-12).
                 .width(ShareCalendarGrid.GRID_WIDTH.dp)
                 .padding(vertical = 20.dp)
                 .fillMaxSize(),
@@ -519,10 +501,8 @@ private fun ExportDayCell(
     }
 }
 
-/// Export-local version of the app's hand mark: selected fingers in solid ink, excluded ones
-/// as capsule outlines, so the grip survives monochrome. Local rather than `HandMark`
-/// because that one takes its off-finger step from a tint alpha tuned for the app's palette,
-/// and this card has exactly one ink.
+/// Export-local hand mark: selected fingers solid, excluded ones outlined, surviving
+/// monochrome. Not `HandMark`, whose off-finger alpha is tuned for the app's palette.
 @Composable
 private fun ExportHandMark(fingers: FingerSet, ink: Color) {
     val bar = 5.dp
@@ -576,10 +556,8 @@ private fun ShareCardStyle.panelModifier(): Modifier = when (this) {
 
 // MARK: - Geometry
 
-/// The card's geometry, as pure numbers — pinned by `ShareCalendarGridTests`, because the
-/// content column's width is DERIVED from the grid rather than guessed, and a card whose
-/// text no longer lines up with its first column is exactly the failure that produced the
-/// rule.
+/// The card's geometry, pinned by `ShareCalendarGridTests`: the content width is DERIVED from
+/// the grid, since text misaligned with the first column is the failure that made the rule.
 object ShareCalendarGrid {
     /// 360 × 360, the square every story format crops from without thinking.
     const val EXPORT_SIDE: Float = 360f
@@ -592,21 +570,18 @@ object ShareCalendarGrid {
     /// constrained to this and centred.
     const val GRID_WIDTH: Float = COLUMNS * CELL + (COLUMNS - 1) * GAP
 
-    /// Exactly the window `HistoryWindows` produces, so a card can never be handed a day
-    /// count its grid cannot hold.
+    /// Exactly `HistoryWindows`' window, so no card gets a day count its grid cannot hold.
     const val CELL_COUNT: Int = COLUMNS * ROWS
 
-    /// The one line of copy under the grid. Counted against the days that were actually
-    /// TRACKED, so a first week with the app doesn't read as 6 of 35.
+    /// The line under the grid, counted against TRACKED days so a first week doesn't read 6 of 35.
     fun summary(days: List<DayStamp>, trackingSince: DayStamp, trained: (DayStamp) -> Boolean): String {
         val tracked = days.filter { it >= trackingSince }
         return L10n.tr("%d of %d days trained", tracked.count(trained), tracked.size)
     }
 }
 
-/// The capture density. Fixed at 3 rather than read from the screen, so the file is the same
-/// 1080 × 1080 whether it was made on a cheap phone or a flagship — a shared picture whose
-/// resolution depends on which device made it is a picture somebody has to check.
+/// Fixed at 3, not the screen's: the file is 1080 × 1080 on every phone, and a picture whose
+/// resolution depends on the device is one somebody has to check.
 private const val EXPORT_DENSITY: Float = 3f
 
 // MARK: - Delivery
@@ -668,8 +643,8 @@ private suspend fun shareImage(context: Context, png: ByteArray): Boolean = try 
 private const val PREFS = "getagrip.share"
 private const val KEY_STYLE = "shareCardStyle"
 
-/// Both guarded: a preview's inspection context has no real preferences behind it, and a
-/// remembered style is a convenience — never a reason for the sheet not to open.
+/// Guarded: a preview has no real preferences, and a remembered style must never stop the
+/// sheet opening.
 private fun loadCardStyle(context: Context): ShareCardStyle = runCatching {
     ShareCardStyle.fromRaw(
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_STYLE, null),

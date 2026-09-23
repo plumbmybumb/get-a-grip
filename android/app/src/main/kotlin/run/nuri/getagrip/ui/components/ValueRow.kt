@@ -61,33 +61,27 @@ sealed interface ValueControl {
     /// nothing in a routine is like this — see `Dial`.
     data object Slider : ValueControl
 
-    /// A small integer you want EXACTLY, nudged around a common one: pulls per side. That
-    /// is the HIG's own description of when a stepper is the control, and four chips could
-    /// never have held 4, which is what a max protocol asks for.
+    /// A small integer you want EXACTLY, nudged around a common one (pulls per side) — the HIG's
+    /// case for a stepper. Four chips could never have held 4.
     data object Stepper : ValueControl
 
-    /// A `DialTrack` over the given ladder — evenly-spaced detents, one per value it can
-    /// produce. The right control for a quantity that is EXACT and drawn from a handful of
-    /// real-world numbers, which is nearly every quantity in a routine.
+    /// A `DialTrack` over the ladder — one evenly spaced detent per value. Right for EXACT
+    /// quantities drawn from a handful of real numbers: nearly every quantity in a routine.
     data class Dial(val ladder: List<Double>) : ValueControl
 
     /// When the presets genuinely are the vocabulary.
     data object None : ValueControl
 }
 
-/// A number you can drag, tap or type — the app's control for every quantity.
-///
-/// Three ways in: drag the dial (or slider) for the coarse move, tap a preset for the
-/// values you use most (kept to four; more is a menu again), and **tap the number to type
-/// an exact one**, which is the escape hatch a real range genuinely needs.
+/// A number you can drag, tap or type — the app's control for every quantity: the dial (or
+/// slider) for the coarse move, at most four presets (more is a menu again), and **tap the
+/// number to type an exact one**.
 @Composable
 fun ValueRow(
     title: String,
     value: Double,
-    /// The range the SLIDER spans — the values you actually reach for, not what the column
-    /// can store. Handing the slider the storage clamp (rest tolerates 600 s) puts a 20 s
-    /// rest at 3 % of the track: the whole useful span squeezed into a few pixels, and
-    /// every drag a wild jump.
+    /// The range the SLIDER spans — values you reach for, not what storage allows. The storage
+    /// clamp (rest tolerates 600 s) put a 20 s rest at 3 % of the track and made every drag jump.
     range: ClosedFloatingPointRange<Double>,
     modifier: Modifier = Modifier,
     unit: String = "",
@@ -106,23 +100,19 @@ fun ValueRow(
     val palette = LocalGripPalette.current
     val bounds = limit ?: range
 
-    /// Whether the number has become a field. Two changes per edit — the tap and the
-    /// commit — so it stays here; the DRAFT STRING, which changes on every keypress, does
-    /// not. See `ValueField`.
+    /// Whether the number is a field. It changes twice per edit, so it lives here; the per-key
+    /// DRAFT STRING does not — see `ValueField`.
     var isTyping by remember { mutableStateOf(false) }
 
-    /// Only when there is a slider to fall back on. Where the presets ARE the control,
-    /// hiding them would leave tap-to-type as the single way to change a value — the one
-    /// path needing the most dexterity and the most prior knowledge of what to enter.
+    /// Only when a slider remains. Where presets ARE the control, hiding them leaves typing —
+    /// the most demanding path — as the only way in.
     val hidesPresets = control == ValueControl.Slider && LocalDensity.current.fontScale >= 1.5f
 
-    /// Whether a full-width track draws UNDER the title row. It decides the row's own
-    /// spacing: the gap exists to keep a draggable strip clear of the numbers above it,
-    /// and a stepper sits IN that row rather than under it.
+    /// Whether a full-width track draws UNDER the title row; the gap keeps a draggable strip clear
+    /// of the numbers. A stepper sits IN the row.
     val hasTrack = control is ValueControl.Slider || control is ValueControl.Dial
 
-    // Each dial draws a whole ladder on every landing. Reuse its locale formatter
-    // rather than constructing one for every label on every pointer update.
+    // Reuse the locale's formatter rather than building one per label per pointer update.
     val locale = LocalConfiguration.current.locales[0]
     val formatter = remember(locale, decimals) {
         NumberFormat.getNumberInstance(locale).apply {
@@ -179,8 +169,7 @@ fun ValueRow(
                     decimals = decimals,
                     modifier = Modifier.weight(1f),
                 ) { typed ->
-                    // `null` means the field was left as it was found — tapping the number
-                    // and changing your mind must not zero it.
+                    // `null` means untouched: changing your mind must not zero it.
                     if (typed != null) {
                         val next = typed.coerceIn(bounds.start, bounds.endInclusive)
                         if (next != value) onValueChange(next)
@@ -188,14 +177,10 @@ fun ValueRow(
                     isTyping = false
                 }
             } else {
-                // The value doubles as the button that lets you type it. It reads as a
-                // value first and a control second, which is the right emphasis — most of
-                // the time you are reading it, not editing it.
+                // The value doubles as the button that types it: read first, edited second.
                 Row(
                     Modifier
-                        // 44 both ways — a short unitless value is a one-glyph label with
-                        // 20 dp of padding, well under the house floor, sandwiched
-                        // between two correctly-sized steppers.
+                        // 44 both ways: a one-glyph label with 20 dp padding is under the house floor.
                         .defaultMinSize(minWidth = 44.dp, minHeight = 44.dp)
                         .clickable(role = Role.Button) { isTyping = true }
                         .padding(horizontal = 10.dp)
@@ -234,9 +219,7 @@ fun ValueRow(
             is ValueControl.Slider -> {
                 val steps = sliderSteps(range, step)
                 Slider(
-                    // Clamps only what the SLIDER sees. A typed 90 s hold stays 90 s in
-                    // the model and on the face; the thumb just parks at the end of its
-                    // track rather than being handed an out-of-range value.
+                    // Clamps only what the SLIDER sees: a typed 90 s hold stays 90 s; the thumb parks at the end.
                     value = value.coerceIn(range.start, range.endInclusive).toFloat(),
                     onValueChange = {
                         val next = rounded(it.toDouble())
@@ -254,9 +237,8 @@ fun ValueRow(
             is ValueControl.Dial -> {
                 DialTrack(
                     value = value,
-                    // The LADDER, and nothing but the ladder — filtered only to what this
-                    // row can legally hold. Splicing the current value in as a ninth stop
-                    // re-spaced the other eight under your finger; see `DialTrack.values`.
+                    // The LADDER only, filtered to what this row can hold. Splicing in the current value
+                    // re-spaced the stops under your finger; see `DialTrack.values`.
                     values = remember(control.ladder, bounds) { control.ladder.filter { it in bounds } },
                     format = { formattedValue(it) },
                     spokenUnit = unit,
@@ -305,8 +287,7 @@ fun IntValueRow(
     presets: List<Int> = emptyList(),
     caption: String? = null,
     control: ValueControl = ValueControl.Slider,
-    /// The stepper's increment, when it differs from the slider's. A hold slider moves in
-    /// fives because that is how you think about it; a stepper that also moved in fives
+    /// The stepper's increment when it differs from the slider's: a stepper moving in fives
     /// could never reach 12.
     stepBy: Int? = null,
     onValueChange: (Int) -> Unit,
@@ -328,19 +309,13 @@ fun IntValueRow(
 
 /// The typed number, and NOTHING else — the one thing on the row that changes per keypress.
 ///
-/// **The draft string lives here rather than on `ValueRow` because the house rule is that
-/// high-frequency state belongs in a leaf.** With it on the row, every character re-ran the
-/// row's whole body: the dial and its eleven detents plus eleven formatted scale labels,
-/// the preset capsules and the caption — none of which the text you are typing can touch.
-/// Same fix the 80 Hz force readout got, applied to the one place in the app where the
-/// "sensor" is somebody's thumb.
+/// **The draft string lives in this leaf** (house rule for high-frequency state): on the row,
+/// every character re-ran the dial, its detents and labels, presets and caption.
 ///
-/// **It opens EMPTY, with the current value as its placeholder.** Pre-filling puts the
-/// caret after the existing digits, so typing 22 over a 15 produced "1522". Leaving the
-/// field COMMITS rather than discarding — a typed number that silently vanishes is worse
-/// than one clamped into range — and an untouched field reports null, so tapping a number
-/// and changing your mind cannot zero it. Clamping stays with the CALLER, which is the only
-/// place that knows `limit` versus `range`.
+/// **It opens EMPTY, with the current value as placeholder**: pre-filling put the caret after
+/// the digits, so typing 22 over 15 gave "1522". Leaving the field COMMITS (a vanished number
+/// is worse than a clamped one); an untouched field reports null. Clamping stays with the
+/// CALLER, which knows `limit` versus `range`.
 @Composable
 private fun ValueField(
     placeholder: String,
@@ -354,8 +329,8 @@ private fun ValueField(
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var committed by remember { mutableStateOf(false) }
-    /// The first `onFocusChanged` fires with `false` before the requester runs, and an
-    /// unguarded commit there would close the field on the frame it opened.
+    /// The first `onFocusChanged` fires `false` before the requester runs; committing then would
+    /// close the field on the frame it opened.
     var everFocused by remember { mutableStateOf(false) }
 
     fun commit(dismissKeyboard: Boolean = true) {
@@ -392,9 +367,7 @@ private fun ValueField(
                 .weight(1f)
                 .defaultMinSize(minHeight = 44.dp)
                 .focusRequester(focusRequester)
-                // Tapping elsewhere COMMITS rather than discarding — a typed number that
-                // silently vanishes is worse than one clamped into range. An empty draft
-                // parses to null, so the same path also just closes the field.
+                // Tapping elsewhere COMMITS (see above); an empty draft parses to null and just closes.
                 .onFocusChanged { state ->
                     if (state.isFocused) everFocused = true else if (everFocused) commit(dismissKeyboard = false)
                 },
@@ -424,20 +397,15 @@ private fun ValueField(
     }
 }
 
-/// The typed-number contract, with no view around it — lifted out so every rule below is
-/// asserted in a JVM test rather than by typing into a phone.
+/// The typed-number contract, lifted out so every rule is asserted in a JVM test.
 object ValueFieldParser {
 
-    /// Accepts a comma as well as a point: the same phone reads "2,5" in French and "2.5"
-    /// in English, and a keypad does not care which one you were taught.
+    /// Accepts a comma as well as a point ("2,5" in French, "2.5" in English).
     ///
-    /// **Deliberately NOT snapped to the row's `step`.** The dial lands on the ladder so it
-    /// is easy to reach a round number by dragging; typing is the escape hatch for
-    /// everything else, and a field that silently turns 7 into 5 is not an escape hatch.
-    /// Only the display precision is enforced.
+    /// **NOT snapped to the row's `step`.** The dial lands on round numbers; typing is the escape
+    /// hatch, and one that turns 7 into 5 is not one. Only display precision is enforced.
     ///
-    /// Returns null for an untouched or nonsense field, never 0 — a commit that read an
-    /// empty string as zero would silently wipe the row.
+    /// Returns null for an untouched or nonsense field, never 0, which would wipe the row.
     fun parse(raw: String, decimals: Int): Double? {
         val cleaned = raw.trim().replace(',', '.')
         val typed = cleaned.toDoubleOrNull() ?: return null
@@ -453,9 +421,8 @@ object ValueFieldParser {
     }
 }
 
-/// Material's `steps` counts the stops BETWEEN the ends, so a 0.5…10 range in halves has
-/// eighteen of them. Zero means a continuous slider, which is what a nonsensical step
-/// should degrade to rather than a crash.
+/// Material's `steps` counts stops BETWEEN the ends (0.5…10 in halves has eighteen). A
+/// nonsensical step degrades to continuous (0), not a crash.
 internal fun sliderSteps(range: ClosedFloatingPointRange<Double>, step: Double): Int {
     if (step <= 0.0) return 0
     val intervals = ((range.endInclusive - range.start) / step).roundToInt()

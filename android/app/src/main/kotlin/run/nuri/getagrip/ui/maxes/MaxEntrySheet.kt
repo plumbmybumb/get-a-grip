@@ -67,35 +67,30 @@ import run.nuri.getagrip.ui.theme.Metrics
 
 /// The composer's whole state, as a HOLDER rather than a value.
 ///
-/// **It has to survive the measure hand-off.** "Measure on the gauge" is a full-screen
-/// destination on Android (the phone is on a bench and you are on a fingerboard with both
-/// hands), so the host tears this sheet out of composition while it is up. A draft held
-/// inside the sheet would come back blank — the grip you were building, the hand you picked
-/// and the number you had typed all gone — so the draft is `remember`ed by the HOST and
-/// handed in, exactly as `RunRequest` and `MeasureRequest` are.
+/// **It has to survive the measure hand-off.** Measuring is a full-screen destination (phone
+/// on a bench, both hands on the board), so the host removes this sheet while it is up. A
+/// draft held inside would return blank, so the HOST `remember`s it and hands it in, like
+/// `RunRequest` and `MeasureRequest`.
 ///
-/// A holder rather than a `data class` for the same reason `MaxMeasurement` is one: the
-/// values are snapshot state that several controls write independently, and copying a value
-/// through four `onValueChange` lambdas would put the whole grip on every keystroke's path.
+/// A holder, like `MaxMeasurement`: several controls write snapshot state independently, and
+/// copying a value through four lambdas would put the whole grip on every keystroke's path.
 class MaxEntryDraft(seed: GripSpec = GripSpec()) {
     var grip: GripSpec by mutableStateOf(seed)
     var kg: Double by mutableDoubleStateOf(0.0)
 
-    /// Defaults to `both`, which is what an untouched picker has always meant and what every
-    /// record written before hands existed means. Nothing here is required.
+    /// Defaults to `both`, which is what an untouched picker and every pre-hands record mean.
     var side: Side by mutableStateOf(Side.both)
 
-    /// What the gauge last handed back, if anything. **Provenance is DERIVED by comparing it
-    /// to the live value rather than carried as a flag**, which makes the answer
-    /// self-correcting: drag or type the number away from what was measured and the record
-    /// honestly becomes `manual` again, with no ordering rules about which change runs first.
+    /// What the gauge last handed back. **Provenance is DERIVED by comparing it to the live
+    /// value, not carried as a flag**: move the number off what was measured and the record is
+    /// honestly `manual` again, with no ordering rules.
     var measuredKg: Double? by mutableStateOf(null)
 
     val source: MaxSource
         get() = if (measuredKg == kg) MaxSource.measured else MaxSource.manual
 
-    /// `recordMax` rejects zero outright — a 0 kg max would make every percentage caption in
-    /// the app divide by nothing — so Save is disabled on exactly that range.
+    /// `recordMax` rejects zero (every percentage caption would divide by nothing), so Save
+    /// disables on exactly that range.
     val canSave: Boolean get() = kg > 0
 
     /// The number the gauge produced, landing in the same field a typed one would.
@@ -105,11 +100,9 @@ class MaxEntryDraft(seed: GripSpec = GripSpec()) {
         side = measuredSide
     }
 
-    /// **`sliderRange` is what the SLIDER spans, `limit` is what a TYPED value is clamped
-    /// to.** 60 was never a storage limit — typing already reached 200 — but a slider that
-    /// stops is read as a ceiling, and being told your max is off-scale is a poor welcome
-    /// (Nuri, 2026-08-04: "there are people who can do a 20 mil edge much more than 60 kg").
-    /// 100 keeps a typical 25 kg pull at a quarter of the track, which is still a usable drag.
+    /// **`sliderRange` is what the SLIDER spans, `limit` what a TYPED value is clamped to.** A
+    /// slider that stops at 60 read as a ceiling (Nuri, 2026-08-04: "there are people who can do
+    /// a 20 mil edge much more than 60 kg"); 100 keeps a typical 25 kg pull usably draggable.
     companion object {
         val sliderRange = 0.0..100.0
         val limit = 0.0..250.0
@@ -120,13 +113,12 @@ class MaxEntryDraft(seed: GripSpec = GripSpec()) {
 
 /// Adding a max, as one short document rather than a picker followed by a form.
 ///
-/// Every control here is the same one the builder uses for the same job, deliberately: the
-/// edge is an `IntValueRow`, the fingers are `FingerPips`, the position is a
-/// `PositionChipRow`. Someone who has built a routine has already learned this screen.
+/// Every control is the builder's for the same job (`IntValueRow`, `FingerPips`,
+/// `PositionChipRow`), so building a routine already taught this screen.
 ///
-/// TRANSLATION NOTE: iOS shows the receipt by swapping the sheet's own content and moving
-/// the toolbar to a single Done. A bottom sheet has no toolbar, so the same swap happens in
-/// the body and the actions live at its foot — one sheet, two faces, exactly as on iOS.
+/// TRANSLATION NOTE: iOS swaps the sheet's content for the receipt and moves the toolbar to
+/// Done. A bottom sheet has no toolbar, so the swap happens in the body with actions at its
+/// foot — one sheet, two faces.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MaxEntrySheet(
@@ -141,14 +133,13 @@ fun MaxEntrySheet(
     val feed = LocalHistoryFeed.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
-    // The form is three controls plus a rail; the partial detent cuts it in half, and a
-    // section that opens under the fold reads as having done nothing.
+    // The partial detent cuts the form in half, and a section opening under the fold reads as
+    // having done nothing.
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var failed by remember { mutableStateOf(false) }
     val submission = remember { SubmissionState() }
-    /// Set the moment Save lands with anything to report; the sheet then shows the receipt
-    /// instead of dismissing. null = still editing.
+    /// Set when Save lands with anything to report: the sheet shows the receipt. null = editing.
     var impact by remember { mutableStateOf<TemplateStore.MaxImpact?>(null) }
 
     fun save() {
@@ -159,21 +150,18 @@ fun MaxEntrySheet(
         val source = draft.source
         failed = false
         submission.launch(scope) {
-            // Asked BEFORE the record lands — afterwards the old max is just history and the
-            // ratio it anchors is gone.
+            // Asked BEFORE the record lands; afterwards the ratio the old max anchors is gone.
             val previousMaxes = templates.maxTable.copy()
             if (!templates.recordMax(
                     kg = kg,
                     grip = grip,
-                    // Spelled out rather than left to the default, and it is genuinely a
-                    // choice: `source` is `measured` only while the value is still the one
-                    // the gauge produced.
+                    // Spelled out: `source` is `measured` only while the value is still the gauge's.
                     source = source,
                     side = side,
                 )
             ) {
-                // A rolled-back save leaves the sheet OPEN with the error inline — dismissing
-                // on failure destroys the form and the number with it.
+                // A rolled-back save leaves the sheet OPEN with the error inline; dismissing would destroy
+                // the number.
                 failed = true
                 return@launch
             }
@@ -203,8 +191,7 @@ fun MaxEntrySheet(
                 fontWeight = FontWeight.SemiBold,
                 color = palette.inkPrimary,
             )
-            // The grip as it currently stands, live — so the thing being recorded is stated
-            // somewhere fixed while you are three controls deep changing it.
+            // The grip as it stands, stated somewhere fixed while you are three controls deep.
             Text(
                 draft.grip.displayName,
                 style = MaterialTheme.typography.bodyMedium,
@@ -232,8 +219,7 @@ fun MaxEntrySheet(
                         }
                     },
                 )
-                // The max is already SAVED — there is no cancel any more, and the kg offer's
-                // "Leave them as they are" is a button in the content, not chrome.
+                // The max is already SAVED: no cancel, and "Leave them as they are" is a content button.
                 PrimaryButton(tr("Done"), onClick = onClose)
             }
         }
@@ -272,8 +258,7 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
 
     MeasureRow(onMeasure)
 
-    // No section label above it: the row states its own subject, and a "MAX" caps label over
-    // a row titled "Max on this grip" is the same word twice in eighteen points of height.
+    // No "MAX" label above a row titled "Max on this grip": the same word twice.
     ValueRow(
         title = tr("Max on this grip"),
         value = WeightUnits.fromKg(draft.kg),
@@ -285,10 +270,8 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
         caption = bandCaption(draft.kg),
     ) { draft.kg = MaxEntryDraft.clamped(WeightUnits.toKg(it)) }
 
-    // Append, never edit — so the sheet says so before you tap Save rather than leaving you
-    // to discover a second row afterwards. Keyed by grip AND hand: the record this save
-    // supersedes is the one for the SAME hand, and quoting the other hand's number here would
-    // read as a contradiction of what you are about to type.
+    // Append, never edit — said before Save, not discovered afterwards. Keyed by grip AND hand:
+    // quoting the other hand's number would read as a contradiction.
     templates.currentMaxes[MaxTable.key(draft.grip.key, draft.side)]?.let { existing ->
         val hand = if (draft.side == Side.both) "" else tr(" for that hand")
         Text(
@@ -312,10 +295,8 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
         )
     }
 
-    // Says which of the two this number IS, and keeps saying it as the number changes. It
-    // used to read "the app does not measure it for you", which was load-bearing while that
-    // was true and would be a lie the moment measuring shipped — so it MOVED with the feature
-    // rather than being deleted by it.
+    // Says which of the two this number IS, as it changes. The old "the app does not measure it
+    // for you" had to MOVE with the measuring feature, not be deleted by it.
     Text(
         if (draft.source == MaxSource.measured) {
             tr("Measured on the gauge — your hardest pull on this grip.")
@@ -327,12 +308,11 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
     )
 }
 
-/// What this max BUYS you, stated while you are still setting it: the low-intensity band is
-/// the reason the number is being asked for at all.
+/// What this max BUYS you, stated while setting it: the low-intensity band is why the number
+/// is asked for.
 ///
-/// **Also the disabled Save's only explanation.** Save disables on `kg <= 0`, and
-/// `suggestedBand` returns null for exactly that range — so before this an empty sheet showed
-/// a dimmed Save with nothing on screen to say why.
+/// **Also the disabled Save's only explanation**: Save disables on `kg <= 0`, exactly where
+/// `suggestedBand` returns null.
 private fun bandCaption(kg: Double): String? {
     if (kg <= 0) return L10n.tr("Enter a max above zero to save it.")
     val band = PlanMath.suggestedBand(kg) ?: return null
@@ -343,9 +323,8 @@ private fun bandCaption(kg: Double): String? {
     )
 }
 
-/// Grips you already train, offered as a starting point — NOT a library. Nothing here is
-/// stored, nothing is curated, and the pick is only a seed: every field below stays editable,
-/// so a grip you have never used costs three taps rather than a setup step.
+/// Grips you already train, as a starting point — NOT a library. Nothing stored or curated;
+/// the pick is a seed, and a new grip costs three taps.
 @Composable
 private fun GripRail(draft: MaxEntryDraft) {
     val palette = LocalGripPalette.current
@@ -374,14 +353,12 @@ private fun GripRail(draft: MaxEntryDraft) {
     }
 }
 
-/// WHICH HAND this max is for. Visible rather than folded behind a disclosure: it is
-/// pre-answered with "Both hands", so it costs nothing to ignore, and a control hidden behind
-/// a chevron is one nobody discovers — which would waste the whole feature on the people
-/// whose hands differ enough to need it.
+/// WHICH HAND this max is for. Visible, not behind a disclosure: pre-answered "Both hands",
+/// it costs nothing to ignore, and a hidden control is never discovered by the people whose
+/// hands differ.
 ///
-/// The caption is where the consequence lives, because the chips cannot say it: a
-/// side-specific max is a statement that your OTHER hand is different, and it stops applying
-/// to that hand the moment you pick one.
+/// The caption states what chips cannot: a side-specific max says your OTHER hand differs,
+/// and stops applying to it.
 @Composable
 private fun HandBlock(draft: MaxEntryDraft) {
     val palette = LocalGripPalette.current
@@ -402,9 +379,8 @@ private fun HandBlock(draft: MaxEntryDraft) {
     }
 }
 
-/// The way in to measuring. Offered whatever the gauge is doing — `MaxMeasureScreen` handles
-/// a missing connection with a Connect button and a way back, which is more use than a
-/// disabled control that explains nothing.
+/// The way in to measuring, whatever the gauge is doing: `MaxMeasureScreen` offers Connect
+/// and a way back, which beats a disabled control.
 @Composable
 private fun MeasureRow(onMeasure: () -> Unit) {
     val palette = LocalGripPalette.current
@@ -425,11 +401,9 @@ private fun MeasureRow(onMeasure: () -> Unit) {
 
 // MARK: - The receipt
 
-/// **What the number you just saved moves** — shown INSTEAD of dismissing, and only when
-/// there is something to say. Two sections with two different verbs: percent bands already
-/// moved (they follow the newest max by design — this is visibility, not a question), while
-/// typed-kilogram sets are OFFERED a rescale, because a number a person typed is never
-/// rewritten by arithmetic without a yes.
+/// **What the number you just saved moves** — shown INSTEAD of dismissing, only when there is
+/// something to say. Percent bands already moved (visibility, not a question); typed-kilogram
+/// sets are OFFERED a rescale, since a typed number is never rewritten without a yes.
 @Composable
 private fun ColumnScope.ImpactContent(
     draft: MaxEntryDraft,

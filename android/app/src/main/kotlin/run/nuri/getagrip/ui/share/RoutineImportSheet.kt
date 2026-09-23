@@ -59,20 +59,14 @@ import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.today.PlanRowFit
 
-/// The other side of a QR code: somebody else's routine, read out in full, before it is
-/// yours.
+/// The other side of a QR code: somebody else's routine, read out in full, before it is yours.
 ///
-/// It is a PREVIEW, not an editor. Nothing here is adjustable, and that is the honest shape
-/// — a routine you have not accepted yet is not a routine you can edit, and fields would be
-/// asking a stranger's plan to be corrected before it has been read. Everything in it is one
-/// tap from editable the moment it lands: the card it becomes opens the builder on its own
-/// plan row.
+/// A PREVIEW, not an editor: a routine you have not accepted is not yours to correct. Once it
+/// lands, its card opens the builder on its own plan row.
 ///
-/// **Percentage targets are deliberately NOT translated.** They resolve against the READER's
-/// maxes, per hand, at the moment a session starts — which is the entire reason this app
-/// prescribes fractions rather than kilograms, and it means the same code prescribes the
-/// right load for two people with very different fingers. The two footnotes exist for the
-/// cases where that is not the whole story.
+/// **Percentage targets are NOT translated.** They resolve against the READER's maxes, per
+/// hand, at session start — the reason the app prescribes fractions, so one code suits two
+/// very different pairs of fingers. The footnotes cover where that is not the whole story.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
@@ -81,39 +75,29 @@ fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
-    // Normalized HERE so the preview shows the routine that will actually land: an empty
-    // name becomes the house default on the way in, an emptied set is dropped, and
-    // inheritance is consolidated. Previewing the raw draft and saving the normalized one is
-    // exactly how a preview and the card it becomes disagree. `normalized` is idempotent, so
-    // the store's own pass costs nothing.
+    // Normalized HERE so the preview shows what will land (default name, emptied sets dropped,
+    // inheritance consolidated). `normalized` is idempotent, so the store's pass costs nothing.
     val draft = remember(incoming) { incoming.normalized }
-    // Folded ONCE, not per composition: `RoutineSummary.previewing` walks the whole rep
-    // sequence three times and mints an id, so a computed read would re-fold a fifty-set
-    // routine on every scroll frame and change identity while doing it.
+    // Folded ONCE: `RoutineSummary.previewing` walks the reps three times and mints an id, so a
+    // computed read would re-fold a fifty-set routine per scroll frame and change identity.
     val summary = remember(draft) { RoutineSummary.previewing(draft) }
     val plan = draft.plan
-    /// `executable`, like every other fold in the app: a set with no pulls in it is a row the
-    /// author emptied out, not a rest.
+    /// `executable`, like every fold: a set with no pulls is an emptied row, not a rest.
     val sets = remember(plan) { plan.executable.sets }
 
-    /// The name this routine will actually LAND under. The store deconflicts on save
-    /// (`uniqueName`), and two people keeping the shipped default name is the common case for
-    /// a shared routine — a preview promising "Daily no-hangs" four seconds before the card
-    /// says "Daily no-hangs 2" is the preview and the card disagreeing.
+    /// The name this routine will actually LAND under (the store's `uniqueName`): two people keeping
+    /// the default name is common, and "Daily no-hangs" becoming "Daily no-hangs 2" would be the
+    /// preview and card disagreeing.
     ///
-    /// TRANSLATION NOTE: iOS reads this synchronously per body pass. `plannedImportName` is a
-    /// suspend function here (the routine list lives behind Room), so it is resolved into
-    /// state — starting from the routine's own name, which is the answer whenever nothing
-    /// collides, so the header never flickers from blank to a name.
+    /// TRANSLATION NOTE: iOS reads it synchronously; `plannedImportName` suspends here (Room), so
+    /// it resolves into state, starting from the routine's own name so the header never flickers.
     var landingName by remember(draft) { mutableStateOf(plan.name) }
     LaunchedEffect(draft) { landingName = templates.plannedImportName(plan.name) }
 
-    /// Whether THIS sheet's add failed — local state, not a read of the store's error field:
-    /// keyed to that, the sheet would open already wearing the accusation whenever an
-    /// earlier, unrelated write had failed.
+    /// Whether THIS sheet's add failed — local, not the store's error field, or the sheet would
+    /// open accused by an earlier unrelated failure.
     var saveFailed by remember { mutableStateOf(false) }
-    /// An add in flight. The imported draft has no id, so every tap that reaches the store
-    /// is another routine: a second tap inside the write used to add the same one twice.
+    /// An add in flight: the draft has no id, so a second tap inside the write added it twice.
     var adding by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
@@ -141,8 +125,8 @@ fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
             Notes(sets, plan)
 
             if (saveFailed) {
-                // The sheet STAYS OPEN on a rollback: dismissing on failure loses the code as
-                // well as the routine, and rescanning is somebody else's phone away.
+                // STAYS OPEN on a rollback: dismissing loses the code too, and rescanning is somebody
+                // else's phone away.
                 Text(
                     tr("That routine couldn't be saved just now — nothing was added. Try again."),
                     style = MaterialTheme.typography.bodySmall,
@@ -156,15 +140,13 @@ fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
                 adding = true
                 scope.launch {
                     try {
-                        // The new card appears on Today by itself — the routine list is store
-                        // state, so nothing has to be handed back through the presentation.
+                        // The card appears on Today by itself: the routine list is store state.
                         if (templates.importRoutine(draft) != null) {
                             saveFailed = false
                             onClose()
                         } else {
-                            // Surfaced INLINE, and the store's copy of the failure is consumed:
-                            // the global "Couldn't save" surface watches the same field, and one
-                            // rollback stated twice reads as two.
+                            // INLINE, and the store's copy is consumed: the global "Couldn't save" watches the same
+                            // field, and one rollback stated twice reads as two.
                             saveFailed = true
                             templates.saveError = null
                         }
@@ -174,8 +156,7 @@ fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
                 }
             }
 
-            // Quiet, and never destructive-looking: declining a routine costs nothing and
-            // undoes nothing.
+            // Quiet, never destructive-looking: declining costs nothing.
             SecondaryButton(tr("Not now"), modifier = Modifier.fillMaxWidth(), onClick = onClose)
 
             Spacer(Modifier.padding(bottom = 4.dp))
@@ -190,8 +171,7 @@ private fun Header(landingName: String, summary: RoutineSummary) {
     val palette = LocalGripPalette.current
     Row(
         Modifier.clearAndSetSemantics {
-            // The rung's colour is invisible to TalkBack and to greyscale, so the number it
-            // stands for is spoken — the same pairing `RoutineCard` makes.
+            // The rung's colour is invisible to TalkBack and greyscale, so speak the number (as `RoutineCard`).
             contentDescription = buildString {
                 append(landingName)
                 append(". ")
@@ -248,11 +228,9 @@ private fun PlanCard(sets: List<SetPlan>, plan: SessionPlan) {
     }
 }
 
-/// Two layouts, forked at Android's `.accessibility1` rung — the same fork `RoutineCard`'s
-/// plan row makes, and for the same measured reason: side by side, the scaled glyph plus a
-/// priority-protected count left the grip sentence a couple of dozen points of the row at
-/// the app's type ceiling, on the one screen whose job is stating the grip. Big text is
-/// served by words stacked in full width; the glyph is decoration it can spare.
+/// Two layouts, forked at `.accessibility1` like `RoutineCard`'s plan row: side by side at the
+/// type ceiling, glyph and count left the grip sentence a couple of dozen points. Big text
+/// gets full-width words; the glyph is spare decoration.
 @Composable
 private fun SetRow(set: SetPlan, plan: SessionPlan) {
     val palette = LocalGripPalette.current
@@ -307,8 +285,7 @@ private fun SetRow(set: SetPlan, plan: SessionPlan) {
             modifier = Modifier.padding(top = 3.dp),
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            // No line limit: this sentence is what the screen exists to state, so it wraps
-            // rather than truncates.
+            // No line limit: this sentence is what the screen exists to state.
             Text(
                 set.grip.line,
                 style = MaterialTheme.typography.bodyMedium,
@@ -335,11 +312,9 @@ private fun Detail(line: String) {
     )
 }
 
-/// What this set does DIFFERENTLY — its own timing, its own load. A stranger's routine owes
-/// you these before you accept it: a typed 40 kg band you meet for the first time in the
-/// runner is exactly the surprise this sheet exists to prevent, and a per-set 3 s hold
-/// explains why the estimate above disagrees with the rhythm line below. Nothing renders for
-/// the common set that inherits everything.
+/// What this set does DIFFERENTLY — its own timing or load. A typed 40 kg band first met in
+/// the runner is the surprise this sheet prevents, and a per-set hold explains why the
+/// estimate disagrees with the rhythm line. Nothing for a set that inherits everything.
 private fun setDetailLine(set: SetPlan, plan: SessionPlan): String? {
     val parts = mutableListOf<String>()
     set.holdSeconds?.let { parts.add(L10n.tr("%s hold", PlanMath.durationText(it))) }
@@ -358,14 +333,11 @@ private fun setDetailLine(set: SetPlan, plan: SessionPlan): String? {
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }
 
-/// Display text, so the DEFAULT locale — the same rule `PlanMath.bandText` states. Wire text
-/// is the locale-free half of the app and this is not it.
+/// Display text, so the DEFAULT locale (as `PlanMath.bandText`); wire text is locale-free.
 private fun kgText(kg: Double): String = WeightUnits.number(kg)
 
-/// "6 per side" when the hands take turns, "6 pulls" when they are on the edge together. The
-/// pull count comes from `PlanMath.repCount` rather than a `× sideCount` written here — that
-/// multiplication has exactly one home in the app, and this is the screen where a silent
-/// factor of two would be believed.
+/// "6 per side" when hands alternate, "6 pulls" together. The count comes from
+/// `PlanMath.repCount`, the one home of the `× sideCount` a silent factor of two would hide in.
 private fun repText(set: SetPlan, plan: SessionPlan): String {
     if (plan.handMode.sideCount != 1) return L10n.tr("%d per side", set.repsPerSide)
     val pulls = PlanMath.repCount(set, plan.handMode)
@@ -410,21 +382,19 @@ private fun RhythmCard(plan: SessionPlan, draft: RoutineDraft, setCount: Int) {
     }
 }
 
-/// The ROUTINE's rhythm — the values every set inherits unless it overrides. A set that
-/// overrides is already folded into the pull counts and the estimate above.
+/// The ROUTINE's rhythm, inherited unless a set overrides (overrides are already in the counts
+/// and estimate).
 private fun rhythmLine(plan: SessionPlan, setCount: Int): String {
     val parts = mutableListOf(
         L10n.tr("%s hold", PlanMath.durationText(plan.holdSeconds)),
         L10n.tr("%s rest", PlanMath.durationText(plan.restSeconds)),
     )
-    // A break "between sets" is a constant dressed as information when there is only one
-    // set — the Live Update drops "Set 1 of 1" for the same reason.
+    // With one set, "between sets" is a constant dressed as information.
     if (setCount > 1) parts.add(L10n.tr("%s between sets", PlanMath.durationText(plan.setBreakSeconds)))
     return parts.joinToString(" · ")
 }
 
-/// A WHENEVER routine has no daily target and is never owed, so it says so instead of
-/// quoting a number it does not mean.
+/// A WHENEVER routine is never owed, so it says so rather than quoting a number.
 private fun cadenceLine(draft: RoutineDraft): String {
     if (draft.isOnDemand) return L10n.tr("Whenever you're fresh")
     return when (val n = maxOf(1, draft.sessionsPerDay)) {
@@ -436,19 +406,15 @@ private fun cadenceLine(draft: RoutineDraft): String {
 
 // MARK: - The two honesty notes
 
-/// Both are shown only when they are TRUE of this routine — a footnote about kilograms under
-/// a routine that carries none is noise, and noise is what teaches people to stop reading
-/// footnotes.
+/// Each shown only when TRUE of this routine: noise footnotes teach people to stop reading them.
 @Composable
 private fun Notes(sets: List<SetPlan>, plan: SessionPlan) {
     val palette = LocalGripPalette.current
-    /// `PlanMath.targetBand`'s precedence, read as a predicate: a set carrying typed
-    /// kilograms never reaches its percentage, so it is not a percentage set.
+    /// `PlanMath.targetBand` precedence: a set with typed kilograms never reaches its percentage.
     val hasPercent = sets.any { it.targetBand == null && PlanMath.targetPercent(it, plan) != null }
     val hasKilograms = sets.any { it.targetBand != null }
-    // Guarded around the STACK, not just inside it: an empty column is still a child, and the
-    // document's 18 dp spacing would leave a block of nothing under a routine that prescribes
-    // no load at all — which is most of them.
+    // Guarded around the STACK: an empty column is still a child, and the 18 dp spacing would
+    // leave a gap under the (common) routine prescribing no load.
     if (!hasPercent && !hasKilograms) return
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

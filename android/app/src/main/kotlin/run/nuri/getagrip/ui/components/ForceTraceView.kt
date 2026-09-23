@@ -40,9 +40,8 @@ import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
-/// Keeps the curve off the card's edges. Without the bottom inset a resting gauge draws
-/// its zero line exactly on the boundary, where the rounded corners clip it and it reads
-/// as a rendering glitch rather than as "no load".
+/// Keeps the curve off the card's edges: at rest the zero line would sit on the boundary,
+/// clipped by the corners, reading as a glitch rather than "no load".
 private val INSET_TOP = 12.dp
 private val INSET_BOTTOM = 10.dp
 private val STROKE_WIDTH = 2.5.dp
@@ -53,47 +52,35 @@ private val HEAD_RADIUS = 4.dp
 /// The fill's left edge ramps up over this much, so history BEGINS rather than starts.
 private val FILL_RAMP_WIDTH = 40.dp
 
-/// How long the frame loop sleeps while there is nothing moving to draw. A fresh sample
-/// does not have to wait for it: the trace list is read inside the draw lambda, so an
-/// append invalidates the DRAW immediately — this interval only governs when the smooth
-/// wall-clock slide resumes, and by then the run has just begun anyway.
+/// How long the frame loop sleeps while nothing moves. A fresh sample does not wait: reading
+/// the trace in the draw lambda invalidates the DRAW immediately; this only governs when the
+/// wall-clock slide resumes.
 private const val IDLE_POLL_MILLIS = 250L
 
 /// The live force trace: a rolling window of the gauge's readings, scrolling smoothly.
 ///
-/// Time-based, not index-based: the Progressor delivers ~80 Hz samples in batches of about
-/// eight, so index spacing plus redraw-on-arrival stutters ten times a second. Points
-/// carry a PLAYBACK time (`DeviceStore.TracePoint.t` — monotone, built at ingestion,
-/// immune to the device's counter restarting on tare/reconnect/re-start), and the window's
-/// right edge advances with the wall clock.
+/// Time-based, not index-based: ~80 Hz samples arrive in batches of ~8, so index spacing
+/// stutters ten times a second. Points carry a PLAYBACK time (`DeviceStore.TracePoint.t`,
+/// monotone, immune to the device counter restarting) and the right edge follows the wall clock.
 ///
-/// **This view is deliberately STATELESS about time.** Its iOS ancestor kept anchor state
-/// (device-µs ↔ wall-clock pairs) and died on real hardware: a tare cleared the buffer, the
-/// anchors survived with pre-tare values, and there was no path back — a blank graph beside
-/// a live kg readout until the screen was re-entered. State that models another clock can
-/// be poisoned; geometry from (now − t) cannot. **Never reintroduce view-held clock
-/// state.**
+/// **STATELESS about time.** The iOS ancestor kept device-µs ↔ wall-clock anchors; a tare
+/// cleared the buffer, the anchors survived, and the graph stayed blank beside a live kg
+/// readout until re-entry. State modelling another clock can be poisoned; (now − t) cannot.
+/// **Never reintroduce view-held clock state.**
 ///
-/// **It reads the trace ITSELF**, from `LocalDeviceStore`, and reads it inside the draw
-/// lambda. That is the whole performance story: the buffer is appended to ~80 times a
-/// second, and a snapshot read inside a draw scope invalidates the DRAW phase only, so
-/// nothing around this canvas recomposes. Handed the list as a parameter instead, every
-/// sample would recompose the caller.
+/// **It reads the trace ITSELF, inside the draw lambda**: a snapshot read in a draw scope
+/// invalidates DRAW only, so ~80 appends a second recompose nothing around this canvas.
 ///
-/// TRANSLATION NOTE: SwiftUI's `TimelineView(.animation(paused:))` becomes a
-/// `withFrameNanos` loop writing a tick the draw lambda reads. Its pause conditions are the
-/// same two — reduce motion, and a newest sample already older than the window — and the
-/// iOS expiry watcher's job (noticing that a stopped trace has finally slid off) is done
-/// here by the loop's own per-frame check.
+/// TRANSLATION NOTE: SwiftUI's `TimelineView(.animation(paused:))` becomes a `withFrameNanos`
+/// loop writing a tick. Same pause conditions (reduce motion; newest sample older than the
+/// window), and the loop's per-frame check replaces iOS's expiry watcher.
 @Composable
 fun ForceTraceView(
     modifier: Modifier = Modifier,
     /// Drawn as a dashed rule: the load a rep has to beat for its clock to run.
     thresholdKg: Double? = null,
-    /// **The range this rep is asking for, drawn as a lane to land the curve in.** When
-    /// there is one it REPLACES the threshold rule rather than joining it: the band's floor
-    /// is what the clock now runs off, so a third horizontal line would be a second answer
-    /// to the same question.
+    /// **The range this rep asks for, drawn as a lane.** It REPLACES the threshold rule: the
+    /// band's floor is what the clock runs off, so a third line would answer the same question twice.
     targetBand: ClosedFloatingPointRange<Double>? = null,
     /// The phase tint, so the graph and the rest of the screen escalate together.
     tint: Color = LocalGripPalette.current.bleu,
@@ -114,14 +101,11 @@ fun ForceTraceView(
     LaunchedEffect(reduceMotion, store, clock, frozenSamples) {
         if (frozenSamples != null) return@LaunchedEffect
         while (isActive) {
-            // Read from a coroutine, not from composition or draw: snapshot reads out here
-            // register no observer, so polling the newest sample costs nothing.
+            // Read from a coroutine: snapshot reads here register no observer.
             val newest = store.trace.lastOrNull()?.t
             val expired = newest == null ||
                 clock.wallSeconds() - newest >= TraceGeometry.WINDOW_SECONDS
-            // Paused under Reduce Motion, so the canvas redraws only when data changes:
-            // someone who asked for less motion should not be given a continuously sliding
-            // graph.
+            // Paused under Reduce Motion: redraw only on new data, not a continuously sliding graph.
             if (reduceMotion || expired) {
                 delay(IDLE_POLL_MILLIS)
                 continue
@@ -130,17 +114,12 @@ fun ForceTraceView(
         }
     }
 
-    // The clip matters: the off-screen anchor can land well left of x = 0 on a
-    // sparse-delivery gauge, and without it the overhanging segment would draw outside the
-    // card rather than being invisible, as intended, past the edge.
-    // Decoration, and the ONE drawing in the app that redraws at 80 Hz. Every other Canvas
-    // here carries this; without it a caller that put a `semantics` node above this one would
-    // make an 80 Hz picture a TalkBack focus target. The runner's counters row is the
-    // accessible channel for what the trace shows.
+    // The clip: on a sparse-delivery gauge the off-screen anchor lands well left of x = 0 and
+    // would draw outside the card.
+    // Decoration, and the app's one 80 Hz drawing: without cleared semantics it could become a
+    // TalkBack focus target. The runner's counters row is the accessible channel.
     Canvas(modifier.clipToBounds().clearAndSetSemantics {}) {
-        // READING the tick here is the whole subscription — a snapshot read inside a draw
-        // scope invalidates the draw phase and nothing else, which is why the frame clock
-        // cannot recompose anything around this canvas.
+        // READING the tick is the whole subscription: a draw-scope read invalidates only the draw.
         @Suppress("UNUSED_VARIABLE")
         val frame = tick
         store.pipelineDiagnostics.drawing(clock.uptimeSeconds())
@@ -196,11 +175,8 @@ private fun DrawScope.drawTrace(
     val dash = PathEffect.dashPathEffect(floatArrayOf(RULE_DASH.toPx(), RULE_DASH.toPx()))
 
     if (targetBand != null) {
-        // A LANE, not two lines. The pair of dashed rules alone left the eye to work out
-        // which side of each one it was on; a filled band is a place to be, and the curve
-        // is either in it or it isn't. Neutral ink deliberately — the TRACE carries the
-        // phase colour, and a tinted lane behind a tinted curve would put two competing
-        // signals in the same square inch.
+        // A LANE, not two lines: a filled band is a place to be. Neutral ink, because the TRACE
+        // carries the phase colour and a tinted lane would compete with it.
         val top = y(targetBand.endInclusive)
         val bottom = y(targetBand.start)
         drawRect(
@@ -231,18 +207,15 @@ private fun DrawScope.drawTrace(
     if (samples.size < 2) return
     val newest = samples.last()
 
-    // How far the window's right edge has slid past the newest point. Wall-clock, so it
-    // grows every frame; `t` is the store's slewed playback time, so radio jitter doesn't
-    // move the trace.
+    // How far the right edge has slid past the newest point: wall-clock, while `t` is slewed
+    // playback time, so radio jitter doesn't move the trace.
     val drift = maxOf(0.0, now - newest.t)
 
     val runStart = TraceGeometry.runStart(samples, gapSeconds)
     val anchor = TraceGeometry.anchorIndex(samples, runStart, newest.t, drift, size.width)
 
-    // **THE TRACE FADES BACK IN.** Coming back from the home screen the buffer starts again
-    // from nothing, and a graph that simply appears — two seconds wide, mid-card — reads as
-    // a glitch rather than as a recording resuming. Derived from the DATA, with no state at
-    // all: nothing to reset, nothing to poison.
+    // **THE TRACE FADES BACK IN.** After the home screen the buffer restarts, and a graph that
+    // just appears mid-card reads as a glitch. Derived from the DATA, with no state to poison.
     val runAlpha = minOf(
         1.0,
         (now - samples[runStart].t) / TraceGeometry.FADE_IN_SECONDS,
@@ -265,9 +238,8 @@ private fun DrawScope.drawTrace(
     }
     val first = firstDrawn ?: return
 
-    // WHILE DATA IS FLOWING, the head rides the right edge — see
-    // `TraceGeometry.headAverageKg`. The 0.5 s staleness cap keeps the old behaviour after
-    // stop/disconnect: no fresh data, no synthetic head.
+    // While data flows the head rides the right edge (`TraceGeometry.headAverageKg`); the 0.5 s
+    // staleness cap means no synthetic head after stop/disconnect.
     val head: Offset
     if (drift < TraceGeometry.HEAD_FRESHNESS_SECONDS) {
         head = Offset(size.width, y(TraceGeometry.headAverageKg(samples)))
@@ -280,14 +252,11 @@ private fun DrawScope.drawTrace(
         )
     }
 
-    // Soft fill under the curve reads as "load", the stroke reads as "now".
+    // Soft fill under the curve reads as "load", the stroke as "now".
     //
-    // **Closed at the line's OWN first x, never at 0.** With a full buffer the curve
-    // already starts off the left edge and the two are the same point, which is why this
-    // went unnoticed for so long — but any short buffer (a fresh session, a tare, coming
-    // back from the home screen) starts the line mid-canvas, and closing at 0 drew a
-    // diagonal from the bottom-left corner up to it: the "weird shadow under the graph" in
-    // Nuri's screenshots. The fill drops straight down from where the data actually begins.
+    // **Closed at the line's OWN first x, never at 0.** A full buffer hid the bug; any short
+    // buffer (fresh session, tare, return from home) drew a diagonal up from the bottom-left
+    // corner — the "weird shadow under the graph" (Nuri).
     val fill = paths.fill.apply {
         reset()
         addPath(line)
@@ -296,14 +265,10 @@ private fun DrawScope.drawTrace(
         close()
     }
 
-    // FADED IN FROM THE LEFT. Closing the fill under its first point is correct, but on a
-    // short buffer it drops a full-strength vertical cliff in the middle of the card, which
-    // reads as a wall of load that was never pulled. The ramp exists for a run that BEGINS
-    // on-screen ONLY: a run already extending past the left edge has no beginning to
-    // soften, and ramping it anyway re-anchored the fade to whichever sample happened to be
-    // the off-screen anchor, so the shading's left edge JUMPED each time a point aged out
-    // while the stroke above it slid smoothly (Nuri, 2026-08-18). Off-screen runs fill
-    // solid; the view's clip is the boundary, and a clipped edge cannot jump.
+    // FADED IN FROM THE LEFT, or a short buffer drops a full-strength cliff mid-card that reads
+    // as load never pulled. Only for a run that BEGINS on-screen: ramping a run already past the
+    // left edge re-anchored to whichever sample was the off-screen anchor, so the shading's edge
+    // JUMPED as points aged out (Nuri, 2026-08-18). Off-screen runs fill solid to the clip.
     val rampWidth = FILL_RAMP_WIDTH.toPx()
     val needsRamp = first.x > 0f
     drawIntoCanvas { canvas ->
@@ -318,9 +283,8 @@ private fun DrawScope.drawTrace(
             alpha = runAlpha,
         )
         if (needsRamp) {
-            // DstIn multiplies the fill's alpha by this gradient's, and only inside the
-            // rect it covers — everything to the right of the ramp is untouched, which is
-            // the "fill black to keep" half of the iOS mask.
+            // DstIn multiplies the fill's alpha by this gradient only inside its rect — the "fill black
+            // to keep" half of the iOS mask.
             drawRect(
                 brush = Brush.horizontalGradient(
                     colors = listOf(Color.Transparent, Color.Black),
