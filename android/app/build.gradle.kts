@@ -15,6 +15,9 @@ plugins {
     // built-in Kotlin 2.4.10 — the two are not required to match, and this combination
     // was verified against `:app:kspDebugKotlin` before anything was written on top of it.
     alias(libs.plugins.ksp)
+    // Consumes the profile `:baselineprofile` generates. Generation is never automatic: a
+    // release build uses whatever profile is checked in, so it needs no device.
+    alias(libs.plugins.baselineprofile)
 }
 
 // Upload credentials live in private Gradle properties, never in source control.
@@ -129,6 +132,15 @@ android {
     }
 }
 
+// `./gradlew :app:generateBaselineProfile` (with an emulator or device attached) rewrites
+// `src/main/generated/baselineProfiles/`; that file is checked in and ships in every
+// release. Merged into `main`, so each build type — release included — carries it.
+baselineProfile {
+    automaticGenerationDuringBuild = false
+    saveInSrc = true
+    mergeIntoMain = true
+}
+
 // The engine's immutable values, declared stable to the Compose compiler — see the file's
 // own header for the rule that governs what may be listed there.
 composeCompiler {
@@ -192,6 +204,13 @@ dependencies {
     // Both encoding and camera decoding run locally using Apache-licensed ZXing.
     implementation(libs.zxing.core)
     implementation(libs.zxing.embedded)
+
+    // Applies the shipped baseline profile at install on devices that do not get Play's
+    // cloud profiles (sideloads, the closed alpha's first installs): startup, the tab
+    // switches and the builder then run AOT-compiled from the first launch instead of
+    // interpreted until the JIT warms up.
+    implementation(libs.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
 
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.junit.jupiter)

@@ -22,6 +22,11 @@ change on one side is not done until the fixture and its twin change with it.
 `release`, `devices`, `install` and `run` are there too, and anything else is passed
 straight to `gradlew`.
 
+`./android/build.sh :app:generateBaselineProfile`, with an emulator or phone attached,
+re-records the shipped baseline profile (`app/src/main/generated/baselineProfiles/`) from
+the journeys in `baselineprofile/`: launch, the four tabs, the builder. Regenerate it when
+those screens change shape, and commit the result; no ordinary build needs a device.
+
 ## Toolchain
 
 JDK 17–26 (21 recommended), Android SDK platform 37 (`platforms;android-37.0`) and
