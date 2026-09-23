@@ -81,31 +81,20 @@ struct DoigtApp: App {
                 .task { templates.runLaunchMaintenance() }
                 #if DEBUG
                 .onAppear { DebugInteractionDump.scheduleIfRequested() }
-                // DEBUG builds keep the report Settings › About › Diagnostics copies in
-                // Documents/diagnostics.txt, rewritten every five seconds, so a headless
-                // run can be read without a hand on the screen: a simulator's container,
-                // or a device via `xcrun devicectl device copy from --domain-type
-                // appDataContainer --domain-identifier run.nuri.doigt --source
-                // Documents/diagnostics.txt`. That is how the iPad's Bluetooth delivery
-                // pattern is read without asking for a paste (2026-09-19).
                 .task {
                     // Rewrites the report Settings › About › Diagnostics copies to
                     // Documents/diagnostics.txt every two seconds, so an on-device issue
-                    // can be read without a hand on the screen or a paste: a simulator's
-                    // container, or a device via `xcrun devicectl device copy from
-                    // --device <udid> --domain-type appDataContainer --domain-identifier
-                    // run.nuri.doigt --source Documents/diagnostics.txt --destination
-                    // <file>`. The trace's own last-draw decision rides along — that line
-                    // is what pinned the iPad's blank graph to a render clock that had
-                    // fallen behind the sample clock (2026-09-19). DEBUG only.
+                    // can be read without a hand on the screen: a simulator's container,
+                    // or a device via `xcrun devicectl device copy from --device <udid>
+                    // --domain-type appDataContainer --domain-identifier run.nuri.doigt
+                    // --source Documents/diagnostics.txt --destination <file>`. The
+                    // trace's last-draw decision rides along. DEBUG only.
                     guard let docs = FileManager.default.urls(for: .documentDirectory,
                                                               in: .userDomainMask).first
                     else { return }
                     while !Task.isCancelled {
-                        // The display environment first: it is what explains a trace that
-                        // steps at the packet rate (Reduce Motion pauses its timeline) or a
-                        // screen that will not exceed 60 Hz, and none of it is visible in
-                        // a copied file otherwise.
+                        // The display environment first: it explains a trace that steps at
+                        // the packet rate (Reduce Motion) or a screen capped at 60 Hz.
                         let env = "Env: reduceMotion=\(UIAccessibility.isReduceMotionEnabled)"
                             + " reduceTransparency=\(UIAccessibility.isReduceTransparencyEnabled)"
                             + " lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled)"
@@ -129,55 +118,31 @@ struct DoigtApp: App {
                     device.recordScenePhase(String(describing: phase))
                     switch phase {
                     case .active:
-                        // A phone left open past local midnight must flip "2 of 2 today"
-                        // back to "0 of 2" without a relaunch, and a CloudKit import that
-                        // merged while we were backgrounded has to be picked up here.
-                        //
+                        // Cancel the grace FIRST, before anything slower: coming back
+                        // inside the window is its whole point.
+                        device.cancelBackgroundGrace()
                         // The clock is refreshed HERE, not inside the store: a device
                         // asleep across midnight may not deliver significantTimeChange
-                        // until it is active again, and the store only reacts to
-                        // whatever day the clock reports. Refresh, then recompute.
-                        // FIRST, before anything slower: coming back inside the window is
-                        // the whole point of the grace period, and the link must survive
-                        // it untouched.
-                        device.cancelBackgroundGrace()
+                        // until active, and the store only reacts to the clock.
                         clock.refresh()
                         templates.refreshIfDayChanged()
-                        // Re-read the battery on every return: the chip otherwise shows
-                        // the level from whenever the gauge first connected, which over
-                        // a long day quietly becomes a lie.
+                        // Re-read the battery on every return, or the chip shows the
+                        // level from whenever the gauge first connected.
                         if device.state.isConnected { device.readBattery() }
                     case .background:
                         // THE BATTERY RULE (Nuri, 2026-08-03): leaving the app must not
                         // leave the gauge burning. The Progressor only self-sleeps ten
                         // minutes AFTER a disconnect — connected-but-idle it stays awake
-                        // indefinitely, so an app swiped away with the link up drains the
-                        // device until the battery dies. Background is where this belongs
-                        // because it also covers "completely closed": a suspended process
-                        // gets no termination callback.
+                        // indefinitely. Background is where this belongs because it also
+                        // covers "completely closed": a suspended process gets no
+                        // termination callback.
                         //
-                        // Disconnect, deliberately NOT the sleep opcode: sleep powers the
-                        // device off and costs a physical button press to wake, which is
-                        // the wrong price for a 30-second app switch. A dropped link
-                        // reaches the same off state ten minutes later on its own.
+                        // Disconnect, NOT the sleep opcode: sleep powers the device off
+                        // and costs a physical button press to wake — the wrong price for
+                        // a 30-second app switch. A streaming session keeps the link.
                         //
-                        // A mid-session background keeps the link: the runner has just
-                        // paused itself and the climber is coming back; if iOS suspends
-                        // us anyway the link dies on its own and the runner already
-                        // waits for reconnect.
-                        //
-                        // **SCHEDULED, NOT IMMEDIATE** (Nuri, 2026-08-16). Disconnecting
-                        // the instant we backgrounded could not tell a two-second "hey
-                        // Siri" from a phone put in a bag, and charged both the same 5–6
-                        // second reconnect on the way back — which is what he reported as
-                        // Bluetooth dropping. His own breadcrumb logs proved it: a session
-                        // he never backgrounded never dropped the link once, and the next
-                        // one dropped it within a second of `Scene: background`.
-                        //
-                        // The rule above is NOT weakened, only delayed — see
-                        // `beginBackgroundGrace`, which holds a background assertion and
-                        // disconnects from its expiration handler if iOS suspends us
-                        // early, and disconnects at once if that assertion is refused.
+                        // **SCHEDULED, NOT IMMEDIATE**: a 45 s grace, not weakening the
+                        // rule — see `DeviceStore.beginBackgroundGrace`.
                         device.beginBackgroundGrace()
                     default:
                         break
