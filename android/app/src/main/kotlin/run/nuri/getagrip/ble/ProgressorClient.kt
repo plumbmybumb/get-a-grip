@@ -147,7 +147,9 @@ interface ProgressorClient {
 
     /// Which device family this client drives. Capability gating (tare, background
     /// streaming, timing source) reads `kind.capabilities`, never the concrete client type.
-    /// Defaults to the Tindeq (live and mock); multi-device clients override it.
+    ///
+    /// TRANSLATION NOTE: Swift's protocol-extension default becomes an interface default,
+    /// covering the two Tindeq clients (live and mock); multi-device clients override it.
     val kind: GaugeKind get() = GaugeKind.progressor
 
     /// Scan for, and connect to, the first gauge found. Idempotent.

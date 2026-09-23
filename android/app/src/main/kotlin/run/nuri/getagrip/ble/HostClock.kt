@@ -5,9 +5,11 @@ package run.nuri.getagrip.ble
 
 import android.os.SystemClock
 
-/// The two host clocks the gauge layer reads, behind one seam — iOS reads `Date()` and
-/// `systemUptime` inline, but `SystemClock` reads a stubbed zero in JVM tests, and the
-/// playback clock and broadcast watchdog are the arithmetic worth testing.
+/// The two host clocks the gauge layer reads, behind one seam.
+///
+/// TRANSLATION NOTE: iOS reads `Date()` and `systemUptime` inline; here `SystemClock` would
+/// read a stubbed zero in JVM tests, and the playback clock and broadcast watchdog are the
+/// arithmetic worth testing.
 ///
 /// - `wallSeconds`, the twin of `Date().timeIntervalSinceReferenceDate`. Only DIFFERENCES
 ///   are taken, so the epoch is irrelevant as long as one is used throughout — why

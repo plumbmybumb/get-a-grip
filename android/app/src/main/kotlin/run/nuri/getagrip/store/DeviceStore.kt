@@ -551,10 +551,12 @@ class DeviceStore(
     /// this realises it. Called by `GetAGripApplication`'s `ProcessLifecycleOwner` observer
     /// when the PROCESS leaves the foreground, not when one Activity pauses.
     ///
-    /// Armed twice, because a FROZEN process keeps its link up while this timer stands
-    /// still (the Android twin of iOS's suspended process): this coroutine, and a
-    /// `BackgroundGraceBackstop` alarm. Whichever fires first disconnects. A streaming
-    /// session (kept alive by `SessionForegroundService`) takes the `none` branch.
+    /// TRANSLATION NOTE: iOS holds the window with a `beginBackgroundTask` assertion whose
+    /// expiration handler disconnects. Android's twin hazard is a FROZEN process, which
+    /// keeps its link up while this timer stands still, so the window is armed twice: this
+    /// coroutine and a `BackgroundGraceBackstop` alarm; whichever fires first disconnects.
+    /// A streaming session (kept alive by `SessionForegroundService`) takes the `none`
+    /// branch.
     fun beginBackgroundGrace() {
         isInBackground = true
         when (
