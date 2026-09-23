@@ -2169,6 +2169,73 @@ final class TemplateStoreTests: XCTestCase {
         XCTAssertTrue(ReviewRequestPolicy.shouldAsk(hangSessionsLogged: w.store.hangSessionCount(),
                                                     alreadyAsked: false))
     }
+
+    // MARK: - Publishing only what changed
+
+    /// Observation fires on every SET, not every change. `syncDerived` runs after every
+    /// save and every CloudKit import, so a pass that changed nothing must publish
+    /// nothing — or every tab re-renders for a write that touched none of it.
+    func testASyncThatChangesNothingPublishesNothing() throws {
+        let w = try makeWorld()
+        let created = try XCTUnwrap(w.store.create(.starter))
+        XCTAssertTrue(w.store.recordMax(40, for: created.plan.sets[0].grip, source: .measured))
+        try insertLog(w, template: created, day: w.clock.today)
+        w.store.syncDerived()
+
+        final class Flag: @unchecked Sendable { var fired = false }
+        let flag = Flag()
+        let store = w.store
+        func track() {
+            withObservationTracking {
+                _ = store.completionsToday; _ = store.unattributedHangsToday
+                _ = store.climbToday; _ = store.benchmarkedToday
+                _ = store.trackingSince; _ = store.consistency
+                _ = store.recentGrips; _ = store.routineNames
+                _ = store.currentMaxes; _ = store.maxTable; _ = store.lastMeasuredMaxAt
+            } onChange: { flag.fired = true }
+        }
+
+        track()
+        w.store.syncDerived()
+        w.store.syncAfterExternalChange()
+        XCTAssertFalse(flag.fired, "nothing moved, so nothing may be published")
+
+        // The guard compares; it does not freeze. A real change still lands.
+        try insertLog(w, template: created, day: w.clock.today)
+        w.store.syncDerived(refoldingMaxes: false)
+        XCTAssertTrue(flag.fired)
+        XCTAssertEqual(w.store.completed(created), 2)
+    }
+
+    /// A CloudKit import refolds the max history only when a `MaxRecord` arrived or
+    /// left. Most imports carry sessions and routines, and the fold is the one unbounded
+    /// fetch in the store.
+    func testAnImportRefoldsMaxesOnlyWhenAMaxMoved() throws {
+        let w = try makeWorld()
+        let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
+        XCTAssertTrue(w.store.recordMax(40, for: grip, source: .manual))
+        let folds = w.store.maxFoldCount
+
+        // Our own save echoing back, or an import of sessions only.
+        w.store.syncAfterExternalChange()
+        XCTAssertEqual(w.store.maxFoldCount, folds, "no max moved: no refold")
+
+        // Another device's max, written by another context as an import would be.
+        let other = ModelContext(w.container)
+        other.insert(MaxRecord(grip: grip, kg: 44, source: .measured, side: .left))
+        try other.save()
+        w.store.syncAfterExternalChange()
+        XCTAssertEqual(w.store.maxFoldCount, folds + 1)
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .left), 44)
+
+        // A delete elsewhere moves the identity set too.
+        let imported = try XCTUnwrap(other.fetch(FetchDescriptor<MaxRecord>()).first { $0.kg == 44 })
+        other.delete(imported)
+        try other.save()
+        w.store.syncAfterExternalChange()
+        XCTAssertEqual(w.store.maxFoldCount, folds + 2)
+        XCTAssertNil(w.store.maxTable.exact(grip: grip.key, side: .left))
+    }
 }
 
 // MARK: - The summary's edge line and signature grip

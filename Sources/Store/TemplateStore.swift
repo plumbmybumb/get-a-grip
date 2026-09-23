@@ -194,8 +194,16 @@ final class TemplateStore {
 
     /// The day `syncDerived` last published for. Kept separately from `clock.today`
     /// so a failed fetch leaves it stale and the next call retries rather than
-    /// concluding the day is already handled.
-    private var syncedDay: DayStamp
+    /// concluding the day is already handled. Bookkeeping, not state any view reads.
+    @ObservationIgnored private var syncedDay: DayStamp
+
+    /// Every `MaxRecord` the last max fold saw, by identity — what lets a CloudKit import
+    /// that brought no max skip the one unbounded fetch (`syncAfterExternalChange`).
+    /// Identity is a complete signature because `MaxRecord` is append-only: a max is
+    /// inserted or deleted, never edited in place. nil until the first fold.
+    @ObservationIgnored private var foldedMaxIDs: Set<PersistentIdentifier>?
+    /// How many times the max history has been fetched and folded. Tests only.
+    @ObservationIgnored private(set) var maxFoldCount = 0
 
     private static let consistencyDays = 14
     private static let recentGripLimit = 6
@@ -262,8 +270,25 @@ final class TemplateStore {
         debouncedSync = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
-            self?.syncDerived()
+            self?.syncAfterExternalChange()
         }
+    }
+
+    /// Something else wrote to the store — a CloudKit import, or our own save echoing
+    /// back as a remote-change notification, which is most of them. Imports carry
+    /// sessions and routines far more often than maxes, so the max history is refolded
+    /// only when its identity set moved; that check is an identifier-only fetch, where
+    /// the fold it guards loads and walks every record ever measured.
+    func syncAfterExternalChange() {
+        syncDerived(refoldingMaxes: maxRecordsMovedSinceFold())
+    }
+
+    private func maxRecordsMovedSinceFold() -> Bool {
+        // No fold yet, or a read that failed: refold, which is always correct.
+        guard let folded = foldedMaxIDs,
+              let current = try? context.fetchIdentifiers(FetchDescriptor<MaxRecord>())
+        else { return true }
+        return Set(current) != folded
     }
 
     /// From `.onChange(of: scenePhase)` and whenever the clock ticks: a phone left open
@@ -290,9 +315,10 @@ final class TemplateStore {
     ///
     /// `refoldingMaxes: false` skips the ONE fetch here that has no ceiling on it — see
     /// `fetchMaxes` — and is the caller stating that no `MaxRecord` moved. It defaults to
-    /// true so every external trigger (launch, midnight, a CloudKit import, the
-    /// notification-permission callback) still refolds unconditionally; only the internal
-    /// write path opts out, and only where it can prove it wrote no max.
+    /// true so the external triggers (launch, midnight, the notification-permission
+    /// callback) still refold unconditionally; the internal write path opts out where it
+    /// can prove it wrote no max, and a CloudKit import where the max identities did not
+    /// move (`syncAfterExternalChange`).
     func syncDerived(refoldingMaxes: Bool = true) {
         guard let routines = fetchRoutines() else { return }
         let today = clock.today
@@ -307,23 +333,32 @@ final class TemplateStore {
             maxes = fetched
         }
 
+        // **Every published value is compared before it is assigned.** Observation fires
+        // on every SET, not on every change, and this runs after every save and every
+        // CloudKit import — so assigning unconditionally re-rendered every view reading
+        // any of these, on every tab, for writes that changed none of them.
         syncedDay = today
-        completionsToday = Self.completions(in: logs, on: today)
-        unattributedHangsToday = Self.unattributedHangs(in: logs, on: today)
-        climbToday = Self.climb(in: logs, on: today)
-        benchmarkedToday = logs.benchmark(on: today)
-        trackingSince = Self.trackingStart(routines: routines, logs: logs)
-        consistency = Self.consistency(today: today, logs: logs,
-                                       primary: routines.first, since: trackingSince)
-        recentGrips = Self.recentGrips(in: routines)
+        publish(\.completionsToday, Self.completions(in: logs, on: today))
+        publish(\.unattributedHangsToday, Self.unattributedHangs(in: logs, on: today))
+        publish(\.climbToday, Self.climb(in: logs, on: today))
+        publish(\.benchmarkedToday, logs.benchmark(on: today))
+        let since = Self.trackingStart(routines: routines, logs: logs)
+        publish(\.trackingSince, since)
+        publish(\.consistency, Self.consistency(today: today, logs: logs,
+                                                primary: routines.first, since: since))
+        publish(\.recentGrips, Self.recentGrips(in: routines))
         // `uniquingKeysWith` rather than the exact initializer: two devices CAN produce
         // routines sharing an id over CloudKit, and a duplicate key is a crash there.
-        routineNames = Dictionary(routines.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
+        publish(\.routineNames,
+                Dictionary(routines.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a }))
         if let maxes {
-            currentMaxes = Self.newestPerGrip(maxes)
-            maxTable = Self.table(from: currentMaxes)
+            maxFoldCount += 1
+            foldedMaxIDs = Set(maxes.map(\.persistentModelID))
+            let newest = Self.newestPerGrip(maxes)
+            publish(\.currentMaxes, newest)
+            publish(\.maxTable, Self.table(from: newest))
             // `maxes` arrives sorted by `recordedAt`, so the last measured one is newest.
-            lastMeasuredMaxAt = maxes.last { $0.source == .measured }?.recordedAt
+            publish(\.lastMeasuredMaxAt, maxes.last { $0.source == .measured }?.recordedAt)
         }
 
         // Recomputed here, on the same pass that recomputed the completion counts, so
@@ -358,6 +393,12 @@ final class TemplateStore {
             )
         } : []
         Task { await ReminderPlanner.replan(inputs) }
+    }
+
+    /// Assign only on a real change — see `syncDerived`.
+    private func publish<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<TemplateStore, Value>,
+                                           _ value: Value) {
+        if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
     }
 
     /// Settings flipped `remindsOnThisDevice`: replan on the spot rather than at the
