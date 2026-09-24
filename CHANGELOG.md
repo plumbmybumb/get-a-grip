@@ -8,7 +8,7 @@ Version numbers are per platform and deliberately not kept in step.
 
 | Version | Date | Status | Record |
 | --- | --- | --- | --- |
-| iOS 1.1.2 (12) | 23 Sep 2026 | Submitted for review on 23 Sep. Frez Dyno endpoint move, finished sessions survive the app closing, faster History and Export, reminders after late sessions, Progressor reconnect after a Bluetooth power cycle | [Record](docs/releases/notes/RELEASE_2026-09-23_IOS_1.1.2.md) |
+| iOS 1.1.2 (12) | 23 Sep 2026 | Approved and released on the App Store (24 Sep 2026). Frez Dyno endpoint move, finished sessions survive the app closing, faster History and Export, reminders after late sessions, Progressor reconnect after a Bluetooth power cycle | [Record](docs/releases/notes/RELEASE_2026-09-23_IOS_1.1.2.md) |
 | Android 1.1.0 (13) | 23 Sep 2026 | LIVE ON GOOGLE PLAY (production, 24 Sep 2026) — the first public Android release; 176 countries plus rest of world. Frez Dyno endpoint move, cues matching the iPhone, finished sessions survive the app closing, rotation keeps open work, screen-locked reconnect | [Record](docs/releases/notes/RELEASE_2026-09-23_ANDROID_13.md) |
 | iOS 1.1.1 (11) | 21 Sep 2026 | Approved and released on the App Store. The 04:00 training day, cascading routine deletes with Undo, live gauge screen and all-time History card | [Record](docs/releases/notes/RELEASE_2026-09-21_IOS_1.1.1.md) |
 | Android 1.0.2 (12) | 21 Sep 2026 | Approved on closed Alpha at 100%; production access applied for | [Record](docs/releases/notes/RELEASE_2026-09-21_ANDROID_12.md) |

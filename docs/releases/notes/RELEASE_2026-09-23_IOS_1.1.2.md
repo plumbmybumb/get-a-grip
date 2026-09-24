@@ -35,5 +35,5 @@ then `xcodebuild -exportArchive` with `destination: upload`; options copied unch
 Version 1.1.2 created; What's New (English) from `docs/releases/1.1.2/ios-en-US.txt`;
 promotional text restored (the new version's field came up blank, as on 1.1.1); build 12
 attached; screenshots, description, keywords and review notes carried over. Release:
-automatic, all users at once (unchanged). **Submitted for review 2026-09-23 15:43 CEST.**
+automatic, all users at once (unchanged). **Submitted for review 2026-09-23 15:43 CEST; approved and released 2026-09-24.**
 Build 12 is also on TestFlight in the internal "Test" group.
