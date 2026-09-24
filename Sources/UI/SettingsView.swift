@@ -51,6 +51,7 @@ struct SettingsView: View {
             gaugeKindRow.staggerIn(0)
             deviceCard.staggerIn(1)
             weightUnitsCard.staggerIn(2)
+            progressStyleCard.staggerIn(2)
             remindersCard.staggerIn(3)
             // ABOVE About: About is the statements the app OWES you (storage,
             // attribution, licence); a door out to a person is an action, not small print.
@@ -78,6 +79,30 @@ struct SettingsView: View {
         }
         .onChange(of: settings.remindsOnThisDevice) { _, _ in
             templates.reminderDeviceSettingChanged()
+        }
+    }
+
+    /// TEST BUILD ONLY (branch `design/set-rep-bars`, never merged): lets a TestFlight
+    /// build compare how the session screen shows sets and pulls. Verbatim strings —
+    /// a test feature must not add keys to the shipping string catalog.
+    private var progressStyleCard: some View {
+        @Bindable var settings = settings
+        return MaterialCard(surface: .flat) {
+            VStack(alignment: .leading, spacing: 12) {
+                CapsLabel(String("Test build · not in the App Store version"))
+                Text(verbatim: "Progress style (test)").font(.system(.headline, weight: .semibold))
+                Picker(selection: $settings.runnerProgressStyle) {
+                    ForEach(RunnerProgressStyle.selectable, id: \.self) { style in
+                        Text(verbatim: style.settingsName).tag(style)
+                    }
+                } label: {
+                    Text(verbatim: "Progress style (test)")
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("settings.test.progressStyle")
+                Text(verbatim: "Test builds only. How the session screen shows sets and pulls: Today is the shipping layout; Nested puts the tracks inside the top panel; Segments and Timeline float them over the graph. Takes effect on the next session.")
+                    .font(.system(.caption)).foregroundStyle(Ink.secondary)
+            }
         }
     }
 

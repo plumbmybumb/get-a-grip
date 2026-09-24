@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
 
-#if DEBUG
 import SwiftUI
 
 // MARK: - DESIGN EXPLORATION: where the session's position lives on the runner
 
-// Three ways to show "which set, which pull, how much is left" as small Liquid Glass
-// instruments on the open graph, behind `-progressStyle segments|timeline|rails`.
-// DEBUG ONLY, and the default is today's layout untouched: this file exists so the
-// variants can be compared on identical fixture states, not to ship one.
+// Ways to show "which set, which pull, how much is left" on the runner. On the
+// `design/set-rep-bars` TEST branch they are chosen in Settings › "Progress style
+// (test)" so a TestFlight build can compare them on real hardware; in DEBUG the
+// `-progressStyle segments|timeline|rails|nested|baseline` launch argument overrides
+// the setting. This branch never merges as-is.
 //
 // Rules every variant keeps:
 // - **Secondary, never a hero.** Ink and steel; the only bleu is the pull whose clock
@@ -32,12 +32,35 @@ import SwiftUI
 enum RunnerProgressStyle: String {
     case baseline, segments, timeline, rails, nested
 
-    static let current: RunnerProgressStyle = {
+    /// The four the Settings picker offers. Rails was tried and rejected; it stays
+    /// reachable through the DEBUG launch argument for comparison only.
+    static let selectable: [RunnerProgressStyle] = [.baseline, .nested, .segments, .timeline]
+
+    var settingsName: String {
+        switch self {
+        case .baseline: "Today"
+        case .nested: "Nested"
+        case .segments: "Segments"
+        case .timeline: "Timeline"
+        case .rails: "Rails"
+        }
+    }
+
+    /// DEBUG: `-progressStyle <style>` beats the stored setting, so fixtures stay
+    /// comparable whatever the simulator's Settings say.
+    static let launchOverride: RunnerProgressStyle? = {
+        #if DEBUG
         let args = ProcessInfo.processInfo.arguments
-        guard let flag = args.firstIndex(of: "-progressStyle"), args.indices.contains(flag + 1),
-              let style = RunnerProgressStyle(rawValue: args[flag + 1]) else { return .baseline }
-        return style
+        guard let flag = args.firstIndex(of: "-progressStyle"), args.indices.contains(flag + 1) else { return nil }
+        return RunnerProgressStyle(rawValue: args[flag + 1])
+        #else
+        return nil
+        #endif
     }()
+
+    static func resolved(stored: RunnerProgressStyle) -> RunnerProgressStyle {
+        launchOverride ?? stored
+    }
 }
 
 /// Where the session is, folded from the runner's resolved slots and results. Built in
@@ -751,6 +774,7 @@ struct RunnerProgressInstrument: View {
     }
 }
 
+#if DEBUG
 /// `-probeRunnerBodies`: counts body evaluations per view and prints them every 5 s, the
 /// Instruments-free proxy for what a sample invalidates. Off unless asked for.
 @MainActor

@@ -48,20 +48,15 @@ struct RunnerView: View {
     private static let wideScale: CGFloat = 1.4
 
     @State private var session: RunnerSession?
-    #if DEBUG
-    /// `-progressStyle segments|timeline|rails` — the set/pull progress exploration in
-    /// `RunnerProgressBars.swift`. Absent, the screen is exactly today's.
-    private let progressStyle = RunnerProgressStyle.current
-    #endif
-    /// Whether one of the exploratory progress instruments replaces the panel's own
-    /// progress bar and set/pull counters. Always false outside DEBUG.
-    private var usesProgressInstrument: Bool {
-        #if DEBUG
-        progressStyle != .baseline
-        #else
-        false
-        #endif
+    /// TEST BRANCH: Settings › "Progress style (test)" picks how sets and pulls are shown
+    /// (`RunnerProgressBars.swift`); a DEBUG `-progressStyle` launch argument overrides it.
+    /// `.baseline` is exactly today's screen.
+    @Environment(SettingsStore.self) private var settings
+    private var progressStyle: RunnerProgressStyle {
+        RunnerProgressStyle.resolved(stored: settings.runnerProgressStyle)
     }
+    /// Whether a progress variant replaces the panel's own progress bar and counters.
+    private var usesProgressInstrument: Bool { progressStyle != .baseline }
     /// Whether the grip hangs off the Dynamic Island — a fact about the DEVICE, resolved
     /// once the view is in a window (`IslandHand.isSupported` has nothing to read before
     /// that). Answered once because both the overlay and the layout depend on it.
@@ -515,10 +510,13 @@ struct RunnerView: View {
     @ViewBuilder
     private func graphRegionLayout(_ session: RunnerSession, core: some View, wide: Bool) -> some View {
         let minHeight: CGFloat? = typeSize.isAccessibilitySize ? 240 : nil
+        // DEBUG `-progressOverTrace`: the UNMITIGATED control for the frame-cost
+        // comparison — the canvas runs under the glass as if the instrument simply floated.
         #if DEBUG
-        // `-progressOverTrace`: the UNMITIGATED control for the frame-cost comparison —
-        // the canvas runs under the glass as it would if the instrument simply floated.
         let overTrace = ProcessInfo.processInfo.arguments.contains("-progressOverTrace")
+        #else
+        let overTrace = false
+        #endif
         if overTrace, progressStyle != .baseline, let instrument = progressInstrument(session) {
             core.frame(minHeight: minHeight, maxHeight: .infinity)
                 .overlay(alignment: progressStyle == .segments ? .top
@@ -556,10 +554,6 @@ struct RunnerView: View {
             core.frame(minHeight: minHeight, maxHeight: .infinity)
                 .background { regionTrace(session, wide: wide) }
         }
-        #else
-        core.frame(minHeight: minHeight, maxHeight: .infinity)
-            .background { regionTrace(session, wide: wide) }
-        #endif
     }
 
     /// On the phone the trace is this region's background, stretched sideways to the
@@ -578,7 +572,6 @@ struct RunnerView: View {
     /// bar and the counters row. `withRestWord` is off in the rest summary, whose badge
     /// already says REST.
     private func nestedProgress(_ session: RunnerSession, withRestWord: Bool = true) -> AnyView? {
-        #if DEBUG
         guard progressStyle == .nested, !timerOnly, !session.isFinished else { return nil }
         let model = SessionProgressModel(slots: session.runner.slots, results: session.runner.results,
                                          phase: session.snapshot.phase)
@@ -586,12 +579,8 @@ struct RunnerView: View {
         return AnyView(NestedProgressRow(model: model, session: session, tint: tint(session)) {
             if withRestWord { restPhaseLabel(session) }
         })
-        #else
-        return nil
-        #endif
     }
 
-    #if DEBUG
     private func progressInstrument(_ session: RunnerSession) -> RunnerProgressInstrument? {
         guard !timerOnly, !session.isFinished, progressStyle != .nested else { return nil }
         let model = SessionProgressModel(slots: session.runner.slots,
@@ -601,7 +590,6 @@ struct RunnerView: View {
         return RunnerProgressInstrument(style: progressStyle, model: model, session: session,
                                         tint: tint(session))
     }
-    #endif
 
     /// The graph's canvas with its phase-tint blend, placed by the caller: the open
     /// region's background on the phone, the whole screen's on the iPad.
