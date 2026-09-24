@@ -48,6 +48,20 @@ struct RunnerView: View {
     private static let wideScale: CGFloat = 1.4
 
     @State private var session: RunnerSession?
+    #if DEBUG
+    /// `-progressStyle segments|timeline|rails` — the set/pull progress exploration in
+    /// `RunnerProgressBars.swift`. Absent, the screen is exactly today's.
+    private let progressStyle = RunnerProgressStyle.current
+    #endif
+    /// Whether one of the exploratory progress instruments replaces the panel's own
+    /// progress bar and set/pull counters. Always false outside DEBUG.
+    private var usesProgressInstrument: Bool {
+        #if DEBUG
+        progressStyle != .baseline
+        #else
+        false
+        #endif
+    }
     /// Whether the grip hangs off the Dynamic Island — a fact about the DEVICE, resolved
     /// once the view is in a window (`IslandHand.isSupported` has nothing to read before
     /// that). Answered once because both the overlay and the layout depend on it.
@@ -254,6 +268,9 @@ struct RunnerView: View {
 
     @ViewBuilder
     private func live(_ session: RunnerSession) -> some View {
+        #if DEBUG
+        let _ = RunnerProgressProbe.count("RunnerView.live")
+        #endif
         if typeSize.isAccessibilitySize {
             // At large accessibility sizes a small phone cannot hold five readable
             // actions and the measurements at once. Keep every action reachable by
@@ -462,7 +479,7 @@ struct RunnerView: View {
     private func graphRegion(_ session: RunnerSession, wide: Bool = false) -> some View {
         let notice = showsSignalNotice(session)
         let ambient = showsAmbientCountdown(session)
-        return ZStack {
+        let core = ZStack {
             Color.clear
             // Both at once when the gauge goes quiet mid-rest: the countdown is the
             // rest's own clock and does not depend on the gauge, so losing the link
@@ -482,17 +499,7 @@ struct RunnerView: View {
             }
         }
         .animation(Motion.state(reduceMotion), value: ambient)
-        .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil,
-               maxHeight: .infinity)
-        // On the phone the trace is this region's background, stretched sideways to the
-        // screen edges but never under the panel or dock — see `backgroundTrace`. The
-        // wide layout's trace is the whole screen's background instead.
-        .background {
-            if !timerOnly, !wide {
-                liveTrace(session, plot: ForceTraceView.PlotInsets(top: 12, bottom: 6, trailing: 8))
-                    .padding(.horizontal, -Metrics.hPadding)
-            }
-        }
+        return graphRegionLayout(session, core: core, wide: wide)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
             traceGeometry.region = $0
         }
@@ -500,6 +507,84 @@ struct RunnerView: View {
         .accessibilityIdentifier("runner.graph")
         .tourAnchor(.runnerTrace)
     }
+
+    /// Places the open region's contents and its trace. Today's layout: the trace is the
+    /// whole region's background. With a progress instrument the region is SPLIT and the
+    /// canvas stops short of the glass (plus a margin for the blur kernel), so the glass
+    /// samples a static backdrop instead of re-blurring the curve at display rate.
+    @ViewBuilder
+    private func graphRegionLayout(_ session: RunnerSession, core: some View, wide: Bool) -> some View {
+        let minHeight: CGFloat? = typeSize.isAccessibilitySize ? 240 : nil
+        #if DEBUG
+        // `-progressOverTrace`: the UNMITIGATED control for the frame-cost comparison —
+        // the canvas runs under the glass as it would if the instrument simply floated.
+        let overTrace = ProcessInfo.processInfo.arguments.contains("-progressOverTrace")
+        if overTrace, progressStyle != .baseline, let instrument = progressInstrument(session) {
+            core.frame(minHeight: minHeight, maxHeight: .infinity)
+                .overlay(alignment: progressStyle == .segments ? .top
+                                    : progressStyle == .timeline ? .bottom : .leading) {
+                    instrument.padding(progressStyle == .rails ? .vertical : (progressStyle == .segments ? .top : .bottom), 14)
+                }
+                .background { regionTrace(session, wide: wide) }
+        } else if progressStyle != .baseline, let instrument = progressInstrument(session) {
+            // 14 pt clear of the panel and the dock: the shared GlassEffectContainer
+            // merges shapes closer than its 24 pt spacing, and these must stay separate.
+            switch progressStyle {
+            case .segments:
+                VStack(spacing: 10) {
+                    instrument.padding(.top, 14)
+                    core.frame(maxHeight: .infinity)
+                        .background { regionTrace(session, wide: wide) }
+                }
+                .frame(minHeight: minHeight, maxHeight: .infinity)
+            case .timeline:
+                VStack(spacing: 10) {
+                    core.frame(maxHeight: .infinity)
+                        .background { regionTrace(session, wide: wide) }
+                    instrument.padding(.bottom, 14)
+                }
+                .frame(minHeight: minHeight, maxHeight: .infinity)
+            default:
+                HStack(spacing: 10) {
+                    instrument.padding(.vertical, 14)
+                    core.frame(maxHeight: .infinity)
+                        .background { regionTrace(session, wide: wide, bleedsLeading: false) }
+                }
+                .frame(minHeight: minHeight, maxHeight: .infinity)
+            }
+        } else {
+            core.frame(minHeight: minHeight, maxHeight: .infinity)
+                .background { regionTrace(session, wide: wide) }
+        }
+        #else
+        core.frame(minHeight: minHeight, maxHeight: .infinity)
+            .background { regionTrace(session, wide: wide) }
+        #endif
+    }
+
+    /// On the phone the trace is this region's background, stretched sideways to the
+    /// screen edges but never under the panel or dock — see `backgroundTrace`. The
+    /// wide layout's trace is the whole screen's background instead.
+    @ViewBuilder
+    private func regionTrace(_ session: RunnerSession, wide: Bool, bleedsLeading: Bool = true) -> some View {
+        if !timerOnly, !wide {
+            liveTrace(session, plot: ForceTraceView.PlotInsets(top: 12, bottom: 6, trailing: 8))
+                .padding(.leading, bleedsLeading ? -Metrics.hPadding : 0)
+                .padding(.trailing, -Metrics.hPadding)
+        }
+    }
+
+    #if DEBUG
+    private func progressInstrument(_ session: RunnerSession) -> RunnerProgressInstrument? {
+        guard !timerOnly, !session.isFinished else { return nil }
+        let model = SessionProgressModel(slots: session.runner.slots,
+                                         results: session.runner.results,
+                                         phase: session.snapshot.phase)
+        guard model.current != nil else { return nil }
+        return RunnerProgressInstrument(style: progressStyle, model: model, session: session,
+                                        tint: tint(session))
+    }
+    #endif
 
     /// The graph's canvas with its phase-tint blend, placed by the caller: the open
     /// region's background on the phone, the whole screen's on the iPad.
@@ -576,7 +661,8 @@ struct RunnerView: View {
         let focused = showsRestFocus(session)
         return Group {
             if focused && typeSize.isAccessibilitySize {
-                RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland)
+                RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
+                                       showsCounts: !usesProgressInstrument)
             } else {
                 Group {
                     if focused {
@@ -590,7 +676,7 @@ struct RunnerView: View {
                 .overlay {
                     if focused {
                         RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
-                                               scale: scale)
+                                               scale: scale, showsCounts: !usesProgressInstrument)
                             .transition(.opacity)
                     }
                 }
@@ -608,8 +694,16 @@ struct RunnerView: View {
             }
             prompt(session, scale: scale)
             hero(session, scale: scale)
-            progress(session)
-            counters(session)
+            if usesProgressInstrument {
+                // The instrument on the graph carries the position and the live pull; the
+                // panel keeps only the rest word, in the row it always reserved for it.
+                restPhaseLabel(session)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityElement(children: .combine)
+            } else {
+                progress(session)
+                counters(session)
+            }
         }
     }
 

@@ -358,6 +358,16 @@ final class RunnerSession {
     /// cover's presentation, short enough that nobody who swipes home ever sees no card.
     static let liveActivityStartDelay: Duration = .milliseconds(300)
 
+    #if DEBUG
+    /// Screenshot fixtures only: move the session's wall clock forward and tick, so a
+    /// fixture can finish a REAL rest through the engine instead of skipping the pull
+    /// behind it (a skipped pull draws differently from a completed one).
+    func debugAdvanceClock(by seconds: TimeInterval) {
+        now += seconds
+        send(.tick)
+    }
+    #endif
+
     private func startLiveActivity() {
         activityStart = nil
         // A session already over by the time the delay ran out gets no card at all: it

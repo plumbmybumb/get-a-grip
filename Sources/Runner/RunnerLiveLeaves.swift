@@ -75,6 +75,9 @@ struct LiveRepProgress: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        #if DEBUG
+        let _ = RunnerProgressProbe.count("LiveRepProgress")
+        #endif
         ProgressView(value: session.repProgress)
             .tint(StatusTint.engaged)
             .animation(reduceMotion ? nil : Motion.measuredProgress, value: session.repProgress)

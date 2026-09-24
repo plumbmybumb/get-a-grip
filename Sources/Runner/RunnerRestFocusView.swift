@@ -15,6 +15,8 @@ struct RunnerRestFocusSummary: View {
     let showsGlyph: Bool
     /// The wide runner draws the numeral larger, like the rest of its identity block.
     var scale: CGFloat = 1
+    /// False when a progress instrument on the graph already carries set and pull.
+    var showsCounts = true
     @Environment(\.weightUnit) private var weightUnit
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -71,9 +73,11 @@ struct RunnerRestFocusSummary: View {
                                                                        : Ink.tertiary.opacity(0.16)))
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("runner.restFocus.phase")
-                HStack(alignment: .top, spacing: 16) {
-                    setCount
-                    pullCount
+                if showsCounts {
+                    HStack(alignment: .top, spacing: 16) {
+                        setCount
+                        pullCount
+                    }
                 }
             }
         }
