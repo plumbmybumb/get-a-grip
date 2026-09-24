@@ -28,4 +28,5 @@ sound, speed and code-tidy work. Release notes:
 - Closed testing: approved and live on 2026-09-24.
 - Production access granted 2026-09-24. **First production release** created the same day:
   1.1.0 (13) from the library (the same bundle as Alpha), full rollout, 176 countries /
-  regions plus "rest of world", en-US notes as above. Sent for review 2026-09-24.
+  regions plus "rest of world", en-US notes as above. Sent for review and **approved the
+  same day: live on Google Play 2026-09-24.** nuri.run/getagrip now links to the listing.
