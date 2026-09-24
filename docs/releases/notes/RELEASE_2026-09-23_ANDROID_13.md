@@ -25,5 +25,7 @@ sound, speed and code-tidy work. Release notes:
 - Closed testing - Alpha: new release "1.1.0 (13) — Frez endpoint, sound and reliability",
   full rollout, en-US notes from the What's New file; version 12 not carried over.
 - Sent for review 2026-09-23 (quick checks running). The track has 87 active testers.
-- Production access: application under Google's review since Tuesday 22 September; when
-  granted, promote 1.1.0 (13), not 1.0.2 (12), which calls the retiring Frez endpoint.
+- Closed testing: approved and live on 2026-09-24.
+- Production access granted 2026-09-24. **First production release** created the same day:
+  1.1.0 (13) from the library (the same bundle as Alpha), full rollout, 176 countries /
+  regions plus "rest of world", en-US notes as above. Sent for review 2026-09-24.
