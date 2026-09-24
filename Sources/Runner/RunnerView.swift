@@ -574,9 +574,26 @@ struct RunnerView: View {
         }
     }
 
+    /// `-progressStyle nested`: the tracks drawn inside the panel, in place of the hold
+    /// bar and the counters row. `withRestWord` is off in the rest summary, whose badge
+    /// already says REST.
+    private func nestedProgress(_ session: RunnerSession, withRestWord: Bool = true) -> AnyView? {
+        #if DEBUG
+        guard progressStyle == .nested, !timerOnly, !session.isFinished else { return nil }
+        let model = SessionProgressModel(slots: session.runner.slots, results: session.runner.results,
+                                         phase: session.snapshot.phase)
+        guard model.current != nil else { return nil }
+        return AnyView(NestedProgressRow(model: model, session: session, tint: tint(session)) {
+            if withRestWord { restPhaseLabel(session) }
+        })
+        #else
+        return nil
+        #endif
+    }
+
     #if DEBUG
     private func progressInstrument(_ session: RunnerSession) -> RunnerProgressInstrument? {
-        guard !timerOnly, !session.isFinished else { return nil }
+        guard !timerOnly, !session.isFinished, progressStyle != .nested else { return nil }
         let model = SessionProgressModel(slots: session.runner.slots,
                                          results: session.runner.results,
                                          phase: session.snapshot.phase)
@@ -662,7 +679,8 @@ struct RunnerView: View {
         return Group {
             if focused && typeSize.isAccessibilitySize {
                 RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
-                                       showsCounts: !usesProgressInstrument)
+                                       showsCounts: !usesProgressInstrument,
+                                       progressRow: nestedProgress(session, withRestWord: false))
             } else {
                 Group {
                     if focused {
@@ -676,7 +694,8 @@ struct RunnerView: View {
                 .overlay {
                     if focused {
                         RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
-                                               scale: scale, showsCounts: !usesProgressInstrument)
+                                               scale: scale, showsCounts: !usesProgressInstrument,
+                                               progressRow: nestedProgress(session, withRestWord: false))
                             .transition(.opacity)
                     }
                 }
@@ -694,7 +713,9 @@ struct RunnerView: View {
             }
             prompt(session, scale: scale)
             hero(session, scale: scale)
-            if usesProgressInstrument {
+            if let nested = nestedProgress(session) {
+                nested
+            } else if usesProgressInstrument {
                 // The instrument on the graph carries the position and the live pull; the
                 // panel keeps only the rest word, in the row it always reserved for it.
                 restPhaseLabel(session)

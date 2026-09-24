@@ -17,6 +17,8 @@ struct RunnerRestFocusSummary: View {
     var scale: CGFloat = 1
     /// False when a progress instrument on the graph already carries set and pull.
     var showsCounts = true
+    /// The nested progress tracks, drawn in place of the two counts when given.
+    var progressRow: AnyView? = nil
     @Environment(\.weightUnit) private var weightUnit
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -73,7 +75,9 @@ struct RunnerRestFocusSummary: View {
                                                                        : Ink.tertiary.opacity(0.16)))
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("runner.restFocus.phase")
-                if showsCounts {
+                if let progressRow {
+                    progressRow
+                } else if showsCounts {
                     HStack(alignment: .top, spacing: 16) {
                         setCount
                         pullCount

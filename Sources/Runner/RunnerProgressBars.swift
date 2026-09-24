@@ -30,7 +30,7 @@ import SwiftUI
 // shipping string catalog.
 
 enum RunnerProgressStyle: String {
-    case baseline, segments, timeline, rails
+    case baseline, segments, timeline, rails, nested
 
     static let current: RunnerProgressStyle = {
         let args = ProcessInfo.processInfo.arguments
@@ -621,6 +621,103 @@ struct RailsProgressView: View {
     }
 }
 
+// MARK: - 4. NESTED
+
+/// The tracks INSIDE the existing top panel, in the room today's thin hold bar and the
+/// "SET 2 OF 4 · PULL 9 OF 24" row take (owner feedback: the floating card covered too
+/// much graph). No glass of its own — flat fills on the panel's glass, so no second
+/// blur and no second surface. One row: sets as a compact prefix, this set's pulls
+/// filling the rest, the live pull carrying the hold fill — the only live progress on
+/// the screen, so the pulls track is the wider one.
+///
+/// The label row mirrors the old counters row exactly — leading label, the reserved
+/// rest word in the middle, trailing label, with the same two-row fallback — so the
+/// panel's height is the old row's plus (track − bar) − (the spacing the pair saves).
+struct NestedProgressRow<Middle: View>: View {
+    var model: SessionProgressModel
+    var session: RunnerSession
+    var tint: Color
+    @ViewBuilder var middle: () -> Middle
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Sets take a fixed share of the row: the prefix is read as "which block", the
+    /// pulls as "how far into it", and the latter carries the live fill.
+    static var setsShare: CGFloat { 0.30 }
+    static var trackHeight: CGFloat { 10 }
+    /// Track + this = the old bar (4) + the stack spacing it sat in (12).
+    static var labelSpacing: CGFloat { 6 }
+
+    var body: some View {
+        VStack(spacing: Self.labelSpacing) {
+            GeometryReader { proxy in
+                HStack(spacing: 10) {
+                    if model.showsSets {
+                        SegmentTrack(sizes: [model.setSizes.count], model: model, filled: model.setsFilled,
+                                     here: model.current.map { _ in model.currentSet },
+                                     liveSession: nil, tint: tint, usesOutcomes: false)
+                            .frame(width: max(44, (proxy.size.width - 10) * Self.setsShare))
+                    }
+                    SegmentTrack(sizes: [model.pullsInSet], offset: model.currentSetStart,
+                                 model: model, filled: Double(model.doneInSet),
+                                 here: model.current.map { _ in model.doneInSet },
+                                 liveSession: session, tint: tint)
+                }
+            }
+            .frame(height: Self.trackHeight)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    label(leading).fixedSize()
+                    Spacer(minLength: 0)
+                    middle()
+                    Spacer(minLength: 0)
+                    label(trailing).fixedSize()
+                }
+                VStack(spacing: 4) {
+                    middle()
+                    HStack(alignment: .top, spacing: 8) {
+                        label(leading)
+                        Spacer(minLength: 0)
+                        // Two short lines, never a phrase broken in the middle ("PULL 3 OF /
+                        // 6 · 16 LEFT") — and never three, which would make the panel taller
+                        // than the counters row it replaces. "3/6" is the rest summary's own
+                        // compact form.
+                        VStack(alignment: .trailing, spacing: 2) {
+                            ForEach(compactTrailing, id: \.self) { part in
+                                label(part).multilineTextAlignment(.trailing)
+                            }
+                        }
+                    }
+                }
+            }
+            .monospacedDigit()
+        }
+        .animation(Motion.state(reduceMotion), value: model)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(model.spoken)
+        .accessibilityIdentifier("runner.progressInstrument")
+    }
+
+    /// "SET 2 OF 4" under the prefix; with one set, the pull position moves there.
+    private var leading: String {
+        model.showsSets ? "SET \(model.currentSet + 1) OF \(model.setSizes.count)"
+                        : "PULL \(model.pullPositionInSet) OF \(model.pullsInSet)"
+    }
+
+    private var trailing: String {
+        model.showsSets ? "PULL \(model.pullPositionInSet) OF \(model.pullsInSet) · \(model.pullsLeft) LEFT"
+                        : "\(model.pullsLeft) LEFT"
+    }
+
+    private var compactTrailing: [String] {
+        model.showsSets ? ["PULL \(model.pullPositionInSet)/\(model.pullsInSet)", "\(model.pullsLeft) LEFT"]
+                        : ["\(model.pullsLeft) LEFT"]
+    }
+
+    private func label(_ text: String) -> some View {
+        CapsLabel(text, size: 12, tint: Ink.secondary)
+    }
+}
+
 // MARK: - The chooser
 
 /// The variant for the current style, carrying the combined VoiceOver sentence and an
@@ -642,7 +739,7 @@ struct RunnerProgressInstrument: View {
             case .segments: SegmentsProgressView(model: model, session: session, tint: tint)
             case .timeline: TimelineProgressView(model: model, session: session, tint: tint)
             case .rails: RailsProgressView(model: model, session: session, tint: tint)
-            case .baseline: EmptyView()
+            case .baseline, .nested: EmptyView()
             }
         }
         .animation(Motion.state(reduceMotion), value: model)
