@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.ui.builder.BuilderMode
+import run.nuri.getagrip.ui.criticalforce.CriticalForceTestRequest
 import run.nuri.getagrip.ui.maxes.NewMaxDraft
 
 /// **What the root is presenting, retained across a rotation** — the same move
@@ -44,6 +45,20 @@ internal class RootPresentation : ViewModel() {
 
     /// The log sheet — one sheet, two doors (History's row and Today's consistency card).
     var loggingSession: Boolean by mutableStateOf(false)
+
+    /// The critical force test, from setup to saved. Held HERE, not remembered, for the
+    /// runner's reason: a test cannot pause, so a rotation that dropped its state would void
+    /// a maximal effort. See `CriticalForceTestRequest`.
+    var criticalForce: CriticalForceTestRequest? by mutableStateOf(null)
+
+    /// DEBUG `previewCriticalForce` opens the test once per task, not on every recreation.
+    var previewedCriticalForce: Boolean = false
+
+    /// The task went away with a test open: whatever it switched on goes off with it.
+    override fun onCleared() {
+        criticalForce?.teardown()
+        criticalForce = null
+    }
 }
 
 internal data class MaxEditRequest(val grip: GripSpec, val fromNew: Boolean = false)

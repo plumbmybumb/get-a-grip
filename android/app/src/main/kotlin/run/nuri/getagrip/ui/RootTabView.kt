@@ -17,6 +17,13 @@ import androidx.lifecycle.viewModelScope
 import run.nuri.getagrip.runner.WorkoutViewModel
 import run.nuri.getagrip.runner.RunnerSession
 import run.nuri.getagrip.runner.CuePlayer
+import run.nuri.getagrip.BuildConfig
+import androidx.activity.compose.LocalActivity
+import run.nuri.getagrip.ui.criticalforce.CriticalForceSession
+import run.nuri.getagrip.engine.CriticalForceHands
+import run.nuri.getagrip.runner.CriticalForceServiceController
+import run.nuri.getagrip.ui.criticalforce.CriticalForceTestRequest
+import run.nuri.getagrip.ui.criticalforce.CriticalForceTestScreen
 import run.nuri.getagrip.runner.AndroidActivityPublisher
 import run.nuri.getagrip.runner.AndroidSessionServiceController
 import run.nuri.getagrip.store.LogIdentity
@@ -112,7 +119,7 @@ import run.nuri.getagrip.ui.tour.tourAnchor
 enum class Tab(private val key: String, val icon: ImageVector) {
     Today("Today", ClimbingIcon),
     History("History", Icons.AutoMirrored.Outlined.ShowChart),
-    Maxes("Maxes", Icons.Outlined.Scale),
+    Maxes("Benchmarks", Icons.Outlined.Scale),
     Settings("Settings", Icons.Outlined.Settings);
 
     val label: String get() = L10n.tr(key)
@@ -221,6 +228,39 @@ fun RootTabView() {
 
     // Which screen the root is presenting survives a rotation — see `RootPresentation`.
     val presentation: RootPresentation = viewModel { RootPresentation() }
+
+    // THE CRITICAL FORCE TEST replaces the root like the max test: the phone is on a bench
+    // and both hands are on the edge. Its session lives in `RootPresentation`, so a
+    // recreation mid-test keeps the test.
+    fun openCriticalForce(grip: GripSpec, hands: CriticalForceHands) {
+        if (presentation.criticalForce != null) return
+        // One cue player for the visit; each hand gets a fresh test that plays through it.
+        val cues = CuePlayer(appContext, diagnostic = device::recordAudio)
+        val scope = presentation.viewModelScope
+        presentation.criticalForce = CriticalForceTestRequest(
+            grip = grip,
+            hands = hands,
+            newSession = { CriticalForceSession(scope = scope, cues = cues) },
+            service = CriticalForceServiceController(appContext),
+        )
+    }
+    val launchIntent = LocalActivity.current?.intent
+    LaunchedEffect(Unit) {
+        // DEBUG `--ez previewCriticalForce true`: open the test for a headless screenshot.
+        if (BuildConfig.DEBUG && !presentation.previewedCriticalForce &&
+            launchIntent?.getBooleanExtra("previewCriticalForce", false) == true) {
+            presentation.previewedCriticalForce = true
+            openCriticalForce(templates.recentGrips.firstOrNull() ?: GripSpec(), CriticalForceHands.OneAtATime(Side.left))
+        }
+    }
+    val criticalForce = presentation.criticalForce
+    if (criticalForce != null) {
+        CriticalForceTestScreen(criticalForce, onClose = {
+            presentation.criticalForce = null
+            feed.refresh()
+        })
+        return
+    }
     var building by presentation::building
     val builderMode = building
     if (builderMode != null) {
@@ -385,6 +425,7 @@ fun RootTabView() {
                     onShowHistory = { current = Tab.History },
                     onLogSession = { loggingSession = true },
                     onOpenGauge = { liveGauge = true },
+                    onCriticalForce = ::openCriticalForce,
                     // The two presentations Today cannot see (both hosted here, Today composed beneath), so the
                     // guard has to be told.
                     canPresentImport = !loggingSession,
@@ -398,6 +439,7 @@ fun RootTabView() {
                     onAddMax = { seed -> newMax = NewMaxDraft(seed ?: templates.recentGrips.firstOrNull() ?: GripSpec()) },
                     onEdit = { grip -> editingMax = MaxEditRequest(grip) },
                     onMeasure = { grip, side -> measuring = MeasureRequest(grip, side) },
+                    onCriticalForce = ::openCriticalForce,
                     cardsAnchor = Modifier.tourAnchor(TourTarget.MaxesCurves),
                     manageAnchor = Modifier.tourAnchor(TourTarget.MaxesManage),
                 )

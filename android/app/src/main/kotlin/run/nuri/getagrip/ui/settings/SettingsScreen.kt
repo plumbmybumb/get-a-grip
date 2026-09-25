@@ -69,6 +69,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -206,6 +207,7 @@ private fun SettingsRoot(
             }
 
             WeightUnitSetting(LocalSettingsStore.current)
+            BodyWeightSetting(LocalSettingsStore.current)
 
             // The live gauge is a button on Today's bar (2026-09-20): one door, not two.
 
@@ -830,5 +832,40 @@ internal fun WeightUnitSetting(settings: run.nuri.getagrip.store.SettingsStore) 
                 ) { settings.setWeightUnit(option) }
             }
         }
+    }
+}
+
+/// Asked once by the first critical force test; this is the only place it changes afterwards.
+/// Each test froze its own copy, so a change here never rewrites a result.
+@Composable
+internal fun BodyWeightSetting(settings: run.nuri.getagrip.store.SettingsStore) {
+    val palette = LocalGripPalette.current
+    Card {
+        Text(tr("Body weight"), style = MaterialTheme.typography.titleMedium, color = palette.inkPrimary)
+        val kg = settings.bodyWeightKg
+        if (kg != null) {
+            run.nuri.getagrip.ui.components.ValueRow(
+                title = tr("Body weight"),
+                value = WeightUnits.fromKg(kg),
+                range = WeightUnits.sliderRange(40.0..110.0),
+                unit = WeightUnits.symbol,
+                limit = WeightUnits.fromKg(25.0..250.0),
+                step = 0.5,
+                decimals = 1,
+                modifier = Modifier.testTag("settings.bodyWeight"),
+            ) { settings.setBodyWeightKg(WeightUnits.toKg(it)) }
+        } else {
+            androidx.compose.material3.TextButton(
+                onClick = { settings.setBodyWeightKg(70.0) },
+                modifier = Modifier.testTag("settings.bodyWeight.set"),
+            ) {
+                Text(tr("Set body weight"), color = palette.graphite, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        Text(
+            tr("Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result."),
+            style = MaterialTheme.typography.bodySmall,
+            color = palette.inkSecondary,
+        )
     }
 }

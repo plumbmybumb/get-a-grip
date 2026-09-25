@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -94,6 +95,25 @@ fun HoldToDiscardButton(modifier: Modifier = Modifier, onDiscard: () -> Unit) {
     )
 }
 
+/// Ending a critical force test is a hold, like ending a session. Before pull 16 it throws
+/// the test away, and the label says so in alarm red; after, it keeps what was run, so the
+/// ink is graphite, the colour of an ordinary action.
+@Composable
+fun HoldToStopTestButton(canKeep: Boolean, modifier: Modifier = Modifier, onStop: () -> Unit) {
+    val palette = LocalGripPalette.current
+    HoldButton(
+        modifier = modifier,
+        idleLabel = if (canKeep) tr("Hold to finish now") else tr("Hold to stop"),
+        holdingLabel = tr("Keep holding…"),
+        spokenLabel = if (canKeep) tr("Finish test now") else tr("Stop test"),
+        trackAlpha = 0.16f,
+        fillAlpha = 0.42f,
+        cancel = HoldCancel.LeavesBounds(SLIDE_SLOP_DP),
+        tint = if (canKeep) palette.graphite else palette.alarm,
+        onFire = onStop,
+    )
+}
+
 /// Long enough to be deliberate, short enough not to feel like a punishment.
 private const val HOLD_MILLIS = 900L
 private const val SLIDE_SLOP_DP = 24f
@@ -117,6 +137,7 @@ private fun HoldButton(
     trackAlpha: Float,
     fillAlpha: Float,
     cancel: HoldCancel,
+    tint: Color = LocalGripPalette.current.alarm,
     onFire: () -> Unit,
 ) {
     val palette = LocalGripPalette.current
@@ -162,7 +183,7 @@ private fun HoldButton(
             // outgrew the button at low progress and became a circle (iOS). Clipping the PARENT keeps
             // the fill's outline the button's: rounded leading edge, straight sweep, never past bounds.
             .clip(CircleShape)
-            .background(palette.alarm.copy(alpha = trackAlpha))
+            .background(tint.copy(alpha = trackAlpha))
             .pointerInput(cancel) {
                 val slopPx = when (cancel) {
                     is HoldCancel.LeavesBounds -> cancel.slopDp.dp.toPx()
@@ -213,7 +234,7 @@ private fun HoldButton(
     ) {
         // Decoration must not measure the button: the label stays in charge of height.
         Canvas(Modifier.matchParentSize()) {
-            drawRect(palette.alarm.copy(alpha = fillAlpha),
+            drawRect(tint.copy(alpha = fillAlpha),
                 size = Size(size.width * progress.value, size.height))
         }
         // Reserve both labels, so pressing never moves the control under the finger.
@@ -221,7 +242,7 @@ private fun HoldButton(
             vertical = Metrics.buttonVerticalPadding), contentAlignment = Alignment.Center) {
             for ((label, visible) in listOf(idleLabel to !isHolding, holdingLabel to isHolding)) {
                 Text(label, style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold, color = palette.alarm,
+                    fontWeight = FontWeight.SemiBold, color = tint,
                     textAlign = TextAlign.Center,
                     modifier = if (visible) Modifier else Modifier.alpha(0f).clearAndSetSemantics {})
             }

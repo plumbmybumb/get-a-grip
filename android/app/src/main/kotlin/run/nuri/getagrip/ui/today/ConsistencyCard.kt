@@ -312,7 +312,7 @@ internal fun spokenSummary(days: List<DayRecord>): String {
         if (complete > 0) add(L10n.tr("%d %s complete", complete, L10n.tr(if (complete == 1) "day" else "days")))
         // Named: the notch is a distinction the drawing makes, so speech makes it too.
         if (climbed > 0) add(L10n.tr("%d at the climbing gym", climbed))
-        if (benchmarked > 0) add(L10n.tr("%d max testing", benchmarked))
+        if (benchmarked > 0) add(L10n.tr("%d testing", benchmarked))
         if (partial > 0) add(trQuantity("%d partial", partial))
         if (missed > 0) add(trQuantity("%d missed", missed))
     }

@@ -60,7 +60,7 @@ class BaselineProfileGenerator {
             device.waitForIdle()
         }
 
-        for (tab in listOf("History", "Maxes", "Settings")) {
+        for (tab in listOf("History", "Benchmarks", "Settings")) {
             tabBar(tab)?.click()
             device.waitForIdle()
             skipTourIfShown()

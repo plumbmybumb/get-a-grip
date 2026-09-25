@@ -190,8 +190,8 @@ object TourScript {
             ),
             TourStep(
                 target = TourTarget.MaxesCurves,
-                title = L10n.tr("Maxes"),
-                body = L10n.tr("Every grip's ceiling, drawn over time. Measure one from here — a measured max marks the day as a benchmark, and your percent targets follow the newest number on their own."),
+                title = L10n.tr("Benchmarks"),
+                body = L10n.tr("Each grip's max and critical force. Measure again opens the gauge for a max; Test critical force runs the four-minute test. Edit changes your hand values."),
                 tab = 2,
             ),
             TourStep(

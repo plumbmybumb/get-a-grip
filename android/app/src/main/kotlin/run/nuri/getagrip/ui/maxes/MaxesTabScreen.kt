@@ -68,6 +68,17 @@ import run.nuri.getagrip.ui.components.MaxChart
 import run.nuri.getagrip.ui.components.MaxPoint
 import run.nuri.getagrip.ui.components.MaxSeries
 import run.nuri.getagrip.ui.components.SecondaryButton
+import run.nuri.getagrip.data.CriticalForceRecordEntity
+import run.nuri.getagrip.data.latestHands
+import run.nuri.getagrip.engine.CriticalForceHands
+import run.nuri.getagrip.ui.criticalforce.CriticalForceHistorySheet
+import run.nuri.getagrip.ui.criticalforce.handName
+import run.nuri.getagrip.ui.criticalforce.roundedPercent
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.preview.PreviewWorld
 import run.nuri.getagrip.ui.theme.LocalGripPalette
@@ -96,9 +107,12 @@ fun MaxesTabScreen(
     cardsAnchor: Modifier = Modifier,
     manageAnchor: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
+    /// The critical force test, for a grip and how its hands are tested. The host decides
+    /// where it shows.
+    onCriticalForce: (GripSpec, CriticalForceHands) -> Unit = { _, _ -> },
 ) {
     MaxesOverview(onAddMax, onMeasure, onEdit, modifier = modifier,
-        cardsAnchor = cardsAnchor, manageAnchor = manageAnchor, feed = feed)
+        cardsAnchor = cardsAnchor, manageAnchor = manageAnchor, feed = feed, onCriticalForce = onCriticalForce)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,6 +127,7 @@ private fun MaxesOverview(
     cardsAnchor: Modifier = Modifier,
     manageAnchor: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
+    onCriticalForce: (GripSpec, CriticalForceHands) -> Unit = { _, _ -> },
 ) {
     val palette = LocalGripPalette.current
     val templates = LocalTemplateStore.current
@@ -122,9 +137,14 @@ private fun MaxesOverview(
     // the revision too, so a write made while this tab is up still reaches it.
     LaunchedEffect(feed, templates.writeRevision) { feed.refreshIfStale() }
 
-    // Grouped by the feed, off the main thread, beside the read — not here on every visit.
-    val groups = feed.maxGroups
+    // Maxes grouped by the feed, off the main thread, beside the read — not here on every
+    // visit. Critical force lives on the SAME card as the max it is a share of: the ratio is
+    // the point of it, and a section of its own at the bottom left it far from that max.
+    val tests = templates.criticalForceRecords
+    val groups = remember(feed.maxGroups, tests) { benchmarkGroupsOf(feed.maxGroups, tests) }
     val tested = remember(groups) { groups.mapTo(HashSet()) { it.key } }
+    /// The grip whose critical force history is open.
+    var historyGrip by remember { mutableStateOf<GripSpec?>(null) }
     // Grips your routines train that have never seen a number — an invitation, not a
     // reproach, and only once routines exist at all.
     val invitations = if (templates.routines.isEmpty()) emptyList()
@@ -136,7 +156,7 @@ private fun MaxesOverview(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             LargeTopAppBar(
-                title = { Text(tr("Maxes")) },
+                title = { Text(tr("Benchmarks")) },
                 actions = {
                     IconButton(onClick = { onAddMax(null) },
                         modifier = manageAnchor.testTag("maxes.add")) {
@@ -166,7 +186,7 @@ private fun MaxesOverview(
                 // icon-sized version of.
                 Text(
                     templates.lastMeasuredMaxAt?.let { L10n.tr("Tested %s", relative(it)) }
-                        ?: tr("Your ceiling, per grip"),
+                        ?: tr("Your ceiling and endurance, per grip"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = palette.inkTertiary,
                 )
@@ -179,7 +199,10 @@ private fun MaxesOverview(
                     // The FIRST card carries the anchor. Lighting the whole `LazyColumn` would
                     // be lighting the screen, which is not a spotlight; the first card is what
                     // "a grip's ceiling, drawn over time" actually looks like.
-                    GripCard(group, onMeasure, onEdit, if (group.key == groups.first().key) cardsAnchor else Modifier)
+                    GripCard(group, onMeasure, onEdit,
+                        onHistory = { historyGrip = group.grip },
+                        onCriticalForce = onCriticalForce,
+                        anchor = if (group.key == groups.first().key) cardsAnchor else Modifier)
                 }
                 items(invitations, key = { "invite-${it.key}" }) { grip ->
                     InvitationCard(grip, if (groups.isEmpty() && grip == invitations.first()) cardsAnchor else Modifier) { onMeasure(grip, Side.left) }
@@ -200,6 +223,54 @@ private fun MaxesOverview(
 
         }
     }
+
+    // Outside the list, so the sheet outlives the card it came from: deleting a grip's last
+    // test removes the card while its Undo is still on offer.
+    historyGrip?.let { grip ->
+        CriticalForceHistorySheet(gripKey = grip.key, title = grip.displayName, onClose = { historyGrip = null })
+    }
+}
+
+// MARK: - Benchmark groups
+
+/// One grip's card: its maxes (possibly none) and its critical force tests (possibly none),
+/// each oldest first with every hand mixed.
+internal class BenchmarkGroup(val maxes: MaxGripGroup, val tests: List<CriticalForceRecordEntity>) {
+    val key: String get() = maxes.key
+    val grip: GripSpec get() = maxes.grip
+    val lastActivity: Instant =
+        listOfNotNull(maxes.records.lastOrNull()?.recordedAt, tests.lastOrNull()?.recordedAt).maxOrNull() ?: Instant.MIN
+}
+
+/// Every grip with a max OR a critical force test — a grip with only a test still gets its
+/// card. Most recently active first; a date tie (same morning) breaks on the key, so grips
+/// don't swap between launches.
+internal fun benchmarkGroupsOf(maxGroups: List<MaxGripGroup>, tests: List<CriticalForceRecordEntity>): List<BenchmarkGroup> {
+    val maxesByKey = maxGroups.associateBy { it.key }
+    val testsByKey = tests.sortedBy { it.recordedAt }.groupBy { it.gripKey }
+    return (maxesByKey.keys + testsByKey.keys).map { key ->
+        val cf = testsByKey[key].orEmpty()
+        val maxes = maxesByKey[key] ?: MaxGripGroup(key, cf.last().grip, emptyList())
+        BenchmarkGroup(maxes, cf)
+    }.sortedWith(compareByDescending<BenchmarkGroup> { it.lastActivity }.thenBy { it.key })
+}
+
+/// The hands with a test, in the house order: both, left, right.
+private fun criticalForceSides(group: BenchmarkGroup): List<Side> =
+    listOf(Side.both, Side.left, Side.right).filter { side -> group.tests.any { it.side == side } }
+
+/// "Critical force up 1.2 kg since 12 Jul" — the newest test against the one before it, on
+/// the same hand.
+internal fun criticalForceProgressLine(tests: List<CriticalForceRecordEntity>): String? {
+    val newest = tests.lastOrNull() ?: return null
+    val series = tests.filter { it.side == newest.side }
+    if (series.size < 2) return L10n.tr("Critical force tested %s", relative(newest.recordedAt))
+    val previous = series[series.size - 2]
+    val delta = newest.criticalForceKg - previous.criticalForceKg
+    val when_ = SHORT_DATE.format(previous.recordedAt.atZone(ZoneId.systemDefault()))
+    if (Math.abs(delta) < 0.05) return L10n.tr("Critical force held since %s", when_)
+    val verb = if (delta > 0) L10n.tr("up") else L10n.tr("down")
+    return L10n.tr("Critical force %s %s %s since %s", verb, WeightUnits.number(Math.abs(delta)), WeightUnits.symbol, when_)
 }
 
 // MARK: - Grouping (`MaxGripGroup` and `groupsOf` live beside the read, in `HistoryFeed`)
@@ -260,14 +331,21 @@ internal fun relative(instant: Instant, now: Instant = Instant.now()): String {
 
 @Composable
 private fun GripCard(
-    group: MaxGripGroup,
+    benchmark: BenchmarkGroup,
     onMeasure: (GripSpec, Side) -> Unit,
     onEdit: (GripSpec) -> Unit,
+    onHistory: () -> Unit,
+    onCriticalForce: (GripSpec, CriticalForceHands) -> Unit,
     anchor: Modifier = Modifier,
 ) {
     val palette = LocalGripPalette.current
+    val group = benchmark.maxes
+    val tests = benchmark.tests
+    val hasMax = group.records.isNotEmpty()
     val sides = remember(group) { presentSides(group) }
-    val line = remember(group, WeightUnits.current) { progressLine(group) }
+    val cfSides = remember(benchmark) { criticalForceSides(benchmark) }
+    val line = remember(group, WeightUnits.current) { if (hasMax) progressLine(group) else null }
+    val cfLine = remember(tests, WeightUnits.current) { criticalForceProgressLine(tests) }
 
     Card(anchor) {
         Row(
@@ -286,10 +364,22 @@ private fun GripCard(
                 modifier = Modifier.weight(1f),
             )
         }
-        CurrentReadout(group, sides)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (tests.isNotEmpty()) CapsLabel(tr("Max"))
+            if (hasMax) {
+                CurrentReadout(group, sides)
+            } else {
+                Text(
+                    tr("No max yet. Measure one to see critical force as a share of it."),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = palette.inkTertiary,
+                )
+            }
+        }
+        if (tests.isNotEmpty()) CriticalForceReadout(benchmark, cfSides)
 
         // A chart needs two points to have a direction; one record is a fact, not a trend.
-        if (group.records.size >= 2) {
+        if (group.records.size + tests.size >= 2) {
             MaxChart(
                 sides.map { side ->
                     MaxSeries(
@@ -299,20 +389,95 @@ private fun GripCard(
                     )
                 },
                 Modifier.fillMaxWidth(),
+                criticalForce = cfSides.map { side ->
+                    MaxSeries(
+                        side = side,
+                        points = tests.filter { it.side == side }
+                            .map { MaxPoint(it.recordedAt.toEpochMilli().toDouble(), it.criticalForceKg) },
+                    )
+                },
             )
         }
 
-        Text(line, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-            color = palette.inkTertiary)
+        line?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                color = palette.inkTertiary)
+        }
+        cfLine?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                color = palette.inkTertiary)
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { onEdit(group.grip) }, modifier = Modifier.weight(1f)
-                .testTag("maxes.edit.${group.key}")) {
-                Text(tr("Edit"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold)
+            if (hasMax) {
+                TextButton(onClick = { onEdit(group.grip) }, modifier = Modifier.weight(1f)
+                    .testTag("maxes.edit.${group.key}")) {
+                    Text(tr("Edit"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold)
+                }
+            } else {
+                Spacer(Modifier.weight(1f))
             }
-            SecondaryButton(title = tr("Measure again"), modifier = Modifier.weight(1f)
-                .testTag("maxes.measure.${group.key}")) {
+            SecondaryButton(title = if (hasMax) tr("Measure again") else tr("Measure max"),
+                modifier = Modifier.weight(1f).testTag("maxes.measure.${group.key}")) {
                 onMeasure(group.grip, Side.left)
+            }
+        }
+        // Only on a grip that has been tested: a critical force door on every card was an
+        // orphan row, and the test's own setup reaches any grip.
+        if (tests.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                val historyLabel = L10n.tr("All critical force tests on %s", group.grip.spoken)
+                TextButton(onClick = onHistory, modifier = Modifier.weight(1f)
+                    .semantics { contentDescription = historyLabel }
+                    .testTag("maxes.cf.history.${group.key}")) {
+                    Icon(Icons.AutoMirrored.Outlined.List, contentDescription = null, tint = palette.inkPrimary,
+                        modifier = Modifier.size(18.dp))
+                    Text(tr("All tests"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 6.dp))
+                }
+                SecondaryButton(title = tr("Test critical force"),
+                    modifier = Modifier.weight(1f).testTag("maxes.cf.test.${group.key}")) {
+                    onCriticalForce(group.grip, tests.latestHands ?: CriticalForceHands.OneAtATime(Side.left))
+                }
+            }
+        }
+    }
+}
+
+/// Critical force per hand, each with its share of that hand's max when it was tested.
+@Composable
+private fun CriticalForceReadout(group: BenchmarkGroup, sides: List<Side>) {
+    val palette = LocalGripPalette.current
+    val largeText = LocalDensity.current.fontScale >= 1.5f
+    @Composable fun Readout(side: Side, modifier: Modifier = Modifier) {
+        group.tests.lastOrNull { it.side == side }?.let { test ->
+            val pct = test.percentOfMax?.let { roundedPercent(it) }
+            val label = L10n.tr("Critical force, %s",
+                if (side == Side.both) L10n.tr("both hands") else side.displayName)
+            val value = WeightUnits.text(test.criticalForceKg) +
+                (pct?.let { ", " + L10n.tr("%d %% of max", it) } ?: "")
+            Column(modifier.testTag("maxes.cf.current.${group.key}.${side.rawValue}")
+                .clearAndSetSemantics { contentDescription = "$label, $value" },
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(handName(side), style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+                    KgText(test.criticalForceKg, prominent = true)
+                    pct?.let {
+                        Text(tr("%d %%", it), style = MaterialTheme.typography.bodySmall,
+                            color = palette.inkSecondary, modifier = Modifier.padding(bottom = 2.dp))
+                    }
+                }
+            }
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        CapsLabel(tr("Critical force"))
+        if (largeText) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { sides.forEach { Readout(it) } }
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                sides.forEach { Readout(it, Modifier.weight(1f)) }
             }
         }
     }

@@ -130,3 +130,31 @@ class AndroidSessionServiceController(context: Context) : SessionServiceControll
         SessionForegroundService.stop(appContext)
     }
 }
+
+/// The same service for a critical force test. A test has no routine card to adopt, so it
+/// posts its own quiet one first (`LiveUpdateNotification.criticalForce`) — the service
+/// runs in whatever card is `pending`, and with none it treats the start as a stray.
+///
+/// iOS keeps the test alive the way it keeps a session alive, through `bluetooth-central`;
+/// without this, Android freezes a connected test the moment the phone is put down.
+class CriticalForceServiceController(context: Context) : SessionServiceController {
+    private val appContext = context.applicationContext
+    private val inner = AndroidSessionServiceController(appContext)
+    private var running = false
+
+    override fun begin() {
+        if (running) return
+        running = true
+        val card = LiveUpdateNotification.criticalForce(appContext)
+        SessionForegroundService.pending = card
+        runCatching { NotificationManagerCompat.from(appContext).notify(LiveUpdateNotification.NOTIFICATION_ID, card) }
+        inner.begin()
+    }
+
+    override fun end() {
+        if (!running) return
+        running = false
+        inner.end()
+        NotificationManagerCompat.from(appContext).cancel(LiveUpdateNotification.NOTIFICATION_ID)
+    }
+}

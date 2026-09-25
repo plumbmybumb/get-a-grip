@@ -183,10 +183,83 @@ object AnalysisExport {
         }
     }
 
+    /// One critical force test, as a value. See `CriticalForceRecordEntity`.
+    data class CriticalForceEntry(
+        val id: UUID = UUID.randomUUID(),
+        val grip: GripSpec = GripSpec(),
+        val side: Side = Side.both,
+        val day: DayStamp = DayStamp(0),
+        val recordedAt: Instant = Instant.EPOCH,
+        val protocolKey: String = CriticalForceProtocol.standard.key,
+        val criticalForceKg: Double = 0.0,
+        val wPrimeKgS: Double = 0.0,
+        val peakKg: Double = 0.0,
+        val endForceKg: Double? = null,
+        val repsRun: Int = 0,
+        val restsKept: Int = 0,
+        val restsTotal: Int = 0,
+        val bodyMassKg: Double? = null,
+        val maxAtTestKg: Double? = null,
+        val reps: List<CriticalForceRep> = emptyList(),
+    ) : JsonEncodable {
+
+        val testKey: String get() = MaxTable.key(grip.key, side)
+
+        /// Swift's `UUID.uuidString` is uppercase; the tiebreak compares that text.
+        val idText: String get() = id.toString().uppercase(Locale.ROOT)
+
+        override fun toJson(): JsonElement {
+            val fields = linkedMapOf<String, JsonElement>(
+                "id" to JsonPrimitive(idText),
+                "grip" to grip.toJson(),
+                "side" to JsonPrimitive(side.rawValue),
+                "day" to JsonPrimitive(day.raw),
+                "recordedAt" to JsonPrimitive(instantText(recordedAt)),
+                "protocolKey" to JsonPrimitive(protocolKey),
+                "criticalForceKg" to JsonPrimitive(criticalForceKg),
+                "wPrimeKgS" to JsonPrimitive(wPrimeKgS),
+                "peakKg" to JsonPrimitive(peakKg),
+            )
+            endForceKg?.let { fields["endForceKg"] = JsonPrimitive(it) }
+            fields["repsRun"] = JsonPrimitive(repsRun)
+            fields["restsKept"] = JsonPrimitive(restsKept)
+            fields["restsTotal"] = JsonPrimitive(restsTotal)
+            bodyMassKg?.let { fields["bodyMassKg"] = JsonPrimitive(it) }
+            maxAtTestKg?.let { fields["maxAtTestKg"] = JsonPrimitive(it) }
+            fields["reps"] = JsonArray(reps.map { it.toJson() })
+            return JsonObject(fields)
+        }
+
+        companion object {
+            fun fromJson(element: JsonElement?): CriticalForceEntry? =
+                JsonRead.obj(element)?.let { fromJson(it) }
+
+            fun fromJson(o: JsonObject): CriticalForceEntry = CriticalForceEntry(
+                id = SetPlan.uuidFromJson(o["id"]) ?: UUID.randomUUID(),
+                grip = o.valueOr("grip", GripSpec()) { GripSpec.fromJson(it) },
+                side = o.valueOr("side", Side.both) { Side.fromJson(it) },
+                day = DayStamp(o.intOr("day", 0)),
+                recordedAt = instantFromJson(o["recordedAt"]) ?: Instant.EPOCH,
+                protocolKey = o.stringOr("protocolKey", CriticalForceProtocol.standard.key),
+                criticalForceKg = o.doubleOr("criticalForceKg", 0.0),
+                wPrimeKgS = o.doubleOr("wPrimeKgS", 0.0),
+                peakKg = o.doubleOr("peakKg", 0.0),
+                endForceKg = o.optionalDouble("endForceKg"),
+                repsRun = o.intOr("repsRun", 0),
+                restsKept = o.intOr("restsKept", 0),
+                restsTotal = o.intOr("restsTotal", 0),
+                bodyMassKg = o.optionalDouble("bodyMassKg"),
+                maxAtTestKg = o.optionalDouble("maxAtTestKg"),
+                reps = o.optionalArray("reps")?.mapNotNull { CriticalForceRep.fromJson(it) } ?: emptyList(),
+            )
+        }
+    }
+
     /// Everything the formatter is allowed to know.
     data class Input(
         val sessions: List<Session> = emptyList(),
         val maxes: List<MaxEntry> = emptyList(),
+        val criticalForceTests: List<CriticalForceEntry> = emptyList(),
         /// The day the export was taken — the anchor of the 8-week boundary.
         val today: DayStamp = DayStamp(0),
         /// Passed in, never read from a clock here.
@@ -196,17 +269,23 @@ object AnalysisExport {
         val sessionsPerDayTarget: Int = 1,
     ) : JsonEncodable {
 
-        val isEmpty: Boolean get() = sessions.isEmpty() && maxes.isEmpty()
+        val isEmpty: Boolean get() = sessions.isEmpty() && maxes.isEmpty() && criticalForceTests.isEmpty()
 
-        override fun toJson(): JsonElement = JsonObject(
-            linkedMapOf(
+        /// `criticalForceTests` is omitted when empty, as the oracle's DTO does, so every
+        /// scenario written before tests existed re-encodes byte for byte.
+        override fun toJson(): JsonElement {
+            val fields = linkedMapOf<String, JsonElement>(
                 "sessions" to JsonArray(sessions.map { it.toJson() }),
                 "maxes" to JsonArray(maxes.map { it.toJson() }),
-                "today" to JsonPrimitive(today.raw),
-                "generatedOn" to JsonPrimitive(generatedOn.raw),
-                "sessionsPerDayTarget" to JsonPrimitive(sessionsPerDayTarget),
             )
-        )
+            if (criticalForceTests.isNotEmpty()) {
+                fields["criticalForceTests"] = JsonArray(criticalForceTests.map { it.toJson() })
+            }
+            fields["today"] = JsonPrimitive(today.raw)
+            fields["generatedOn"] = JsonPrimitive(generatedOn.raw)
+            fields["sessionsPerDayTarget"] = JsonPrimitive(sessionsPerDayTarget)
+            return JsonObject(fields)
+        }
 
         companion object {
             fun fromJson(element: JsonElement?): Input? =
@@ -215,6 +294,8 @@ object AnalysisExport {
             fun fromJson(o: JsonObject): Input = Input(
                 sessions = o.optionalArray("sessions")?.mapNotNull { Session.fromJson(it) } ?: emptyList(),
                 maxes = o.optionalArray("maxes")?.mapNotNull { MaxEntry.fromJson(it) } ?: emptyList(),
+                criticalForceTests = o.optionalArray("criticalForceTests")
+                    ?.mapNotNull { CriticalForceEntry.fromJson(it) } ?: emptyList(),
                 today = DayStamp(o.intOr("today", 0)),
                 generatedOn = DayStamp(o.intOr("generatedOn", 0)),
                 sessionsPerDayTarget = o.intOr("sessionsPerDayTarget", 1),
@@ -259,6 +340,7 @@ object AnalysisExport {
         out += legend(input, sessions)
         out += currentMaxes(maxes)
         out += maxHistory(maxes)
+        out += criticalForce(input.criticalForceTests)
         out += recentSessions(recent, maxes, cutoff)
         out += weeklyRollups(older, cutoff)
         out += consistency(sessions, input.sessionsPerDayTarget, input.today)
@@ -291,7 +373,7 @@ object AnalysisExport {
         out.add("- **Target kg** is what the rep was ASKED to pull for that hand, frozen at the time. Blank where the routine set no target or the grip had no max to take a percentage of.")
         out.add("- **Outcome** is one of `completed`, `earlyRelease` (came off the edge), `skipped` (deliberately passed over — skipped pulls ARE recorded, and they count toward the planned total but never toward the completed one; their kilogram cells are blank because the pull never happened, not zero), `aborted` (the session or the link ended mid-rep).")
         out.add("- **Hands**: `L` left, `R` right, `B` both.")
-        out.add("- **A climbing day counts as training.** A day at the gym is more finger load than the hangboard session it displaced, so `climbVolume` and `climbLimit` sessions settle a day the same way a routine session does. `benchmark` is a max-testing day, logged automatically the first time a gauge-measured max lands. `hangManual` is a weighted or max hang done away from the gauge.")
+        out.add("- **A climbing day counts as training.** A day at the gym is more finger load than the hangboard session it displaced, so `climbVolume` and `climbLimit` sessions settle a day the same way a routine session does. `benchmark` is a testing day, logged automatically the first time a gauge-measured max or a critical force test lands. `hangManual` is a weighted or max hang done away from the gauge.")
         out.add("")
 
         out.add("**Grip notation** — `20mm 4F HC` is a 20 mm edge, four fingers, half crimp.")
@@ -415,6 +497,27 @@ object AnalysisExport {
             }
             out.add("")
         }
+        return out
+    }
+
+    // MARK: - Critical force
+
+    /// Only when a test exists, so a history without one reads exactly as it always did.
+    private fun criticalForce(tests: List<CriticalForceEntry>): List<String> {
+        if (tests.isEmpty()) return emptyList()
+        val out = arrayListOf("## Critical force tests", "")
+        out.add("Each test is 24 all-out pulls of 7 s with 3 s rest on a fixed clock (protocol `7:3x24`). **CF** is the mean force of the final six pulls, measured only inside each 7-second window; force still applied after the bell is never counted. **W′** is the impulse above CF inside the pull windows, in kg·s. **End** is the mean of the last second of the final three pulls. % max divides CF by the max on file for that grip and hand when the test ran; % BW divides it by the body weight entered then. The 4-minute all-out test is reliable for tracking change but overestimates the load that can truly be sustained, by roughly a fifth in validation studies.")
+        out.add("")
+        out.add("| Date | Grip | Hand | CF kg | % max | % BW | W′ kg·s | End kg | Pulls | Rests kept |")
+        out.add("| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        for (t in tests.sortedWith(testsOldestFirst)) {
+            val pctMax = t.maxAtTestKg?.takeIf { it > 0 }
+                ?.let { roundedAwayFromZero(t.criticalForceKg / it * 100).toLong().toString() } ?: blank
+            val pctBW = t.bodyMassKg?.takeIf { it > 0 }
+                ?.let { roundedAwayFromZero(t.criticalForceKg / it * 100).toLong().toString() } ?: blank
+            out.add("| ${isoDay(t.day)} | ${gripCode(t.grip)} | ${handCode(t.side)} | ${kgText(t.criticalForceKg)} | $pctMax | $pctBW | ${Fmt.fixed(t.wPrimeKgS, 0)} | ${t.endForceKg?.let { kgText(it) } ?: blank} | ${t.repsRun} | ${t.restsKept}/${t.restsTotal} |")
+        }
+        out.add("")
         return out
     }
 
@@ -638,6 +741,12 @@ object AnalysisExport {
         }
     }
 
+    /// Swift's `recordedAt`, then `id.uuidString` (uppercase) — total.
+    private val testsOldestFirst = Comparator<CriticalForceEntry> { a, b ->
+        if (a.recordedAt != b.recordedAt) a.recordedAt.compareTo(b.recordedAt)
+        else a.idText.compareTo(b.idText)
+    }
+
     private val byGripThenHand = Comparator<MaxEntry> { a, b ->
         if (a.gripKey != b.gripKey) a.gripKey.compareTo(b.gripKey)
         else sideRank(a.side).compareTo(sideRank(b.side))
@@ -818,9 +927,9 @@ object AnalysisExport {
     enum class CSVScope { recent, all, workout }
     enum class CSVDetail { summary, pulls }
     data class CSVDocument(val text: String, val filename: String, val sessionCount: Int,
-                           val pullCount: Int, val maxCount: Int) {
+                           val pullCount: Int, val maxCount: Int, val criticalForceCount: Int = 0) {
         val byteCount: Int = text.toByteArray(Charsets.UTF_8).size
-        val isEmpty: Boolean get() = sessionCount == 0 && maxCount == 0
+        val isEmpty: Boolean get() = sessionCount == 0 && maxCount == 0 && criticalForceCount == 0
     }
 
     fun csv(input: Input, scope: CSVScope = CSVScope.recent, detail: CSVDetail = CSVDetail.summary): CSVDocument {
@@ -830,11 +939,11 @@ object AnalysisExport {
             scope != CSVScope.recent || it.day >= cutoff
         }.sortedWith(oldestFirst)
         val tables = tablesAtSessionTime(sessions, input.maxes)
-        val headers = "record,workout,date,started_utc,routine,kind,timing,minutes,effort_1_5,finger_strain_1_5,daily_target,completed,planned,set,pull,edge_mm,fingers,position,hand,planned_s,held_s,peak_kg,avg_kg,target_low_kg,target_high_kg,max_at_start_kg,outcome,source,notes,ended_utc,time_source,max_reference,started_elapsed_s,ended_elapsed_s,gap_before_s,planned_rest_s,planned_lead_in_s,recorded".split(",")
+        val headers = "record,workout,date,started_utc,routine,kind,timing,minutes,effort_1_5,finger_strain_1_5,daily_target,completed,planned,set,pull,edge_mm,fingers,position,hand,planned_s,held_s,peak_kg,avg_kg,target_low_kg,target_high_kg,max_at_start_kg,outcome,source,notes,ended_utc,time_source,max_reference,started_elapsed_s,ended_elapsed_s,gap_before_s,planned_rest_s,planned_lead_in_s,recorded,critical_force_kg,w_prime_kg_s,end_force_kg,body_mass_kg,rests_kept,rest_on_edge_s,protocol".split(",")
         val rows = arrayListOf(headers.joinToString(","))
         fun row(fields: Map<String, String>) { rows += headers.joinToString(",") { csvCell(fields[it] ?: "") } }
         val span = if (scope == CSVScope.recent) "since ${isoDay(cutoff)}" else scope.name
-        row(mapOf("record" to "guide", "date" to isoDay(input.generatedOn), "notes" to "Get a Grip CSV v2. workout is a permanent UUID; (workout,pull) identifies a recorded pull. record=workout contains totals; set or pull rows describe the same work: do not add them to workout totals. Summary groups recorded pulls by set, grip, hand and identical prescription. recorded counts outcomes, including skips; completed counts completed outcomes only. Summary planned_s and held_s are sums, peak_kg is the maximum, avg_kg is weighted by credited held_s; outcome lists counts. Workbook planned is the full planned pull count, including unattempted pulls. Dates are local training days; UTC timestamps are absolute. Blank is unavailable, never zero. ended_utc is the stored finish: runner_completion for newly timed sessions; legacy_save_or_end may include time on an old save screen. Manual logs have no known end instant. started_elapsed_s and ended_elapsed_s are host-monotonic observations from session start, including pauses and waiting; ended marks outcome recording, not necessarily physical release. Old timing is not_recorded; not_started means no engagement before an outcome. Summary offsets span the group only when all performed pulls have timing. gap_before_s includes pauses and waiting, not just rest. planned_rest_s and planned_lead_in_s are saved prescriptions (sums on set rows); rest includes set breaks. kg is force in kilograms; held_s is credited time above threshold. timing is inferred: gauge if any pull has positive force, timerOnly otherwise; logged means manual or no surviving detail. Skips and timer-only pulls have no force values. Target bounds are frozen prescriptions. max_at_start_kg uses only records at or before start; max_reference distinguishes hand_specific, both_hands, both_hands_fallback and no_recorded_max_at_start. Missing does not prove a grip was never benchmarked. Never add hand maxes. Effort and strain are 1-5, not Borg CR10. Fingers: I=index M=middle R=ring L=little T=thumb. fingerCurl starts in half crimp. Formula-like text is apostrophe-protected. No raw force trace or gauge model is stored. Scope: $span; detail: ${detail.name}."))
+        row(mapOf("record" to "guide", "date" to isoDay(input.generatedOn), "notes" to "Get a Grip CSV v3. workout is a permanent UUID; (workout,pull) identifies a recorded pull. record=workout contains totals; set or pull rows describe the same work: do not add them to workout totals. Summary groups recorded pulls by set, grip, hand and identical prescription. recorded counts outcomes, including skips; completed counts completed outcomes only. Summary planned_s and held_s are sums, peak_kg is the maximum, avg_kg is weighted by credited held_s; outcome lists counts. Workbook planned is the full planned pull count, including unattempted pulls. Dates are local training days; UTC timestamps are absolute. Blank is unavailable, never zero. ended_utc is the stored finish: runner_completion for newly timed sessions; legacy_save_or_end may include time on an old save screen. Manual logs have no known end instant. started_elapsed_s and ended_elapsed_s are host-monotonic observations from session start, including pauses and waiting; ended marks outcome recording, not necessarily physical release. Old timing is not_recorded; not_started means no engagement before an outcome. Summary offsets span the group only when all performed pulls have timing. gap_before_s includes pauses and waiting, not just rest. planned_rest_s and planned_lead_in_s are saved prescriptions (sums on set rows); rest includes set breaks. kg is force in kilograms; held_s is credited time above threshold. timing is inferred: gauge if any pull has positive force, timerOnly otherwise; logged means manual or no surviving detail. Skips and timer-only pulls have no force values. Target bounds are frozen prescriptions. max_at_start_kg uses only records at or before start; max_reference distinguishes hand_specific, both_hands, both_hands_fallback and no_recorded_max_at_start. Missing does not prove a grip was never benchmarked. Never add hand maxes. Effort and strain are 1-5, not Borg CR10. Fingers: I=index M=middle R=ring L=little T=thumb. fingerCurl starts in half crimp. Formula-like text is apostrophe-protected. record=cf_test is a critical force test (24 all-out pulls, 7 s on and 3 s off on a fixed clock); workout carries the test's UUID, critical_force_kg is the mean force of the final six pulls, w_prime_kg_s the impulse above it inside the pull windows, end_force_kg the mean of the last second of the final three pulls, completed the pulls run, planned the protocol's pulls, rests_kept the rests with at most 1 s still on the edge, max_at_start_kg and body_mass_kg the values on file when tested. Pulls detail adds record=cf_pull rows: avg_kg is the mean force inside that pull's 7 s window and rest_on_edge_s the seconds still on the edge after its bell. Force after the bell is never counted. The export carries no raw force trace or gauge model. Scope: $span; detail: ${detail.name}."))
         var pullCount = 0
         sessions.forEach { session ->
             val key = session.id.toString()
@@ -892,8 +1001,36 @@ object AnalysisExport {
             row(csvGrip(entry.grip, entry.side) + mapOf("record" to "max", "date" to isoDay(entry.day),
                 "started_utc" to instantText(entry.recordedAt), "peak_kg" to csvNumber(entry.kg), "source" to entry.source.rawValue))
         }
+        val tests = if (scope == CSVScope.workout) emptyList() else input.criticalForceTests.filter {
+            scope != CSVScope.recent || it.day >= cutoff
+        }.sortedWith(testsOldestFirst)
+        tests.forEach { test ->
+            val key = test.id.toString()
+            val proto = CriticalForceProtocol.fromKey(test.protocolKey)
+            row(csvGrip(test.grip, test.side) + mapOf("record" to "cf_test", "workout" to key,
+                "date" to isoDay(test.day), "started_utc" to instantText(test.recordedAt),
+                "completed" to test.repsRun.toString(), "planned" to proto.reps.toString(),
+                "peak_kg" to csvNumber(test.peakKg),
+                "max_at_start_kg" to (test.maxAtTestKg?.let(::csvNumber) ?: ""),
+                "critical_force_kg" to csvNumber(test.criticalForceKg),
+                "w_prime_kg_s" to csvNumber(test.wPrimeKgS),
+                "end_force_kg" to (test.endForceKg?.let(::csvNumber) ?: ""),
+                "body_mass_kg" to (test.bodyMassKg?.let(::csvNumber) ?: ""),
+                "rests_kept" to test.restsKept.toString(),
+                "protocol" to test.protocolKey))
+            if (detail != CSVDetail.pulls) return@forEach
+            test.reps.forEach { rep ->
+                row(csvGrip(test.grip, test.side) + mapOf("record" to "cf_pull", "workout" to key,
+                    "date" to isoDay(test.day), "pull" to (rep.index + 1).toString(),
+                    "planned_s" to csvNumber(proto.workSeconds),
+                    "peak_kg" to csvNumber(rep.peakKg),
+                    "avg_kg" to (rep.meanKg?.let(::csvNumber) ?: ""),
+                    "rest_on_edge_s" to (rep.restLoadSeconds?.let(::csvNumber) ?: ""),
+                    "protocol" to test.protocolKey))
+            }
+        }
         val suffix = if (scope == CSVScope.workout) "workout-${isoDay(sessions.firstOrNull()?.day ?: input.today)}" else "training-${scope.name}"
-        return CSVDocument(rows.joinToString("\r\n") + "\r\n", "get-a-grip-$suffix-${detail.name}.csv", sessions.size, pullCount, maxes.size)
+        return CSVDocument(rows.joinToString("\r\n") + "\r\n", "get-a-grip-$suffix-${detail.name}.csv", sessions.size, pullCount, maxes.size, tests.size)
     }
 
     private fun validElapsed(value: Double?): Double? = value?.takeIf { it.isFinite() && it >= 0 }

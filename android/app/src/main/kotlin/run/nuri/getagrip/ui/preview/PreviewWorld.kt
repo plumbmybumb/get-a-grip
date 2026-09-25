@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import run.nuri.getagrip.data.CriticalForceRecordEntity
 import run.nuri.getagrip.data.LogDayStamp
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.SessionTemplateEntity
@@ -87,6 +88,7 @@ private class PreviewGateway(
     override suspend fun logsFrom(dayKey: Int) = logs.filter { it.dayKey >= dayKey }
     override suspend fun allLogs() = logs
     override suspend fun allMaxes() = maxes
+    override suspend fun allCriticalForce() = emptyList<CriticalForceRecordEntity>()
     override suspend fun log(id: UUID) = logs.firstOrNull { it.id == id }
     override suspend fun logsFor(templateID: UUID) = logs.filter { it.templateID == templateID }
     override suspend fun dayStamps(before: Instant) = logs.filter { it.startedAt.isBefore(before) }.map {
