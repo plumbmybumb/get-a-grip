@@ -76,6 +76,7 @@ struct GaugeView: View {
             guard !Task.isCancelled else { return }
             waitingForSignal = true
         }
+        .keepsScreenAwake()
         .onDisappear {
             // Never leave the device streaming: it drains its battery and the radio.
             if device.isStreaming { device.stopStreaming(cause: .screenClosed) }

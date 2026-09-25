@@ -165,6 +165,7 @@ struct MaxMeasureView: View {
                 device.startStreaming(cause: .reconnect)
             }
         }
+        .keepsScreenAwake()
         .onDisappear { teardown() }
         .sheet(isPresented: $adjusting) {
             MaxMeasurementAdjustmentSheet(results: draft.results,
