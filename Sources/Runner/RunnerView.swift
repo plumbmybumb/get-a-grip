@@ -48,15 +48,6 @@ struct RunnerView: View {
     private static let wideScale: CGFloat = 1.4
 
     @State private var session: RunnerSession?
-    /// TEST BRANCH: Settings › "Progress style (test)" picks how sets and pulls are shown
-    /// (`RunnerProgressBars.swift`); a DEBUG `-progressStyle` launch argument overrides it.
-    /// `.baseline` is exactly today's screen.
-    @Environment(SettingsStore.self) private var settings
-    private var progressStyle: RunnerProgressStyle {
-        RunnerProgressStyle.resolved(stored: settings.runnerProgressStyle)
-    }
-    /// Whether a progress variant replaces the panel's own progress bar and counters.
-    private var usesProgressInstrument: Bool { progressStyle != .baseline }
     /// Whether the grip hangs off the Dynamic Island — a fact about the DEVICE, resolved
     /// once the view is in a window (`IslandHand.isSupported` has nothing to read before
     /// that). Answered once because both the overlay and the layout depend on it.
@@ -263,9 +254,6 @@ struct RunnerView: View {
 
     @ViewBuilder
     private func live(_ session: RunnerSession) -> some View {
-        #if DEBUG
-        let _ = RunnerProgressProbe.count("RunnerView.live")
-        #endif
         if typeSize.isAccessibilitySize {
             // At large accessibility sizes a small phone cannot hold five readable
             // actions and the measurements at once. Keep every action reachable by
@@ -494,101 +482,27 @@ struct RunnerView: View {
             }
         }
         .animation(Motion.state(reduceMotion), value: ambient)
-        return graphRegionLayout(session, core: core, wide: wide)
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
-            traceGeometry.region = $0
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("runner.graph")
-        .tourAnchor(.runnerTrace)
-    }
-
-    /// Places the open region's contents and its trace. Today's layout: the trace is the
-    /// whole region's background. With a progress instrument the region is SPLIT and the
-    /// canvas stops short of the glass (plus a margin for the blur kernel), so the glass
-    /// samples a static backdrop instead of re-blurring the curve at display rate.
-    @ViewBuilder
-    private func graphRegionLayout(_ session: RunnerSession, core: some View, wide: Bool) -> some View {
-        let minHeight: CGFloat? = typeSize.isAccessibilitySize ? 240 : nil
-        // DEBUG `-progressOverTrace`: the UNMITIGATED control for the frame-cost
-        // comparison — the canvas runs under the glass as if the instrument simply floated.
-        #if DEBUG
-        let overTrace = ProcessInfo.processInfo.arguments.contains("-progressOverTrace")
-        #else
-        let overTrace = false
-        #endif
-        if overTrace, progressStyle != .baseline, let instrument = progressInstrument(session) {
-            core.frame(minHeight: minHeight, maxHeight: .infinity)
-                .overlay(alignment: progressStyle == .segments ? .top
-                                    : progressStyle == .timeline ? .bottom : .leading) {
-                    instrument.padding(progressStyle == .rails ? .vertical : (progressStyle == .segments ? .top : .bottom), 14)
-                }
-                .background { regionTrace(session, wide: wide) }
-        } else if progressStyle != .baseline, let instrument = progressInstrument(session) {
-            // 14 pt clear of the panel and the dock: the shared GlassEffectContainer
-            // merges shapes closer than its 24 pt spacing, and these must stay separate.
-            switch progressStyle {
-            case .segments:
-                VStack(spacing: 10) {
-                    instrument.padding(.top, 14)
-                    core.frame(maxHeight: .infinity)
-                        .background { regionTrace(session, wide: wide) }
-                }
-                .frame(minHeight: minHeight, maxHeight: .infinity)
-            case .timeline:
-                VStack(spacing: 10) {
-                    core.frame(maxHeight: .infinity)
-                        .background { regionTrace(session, wide: wide) }
-                    instrument.padding(.bottom, 14)
-                }
-                .frame(minHeight: minHeight, maxHeight: .infinity)
-            default:
-                HStack(spacing: 10) {
-                    instrument.padding(.vertical, 14)
-                    core.frame(maxHeight: .infinity)
-                        .background { regionTrace(session, wide: wide, bleedsLeading: false) }
-                }
-                .frame(minHeight: minHeight, maxHeight: .infinity)
+        return core
+            .frame(minHeight: typeSize.isAccessibilitySize ? 240 : nil, maxHeight: .infinity)
+            .background { regionTrace(session, wide: wide) }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+                traceGeometry.region = $0
             }
-        } else {
-            core.frame(minHeight: minHeight, maxHeight: .infinity)
-                .background { regionTrace(session, wide: wide) }
-        }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("runner.graph")
+            .tourAnchor(.runnerTrace)
     }
 
-    /// On the phone the trace is this region's background, stretched sideways to the
-    /// screen edges but never under the panel or dock — see `backgroundTrace`. The
+    /// On the phone the trace is this region's background, stretched to the screen's
+    /// trailing edge — where its newest seconds arrive — but never under the panel or
+    /// dock (see `backgroundTrace`); its leading edge stays on the column's margin. The
     /// wide layout's trace is the whole screen's background instead.
     @ViewBuilder
-    private func regionTrace(_ session: RunnerSession, wide: Bool, bleedsLeading: Bool = true) -> some View {
+    private func regionTrace(_ session: RunnerSession, wide: Bool) -> some View {
         if !timerOnly, !wide {
             liveTrace(session, plot: ForceTraceView.PlotInsets(top: 12, bottom: 6, trailing: 8))
-                .padding(.leading, bleedsLeading ? -Metrics.hPadding : 0)
                 .padding(.trailing, -Metrics.hPadding)
         }
-    }
-
-    /// `-progressStyle nested`: the tracks drawn inside the panel, in place of the hold
-    /// bar and the counters row. `withRestWord` is off in the rest summary, whose badge
-    /// already says REST.
-    private func nestedProgress(_ session: RunnerSession, withRestWord: Bool = true) -> AnyView? {
-        guard progressStyle == .nested, !timerOnly, !session.isFinished else { return nil }
-        let model = SessionProgressModel(slots: session.runner.slots, results: session.runner.results,
-                                         phase: session.snapshot.phase)
-        guard model.current != nil else { return nil }
-        return AnyView(NestedProgressRow(model: model, session: session, tint: tint(session)) {
-            if withRestWord { restPhaseLabel(session) }
-        })
-    }
-
-    private func progressInstrument(_ session: RunnerSession) -> RunnerProgressInstrument? {
-        guard !timerOnly, !session.isFinished, progressStyle != .nested else { return nil }
-        let model = SessionProgressModel(slots: session.runner.slots,
-                                         results: session.runner.results,
-                                         phase: session.snapshot.phase)
-        guard model.current != nil else { return nil }
-        return RunnerProgressInstrument(style: progressStyle, model: model, session: session,
-                                        tint: tint(session))
     }
 
     /// The graph's canvas with its phase-tint blend, placed by the caller: the open
@@ -661,196 +575,87 @@ struct RunnerView: View {
 
     /// The long-rest summary uses only the existing space above the graph. Reserve
     /// that whole block so the graph and controls stay anchored through a hand swap.
-    /// Accessibility sizes reflow naturally inside the existing scrolling layout.
+    /// The time bar, the routine and the counters stay where they are through a long
+    /// rest — that is when the whole routine is worth reading — and only the block above
+    /// them hands over to the rest summary.
     private func measuredTop(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         let focused = showsRestFocus(session)
         return Group {
-            if keepsRoutineLine, !(focused && typeSize.isAccessibilitySize) {
-                // ZOOM / UNDERLINE: the routine line and the counters stay where they are
-                // through a long rest — that is when the whole routine is worth reading —
-                // and only the block above them hands over to the rest summary.
+            if !(focused && typeSize.isAccessibilitySize) {
                 measuredTopContents(session, scale: scale, focused: focused)
-            } else if keepsRoutineLine {
+            } else {
                 // Accessibility sizes reflow the rest into the summary alone. The routine
                 // rides above the summary's own compact counts — re-stacking the full
                 // labels row here cost 55 pt at AX3 (measured).
                 RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
                                        showsCounts: true,
                                        progressRow: AnyView(routineAtRest(session)))
-            } else if focused && typeSize.isAccessibilitySize {
-                RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
-                                       showsCounts: !usesProgressInstrument,
-                                       progressRow: nestedProgress(session, withRestWord: false))
-            } else {
-                Group {
-                    if focused {
-                        // Hidden retains geometry and removes the old live readout
-                        // from both the drawing and the accessibility tree.
-                        measuredTopContents(session, scale: scale).hidden()
-                    } else {
-                        measuredTopContents(session, scale: scale)
-                    }
-                }
-                .overlay {
-                    if focused {
-                        RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
-                                               scale: scale, showsCounts: !usesProgressInstrument,
-                                               progressRow: nestedProgress(session, withRestWord: false))
-                            .transition(.opacity)
-                    }
-                }
             }
         }
         .animation(Motion.state(reduceMotion), value: focused)
     }
 
-    /// ZOOM and UNDERLINE keep today's panel exactly — same rows, same spacing — and
-    /// swap only the thin bar's row.
-    private var keepsRoutineLine: Bool {
-        progressStyle == .zoom || progressStyle == .underline || progressStyle == .stacked
-    }
+    /// The panel's rhythm, grouping by proximity: the time bar sits CLOSE under the hero
+    /// — it belongs to the seconds — then a clear gap, then the pills sitting TIGHT on
+    /// the labels, which read as one group.
+    static let heroToTimeBar: CGFloat = 8
+    static let timeBarToPills: CGFloat = 11
+    static let pillsToLabels: CGFloat = 4
 
-    /// STACKED's rhythm (v4, grouping by proximity): the time bar sits CLOSE under the
-    /// hero — it belongs to the seconds — then a clear gap, then the pills sitting TIGHT
-    /// on the labels, which read as one group. Sums to the v3 total, so the panel does
-    /// not grow: 8 + 6 + 11 + 3 + 4 = 12 + 4 + 5 + 4 + 7.
-    static let stackedHeroToBar: CGFloat = 8
-    static let stackedBarToPills: CGFloat = 11
-    static let stackedPillsToLabels: CGFloat = 4
-
-    /// STACKED's time bar: what the one bar measures in this phase.
-    private func timeBarMode(_ phase: RunnerPhase) -> StackedTimeBar.Mode {
-        let inner: RunnerPhase
-        if case .paused(let wrapped) = phase { inner = wrapped } else { inner = phase }
-        switch inner {
-        case .working: return .hold
-        case .releasing: return .released
-        case .armed: return .armed
-        case .resting, .leadIn: return .countdown
-        case .idle, .finished, .paused: return .none
-        }
-    }
-
-    /// The zoomed-in phases: the pull is on you, running, or just finished under your hand.
-    private func isHoldPhase(_ phase: RunnerPhase) -> (zoomed: Bool, live: Bool) {
-        let inner: RunnerPhase
-        if case .paused(let wrapped) = phase { inner = wrapped } else { inner = phase }
-        switch inner {
-        case .armed: return (true, false)
-        case .working, .releasing: return (true, true)
-        default: return (false, false)
-        }
-    }
-
-    @ViewBuilder
+    /// One bar, always there: the hold while pulling, the rest's countdown while
+    /// resting — see `RunnerTimeBar`. Then the whole routine as pills. Same rows in every
+    /// phase, so the pills and labels never move between pull and rest.
     private func routineLine(_ session: RunnerSession) -> some View {
-        let model = SessionProgressModel(slots: session.runner.slots, results: session.runner.results,
-                                         phase: session.snapshot.phase)
-        let hold = isHoldPhase(session.snapshot.phase)
-        Group {
-            if progressStyle == .stacked {
-                // One bar, always there: the hold while pulling, the rest's countdown
-                // while resting — see `StackedTimeBar`. Same row in every phase, so the
-                // pills and labels never move between pull and rest.
-                VStack(spacing: Self.stackedBarToPills) {
-                    StackedTimeBar(session: session, mode: timeBarMode(session.snapshot.phase),
-                                   identity: session.snapshot.phase.slotIndex ?? -1)
-                    StackedRoutinePills(model: model, session: session, tint: tint(session),
-                                        isLive: hold.live,
-                                        liveFillsPill: ProcessInfo.processInfo.arguments.contains("-stackedLiveFill"))
-                }
-                // The outer stack's 12 pt either side is replaced by the stacked rhythm.
-                .padding(.top, Self.stackedHeroToBar - 12)
-                .padding(.bottom, Self.stackedPillsToLabels - 12)
-            } else if progressStyle == .zoom {
-                ZoomRoutineBar(model: model, session: session,
-                               focus: session.snapshot.phase.slotIndex,
-                               zoomed: hold.zoomed, showsLiveFill: hold.live, tint: tint(session))
-            } else {
-                // Today's bar, untouched, with the routine 2 pt beneath it.
-                VStack(spacing: 2) {
-                    progress(session)
-                    RoutineUnderline(model: model)
-                }
-            }
+        let phase = session.snapshot.phase
+        return VStack(spacing: Self.timeBarToPills) {
+            RunnerTimeBar(session: session, mode: RunnerTimeBar.Mode(phase),
+                          identity: phase.slotIndex ?? -1)
+            RoutinePills(model: routineModel(session), isLive: RoutinePills.isLive(phase))
         }
+        // The panel stack's 12 pt either side is replaced by the rhythm above.
+        .padding(.top, Self.heroToTimeBar - 12)
+        .padding(.bottom, Self.pillsToLabels - 12)
         .accessibilityHidden(true)
     }
 
     /// The routine alone, as it reads during a rest — for the accessibility-size summary.
-    @ViewBuilder
     private func routineAtRest(_ session: RunnerSession) -> some View {
-        let model = SessionProgressModel(slots: session.runner.slots, results: session.runner.results,
-                                         phase: session.snapshot.phase)
-        Group {
-            switch progressStyle {
-            case .zoom:
-                ZoomRoutineBar(model: model, session: session, focus: session.snapshot.phase.slotIndex,
-                               zoomed: false, showsLiveFill: false, tint: tint(session))
-            case .underline:
-                RoutineUnderline(model: model)
-            default:
-                StackedRoutinePills(model: model, session: session, tint: tint(session),
-                                    isLive: false, liveFillsPill: false)
-            }
-        }
-        .accessibilityHidden(true)
+        RoutinePills(model: routineModel(session), isLive: false)
+            .accessibilityHidden(true)
+    }
+
+    private func routineModel(_ session: RunnerSession) -> SessionProgressModel {
+        SessionProgressModel(slots: session.runner.slots, results: session.runner.results)
     }
 
     private func measuredTopContents(_ session: RunnerSession, scale: CGFloat = 1,
                                      focused: Bool = false) -> some View {
         VStack(spacing: 12 * scale) {
-            if keepsRoutineLine {
-                // Nested at the SAME spacing, so the layout is identical to the flat stack.
-                VStack(spacing: 12 * scale) {
-                    if hasIsland {
-                        gripLineText(session)
-                    } else {
-                        gripLine(session, scale: scale)
-                    }
-                    prompt(session, scale: scale)
-                    hero(session, scale: scale)
+            // The identity block is its own stack, at the SAME spacing, so the rest
+            // summary can cover exactly it and leave the rows below in place.
+            VStack(spacing: 12 * scale) {
+                if hasIsland {
+                    gripLineText(session)
+                } else {
+                    gripLine(session, scale: scale)
                 }
-                .opacity(focused ? 0 : 1)
-                .accessibilityHidden(focused)
-                .overlay {
-                    if focused {
-                        RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
-                                               scale: scale, showsCounts: false)
-                            .transition(.opacity)
-                    }
-                }
-                .animation(Motion.state(reduceMotion), value: focused)
-                routineLine(session)
-                // The summary's badge already says REST; the row keeps its height.
-                counters(session, showsPhaseWord: !focused)
-            } else {
-                flatTopContents(session, scale: scale)
+                prompt(session, scale: scale)
+                hero(session, scale: scale)
             }
+            .opacity(focused ? 0 : 1)
+            .accessibilityHidden(focused)
+            .overlay {
+                if focused {
+                    RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
+                                           scale: scale, showsCounts: false)
+                        .transition(.opacity)
+                }
+            }
+            .animation(Motion.state(reduceMotion), value: focused)
+            routineLine(session)
+            // The summary's badge already says REST; the row keeps its height.
+            counters(session, showsPhaseWord: !focused)
         }
-    }
-
-    @ViewBuilder
-    private func flatTopContents(_ session: RunnerSession, scale: CGFloat) -> some View {
-            if hasIsland {
-                gripLineText(session)
-            } else {
-                gripLine(session, scale: scale)
-            }
-            prompt(session, scale: scale)
-            hero(session, scale: scale)
-            if let nested = nestedProgress(session) {
-                nested
-            } else if usesProgressInstrument {
-                // The instrument on the graph carries the position and the live pull; the
-                // panel keeps only the rest word, in the row it always reserved for it.
-                restPhaseLabel(session)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .combine)
-            } else {
-                progress(session)
-                counters(session)
-            }
     }
 
     /// Set and pull, sized to be checked from a metre away between pulls.
@@ -893,10 +698,9 @@ struct RunnerView: View {
             .fixedSize()
     }
 
-    /// ZOOM / UNDERLINE draw the whole routine, so the counters' spoken line gains what
-    /// the line shows and the words do not: how much is left.
+    /// The pills draw the whole routine, so the counters' spoken line gains what they
+    /// show and the words do not: how much is left.
     private func routineLeftSpoken(_ session: RunnerSession) -> String {
-        guard keepsRoutineLine else { return "" }
         let left = session.snapshot.plannedRepCount - session.snapshot.completedRepCount
         return left == 1 ? ", 1 pull left" : ", \(max(0, left)) pulls left"
     }
@@ -1434,18 +1238,6 @@ struct RunnerView: View {
         return device.gaugeCapabilities.isBroadcast
             ? String(localized: "Tap Connect to start listening for your \(device.gaugeKind.displayName).")
             : String(localized: "Tap Connect to pair with your \(device.gaugeKind.displayName).")
-    }
-
-    @ViewBuilder
-    private func progress(_ session: RunnerSession) -> some View {
-        if case .working = session.snapshot.phase {
-            // `LiveRepProgress` reads the value one level down — see its doc comment.
-            LiveRepProgress(session: session)
-                .id(session.snapshot.phase.slotIndex)
-        } else {
-            // Reserve the row so the layout doesn't jump every time a rep starts.
-            Color.clear.frame(height: 4)
-        }
     }
 
     // MARK: - Controls

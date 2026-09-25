@@ -78,7 +78,7 @@ private final class RunnerCuePreviewState {
         self.container = container
         // `-previewRunnerSets N [-previewRunnerRepsPerSide R] [-previewRunnerDone D]
         // [-previewRunnerHeld F] [-previewRunnerHoldSeconds H]`: a mid-session fixture for
-        // the progress-display comparison. D pulls are COMPLETED through the engine (not
+        // the time bar and routine pills. D pulls are COMPLETED through the engine (not
         // skipped), then the requested phase is entered on the next one.
         func intArg(_ flag: String) -> Int? {
             guard let i = arguments.firstIndex(of: flag), arguments.indices.contains(i + 1) else { return nil }

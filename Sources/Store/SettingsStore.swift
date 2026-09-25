@@ -87,12 +87,6 @@ final class SettingsStore {
         didSet { store.set(reviewRequested, forKey: "reviewRequested") }
     }
 
-    /// TEST BRANCH ONLY (`design/set-rep-bars`): how the runner shows sets and pulls, so
-    /// a TestFlight build can compare the variants on real hardware. Default Stacked.
-    var runnerProgressStyle: RunnerProgressStyle {
-        didSet { store.set(runnerProgressStyle.rawValue, forKey: "test.runnerProgressStyle") }
-    }
-
     /// Body weight in kilograms, asked once, the first time a critical force test runs,
     /// and changed from then on only in Settings. It is what "% of body weight" divides
     /// by, the strongest published predictor of sport grade (Giles 2021). Every test
@@ -123,8 +117,6 @@ final class SettingsStore {
         draftStash = s.data(forKey: "draftStash")
         frezIntroSeen = s.bool(forKey: "frezIntroSeen")
         reviewRequested = s.bool(forKey: "reviewRequested")
-        runnerProgressStyle = RunnerProgressStyle(rawValue: s.string(forKey: "test.runnerProgressStyle") ?? "")
-            ?? .stacked
         bodyWeightKg = (s.object(forKey: "bodyWeightKg") as? Double).flatMap { $0 > 0 ? $0 : nil }
     }
 }

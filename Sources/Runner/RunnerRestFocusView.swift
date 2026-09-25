@@ -15,9 +15,11 @@ struct RunnerRestFocusSummary: View {
     let showsGlyph: Bool
     /// The wide runner draws the numeral larger, like the rest of its identity block.
     var scale: CGFloat = 1
-    /// False when a progress instrument on the graph already carries set and pull.
+    /// False when the panel's own counters row below the summary already carries set
+    /// and pull.
     var showsCounts = true
-    /// The nested progress tracks, drawn in place of the two counts when given.
+    /// The routine pills, drawn above the two counts when given (accessibility sizes,
+    /// where the summary replaces the whole panel).
     var progressRow: AnyView? = nil
     @Environment(\.weightUnit) private var weightUnit
     @Environment(\.dynamicTypeSize) private var typeSize

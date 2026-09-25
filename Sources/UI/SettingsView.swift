@@ -52,14 +52,13 @@ struct SettingsView: View {
             gaugeKindRow.staggerIn(0)
             deviceCard.staggerIn(1)
             weightUnitsCard.staggerIn(2)
-            progressStyleCard.staggerIn(3)
-            bodyWeightCard.staggerIn(4)
-            remindersCard.staggerIn(5)
+            bodyWeightCard.staggerIn(3)
+            remindersCard.staggerIn(4)
             // ABOVE About: About is the statements the app OWES you (storage,
             // attribution, licence); a door out to a person is an action, not small print.
-            SupportCard().staggerIn(6)
-            openSourceCard.staggerIn(7)
-            aboutCard.staggerIn(8)
+            SupportCard().staggerIn(5)
+            openSourceCard.staggerIn(6)
+            aboutCard.staggerIn(7)
         }
     }
 
@@ -81,31 +80,6 @@ struct SettingsView: View {
         }
         .onChange(of: settings.remindsOnThisDevice) { _, _ in
             templates.reminderDeviceSettingChanged()
-        }
-    }
-
-    /// TEST BUILD ONLY (branch `design/set-rep-bars`, never merged): lets a TestFlight
-    /// build compare how the session screen shows sets and pulls. Verbatim strings —
-    /// a test feature must not add keys to the shipping string catalog.
-    private var progressStyleCard: some View {
-        @Bindable var settings = settings
-        return MaterialCard(surface: .flat) {
-            VStack(alignment: .leading, spacing: 12) {
-                CapsLabel(String("Test build · not in the App Store version"))
-                Text(verbatim: "Progress style (test)").font(.system(.headline, weight: .semibold))
-                Picker(selection: $settings.runnerProgressStyle) {
-                    ForEach(RunnerProgressStyle.selectable, id: \.self) { style in
-                        Text(verbatim: style.settingsName).tag(style)
-                    }
-                } label: {
-                    Text(verbatim: "Progress style (test)")
-                }
-                // A menu, not segments: six names do not fit one segmented row.
-                .pickerStyle(.menu)
-                .accessibilityIdentifier("settings.test.progressStyle")
-                Text(verbatim: "Test builds only. How the session screen shows sets and pulls. Stacked: today's bar with the whole routine as pills beneath it. Zoom: today's bar zooms out to the whole routine between pulls. Underline: today's bar with the routine as a thin line beneath. Today is the shipping layout; Nested, Segments and Timeline are the earlier tries.")
-                    .font(.system(.caption)).foregroundStyle(Ink.secondary)
-            }
         }
     }
 

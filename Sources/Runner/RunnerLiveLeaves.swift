@@ -66,25 +66,6 @@ struct LiveTimerRing: View {
     }
 }
 
-/// The exact measured fraction belongs to this leaf alone. Linear settling fills the
-/// frames between BLE packets without forecasting credited work or easing to a stop
-/// per packet. The caller keys this view to the working phase so a skipped/next pull
-/// starts cleanly instead of draining the previous pull's bar backwards.
-struct LiveRepProgress: View {
-    var session: RunnerSession
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        #if DEBUG
-        let _ = RunnerProgressProbe.count("LiveRepProgress")
-        #endif
-        ProgressView(value: session.repProgress)
-            .tint(StatusTint.engaged)
-            .animation(reduceMotion ? nil : Motion.measuredProgress, value: session.repProgress)
-            .accessibilityHidden(true)
-    }
-}
-
 /// The target's live state changes with every force sample, so the chip owns that
 /// high-frequency observation instead of invalidating the runner screen around it.
 struct LiveTargetChip: View {
