@@ -87,6 +87,12 @@ final class SettingsStore {
         didSet { store.set(reviewRequested, forKey: "reviewRequested") }
     }
 
+    /// TEST BRANCH ONLY (`design/set-rep-bars`): how the runner shows sets and pulls, so
+    /// a TestFlight build can compare the variants on real hardware. Default Stacked.
+    var runnerProgressStyle: RunnerProgressStyle {
+        didSet { store.set(runnerProgressStyle.rawValue, forKey: "test.runnerProgressStyle") }
+    }
+
     /// `remindersDefault` is what an untouched device does — see `remindsOnThisDevice`.
     init(defaults: UserDefaults? = nil, remindersDefault: Bool = true) {
         let s = defaults ?? AppGroup.defaults ?? .standard
@@ -105,5 +111,7 @@ final class SettingsStore {
         draftStash = s.data(forKey: "draftStash")
         frezIntroSeen = s.bool(forKey: "frezIntroSeen")
         reviewRequested = s.bool(forKey: "reviewRequested")
+        runnerProgressStyle = RunnerProgressStyle(rawValue: s.string(forKey: "test.runnerProgressStyle") ?? "")
+            ?? .stacked
     }
 }

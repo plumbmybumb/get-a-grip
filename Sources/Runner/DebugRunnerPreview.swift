@@ -60,6 +60,7 @@ private final class RunnerCuePreviewState {
         let largeCounts = arguments.contains("-previewRunnerLargeCounts")
         let signalLost = arguments.contains("-previewRunnerSignalLost")
         let shaped = arguments.contains("-previewRunnerWave")
+        let cycle = arguments.contains("-previewRunnerCycle")
         let hasTarget = arguments.contains("-previewRunnerTarget")
         let pullingKg = hasTarget ? 6.0 : 12.0
         let pauseAtTwo = arguments.contains("-previewRunnerPauseAtTwo")
@@ -75,9 +76,32 @@ private final class RunnerCuePreviewState {
         let container = try! ModelContainer(for: SessionTemplate.self, WorkoutLog.self, MaxRecord.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         self.container = container
+        // `-previewRunnerSets N [-previewRunnerRepsPerSide R] [-previewRunnerDone D]
+        // [-previewRunnerHeld F] [-previewRunnerHoldSeconds H]`: a mid-session fixture for
+        // the progress-display comparison. D pulls are COMPLETED through the engine (not
+        // skipped), then the requested phase is entered on the next one.
+        func intArg(_ flag: String) -> Int? {
+            guard let i = arguments.firstIndex(of: flag), arguments.indices.contains(i + 1) else { return nil }
+            return Int(arguments[i + 1])
+        }
+        let planSets = intArg("-previewRunnerSets")
+        let planPerSide = intArg("-previewRunnerRepsPerSide") ?? 3
+        let planDone = intArg("-previewRunnerDone") ?? 0
+        let planHeld: Double = {
+            guard let i = arguments.firstIndex(of: "-previewRunnerHeld"), arguments.indices.contains(i + 1),
+                  let value = Double(arguments[i + 1]) else { return 0.6 }
+            return value
+        }()
         var draft = RoutineDraft.blank(named: "Training cue preview")
         draft.plan.handMode = .alternateEachRep
         draft.plan.sets = [SetPlan(grip: GripSpec(), repsPerSide: setBreak ? (largeCounts ? 100 : 1) : 3)]
+        if let planSets {
+            draft.plan.sets = (0..<max(1, planSets)).map { index in
+                SetPlan(grip: index.isMultiple(of: 2) ? GripSpec()
+                              : GripSpec(edgeMM: 15, fingers: .frontTwo, position: .openHand),
+                        repsPerSide: max(1, planPerSide))
+            }
+        }
         if setBreak {
             for _ in 0..<(largeCounts ? 49 : 1) {
                 draft.plan.sets.append(SetPlan(grip: GripSpec(edgeMM: 15, fingers: .frontTwo,
@@ -92,7 +116,8 @@ private final class RunnerCuePreviewState {
             }
         }
         let working = phase == .working || phase == .warning
-        draft.plan.holdSeconds = working ? 10 : 2
+        draft.plan.holdSeconds = planSets != nil ? (intArg("-previewRunnerHoldSeconds") ?? 7)
+                                                 : (working ? 10 : 2)
         draft.plan.restSeconds = min(SetPlan.restRange.upperBound, restSeconds)
         draft.plan.setBreakSeconds = restSeconds
         draft.plan.leadInSeconds = 0
@@ -105,7 +130,30 @@ private final class RunnerCuePreviewState {
         session = RunnerSession(template: template, device: device, timerOnly: timerOnly,
                                 liveActivity: RunnerCuePreviewActivity(), draftStore: nil)
         session.begin()
-        if timerOnly {
+        var micros: UInt32 = 0
+        if planSets != nil, !timerOnly {
+            let hold = Double(draft.plan.holdSeconds)
+            let client = self.client
+            func emit(_ kg: Double, seconds: Double) {
+                for _ in 0..<Int((seconds * 10).rounded()) {
+                    client.emit(kg: kg, micros: micros)
+                    micros &+= 100_000
+                }
+            }
+            let total = template.plan.executable.sets.count * 2 * max(1, planPerSide)
+            // Resting lands in the rest after the D-th pull; working pulls the (D+1)-th.
+            let finished = working ? min(planDone, total - 1) : max(1, min(planDone, total - 1))
+            for index in 0..<finished {
+                emit(pullingKg, seconds: hold + 0.4)
+                emit(0, seconds: 0.3)
+                if !working, index == finished - 1 { break }
+                session.debugAdvanceClock(by: Double(max(restSeconds, draft.plan.setBreakSeconds)) + 1)
+            }
+            if working {
+                // The pull in flight: engage, then bank `planHeld` of its hold.
+                emit(pullingKg, seconds: 0.2 + planHeld * hold)
+            }
+        } else if timerOnly {
             if !working { session.send(.skipRep) }
         } else {
             for index in 0...(working ? 3 : 24) {
@@ -116,7 +164,7 @@ private final class RunnerCuePreviewState {
         }
         // Finish the remaining first-set pulls through real events, so the next
         // set and its counts come from the same engine used in production.
-        if setBreak, phase == .resting {
+        if planSets == nil, setBreak, phase == .resting {
             for _ in 0..<(largeCounts ? 199 : 1) { session.send(.skipRep) }
         }
         if paused { session.send(.pause) }
@@ -129,13 +177,23 @@ private final class RunnerCuePreviewState {
         } else if !timerOnly {
             if !progressing { device.startStreaming(cause: .manualMeasurement) }
             let kg = phase == .releasing || phase == .working ? pullingKg : 0.0
+            let pumpStart = max(micros, 2_600_000)
             pump = Task { [weak self] in
-                var micros: UInt32 = 2_600_000
+                var micros: UInt32 = pumpStart
                 var didPauseAtTwo = false
                 var beat = 0
                 while !Task.isCancelled {
                     guard let self else { return }
-                    self.client.emit(kg: shaped ? Self.shapedKg(base: kg, at: Double(beat) * 0.1) : kg,
+                    // `-previewRunnerCycle`: pull while the pull is on you, let go otherwise,
+                    // so a live fixture runs pull → rest → pull on its own (recordings).
+                    var base = kg
+                    if cycle {
+                        switch self.session.snapshot.phase {
+                        case .armed, .working: base = pullingKg
+                        default: base = 0
+                        }
+                    }
+                    self.client.emit(kg: shaped ? Self.shapedKg(base: base, at: Double(beat) * 0.1) : base,
                                      micros: micros)
                     beat += 1
                     micros &+= 100_000
