@@ -58,6 +58,8 @@ struct CriticalForceTestView: View {
     /// Start. Moving the gauge or block to the other hand loads it, and an armed test
     /// would take that as the first pull (Nuri, 2026-09-25).
     @State private var awaitingNextHand = false
+    /// Set when Start was refused because the gauge was loaded; cleared on the next Start.
+    @State private var loadOnGaugeKg: Double?
     @State private var results: [CriticalForceHandResult] = []
     /// What happened to a hand that produced no result, said on the result screen.
     @State private var notes: [String] = []
@@ -332,6 +334,14 @@ struct CriticalForceTestView: View {
                         .padding(.top, 4)
                     GaugeConnectButton(connectTitle: String(localized: "Connect"))
                 } else {
+                    if loadOnGaugeKg == nil {
+                        Text("Start zeroes the gauge, then waits for your first pull.")
+                            .font(.system(.footnote))
+                            .foregroundStyle(Ink.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 6)
+                    }
+                    loadWarning
                     // The max test's dock, so the two measurement screens share one shape.
                     AdaptiveActionRow(spacing: 8) {
                         GaugeTareDockButton()
@@ -347,15 +357,29 @@ struct CriticalForceTestView: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// Why Start did nothing: the gauge is loaded, and it zeroes before a test.
+    @ViewBuilder
+    private var loadWarning: some View {
+        if let kg = loadOnGaugeKg {
+            Text("There's \(weightUnit.text(kg)) on the gauge. Let go, then start: it zeroes first.")
+                .font(.system(.footnote, weight: .medium))
+                .foregroundStyle(StatusTint.armed)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 6)
+        }
+    }
+
     private var testingDock: some View {
         VStack(spacing: 8) {
             if awaitingNextHand {
-                Text("\(hands.sides[0].name) hand done. Get set on your \(side.name.lowercased()) hand, then start.")
+                Text("\(hands.sides[0].name) hand done. Set up your \(side.name.lowercased()) hand with the gauge unloaded, then start: it zeroes first.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
+                loadWarning
                 AdaptiveActionRow(spacing: 8) {
                     GaugeTareDockButton()
                     DockTintedButton(String(localized: "Start \(side.name.lowercased()) hand"),
@@ -683,14 +707,29 @@ struct CriticalForceTestView: View {
 
     // MARK: - Flow
 
+    /// **Every test starts on a zeroed gauge**, as a routine does: tare FIRST, then start
+    /// the stream (the vendor's order; the reverse killed a fresh stream on hardware).
+    /// Refused while a live reading shows a hand still on it: taring under load would
+    /// shift every reading of the test by that load.
+    private func zeroThenStream() -> Bool {
+        if device.isReadingLive, TarePolicy.shouldConfirm(readingKg: device.currentKg) {
+            loadOnGaugeKg = device.currentKg
+            return false
+        }
+        loadOnGaugeKg = nil
+        device.tare()
+        device.resetPeak()
+        device.startStreaming(cause: .manualMeasurement)
+        return true
+    }
+
     private func start() {
         guard device.state.isConnected else { return }
+        device.setMockProfile(.allOut)
+        guard zeroThenStream() else { return }
         handIndex = 0
         results = []
         notes = []
-        device.setMockProfile(.allOut)
-        device.resetPeak()
-        device.startStreaming(cause: .manualMeasurement)
         arm(CriticalForceSession())
         withAnimation(Motion.state(reduceMotion)) { stage = .testing }
         startTick += 1
@@ -755,10 +794,15 @@ struct CriticalForceTestView: View {
     /// same re-kick the runner sends), and the demo gauge replays its test from the start.
     private func startNextHand() {
         guard awaitingNextHand, device.state.isConnected else { return }
+        // Checked on the live reading BEFORE the stream stops: afterwards the load is
+        // unknown, and a tare must not be guessed at.
+        if device.isReadingLive, TarePolicy.shouldConfirm(readingKg: device.currentKg) {
+            loadOnGaugeKg = device.currentKg
+            return
+        }
         awaitingNextHand = false
         if device.isStreaming { device.stopStreaming(cause: .measurementComplete) }
-        device.resetPeak()
-        device.startStreaming(cause: .manualMeasurement)
+        guard zeroThenStream() else { return }
         arm(CriticalForceSession())
         startTick += 1
     }
