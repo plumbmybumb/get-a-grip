@@ -60,6 +60,7 @@ struct CriticalForceTestView: View {
     /// Which hand's pulls the result screen is showing.
     @State private var shownSide: Side = .left
     @State private var editingGrip = false
+    @State private var showingAbout = false
     /// The first test asks; afterwards the value lives in Settings.
     @State private var bodyWeightDraft: Double = 70
     @State private var session = CriticalForceSession()
@@ -177,7 +178,6 @@ struct CriticalForceTestView: View {
             }
             .navigationTitle("Critical force")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationSubtitle(subtitle)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     if stage == .setup {
@@ -185,7 +185,16 @@ struct CriticalForceTestView: View {
                             .accessibilityIdentifier("cf.cancel")
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if stage == .setup {
+                        Button("About the test", systemImage: "info.circle") { showingAbout = true }
+                            .labelStyle(.iconOnly)
+                            .tint(Accent.graphite)
+                            .accessibilityIdentifier("cf.about")
+                    }
+                }
             }
+            .sheet(isPresented: $showingAbout) { CriticalForceAboutSheet() }
         }
     }
 
@@ -422,42 +431,29 @@ struct CriticalForceTestView: View {
         return String(localized: "\(hand): \(weightUnit.text(offer.kg)), the first max on this grip")
     }
 
-    private var subtitle: String {
-        "\(grip.displayName) · \(handsName)"
-    }
-
-    private var handsName: String {
-        switch hands {
-        case .oneAtATime(let first): first == .right ? String(localized: "Right, then left")
-                                                     : String(localized: "Left, then right")
-        case .bothHands: String(localized: "Both hands")
-        case .single(let side): side.name
-        }
-    }
-
     // MARK: - Setup
 
     @ViewBuilder
     private var setup: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            CapsLabel(String(localized: "THE TEST"))
-            Text("24 all-out pulls: 7 seconds on, 3 off, about 4 minutes. The clock never waits. Pull as hard as you can every time, and let go at the bell.")
-                .font(.system(.body))
+        // **Glanceable, not a manual** (Nuri: "look at all that text"). The protocol is
+        // one line, the instruction one more; everything else is behind the ⓘ.
+        VStack(alignment: .leading, spacing: 6) {
+            Text("24 pulls · 7 s on · 3 s off")
+                .font(.system(.title2, weight: .semibold))
                 .foregroundStyle(Ink.primary)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Warm up first. Test on the same grip, hand and arm position each time so results compare, and leave a few weeks between tests.")
-                .font(.system(.footnote))
+            Text("Pull as hard as you can. Let go at the bell.")
+                .font(.system(.subheadline))
                 .foregroundStyle(Ink.secondary)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 4)
 
         gripRow
         if editingGrip { gripEditor }
 
         handPicker
 
-        bodyWeightRow
+        if settings.bodyWeightKg == nil { bodyWeightRow }
         lastTestLine
     }
 
@@ -466,7 +462,30 @@ struct CriticalForceTestView: View {
     /// other.
     private var handPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "HANDS"))
+            HStack(alignment: .firstTextBaseline) {
+                CapsLabel(String(localized: "HANDS"))
+                Spacer(minLength: 8)
+                // Which hand goes first (or which hand), as a quiet menu in the label's
+                // row rather than a second segmented control.
+                if handChoice != .bothHands {
+                    Menu {
+                        Picker("Hand", selection: $pickedSide) {
+                            Text(handChoice == .oneAtATime ? "Left first" : "Left").tag(Side.left)
+                            Text(handChoice == .oneAtATime ? "Right first" : "Right").tag(Side.right)
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(sideMenuTitle)
+                            Image(systemName: "chevron.up.chevron.down").font(.caption2)
+                        }
+                        .font(.system(.subheadline, weight: .semibold))
+                        .foregroundStyle(Accent.graphite)
+                        .frame(minHeight: 44)
+                        .contentShape(.rect)
+                    }
+                    .accessibilityIdentifier("cf.side")
+                }
+            }
             Picker("Hands", selection: $handChoice) {
                 Text("One at a time").tag(HandChoice.oneAtATime)
                 Text("Both hands").tag(HandChoice.bothHands)
@@ -474,27 +493,15 @@ struct CriticalForceTestView: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("cf.hands")
-            if handChoice != .bothHands {
-                HStack {
-                    Text(handChoice == .oneAtATime ? "Start with" : "Hand")
-                        .font(.system(.subheadline, weight: .medium))
-                        .foregroundStyle(Ink.secondary)
-                    Spacer(minLength: 12)
-                    Picker(handChoice == .oneAtATime ? "Start with" : "Hand", selection: $pickedSide) {
-                        Text("Left").tag(Side.left)
-                        Text("Right").tag(Side.right)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 200)
-                }
-                .transition(.opacity)
-            }
-            Text(handExplainer)
-                .font(.system(.footnote))
-                .foregroundStyle(Ink.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
+            .accessibilityHint(handExplainer)
         }
-        .animation(Motion.state(reduceMotion), value: handChoice)
+    }
+
+    private var sideMenuTitle: String {
+        switch handChoice {
+        case .oneAtATime: pickedSide == .right ? String(localized: "Right first") : String(localized: "Left first")
+        default: pickedSide.name
+        }
     }
 
     private var handExplainer: String {
@@ -616,7 +623,7 @@ struct CriticalForceTestView: View {
                          value: weightUnit.binding($bodyWeightDraft),
                          range: weightUnit.sliderRangeFromKg(40...110), limit: weightUnit.rangeFromKg(25...250),
                          step: 0.5, decimals: 1)
-                Text("Asked once. Critical force as a share of body weight is the best-studied way to compare. Change it later in Settings.")
+                Text("Asked once; change it in Settings.")
                     .font(.system(.footnote))
                     .foregroundStyle(Ink.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -624,16 +631,18 @@ struct CriticalForceTestView: View {
         }
     }
 
+    /// One quiet line: "Last: L 17.5 · R 16.3 kg · last week".
     @ViewBuilder
     private var lastTestLine: some View {
-        let lines = hands.sides.compactMap { side -> String? in
-            let key = MaxTable.key(grip: grip.key, side: side)
-            guard let last = records.last(where: { $0.testKey == key }) else { return nil }
-            let hand = side == .both ? String(localized: "Both hands") : side.name
-            return String(localized: "Last test, \(hand): \(weightUnit.text(last.criticalForceKg)), \(last.recordedAt.formatted(.relative(presentation: .named)))")
+        let lasts = hands.sides.compactMap { side in
+            records.last(where: { $0.testKey == MaxTable.key(grip: grip.key, side: side) })
         }
-        if !lines.isEmpty {
-            Text(lines.joined(separator: "\n"))
+        if let newest = lasts.max(by: { $0.recordedAt < $1.recordedAt }) {
+            let values = lasts.count > 1
+                ? lasts.map { "\($0.side.initial) \(weightUnit.number($0.criticalForceKg))" }.joined(separator: " · ")
+                    + " \(weightUnit.symbol)"
+                : weightUnit.text(newest.criticalForceKg)
+            Text("Last: \(values) · \(newest.recordedAt.formatted(.relative(presentation: .named)))")
                 .font(.system(.footnote))
                 .foregroundStyle(Ink.tertiary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -970,6 +979,50 @@ private struct CriticalForceStopButton: View {
                 .contentTransition(.identity)
                 .actionLabelLayout(fullWidth: true)
                 .background { HoldFill(progress: progress, tint: tint, track: 0.16, fill: 0.42) }
+        }
+    }
+}
+
+/// Everything the setup screen no longer says, for whoever wants it: what the test
+/// measures, how to keep tests comparable, and what "One at a time" means.
+struct CriticalForceAboutSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    section(String(localized: "What it measures"),
+                            String(localized: "Critical force is the force your fingers can keep producing once the fast reserve is spent: your endurance ceiling. The test drains that reserve with 24 all-out pulls, and your force levels off at your critical force."))
+                    section(String(localized: "The clock never waits"),
+                            String(localized: "Seven seconds on, three off, every time. The result depends on that rhythm, so the rest does not wait for you to let go. Force pulled after the bell isn’t counted."))
+                    section(String(localized: "Keep tests comparable"),
+                            String(localized: "Warm up first. Use the same grip, hand and arm position each time, and leave a few weeks between tests. Your first test is partly practice."))
+                    section(String(localized: "Hands"),
+                            String(localized: "One at a time runs all 24 pulls on one hand, then all 24 on the other, and each hand gets its own number. Both hands means both pulling together through the gauge. The hands never alternate pull by pull, because that changes the rhythm and the result."))
+                }
+                .padding(.horizontal, Metrics.hPadding)
+                .padding(.vertical, 20)
+                .frame(maxWidth: Metrics.maxContentWidth)
+                .frame(maxWidth: .infinity)
+            }
+            .background { AppBackground() }
+            .navigationTitle("About the test")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func section(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.system(.headline))
+            Text(body)
+                .font(.system(.subheadline))
+                .foregroundStyle(Ink.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
