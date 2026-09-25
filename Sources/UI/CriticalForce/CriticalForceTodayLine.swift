@@ -20,6 +20,7 @@ struct CriticalForceTodayLine: View {
     @Environment(TemplateStore.self) private var templates
     @Environment(DayClock.self) private var clock
     @Environment(\.weightUnit) private var weightUnit
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let latest = records.last
@@ -27,33 +28,41 @@ struct CriticalForceTodayLine: View {
             if let latest { onTest(latest.grip, latest.side) }
             else { onTest(templates.recentGrips.first ?? GripSpec(), .both) }
         } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                CapsLabel(String(localized: "Critical force"))
-                    .fixedSize()
-                if let latest {
-                    Text(weightUnit.text(latest.criticalForceKg))
-                        .font(.system(.subheadline, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Ink.primary)
-                        .fixedSize()
-                    if let pct = latest.percentOfMax {
-                        Text("\(Int(pct.rounded())) % of max")
+            // **Stacked at accessibility sizes.** In one row the pinned label and kilograms
+            // have an ideal width wider than the phone, and on Today a child's IDEAL width
+            // widens the whole column: every card overflowed both edges (measured at
+            // accessibility-extra-extra-extra-large, 2026-09-25).
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 10))
+            HStack(spacing: 8) {
+                layout {
+                    CapsLabel(String(localized: "Critical force"))
+                    if let latest {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(weightUnit.text(latest.criticalForceKg))
+                                .font(.system(.subheadline, weight: .semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(Ink.primary)
+                            if let pct = latest.percentOfMax {
+                                Text("\(Int(pct.rounded())) % of max")
+                                    .font(.system(.footnote))
+                                    .foregroundStyle(Ink.secondary)
+                            }
+                        }
+                    } else {
+                        Text("Test your endurance · 4 min")
                             .font(.system(.footnote))
                             .foregroundStyle(Ink.secondary)
-                            .lineLimit(1)
                     }
-                } else {
-                    Text("Test your endurance · 4 min")
-                        .font(.system(.footnote))
-                        .foregroundStyle(Ink.secondary)
-                        .lineLimit(1)
+                    if let latest { trailing(latest) }
                 }
                 Spacer(minLength: 6)
-                if let latest { trailing(latest) }
                 Image(systemName: "chevron.right")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Ink.tertiary)
             }
+            .padding(.vertical, typeSize.isAccessibilitySize ? 10 : 0)
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .cardSurface(.material, in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
@@ -76,7 +85,6 @@ struct CriticalForceTodayLine: View {
             Text("Retest due")
                 .font(.system(.footnote, weight: .semibold))
                 .foregroundStyle(StatusTint.armed)
-                .fixedSize()
         }
     }
 
