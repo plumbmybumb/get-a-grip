@@ -30,11 +30,11 @@ import SwiftUI
 // shipping string catalog.
 
 enum RunnerProgressStyle: String {
-    case baseline, segments, timeline, rails, nested
+    case baseline, segments, timeline, rails, nested, zoom, underline
 
     /// The four the Settings picker offers. Rails was tried and rejected; it stays
     /// reachable through the DEBUG launch argument for comparison only.
-    static let selectable: [RunnerProgressStyle] = [.baseline, .nested, .segments, .timeline]
+    static let selectable: [RunnerProgressStyle] = [.zoom, .underline, .baseline, .nested, .segments, .timeline]
 
     var settingsName: String {
         switch self {
@@ -43,6 +43,8 @@ enum RunnerProgressStyle: String {
         case .segments: "Segments"
         case .timeline: "Timeline"
         case .rails: "Rails"
+        case .zoom: "Zoom"
+        case .underline: "Underline"
         }
     }
 
@@ -741,6 +743,287 @@ struct NestedProgressRow<Middle: View>: View {
     }
 }
 
+// MARK: - 5. ZOOM and 6. UNDERLINE — today's bar, and the routine on the same line
+
+/// Owner verdict on build 14: keep the FULL-LENGTH hold bar, lose the heavy outlined
+/// cells, and show the whole routine on one line without spending space on it.
+///
+/// ZOOM is today's bar exactly (4 pt capsule, `systemFill` track — measured, it is what
+/// the system `ProgressView` draws — bleu fill) with every pull of the routine laid out
+/// along it. `zoom` = 1 maps the focused pull's slot onto the whole width, which IS
+/// today's hold bar; `zoom` = 0 is the whole routine. One affine map, interpolated, so
+/// pull → rest and rest → pull are the same path run in opposite directions.
+enum ZoomLayout {
+    /// Pull slots along `width`: ~2 pt between pulls, ~6 pt between sets. Dense plans
+    /// shrink the pull gap to 1 pt, then drop it once a slot would be under ~3 pt,
+    /// keeping only the set gaps (which themselves narrow before a set becomes a sliver).
+    static func cells(sizes: [Int], width: CGFloat,
+                      pullGap preferredPullGap: CGFloat = 2,
+                      setGap preferredSetGap: CGFloat = 6) -> [ClosedRange<CGFloat>] {
+        let total = sizes.reduce(0, +)
+        guard total > 0, width > 0 else { return [] }
+        let sets = sizes.count
+        var setGap = sets > 1 ? preferredSetGap : 0
+        var pullGap = preferredPullGap
+        func unit() -> CGFloat {
+            (width - setGap * CGFloat(sets - 1) - pullGap * CGFloat(total - sets)) / CGFloat(total)
+        }
+        if unit() < 3, pullGap > 1 { pullGap = 1 }
+        if unit() < 3 { pullGap = 0 }
+        while unit() < 1, setGap > 1 { setGap -= 1 }
+        let slot = max(0.25, unit())
+        var cells: [ClosedRange<CGFloat>] = []
+        var cursor: CGFloat = 0
+        for size in sizes {
+            for index in 0..<size {
+                cells.append(cursor...(cursor + slot))
+                cursor += slot + (index < size - 1 ? pullGap : 0)
+            }
+            cursor += setGap
+        }
+        return cells
+    }
+}
+
+/// The slots in `include`, mapped through the zoom. `fraction` fills each included slot
+/// from its leading edge (the live hold). Round-ended at the line's own height, so a
+/// slot is a short piece of the same capsule, never an outlined box.
+struct ZoomSlotsShape: Shape {
+    var cells: [ClosedRange<CGFloat>]
+    var include: [Int]
+    var focus: Int?
+    var zoom: Double
+    var fraction: Double = 1
+
+    /// Only the fill animates here. `zoom` arrives already interpolated from
+    /// `ZoomAnimator`, so every layer of the bar draws the SAME zoom on every frame;
+    /// with each shape interpolating its own, the live fill and its slot drifted apart
+    /// mid-morph (seen in the recording).
+    var animatableData: Double {
+        get { fraction }
+        set { fraction = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let focusCell = focus.flatMap { cells.indices.contains($0) ? cells[$0] : nil }
+        // A real ZOOM: scale grows geometrically (k^z) while the focused slot's centre
+        // travels linearly to the middle. Interpolating positions linearly instead
+        // front-loads the zoom-in and back-loads the zoom-out (measured in the
+        // recording: 0.15 s one way, 0.5 s the other) — the same path must feel the
+        // same in both directions.
+        func map(_ x: CGFloat) -> CGFloat {
+            guard let focusCell, zoom > 0 else { return x }
+            let middle = (focusCell.lowerBound + focusCell.upperBound) / 2
+            let k = width / max(0.25, focusCell.upperBound - focusCell.lowerBound)
+            let scale = CGFloat(pow(Double(k), zoom))
+            let centre = middle + (width / 2 - middle) * zoom
+            return centre + (x - middle) * scale
+        }
+        let radius = rect.height / 2
+        for index in include where cells.indices.contains(index) {
+            let start = map(cells[index].lowerBound)
+            let end = map(cells[index].upperBound)
+            let filledEnd = start + (end - start) * min(max(fraction, 0), 1)
+            // Off-screen slots cost nothing; the bar clips at its own ends anyway.
+            guard filledEnd > start + 0.01, filledEnd > -1, start < width + 1 else { continue }
+            let box = CGRect(x: rect.minX + start, y: rect.minY, width: filledEnd - start, height: rect.height)
+            // Slots that TOUCH (the underline's pulls) meet square: rounding them would
+            // notch a continuous line at every pull.
+            let touches = (index > 0 && cells[index].lowerBound - cells[index - 1].upperBound < 0.5)
+                || (index + 1 < cells.count && cells[index + 1].lowerBound - cells[index].upperBound < 0.5)
+            let r = touches ? 0 : min(radius, box.width / 2)
+            path.addRoundedRect(in: box, cornerSize: CGSize(width: r, height: r), style: .continuous)
+        }
+        return path
+    }
+}
+
+/// The ONE animated zoom value for a bar, handed to every layer through the
+/// environment — the `BlendedTint` pattern: SwiftUI interpolates this modifier's
+/// number, and the shapes below simply read it.
+struct ZoomAnimator: ViewModifier, @preconcurrency Animatable {
+    var zoom: Double
+    var animatableData: Double {
+        get { zoom }
+        set { zoom = newValue }
+    }
+    func body(content: Content) -> some View {
+        content.environment(\.routineZoom, zoom)
+    }
+}
+
+private struct RoutineZoomKey: EnvironmentKey {
+    static let defaultValue: Double = 0
+}
+
+extension EnvironmentValues {
+    var routineZoom: Double {
+        get { self[RoutineZoomKey.self] }
+        set { self[RoutineZoomKey.self] = newValue }
+    }
+}
+
+/// The restrained palette both variants share. Track = what the system bar draws.
+enum RoutineLineInk {
+    static let track = Color(uiColor: .systemFill)
+    /// Done pulls: ink, held back so the line stays secondary to the hero numbers.
+    static let done = Ink.primary.opacity(0.55)
+    /// A skipped pull is used up but was not pulled.
+    static let skipped = Ink.primary.opacity(0.26)
+    /// The pull a rest is waiting for — rest looks forward. Subtle, but a meaningful
+    /// mark: 0.55 measured 2.5:1 on the light panel, under the 3:1 floor.
+    static let next = StatusTint.engaged.opacity(0.72)
+}
+
+/// ZOOM. `focus` is the phase's own slot (the pull being pulled, or the one whose rest
+/// is running, or the one a count-in leads to), so it changes only while the line is
+/// zoomed OUT, where the focus has no effect — the map never jumps.
+struct ZoomRoutineBar: View {
+    var model: SessionProgressModel
+    var session: RunnerSession
+    var focus: Int?
+    /// Armed, working, releasing (and paused inside those): the bar is the hold bar.
+    var zoomed: Bool
+    /// The focused slot carries the live fill (working, releasing, paused mid-pull).
+    var showsLiveFill: Bool
+    var tint: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    static let height: CGFloat = 4
+
+    var body: some View {
+        GeometryReader { proxy in
+            let cells = ZoomLayout.cells(sizes: model.setSizes, width: proxy.size.width)
+            if reduceMotion {
+                // Reduce Motion: no travel. The two states cross-fade in place.
+                ZStack {
+                    ZoomLayers(model: model, session: session, cells: cells, focus: focus,
+                               showsLiveFill: showsLiveFill, tint: tint)
+                        .modifier(ZoomAnimator(zoom: zoomed ? 1 : 0))
+                        .id(zoomed)
+                        .transition(.opacity)
+                }
+                .animation(Motion.state(true), value: zoomed)
+            } else {
+                ZoomLayers(model: model, session: session, cells: cells, focus: focus,
+                           showsLiveFill: showsLiveFill, tint: tint)
+                    .modifier(ZoomAnimator(zoom: zoomed ? 1 : 0))
+                    .animation(Motion.state(false), value: zoomed)
+            }
+        }
+        .frame(height: Self.height)
+    }
+
+}
+
+/// The bar's layers, drawn at the environment's (animated) zoom.
+struct ZoomLayers: View {
+    var model: SessionProgressModel
+    var session: RunnerSession
+    var cells: [ClosedRange<CGFloat>]
+    var focus: Int?
+    var showsLiveFill: Bool
+    var tint: Color
+    @Environment(\.routineZoom) private var zoom
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let all = Array(cells.indices)
+        let completed = model.finished.indices.filter { model.finished[$0] }
+        let skipped = model.finished.indices.filter { !model.finished[$0] }
+        ZStack(alignment: .leading) {
+            ZoomSlotsShape(cells: cells, include: all, focus: focus, zoom: zoom)
+                .fill(RoutineLineInk.track)
+            ZoomSlotsShape(cells: cells, include: completed, focus: focus, zoom: zoom)
+                .fill(RoutineLineInk.done)
+            ZoomSlotsShape(cells: cells, include: skipped, focus: focus, zoom: zoom)
+                .fill(RoutineLineInk.skipped)
+            if let next = model.current {
+                ZoomSlotsShape(cells: cells, include: [next], focus: focus, zoom: zoom)
+                    .fill(RoutineLineInk.next)
+                    // Fades as the line zooms into that very slot: the marker was the
+                    // promise, the empty hold bar is the thing itself.
+                    .opacity(1 - zoom)
+            }
+            if let focus {
+                LiveZoomFill(session: session, cells: cells, focus: focus,
+                             focusFinished: focus < model.done && model.finished[focus],
+                             zoom: zoom, tint: tint)
+                    // Fades on the same curve as the zoom, and shrinks WITH its slot.
+                    .opacity(showsLiveFill ? 1 : 0)
+                    .animation(Motion.state(reduceMotion), value: showsLiveFill)
+            }
+        }
+        // The bar's own extent: slots zoomed past the ends are clipped, like any bar.
+        .clipShape(Capsule(style: .continuous))
+    }
+}
+
+/// THE LEAF: the live hold on the focused slot. Present in every phase (only its
+/// opacity changes) so on pull → rest it shrinks WITH its slot while it fades, instead
+/// of freezing full-width as a removed view would.
+struct LiveZoomFill: View {
+    var session: RunnerSession
+    var cells: [ClosedRange<CGFloat>]
+    var focus: Int
+    /// The focused pull is already recorded (LET GO, or the rest after it): the engine
+    /// has reset its progress, but the hold it shows was COMPLETE — a fill draining back
+    /// to nothing would say the opposite.
+    var focusFinished: Bool
+    var zoom: Double
+    var tint: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        #if DEBUG
+        let _ = RunnerProgressProbe.count("LiveZoomFill")
+        #endif
+        let progress = focusFinished ? 1 : session.repProgress
+        ZoomSlotsShape(cells: cells, include: [focus], focus: focus, zoom: zoom, fraction: progress)
+            .fill(tint)
+            .animation(reduceMotion ? nil : Motion.measuredProgress, value: progress)
+    }
+}
+
+/// UNDERLINE: today's bar untouched, and under it the whole routine as a 2 pt line —
+/// hairline set breaks, done in ink, the current pull in bleu.
+struct RoutineUnderline: View {
+    var model: SessionProgressModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    static let height: CGFloat = 2
+
+    var body: some View {
+        GeometryReader { proxy in
+            let cells = ZoomLayout.cells(sizes: model.setSizes, width: proxy.size.width,
+                                         pullGap: 0, setGap: 2)
+            let completed = model.finished.indices.filter { model.finished[$0] }
+            let skipped = model.finished.indices.filter { !model.finished[$0] }
+            ZStack(alignment: .leading) {
+                ZoomSlotsShape(cells: cells, include: Array(cells.indices), focus: nil, zoom: 0)
+                    .fill(RoutineLineInk.track)
+                ZoomSlotsShape(cells: cells, include: completed, focus: nil, zoom: 0)
+                    .fill(RoutineLineInk.done)
+                ZoomSlotsShape(cells: cells, include: skipped, focus: nil, zoom: 0)
+                    .fill(RoutineLineInk.skipped)
+                if let current = model.current {
+                    // A tick at least 3 pt wide, so a 60-pull routine still shows it.
+                    let cell = cells[current]
+                    let width = max(3, cell.upperBound - cell.lowerBound)
+                    Capsule(style: .continuous)
+                        .fill(StatusTint.engaged)
+                        .frame(width: width, height: Self.height)
+                        .offset(x: min(cell.lowerBound, proxy.size.width - width))
+                }
+            }
+            .animation(reduceMotion ? nil : Motion.state(false), value: model)
+        }
+        .frame(height: Self.height)
+    }
+}
+
 // MARK: - The chooser
 
 /// The variant for the current style, carrying the combined VoiceOver sentence and an
@@ -762,7 +1045,7 @@ struct RunnerProgressInstrument: View {
             case .segments: SegmentsProgressView(model: model, session: session, tint: tint)
             case .timeline: TimelineProgressView(model: model, session: session, tint: tint)
             case .rails: RailsProgressView(model: model, session: session, tint: tint)
-            case .baseline, .nested: EmptyView()
+            case .baseline, .nested, .zoom, .underline: EmptyView()
             }
         }
         .animation(Motion.state(reduceMotion), value: model)

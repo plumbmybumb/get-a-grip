@@ -60,6 +60,7 @@ private final class RunnerCuePreviewState {
         let largeCounts = arguments.contains("-previewRunnerLargeCounts")
         let signalLost = arguments.contains("-previewRunnerSignalLost")
         let shaped = arguments.contains("-previewRunnerWave")
+        let cycle = arguments.contains("-previewRunnerCycle")
         let hasTarget = arguments.contains("-previewRunnerTarget")
         let pullingKg = hasTarget ? 6.0 : 12.0
         let pauseAtTwo = arguments.contains("-previewRunnerPauseAtTwo")
@@ -183,7 +184,16 @@ private final class RunnerCuePreviewState {
                 var beat = 0
                 while !Task.isCancelled {
                     guard let self else { return }
-                    self.client.emit(kg: shaped ? Self.shapedKg(base: kg, at: Double(beat) * 0.1) : kg,
+                    // `-previewRunnerCycle`: pull while the pull is on you, let go otherwise,
+                    // so a live fixture runs pull → rest → pull on its own (recordings).
+                    var base = kg
+                    if cycle {
+                        switch self.session.snapshot.phase {
+                        case .armed, .working: base = pullingKg
+                        default: base = 0
+                        }
+                    }
+                    self.client.emit(kg: shaped ? Self.shapedKg(base: base, at: Double(beat) * 0.1) : base,
                                      micros: micros)
                     beat += 1
                     micros &+= 100_000

@@ -665,7 +665,19 @@ struct RunnerView: View {
     private func measuredTop(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         let focused = showsRestFocus(session)
         return Group {
-            if focused && typeSize.isAccessibilitySize {
+            if keepsRoutineLine, !(focused && typeSize.isAccessibilitySize) {
+                // ZOOM / UNDERLINE: the routine line and the counters stay where they are
+                // through a long rest — that is when the whole routine is worth reading —
+                // and only the block above them hands over to the rest summary.
+                measuredTopContents(session, scale: scale, focused: focused)
+            } else if keepsRoutineLine {
+                RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
+                                       showsCounts: false,
+                                       progressRow: AnyView(VStack(spacing: 12) {
+                                           routineLine(session)
+                                           counters(session, showsPhaseWord: false)
+                                       }))
+            } else if focused && typeSize.isAccessibilitySize {
                 RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
                                        showsCounts: !usesProgressInstrument,
                                        progressRow: nestedProgress(session, withRestWord: false))
@@ -692,8 +704,77 @@ struct RunnerView: View {
         .animation(Motion.state(reduceMotion), value: focused)
     }
 
-    private func measuredTopContents(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
+    /// ZOOM and UNDERLINE keep today's panel exactly — same rows, same spacing — and
+    /// swap only the thin bar's row.
+    private var keepsRoutineLine: Bool { progressStyle == .zoom || progressStyle == .underline }
+
+    /// The zoomed-in phases: the pull is on you, running, or just finished under your hand.
+    private func isHoldPhase(_ phase: RunnerPhase) -> (zoomed: Bool, live: Bool) {
+        let inner: RunnerPhase
+        if case .paused(let wrapped) = phase { inner = wrapped } else { inner = phase }
+        switch inner {
+        case .armed: return (true, false)
+        case .working, .releasing: return (true, true)
+        default: return (false, false)
+        }
+    }
+
+    @ViewBuilder
+    private func routineLine(_ session: RunnerSession) -> some View {
+        let model = SessionProgressModel(slots: session.runner.slots, results: session.runner.results,
+                                         phase: session.snapshot.phase)
+        let hold = isHoldPhase(session.snapshot.phase)
+        Group {
+            if progressStyle == .zoom {
+                ZoomRoutineBar(model: model, session: session,
+                               focus: session.snapshot.phase.slotIndex,
+                               zoomed: hold.zoomed, showsLiveFill: hold.live, tint: tint(session))
+            } else {
+                // Today's bar, untouched, with the routine 2 pt beneath it.
+                VStack(spacing: 2) {
+                    progress(session)
+                    RoutineUnderline(model: model)
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func measuredTopContents(_ session: RunnerSession, scale: CGFloat = 1,
+                                     focused: Bool = false) -> some View {
         VStack(spacing: 12 * scale) {
+            if keepsRoutineLine {
+                // Nested at the SAME spacing, so the layout is identical to the flat stack.
+                VStack(spacing: 12 * scale) {
+                    if hasIsland {
+                        gripLineText(session)
+                    } else {
+                        gripLine(session, scale: scale)
+                    }
+                    prompt(session, scale: scale)
+                    hero(session, scale: scale)
+                }
+                .opacity(focused ? 0 : 1)
+                .accessibilityHidden(focused)
+                .overlay {
+                    if focused {
+                        RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
+                                               scale: scale, showsCounts: false)
+                            .transition(.opacity)
+                    }
+                }
+                .animation(Motion.state(reduceMotion), value: focused)
+                routineLine(session)
+                // The summary's badge already says REST; the row keeps its height.
+                counters(session, showsPhaseWord: !focused)
+            } else {
+                flatTopContents(session, scale: scale)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func flatTopContents(_ session: RunnerSession, scale: CGFloat) -> some View {
             if hasIsland {
                 gripLineText(session)
             } else {
@@ -713,21 +794,20 @@ struct RunnerView: View {
                 progress(session)
                 counters(session)
             }
-        }
     }
 
     /// Set and pull, sized to be checked from a metre away between pulls.
-    private func counters(_ session: RunnerSession) -> some View {
+    private func counters(_ session: RunnerSession, showsPhaseWord: Bool = true) -> some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
                 CapsLabel(setLine(session), size: 14).fixedSize()
                 Spacer(minLength: 0)
-                restPhaseLabel(session)
+                restPhaseLabel(session).opacity(showsPhaseWord ? 1 : 0)
                 Spacer(minLength: 0)
                 CapsLabel(pullLine(session), size: 14).fixedSize()
             }
             VStack(spacing: 4) {
-                restPhaseLabel(session)
+                restPhaseLabel(session).opacity(showsPhaseWord ? 1 : 0)
                 HStack(alignment: .top, spacing: 8) {
                     CapsLabel(setLine(session), size: 14)
                     Spacer(minLength: 0)
@@ -737,7 +817,7 @@ struct RunnerView: View {
         }
         .monospacedDigit()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(spokenState(session)), \(countdownCaption(session) ?? "")")
+        .accessibilityLabel("\(spokenState(session))\(routineLeftSpoken(session)), \(countdownCaption(session) ?? "")")
         .accessibilityIdentifier("runner.counters")
     }
 
@@ -754,6 +834,14 @@ struct RunnerView: View {
             }
             .font(.system(.body, weight: .semibold))
             .fixedSize()
+    }
+
+    /// ZOOM / UNDERLINE draw the whole routine, so the counters' spoken line gains what
+    /// the line shows and the words do not: how much is left.
+    private func routineLeftSpoken(_ session: RunnerSession) -> String {
+        guard keepsRoutineLine else { return "" }
+        let left = session.snapshot.plannedRepCount - session.snapshot.completedRepCount
+        return left == 1 ? ", 1 pull left" : ", \(max(0, left)) pulls left"
     }
 
     private func setLine(_ session: RunnerSession) -> String {

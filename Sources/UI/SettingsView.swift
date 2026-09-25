@@ -98,9 +98,10 @@ struct SettingsView: View {
                 } label: {
                     Text(verbatim: "Progress style (test)")
                 }
-                .pickerStyle(.segmented)
+                // A menu, not segments: six names do not fit one segmented row.
+                .pickerStyle(.menu)
                 .accessibilityIdentifier("settings.test.progressStyle")
-                Text(verbatim: "Test builds only. How the session screen shows sets and pulls: Today is the shipping layout; Nested puts the tracks inside the top panel; Segments and Timeline float them over the graph. Takes effect on the next session.")
+                Text(verbatim: "Test builds only. How the session screen shows sets and pulls. Zoom: today's bar zooms out to the whole routine between pulls. Underline: today's bar with the routine as a thin line beneath. Today is the shipping layout; Nested, Segments and Timeline are the earlier tries.")
                     .font(.system(.caption)).foregroundStyle(Ink.secondary)
             }
         }
