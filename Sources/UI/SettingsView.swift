@@ -86,24 +86,12 @@ struct SettingsView: View {
     /// Asked once by the first critical force test; this is the only place it changes
     /// afterwards. Each test froze its own copy, so a change here never rewrites a result.
     private var bodyWeightCard: some View {
-        MaterialCard(surface: .flat) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Body weight").font(.system(.headline, weight: .semibold))
-                if settings.bodyWeightKg != nil {
-                    ValueRow(title: String(localized: "Body weight"), unit: weightUnit.symbol,
-                             value: weightUnit.binding(Binding(
-                                get: { settings.bodyWeightKg ?? 70 },
-                                set: { settings.bodyWeightKg = $0 })),
-                             range: weightUnit.sliderRangeFromKg(40...110),
-                             limit: weightUnit.rangeFromKg(25...250),
-                             step: 0.5, decimals: 1)
-                        .accessibilityIdentifier("settings.bodyWeight")
-                } else {
-                    Button("Set body weight") { settings.bodyWeightKg = 70 }
-                        .font(.system(.subheadline, weight: .semibold))
-                        .tint(Accent.graphite)
-                        .accessibilityIdentifier("settings.bodyWeight.set")
-                }
+        @Bindable var settings = settings
+        return MaterialCard(surface: .flat) {
+            VStack(alignment: .leading, spacing: 8) {
+                // Typed, never a slider — see `BodyWeightField`.
+                BodyWeightField(kilograms: $settings.bodyWeightKg,
+                                titleFont: .system(.headline, weight: .semibold))
                 Text("Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result.")
                     .font(.system(.caption)).foregroundStyle(Ink.secondary)
             }

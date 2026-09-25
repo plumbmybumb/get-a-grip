@@ -61,8 +61,6 @@ struct CriticalForceTestView: View {
     @State private var shownSide: Side = .left
     @State private var editingGrip = false
     @State private var showingAbout = false
-    /// The first test asks; afterwards the value lives in Settings.
-    @State private var bodyWeightDraft: Double = 70
     @State private var session = CriticalForceSession()
     @State private var alsoSaveMaxes = true
     @State private var saveFailed = false
@@ -113,7 +111,6 @@ struct CriticalForceTestView: View {
         .sensoryFeedback(.success, trigger: savedTick)
         .keepsScreenAwake()
         .onAppear {
-            if let kg = settings.bodyWeightKg { bodyWeightDraft = kg }
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("-startCriticalForce"),
                !device.state.isConnected { device.connect() }
@@ -604,30 +601,15 @@ struct CriticalForceTestView: View {
         return out
     }
 
-    @ViewBuilder
+    /// Only until it is set: asked once, then it lives in Settings. Typed, never a
+    /// slider. Left empty, the test saves without it and asks again next time.
     private var bodyWeightRow: some View {
-        if let kg = settings.bodyWeightKg {
-            HStack {
-                CapsLabel(String(localized: "BODY WEIGHT"))
-                Spacer()
-                Text(weightUnit.text(kg))
-                    .font(.system(.subheadline, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(Ink.secondary)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityHint("Change it in Settings")
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                ValueRow(title: String(localized: "Body weight"), unit: weightUnit.symbol,
-                         value: weightUnit.binding($bodyWeightDraft),
-                         range: weightUnit.sliderRangeFromKg(40...110), limit: weightUnit.rangeFromKg(25...250),
-                         step: 0.5, decimals: 1)
-                Text("Asked once; change it in Settings.")
-                    .font(.system(.footnote))
-                    .foregroundStyle(Ink.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        @Bindable var settings = settings
+        return VStack(alignment: .leading, spacing: 4) {
+            BodyWeightField(kilograms: $settings.bodyWeightKg)
+            Text("Asked once; change it in Settings.")
+                .font(.system(.footnote))
+                .foregroundStyle(Ink.tertiary)
         }
     }
 
@@ -684,7 +666,6 @@ struct CriticalForceTestView: View {
 
     private func start() {
         guard device.state.isConnected else { return }
-        if settings.bodyWeightKg == nil { settings.bodyWeightKg = bodyWeightDraft }
         handIndex = 0
         results = []
         notes = []
