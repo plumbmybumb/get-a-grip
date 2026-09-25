@@ -216,10 +216,10 @@ struct CriticalForceTestView: View {
                           lit: true)
                     .accessibilityHidden(true)
             }
-            // Between hands the pill is the NEXT hand's: empty, nothing in progress.
-            CriticalForcePlateau(means: awaitingNextHand ? [] : session.repMeans,
-                                 total: session.proto.reps,
-                                 current: !awaitingNextHand && session.phase.isRunning ? session.pullNumber : nil)
+            // A LEAF that reads the session itself: the live bar moves several times a
+            // second, and read here it rebuilt the whole screen with it (measured,
+            // 2026-09-25). Between hands the pill is the NEXT hand's: empty.
+            CriticalForceLivePlateau(session: session, isAwaitingNextHand: awaitingNextHand)
             testingDock
         }
     }
@@ -936,6 +936,18 @@ struct CriticalForcePanel: View {
     private var countLine: String {
         let pull = nextHandWord != nil ? 1 : min(session.pullNumber, session.proto.reps)
         return String(localized: "Pull \(pull) of \(session.proto.reps)")
+    }
+}
+
+/// The pill, reading the session's live bars ITSELF so only this view follows them.
+private struct CriticalForceLivePlateau: View {
+    let session: CriticalForceSession
+    let isAwaitingNextHand: Bool
+
+    var body: some View {
+        CriticalForcePlateau(means: isAwaitingNextHand ? [] : session.repMeans,
+                             total: session.proto.reps,
+                             current: !isAwaitingNextHand && session.phase.isRunning ? session.pullNumber : nil)
     }
 }
 
