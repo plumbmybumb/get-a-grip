@@ -710,10 +710,13 @@ struct RunnerView: View {
         progressStyle == .zoom || progressStyle == .underline || progressStyle == .stacked
     }
 
-    /// STACKED's rhythm: bar → pills → labels, tightened so the extra row costs as
-    /// little panel height as possible (baseline is bar → 12 → labels).
-    static let stackedBarToPills: CGFloat = 5
-    static let stackedPillsToLabels: CGFloat = 7
+    /// STACKED's rhythm (v4, grouping by proximity): the time bar sits CLOSE under the
+    /// hero — it belongs to the seconds — then a clear gap, then the pills sitting TIGHT
+    /// on the labels, which read as one group. Sums to the v3 total, so the panel does
+    /// not grow: 8 + 6 + 11 + 3 + 4 = 12 + 4 + 5 + 4 + 7.
+    static let stackedHeroToBar: CGFloat = 8
+    static let stackedBarToPills: CGFloat = 11
+    static let stackedPillsToLabels: CGFloat = 4
 
     /// STACKED's time bar: what the one bar measures in this phase.
     private func timeBarMode(_ phase: RunnerPhase) -> StackedTimeBar.Mode {
@@ -756,7 +759,8 @@ struct RunnerView: View {
                                         isLive: hold.live,
                                         liveFillsPill: ProcessInfo.processInfo.arguments.contains("-stackedLiveFill"))
                 }
-                // The outer stack's 12 pt is tightened to the stacked rhythm.
+                // The outer stack's 12 pt either side is replaced by the stacked rhythm.
+                .padding(.top, Self.stackedHeroToBar - 12)
                 .padding(.bottom, Self.stackedPillsToLabels - 12)
             } else if progressStyle == .zoom {
                 ZoomRoutineBar(model: model, session: session,

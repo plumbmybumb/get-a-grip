@@ -869,6 +869,14 @@ extension EnvironmentValues {
     }
 }
 
+/// The colours one routine line is drawn in — ZOOM's by default, STACKED's quieter set.
+struct RoutinePalette {
+    var track: Color = RoutineLineInk.track
+    var done: Color = RoutineLineInk.done
+    var skipped: Color = RoutineLineInk.skipped
+    var next: Color = RoutineLineInk.next
+}
+
 /// The restrained palette both variants share. Track = what the system bar draws.
 enum RoutineLineInk {
     static let track = Color(uiColor: .systemFill)
@@ -933,6 +941,7 @@ struct ZoomLayers: View {
     /// The next/current pill's bleu mark. ZOOM fades it as it zooms into that pill;
     /// STACKED hides it while the pill carries the live fill instead.
     var marksNext = true
+    var palette = RoutinePalette()
     @Environment(\.routineZoom) private var zoom
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -942,14 +951,14 @@ struct ZoomLayers: View {
         let skipped = model.finished.indices.filter { !model.finished[$0] }
         ZStack(alignment: .leading) {
             ZoomSlotsShape(cells: cells, include: all, focus: focus, zoom: zoom)
-                .fill(RoutineLineInk.track)
+                .fill(palette.track)
             ZoomSlotsShape(cells: cells, include: completed, focus: focus, zoom: zoom)
-                .fill(RoutineLineInk.done)
+                .fill(palette.done)
             ZoomSlotsShape(cells: cells, include: skipped, focus: focus, zoom: zoom)
-                .fill(RoutineLineInk.skipped)
+                .fill(palette.skipped)
             if let next = model.current {
                 ZoomSlotsShape(cells: cells, include: [next], focus: focus, zoom: zoom)
-                    .fill(RoutineLineInk.next)
+                    .fill(palette.next)
                     // Fades as the line zooms into that very slot: the marker was the
                     // promise, the empty hold bar is the thing itself.
                     .opacity(marksNext ? 1 - zoom : 0)
@@ -1007,15 +1016,32 @@ struct StackedRoutinePills: View {
     var isLive: Bool
     var liveFillsPill: Bool
 
+    /// SECONDARY to the time bar above (owner, v4): slimmer, and quieter.
+    static let height: CGFloat = 3
+
+    /// Quieter than ZOOM's through a lighter TRACK and a slimmer pill, not a lighter
+    /// ink: at 3 pt, done ink at 0.46 measured 2.5:1 against the track in light mode
+    /// (thin shapes are mostly antialiased edge), so done stays at 0.6 to clear 3:1.
+    /// While a pull runs the current pill is marked in INK —
+    /// the time bar is the one bleu thing on the panel. At rest the time bar turns
+    /// steel, and the next pill takes the bleu as the single accent pointing forward.
+    static func palette(isLive: Bool) -> RoutinePalette {
+        RoutinePalette(track: Color(uiColor: .tertiarySystemFill),
+                       done: Ink.primary.opacity(0.6),
+                       skipped: Ink.primary.opacity(0.2),
+                       next: isLive ? Ink.primary.opacity(0.85) : RoutineLineInk.next)
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let cells = ZoomLayout.cells(sizes: model.setSizes, width: proxy.size.width)
             let filling = liveFillsPill && isLive
             ZoomLayers(model: model, session: session, cells: cells,
                        focus: filling ? model.current : nil,
-                       showsLiveFill: filling, tint: tint, marksNext: !filling)
+                       showsLiveFill: filling, tint: tint, marksNext: !filling,
+                       palette: Self.palette(isLive: isLive))
         }
-        .frame(height: ZoomRoutineBar.height)
+        .frame(height: Self.height)
     }
 }
 
@@ -1036,6 +1062,9 @@ struct StackedRoutinePills: View {
 /// disagree.
 struct StackedTimeBar: View {
     enum Mode: Equatable { case hold, armed, released, countdown, none }
+
+    /// PRIMARY (owner, v4): a touch heavier than the pills below it, and today's bar.
+    static let height: CGFloat = 6
 
     var session: RunnerSession
     var mode: Mode
@@ -1070,7 +1099,7 @@ struct StackedTimeBar: View {
             .transition(.opacity)
         }
         .clipShape(Capsule(style: .continuous))
-        .frame(height: ZoomRoutineBar.height)
+        .frame(height: Self.height)
         // The pull ↔ rest seam: a colour change on a bar that is full (or empty) on both
         // sides of it. Reduce Motion keeps it — it is already a cross-fade.
         .animation(Motion.state(reduceMotion), value: TimeBarKey(isRest: isRest, identity: identity))
