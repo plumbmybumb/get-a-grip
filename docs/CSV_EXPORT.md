@@ -1,3 +1,19 @@
+# Training export v3 — 2026-09-25
+
+v3 adds critical force (see [CRITICAL_FORCE.md](CRITICAL_FORCE.md)).
+
+- **New columns**, appended so every v2 column keeps its position: `critical_force_kg`,
+  `w_prime_kg_s`, `end_force_kg`, `body_mass_kg`, `rests_kept`, `rest_on_edge_s`,
+  `protocol`.
+- **`record=cf_test`** is one row per test. `workout` carries the test's UUID,
+  `completed`/`planned` are the pulls run/protocol, and `max_at_start_kg`/`body_mass_kg`
+  are the values frozen at the test.
+- **`record=cf_pull`** rows appear in Every pull detail only. `avg_kg` is the mean inside
+  that pull's 7 s window, and `rest_on_edge_s` is the time still on the edge after its
+  bell.
+- **Scope:** tests follow the range like maxes and are excluded from single-workout
+  exports.
+
 # Training export v2 — 2026-09-05
 
 Both apps default to **Summary**, with **Every pull** available for detailed analysis. The range remains Last 8 weeks (56 inclusive calendar days) or All history. The leading Share swipe on a history row opens the same choices for one workout, including older workouts. Share creates an immutable UTF-8 CSV attachment; Copy remains available. Column names and the guide stay English; the surrounding interface is localized.

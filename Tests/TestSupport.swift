@@ -78,7 +78,7 @@ enum TestFixtures {
     /// The app's CloudKit-shaped schema. Four files built this list by hand, so a model
     /// added to the app reached some of them and not others.
     static var schema: Schema {
-        Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self])
+        Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self, CriticalForceRecord.self])
     }
 
     /// A four-finger half crimp on a 20 mm edge: the routine's own default grip, and what

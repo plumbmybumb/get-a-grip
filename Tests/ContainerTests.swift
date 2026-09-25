@@ -50,8 +50,10 @@ final class ContainerTests: XCTestCase {
             XCTAssertTrue(entity.relationships.isEmpty,
                           "\(entity.name) declares a relationship: \(entity.relationships.map(\.name))")
         }
+        // A new entity is a CloudKit schema change: deploy it to Production before the
+        // build that writes it ships (CriticalForceRecord, 2026-09-25).
         XCTAssertEqual(Set(schema.entities.map(\.name)),
-                       ["SessionTemplate", "WorkoutLog", "MaxRecord"])
+                       ["SessionTemplate", "WorkoutLog", "MaxRecord", "CriticalForceRecord"])
     }
 
     // MARK: - Building the real thing

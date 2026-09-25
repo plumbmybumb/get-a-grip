@@ -296,7 +296,7 @@ struct MaxMeasureView: View {
     private var attemptControls: some View {
         switch phase {
         case .ready:
-            MaxTareButton(phase: $phase)
+            GaugeZeroButton(canTare: phase == .ready)
             PrimaryGlassButton(title: startTitle, systemImage: "play.fill", tint: Accent.bleu) { start() }
                 .accessibilityIdentifier("max.measure.start")
         case .measuring:
@@ -403,10 +403,11 @@ struct MaxMeasureView: View {
     }
 }
 
-/// Keep sample-dependent tare liveness out of the full measurement screen.
-private struct MaxTareButton: View {
+/// Keep sample-dependent tare liveness out of the full measurement screen. Shared by the
+/// max test and the critical force test; `canTare` is false once a measurement runs.
+struct GaugeZeroButton: View {
     @Environment(\.weightUnit) private var weightUnit
-    @Binding var phase: MaxMeasurePhase
+    var canTare: Bool
     @Environment(DeviceStore.self) private var device
     @State private var showingConfirmation = false
     @State private var promptedKg = 0.0
@@ -430,7 +431,7 @@ private struct MaxTareButton: View {
     }
 
     private func requestTare() {
-        guard phase == .ready, device.state.isConnected else { return }
+        guard canTare, device.state.isConnected else { return }
         guard device.isReadingLive,
               TarePolicy.isSafeToTareNow(sampleAge: device.secondsSinceLastSample(),
                                         maxAgeSeconds: device.tareReadingMaxAge) else {
@@ -448,7 +449,7 @@ private struct MaxTareButton: View {
     }
 
     private func confirmTare() {
-        guard phase == .ready else { return }
+        guard canTare else { return }
         switch TarePolicy.confirmationDecision(
             promptedKg: promptedKg, currentKg: device.currentKg,
             promptedEpoch: promptedEpoch, currentEpoch: device.connectionEpoch,
@@ -461,7 +462,7 @@ private struct MaxTareButton: View {
             reaskTask?.cancel()
             reaskTask = Task { @MainActor in
                 await Task.yield()
-                guard !Task.isCancelled, phase == .ready, device.state.isConnected else { return }
+                guard !Task.isCancelled, canTare, device.state.isConnected else { return }
                 promptTare()
             }
         case .tare: performTare()

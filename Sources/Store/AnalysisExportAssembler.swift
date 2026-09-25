@@ -17,6 +17,7 @@ enum AnalysisExportAssembler {
     struct Snapshot: Sendable {
         let sessions: [SessionSnapshot]
         let maxes: [AnalysisExport.MaxEntry]
+        var criticalForceTests: [AnalysisExport.CriticalForceEntry] = []
         let today: DayStamp
         let sessionsPerDayTarget: Int
 
@@ -33,7 +34,8 @@ enum AnalysisExportAssembler {
                     : .logged
                 decoded.append(session)
             }
-            return AnalysisExport.Input(sessions: decoded, maxes: maxes, today: today,
+            return AnalysisExport.Input(sessions: decoded, maxes: maxes,
+                criticalForceTests: criticalForceTests, today: today,
                 generatedOn: today, sessionsPerDayTarget: sessionsPerDayTarget)
         }
     }
@@ -83,9 +85,22 @@ enum AnalysisExportAssembler {
                 day: DayStamp(date: record.recordedAt, calendar: calendar),
                 recordedAt: record.recordedAt, source: record.source)
         }
+        // A single workout's export carries no tests; skip the fetch rather than filter.
+        let tests = source.workoutID != nil ? [] : try context.fetch(
+            FetchDescriptor<CriticalForceRecord>(sortBy: [SortDescriptor(\.recordedAt)])).map { record in
+            AnalysisExport.CriticalForceEntry(
+                id: record.id, grip: record.grip, side: record.side,
+                day: DayStamp(date: record.recordedAt, calendar: calendar),
+                recordedAt: record.recordedAt, protocolKey: record.protocolKey,
+                criticalForceKg: record.criticalForceKg, wPrimeKgS: record.wPrimeKgS,
+                peakKg: record.peakKg, endForceKg: record.endForceKg, repsRun: record.repsRun,
+                restsKept: record.restsKept, restsTotal: record.restsTotal,
+                bodyMassKg: record.bodyMassKg, maxAtTestKg: record.maxAtTestKg,
+                reps: record.reps)
+        }
         let target = fetchedLogs.max(by: { $0.startedAt < $1.startedAt })?.sessionsPerDayTarget ?? 1
-        return Snapshot(sessions: sessions, maxes: maxes, today: source.today,
-                        sessionsPerDayTarget: max(1, target))
+        return Snapshot(sessions: sessions, maxes: maxes, criticalForceTests: tests,
+                        today: source.today, sessionsPerDayTarget: max(1, target))
     }
 }
 

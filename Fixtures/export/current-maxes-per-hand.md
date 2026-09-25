@@ -14,7 +14,7 @@ This document is written in English whatever language the app is set to, so that
 - **Target kg** is what the rep was ASKED to pull for that hand, frozen at the time. Blank where the routine set no target or the grip had no max to take a percentage of.
 - **Outcome** is one of `completed`, `earlyRelease` (came off the edge), `skipped` (deliberately passed over — skipped pulls ARE recorded, and they count toward the planned total but never toward the completed one; their kilogram cells are blank because the pull never happened, not zero), `aborted` (the session or the link ended mid-rep).
 - **Hands**: `L` left, `R` right, `B` both.
-- **A climbing day counts as training.** A day at the gym is more finger load than the hangboard session it displaced, so `climbVolume` and `climbLimit` sessions settle a day the same way a routine session does. `benchmark` is a max-testing day, logged automatically the first time a gauge-measured max lands. `hangManual` is a weighted or max hang done away from the gauge.
+- **A climbing day counts as training.** A day at the gym is more finger load than the hangboard session it displaced, so `climbVolume` and `climbLimit` sessions settle a day the same way a routine session does. `benchmark` is a testing day, logged automatically the first time a gauge-measured max or a critical force test lands. `hangManual` is a weighted or max hang done away from the gauge.
 
 **Grip notation** — `20mm 4F HC` is a 20 mm edge, four fingers, half crimp.
 

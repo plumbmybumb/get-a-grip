@@ -76,9 +76,31 @@ private struct ExportMaxDTO: Codable {
     var source: String
 }
 
+/// A critical force test. Optional on the input as a whole, so every scenario written
+/// before tests existed decodes, and re-encodes, byte for byte.
+private struct ExportCriticalForceDTO: Codable {
+    var id: String
+    var grip: GripSpec
+    var side: String
+    var day: Int
+    var recordedAt: String
+    var protocolKey: String
+    var criticalForceKg: Double
+    var wPrimeKgS: Double
+    var peakKg: Double
+    var endForceKg: Double?
+    var repsRun: Int
+    var restsKept: Int
+    var restsTotal: Int
+    var bodyMassKg: Double?
+    var maxAtTestKg: Double?
+    var reps: [CriticalForceRep]
+}
+
 private struct ExportInputDTO: Codable {
     var sessions: [ExportSessionDTO]
     var maxes: [ExportMaxDTO]
+    var criticalForceTests: [ExportCriticalForceDTO]? = nil
     var today: Int
     var generatedOn: Int
     var sessionsPerDayTarget: Int
@@ -115,6 +137,15 @@ private func dto(_ input: AnalysisExport.Input) -> ExportInputDTO {
                 recordedAt: isoInstant.string(from: entry.recordedAt),
                 source: entry.source.rawValue)
         },
+        criticalForceTests: input.criticalForceTests.isEmpty ? nil : input.criticalForceTests.map { t in
+            ExportCriticalForceDTO(
+                id: t.id.uuidString, grip: t.grip, side: t.side.rawValue, day: t.day.raw,
+                recordedAt: isoInstant.string(from: t.recordedAt), protocolKey: t.protocolKey,
+                criticalForceKg: t.criticalForceKg, wPrimeKgS: t.wPrimeKgS, peakKg: t.peakKg,
+                endForceKg: t.endForceKg, repsRun: t.repsRun, restsKept: t.restsKept,
+                restsTotal: t.restsTotal, bodyMassKg: t.bodyMassKg, maxAtTestKg: t.maxAtTestKg,
+                reps: t.reps)
+        },
         today: input.today.raw,
         generatedOn: input.generatedOn.raw,
         sessionsPerDayTarget: input.sessionsPerDayTarget)
@@ -150,6 +181,16 @@ private func input(_ dto: ExportInputDTO) -> AnalysisExport.Input {
                 day: DayStamp(raw: row.day),
                 recordedAt: isoInstant.date(from: row.recordedAt) ?? Date(timeIntervalSince1970: 0),
                 source: MaxSource(rawValue: row.source) ?? .manual)
+        },
+        criticalForceTests: (dto.criticalForceTests ?? []).map { row in
+            AnalysisExport.CriticalForceEntry(
+                id: UUID(uuidString: row.id) ?? UUID(), grip: row.grip,
+                side: Side(rawValue: row.side) ?? .both, day: DayStamp(raw: row.day),
+                recordedAt: isoInstant.date(from: row.recordedAt) ?? Date(timeIntervalSince1970: 0),
+                protocolKey: row.protocolKey, criticalForceKg: row.criticalForceKg,
+                wPrimeKgS: row.wPrimeKgS, peakKg: row.peakKg, endForceKg: row.endForceKg,
+                repsRun: row.repsRun, restsKept: row.restsKept, restsTotal: row.restsTotal,
+                bodyMassKg: row.bodyMassKg, maxAtTestKg: row.maxAtTestKg, reps: row.reps)
         },
         today: DayStamp(raw: dto.today),
         generatedOn: DayStamp(raw: dto.generatedOn),
@@ -456,7 +497,43 @@ private func scenarios() -> [(name: String, input: AnalysisExport.Input)] {
 
     out.append(("empty-history", makeInput()))
 
+
     out.append(("rich-eight-weeks-and-older", richHistory()))
+
+    // LAST, because `session()` advances the shared id counter: anything added earlier
+    // renumbers every later scenario's sessions.
+    // Two tests on one grip and hand, one inside the 8-week window and one before it,
+    // a full 24-pull test beside one stopped at 18, and the blanks: no body weight or
+    // max on the older test, one pull with too little data, one rest held into.
+    let cfGrip = grip(20, .four, .halfCrimp)
+    func cfReps(_ count: Int, start: Double, floor: Double) -> [CriticalForceRep] {
+        (0..<count).map { i in
+            let mean = floor + (start - floor) * pow(0.8, Double(i))
+            return CriticalForceRep(index: i, meanKg: i == 5 ? nil : mean,
+                                    peakKg: mean * 1.18, endKg: mean * 0.86,
+                                    impulseKgS: i == 5 ? 12.5 : mean * 7,
+                                    coverage: i == 5 ? 0.3 : 1,
+                                    restLoadSeconds: i == count - 1 ? nil : (i == 2 ? 1.6 : 0.2))
+        }
+    }
+    out.append(("critical-force-tests", AnalysisExport.Input(
+        sessions: [session(exportToday - 3, reps: [rep(0, side: .left, grip: cfGrip, peak: 14)])],
+        maxes: [maxEntry(36, grip: cfGrip, side: .left, on: exportToday - 70)],
+        criticalForceTests: [
+            AnalysisExport.CriticalForceEntry(
+                id: stableID(901), grip: cfGrip, side: .left, day: exportToday - 70,
+                recordedAt: at(exportToday - 70, hour: 18), protocolKey: "7:3x24",
+                criticalForceKg: 16.2, wPrimeKgS: 612.4, peakKg: 35.9, endForceKg: 13.8,
+                repsRun: 18, restsKept: 16, restsTotal: 17, bodyMassKg: nil, maxAtTestKg: nil,
+                reps: cfReps(18, start: 30, floor: 16)),
+            AnalysisExport.CriticalForceEntry(
+                id: stableID(902), grip: cfGrip, side: .left, day: exportToday - 2,
+                recordedAt: at(exportToday - 2, hour: 13), protocolKey: "7:3x24",
+                criticalForceKg: 18.53, wPrimeKgS: 1048.3, peakKg: 38.2, endForceKg: 15.9,
+                repsRun: 24, restsKept: 22, restsTotal: 23, bodyMassKg: 70, maxAtTestKg: 36,
+                reps: cfReps(24, start: 32, floor: 18.5)),
+        ],
+        today: exportToday, generatedOn: exportToday, sessionsPerDayTarget: 2)))
 
     return out.map { (name: $0.0, input: $0.1) }
 }

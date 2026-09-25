@@ -158,7 +158,7 @@ struct DoigtApp: App {
     /// bonus, never a requirement). The store name "Doigt" is frozen: changing it points
     /// the app at a different file and every routine appears to have vanished.
     private static func makeContainer() -> (ModelContainer, StorageMode) {
-        let schema = Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self])
+        let schema = Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self, CriticalForceRecord.self])
 
         let cloud = ModelConfiguration(
             "Doigt",

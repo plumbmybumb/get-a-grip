@@ -37,7 +37,7 @@ private final class SummaryPreviewState {
     let finishedAt = Date()
 
     init() {
-        let container = try! ModelContainer(for: SessionTemplate.self, WorkoutLog.self, MaxRecord.self,
+        let container = try! ModelContainer(for: SessionTemplate.self, WorkoutLog.self, MaxRecord.self, CriticalForceRecord.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         self.container = container
         let previewHands = ProcessInfo.processInfo.arguments.contains("-previewHandMaxes")

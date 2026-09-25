@@ -32,6 +32,7 @@ struct MaxesTab: View {
     @State private var measuring: MeasureTarget?
     @State private var editing: MeasureTarget?
     @State private var adding = false
+    @State private var criticalForceTest: CriticalForceTestRequest?
 
     /// Size CLASS, never the idiom — see `CardGrid`.
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -50,6 +51,9 @@ struct MaxesTab: View {
                     CardGrid { cards(gripGroups, untestedInvitations) }
                 } else {
                     cards(gripGroups, untestedInvitations)
+                }
+                CriticalForceCards { grip, side in
+                    criticalForceTest = CriticalForceTestRequest(grip: grip, side: side)
                 }
                 footnote
             }
@@ -71,6 +75,9 @@ struct MaxesTab: View {
         }
         .sheet(item: $editing) { target in
             MaxEditSheet(grip: target.grip) { editing = nil }
+        }
+        .fullScreenCover(item: $criticalForceTest) { request in
+            CriticalForceTestView(grip: request.grip, side: request.side)
         }
         .sheet(isPresented: $adding) {
             NewMaxSheet(seed: templates.recentGrips.first ?? GripSpec()) { adding = false }

@@ -111,9 +111,9 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
     case climbLimit
     /// Weighted or max hangs done away from the gauge.
     case hangManual
-    /// A max-testing day: gauge-measured maxes were recorded. Logged automatically the
-    /// first time a MEASURED max lands on a day — never by typing a number, because
-    /// typing is not training. One per day; see `TemplateStore.recordMax`.
+    /// A testing day: a gauge-measured max or a critical force test was recorded. Logged
+    /// automatically the first time either lands on a day, never by typing a number,
+    /// because typing is not training. One per day; see `TemplateStore.stampBenchmarkDay`.
     case benchmark
 
     var isClimb: Bool { self == .climbVolume || self == .climbLimit }
@@ -160,7 +160,7 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
         case .climbVolume: String(localized: "Laps, circuits, an easy evening — real load, well short of maximal.")
         case .climbLimit:  String(localized: "Hard bouldering or projecting — a maximal pull on your fingers.")
         case .hangManual:  String(localized: "Weighted or max hangs you did on your own — no gauge behind it.")
-        case .benchmark:   String(localized: "A max-testing day — new ceilings on the gauge.")
+        case .benchmark:   String(localized: "A testing day — a max or a critical force test on the gauge.")
         }
     }
 

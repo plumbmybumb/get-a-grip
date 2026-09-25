@@ -72,7 +72,7 @@ private final class RunnerCuePreviewState {
             else { return 20 }
             return seconds
         }()
-        let container = try! ModelContainer(for: SessionTemplate.self, WorkoutLog.self, MaxRecord.self,
+        let container = try! ModelContainer(for: SessionTemplate.self, WorkoutLog.self, MaxRecord.self, CriticalForceRecord.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         self.container = container
         var draft = RoutineDraft.blank(named: "Training cue preview")
