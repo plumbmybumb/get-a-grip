@@ -77,7 +77,8 @@ struct RunnerRestFocusSummary: View {
                     .accessibilityIdentifier("runner.restFocus.phase")
                 if let progressRow {
                     progressRow
-                } else if showsCounts {
+                }
+                if showsCounts {
                     HStack(alignment: .top, spacing: 16) {
                         setCount
                         pullCount

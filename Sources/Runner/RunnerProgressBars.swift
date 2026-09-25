@@ -30,11 +30,11 @@ import SwiftUI
 // shipping string catalog.
 
 enum RunnerProgressStyle: String {
-    case baseline, segments, timeline, rails, nested, zoom, underline
+    case baseline, segments, timeline, rails, nested, zoom, underline, stacked
 
     /// The four the Settings picker offers. Rails was tried and rejected; it stays
     /// reachable through the DEBUG launch argument for comparison only.
-    static let selectable: [RunnerProgressStyle] = [.zoom, .underline, .baseline, .nested, .segments, .timeline]
+    static let selectable: [RunnerProgressStyle] = [.stacked, .zoom, .underline, .baseline, .nested, .segments, .timeline]
 
     var settingsName: String {
         switch self {
@@ -45,6 +45,7 @@ enum RunnerProgressStyle: String {
         case .rails: "Rails"
         case .zoom: "Zoom"
         case .underline: "Underline"
+        case .stacked: "Stacked"
         }
     }
 
@@ -755,8 +756,8 @@ struct NestedProgressRow<Middle: View>: View {
 /// pull → rest and rest → pull are the same path run in opposite directions.
 enum ZoomLayout {
     /// Pull slots along `width`: ~2 pt between pulls, ~6 pt between sets. Dense plans
-    /// shrink the pull gap to 1 pt, then drop it once a slot would be under ~3 pt,
-    /// keeping only the set gaps (which themselves narrow before a set becomes a sliver).
+    /// shrink the pull gap to 1 pt, then drop it (see below), keeping only the set gaps
+    /// (which themselves narrow before a set becomes a sliver).
     static func cells(sizes: [Int], width: CGFloat,
                       pullGap preferredPullGap: CGFloat = 2,
                       setGap preferredSetGap: CGFloat = 6) -> [ClosedRange<CGFloat>] {
@@ -768,8 +769,11 @@ enum ZoomLayout {
         func unit() -> CGFloat {
             (width - setGap * CGFloat(sets - 1) - pullGap * CGFloat(total - sets)) / CGFloat(total)
         }
-        if unit() < 3, pullGap > 1 { pullGap = 1 }
-        if unit() < 3 { pullGap = 0 }
+        // A pill must stay at least 1.5× as long as it is tall: at 60 pulls a ~4 pt
+        // slot drew a row of DOTS, and a circle is a session in this app. So the pull
+        // gap narrows under an 8 pt slot and goes under 6 pt, leaving set gaps only.
+        if unit() < 8, pullGap > 1 { pullGap = 1 }
+        if unit() < 6 { pullGap = 0 }
         while unit() < 1, setGap > 1 { setGap -= 1 }
         let slot = max(0.25, unit())
         var cells: [ClosedRange<CGFloat>] = []
@@ -926,6 +930,9 @@ struct ZoomLayers: View {
     var focus: Int?
     var showsLiveFill: Bool
     var tint: Color
+    /// The next/current pill's bleu mark. ZOOM fades it as it zooms into that pill;
+    /// STACKED hides it while the pill carries the live fill instead.
+    var marksNext = true
     @Environment(\.routineZoom) private var zoom
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -945,7 +952,7 @@ struct ZoomLayers: View {
                     .fill(RoutineLineInk.next)
                     // Fades as the line zooms into that very slot: the marker was the
                     // promise, the empty hold bar is the thing itself.
-                    .opacity(1 - zoom)
+                    .opacity(marksNext ? 1 - zoom : 0)
             }
             if let focus {
                 LiveZoomFill(session: session, cells: cells, focus: focus,
@@ -984,6 +991,95 @@ struct LiveZoomFill: View {
         ZoomSlotsShape(cells: cells, include: [focus], focus: focus, zoom: zoom, fraction: progress)
             .fill(tint)
             .animation(reduceMotion ? nil : Motion.measuredProgress, value: progress)
+    }
+}
+
+/// STACKED (owner, after v2): today's hold bar untouched, and directly under it the
+/// whole routine as ZOOM's rest-state pills — ALWAYS, pulling and resting alike. The
+/// pills are `ZoomLayers` at zoom 0, so height, radius, colours and gaps cannot drift
+/// from ZOOM's. Two treatments of the pill being pulled are wired for comparison:
+/// the bleu mark (default) or a proportional hold fill (`liveFillsPill`).
+struct StackedRoutinePills: View {
+    var model: SessionProgressModel
+    var session: RunnerSession
+    var tint: Color
+    /// Working (or releasing / paused mid-pull).
+    var isLive: Bool
+    var liveFillsPill: Bool
+
+    var body: some View {
+        GeometryReader { proxy in
+            let cells = ZoomLayout.cells(sizes: model.setSizes, width: proxy.size.width)
+            let filling = liveFillsPill && isLive
+            ZoomLayers(model: model, session: session, cells: cells,
+                       focus: filling ? model.current : nil,
+                       showsLiveFill: filling, tint: tint, marksNext: !filling)
+        }
+        .frame(height: ZoomRoutineBar.height)
+    }
+}
+
+/// STACKED's top row: ONE bar that is always there — so the panel never changes shape
+/// between pull and rest (owner, 2026-09-25).
+///
+/// - Pulling: today's hold bar exactly (systemFill track, bleu fill growing with held
+///   time). Released but still on the edge: full. Armed: empty, waiting.
+/// - Rest, set break, count-in: the rest's own countdown, DRAINING from full to empty
+///   in the calm steel. Drain, not fill, because it is time REMAINING: it shrinks as
+///   the big numeral counts down, and it makes both seams continuous — a finished hold
+///   is a FULL bleu bar and a new rest is a FULL steel bar (only the colour changes),
+///   and a rest that has run out is an EMPTY bar exactly where the next hold starts.
+/// - Paused: frozen — the engine reads a paused countdown against `pausedAt`.
+///
+/// A LEAF: it alone reads `repProgress` and `phaseRemainingFraction`. The fraction is
+/// the engine's own countdown, the same one behind the rest numeral, so they cannot
+/// disagree.
+struct StackedTimeBar: View {
+    enum Mode: Equatable { case hold, armed, released, countdown, none }
+
+    var session: RunnerSession
+    var mode: Mode
+    /// Changes per pull / per rest, so each gets a fresh layer: the hold that ends
+    /// fades out FULL, the rest that ends fades out EMPTY.
+    var identity: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        #if DEBUG
+        let _ = RunnerProgressProbe.count("StackedTimeBar")
+        #endif
+        let fraction: Double = switch mode {
+        case .hold: session.repProgress
+        case .released: 1
+        case .countdown: session.phaseRemainingFraction ?? 0
+        case .armed, .none: 0
+        }
+        let isRest = mode == .countdown
+        ZStack(alignment: .leading) {
+            Capsule(style: .continuous).fill(RoutineLineInk.track)
+            GeometryReader { proxy in
+                // A rectangle clipped by the track, as the system bar draws it: the last
+                // second of a rest is a sliver on the rounded end, not a round DOT (a
+                // circle is a session in this app).
+                Rectangle()
+                    .fill(isRest ? StatusTint.calm : StatusTint.engaged)
+                    .frame(width: proxy.size.width * max(0, min(1, fraction)))
+                    .animation(reduceMotion ? nil : Motion.measuredProgress, value: fraction)
+            }
+            .id(TimeBarKey(isRest: isRest, identity: identity))
+            .transition(.opacity)
+        }
+        .clipShape(Capsule(style: .continuous))
+        .frame(height: ZoomRoutineBar.height)
+        // The pull ↔ rest seam: a colour change on a bar that is full (or empty) on both
+        // sides of it. Reduce Motion keeps it — it is already a cross-fade.
+        .animation(Motion.state(reduceMotion), value: TimeBarKey(isRest: isRest, identity: identity))
+        .accessibilityHidden(true)
+    }
+
+    private struct TimeBarKey: Hashable {
+        var isRest: Bool
+        var identity: Int
     }
 }
 
@@ -1045,7 +1141,7 @@ struct RunnerProgressInstrument: View {
             case .segments: SegmentsProgressView(model: model, session: session, tint: tint)
             case .timeline: TimelineProgressView(model: model, session: session, tint: tint)
             case .rails: RailsProgressView(model: model, session: session, tint: tint)
-            case .baseline, .nested, .zoom, .underline: EmptyView()
+            case .baseline, .nested, .zoom, .underline, .stacked: EmptyView()
             }
         }
         .animation(Motion.state(reduceMotion), value: model)

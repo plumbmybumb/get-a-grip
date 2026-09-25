@@ -671,12 +671,12 @@ struct RunnerView: View {
                 // and only the block above them hands over to the rest summary.
                 measuredTopContents(session, scale: scale, focused: focused)
             } else if keepsRoutineLine {
+                // Accessibility sizes reflow the rest into the summary alone. The routine
+                // rides above the summary's own compact counts — re-stacking the full
+                // labels row here cost 55 pt at AX3 (measured).
                 RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
-                                       showsCounts: false,
-                                       progressRow: AnyView(VStack(spacing: 12) {
-                                           routineLine(session)
-                                           counters(session, showsPhaseWord: false)
-                                       }))
+                                       showsCounts: true,
+                                       progressRow: AnyView(routineAtRest(session)))
             } else if focused && typeSize.isAccessibilitySize {
                 RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
                                        showsCounts: !usesProgressInstrument,
@@ -706,7 +706,27 @@ struct RunnerView: View {
 
     /// ZOOM and UNDERLINE keep today's panel exactly — same rows, same spacing — and
     /// swap only the thin bar's row.
-    private var keepsRoutineLine: Bool { progressStyle == .zoom || progressStyle == .underline }
+    private var keepsRoutineLine: Bool {
+        progressStyle == .zoom || progressStyle == .underline || progressStyle == .stacked
+    }
+
+    /// STACKED's rhythm: bar → pills → labels, tightened so the extra row costs as
+    /// little panel height as possible (baseline is bar → 12 → labels).
+    static let stackedBarToPills: CGFloat = 5
+    static let stackedPillsToLabels: CGFloat = 7
+
+    /// STACKED's time bar: what the one bar measures in this phase.
+    private func timeBarMode(_ phase: RunnerPhase) -> StackedTimeBar.Mode {
+        let inner: RunnerPhase
+        if case .paused(let wrapped) = phase { inner = wrapped } else { inner = phase }
+        switch inner {
+        case .working: return .hold
+        case .releasing: return .released
+        case .armed: return .armed
+        case .resting, .leadIn: return .countdown
+        case .idle, .finished, .paused: return .none
+        }
+    }
 
     /// The zoomed-in phases: the pull is on you, running, or just finished under your hand.
     private func isHoldPhase(_ phase: RunnerPhase) -> (zoomed: Bool, live: Bool) {
@@ -725,7 +745,20 @@ struct RunnerView: View {
                                          phase: session.snapshot.phase)
         let hold = isHoldPhase(session.snapshot.phase)
         Group {
-            if progressStyle == .zoom {
+            if progressStyle == .stacked {
+                // One bar, always there: the hold while pulling, the rest's countdown
+                // while resting — see `StackedTimeBar`. Same row in every phase, so the
+                // pills and labels never move between pull and rest.
+                VStack(spacing: Self.stackedBarToPills) {
+                    StackedTimeBar(session: session, mode: timeBarMode(session.snapshot.phase),
+                                   identity: session.snapshot.phase.slotIndex ?? -1)
+                    StackedRoutinePills(model: model, session: session, tint: tint(session),
+                                        isLive: hold.live,
+                                        liveFillsPill: ProcessInfo.processInfo.arguments.contains("-stackedLiveFill"))
+                }
+                // The outer stack's 12 pt is tightened to the stacked rhythm.
+                .padding(.bottom, Self.stackedPillsToLabels - 12)
+            } else if progressStyle == .zoom {
                 ZoomRoutineBar(model: model, session: session,
                                focus: session.snapshot.phase.slotIndex,
                                zoomed: hold.zoomed, showsLiveFill: hold.live, tint: tint(session))
@@ -735,6 +768,26 @@ struct RunnerView: View {
                     progress(session)
                     RoutineUnderline(model: model)
                 }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// The routine alone, as it reads during a rest — for the accessibility-size summary.
+    @ViewBuilder
+    private func routineAtRest(_ session: RunnerSession) -> some View {
+        let model = SessionProgressModel(slots: session.runner.slots, results: session.runner.results,
+                                         phase: session.snapshot.phase)
+        Group {
+            switch progressStyle {
+            case .zoom:
+                ZoomRoutineBar(model: model, session: session, focus: session.snapshot.phase.slotIndex,
+                               zoomed: false, showsLiveFill: false, tint: tint(session))
+            case .underline:
+                RoutineUnderline(model: model)
+            default:
+                StackedRoutinePills(model: model, session: session, tint: tint(session),
+                                    isLive: false, liveFillsPill: false)
             }
         }
         .accessibilityHidden(true)

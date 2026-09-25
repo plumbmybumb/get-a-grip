@@ -101,7 +101,7 @@ struct SettingsView: View {
                 // A menu, not segments: six names do not fit one segmented row.
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("settings.test.progressStyle")
-                Text(verbatim: "Test builds only. How the session screen shows sets and pulls. Zoom: today's bar zooms out to the whole routine between pulls. Underline: today's bar with the routine as a thin line beneath. Today is the shipping layout; Nested, Segments and Timeline are the earlier tries.")
+                Text(verbatim: "Test builds only. How the session screen shows sets and pulls. Stacked: today's bar with the whole routine as pills beneath it. Zoom: today's bar zooms out to the whole routine between pulls. Underline: today's bar with the routine as a thin line beneath. Today is the shipping layout; Nested, Segments and Timeline are the earlier tries.")
                     .font(.system(.caption)).foregroundStyle(Ink.secondary)
             }
         }

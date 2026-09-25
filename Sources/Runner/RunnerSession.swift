@@ -322,7 +322,7 @@ final class RunnerSession {
                 do { try await Task.sleep(for: .milliseconds(100)) }
                 catch { return }
                 guard !Task.isCancelled, let self, !self.hasEnded else { return }
-                self.now = ProcessInfo.processInfo.systemUptime
+                self.now = ProcessInfo.processInfo.systemUptime + self.clockOffset
                 self.send(.tick)
             }
         }
@@ -361,12 +361,22 @@ final class RunnerSession {
     #if DEBUG
     /// Screenshot fixtures only: move the session's wall clock forward and tick, so a
     /// fixture can finish a REAL rest through the engine instead of skipping the pull
-    /// behind it (a skipped pull draws differently from a completed one).
+    /// behind it (a skipped pull draws differently from a completed one). Kept as an
+    /// OFFSET, so a fixture left running keeps counting from where it was put.
     func debugAdvanceClock(by seconds: TimeInterval) {
+        debugClockOffset += seconds
         now += seconds
         send(.tick)
     }
+    @ObservationIgnored private var debugClockOffset: TimeInterval = 0
     #endif
+    private var clockOffset: TimeInterval {
+        #if DEBUG
+        debugClockOffset
+        #else
+        0
+        #endif
+    }
 
     private func startLiveActivity() {
         activityStart = nil
@@ -654,7 +664,10 @@ final class RunnerSession {
         // Sub-percent: rounding makes a long hold visibly stop between 1% boundaries.
         let progress = runner.repProgress
         if progress != repProgress { repProgress = progress }
-        let remaining = timerOnly ? runner.phaseRemainingFraction(at: now) : nil
+        // TEST BRANCH: published for measured sessions too, for STACKED's rest time bar.
+        // The engine returns nil while a measured pull works, so this changes only on
+        // countdown ticks (10 Hz), and only leaf views observe it.
+        let remaining = runner.phaseRemainingFraction(at: now)
         if remaining != phaseRemainingFraction { phaseRemainingFraction = remaining }
         let next = RunnerSnapshot(
             phase: runner.phase,
