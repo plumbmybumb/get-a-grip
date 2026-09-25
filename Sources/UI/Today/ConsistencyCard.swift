@@ -219,7 +219,7 @@ private struct ConsistencyStrip: View {
         if complete > 0 { counts.append(String(localized: "\(complete) \(complete == 1 ? String(localized: "day") : String(localized: "days")) complete")) }
         // Named: the notch is a distinction the drawing makes, so speech must too.
         if climbed > 0 { counts.append(String(localized: "\(climbed) at the climbing gym")) }
-        if benchmarked > 0 { counts.append(String(localized: "\(benchmarked) max testing")) }
+        if benchmarked > 0 { counts.append(String(localized: "\(benchmarked) testing")) }
         if partial > 0 { counts.append(String(localized: "\(partial) partial")) }
         if missed > 0 { counts.append(String(localized: "\(missed) missed")) }
 

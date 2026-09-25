@@ -269,12 +269,12 @@ struct TargetBandRow: View {
 
         if resolvedSides.isEmpty {
             // Named: a percentage with no max resolves to no target at run time.
-            return String(localized: "No max on file for this grip yet, so this shows no target during a session. Add one in Settings › Maxes.")
+            return String(localized: "No max on file for this grip yet, so this shows no target during a session. Add one on the Benchmarks tab.")
         }
         // One hand has a max and the other not (a left- or right-only max). Say
         // WHICH is unloaded, since the row shows a confident band for the other.
         if resolvedSides.count < sides.count, let missing = sides.first(where: { resolved($0) == nil }) {
-            return String(localized: "No max for your \(missing.name.lowercased()) hand, so those pulls show no target. Add one in Settings › Maxes.")
+            return String(localized: "No max for your \(missing.name.lowercased()) hand, so those pulls show no target. Add one on the Benchmarks tab.")
         }
         guard differsByHand else {
             return String(localized: "\(percentText(band)) of your max on this grip")

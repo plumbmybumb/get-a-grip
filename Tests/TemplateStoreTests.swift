@@ -2317,3 +2317,124 @@ final class RoutineSummaryValueTests: XCTestCase {
         XCTAssertNil(summary(edges: []).edgeLine)
     }
 }
+
+// MARK: - Critical force
+
+extension TemplateStoreTests {
+    private func cfResult(cf: Double = 18.5, peak: Double = 38) -> CriticalForceResult {
+        CriticalForceResult(protocolUsed: .standard, criticalForceKg: cf, wPrimeKgS: 1000,
+                            peakKg: peak, endForceKg: 16,
+                            reps: (0..<24).map { CriticalForceRep(index: $0, meanKg: cf, peakKg: peak,
+                                                                  endKg: 16, impulseKgS: cf * 7, coverage: 1,
+                                                                  restLoadSeconds: $0 == 23 ? nil : 0.2) },
+                            criticalForceReps: 19...24)
+    }
+
+    /// A test is maximal testing: it settles the day exactly as a measured max does,
+    /// once, and freezes the max it was taken against.
+    func testACriticalForceTestIsABenchmarkDayAndFreezesTheMax() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        XCTAssertTrue(w.store.recordMaxes([.init(grip: grip, side: .left, kg: 36, source: .measured)]))
+
+        let record = try XCTUnwrap(w.store.recordCriticalForce(cfResult(), trace: Data([1, 20, 0, 0, 0, 0]),
+                                                               grip: grip, side: .left, bodyMassKg: 70))
+        XCTAssertEqual(record.maxAtTestKg, 36)
+        XCTAssertEqual(record.bodyMassKg, 70)
+        XCTAssertEqual(record.percentOfMax!, 18.5 / 36 * 100, accuracy: 1e-9)
+        XCTAssertEqual(record.restsKept, 23)
+        XCTAssertEqual(record.reps.count, 24)
+        XCTAssertEqual(workoutLogs(w).filter { $0.kind == .benchmark }.count, 1,
+                       "the max already stamped today; the test must not stamp a second")
+        XCTAssertTrue(w.store.benchmarkedToday)
+
+        // A later max never rewrites what the test was taken against.
+        XCTAssertTrue(w.store.recordMaxes([.init(grip: grip, side: .left, kg: 40, source: .manual)]))
+        XCTAssertEqual(record.maxAtTestKg, 36)
+    }
+
+    func testACriticalForceTestAloneStampsTheDay() throws {
+        let w = try makeWorld()
+        XCTAssertNotNil(w.store.recordCriticalForce(cfResult(), trace: Data(), grip: GripSpec(),
+                                                    side: .both, bodyMassKg: nil))
+        XCTAssertEqual(workoutLogs(w).filter { $0.kind == .benchmark }.count, 1)
+        XCTAssertTrue(w.store.benchmarkedToday)
+    }
+
+    /// The hardest pull becomes a max only when the climber ticked the offer, and then in
+    /// the same save as the test.
+    func testTheTestPeakIsSavedAsAMaxOnlyWhenAsked() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        XCTAssertNotNil(w.store.recordCriticalForce(cfResult(), trace: Data(), grip: grip, side: .right,
+                                                    bodyMassKg: nil))
+        XCTAssertNil(w.store.maxTable.exact(grip: grip.key, side: .right))
+
+        XCTAssertNotNil(w.store.recordCriticalForce(cfResult(peak: 41), trace: Data(), grip: grip, side: .right,
+                                                    bodyMassKg: nil,
+                                                    alsoMax: .init(grip: grip, side: .right, kg: 41, source: .measured)))
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .right), 41)
+    }
+
+    func testACriticalForceSaveThatFailsLeavesNothingBehind() throws {
+        let w = try makeWorld(allowsSave: false)
+        XCTAssertNil(w.store.recordCriticalForce(cfResult(), trace: Data(), grip: GripSpec(), side: .left,
+                                                 bodyMassKg: 70))
+        XCTAssertTrue(try w.context.fetch(FetchDescriptor<CriticalForceRecord>()).isEmpty)
+        XCTAssertTrue(workoutLogs(w).isEmpty)
+        XCTAssertFalse(w.context.hasChanges)
+    }
+
+    func testANonsenseResultIsRefused() throws {
+        let w = try makeWorld()
+        XCTAssertNil(w.store.recordCriticalForce(cfResult(cf: .nan), trace: Data(), grip: GripSpec(),
+                                                 side: .left, bodyMassKg: nil))
+        XCTAssertNil(w.store.recordCriticalForce(cfResult(), trace: Data(), grip: GripSpec(), side: .left,
+                                                 bodyMassKg: nil,
+                                                 alsoMax: .init(grip: GripSpec(), side: .left, kg: 0, source: .measured)))
+        XCTAssertTrue(try w.context.fetch(FetchDescriptor<CriticalForceRecord>()).isEmpty)
+    }
+
+    /// One hand at a time: both hands land in one save, each frozen against its OWN max,
+    /// with one benchmark day.
+    func testBothHandsInTurnSaveTogetherAgainstTheirOwnMaxes() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        XCTAssertTrue(w.store.recordMaxes([.init(grip: grip, side: .left, kg: 36, source: .measured),
+                                           .init(grip: grip, side: .right, kg: 32, source: .measured)]))
+        let saved = try XCTUnwrap(w.store.recordCriticalForces(
+            [.init(side: .left, result: cfResult(cf: 18), trace: Data()),
+             .init(side: .right, result: cfResult(cf: 16), trace: Data())],
+            grip: grip, bodyMassKg: 70,
+            alsoMaxes: [.init(grip: grip, side: .right, kg: 38, source: .measured)]))
+        XCTAssertEqual(saved.map(\.side), [.left, .right])
+        XCTAssertEqual(saved.map(\.maxAtTestKg), [36, 32], "each hand against its own max, before the new one")
+        XCTAssertEqual(saved[0].recordedAt, saved[1].recordedAt, "one visit, one instant")
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .right), 38)
+        XCTAssertEqual(workoutLogs(w).filter { $0.kind == .benchmark }.count, 1)
+
+        XCTAssertNil(w.store.recordCriticalForces(
+            [.init(side: .left, result: cfResult(), trace: Data()),
+             .init(side: .left, result: cfResult(), trace: Data())], grip: grip, bodyMassKg: nil),
+                     "two results for one hand in one visit is a bug, not a save")
+    }
+
+    /// Undo puts the test back EXACTLY: same id, date, blobs and frozen values.
+    func testDeletingATestUndoesExactly() throws {
+        let w = try makeWorld()
+        let trace = CriticalForceTrace.encode([CriticalForcePoint(t: 0.1, kg: 30), CriticalForcePoint(t: 0.2, kg: 31)])
+        let record = try XCTUnwrap(w.store.recordCriticalForce(cfResult(), trace: trace, grip: GripSpec(edgeMM: 15),
+                                                               side: .left, bodyMassKg: 68.5))
+        let before = TemplateStore.DeletedCriticalForce(record)
+
+        XCTAssertTrue(w.store.deleteCriticalForce(record))
+        XCTAssertTrue(try w.context.fetch(FetchDescriptor<CriticalForceRecord>()).isEmpty)
+        XCTAssertNotNil(w.store.lastDeletedCriticalForce)
+
+        w.store.undoDeleteCriticalForce()
+        let restored = try XCTUnwrap(try w.context.fetch(FetchDescriptor<CriticalForceRecord>()).first)
+        XCTAssertEqual(TemplateStore.DeletedCriticalForce(restored), before)
+        XCTAssertNil(w.store.lastDeletedCriticalForce)
+        XCTAssertEqual(restored.trace.count, 2)
+    }
+}

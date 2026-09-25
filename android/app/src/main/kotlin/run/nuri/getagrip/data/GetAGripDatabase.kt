@@ -130,7 +130,23 @@ interface MaxRecordDao {
     suspend fun deleteAll()
 }
 
-/// The three tables, in the CloudKit-safe shape the iOS models froze.
+/// Critical force tests, oldest first — the Maxes cards and Today's line read that order.
+@Dao
+interface CriticalForceRecordDao {
+    @Query("SELECT * FROM CriticalForceRecord ORDER BY recordedAt ASC")
+    suspend fun all(): List<CriticalForceRecordEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(row: CriticalForceRecordEntity)
+
+    @Query("DELETE FROM CriticalForceRecord WHERE id = :id")
+    suspend fun delete(id: UUID)
+
+    @Query("DELETE FROM CriticalForceRecord")
+    suspend fun deleteAll()
+}
+
+/// The four tables, in the CloudKit-safe shape the iOS models froze.
 ///
 /// **The file name is FROZEN as `getagrip`**, like the application id: renaming it after
 /// install is an empty History with the old file still on disk. It is also named in
@@ -142,21 +158,25 @@ interface MaxRecordDao {
 /// a rename or drop), which Room auto-migrations write on their own.
 ///
 /// Version 2 (2026-09-18): `SessionTemplate.startingHandRaw`, defaulted `left`.
+/// Version 3 (2026-09-25): the `CriticalForceRecord` table. A new table is additive, so the
+/// auto-migration creates it and touches nothing else.
 @Database(
     entities = [
         SessionTemplateEntity::class,
         WorkoutLogEntity::class,
         MaxRecordEntity::class,
+        CriticalForceRecordEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 @TypeConverters(Converters::class)
 abstract class GetAGripDatabase : RoomDatabase() {
     abstract fun routines(): SessionTemplateDao
     abstract fun logs(): WorkoutLogDao
     abstract fun maxes(): MaxRecordDao
+    abstract fun criticalForce(): CriticalForceRecordDao
 
     companion object {
         /// FROZEN — see the type's note.

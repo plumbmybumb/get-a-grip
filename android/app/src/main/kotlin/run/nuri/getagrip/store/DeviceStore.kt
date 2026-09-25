@@ -434,6 +434,15 @@ class DeviceStore(
         connect()
     }
 
+    /// Reshape the demo gauge's pulls. A no-op on real hardware. The critical force test
+    /// asks for `allOut` while it runs and hands back the previous profile afterwards.
+    fun setMockProfile(profile: MockForceProfile) {
+        (client as? MockProgressorClient)?.profile = profile
+    }
+
+    /// The demo gauge's current profile; null on real hardware.
+    val mockProfile: MockForceProfile? get() = (client as? MockProgressorClient)?.profile
+
     // MARK: - Commands
 
     fun connect() {

@@ -39,7 +39,7 @@ struct RootTabView: View {
             Tab(value: 2) {
                 MaxesTab()
             } label: {
-                Label("Maxes", systemImage: "scalemass.fill")
+                Label("Benchmarks", systemImage: "scalemass.fill")
                     .symbolEffect(.pulse, options: .repeat(.continuous),
                                   isActive: templates.benchmarkNudge && !reduceMotion)
             }

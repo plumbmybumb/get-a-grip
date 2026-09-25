@@ -156,6 +156,22 @@ class StringCatalogTests {
         }
     }
 
+    /// **The key takes the arguments its resource does.** A key is what the call site
+    /// formats with, so a resource that lost a specifier (an Android-only entry written
+    /// with Java `%s`, which the generator reads as a stray percent and escapes to `%%s`)
+    /// hands `String.format` a `String` for a `%d` and crashes the screen that draws it —
+    /// while every string above still formats on its own.
+    @Test
+    fun everyKeyTakesTheSameArgumentsAsItsResource() {
+        val context = RuntimeEnvironment.getApplication()
+        val wrong = mutableListOf<String>()
+        for ((key, id) in STRING_KEYS) {
+            val value = context.resources.getString(id)
+            if (slots(key).sorted() != slots(value).sorted()) wrong += "$key -> $value"
+        }
+        assertTrue(wrong.isEmpty(), "keys and resources disagree:\n" + wrong.joinToString("\n"))
+    }
+
     // MARK: - Escaping
 
     /// Apostrophes and the whitespace that carries meaning.

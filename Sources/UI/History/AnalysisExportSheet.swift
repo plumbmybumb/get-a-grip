@@ -77,7 +77,9 @@ struct AnalysisExportSheet: View {
                             Text("Nothing to export in this range.")
                                 .font(.subheadline).foregroundStyle(Ink.secondary)
                         } else {
-                            Text("Workouts: \(document.sessionCount) · Pulls: \(document.pullCount) · Maxes: \(document.maxCount)")
+                            Text(document.criticalForceCount > 0
+                                 ? "Workouts: \(document.sessionCount) · Pulls: \(document.pullCount) · Maxes: \(document.maxCount) · Critical force tests: \(document.criticalForceCount)"
+                                 : "Workouts: \(document.sessionCount) · Pulls: \(document.pullCount) · Maxes: \(document.maxCount)")
                                 .font(.footnote).monospacedDigit().foregroundStyle(Ink.secondary)
                             Text("CSV · \(ByteCountFormatter.string(fromByteCount: Int64(document.byteCount), countStyle: .file))")
                                 .font(.footnote).foregroundStyle(Ink.tertiary)

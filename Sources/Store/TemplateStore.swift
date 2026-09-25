@@ -81,6 +81,9 @@ final class TemplateStore {
     /// tabs, and one shared slot would let a delete on History silently retract the
     /// Undo still on offer on Today.
     private(set) var lastDeletedSession: DeletedSession?
+    /// A deleted critical force test, restorable for `undoWindow`.
+    private(set) var lastDeletedCriticalForce: DeletedCriticalForce?
+    @ObservationIgnored private var criticalForceUndoExpiry: Task<Void, Never>?
 
     /// Set when a save fails (disk full, store-level errors). The failed change has
     /// already been rolled back by the time a view reads this.
@@ -617,9 +620,9 @@ final class TemplateStore {
         // and the benchmark still shows in History.
         if benchmarkedToday {
             switch done {
-            case 0:  return String(localized: "Maxes tested today")
-            case 1:  return String(localized: "Maxes tested today, plus a hang session")
-            default: return String(localized: "Maxes tested today, plus \(done) hang sessions")
+            case 0:  return String(localized: "Testing day today")
+            case 1:  return String(localized: "Testing day today, plus a hang session")
+            default: return String(localized: "Testing day today, plus \(done) hang sessions")
             }
         }
         if template.isOnDemand {
@@ -1130,15 +1133,22 @@ final class TemplateStore {
         // log per day; typed numbers never create one. `marksBenchmarkDay: false` is
         // the session-PR path: that session is already logged, and settling the day on
         // top would silently cancel the evening ritual.
-        if marksBenchmarkDay, values.contains(where: { $0.source == .measured }),
-           benchmarkedToday == false,
-           let todaysLogs = fetchLogs(from: clock.today), !todaysLogs.benchmark(on: clock.today) {
-            let target = fetchRoutines()?.first?.sessionsPerDay ?? 1
-            context.insert(WorkoutLog(logged: .benchmark, day: clock.today, at: .now,
-                                      sessionsPerDayTarget: target))
+        if marksBenchmarkDay, values.contains(where: { $0.source == .measured }) {
+            stampBenchmarkDay()
         }
         persistAndSync()
         return saveError == nil
+    }
+
+    /// One `.benchmark` log per day, inserted into the pending save. Shared by measured
+    /// maxes and critical force tests: both are maximal testing, and both settle the day.
+    private func stampBenchmarkDay() {
+        guard benchmarkedToday == false,
+              let todaysLogs = fetchLogs(from: clock.today), !todaysLogs.benchmark(on: clock.today)
+        else { return }
+        let target = fetchRoutines()?.first?.sessionsPerDay ?? 1
+        context.insert(WorkoutLog(logged: .benchmark, day: clock.today, at: .now,
+                                  sessionsPerDayTarget: target))
     }
 
     @discardableResult
@@ -1147,6 +1157,133 @@ final class TemplateStore {
         context.delete(record)
         persistAndSync()
         return saveError == nil
+    }
+
+    // MARK: - Critical force
+
+    /// One hand's test, ready to save.
+    struct CriticalForceSave: Sendable {
+        let side: Side
+        let result: CriticalForceResult
+        let trace: Data
+    }
+
+    /// Save one visit's critical force tests (one hand, both together, or each hand in
+    /// turn) and any maxes the climber chose to take from them, in ONE save.
+    ///
+    /// A test makes today a benchmark day exactly as a measured max does. It is maximal
+    /// testing, so it settles the day, fills the calendar cell and silences the evening
+    /// reminder. Each hand's current max is frozen onto its record, so its "% of max"
+    /// never moves when a later max lands. `alsoMaxes` are the tests' hardest pulls,
+    /// saved only when ticked. Never silently.
+    @discardableResult
+    func recordCriticalForces(_ tests: [CriticalForceSave], grip: GripSpec, bodyMassKg: Double?,
+                              alsoMaxes: [MaxSave] = []) -> [CriticalForceRecord]? {
+        guard !tests.isEmpty,
+              tests.allSatisfy({ $0.result.criticalForceKg.isFinite && $0.result.criticalForceKg > 0 }),
+              Set(tests.map(\.side)).count == tests.count,
+              alsoMaxes.allSatisfy({ $0.kg.isFinite && $0.kg > 0 }) else { return nil }
+        let now = Date.now
+        let records = tests.map { test in
+            CriticalForceRecord(grip: grip, side: test.side, result: test.result, trace: test.trace,
+                                bodyMassKg: bodyMassKg,
+                                maxAtTestKg: maxTable.max(grip: grip.key, side: test.side),
+                                recordedAt: now)
+        }
+        records.forEach(context.insert)
+        for max in alsoMaxes {
+            context.insert(MaxRecord(grip: max.grip, kg: max.kg, source: max.source, side: max.side))
+        }
+        stampBenchmarkDay()
+        persistAndSync(maxesChanged: !alsoMaxes.isEmpty)
+        return saveError == nil ? records : nil
+    }
+
+    /// One test — the single-hand form of `recordCriticalForces`.
+    @discardableResult
+    func recordCriticalForce(_ result: CriticalForceResult, trace: Data, grip: GripSpec,
+                             side: Side, bodyMassKg: Double?, alsoMax: MaxSave? = nil) -> CriticalForceRecord? {
+        recordCriticalForces([CriticalForceSave(side: side, result: result, trace: trace)],
+                             grip: grip, bodyMassKg: bodyMassKg,
+                             alsoMaxes: alsoMax.map { [$0] } ?? [])?.first
+    }
+
+    /// Everything needed to put a deleted test back exactly, blobs included.
+    struct DeletedCriticalForce: Sendable, Equatable {
+        let id: UUID
+        let edgeMM: Int
+        let fingersRaw: String
+        let positionRaw: String
+        let sideRaw: String
+        let recordedAt: Date
+        let protocolKey: String
+        let criticalForceKg: Double
+        let wPrimeKgS: Double
+        let peakKg: Double
+        let endForceKg: Double?
+        let repsRun: Int
+        let restsKept: Int
+        let restsTotal: Int
+        let bodyMassKg: Double?
+        let maxAtTestKg: Double?
+        let repsData: Data
+        let traceData: Data
+        let note: String
+
+        init(_ r: CriticalForceRecord) {
+            id = r.id; edgeMM = r.edgeMM; fingersRaw = r.fingersRaw; positionRaw = r.positionRaw
+            sideRaw = r.sideRaw; recordedAt = r.recordedAt; protocolKey = r.protocolKey
+            criticalForceKg = r.criticalForceKg; wPrimeKgS = r.wPrimeKgS; peakKg = r.peakKg
+            endForceKg = r.endForceKg; repsRun = r.repsRun; restsKept = r.restsKept
+            restsTotal = r.restsTotal; bodyMassKg = r.bodyMassKg; maxAtTestKg = r.maxAtTestKg
+            repsData = r.repsData; traceData = r.traceData; note = r.note
+        }
+    }
+
+    /// The House delete: a swipe, then ten seconds of Undo. The benchmark day it stamped
+    /// stays. The testing happened, whatever became of the record.
+    @discardableResult
+    func deleteCriticalForce(_ record: CriticalForceRecord) -> Bool {
+        guard record.modelContext != nil else { return false }
+        let restorable = DeletedCriticalForce(record)
+        context.delete(record)
+        persistAndSync(maxesChanged: false)
+        guard saveError == nil else { return false }
+        lastDeletedCriticalForce = restorable
+        criticalForceUndoExpiry?.cancel()
+        criticalForceUndoExpiry = Task { [weak self] in
+            try? await Task.sleep(for: Self.undoWindow)
+            guard !Task.isCancelled else { return }
+            self?.lastDeletedCriticalForce = nil
+        }
+        return true
+    }
+
+    /// Re-insert from RAW columns under the original id, never through the initialiser,
+    /// which would re-derive what the test froze.
+    func undoDeleteCriticalForce() {
+        guard let d = lastDeletedCriticalForce else { return }
+        criticalForceUndoExpiry?.cancel()
+        let r = CriticalForceRecord(grip: GripSpec(), side: .both,
+                                    result: CriticalForceResult(protocolUsed: .standard, criticalForceKg: 0,
+                                                                wPrimeKgS: 0, peakKg: 0, endForceKg: nil,
+                                                                reps: [], criticalForceReps: 1...1),
+                                    trace: Data(), bodyMassKg: nil, maxAtTestKg: nil)
+        r.id = d.id; r.edgeMM = d.edgeMM; r.fingersRaw = d.fingersRaw; r.positionRaw = d.positionRaw
+        r.sideRaw = d.sideRaw; r.recordedAt = d.recordedAt; r.protocolKey = d.protocolKey
+        r.criticalForceKg = d.criticalForceKg; r.wPrimeKgS = d.wPrimeKgS; r.peakKg = d.peakKg
+        r.endForceKg = d.endForceKg; r.repsRun = d.repsRun; r.restsKept = d.restsKept
+        r.restsTotal = d.restsTotal; r.bodyMassKg = d.bodyMassKg; r.maxAtTestKg = d.maxAtTestKg
+        r.repsData = d.repsData; r.traceData = d.traceData; r.note = d.note
+        context.insert(r)
+        persistAndSync(maxesChanged: false)
+        if saveError == nil { lastDeletedCriticalForce = nil }
+    }
+
+    func dismissCriticalForceUndo() {
+        criticalForceUndoExpiry?.cancel()
+        criticalForceUndoExpiry = nil
+        lastDeletedCriticalForce = nil
     }
 
     // MARK: - What a new max moves

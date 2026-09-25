@@ -63,9 +63,13 @@ class ExportFixtureTests {
             // And the arrival order of the arrays must not show through — ordering is
             // derived from the data.
             val reversed = input.copy(sessions = input.sessions.reversed(),
-                maxes = input.maxes.reversed())
+                maxes = input.maxes.reversed(),
+                criticalForceTests = input.criticalForceTests.reversed())
             assertEquals(AnalysisExport.document(input), AnalysisExport.document(reversed),
                 "$name: reversing the input arrays changed the document")
+            assertEquals(AnalysisExport.csv(input, AnalysisExport.CSVScope.all, AnalysisExport.CSVDetail.pulls).text,
+                AnalysisExport.csv(reversed, AnalysisExport.CSVScope.all, AnalysisExport.CSVDetail.pulls).text,
+                "$name: reversing the input arrays changed the CSV")
         }
     }
 }

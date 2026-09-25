@@ -85,6 +85,7 @@ import run.nuri.getagrip.store.HistoryFeed
 import run.nuri.getagrip.store.LocalDayClock
 import run.nuri.getagrip.store.LocalHistoryFeed
 import run.nuri.getagrip.store.LocalTemplateStore
+import run.nuri.getagrip.data.CriticalForceRecordEntity
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.components.SessionRow
@@ -174,7 +175,8 @@ fun HistoryScreen(
                     // Offered even with nothing logged: the sheet says so, which beats a toolbar item that
                     // comes and goes.
                     IconButton(onClick = {
-                        exportRequest = buildExportRequest(feed, routineNames, today)
+                        exportRequest = buildExportRequest(feed, routineNames, today,
+                            criticalForce = templates.criticalForceRecords)
                     }) {
                         Icon(
                             Icons.Outlined.Description,
@@ -305,13 +307,17 @@ private fun buildExportRequest(
     routineNames: Map<UUID, String>,
     today: DayStamp,
     workout: WorkoutLogEntity? = null,
+    criticalForce: List<CriticalForceRecordEntity> = emptyList(),
 ): AnalysisExportRequest {
     val logs = workout?.let { listOf(it) } ?: feed.logs
     val maxRecords = feed.maxRecords
+    // A single workout's export carries no tests.
+    val tests = if (workout != null) emptyList() else criticalForce
     return AnalysisExportRequest(isWorkout = workout != null) {
         AnalysisExportAssembler.input(
             logs = logs,
             maxRecords = maxRecords,
+            criticalForceRecords = tests,
             reps = feed::reps,
             displayName = { sessionDisplayName(it, routineNames) },
             today = today,
@@ -463,7 +469,7 @@ private fun MonthCard(
                     modifier = Modifier.clearAndSetSemantics {},
                 ) {
                     if (anyClimb) LegendSwatch(palette.graphite, tr("Climbing gym"), notch = true)
-                    if (anyBenchmark) LegendSwatch(palette.bleu, tr("Max testing"), bore = 5.dp)
+                    if (anyBenchmark) LegendSwatch(palette.bleu, tr("Testing"), bore = 5.dp)
                 }
             }
         }

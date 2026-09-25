@@ -586,7 +586,7 @@ struct HistoryView: View {
                                 .fill(Accent.bleu)
                                 .frame(width: 14, height: 14)
                                 .benchmarkBore(true, size: 5)
-                            Text("Max testing")
+                            Text("Testing")
                                 .font(.system(.footnote))
                                 .foregroundStyle(Ink.tertiary)
                         }

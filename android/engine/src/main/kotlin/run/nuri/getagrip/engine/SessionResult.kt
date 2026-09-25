@@ -159,9 +159,9 @@ enum class SessionKind(val rawValue: String) {
     /// Weighted or max hangs done away from the gauge.
     hangManual("hangManual"),
 
-    /// A max-testing day: gauge-measured maxes were recorded. Logged automatically the
-    /// first time a MEASURED max lands on a day — never by typing a number, because
-    /// typing is not training. One per day; see `TemplateStore.recordMax`.
+    /// A testing day: a gauge-measured max or a critical force test was recorded. Logged
+    /// automatically the first time either lands on a day, never by typing a number,
+    /// because typing is not training. One per day; see `TemplateStore.benchmarkDayLog`.
     benchmark("benchmark");
 
     val isClimb: Boolean get() = this == climbVolume || this == climbLimit
@@ -206,7 +206,7 @@ enum class SessionKind(val rawValue: String) {
             climbVolume -> L10n.tr("Laps, circuits, an easy evening — real load, well short of maximal.")
             climbLimit -> L10n.tr("Hard bouldering or projecting — a maximal pull on your fingers.")
             hangManual -> L10n.tr("Weighted or max hangs you did on your own — no gauge behind it.")
-            benchmark -> L10n.tr("A max-testing day — new ceilings on the gauge.")
+            benchmark -> L10n.tr("A testing day — a max or a critical force test on the gauge.")
         }
 
     companion object {

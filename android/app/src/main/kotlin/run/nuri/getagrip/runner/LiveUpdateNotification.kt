@@ -243,6 +243,29 @@ object LiveUpdateNotification {
             .build()
     }
 
+    /// The card a critical force test runs in while the foreground service keeps it alive.
+    /// Static: the test's own cues carry the rhythm, and a card re-rendered every bell would
+    /// be the app shouting about its own bookkeeping.
+    fun criticalForce(context: Context): Notification {
+        ensureChannel(context)
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle(L10n.tr("Critical force test"))
+            .setContentText(L10n.tr("The test keeps running while the gauge is connected."))
+            .setContentIntent(openSession(context))
+            .setOngoing(true)
+            .setSilent(true)
+            .setOnlyAlertOnce(true)
+            .setShowWhen(false)
+            .setUsesChronometer(false)
+            .setColorized(true)
+            .setColor(LiveUpdateContent.TINT_CALM)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+    }
+
     /// The card a STRAY service start runs in before it stops — see
     /// `SessionForegroundService.onStartCommand`. Silent, titled with the app name: it may
     /// flash for a frame and must not claim a phase.

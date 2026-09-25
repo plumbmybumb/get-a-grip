@@ -647,6 +647,12 @@ final class DeviceStore {
         return candidate + min(max(error, -0.0005), 0.0005)
     }
 
+    /// Reshape the demo gauge's pulls. A no-op on real hardware. The critical force test
+    /// asks for `.allOut` while it runs and hands back the launch profile afterwards.
+    func setMockProfile(_ profile: MockForceProfile) {
+        (client as? MockProgressorClient)?.profile = profile
+    }
+
     /// Swap in the synthetic device (demo mode, or anything running in the
     /// Simulator). Always compiled in — a DEBUG-only mock leaves anyone without
     /// hardware, reviewers included, stuck on a screen that never connects.

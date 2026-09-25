@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import run.nuri.getagrip.data.CriticalForceRecordEntity
 import run.nuri.getagrip.data.GetAGripDatabase
 import run.nuri.getagrip.data.LogDayStamp
 import run.nuri.getagrip.data.MaxRecordEntity
@@ -37,6 +38,9 @@ interface StoreGateway {
     suspend fun logsFrom(dayKey: Int): List<WorkoutLogEntity>?
     suspend fun allLogs(): List<WorkoutLogEntity>?
     suspend fun allMaxes(): List<MaxRecordEntity>?
+
+    /// Every critical force test, oldest first. Null when the read FAILED.
+    suspend fun allCriticalForce(): List<CriticalForceRecordEntity>?
 
     /// One session by id; null when absent OR failed (either way nothing to delete). A
     /// point read: no single-session path may read the whole history.
@@ -77,6 +81,8 @@ interface StoreWriter {
     suspend fun refileLog(id: UUID, dayKey: Int)
     suspend fun putMax(row: MaxRecordEntity)
     suspend fun removeMax(id: UUID)
+    suspend fun putCriticalForce(row: CriticalForceRecordEntity)
+    suspend fun removeCriticalForce(id: UUID)
 }
 
 /// Room, one call at a time.
@@ -113,6 +119,9 @@ class RoomStoreGateway(
     override suspend fun allLogs(): List<WorkoutLogEntity>? = read { db.logs().all() }
 
     override suspend fun allMaxes(): List<MaxRecordEntity>? = read { db.maxes().all() }
+
+    override suspend fun allCriticalForce(): List<CriticalForceRecordEntity>? =
+        read { db.criticalForce().all() }
 
     override suspend fun log(id: UUID): WorkoutLogEntity? = read { db.logs().byId(id) }
 
@@ -163,4 +172,6 @@ private class RoomWriter(private val db: GetAGripDatabase) : StoreWriter {
     override suspend fun refileLog(id: UUID, dayKey: Int) = db.logs().refile(id, dayKey)
     override suspend fun putMax(row: MaxRecordEntity) = db.maxes().upsert(row)
     override suspend fun removeMax(id: UUID) = db.maxes().delete(id)
+    override suspend fun putCriticalForce(row: CriticalForceRecordEntity) = db.criticalForce().upsert(row)
+    override suspend fun removeCriticalForce(id: UUID) = db.criticalForce().delete(id)
 }

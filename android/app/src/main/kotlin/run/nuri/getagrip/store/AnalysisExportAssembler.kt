@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.store
 
+import run.nuri.getagrip.data.CriticalForceRecordEntity
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.WorkoutLogEntity
 import run.nuri.getagrip.engine.AnalysisExport
@@ -30,6 +31,7 @@ object AnalysisExportAssembler {
     fun input(
         logs: List<WorkoutLogEntity>,
         maxRecords: List<MaxRecordEntity>,
+        criticalForceRecords: List<CriticalForceRecordEntity> = emptyList(),
         reps: (WorkoutLogEntity) -> List<RepSummary>,
         displayName: (WorkoutLogEntity) -> String,
         today: DayStamp,
@@ -70,6 +72,19 @@ object AnalysisExportAssembler {
             )
         }
 
+        val tests = criticalForceRecords.map { record ->
+            AnalysisExport.CriticalForceEntry(
+                id = record.id, grip = record.grip, side = record.side,
+                day = DayStamp.of(record.recordedAt, zone),
+                recordedAt = record.recordedAt, protocolKey = record.protocolKey,
+                criticalForceKg = record.criticalForceKg, wPrimeKgS = record.wPrimeKgS,
+                peakKg = record.peakKg, endForceKg = record.endForceKg, repsRun = record.repsRun,
+                restsKept = record.restsKept, restsTotal = record.restsTotal,
+                bodyMassKg = record.bodyMassKg, maxAtTestKg = record.maxAtTestKg,
+                reps = record.reps,
+            )
+        }
+
         // Frozen per session, so the CURRENT figure is the newest session's, keeping this
         // file free of the routine table.
         val newestTarget = logs.maxByOrNull { it.startedAt }?.sessionsPerDayTarget
@@ -77,6 +92,7 @@ object AnalysisExportAssembler {
         return AnalysisExport.Input(
             sessions = sessions,
             maxes = maxes,
+            criticalForceTests = tests,
             today = today,
             generatedOn = today,
             sessionsPerDayTarget = maxOf(1, newestTarget ?: 1),

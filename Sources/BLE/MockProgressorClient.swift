@@ -229,6 +229,11 @@ enum MockForceProfile: String, CaseIterable, Sendable {
     case weak
     /// Nothing on the gauge. For checking idle/zero-drift behaviour.
     case idle
+    /// A critical force test done properly: all-out 7 s pulls on a 10 s cycle, decaying
+    /// from about 35 kg to an 18 kg plateau, with every fifth pull held a little past the
+    /// bell. The demo gauge switches to it while a test runs, so demo mode (App Review
+    /// included) sees a real-looking plateau rather than the routine's 10-on/20-off shape.
+    case allOut
 
     /// Work + rest cycle, chosen to match the default no-hang shape (10 s on,
     /// 20 s off) so a mock run lines up with a real routine.
@@ -238,6 +243,7 @@ enum MockForceProfile: String, CaseIterable, Sendable {
     static func force(at seconds: Double, profile: MockForceProfile) -> Double {
         let jitter = sin(seconds * 37.7) * 0.18 + sin(seconds * 13.1) * 0.1
         guard profile != .idle else { return max(0, 0.15 + jitter * 0.3) }
+        if profile == .allOut { return allOutForce(at: seconds, jitter: jitter) }
 
         let cycle = workSeconds + restSeconds
         let phase = seconds.truncatingRemainder(dividingBy: cycle)
@@ -259,9 +265,25 @@ enum MockForceProfile: String, CaseIterable, Sendable {
             plateau = 20 + wobble + dip + jitter
         case .weak:
             plateau = 24 - (phase / workSeconds) * 12 + jitter
-        case .idle:
+        case .idle, .allOut:
             plateau = 0
         }
         return max(0, plateau * envelope)
+    }
+
+    private static func allOutForce(at elapsed: Double, jitter: Double) -> Double {
+        // Three seconds of setting up first, so the armed PULL TO START state (and, between
+        // hands, "Right hand next") is on screen before the first pull.
+        let seconds = elapsed - 3
+        guard seconds >= 0 else { return max(0, 0.2 + jitter * 0.3) }
+        let rep = Int(seconds / 10)
+        let phase = seconds - Double(rep) * 10
+        let hold = rep % 5 == 2 ? 7.8 : 6.9
+        guard phase < hold else { return max(0, 0.2 + jitter * 0.3) }
+        let start = 18 + 17 * exp(-Double(rep) / 4.5)
+        // Each pull fades within itself, as a real all-out effort does.
+        let level = start * (1 - 0.14 * phase / 7) + jitter * 2
+        let envelope = min(1, phase / 0.25, (hold - phase) / 0.2)
+        return max(0, level * envelope)
     }
 }

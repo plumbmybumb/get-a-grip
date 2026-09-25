@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import run.nuri.getagrip.BuildConfig
+import run.nuri.getagrip.data.CriticalForceRecordEntity
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.data.WorkoutLogEntity
@@ -25,6 +26,7 @@ import run.nuri.getagrip.data.benchmark
 import run.nuri.getagrip.data.climb
 import run.nuri.getagrip.data.storedNow
 import run.nuri.getagrip.engine.BlobCodec
+import run.nuri.getagrip.engine.CriticalForceResult
 import run.nuri.getagrip.engine.DayRecord
 import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.FingerSet
@@ -164,6 +166,18 @@ class TemplateStore(
     var lastDeletedSession: WorkoutLogEntity? by mutableStateOf(null)
         private set
 
+    /// Every critical force test, oldest first. Published here because Android has no
+    /// `@Query`: Today's line, the Maxes cards and the test's own setup all read this one
+    /// list, so a saved test redraws all three at once.
+    var criticalForceRecords: List<CriticalForceRecordEntity> by mutableStateOf(emptyList())
+        private set
+
+    /// A deleted critical force test, restorable for the undo window. Its own slot, like
+    /// sessions', so a delete on one surface never retracts another's Undo. The Room row
+    /// IS the raw columns, blobs included, so restoring it is exact.
+    var lastDeletedCriticalForce: CriticalForceRecordEntity? by mutableStateOf(null)
+        private set
+
     /// Set when a write fails; the change has already been rolled back (one transaction).
     ///
     /// **DISPLAY ONLY — never the answer to "did MY write land?"** Two writes in flight
@@ -195,6 +209,7 @@ class TemplateStore(
 
     private var undoExpiry: Job? = null
     private var sessionUndoExpiry: Job? = null
+    private var criticalForceUndoExpiry: Job? = null
 
     /// Fulfilled by the Activity once the builder wires it. Until then
     /// `askNotificationPermissionOnce` does its bookkeeping and raises no dialog.
@@ -223,8 +238,14 @@ class TemplateStore(
     /// `refoldingMaxes = false` skips the one unbounded fetch (`allMaxes`); the caller
     /// asserts no `MaxRecord` moved. Defaults to true so every external trigger (launch,
     /// midnight, permission callback) refolds; only the internal write path opts out.
-    suspend fun syncDerived(refoldingMaxes: Boolean = true) = syncLane.withLock {
-        publishDerived(refoldingMaxes)
+    ///
+    /// `refoldingCriticalForce` is the same bargain for the critical force table: skipped
+    /// by a write that asserts it moved no test.
+    suspend fun syncDerived(
+        refoldingMaxes: Boolean = true,
+        refoldingCriticalForce: Boolean = refoldingMaxes,
+    ) = syncLane.withLock {
+        publishDerived(refoldingMaxes, refoldingCriticalForce)
     }
 
     /// **One recompute at a time, in request order.** `syncDerived` reads three tables
@@ -241,7 +262,7 @@ class TemplateStore(
         ReminderPlanner.replan(batch.last(), scheduler)
     }
 
-    private suspend fun publishDerived(refoldingMaxes: Boolean) {
+    private suspend fun publishDerived(refoldingMaxes: Boolean, refoldingCriticalForce: Boolean) {
         val fetched = gateway.allRoutines() ?: return
         val ordered = fetched.sortedWith(routineOrder)
         val today = clock.today
@@ -251,6 +272,9 @@ class TemplateStore(
         // while a skip publishes the rest and leaves the three max-derived values standing.
         var maxes: List<MaxRecordEntity>? = null
         if (refoldingMaxes) maxes = gateway.allMaxes() ?: return
+        // A failed read of the tests leaves the published list standing rather than
+        // blanking it, and never holds up the routines' own world.
+        val tests = if (refoldingCriticalForce) gateway.allCriticalForce() else null
 
         syncedDay = today
         routines = ordered
@@ -269,6 +293,7 @@ class TemplateStore(
             // `maxes` arrives sorted by `recordedAt`, so the last measured one is newest.
             lastMeasuredMaxAt = maxes.lastOrNull { it.source == MaxSource.measured }?.recordedAt
         }
+        if (tests != null) criticalForceRecords = tests.sortedWith(criticalForceOrder)
 
         // Recomputed on the same pass as the completion counts, so finishing a session
         // replans the day's reminders as "2 of 2" appears. The midnight refresh restores
@@ -488,9 +513,9 @@ class TemplateStore(
         // History.
         if (benchmarkedToday) {
             return when (done) {
-                0 -> L10n.tr("Maxes tested today")
-                1 -> L10n.tr("Maxes tested today, plus a hang session")
-                else -> L10n.tr("Maxes tested today, plus %d hang sessions", done)
+                0 -> L10n.tr("Testing day today")
+                1 -> L10n.tr("Testing day today, plus a hang session")
+                else -> L10n.tr("Testing day today, plus %d hang sessions", done)
             }
         }
         if (template.isOnDemand) {
@@ -1015,20 +1040,137 @@ class TemplateStore(
             }
             val routines = writer.allRoutines() ?: emptyList()
             val measured = marksBenchmarkDay && values.any { it.source == MaxSource.measured }
-            val todaysLogs = if (measured) writer.logsFrom(clock.today.raw) else null
-            val benchmarkLog = if (measured && todaysLogs != null && !todaysLogs.benchmark(clock.today)) {
-                WorkoutLogEntity.logged(SessionKind.benchmark, clock.today, now,
-                    routines.sortedWith(routineOrder).firstOrNull()?.sessionsPerDay ?: 1)
-            } else null
+            val benchmarkLog = if (measured) benchmarkDayLog(writer, now, routines) else null
             records.forEach { writer.putMax(it) }
             benchmarkLog?.let { writer.putLog(it) }
             snapshot?.invoke(previous, current, routines)
         }
     }
 
+    /// One `benchmark` log per day, or null when today already has one (or today's logs
+    /// could not be read — a failed read is not evidence that today has no benchmark).
+    /// Shared by measured maxes and critical force tests: both are maximal testing, and
+    /// both settle the day.
+    private suspend fun benchmarkDayLog(
+        writer: StoreWriter,
+        now: Instant,
+        routines: List<SessionTemplateEntity>,
+    ): WorkoutLogEntity? {
+        val todaysLogs = writer.logsFrom(clock.today.raw) ?: return null
+        if (todaysLogs.benchmark(clock.today)) return null
+        return WorkoutLogEntity.logged(SessionKind.benchmark, clock.today, now,
+            routines.sortedWith(routineOrder).firstOrNull()?.sessionsPerDay ?: 1)
+    }
+
     suspend fun deleteMax(record: MaxRecordEntity): Boolean {
         if ((gateway.allMaxes() ?: return false).none { it.id == record.id }) return false
         return persistAndSync { it.removeMax(record.id) }
+    }
+
+    // MARK: - Critical force
+
+    /// One hand's test, ready to save.
+    class CriticalForceSave(val side: Side, val result: CriticalForceResult, val trace: ByteArray)
+
+    /// Save one visit's critical force tests (one hand, both together, or each hand in
+    /// turn) and any maxes the climber chose to take from them, in ONE transaction.
+    ///
+    /// A test makes today a benchmark day exactly as a measured max does. It is maximal
+    /// testing, so it settles the day, fills the calendar cell and silences the evening
+    /// reminder. Each hand's current max is frozen onto its record, so its "% of max" never
+    /// moves when a later max lands. `alsoMaxes` are the tests' hardest pulls, saved only
+    /// when ticked. Never silently. Every record of one visit shares ONE instant.
+    ///
+    /// Returns the saved rows in the order given, or null when nothing was written — also
+    /// for two results for one hand, which is a bug, not a save.
+    suspend fun recordCriticalForces(
+        tests: List<CriticalForceSave>,
+        grip: GripSpec,
+        bodyMassKg: Double?,
+        alsoMaxes: List<MaxSave> = emptyList(),
+    ): List<CriticalForceRecordEntity>? = maxSaveMutex.withLock {
+        if (tests.isEmpty()) return@withLock null
+        if (tests.any { !it.result.criticalForceKg.isFinite() || it.result.criticalForceKg <= 0 }) return@withLock null
+        if (tests.map { it.side }.toSet().size != tests.size) return@withLock null
+        if (alsoMaxes.any { !(it.kg.isFinite() && it.kg > 0) }) return@withLock null
+        val maxKeys = alsoMaxes.map { MaxTable.key(it.grip.key, it.side) }
+        if (maxKeys.toSet().size != maxKeys.size) return@withLock null
+        var saved: List<CriticalForceRecordEntity>? = null
+        val committed = persistAndSync(maxesChanged = alsoMaxes.isNotEmpty(), criticalForceChanged = true) { writer ->
+            val existing = checkNotNull(writer.allMaxes()) { "Couldn't read existing maxes" }
+            val newest = newestPerGrip(existing)
+            // Each hand against its OWN max, as it stood before this visit's new ones.
+            val before = table(newest)
+            val now = storedNow()
+            val records = tests.map { test ->
+                CriticalForceRecordEntity.from(
+                    grip = grip, side = test.side, result = test.result, trace = test.trace,
+                    bodyMassKg = bodyMassKg,
+                    maxAtTestKg = before.max(grip.key, test.side),
+                    recordedAt = now,
+                )
+            }
+            records.forEach { writer.putCriticalForce(it) }
+            for (max in alsoMaxes) {
+                val last = newest[MaxTable.key(max.grip.key, max.side)]?.recordedAt
+                val recordedAt = if (last != null && !now.isAfter(last)) last.plusMillis(1) else now
+                writer.putMax(MaxRecordEntity.from(max.grip, max.kg, max.source, max.side, recordedAt))
+            }
+            benchmarkDayLog(writer, now, writer.allRoutines() ?: emptyList())?.let { writer.putLog(it) }
+            saved = records
+        }
+        if (committed) saved else null
+    }
+
+    /// One test — the single-hand form of `recordCriticalForces`.
+    suspend fun recordCriticalForce(
+        result: CriticalForceResult,
+        trace: ByteArray,
+        grip: GripSpec,
+        side: Side,
+        bodyMassKg: Double?,
+        alsoMax: MaxSave? = null,
+    ): CriticalForceRecordEntity? =
+        recordCriticalForces(listOf(CriticalForceSave(side, result, trace)), grip, bodyMassKg,
+            listOfNotNull(alsoMax))?.firstOrNull()
+
+    /// The house delete: a swipe, then ten seconds of Undo. The benchmark day it stamped
+    /// stays. The testing happened, whatever became of the record.
+    suspend fun deleteCriticalForce(record: CriticalForceRecordEntity): Boolean {
+        // Captured as the raw row, blobs included — see `undoDeleteCriticalForce`.
+        val restorable = (gateway.allCriticalForce() ?: return false).firstOrNull { it.id == record.id }
+            ?: return false
+        if (!persistAndSync(maxesChanged = false, criticalForceChanged = true) {
+                it.removeCriticalForce(record.id)
+            }) return false
+        lastDeletedCriticalForce = restorable
+        armCriticalForceUndoExpiry()
+        return true
+    }
+
+    /// Re-insert the RAW row under its original id — never through `from`, which would
+    /// re-derive what the test froze.
+    suspend fun undoDeleteCriticalForce() {
+        val restorable = lastDeletedCriticalForce ?: return
+        criticalForceUndoExpiry?.cancel()
+        val restored = persistAndSync(maxesChanged = false, criticalForceChanged = true) {
+            it.putCriticalForce(restorable)
+        }
+        if (restored) lastDeletedCriticalForce = null else armCriticalForceUndoExpiry()
+    }
+
+    fun dismissCriticalForceUndo() {
+        criticalForceUndoExpiry?.cancel()
+        criticalForceUndoExpiry = null
+        lastDeletedCriticalForce = null
+    }
+
+    private fun armCriticalForceUndoExpiry() {
+        criticalForceUndoExpiry?.cancel()
+        criticalForceUndoExpiry = scope.launch {
+            delay(undoWindowMillis)
+            lastDeletedCriticalForce = null
+        }
     }
 
     // MARK: - What a new max moves
@@ -1349,6 +1491,7 @@ class TemplateStore(
     /// `saveError`).
     private suspend fun persistAndSync(
         maxesChanged: Boolean = true,
+        criticalForceChanged: Boolean = false,
         work: suspend (StoreWriter) -> Unit,
     ): Boolean {
         saveError = null
@@ -1370,7 +1513,7 @@ class TemplateStore(
             saveError = L10n.tr("That change couldn't be saved — %s", error.message ?: "")
             false
         }
-        syncDerived(refoldingMaxes = maxesChanged)
+        syncDerived(refoldingMaxes = maxesChanged, refoldingCriticalForce = criticalForceChanged)
         return committed
     }
 
@@ -1428,6 +1571,10 @@ class TemplateStore(
                 .thenBy { it.createdAt }
                 .thenBy { it.id.toString() }
 
+        /// Oldest first, total: two tests saved in one millisecond still have one order.
+        val criticalForceOrder: Comparator<CriticalForceRecordEntity> =
+            compareBy<CriticalForceRecordEntity> { it.recordedAt }.thenBy { it.id.toString() }
+
         /// Ordered widest-and-fullest first: the grips a beginner should reach for before
         /// the two-finger and full-crimp ones further down.
         val seedGrips: List<GripSpec> = listOf(
@@ -1465,6 +1612,9 @@ private class AuditingWriter(private val inner: StoreWriter) : StoreWriter {
         touchedMax = true
         inner.removeMax(id)
     }
+
+    override suspend fun putCriticalForce(row: CriticalForceRecordEntity) = inner.putCriticalForce(row)
+    override suspend fun removeCriticalForce(id: UUID) = inner.removeCriticalForce(id)
 }
 
 /// See `LocalDeviceStore` for why this is `staticCompositionLocalOf`.

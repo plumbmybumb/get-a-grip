@@ -39,6 +39,7 @@ struct SettingsView: View {
     /// Whether routines exist decides if replaying the tour opens with the build-one act.
     @Query private var routines: [SessionTemplate]
     @Environment(SettingsStore.self) private var settings
+    @Environment(\.weightUnit) private var weightUnit
 
     /// Confirmation for the tap that just happened — not persisted, so reopening Settings
     /// offers the reset again.
@@ -51,13 +52,14 @@ struct SettingsView: View {
             gaugeKindRow.staggerIn(0)
             deviceCard.staggerIn(1)
             weightUnitsCard.staggerIn(2)
-            progressStyleCard.staggerIn(2)
-            remindersCard.staggerIn(3)
+            progressStyleCard.staggerIn(3)
+            bodyWeightCard.staggerIn(4)
+            remindersCard.staggerIn(5)
             // ABOVE About: About is the statements the app OWES you (storage,
             // attribution, licence); a door out to a person is an action, not small print.
-            SupportCard().staggerIn(4)
-            openSourceCard.staggerIn(5)
-            aboutCard.staggerIn(6)
+            SupportCard().staggerIn(6)
+            openSourceCard.staggerIn(7)
+            aboutCard.staggerIn(8)
         }
     }
 
@@ -102,6 +104,33 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("settings.test.progressStyle")
                 Text(verbatim: "Test builds only. How the session screen shows sets and pulls. Stacked: today's bar with the whole routine as pills beneath it. Zoom: today's bar zooms out to the whole routine between pulls. Underline: today's bar with the routine as a thin line beneath. Today is the shipping layout; Nested, Segments and Timeline are the earlier tries.")
+                    .font(.system(.caption)).foregroundStyle(Ink.secondary)
+            }
+        }
+    }
+
+    /// Asked once by the first critical force test; this is the only place it changes
+    /// afterwards. Each test froze its own copy, so a change here never rewrites a result.
+    private var bodyWeightCard: some View {
+        MaterialCard(surface: .flat) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Body weight").font(.system(.headline, weight: .semibold))
+                if settings.bodyWeightKg != nil {
+                    ValueRow(title: String(localized: "Body weight"), unit: weightUnit.symbol,
+                             value: weightUnit.binding(Binding(
+                                get: { settings.bodyWeightKg ?? 70 },
+                                set: { settings.bodyWeightKg = $0 })),
+                             range: weightUnit.sliderRangeFromKg(40...110),
+                             limit: weightUnit.rangeFromKg(25...250),
+                             step: 0.5, decimals: 1)
+                        .accessibilityIdentifier("settings.bodyWeight")
+                } else {
+                    Button("Set body weight") { settings.bodyWeightKg = 70 }
+                        .font(.system(.subheadline, weight: .semibold))
+                        .tint(Accent.graphite)
+                        .accessibilityIdentifier("settings.bodyWeight.set")
+                }
+                Text("Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result.")
                     .font(.system(.caption)).foregroundStyle(Ink.secondary)
             }
         }

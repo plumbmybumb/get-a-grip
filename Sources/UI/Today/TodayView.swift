@@ -52,6 +52,9 @@ struct TodayView: View {
     /// The live gauge as a full-screen cover. Some people use the gauge and no routine
     /// at all (2026-09-20), so it is one tap from Today, like History's and Maxes' doors.
     @State private var showingGauge = false
+    /// The critical force test, a cover like the max test: phone on the bench, both hands
+    /// on the edge.
+    @State private var criticalForceTest: CriticalForceTestRequest?
     /// Whether the presented session was started without a gauge. Not part of the
     /// routine (the same routine runs both ways), so it rides alongside `running`.
     @State private var runningTimerOnly = false
@@ -90,6 +93,7 @@ struct TodayView: View {
             && !loggingSession && shareRequest == nil && !scanningRoutine
             && !choosingNewRoutine && !pendingScratchBuild
             && !showingGauge && importPreview == nil && importError == nil
+            && criticalForceTest == nil
     }
 
     /// The single door from the store's inbox to the screen, called on arrival and from
@@ -158,13 +162,22 @@ struct TodayView: View {
             .animation(Motion.state(reduceMotion), value: deck.ordered.count)
             .staggerIn(1)
 
+            // One line, not a card: a test every few weeks is not the ritual. Below the
+            // routines it serves and above the strip it fills on a testing day.
+            if !deck.ordered.isEmpty {
+                CriticalForceTodayLine { grip, hands in
+                    criticalForceTest = CriticalForceTestRequest(grip: grip, hands: hands)
+                }
+                .staggerIn(2)
+            }
+
             // With no routine there is no ritual for the strip to describe.
             if !deck.ordered.isEmpty {
                 ConsistencyCard(days: templates.consistency,
                                 onLogClimb: { loggingSession = true },
                                 onShowHistory: onShowHistory)
                     .tourAnchor(.consistency)
-                    .staggerIn(2)
+                    .staggerIn(3)
             }
         }
         // The builder is FULL SCREEN, not a sheet: a sheet's top edge sits ~50 pt below
@@ -206,6 +219,9 @@ struct TodayView: View {
         .fullScreenCover(isPresented: $showingGauge, onDismiss: { drainImportInbox() }) {
             NavigationStack { GaugeView(presentedAsCover: true) }
         }
+        .fullScreenCover(item: $criticalForceTest, onDismiss: { drainImportInbox() }) { request in
+            CriticalForceTestView(grip: request.grip, hands: request.hands)
+        }
         // `initial: true`: both the start and the resume trigger. The routine list is a
         // `@Query`, unknowable on the first frame, so `onAppear` would show the
         // empty-handed act to somebody with six routines.
@@ -220,6 +236,13 @@ struct TodayView: View {
             }
             // `-startFirstRoutine`: the "Connect and start" tap for a headless run; with
             // `-mockDevice`, a whole measured session through the real store and runner.
+            // `-previewCriticalForce`: open the test cover (with `-mockDevice`, add
+            // `-startCriticalForce` to press Start and run the whole test headlessly).
+            if ProcessInfo.processInfo.arguments.contains("-previewCriticalForce"),
+               criticalForceTest == nil {
+                criticalForceTest = CriticalForceTestRequest(grip: templates.recentGrips.first ?? GripSpec(),
+                                                             hands: .oneAtATime(first: .left))
+            }
             if ProcessInfo.processInfo.arguments.contains("-startFirstRoutine"),
                running == nil, let first = ordered.first {
                 start(first)

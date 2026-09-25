@@ -12,6 +12,7 @@ import run.nuri.getagrip.engine.ForceSample
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.ProgressorCommand
 import run.nuri.getagrip.engine.ProgressorEvent
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
@@ -195,7 +196,13 @@ enum class MockForceProfile(val rawValue: String) {
     weak("weak"),
 
     /// Nothing on the gauge. For checking idle/zero-drift behaviour.
-    idle("idle");
+    idle("idle"),
+
+    /// A critical force test done properly: all-out 7 s pulls on a 10 s cycle, decaying
+    /// from about 35 kg to an 18 kg plateau, with every fifth pull held a little past the
+    /// bell. The demo gauge switches to it while a test runs, so demo mode (store review
+    /// included) sees a real-looking plateau rather than the routine's 10-on/20-off shape.
+    allOut("allOut");
 
     companion object {
         /// Matches the default no-hang shape (10 s on, 20 s off) so a mock run lines up
@@ -208,6 +215,7 @@ enum class MockForceProfile(val rawValue: String) {
         fun force(seconds: Double, profile: MockForceProfile): Double {
             val jitter = sin(seconds * 37.7) * 0.18 + sin(seconds * 13.1) * 0.1
             if (profile == idle) return max(0.0, 0.15 + jitter * 0.3)
+            if (profile == allOut) return allOutForce(seconds, jitter)
 
             val cycle = workSeconds + restSeconds
             val phase = seconds % cycle
@@ -227,9 +235,25 @@ enum class MockForceProfile(val rawValue: String) {
                     20 + wobble + dip + jitter
                 }
                 weak -> 24 - (phase / workSeconds) * 12 + jitter
-                idle -> 0.0
+                idle, allOut -> 0.0
             }
             return max(0.0, plateau * envelope)
+        }
+
+        private fun allOutForce(elapsed: Double, jitter: Double): Double {
+            // Three seconds of setting up first, so the armed PULL TO START state (and,
+            // between hands, "Right hand next") is on screen before the first pull.
+            val seconds = elapsed - 3
+            if (seconds < 0) return max(0.0, 0.2 + jitter * 0.3)
+            val rep = (seconds / 10).toInt()
+            val phase = seconds - rep.toDouble() * 10
+            val hold = if (rep % 5 == 2) 7.8 else 6.9
+            if (phase >= hold) return max(0.0, 0.2 + jitter * 0.3)
+            val start = 18 + 17 * exp(-rep.toDouble() / 4.5)
+            // Each pull fades within itself, as a real all-out effort does.
+            val level = start * (1 - 0.14 * phase / 7) + jitter * 2
+            val envelope = minOf(1.0, phase / 0.25, (hold - phase) / 0.2)
+            return max(0.0, level * envelope)
         }
     }
 }

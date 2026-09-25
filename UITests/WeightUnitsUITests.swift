@@ -17,7 +17,7 @@ final class WeightUnitsUITests: XCTestCase {
         app.launch()
         reveal(pounds, in: app)
         XCTAssertTrue(pounds.isSelected, pounds.debugDescription)
-        app.tabBars.buttons["Maxes"].tap()
+        app.tabBars.buttons["Benchmarks"].tap()
         let addMax = app.buttons["maxes.add"]
         reveal(addMax, in: app)
         addMax.tap()

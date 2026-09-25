@@ -93,6 +93,18 @@ final class SettingsStore {
         didSet { store.set(runnerProgressStyle.rawValue, forKey: "test.runnerProgressStyle") }
     }
 
+    /// Body weight in kilograms, asked once, the first time a critical force test runs,
+    /// and changed from then on only in Settings. It is what "% of body weight" divides
+    /// by, the strongest published predictor of sport grade (Giles 2021). Every test
+    /// freezes its own copy, so changing this later never rewrites an old result.
+    /// Device-local like the rest of this store; the frozen copies are what sync.
+    var bodyWeightKg: Double? {
+        didSet {
+            if let kg = bodyWeightKg { store.set(kg, forKey: "bodyWeightKg") }
+            else { store.removeObject(forKey: "bodyWeightKg") }
+        }
+    }
+
     /// `remindersDefault` is what an untouched device does — see `remindsOnThisDevice`.
     init(defaults: UserDefaults? = nil, remindersDefault: Bool = true) {
         let s = defaults ?? AppGroup.defaults ?? .standard
@@ -113,5 +125,6 @@ final class SettingsStore {
         reviewRequested = s.bool(forKey: "reviewRequested")
         runnerProgressStyle = RunnerProgressStyle(rawValue: s.string(forKey: "test.runnerProgressStyle") ?? "")
             ?? .stacked
+        bodyWeightKg = (s.object(forKey: "bodyWeightKg") as? Double).flatMap { $0 > 0 ? $0 : nil }
     }
 }

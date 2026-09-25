@@ -128,7 +128,12 @@ fun AnalysisExportSheet(request: AnalysisExportRequest, onClose: () -> Unit) {
             } else if (ready.isEmpty) {
                 Text(tr("Nothing to export in this range."), color = palette.inkSecondary)
             } else {
-                Text(tr("Workouts: %d · Pulls: %d · Maxes: %d", ready.sessionCount, ready.pullCount, ready.maxCount),
+                Text(if (ready.criticalForceCount > 0) {
+                        tr("Workouts: %d · Pulls: %d · Maxes: %d · Critical force tests: %d",
+                            ready.sessionCount, ready.pullCount, ready.maxCount, ready.criticalForceCount)
+                    } else {
+                        tr("Workouts: %d · Pulls: %d · Maxes: %d", ready.sessionCount, ready.pullCount, ready.maxCount)
+                    },
                     style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
                 Text("CSV · ${android.text.format.Formatter.formatShortFileSize(context, ready.byteCount.toLong())}",
                     style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)

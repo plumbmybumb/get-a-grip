@@ -78,7 +78,7 @@ class TabIconTests {
     fun everyTabResolvesItsLabelOnRead() {
         assertEquals("Today", Tab.Today.label)
         assertEquals("History", Tab.History.label)
-        assertEquals("Maxes", Tab.Maxes.label)
+        assertEquals("Benchmarks", Tab.Maxes.label)
         assertEquals("Settings", Tab.Settings.label)
     }
 }

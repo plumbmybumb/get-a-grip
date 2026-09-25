@@ -14,6 +14,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -137,6 +138,7 @@ class SettingsStore(
         val frezIntroSeenKey = booleanPreferencesKey("frezIntroSeen")
         val scheduledRemindersKey = stringPreferencesKey("reminders.scheduled")
         val trainingDayRepairKey = intPreferencesKey("repair.trainingDays.version")
+        val bodyWeightKgKey = doublePreferencesKey("bodyWeightKg")
 
         /// `tour.seen.<act>` — one key per act, holding a VERSION rather than a Bool, so a
         /// bumped act can run again for people who saw the old one.
@@ -178,6 +180,7 @@ class SettingsStore(
             ?: emptySet()
     )
     private var repairVersion: Int = loaded[trainingDayRepairKey] ?: 0
+    private var bodyWeight: Double? by mutableStateOf(loaded[bodyWeightKgKey]?.takeIf { it > 0 && it.isFinite() })
     private var tourSeen: Map<String, Int> by mutableStateOf(
         loaded.asMap().mapNotNull { (key, value) ->
             if (!key.name.startsWith(tourSeenPrefix)) return@mapNotNull null
@@ -228,6 +231,13 @@ class SettingsStore(
     override val scheduledReminderIdentifiers: Set<String> get() = scheduled
 
     override val trainingDayRepairVersion: Int get() = repairVersion
+
+    /// Body weight in kilograms, asked once, the first time a critical force test runs,
+    /// and changed from then on only in Settings. It is what "% of body weight" divides
+    /// by, the strongest published predictor of sport grade (Giles 2021). Every test
+    /// freezes its own copy, so changing this later never rewrites an old result.
+    /// Device-local like the rest of this store; the frozen copies are what persist.
+    val bodyWeightKg: Double? get() = bodyWeight
 
     /// The version of `act` seen, or 0 for never. A map because `TourAct` is the tour's
     /// vocabulary, not this file's.
@@ -289,6 +299,13 @@ class SettingsStore(
     override fun setTrainingDayRepairVersion(value: Int) {
         repairVersion = value
         write { it[trainingDayRepairKey] = value }
+    }
+
+    /// null removes it. A non-positive or non-finite value is no weight at all.
+    fun setBodyWeightKg(value: Double?) {
+        val kg = value?.takeIf { it > 0 && it.isFinite() }
+        bodyWeight = kg
+        write { if (kg == null) it.remove(bodyWeightKgKey) else it[bodyWeightKgKey] = kg }
     }
 
     fun setTourSeenVersion(act: String, version: Int) {

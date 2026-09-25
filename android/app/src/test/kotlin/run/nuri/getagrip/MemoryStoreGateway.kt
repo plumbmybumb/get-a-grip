@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip
 
+import run.nuri.getagrip.data.CriticalForceRecordEntity
 import run.nuri.getagrip.data.LogDayStamp
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.SessionTemplateEntity
@@ -21,6 +22,7 @@ internal open class MemoryStoreGateway : StoreGateway, StoreWriter {
     val routines = mutableListOf<SessionTemplateEntity>()
     val logs = mutableListOf<WorkoutLogEntity>()
     val maxes = mutableListOf<MaxRecordEntity>()
+    val criticalForce = mutableListOf<CriticalForceRecordEntity>()
     var failLogReads = false
 
     override suspend fun allRoutines(): List<SessionTemplateEntity>? = routines.toList()
@@ -29,6 +31,8 @@ internal open class MemoryStoreGateway : StoreGateway, StoreWriter {
         if (failLogReads) null else logs.filter { it.dayKey >= dayKey }
     override suspend fun allLogs(): List<WorkoutLogEntity>? = logs.toList()
     override suspend fun allMaxes(): List<MaxRecordEntity>? = maxes.toList()
+    override suspend fun allCriticalForce(): List<CriticalForceRecordEntity>? =
+        criticalForce.sortedBy { it.recordedAt }
     override suspend fun log(id: UUID) = logs.firstOrNull { it.id == id }
     override suspend fun logsFor(templateID: UUID): List<WorkoutLogEntity>? =
         logs.filter { it.templateID == templateID }
@@ -59,4 +63,8 @@ internal open class MemoryStoreGateway : StoreGateway, StoreWriter {
         maxes.removeAll { it.id == row.id }; maxes.add(row)
     }
     override suspend fun removeMax(id: UUID) { maxes.removeAll { it.id == id } }
+    override suspend fun putCriticalForce(row: CriticalForceRecordEntity) {
+        criticalForce.removeAll { it.id == row.id }; criticalForce.add(row)
+    }
+    override suspend fun removeCriticalForce(id: UUID) { criticalForce.removeAll { it.id == id } }
 }

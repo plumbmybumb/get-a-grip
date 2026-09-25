@@ -307,9 +307,9 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
                 )
             }
             summary.benchmarkedToday -> {
-                // Same anatomy as the climb line. Never "at the gym": testing maxes is a different day.
+                // Same anatomy as the climb line. Never "at the gym": a testing day (a max or critical force) is its own kind of day.
                 Text(
-                    tr("Maxes tested"),
+                    tr("Testing day"),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = palette.inkPrimary,

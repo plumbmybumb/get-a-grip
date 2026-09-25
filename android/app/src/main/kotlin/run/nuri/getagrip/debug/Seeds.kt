@@ -3,6 +3,11 @@
 
 package run.nuri.getagrip.debug
 
+import run.nuri.getagrip.data.CriticalForceRecordEntity
+import run.nuri.getagrip.engine.CriticalForceAnalysis
+import run.nuri.getagrip.engine.CriticalForcePoint
+import run.nuri.getagrip.engine.CriticalForceTrace
+import kotlin.math.exp
 import android.content.Intent
 import run.nuri.getagrip.BuildConfig
 import run.nuri.getagrip.data.GetAGripDatabase
@@ -68,8 +73,41 @@ object Seeds {
         if (wants("seedHistory")) {
             db.logs().deleteAll()
             db.maxes().deleteAll()
+            db.criticalForce().deleteAll()
             seedHistory(db)
             seedMaxes(db)
+            seedCriticalForce(db)
+        }
+    }
+
+    /// Two critical force visits on the main grip (both hands each), seven and one week old, built by the REAL
+    /// analysis from a synthetic all-out trace, so Today's line, the Maxes card and the
+    /// detail screen draw exactly what a live test would save.
+    private suspend fun seedCriticalForce(db: GetAGripDatabase) {
+        val plan = RoutineDraft.starter.normalized.plan.executable
+        val grip = PlanMath.sequence(plan).firstOrNull()?.grip ?: GripSpec()
+        val today = DayStamp.today()
+        // One hand at a time, as the test now defaults to: each visit saves both hands at
+        // one instant, the right a little weaker.
+        for ((weeksAgo, floor, side) in listOf(Triple(7, 16.4, Side.left), Triple(7, 15.1, Side.right),
+                Triple(1, 18.5, Side.left), Triple(1, 17.2, Side.right))) {
+            val points = generateSequence(0.0) { it + 1.0 / 40 }.takeWhile { it <= 237.0 }.map { t ->
+                val rep = (t / 10).toInt()
+                val phase = t - rep * 10.0
+                if (phase >= 7) {
+                    CriticalForcePoint(t, 0.2)
+                } else {
+                    val level = (floor + 17 * exp(-rep / 4.5)) * (1 - 0.1 * phase / 7)
+                    CriticalForcePoint(t, level * minOf(1.0, phase / 0.25 + 0.2))
+                }
+            }.toList()
+            val result = CriticalForceAnalysis.analyze(points, repsRun = 24).getOrNull() ?: continue
+            val at = (today - weeksAgo * 7).startOfDay().toInstant().plusSeconds(13 * 3600L)
+            db.criticalForce().upsert(CriticalForceRecordEntity.from(
+                grip = grip, side = side, result = result,
+                trace = CriticalForceTrace.encode(points),
+                bodyMassKg = 70.0, maxAtTestKg = 30.5, recordedAt = at,
+            ))
         }
     }
 

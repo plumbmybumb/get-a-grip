@@ -1,0 +1,473 @@
+{
+  "criticalForceTests" : [
+    {
+      "criticalForceKg" : 16.2,
+      "day" : 20623,
+      "endForceKg" : 13.8,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "id" : "00000000-0000-0000-0000-000000000901",
+      "peakKg" : 35.9,
+      "protocolKey" : "7:3x24",
+      "recordedAt" : "2026-06-19T18:00:00Z",
+      "reps" : [
+        {
+          "coverage" : 1,
+          "endKg" : 25.8,
+          "impulseKgS" : 210,
+          "index" : 0,
+          "meanKg" : 30,
+          "peakKg" : 35.4,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 23.392000000000003,
+          "impulseKgS" : 190.40000000000003,
+          "index" : 1,
+          "meanKg" : 27.200000000000003,
+          "peakKg" : 32.096000000000004,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 21.465600000000002,
+          "impulseKgS" : 174.72,
+          "index" : 2,
+          "meanKg" : 24.96,
+          "peakKg" : 29.4528,
+          "restLoadSeconds" : 1.6
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 19.924480000000003,
+          "impulseKgS" : 162.17600000000002,
+          "index" : 3,
+          "meanKg" : 23.168000000000003,
+          "peakKg" : 27.338240000000003,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 18.691584,
+          "impulseKgS" : 152.1408,
+          "index" : 4,
+          "meanKg" : 21.7344,
+          "peakKg" : 25.646592,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 0.3,
+          "endKg" : 17.7052672,
+          "impulseKgS" : 12.5,
+          "index" : 5,
+          "peakKg" : 24.2932736,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.91621376,
+          "impulseKgS" : 137.690112,
+          "index" : 6,
+          "meanKg" : 19.670016,
+          "peakKg" : 23.21061888,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.284971008,
+          "impulseKgS" : 132.5520896,
+          "index" : 7,
+          "meanKg" : 18.9360128,
+          "peakKg" : 22.344495104,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 15.779976806400002,
+          "impulseKgS" : 128.44167168,
+          "index" : 8,
+          "meanKg" : 18.348810240000002,
+          "peakKg" : 21.6515960832,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 15.375981445119999,
+          "impulseKgS" : 125.153337344,
+          "index" : 9,
+          "meanKg" : 17.879048192,
+          "peakKg" : 21.097276866559998,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 15.052785156095998,
+          "impulseKgS" : 122.5226698752,
+          "index" : 10,
+          "meanKg" : 17.5032385536,
+          "peakKg" : 20.653821493248,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 14.794228124876799,
+          "impulseKgS" : 120.41813590016,
+          "index" : 11,
+          "meanKg" : 17.20259084288,
+          "peakKg" : 20.299057194598397,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 14.58738249990144,
+          "impulseKgS" : 118.734508720128,
+          "index" : 12,
+          "meanKg" : 16.962072674304,
+          "peakKg" : 20.01524575567872,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 14.421905999921153,
+          "impulseKgS" : 117.3876069761024,
+          "index" : 13,
+          "meanKg" : 16.7696581394432,
+          "peakKg" : 19.78819660454298,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 14.28952479993692,
+          "impulseKgS" : 116.31008558088192,
+          "index" : 14,
+          "meanKg" : 16.61572651155456,
+          "peakKg" : 19.60655728363438,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 14.183619839949538,
+          "impulseKgS" : 115.44806846470554,
+          "index" : 15,
+          "meanKg" : 16.49258120924365,
+          "peakKg" : 19.461245826907504,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 14.098895871959629,
+          "impulseKgS" : 114.75845477176443,
+          "index" : 16,
+          "meanKg" : 16.394064967394918,
+          "peakKg" : 19.344996661526004,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 14.031116697567704,
+          "impulseKgS" : 114.20676381741154,
+          "index" : 17,
+          "meanKg" : 16.315251973915935,
+          "peakKg" : 19.251997329220803
+        }
+      ],
+      "repsRun" : 18,
+      "restsKept" : 16,
+      "restsTotal" : 17,
+      "side" : "left",
+      "wPrimeKgS" : 612.4
+    },
+    {
+      "bodyMassKg" : 70,
+      "criticalForceKg" : 18.53,
+      "day" : 20691,
+      "endForceKg" : 15.9,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "id" : "00000000-0000-0000-0000-000000000902",
+      "maxAtTestKg" : 36,
+      "peakKg" : 38.2,
+      "protocolKey" : "7:3x24",
+      "recordedAt" : "2026-08-26T13:00:00Z",
+      "reps" : [
+        {
+          "coverage" : 1,
+          "endKg" : 27.52,
+          "impulseKgS" : 224,
+          "index" : 0,
+          "meanKg" : 32,
+          "peakKg" : 37.76,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 25.198,
+          "impulseKgS" : 205.1,
+          "index" : 1,
+          "meanKg" : 29.3,
+          "peakKg" : 34.574,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 23.3404,
+          "impulseKgS" : 189.98000000000002,
+          "index" : 2,
+          "meanKg" : 27.14,
+          "peakKg" : 32.0252,
+          "restLoadSeconds" : 1.6
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 21.85432,
+          "impulseKgS" : 177.88400000000001,
+          "index" : 3,
+          "meanKg" : 25.412000000000003,
+          "peakKg" : 29.98616,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 20.665456000000002,
+          "impulseKgS" : 168.2072,
+          "index" : 4,
+          "meanKg" : 24.029600000000002,
+          "peakKg" : 28.354928,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 0.3,
+          "endKg" : 19.714364800000002,
+          "impulseKgS" : 12.5,
+          "index" : 5,
+          "peakKg" : 27.0499424,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 18.95349184,
+          "impulseKgS" : 154.272608,
+          "index" : 6,
+          "meanKg" : 22.038944,
+          "peakKg" : 26.00595392,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 18.344793472,
+          "impulseKgS" : 149.3180864,
+          "index" : 7,
+          "meanKg" : 21.3311552,
+          "peakKg" : 25.170763136,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 17.8578347776,
+          "impulseKgS" : 145.35446912,
+          "index" : 8,
+          "meanKg" : 20.76492416,
+          "peakKg" : 24.502610508799997,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 17.46826782208,
+          "impulseKgS" : 142.18357529600001,
+          "index" : 9,
+          "meanKg" : 20.311939328,
+          "peakKg" : 23.96808840704,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 17.156614257664003,
+          "impulseKgS" : 139.64686023680002,
+          "index" : 10,
+          "meanKg" : 19.949551462400002,
+          "peakKg" : 23.540470725632,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.9072914061312,
+          "impulseKgS" : 137.61748818944,
+          "index" : 11,
+          "meanKg" : 19.65964116992,
+          "peakKg" : 23.1983765805056,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.70783312490496,
+          "impulseKgS" : 135.993990551552,
+          "index" : 12,
+          "meanKg" : 19.427712935936,
+          "peakKg" : 22.92470126440448,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.54826649992397,
+          "impulseKgS" : 134.6951924412416,
+          "index" : 13,
+          "meanKg" : 19.2421703487488,
+          "peakKg" : 22.705761011523585,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.420613199939172,
+          "impulseKgS" : 133.65615395299326,
+          "index" : 14,
+          "meanKg" : 19.09373627899904,
+          "peakKg" : 22.530608809218865,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.31849055995134,
+          "impulseKgS" : 132.8249231623946,
+          "index" : 15,
+          "meanKg" : 18.97498902319923,
+          "peakKg" : 22.390487047375093,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.236792447961072,
+          "impulseKgS" : 132.1599385299157,
+          "index" : 16,
+          "meanKg" : 18.879991218559386,
+          "peakKg" : 22.278389637900073,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.17143395836886,
+          "impulseKgS" : 131.62795082393257,
+          "index" : 17,
+          "meanKg" : 18.80399297484751,
+          "peakKg" : 22.18871171032006,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.119147166695086,
+          "impulseKgS" : 131.20236065914605,
+          "index" : 18,
+          "meanKg" : 18.743194379878005,
+          "peakKg" : 22.116969368256044,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.077317733356068,
+          "impulseKgS" : 130.86188852731686,
+          "index" : 19,
+          "meanKg" : 18.694555503902407,
+          "peakKg" : 22.05957549460484,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.043854186684857,
+          "impulseKgS" : 130.58951082185348,
+          "index" : 20,
+          "meanKg" : 18.655644403121926,
+          "peakKg" : 22.01366039568387,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 16.01708334934788,
+          "impulseKgS" : 130.37160865748277,
+          "index" : 21,
+          "meanKg" : 18.62451552249754,
+          "peakKg" : 21.976928316547095,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 15.995666679478306,
+          "impulseKgS" : 130.19728692598622,
+          "index" : 22,
+          "meanKg" : 18.59961241799803,
+          "peakKg" : 21.947542653237676,
+          "restLoadSeconds" : 0.2
+        },
+        {
+          "coverage" : 1,
+          "endKg" : 15.978533343582644,
+          "impulseKgS" : 130.05782954078896,
+          "index" : 23,
+          "meanKg" : 18.579689934398424,
+          "peakKg" : 21.92403412259014
+        }
+      ],
+      "repsRun" : 24,
+      "restsKept" : 22,
+      "restsTotal" : 23,
+      "side" : "left",
+      "wPrimeKgS" : 1048.3
+    }
+  ],
+  "generatedOn" : 20693,
+  "maxes" : [
+    {
+      "day" : 20623,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 36,
+      "recordedAt" : "2026-06-19T08:00:00Z",
+      "side" : "left",
+      "source" : "measured"
+    }
+  ],
+  "sessions" : [
+    {
+      "avgKg" : 12.6,
+      "completedReps" : 1,
+      "day" : 20690,
+      "id" : "00000000-0000-0000-0000-000000000175",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 14,
+      "plannedReps" : 1,
+      "reps" : [
+        {
+          "avgKg" : 12.6,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 14,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Daily no-hangs",
+      "startedAt" : "2026-08-25T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 10
+    }
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

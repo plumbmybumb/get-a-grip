@@ -60,15 +60,24 @@ data class MaxSeries(val side: Side, val points: List<MaxPoint>)
 /// draws straight segments between points. With a handful of max tests months apart a
 /// smoothed curve invents intermediate strength the gauge never measured, so the segments
 /// are arguably the more truthful line — but it is a visible difference and it is noted.
+///
+/// `criticalForce` adds a grip's critical force tests UNDER its max, in steel with SQUARE
+/// points: the gap between the two lines is the picture, the ceiling against what you can
+/// keep using. Hands still differ by dash, so the two vocabularies never cross. With any
+/// critical force on the chart there is no wash: it ended at the last max while the grey
+/// lines ran on, and read as cut off. Callers passing only maxes draw exactly as before.
 @Composable
 fun MaxChart(
     series: List<MaxSeries>,
     modifier: Modifier = Modifier,
     tint: Color = LocalGripPalette.current.bleu,
+    criticalForce: List<MaxSeries> = emptyList(),
+    criticalForceTint: Color = LocalGripPalette.current.calm,
 ) {
     val palette = LocalGripPalette.current
     val drawable = series.filter { it.points.isNotEmpty() }
-    if (drawable.isEmpty()) return
+    val tests = criticalForce.filter { it.points.isNotEmpty() }
+    if (drawable.isEmpty() && tests.isEmpty()) return
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Canvas(
@@ -77,14 +86,18 @@ fun MaxChart(
                 .height(CHART_HEIGHT)
                 .clearAndSetSemantics {},
         ) {
-            drawMaxChart(drawable, tint)
+            drawMaxChart(drawable, tint, tests, criticalForceTint)
         }
-        // The dash key, in words, for the one case where it is ambiguous. Hidden from
-        // TalkBack: the card's own spoken summary already carries the numbers per hand,
-        // and a screen reader has no use for which line is dotted.
-        if (drawable.any { it.side != Side.both }) {
+        // The key, in words, for the cases where it is ambiguous. Hidden from TalkBack: the
+        // card's own spoken summary already carries the numbers per hand, and a screen
+        // reader has no use for which line is dotted.
+        val legend = buildList {
+            if (drawable.isNotEmpty() && tests.isNotEmpty()) add(tr("blue max · grey critical force"))
+            if ((drawable + tests).any { it.side != Side.both }) add(tr("dashed left · dotted right"))
+        }
+        if (legend.isNotEmpty()) {
             Text(
-                tr("dashed left · dotted right"),
+                legend.joinToString(" · "),
                 style = MaterialTheme.typography.labelSmall,
                 color = palette.inkTertiary,
                 modifier = Modifier.clearAndSetSemantics {},
@@ -95,14 +108,19 @@ fun MaxChart(
 
 private val CHART_HEIGHT = 130.dp
 
-private fun DrawScope.drawMaxChart(series: List<MaxSeries>, tint: Color) {
+private fun DrawScope.drawMaxChart(
+    series: List<MaxSeries>,
+    tint: Color,
+    criticalForce: List<MaxSeries>,
+    criticalForceTint: Color,
+) {
     val insetTop = 10.dp.toPx()
     val insetBottom = 8.dp.toPx()
     val insetSide = 4.dp.toPx()
     val plotHeight = maxOf(1f, size.height - insetTop - insetBottom)
     val plotWidth = maxOf(1f, size.width - insetSide * 2)
 
-    val all = series.flatMap { it.points }
+    val all = (series + criticalForce).flatMap { it.points }
     val minX = all.minOf { it.x }
     val maxX = all.maxOf { it.x }
     val maxKg = all.maxOf { it.kg }
@@ -124,9 +142,9 @@ private fun DrawScope.drawMaxChart(series: List<MaxSeries>, tint: Color) {
         return insetTop + plotHeight - fraction.toFloat() * plotHeight
     }
 
-    val single = series.size == 1
+    val single = series.size == 1 && criticalForce.isEmpty()
 
-    for (line in series) {
+    fun line(line: MaxSeries, colour: Color, square: Boolean) {
         val ordered = line.points.sortedBy { it.x }
         val path = Path()
         ordered.forEachIndexed { index, point ->
@@ -138,7 +156,7 @@ private fun DrawScope.drawMaxChart(series: List<MaxSeries>, tint: Color) {
         // The wash, only when there is one series to wash under — the runner's own brush,
         // because these are the same species of data (measured kilograms) and a naked
         // hairline made the card read as a second, thinner instrument.
-        if (single && ordered.size >= 2) {
+        if (single && !square && ordered.size >= 2) {
             val fill = Path().apply {
                 addPath(path)
                 lineTo(x(ordered.last().x), size.height)
@@ -158,7 +176,7 @@ private fun DrawScope.drawMaxChart(series: List<MaxSeries>, tint: Color) {
         if (ordered.size >= 2) {
             drawPath(
                 path = path,
-                color = tint,
+                color = colour,
                 style = Stroke(
                     width = strokeWidth(line.side).toPx(),
                     cap = StrokeCap.Round,
@@ -174,9 +192,19 @@ private fun DrawScope.drawMaxChart(series: List<MaxSeries>, tint: Color) {
         // them is the inference. A single-point series draws nothing BUT its point, which
         // is the honest picture of one test.
         for (point in ordered) {
-            drawCircle(color = tint, radius = POINT_RADIUS.toPx(), center = Offset(x(point.x), y(point.kg)))
+            val center = Offset(x(point.x), y(point.kg))
+            if (square) {
+                val half = SQUARE_HALF.toPx()
+                drawRect(colour, topLeft = Offset(center.x - half, center.y - half), size = Size(half * 2, half * 2))
+            } else {
+                drawCircle(color = colour, radius = POINT_RADIUS.toPx(), center = center)
+            }
         }
     }
+
+    // Critical force first, so the max — the number it is a share of — draws on top.
+    for (test in criticalForce) line(test, criticalForceTint, square = true)
+    for (max in series) line(max, tint, square = false)
 
     // A hairline baseline so the curve sits on something rather than floating. Neutral,
     // one pixel, no ticks: it is the card's floor, not an axis.
@@ -188,6 +216,8 @@ private fun DrawScope.drawMaxChart(series: List<MaxSeries>, tint: Color) {
 }
 
 private val POINT_RADIUS = 2.5.dp
+/// A square of roughly the circle's area, so neither mark reads as the heavier fact.
+private val SQUARE_HALF = 2.2.dp
 
 private fun strokeWidth(side: Side) = if (side == Side.both) 2.5.dp else 2.dp
 
