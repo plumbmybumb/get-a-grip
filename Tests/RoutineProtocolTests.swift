@@ -38,7 +38,8 @@ final class RoutineProtocolTests: XCTestCase {
     func testDailyNoHangs() {
         let plan = landed(.dailyNoHangs).plan
         XCTAssertEqual(plan.handMode, .alternateEachRep)
-        XCTAssertEqual([plan.holdSeconds, plan.restSeconds, plan.setBreakSeconds], [10, 20, 20])
+        XCTAssertEqual([plan.holdSeconds, plan.restSeconds, plan.setBreakSeconds], [10, 10, 10],
+                       "alternating: a 10 s gap + the other hand's 10 s pull = 20 s a hand")
         XCTAssertEqual(plan.sets.map(\.grip), [
             GripSpec(edgeMM: 20, fingers: .four,       position: .halfCrimp),
             GripSpec(edgeMM: 20, fingers: .frontThree, position: .drag),
@@ -79,7 +80,8 @@ final class RoutineProtocolTests: XCTestCase {
     func testFingerRehabGatesAtItsCeilingAndAlternates() {
         let plan = landed(.fingerRehab).plan
         XCTAssertEqual(plan.handMode, .alternateEachRep)
-        XCTAssertEqual([plan.holdSeconds, plan.restSeconds, plan.setBreakSeconds], [10, 60, 60])
+        XCTAssertEqual([plan.holdSeconds, plan.restSeconds, plan.setBreakSeconds], [10, 50, 50],
+                       "alternating: a 50 s gap + the other hand's 10 s pull = a minute a hand")
         XCTAssertEqual(plan.sets.map(\.repsPerSide), Array(repeating: 5, count: 5))
         XCTAssertEqual(bands(plan), Array(repeating: 0.15...0.25, count: 5))
         XCTAssertTrue(plan.pausesOutsideTargetBand)

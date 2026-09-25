@@ -86,9 +86,9 @@ struct MaxesTab: View {
                 })
             }
         }
-        .maxMeasureModeDialog(for: $choosingMode) { grip, side in
+        .maxMeasureModeDialog(for: $choosingMode, onChoose: { grip, side in
             measuring = MeasureTarget(grip: grip, side: side)
-        }
+        }, onCriticalForce: { grip in startCriticalForce(on: grip) })
         .sheet(item: $editing) { target in
             MaxEditSheet(grip: target.grip) { editing = nil }
         }
@@ -113,9 +113,14 @@ struct MaxesTab: View {
 
     /// A new test opens on the grip and hands of the last one, else the routine's first grip.
     private func startCriticalForce() {
-        let grip = tests.last?.grip ?? templates.recentGrips.first ?? GripSpec()
+        startCriticalForce(on: tests.last?.grip ?? templates.recentGrips.first ?? GripSpec())
+    }
+
+    /// On a grip already tested, the hands of its last visit; otherwise one at a time.
+    private func startCriticalForce(on grip: GripSpec) {
+        let onGrip = tests.filter { $0.gripKey == grip.key }
         criticalForceTest = CriticalForceTestRequest(grip: grip,
-                                                     hands: tests.latestHands ?? .oneAtATime(first: .left))
+                                                     hands: onGrip.latestHands ?? .oneAtATime(first: .left))
     }
 
     /// One card per tested grip, then one invitation per untested one — shared by the phone
@@ -271,7 +276,8 @@ struct MaxesTab: View {
                         Button {
                             criticalForceHistory = MeasureTarget(grip: group.grip)
                         } label: {
-                            Label("All tests", systemImage: "list.bullet")
+                            // Standing alone now that Measure asks max or critical force.
+                            Label("Critical force history", systemImage: "list.bullet")
                                 .font(.system(.subheadline, weight: .semibold))
                                 .foregroundStyle(Accent.graphite)
                                 .actionLabelLayout(minHeight: 44)
@@ -280,12 +286,6 @@ struct MaxesTab: View {
                         .buttonStyle(PressFeedbackButtonStyle())
                         .accessibilityLabel("All critical force tests on \(group.grip.spoken)")
                         .accessibilityIdentifier("maxes.cf.history.\(group.grip.key)")
-                        Spacer(minLength: 0)
-                        capsuleButton(String(localized: "Test critical force"),
-                                      identifier: "maxes.cf.test.\(group.grip.key)") {
-                            criticalForceTest = CriticalForceTestRequest(
-                                grip: group.grip, hands: group.tests.latestHands ?? .oneAtATime(first: .left))
-                        }
                     }
                 }
             }
@@ -348,21 +348,6 @@ struct MaxesTab: View {
                 FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 5, gap: 2.5)
             }
             .accessibilityHidden(true)
-    }
-
-    /// The house outlined capsule, for an action beside a number.
-    private func capsuleButton(_ label: String, identifier: String,
-                               action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.system(.subheadline, weight: .semibold))
-                .foregroundStyle(Accent.graphite)
-                .actionLabelLayout(minHeight: 44)
-                .overlay(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
-                .contentShape(.capsule)
-        }
-        .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityIdentifier(identifier)
     }
 
     /// Critical force per hand, each with its share of that hand's max when it was tested.

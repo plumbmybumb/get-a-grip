@@ -54,6 +54,10 @@ struct CriticalForceTestView: View {
     @State private var pickedSide: Side
     /// Index into `hands.sides` of the hand on the gauge now.
     @State private var handIndex = 0
+    /// Between hands: the first hand is done and the next is NOT armed until you tap
+    /// Start. Moving the gauge or block to the other hand loads it, and an armed test
+    /// would take that as the first pull (Nuri, 2026-09-25).
+    @State private var awaitingNextHand = false
     @State private var results: [CriticalForceHandResult] = []
     /// What happened to a hand that produced no result, said on the result screen.
     @State private var notes: [String] = []
@@ -121,7 +125,8 @@ struct CriticalForceTestView: View {
         }
         .onChange(of: session.phase) { _, phase in finishIfDone(phase) }
         .onChange(of: scenePhase) { _, phase in
-            guard stage == .testing else { return }
+            // Between hands nothing is measuring, so leaving the app costs nothing.
+            guard stage == .testing, !awaitingNextHand else { return }
             if phase == .active {
                 // Bin what the radio buffered while away: it cannot be DRAWN. The test's
                 // own readings are untouched; see `DeviceStore.dropStaleTrace`.
@@ -137,7 +142,7 @@ struct CriticalForceTestView: View {
             }
         }
         .onChange(of: device.state.isConnected, initial: true) { _, connected in
-            if !connected, stage == .testing { session.interrupt(.lostGauge) }
+            if !connected, stage == .testing, !awaitingNextHand { session.interrupt(.lostGauge) }
             #if DEBUG
             // Headless: `simctl` cannot tap Start. See `-previewCriticalForce` on Today.
             if connected, stage == .setup,
@@ -204,7 +209,9 @@ struct CriticalForceTestView: View {
     /// (`LiveTrace` lit, `PhaseWash`, `RunnerGlass`), so the two cannot drift apart.
     private var testingScreen: some View {
         fullScreen(washTint: CriticalForceTint.of(session.phase)) {
-            CriticalForcePanel(session: session, grip: grip, side: side)
+            CriticalForcePanel(session: session, grip: grip, side: side,
+                               nextHandWord: awaitingNextHand
+                                   ? String(localized: "\(side.prompt) HAND NEXT") : nil)
             openRegion {
                 LiveTrace(thresholdKg: session.phase == .armed ? CriticalForceRules.startKg : nil,
                           tint: CriticalForceTint.of(session.phase),
@@ -212,8 +219,10 @@ struct CriticalForceTestView: View {
                           lit: true)
                     .accessibilityHidden(true)
             }
-            CriticalForcePlateau(means: session.repMeans, total: session.proto.reps,
-                                 current: session.phase.isRunning ? session.pullNumber : nil)
+            // Between hands the pill is the NEXT hand's: empty, nothing in progress.
+            CriticalForcePlateau(means: awaitingNextHand ? [] : session.repMeans,
+                                 total: session.proto.reps,
+                                 current: !awaitingNextHand && session.phase.isRunning ? session.pullNumber : nil)
             testingDock
         }
     }
@@ -343,13 +352,20 @@ struct CriticalForceTestView: View {
 
     private var testingDock: some View {
         VStack(spacing: 8) {
-            if session.phase == .armed, handIndex > 0 {
-                Text("\(hands.sides[0].name) hand done. \(side.name) hand next: the test starts the moment you pull.")
+            if awaitingNextHand {
+                Text("\(hands.sides[0].name) hand done. Get set on your \(side.name.lowercased()) hand, then start.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
+                AdaptiveActionRow(spacing: 8) {
+                    GaugeTareDockButton()
+                    DockTintedButton(String(localized: "Start \(side.name.lowercased()) hand"),
+                                     systemImage: "play.fill", tint: .bleu,
+                                     enabled: device.state.isConnected) { startNextHand() }
+                        .accessibilityIdentifier("cf.startNextHand")
+                }
                 DockButton(String(localized: "Finish with \(hands.sides[0].name.lowercased()) hand only")) {
                     finishEarlyBetweenHands()
                 }
@@ -739,11 +755,10 @@ struct CriticalForceTestView: View {
     private func nextHandOrFinish(canContinue: Bool) {
         if canContinue, handIndex + 1 < hands.sides.count {
             handIndex += 1
-            // A fresh stream for the fresh hand: harmless on a gauge (the same re-kick the
-            // runner sends), and the demo gauge replays its test from the start.
-            device.stopStreaming(cause: .measurementComplete)
-            device.startStreaming(cause: .manualMeasurement)
-            arm(CriticalForceSession())
+            // Wait for the climber: the next hand starts from its own Start tap.
+            session.end()
+            device.onTracePoint = nil
+            awaitingNextHand = true
             return
         }
         showResults()
@@ -751,7 +766,20 @@ struct CriticalForceTestView: View {
 
     /// "Finish with the first hand only", from between the hands.
     private func finishEarlyBetweenHands() {
+        awaitingNextHand = false
         showResults()
+    }
+
+    /// The next hand's Start. A fresh stream for the fresh hand: harmless on a gauge (the
+    /// same re-kick the runner sends), and the demo gauge replays its test from the start.
+    private func startNextHand() {
+        guard awaitingNextHand, device.state.isConnected else { return }
+        awaitingNextHand = false
+        if device.isStreaming { device.stopStreaming(cause: .measurementComplete) }
+        device.resetPeak()
+        device.startStreaming(cause: .manualMeasurement)
+        arm(CriticalForceSession())
+        startTick += 1
     }
 
     private func showResults() {
@@ -786,7 +814,7 @@ struct CriticalForceTestView: View {
     }
 
     private func teardown() {
-        if stage == .testing { session.interrupt(.leftApp) }
+        if stage == .testing, !awaitingNextHand { session.interrupt(.leftApp) }
         stopStream(cause: .screenClosed)
     }
 
@@ -844,6 +872,8 @@ struct CriticalForcePanel: View {
     let session: CriticalForceSession
     let grip: GripSpec
     let side: Side
+    /// Between hands, the panel names the next hand instead of the finished test's DONE.
+    var nextHandWord: String? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -899,12 +929,14 @@ struct CriticalForcePanel: View {
     /// Before the first pull the clock shows the full pull it is waiting to start; once
     /// the last bell has rung, nothing is left.
     private var clock: String {
+        if nextHandWord != nil { return "\(Int(session.proto.workSeconds))" }
         if let seconds { return "\(seconds)" }
         return session.phase == .armed ? "\(Int(session.proto.workSeconds))" : "0"
     }
 
     private var word: String {
-        switch session.phase {
+        if let nextHandWord { return nextHandWord }
+        return switch session.phase {
         case .armed: String(localized: "PULL TO START")
         case .pulling: String(localized: "PULL")
         case .resting: String(localized: "REST")
@@ -921,7 +953,8 @@ struct CriticalForcePanel: View {
     }
 
     private var countLine: String {
-        String(localized: "Pull \(min(session.pullNumber, session.proto.reps)) of \(session.proto.reps)")
+        let pull = nextHandWord != nil ? 1 : min(session.pullNumber, session.proto.reps)
+        return String(localized: "Pull \(pull) of \(session.proto.reps)")
     }
 }
 

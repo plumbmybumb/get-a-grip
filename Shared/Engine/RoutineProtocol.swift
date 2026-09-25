@@ -79,6 +79,11 @@ enum RoutineProtocol: String, CaseIterable, Identifiable, Hashable, Sendable {
 
     /// A 20 mm ladder of six grips, alternating every pull. Same shape as `.starter`, with
     /// the positions and load the written protocol states.
+    ///
+    /// **Rest is the gap between pulls, and the other hand's pull counts toward it.**
+    /// Alternating L R L R, a 10 s gap plus the other hand's 10 s pull is the protocol's
+    /// 20 s per hand; a 20 s gap gave each hand 40 s and the session ran twice as long
+    /// (Nuri, 2026-09-25). Sets change on the same beat: no extra break.
     private static var dailyNoHangsDraft: RoutineDraft {
         func set(_ fingers: FingerSet, _ position: GripPosition, _ reps: Int) -> SetPlan {
             SetPlan(grip: GripSpec(edgeMM: 20, fingers: fingers, position: position),
@@ -88,8 +93,8 @@ enum RoutineProtocol: String, CaseIterable, Identifiable, Hashable, Sendable {
         d.plan.name = String(localized: "Daily no-hangs")
         d.plan.handMode = .alternateEachRep
         d.plan.holdSeconds = 10
-        d.plan.restSeconds = 20
-        d.plan.setBreakSeconds = 20
+        d.plan.restSeconds = 10
+        d.plan.setBreakSeconds = 10
         d.plan.sets = [
             set(.four,       .halfCrimp, 6),
             set(.frontThree, .drag,      6),
@@ -103,7 +108,8 @@ enum RoutineProtocol: String, CaseIterable, Identifiable, Hashable, Sendable {
         return d
     }
 
-    /// Six rungs of two pulls a hand, one hand at a time as C4 tests.
+    /// Six rungs of two pulls a hand, one hand at a time as C4 tests. One hand at a time
+    /// runs a hand's pulls back to back, so its rest is all its own: no correction here.
     private static var c4WarmUpDraft: RoutineDraft {
         let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
         let bands: [(Double, Double)] = [
@@ -143,7 +149,8 @@ enum RoutineProtocol: String, CaseIterable, Identifiable, Hashable, Sendable {
     }
 
     /// Five by five a hand, alternating every pull (Nuri, 2026-09-25), 10 s on and a full
-    /// minute off, capped at 25 %. The band GATES here — the ceiling is the prescription,
+    /// minute off per hand: a 50 s gap plus the other hand's 10 s pull, on the same beat
+    /// between sets (see `dailyNoHangsDraft` for the rule). Capped at 25 %. The band GATES here — the ceiling is the prescription,
     /// and EASE OFF is the right thing to hear over it.
     private static var fingerRehabDraft: RoutineDraft {
         let grip = GripSpec(edgeMM: 20, fingers: .four, position: .halfCrimp)
@@ -151,8 +158,8 @@ enum RoutineProtocol: String, CaseIterable, Identifiable, Hashable, Sendable {
         d.plan.name = String(localized: "Finger rehab")
         d.plan.handMode = .alternateEachRep
         d.plan.holdSeconds = 10
-        d.plan.restSeconds = 60
-        d.plan.setBreakSeconds = 60
+        d.plan.restSeconds = 50
+        d.plan.setBreakSeconds = 50
         d.plan.sets = (0..<5).map { _ in
             SetPlan(grip: grip, repsPerSide: 5, targetLoPercent: 0.15, targetHiPercent: 0.25)
         }
