@@ -6,7 +6,7 @@
 <resources>
     <string name="a_scan_a_shared_routine">Scanner une routine partagée</string>
     <string name="a_couldn_t_scan">Scan impossible</string>
-    <string name="a_new_routine_opens_the_routine_builder">Nouvelle routine. Ouvre le constructeur de routine.</string>
+    <string name="a_new_routine_build_your_own_or_start_from_a_known_protoco">Nouvelle routine. Crée la tienne, ou pars d’un protocole connu.</string>
     <string name="a_up_next">À suivre</string>
     <string name="a_app">App</string>
     <string name="a_version">Version</string>

@@ -799,7 +799,7 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["New maxes"] = R.string.s_new_maxes
     into["New peaks to review"] = R.string.s_new_peaks_to_review
     into["New routine"] = R.string.s_new_routine_32809d
-    into["New routine. Opens the routine builder."] = R.string.a_new_routine_opens_the_routine_builder
+    into["New routine. Build your own, or start from a known protocol."] = R.string.a_new_routine_build_your_own_or_start_from_a_known_protoco
     into["New routine…"] = R.string.s_new_routine_906eb9
     into["Next"] = R.string.s_next_bc9819
     into["Next grip"] = R.string.s_next_grip_5a4dbd

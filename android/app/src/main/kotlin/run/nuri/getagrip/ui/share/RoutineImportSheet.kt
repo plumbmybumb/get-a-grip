@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.text.NumberFormat
@@ -60,6 +61,24 @@ import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.today.PlanRowFit
 
 /// The other side of a QR code: somebody else's routine, read out in full, before it is yours.
+/// The sheet is only the chrome; the content is `RoutinePreview`, which the "New routine"
+/// chooser shows for a known protocol.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
+    val palette = LocalGripPalette.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        sheetState = sheetState,
+        containerColor = palette.field,
+        shape = RoundedCornerShape(topStart = Metrics.radiusSheet, topEnd = Metrics.radiusSheet),
+    ) {
+        RoutinePreview(incoming, title = tr("Shared routine"), onDone = onClose)
+    }
+}
+
+/// A routine that is not yours yet, read out in full, with the one decision: add it.
 ///
 /// A PREVIEW, not an editor: a routine you have not accepted is not yours to correct. Once it
 /// lands, its card opens the builder on its own plan row.
@@ -67,13 +86,23 @@ import run.nuri.getagrip.ui.today.PlanRowFit
 /// **Percentage targets are NOT translated.** They resolve against the READER's maxes, per
 /// hand, at session start — the reason the app prescribes fractions, so one code suits two
 /// very different pairs of fingers. The footnotes cover where that is not the whole story.
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
+fun RoutinePreview(
+    incoming: RoutineDraft,
+    title: String,
+    /// Called after a successful add and on "Not now". The PRESENTER closes.
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+    /// Who published it — a protocol's attribution. Null for a shared code.
+    source: String? = null,
+    /// A protocol's own warning, shown with the footnotes.
+    caution: String? = null,
+    /// Drawn before the title: the chooser's way back to its list.
+    navigation: (@Composable () -> Unit)? = null,
+) {
     val palette = LocalGripPalette.current
     val templates = LocalTemplateStore.current
     val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     // Normalized HERE so the preview shows what will land (default name, emptied sets dropped,
     // inheritance consolidated). `normalized` is idempotent, so the store's pass costs nothing.
@@ -94,80 +123,77 @@ fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
     var landingName by remember(draft) { mutableStateOf(plan.name) }
     LaunchedEffect(draft) { landingName = templates.plannedImportName(plan.name) }
 
-    /// Whether THIS sheet's add failed — local, not the store's error field, or the sheet would
-    /// open accused by an earlier unrelated failure.
+    /// Whether THIS preview's add failed — local, not the store's error field, or it would open
+    /// accused by an earlier unrelated failure.
     var saveFailed by remember { mutableStateOf(false) }
     /// An add in flight: the draft has no id, so a second tap inside the write added it twice.
     var adding by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(
-        onDismissRequest = onClose,
-        sheetState = sheetState,
-        containerColor = palette.field,
-        shape = RoundedCornerShape(topStart = Metrics.radiusSheet, topEnd = Metrics.radiusSheet),
+    Column(
+        modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Metrics.hPadding)
+            .padding(bottom = Metrics.spacing),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = Metrics.hPadding)
-                .padding(bottom = Metrics.spacing),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            navigation?.invoke()
             Text(
-                tr("Shared routine"),
+                title,
                 style = MaterialTheme.typography.titleLarge,
                 color = palette.inkPrimary,
             )
+        }
 
-            Header(landingName, summary)
-            PlanCard(sets, plan)
-            RhythmCard(plan, draft, summary.setCount)
-            Notes(sets, plan)
+        Header(landingName, summary, source)
+        PlanCard(sets, plan)
+        RhythmCard(plan, draft, summary.setCount)
+        Notes(sets, plan, caution)
 
-            if (saveFailed) {
-                // STAYS OPEN on a rollback: dismissing loses the code too, and rescanning is somebody
-                // else's phone away.
-                Text(
-                    tr("That routine couldn't be saved just now — nothing was added. Try again."),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    color = palette.alarm,
-                )
-            }
+        if (saveFailed) {
+            // STAYS OPEN on a rollback: dismissing loses the code too, and rescanning is somebody
+            // else's phone away.
+            Text(
+                tr("That routine couldn't be saved just now — nothing was added. Try again."),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = palette.alarm,
+            )
+        }
 
-            PrimaryButton(tr("Add to my routines"), icon = Icons.Outlined.Add, enabled = !adding) {
-                if (adding) return@PrimaryButton
-                adding = true
-                scope.launch {
-                    try {
-                        // The card appears on Today by itself: the routine list is store state.
-                        if (templates.importRoutine(draft) != null) {
-                            saveFailed = false
-                            onClose()
-                        } else {
-                            // INLINE, and the store's copy is consumed: the global "Couldn't save" watches the same
-                            // field, and one rollback stated twice reads as two.
-                            saveFailed = true
-                            templates.saveError = null
-                        }
-                    } finally {
-                        adding = false
+        PrimaryButton(tr("Add to my routines"), icon = Icons.Outlined.Add, enabled = !adding,
+            modifier = Modifier.testTag("routinePreview.add")) {
+            if (adding) return@PrimaryButton
+            adding = true
+            scope.launch {
+                try {
+                    // The card appears on Today by itself: the routine list is store state.
+                    if (templates.importRoutine(draft) != null) {
+                        saveFailed = false
+                        onDone()
+                    } else {
+                        // INLINE, and the store's copy is consumed: the global "Couldn't save" watches the same
+                        // field, and one rollback stated twice reads as two.
+                        saveFailed = true
+                        templates.saveError = null
                     }
+                } finally {
+                    adding = false
                 }
             }
-
-            // Quiet, never destructive-looking: declining costs nothing.
-            SecondaryButton(tr("Not now"), modifier = Modifier.fillMaxWidth(), onClick = onClose)
-
-            Spacer(Modifier.padding(bottom = 4.dp))
         }
+
+        // Quiet, never destructive-looking: declining costs nothing.
+        SecondaryButton(tr("Not now"), modifier = Modifier.fillMaxWidth(), onClick = onDone)
+
+        Spacer(Modifier.padding(bottom = 4.dp))
     }
 }
 
 // MARK: - Identity
 
 @Composable
-private fun Header(landingName: String, summary: RoutineSummary) {
+private fun Header(landingName: String, summary: RoutineSummary, source: String?) {
     val palette = LocalGripPalette.current
     Row(
         Modifier.clearAndSetSemantics {
@@ -180,6 +206,7 @@ private fun Header(landingName: String, summary: RoutineSummary) {
                 if (peak != null) {
                     append(L10n.tr(". Peak target %d percent of max.", Math.round(peak * 100)))
                 }
+                if (source != null) append(". ").append(source)
             }
         },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -202,6 +229,9 @@ private fun Header(landingName: String, summary: RoutineSummary) {
                 style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                 color = palette.inkSecondary,
             )
+            if (source != null) {
+                Text(source, style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
+            }
         }
     }
 }
@@ -408,16 +438,20 @@ private fun cadenceLine(draft: RoutineDraft): String {
 
 /// Each shown only when TRUE of this routine: noise footnotes teach people to stop reading them.
 @Composable
-private fun Notes(sets: List<SetPlan>, plan: SessionPlan) {
+private fun Notes(sets: List<SetPlan>, plan: SessionPlan, caution: String?) {
     val palette = LocalGripPalette.current
     /// `PlanMath.targetBand` precedence: a set with typed kilograms never reaches its percentage.
     val hasPercent = sets.any { it.targetBand == null && PlanMath.targetPercent(it, plan) != null }
     val hasKilograms = sets.any { it.targetBand != null }
     // Guarded around the STACK: an empty column is still a child, and the 18 dp spacing would
     // leave a gap under the (common) routine prescribing no load.
-    if (!hasPercent && !hasKilograms) return
+    if (!hasPercent && !hasKilograms && caution == null) return
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (caution != null) {
+            Text(caution, style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary,
+                modifier = Modifier.testTag("routinePreview.caution"))
+        }
         if (hasPercent) {
             Text(
                 tr("Percentage targets use your saved maxes. These may no longer reflect your current strength."),

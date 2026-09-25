@@ -7,7 +7,7 @@
     <string name="app_name" translatable="false">Get a Grip</string>
     <string name="a_scan_a_shared_routine">Scan a shared routine</string>
     <string name="a_couldn_t_scan">Couldn\'t scan</string>
-    <string name="a_new_routine_opens_the_routine_builder">New routine. Opens the routine builder.</string>
+    <string name="a_new_routine_build_your_own_or_start_from_a_known_protoco">New routine. Build your own, or start from a known protocol.</string>
     <string name="a_up_next">Up next</string>
     <string name="a_app">App</string>
     <string name="a_version">Version</string>

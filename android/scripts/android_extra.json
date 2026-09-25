@@ -18,8 +18,9 @@
       "fr": "Scan impossible"
     },
     {
-      "en": "New routine. Opens the routine builder.",
-      "fr": "Nouvelle routine. Ouvre le constructeur de routine."
+      "en": "New routine. Build your own, or start from a known protocol.",
+      "fr": "Nouvelle routine. Crée la tienne, ou pars d’un protocole connu.",
+      "//": "The ghost card's one TalkBack sentence: iOS's label plus its hint, which Android has no separate slot for."
     },
     {
       "en": "Up next",
