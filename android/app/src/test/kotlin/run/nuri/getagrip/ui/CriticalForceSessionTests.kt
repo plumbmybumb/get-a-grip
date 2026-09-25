@@ -5,6 +5,7 @@ package run.nuri.getagrip.ui
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import run.nuri.getagrip.ble.HostClock
 import run.nuri.getagrip.engine.CriticalForceOutcome
 import run.nuri.getagrip.engine.CriticalForceTest
@@ -38,9 +39,11 @@ class CriticalForceSessionTests {
         override fun end() { ended += 1 }
     }
 
-    /// A dispatcher nobody advances: the ticker never runs by itself, and the test ticks.
+    /// A dispatcher nobody advances unless a test says so: the ticker never runs by itself,
+    /// and the test ticks.
+    private val scheduler = TestCoroutineScheduler()
     private fun session(clock: Clock, cues: Cues) =
-        CriticalForceSession(CoroutineScope(StandardTestDispatcher()), cues, clock)
+        CriticalForceSession(CoroutineScope(StandardTestDispatcher(scheduler)), cues, clock)
 
     @Test
     fun theTestSpeaksTheRunnersCueVocabulary() {
@@ -48,6 +51,8 @@ class CriticalForceSessionTests {
         val cues = Cues()
         val s = session(clock, cues)
         s.arm()
+        assertEquals(0, cues.began, "the cue player starts a frame after Start, not on the tap")
+        scheduler.runCurrent()
         assertEquals(1, cues.began)
 
         s.receive(30.0, clock.now)                     // the first pull starts rep 1
@@ -81,6 +86,24 @@ class CriticalForceSessionTests {
         s.end()
         s.end()
         assertEquals(1, cues.ended, "end is idempotent")
+    }
+
+    /// A reading republishes only the phase; the bars and the clock wait for the 20 Hz
+    /// tick, so 80 readings a second cannot recompose the screen 80 times a second.
+    @Test
+    fun readingsMoveThePhaseAndTheTickMovesTheBars() {
+        val clock = Clock()
+        val s = session(clock, Cues())
+        s.arm()
+        s.receive(30.0, clock.now)
+        assertEquals(CriticalForceTest.Phase.Pulling(0), s.phase, "the first pull arms at once")
+        val before = s.publishes
+        repeat(40) { s.receive(30.0, clock.now + (it + 1) / 80.0) }
+        assertEquals(before, s.publishes, "readings alone publish nothing while the phase holds")
+        assertTrue(s.repMeans.isEmpty())
+        clock.now += 0.5
+        s.tick()
+        assertEquals(1, s.repMeans.size, "the tick publishes the live bar")
     }
 
     @Test

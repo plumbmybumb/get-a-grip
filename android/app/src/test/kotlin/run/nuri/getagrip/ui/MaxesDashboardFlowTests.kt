@@ -100,10 +100,12 @@ class MaxesDashboardFlowTests {
                 onEdit = { edits += it }, feed = feed)
         }
         compose.onNodeWithTag("maxes.add").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("maxes.add.max").assertIsDisplayed().performClick()
         compose.onNodeWithText("Manage").assertDoesNotExist()
         capture("android-maxes-dashboard.png")
         listOf(primary, other).forEach { grip ->
             action("maxes.measure.${grip.key}")
+            compose.onNodeWithTag("max.mode.hands").assertIsDisplayed().performClick()
             action("maxes.edit.${grip.key}")
         }
         compose.runOnIdle {
@@ -144,15 +146,44 @@ class MaxesDashboardFlowTests {
             MaxesTabScreen(onAddMax = { additions += 1 }, onMeasure = { grip, side -> measured = grip to side },
                 onEdit = { edited = it }, feed = feed)
         }
-        compose.onNodeWithContentDescription(context.tr("Add a max")).assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription(context.tr("Add a benchmark")).assertIsDisplayed().performClick()
+        compose.onNodeWithText(context.tr("Measure a max")).assertIsDisplayed().performClick()
         capture("android-maxes-dashboard-french-large.png")
         action("maxes.measure.${primary.key}")
+        compose.onNodeWithText(context.tr("Max, one hand at a time")).assertIsDisplayed().performClick()
         action("maxes.edit.${primary.key}")
         capture("android-maxes-dashboard-french-large-actions.png")
         compose.runOnIdle {
             assertEquals(1, additions)
             assertEquals(primary to Side.left, measured)
             assertEquals(primary, edited)
+        }
+    }
+
+    /// The "+" is a menu of both measurements, and Measure on a grip asks which one.
+    @Test fun measureAsksMaxOrCriticalForceAndThePlusOffersBoth() {
+        val measures = mutableListOf<Pair<GripSpec, Side>>()
+        val tests = mutableListOf<Pair<GripSpec, CriticalForceHands>>()
+        var adds = 0
+        val w = show(listOf(row(primary, Side.both, 70.0), row(other, Side.right, 24.0, 60))) { feed ->
+            MaxesTabScreen(onAddMax = { adds += 1 }, onMeasure = { grip, side -> measures += grip to side },
+                onEdit = {}, feed = feed, onCriticalForce = { grip, hands -> tests += grip to hands })
+        }
+        action("maxes.measure.${primary.key}")
+        compose.onNodeWithText("What are you measuring?").assertIsDisplayed()
+        compose.onNodeWithTag("max.mode.both").performClick()
+        action("maxes.measure.${other.key}")
+        compose.onNodeWithTag("max.mode.criticalForce").performClick()
+        // With no test on file, the "+" opens the routines' first grip, one hand at a time.
+        compose.onNodeWithTag("maxes.add").performClick()
+        compose.onNodeWithTag("maxes.add.criticalForce").assertIsDisplayed().performClick()
+        compose.runOnIdle {
+            assertEquals(0, adds)
+            assertEquals(listOf(primary to Side.both), measures)
+            assertEquals(listOf<Pair<GripSpec, CriticalForceHands>>(
+                other to CriticalForceHands.OneAtATime(Side.left),
+                (w.store.recentGrips.firstOrNull() ?: GripSpec()) to CriticalForceHands.OneAtATime(Side.left),
+            ), tests)
         }
     }
 

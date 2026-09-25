@@ -3,6 +3,9 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.AlertDialog
 import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.units.WeightUnits
 
@@ -145,6 +148,9 @@ private fun MaxesOverview(
     val tested = remember(groups) { groups.mapTo(HashSet()) { it.key } }
     /// The grip whose critical force history is open.
     var historyGrip by remember { mutableStateOf<GripSpec?>(null) }
+    var addMenu by remember { mutableStateOf(false) }
+    /// The grip whose Measure asked "What are you measuring?".
+    var choosing by remember { mutableStateOf<GripSpec?>(null) }
     // Grips your routines train that have never seen a number — an invitation, not a
     // reproach, and only once routines exist at all.
     val invitations = if (templates.routines.isEmpty()) emptyList()
@@ -158,9 +164,30 @@ private fun MaxesOverview(
             LargeTopAppBar(
                 title = { Text(tr("Benchmarks")) },
                 actions = {
-                    IconButton(onClick = { onAddMax(null) },
-                        modifier = manageAnchor.testTag("maxes.add")) {
-                        Icon(Icons.Default.Add, contentDescription = tr("Add a max"), tint = palette.inkPrimary)
+                    // The one door to both measurements. Critical force lives here, not on
+                    // Today: a test every six to eight weeks is a measurement, not the ritual
+                    // (Nuri, 2026-09-25).
+                    Box {
+                        IconButton(onClick = { addMenu = true },
+                            modifier = manageAnchor.testTag("maxes.add")) {
+                            Icon(Icons.Default.Add, contentDescription = tr("Add a benchmark"), tint = palette.inkPrimary)
+                        }
+                        DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(tr("Measure a max")) },
+                                onClick = { addMenu = false; onAddMax(null) },
+                                modifier = Modifier.testTag("maxes.add.max"),
+                            )
+                            DropdownMenuItem(
+                                text = { Text(tr("Test critical force")) },
+                                onClick = {
+                                    addMenu = false
+                                    val (grip, hands) = newCriticalForceTest(tests, templates.recentGrips)
+                                    onCriticalForce(grip, hands)
+                                },
+                                modifier = Modifier.testTag("maxes.add.criticalForce"),
+                            )
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -199,13 +226,12 @@ private fun MaxesOverview(
                     // The FIRST card carries the anchor. Lighting the whole `LazyColumn` would
                     // be lighting the screen, which is not a spotlight; the first card is what
                     // "a grip's ceiling, drawn over time" actually looks like.
-                    GripCard(group, onMeasure, onEdit,
+                    GripCard(group, onMeasure = { choosing = group.grip }, onEdit,
                         onHistory = { historyGrip = group.grip },
-                        onCriticalForce = onCriticalForce,
                         anchor = if (group.key == groups.first().key) cardsAnchor else Modifier)
                 }
                 items(invitations, key = { "invite-${it.key}" }) { grip ->
-                    InvitationCard(grip, if (groups.isEmpty() && grip == invitations.first()) cardsAnchor else Modifier) { onMeasure(grip, Side.left) }
+                    InvitationCard(grip, if (groups.isEmpty() && grip == invitations.first()) cardsAnchor else Modifier) { choosing = grip }
                 }
                 item("footnote") {
                     // The same footnote contract as History's: what this screen's numbers
@@ -229,6 +255,67 @@ private fun MaxesOverview(
     historyGrip?.let { grip ->
         CriticalForceHistorySheet(gripKey = grip.key, title = grip.displayName, onClose = { historyGrip = null })
     }
+    choosing?.let { grip ->
+        MeasureChooser(
+            onMax = { side -> choosing = null; onMeasure(grip, side) },
+            onCriticalForce = {
+                choosing = null
+                onCriticalForce(grip, criticalForceHandsFor(grip, tests))
+            },
+            onDismiss = { choosing = null },
+        )
+    }
+}
+
+/// **The one question before a measurement on a grip** (Nuri, 2026-09-25: "when you hit
+/// measure… shouldn't it ask if you are measuring CF or max?"). It decides what the visit
+/// can save.
+///
+/// TRANSLATION NOTE (iOS `maxMeasureModeDialog`): a Material dialog with the three
+/// choices as rows. "One hand at a time" opens the max measure on the left hand (it takes
+/// both hands in turn); "both hands together" opens its combined measurement.
+@Composable
+internal fun MeasureChooser(onMax: (Side) -> Unit, onCriticalForce: () -> Unit, onDismiss: () -> Unit) {
+    val palette = LocalGripPalette.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("What are you measuring?")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(tr("A max is your hardest pull. Critical force is the four-minute endurance test."),
+                    modifier = Modifier.padding(bottom = 8.dp))
+                listOf(
+                    Triple(tr("Max, one hand at a time"), "max.mode.hands") { onMax(Side.left) },
+                    Triple(tr("Max, both hands together"), "max.mode.both") { onMax(Side.both) },
+                    Triple(tr("Critical force test"), "max.mode.criticalForce", onCriticalForce),
+                ).forEach { (label, tag, action) ->
+                    TextButton(onClick = action, modifier = Modifier.fillMaxWidth().testTag(tag)) {
+                        Text(label, color = palette.graphite, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancel"), color = palette.inkSecondary) } },
+        containerColor = palette.card,
+        titleContentColor = palette.inkPrimary,
+        textContentColor = palette.inkSecondary,
+    )
+}
+
+/// On a grip already tested, the hands of its last visit; otherwise one at a time.
+internal fun criticalForceHandsFor(grip: GripSpec, tests: List<CriticalForceRecordEntity>): CriticalForceHands =
+    tests.filter { it.gripKey == grip.key }.latestHands ?: CriticalForceHands.OneAtATime(Side.left)
+
+/// A new test from the Benchmarks "+": the grip and hands of the last test, else the
+/// routines' first grip, one hand at a time.
+fun newCriticalForceTest(
+    tests: List<CriticalForceRecordEntity>,
+    recentGrips: List<GripSpec>,
+): Pair<GripSpec, CriticalForceHands> {
+    val grip = tests.lastOrNull()?.grip ?: recentGrips.firstOrNull() ?: GripSpec()
+    return grip to (tests.latestHands ?: CriticalForceHands.OneAtATime(Side.left))
 }
 
 // MARK: - Benchmark groups
@@ -332,10 +419,9 @@ internal fun relative(instant: Instant, now: Instant = Instant.now()): String {
 @Composable
 private fun GripCard(
     benchmark: BenchmarkGroup,
-    onMeasure: (GripSpec, Side) -> Unit,
+    onMeasure: () -> Unit,
     onEdit: (GripSpec) -> Unit,
     onHistory: () -> Unit,
-    onCriticalForce: (GripSpec, CriticalForceHands) -> Unit,
     anchor: Modifier = Modifier,
 ) {
     val palette = LocalGripPalette.current
@@ -419,7 +505,7 @@ private fun GripCard(
             }
             SecondaryButton(title = if (hasMax) tr("Measure again") else tr("Measure max"),
                 modifier = Modifier.weight(1f).testTag("maxes.measure.${group.key}")) {
-                onMeasure(group.grip, Side.left)
+                onMeasure()
             }
         }
         // Only on a grip that has been tested: a critical force door on every card was an
@@ -433,12 +519,9 @@ private fun GripCard(
                     .testTag("maxes.cf.history.${group.key}")) {
                     Icon(Icons.AutoMirrored.Outlined.List, contentDescription = null, tint = palette.inkPrimary,
                         modifier = Modifier.size(18.dp))
-                    Text(tr("All tests"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold,
+                    // Standing alone now that Measure asks max or critical force.
+                    Text(tr("Critical force history"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 6.dp))
-                }
-                SecondaryButton(title = tr("Test critical force"),
-                    modifier = Modifier.weight(1f).testTag("maxes.cf.test.${group.key}")) {
-                    onCriticalForce(group.grip, tests.latestHands ?: CriticalForceHands.OneAtATime(Side.left))
                 }
             }
         }

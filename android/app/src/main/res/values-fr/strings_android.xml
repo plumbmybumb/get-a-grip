@@ -52,11 +52,6 @@
     <string name="a_this_session_finished_but_the_app_closed_before_it_was_s">Cette séance s\'est terminée, mais l\'app s\'est fermée avant qu\'elle soit enregistrée.</string>
     <string name="a_critical_force_648670">Force critique</string>
     <string name="a_critical_force_0bb609">FORCE CRITIQUE</string>
-    <string name="a_test_your_endurance_4_min">Teste ton endurance · 4 min</string>
-    <string name="a_retest_due">À retester</string>
-    <string name="a_opens_the_four_minute_critical_force_test">Ouvre le test de force critique de quatre minutes.</string>
-    <string name="a_opens_a_new_critical_force_test">Ouvre un nouveau test de force critique.</string>
-    <string name="a_all_tests">Tous les tests</string>
     <string name="a_test_deleted">Test supprimé</string>
     <string name="a_lld_pulls">%d tirages</string>
     <string name="a_lld_of_your_max">%d %% de ton max</string>
@@ -77,7 +72,6 @@
     <string name="a_connect_your_gauge_to_test">Connecte ton capteur pour faire le test.</string>
     <string name="a_change">Changer</string>
     <string name="a_body_weight">Poids du corps</string>
-    <string name="a_set_body_weight">Indiquer ton poids</string>
     <string name="a_used_to_show_critical_force_as_a_share_of_body_weight_ea">Sert à exprimer la force critique en part de ton poids du corps. Chaque test garde le poids du jour où il a été fait, donc changer cette valeur ne modifie jamais un ancien résultat.</string>
     <string name="a_the_test_starts_the_moment_you_pull_pull_as_hard_as_you">Le test démarre dès que tu tires. Tire aussi fort que possible.</string>
     <string name="a_pull_to_start">TIRE POUR COMMENCER</string>
@@ -124,7 +118,6 @@
     <string name="a_left_first">Gauche d’abord</string>
     <string name="a_one_at_a_time">Une à la fois</string>
     <string name="a_one_hand">Une main</string>
-    <string name="a_hand_done_hand_next_the_test_starts_the_moment_you_pull">Main %1$s terminée. Main %2$s ensuite : le test démarre dès que tu tires.</string>
     <string name="a_finish_with_hand_only">Terminer avec la main %s seulement</string>
     <string name="a_save_your_hardest_pull_as_a_max">Enregistrer ton tirage le plus fort comme max</string>
     <string name="a_save_your_hardest_pulls_as_maxes">Enregistrer tes tirages les plus forts comme max</string>
@@ -145,4 +138,12 @@
     <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target_a18171">Pas encore de max pour cette prise, donc aucune cible pendant une séance. Ajoutes-en un dans l’onglet Tests.</string>
     <string name="a_no_max_for_your_hand_so_those_pulls_show_no_target_add_o">Pas de max pour ta main %s, donc ces tirages n’ont pas de cible. Ajoutes-en un dans l’onglet Tests.</string>
     <string name="a_each_grip_s_max_and_critical_force_measure_again_opens_t">Le max et la force critique de chaque prise. Mesurer à nouveau ouvre le capteur pour un max ; Tester la force critique lance le test de quatre minutes. Modifier change les valeurs de tes mains.</string>
+    <string name="a_hand_done_get_set_on_your_hand_then_start">%1$s : terminé. Mets en place ta main %2$s, puis démarre.</string>
+    <string name="a_start_hand">Démarrer la main %s</string>
+    <string name="a_add_a_benchmark">Ajouter un test</string>
+    <string name="a_what_are_you_measuring">Que mesures-tu ?</string>
+    <string name="a_a_max_is_your_hardest_pull_critical_force_is_the_four_mi">Un max, c’est ton tirage le plus fort. La force critique, c’est le test d’endurance de quatre minutes.</string>
+    <string name="a_max_one_hand_at_a_time">Max, une main à la fois</string>
+    <string name="a_max_both_hands_together">Max, deux mains ensemble</string>
+    <string name="a_critical_force_history">Historique de force critique</string>
 </resources>
