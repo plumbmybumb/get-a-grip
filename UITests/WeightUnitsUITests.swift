@@ -21,6 +21,9 @@ final class WeightUnitsUITests: XCTestCase {
         let addMax = app.buttons["maxes.add"]
         reveal(addMax, in: app)
         addMax.tap()
+        let measureMax = app.buttons["maxes.add.max"]   // + is a menu: a max or critical force
+        XCTAssertTrue(measureMax.waitForExistence(timeout: 3))
+        measureMax.tap()
         let manual = app.buttons["Enter by hand"]
         reveal(manual, in: app)
         manual.tap()

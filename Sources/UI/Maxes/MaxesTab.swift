@@ -61,10 +61,20 @@ struct MaxesTab: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add a max", systemImage: "plus") { adding = true }
-                        .labelStyle(.iconOnly)
-                        .tint(Accent.graphite)
-                        .accessibilityIdentifier("maxes.add")
+                    // The one door to both measurements. Critical force lives here, not on
+                    // Today: a test every six to eight weeks is a measurement, not the ritual
+                    // (Nuri, 2026-09-25).
+                    Menu {
+                        Button("Measure a max", systemImage: "scalemass") { adding = true }
+                            .accessibilityIdentifier("maxes.add.max")
+                        Button("Test critical force", systemImage: "stopwatch") { startCriticalForce() }
+                            .accessibilityIdentifier("maxes.add.criticalForce")
+                    } label: {
+                        Label("Add a benchmark", systemImage: "plus")
+                            .labelStyle(.iconOnly)
+                    }
+                    .tint(Accent.graphite)
+                    .accessibilityIdentifier("maxes.add")
                 }
             }
         }
@@ -84,9 +94,24 @@ struct MaxesTab: View {
         .sheet(item: $criticalForceHistory) { target in
             CriticalForceHistorySheet(gripKey: target.id, title: target.grip.displayName)
         }
+        #if DEBUG
+        // Headless: `-tab 2 -previewCriticalForce` opens the test (add `-startCriticalForce`
+        // with `-mockDevice` to run it). `simctl` cannot tap the + menu.
+        .onAppear {
+            if ProcessInfo.processInfo.arguments.contains("-previewCriticalForce"),
+               criticalForceTest == nil { startCriticalForce() }
+        }
+        #endif
         .sheet(isPresented: $adding) {
             NewMaxSheet(seed: templates.recentGrips.first ?? GripSpec()) { adding = false }
         }
+    }
+
+    /// A new test opens on the grip and hands of the last one, else the routine's first grip.
+    private func startCriticalForce() {
+        let grip = tests.last?.grip ?? templates.recentGrips.first ?? GripSpec()
+        criticalForceTest = CriticalForceTestRequest(grip: grip,
+                                                     hands: tests.latestHands ?? .oneAtATime(first: .left))
     }
 
     /// One card per tested grip, then one invitation per untested one — shared by the phone

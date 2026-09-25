@@ -13,6 +13,10 @@ final class LegalAgreementUITests: XCTestCase {
         for _ in 0..<12 where !add.isHittable { app.swipeUp() }
         XCTAssertTrue(add.isHittable)
         add.tap()
+        // + is a menu now: a max or a critical force test.
+        let measureMax = app.buttons["maxes.add.max"]
+        XCTAssertTrue(measureMax.waitForExistence(timeout: 3))
+        measureMax.tap()
         XCTAssertTrue(app.navigationBars["New max"].waitForExistence(timeout: 3))
         app.buttons["Cancel"].tap()
         // Scrolling to Add collapses the native tab bar; expand it before switching.

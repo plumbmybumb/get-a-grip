@@ -156,8 +156,10 @@ card. Options are in section 6.
 
 ## 6. Decisions (Nuri, 2026-09-25)
 
-1. **Today gets one line**, under the routines: the latest CF, "% of max", and an amber
-   "Retest due" after 42 days. It is the door to the test. Not a card.
+1. **Not on Today** (revised the same day). A one-line door under the routines shipped
+   first, then came off: a test every six to eight weeks is a measurement, not the
+   ritual. The doors are the Benchmarks "+" menu (Measure a max · Test critical force)
+   and "Test critical force" on a tested grip's card.
 2. **A downsampled trace is stored per test** (20 Hz, centi-kg, about 10 KB), the one
    place the app keeps raw force, so any definition can be recomputed later.
 3. **Body weight is asked once**, on the first test, and afterwards changed only in
@@ -208,7 +210,7 @@ card. Options are in section 6.
 - **Store:** the testing day is the existing `.benchmark` log (`stampBenchmarkDay`, shared
   with measured maxes), and delete comes with Undo.
 - **UI:**
-  - `Sources/UI/CriticalForce/` holds the test cover, the Today line, the per-grip
+  - `Sources/UI/CriticalForce/` holds the test cover, the per-grip
     history sheet with swipe-to-delete and Undo, and the result.
   - `MaxesTab` (the Benchmarks tab) draws CF inside each grip's card.
   - Settings has a new body weight card.
@@ -219,7 +221,7 @@ card. Options are in section 6.
   `record=cf_test` rows, plus `cf_pull` rows in pulls detail. The Markdown export gains
   a "Critical force tests" section. The shared fixtures were regenerated with the oracle
   (new scenario `critical-force-tests`).
-- **DEBUG:** `-previewCriticalForce` opens the test from Today, and `-startCriticalForce`
+- **DEBUG:** `-tab 2 -previewCriticalForce` opens the test from Benchmarks, and `-startCriticalForce`
   runs a whole test headlessly with `-mockDevice`. `-seedHistory` seeds two tests.
 - **Not in v1:** the Watch and the Live Activity, and a CF line on the routine runner's
   trace.
