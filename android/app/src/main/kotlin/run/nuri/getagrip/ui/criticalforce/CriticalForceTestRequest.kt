@@ -5,7 +5,6 @@ package run.nuri.getagrip.ui.criticalforce
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -81,8 +80,6 @@ class CriticalForceTestRequest(
         private set
     var editingGrip: Boolean by mutableStateOf(false)
 
-    /// The first test asks; afterwards the value lives in Settings.
-    var bodyWeightDraft: Double by mutableDoubleStateOf(70.0)
     var alsoSaveMaxes: Boolean by mutableStateOf(true)
     var saveFailed: Boolean by mutableStateOf(false)
     var isSaving: Boolean by mutableStateOf(false)
@@ -93,6 +90,13 @@ class CriticalForceTestRequest(
 
     /// Index into `hands.sides` of the hand on the gauge now.
     var handIndex: Int by mutableIntStateOf(0)
+        private set
+
+    /// Between hands: the first hand is done and the next is NOT armed until its Start.
+    /// Moving the gauge or block to the other hand loads it, and an armed test would take
+    /// that as the first pull (Nuri, 2026-09-25). Nothing is measuring meanwhile, so
+    /// leaving the app or the screen costs nothing.
+    var awaitingNextHand: Boolean by mutableStateOf(false)
         private set
     var results: List<CriticalForceHandResult> by mutableStateOf(emptyList())
         private set
@@ -125,6 +129,7 @@ class CriticalForceTestRequest(
     fun start(device: DeviceStore) {
         if (!device.state.isConnected) return
         handIndex = 0
+        awaitingNextHand = false
         results = emptyList()
         notes = emptyList()
         saveFailed = false
@@ -150,7 +155,7 @@ class CriticalForceTestRequest(
 
     /// The screen reports every phase change of the current session here.
     fun phaseChanged(phase: CriticalForceTest.Phase) {
-        if (stage != CriticalForceStage.Testing) return
+        if (stage != CriticalForceStage.Testing || awaitingNextHand) return
         val hand = handName(side)
         when (phase) {
             CriticalForceTest.Phase.Finished -> {
@@ -179,22 +184,35 @@ class CriticalForceTestRequest(
     }
 
     private fun nextHandOrFinish(canContinue: Boolean) {
-        val device = streamingDevice
-        if (canContinue && handIndex + 1 < hands.sides.size && device != null) {
+        if (canContinue && handIndex + 1 < hands.sides.size && streamingDevice != null) {
             handIndex += 1
-            // A fresh stream for the fresh hand: harmless on a gauge (the same re-kick the
-            // runner sends), and the demo gauge replays its test from the start.
-            device.stopStreaming(StreamStopCause.measurementComplete)
-            device.startStreaming(StreamStartCause.manualMeasurement)
-            arm(newSession())
+            // Wait for the climber: the next hand starts from its own Start tap. The
+            // readings stop reaching any test until then.
+            session.end()
+            streamingDevice?.onTracePoint = null
+            awaitingNextHand = true
             return
         }
         showResults()
     }
 
+    /// The next hand's Start. A fresh stream for the fresh hand: harmless on a gauge (the
+    /// same re-kick the runner sends), and the demo gauge replays its test from the start.
+    fun startNextHand(device: DeviceStore) {
+        if (!awaitingNextHand || !device.state.isConnected) return
+        awaitingNextHand = false
+        streamingDevice = device
+        if (device.isStreaming) device.stopStreaming(StreamStopCause.measurementComplete)
+        device.resetPeak()
+        device.startStreaming(StreamStartCause.manualMeasurement)
+        arm(newSession())
+    }
+
     /// "Finish with the first hand only", from between the hands.
     fun finishEarlyBetweenHands() {
-        if (stage == CriticalForceStage.Testing && handIndex > 0) showResults()
+        if (stage != CriticalForceStage.Testing || handIndex == 0) return
+        awaitingNextHand = false
+        showResults()
     }
 
     private fun showResults() {
@@ -232,7 +250,9 @@ class CriticalForceTestRequest(
     /// Leaving the screen: a test in progress is interrupted (voided before pull 16), then
     /// the stream stops.
     fun teardown() {
-        if (stage == CriticalForceStage.Testing) session.interrupt(CriticalForceTest.VoidReason.leftApp)
+        if (stage == CriticalForceStage.Testing && !awaitingNextHand) {
+            session.interrupt(CriticalForceTest.VoidReason.leftApp)
+        }
         stopStream(StreamStopCause.screenClosed)
     }
 

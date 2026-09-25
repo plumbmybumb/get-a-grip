@@ -13,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import run.nuri.getagrip.ble.HostClock
 import run.nuri.getagrip.ble.SystemHostClock
 import run.nuri.getagrip.engine.CriticalForceOutcome
@@ -78,9 +79,15 @@ class CriticalForceSession(
     fun arm() {
         test = CriticalForceTest()
         publish()
+        // A frame later, like the runner: starting the audio track and the haptics put tens
+        // of milliseconds between the Start tap and the screen. Nothing sounds until the
+        // first pull.
         if (!cuesRunning) {
-            cues.begin()
             cuesRunning = true
+            scope.launch {
+                yield()
+                if (cuesRunning) cues.begin()
+            }
         }
         ticker?.cancel()
         ticker = scope.launch {
@@ -91,9 +98,12 @@ class CriticalForceSession(
         }
     }
 
+    /// ~80 readings a second. Only what a single reading can change is republished here
+    /// (the phase, when the first pull arms the test); the bars and the clock follow on the
+    /// 20 Hz tick, which is as often as either can visibly move.
     fun receive(kg: Double, t: Double) {
         play(test.sample(kg, t))
-        publish()
+        if (publishPhase()) publishes += 1
     }
 
     /// Hold-to-stop. Keeps a result past `minRepsForResult`, voids before.
@@ -154,10 +164,16 @@ class CriticalForceSession(
         }
     }
 
-    private fun publish() {
-        var changed = false
+    private fun publishPhase(): Boolean {
         val p = test.phase
-        if (phase != p) { phase = p; changed = true }
+        if (phase == p) return false
+        phase = p
+        return true
+    }
+
+    private fun publish() {
+        var changed = publishPhase()
+        val p = test.phase
         val left = ceil(test.remaining(clock.wallSeconds())).toInt()
         if (secondsLeft != left) { secondsLeft = left; changed = true }
         val pull = when (p) {

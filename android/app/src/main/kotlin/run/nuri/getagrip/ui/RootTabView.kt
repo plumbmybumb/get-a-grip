@@ -84,6 +84,7 @@ import run.nuri.getagrip.ui.maxes.MaxEditSheet
 import run.nuri.getagrip.ui.maxes.SharedMaxSheet
 import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.ui.maxes.MaxMeasureScreen
+import run.nuri.getagrip.ui.maxes.newCriticalForceTest
 import run.nuri.getagrip.ui.maxes.MaxesTabScreen
 import run.nuri.getagrip.ui.runner.RunnerHost
 import run.nuri.getagrip.ui.settings.SettingsScreen
@@ -246,11 +247,14 @@ fun RootTabView() {
     }
     val launchIntent = LocalActivity.current?.intent
     LaunchedEffect(Unit) {
-        // DEBUG `--ez previewCriticalForce true`: open the test for a headless screenshot.
+        // DEBUG `--ez previewCriticalForce true`: open the test for a headless screenshot, from
+        // the Benchmarks tab and by its rule — the one door the test has.
         if (BuildConfig.DEBUG && !presentation.previewedCriticalForce &&
             launchIntent?.getBooleanExtra("previewCriticalForce", false) == true) {
             presentation.previewedCriticalForce = true
-            openCriticalForce(templates.recentGrips.firstOrNull() ?: GripSpec(), CriticalForceHands.OneAtATime(Side.left))
+            current = Tab.Maxes
+            val (grip, hands) = newCriticalForceTest(templates.criticalForceRecords, templates.recentGrips)
+            openCriticalForce(grip, hands)
         }
     }
     val criticalForce = presentation.criticalForce
@@ -425,7 +429,6 @@ fun RootTabView() {
                     onShowHistory = { current = Tab.History },
                     onLogSession = { loggingSession = true },
                     onOpenGauge = { liveGauge = true },
-                    onCriticalForce = ::openCriticalForce,
                     // The two presentations Today cannot see (both hosted here, Today composed beneath), so the
                     // guard has to be told.
                     canPresentImport = !loggingSession,

@@ -21,6 +21,10 @@ import run.nuri.getagrip.store.DeviceStore
 import run.nuri.getagrip.ui.criticalforce.CriticalForceSession
 import run.nuri.getagrip.ui.criticalforce.CriticalForceStage
 import run.nuri.getagrip.ui.criticalforce.CriticalForceTestRequest
+import run.nuri.getagrip.ui.maxes.criticalForceHandsFor
+import run.nuri.getagrip.ui.maxes.newCriticalForceTest
+import run.nuri.getagrip.data.CriticalForceRecordEntity
+import java.time.Instant
 import kotlin.math.exp
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -86,10 +90,22 @@ class CriticalForceVisitTests {
         assertEquals(Side.right, request.side)
 
         w.pull(request, floor = 20.0)
-        assertEquals(1, request.handIndex, "the second hand is armed")
+        assertEquals(1, request.handIndex)
         assertEquals(CriticalForceStage.Testing, request.stage)
-        assertEquals(CriticalForceTest.Phase.Armed, request.session.phase)
+        assertTrue(request.awaitingNextHand, "the second hand waits for its own Start")
+        assertEquals(null, w.device.onTracePoint, "nothing is measuring between hands")
         assertEquals(Side.left, request.side)
+        val firstSession = request.session
+        // Moving the gauge to the other hand loads it: that must not start the test.
+        w.clock.wall += 5
+        w.device.onTracePoint?.invoke(DeviceStore.TracePoint(30.0, w.clock.wall))
+        assertEquals(firstSession, request.session)
+        assertEquals(1, w.client.commands.count { it == ProgressorCommand.startWeightMeasurement })
+
+        request.startNextHand(w.device)
+        assertTrue(!request.awaitingNextHand)
+        assertEquals(CriticalForceTest.Phase.Armed, request.session.phase, "Start arms a fresh test")
+        assertTrue(firstSession !== request.session)
         val starts = w.client.commands.count { it == ProgressorCommand.startWeightMeasurement }
         assertEquals(2, starts, "a fresh stream for the fresh hand")
 
@@ -108,7 +124,9 @@ class CriticalForceVisitTests {
         val request = w.request(CriticalForceHands.OneAtATime(Side.left))
         request.start(w.device)
         w.pull(request, floor = 20.0)
+        assertTrue(request.awaitingNextHand)
         request.finishEarlyBetweenHands()
+        assertTrue(!request.awaitingNextHand)
         assertEquals(CriticalForceStage.Result, request.stage)
         assertEquals(listOf(Side.left), request.results.map { it.side })
     }
@@ -133,6 +151,7 @@ class CriticalForceVisitTests {
         val request = w.request(CriticalForceHands.OneAtATime(Side.left))
         request.start(w.device)
         w.pull(request, floor = 20.0)
+        request.startNextHand(w.device)
         w.pull(request, floor = 17.0, upTo = 40.0)
         request.session.interrupt(CriticalForceTest.VoidReason.lostGauge)
         request.phaseChanged(request.session.phase)
@@ -140,6 +159,34 @@ class CriticalForceVisitTests {
         assertEquals(listOf(Side.left), request.results.map { it.side })
         assertEquals(1, request.notes.size)
         assertTrue(request.notes[0].startsWith("Right: "), request.notes[0])
+    }
+
+    /// Between hands nothing is measuring: leaving the screen voids nothing, and the first
+    /// hand's result is not turned into a note.
+    @Test
+    fun leavingBetweenHandsVoidsNothing() {
+        val w = World()
+        val request = w.request(CriticalForceHands.OneAtATime(Side.left))
+        request.start(w.device)
+        w.pull(request, floor = 20.0)
+        assertTrue(request.awaitingNextHand)
+        request.teardown()
+        assertEquals(CriticalForceTest.Phase.Finished, request.session.phase, "the finished hand stays finished")
+        assertEquals(listOf(Side.left), request.results.map { it.side })
+        assertTrue(request.notes.isEmpty())
+        assertEquals(1, w.service.ended)
+    }
+
+    /// Start between hands needs a gauge; without one it does nothing.
+    @Test
+    fun theNextHandCannotStartWithoutTheGauge() {
+        val w = World()
+        val request = w.request(CriticalForceHands.OneAtATime(Side.left))
+        request.start(w.device)
+        w.pull(request, floor = 20.0)
+        w.client.setState(ProgressorConnectionState.Disconnected(reason = null))
+        request.startNextHand(w.device)
+        assertTrue(request.awaitingNextHand)
     }
 
     @Test
@@ -164,5 +211,22 @@ class CriticalForceVisitTests {
         w.pull(request, floor = 20.0)
         assertEquals(24, played.count { it == RunnerCue.RepStarted })
         assertEquals(RunnerCue.SessionCompleted, played.last { it !is RunnerCue.RestTick })
+    }
+
+    /// Where a new test opens: from "+", the last test's grip and hands, else the routines'
+    /// first grip one at a time; from a grip's Measure, that grip's own last hands.
+    @Test
+    fun aNewTestOpensWhereTheLastOneWas() {
+        val g20 = GripSpec()
+        val g15 = GripSpec(edgeMM = 15)
+        assertEquals(g15 to CriticalForceHands.OneAtATime(Side.left),
+            newCriticalForceTest(emptyList(), listOf(g15, g20)))
+        val both = CriticalForceRecordEntity(edgeMM = 20, sideRaw = "both", recordedAt = Instant.parse("2026-09-01T10:00:00Z"))
+        val left = CriticalForceRecordEntity(edgeMM = 15, sideRaw = "left", recordedAt = Instant.parse("2026-09-20T10:00:00Z"))
+        val right = left.copy(id = java.util.UUID.randomUUID(), sideRaw = "right")
+        val tests = listOf(both, left, right)
+        assertEquals(g15 to CriticalForceHands.OneAtATime(Side.left), newCriticalForceTest(tests, listOf(g20)))
+        assertEquals(CriticalForceHands.BothHands, criticalForceHandsFor(g20, tests))
+        assertEquals(CriticalForceHands.OneAtATime(Side.left), criticalForceHandsFor(GripSpec(edgeMM = 6), tests))
     }
 }

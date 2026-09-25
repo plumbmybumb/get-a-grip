@@ -51,18 +51,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.engine.DayStamp
-import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.RoutineShare
-import run.nuri.getagrip.engine.CriticalForceHands
 import run.nuri.getagrip.store.LocalDayClock
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.store.LocalHistoryFeed
 import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.ui.builder.OptionalRoutineDraftSaver
 import run.nuri.getagrip.ui.components.DeviceChip
-import run.nuri.getagrip.ui.criticalforce.CriticalForceTodayLine
 import run.nuri.getagrip.ui.components.UndoSnackbar
 import run.nuri.getagrip.ui.components.UndoSnackbarEffect
 import run.nuri.getagrip.ui.l10n.tr
@@ -104,8 +101,6 @@ fun TodayScreen(
     /// (in `RootTabView`, with this screen composed beneath) can collide with a scan; everything
     /// else replaces this screen, so its absence IS the guard.
     canPresentImport: Boolean = true,
-    /// The critical force test, for a grip and hand. The host decides where it shows.
-    onCriticalForce: (GripSpec, CriticalForceHands) -> Unit = { _, _ -> },
 ) {
     val palette = LocalGripPalette.current
     val templates = LocalTemplateStore.current
@@ -290,13 +285,6 @@ fun TodayScreen(
                         }
                     },
                     onDemo = { device.useMockDevice(true) },
-                )
-
-                // One line, not a card: a test every few weeks is not the ritual. Below the
-                // routines it serves and above the strip it fills on a testing day.
-                CriticalForceTodayLine(
-                    onTest = onCriticalForce,
-                    modifier = Modifier.padding(horizontal = Metrics.hPadding),
                 )
 
                 // With no routine there is nothing the strip could honestly describe.

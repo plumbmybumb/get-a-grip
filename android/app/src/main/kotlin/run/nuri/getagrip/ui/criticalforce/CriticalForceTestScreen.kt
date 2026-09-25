@@ -10,6 +10,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.key
+import run.nuri.getagrip.ui.components.BodyWeightField
 import androidx.compose.runtime.remember
 import run.nuri.getagrip.data.initial
 import run.nuri.getagrip.ui.theme.armedText
@@ -170,7 +171,6 @@ fun CriticalForceTestScreen(request: CriticalForceTestRequest, onClose: () -> Un
 
     fun start() {
         if (!device.state.isConnected) return
-        if (settings.bodyWeightKg == null) settings.setBodyWeightKg(request.bodyWeightDraft)
         request.start(device)
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
@@ -202,7 +202,8 @@ fun CriticalForceTestScreen(request: CriticalForceTestRequest, onClose: () -> Un
 
     // A dropped gauge interrupts: void before pull 16, the end of that hand's test after it.
     LaunchedEffect(device.state.isConnected) {
-        if (!device.state.isConnected && request.stage == CriticalForceStage.Testing) {
+        // Between hands nothing is measuring, so a drop voids nothing.
+        if (!device.state.isConnected && request.stage == CriticalForceStage.Testing && !request.awaitingNextHand) {
             request.session.interrupt(CriticalForceTest.VoidReason.lostGauge)
         }
     }
@@ -214,7 +215,8 @@ fun CriticalForceTestScreen(request: CriticalForceTestRequest, onClose: () -> Un
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner, request) {
         val observer = LifecycleEventObserver { _, event ->
-            if (request.stage != CriticalForceStage.Testing) return@LifecycleEventObserver
+            // Between hands nothing is measuring, so leaving the app costs nothing.
+            if (request.stage != CriticalForceStage.Testing || request.awaitingNextHand) return@LifecycleEventObserver
             // A recreation is not the climber leaving: the request outlives it.
             if (activity?.isChangingConfigurations == true) return@LifecycleEventObserver
             when (event) {
@@ -344,9 +346,8 @@ private fun FormScreen(request: CriticalForceTestRequest, ended: String?, onClos
                             modifier = Modifier.fillMaxWidth().testTag("cf.connect"),
                         ) { device.connect() }
                     } else {
-                        GaugeZeroButton(canTare = true, modifier = Modifier.fillMaxWidth().testTag("cf.tare"))
-                        PrimaryButton(tr("Start"), icon = Icons.Filled.PlayArrow, tint = palette.bleu,
-                            modifier = Modifier.fillMaxWidth().testTag("cf.start")) { onStart() }
+                        // The max test's pair of actions, so the measurement screens share one shape.
+                        TareAndStart(tr("Start"), "cf.start", onStart)
                     }
                 }
             }
@@ -463,17 +464,11 @@ private fun Setup(request: CriticalForceTestRequest) {
 
     HandPicker(request)
 
+    // Only until it is set: asked once, then it lives in Settings. Typed, never a slider.
+    // Left empty, the test saves without it and asks again next time.
     if (settings.bodyWeightKg == null) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            ValueRow(
-                title = tr("Body weight"),
-                value = WeightUnits.fromKg(request.bodyWeightDraft),
-                range = WeightUnits.sliderRange(40.0..110.0),
-                limit = WeightUnits.fromKg(25.0..250.0),
-                unit = WeightUnits.symbol,
-                step = 0.5,
-                decimals = 1,
-            ) { request.bodyWeightDraft = WeightUnits.toKg(it) }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            BodyWeightField(kilograms = settings.bodyWeightKg, onChange = { settings.setBodyWeightKg(it) })
             Text(tr("Asked once; change it in Settings."),
                 style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
         }
@@ -578,8 +573,9 @@ private fun HandPicker(request: CriticalForceTestRequest) {
 /// 24; the trace takes the slack; the pulls ride in their own capsule; the one control sits
 /// at the foot.
 @Composable
-private fun TestingScreen(request: CriticalForceTestRequest) {
+internal fun TestingScreen(request: CriticalForceTestRequest) {
     val palette = LocalGripPalette.current
+    val device = LocalDeviceStore.current
     val session = request.session
     val tint = criticalForceTint(session.phase, palette)
     val scrollsForLargeText = LocalDensity.current.fontScale >= 1.5f
@@ -615,16 +611,21 @@ private fun TestingScreen(request: CriticalForceTestRequest) {
                     tint = tint,
                 )
             }
-            Plateau(session.repMeans, session.proto.reps,
-                current = if (session.phase.isRunning) session.pullNumber else null)
+            // A LEAF that reads the session itself: the live bar moves several times a second,
+            // and read here it recomposed the whole screen with it. Between hands the pill is
+            // the NEXT hand's: empty.
+            LivePlateau(request)
             Dock(Modifier.testTag("cf.dock")) {
-                if (session.phase == CriticalForceTest.Phase.Armed && request.handIndex > 0) {
+                if (request.awaitingNextHand) {
                     val first = request.hands.sides.first()
-                    Text(tr("%s hand done. %s hand next: the test starts the moment you pull.",
-                            first.displayName, request.side.displayName),
+                    Text(tr("%s hand done. Get set on your %s hand, then start.",
+                            first.displayName, request.side.displayName.lowercase()),
                         style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
                         color = palette.inkSecondary, textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                    TareAndStart(tr("Start %s hand", request.side.displayName.lowercase()), "cf.startNextHand") {
+                        request.startNextHand(device)
+                    }
                     SecondaryButton(tr("Finish with %s hand only", first.displayName.lowercase()),
                         modifier = Modifier.fillMaxWidth().testTag("cf.finishFirstHand")) {
                         request.finishEarlyBetweenHands()
@@ -665,14 +666,18 @@ private fun heroStyle(tint: Color) = TextStyle(
 private fun Panel(request: CriticalForceTestRequest, tint: Color) {
     val palette = LocalGripPalette.current
     val session = request.session
-    val word = when (session.phase) {
+    // Between hands, the panel names the next hand instead of the finished test's DONE.
+    val nextHand = request.awaitingNextHand
+    val word = if (nextHand) {
+        if (request.side == Side.right) tr("RIGHT HAND NEXT") else tr("LEFT HAND NEXT")
+    } else when (session.phase) {
         CriticalForceTest.Phase.Armed -> tr("PULL TO START")
         is CriticalForceTest.Phase.Pulling -> tr("PULL")
         is CriticalForceTest.Phase.Resting -> tr("REST")
         CriticalForceTest.Phase.Settling, CriticalForceTest.Phase.Finished -> tr("DONE")
         is CriticalForceTest.Phase.Voided -> tr("STOPPED")
     }
-    val seconds = when (session.phase) {
+    val seconds = if (nextHand) null else when (session.phase) {
         is CriticalForceTest.Phase.Pulling, is CriticalForceTest.Phase.Resting -> session.secondsLeft
         else -> null
     }
@@ -680,10 +685,11 @@ private fun Panel(request: CriticalForceTestRequest, tint: Color) {
     // last bell has rung, nothing is left.
     val clock = when {
         seconds != null -> "$seconds"
-        session.phase == CriticalForceTest.Phase.Armed -> "${session.proto.workSeconds.toInt()}"
+        nextHand || session.phase == CriticalForceTest.Phase.Armed -> "${session.proto.workSeconds.toInt()}"
         else -> "0"
     }
-    val countLine = tr("Pull %d of %d", minOf(session.pullNumber, session.proto.reps), session.proto.reps)
+    val countLine = tr("Pull %d of %d", if (nextHand) 1 else minOf(session.pullNumber, session.proto.reps),
+        session.proto.reps)
     val grip = request.grip
     val spoken = if (seconds != null) L10n.tr("%s, %d seconds. %s", word, seconds, countLine)
     else L10n.tr("%s. %s", word, countLine)
@@ -746,6 +752,32 @@ private fun LiveForce(tint: Color, modifier: Modifier) {
 /// **The 24 pulls, in a capsule of their own.** One column per pull, filling in as each
 /// window closes, so you watch the plateau form; the pull in progress is outlined and
 /// drawn live. Squared columns, a CHART, so they never read as the capsule fingers.
+@Composable
+private fun LivePlateau(request: CriticalForceTestRequest) {
+    val session = request.session
+    val waiting = request.awaitingNextHand
+    Plateau(
+        means = if (waiting) emptyList() else session.repMeans,
+        total = session.proto.reps,
+        current = if (!waiting && session.phase.isRunning) session.pullNumber else null,
+    )
+}
+
+/// Tare (or Wake) beside a Start, as the max test's dock pairs them.
+@Composable
+private fun TareAndStart(title: String, tag: String, onStart: () -> Unit) {
+    val device = LocalDeviceStore.current
+    val palette = LocalGripPalette.current
+    AdaptiveActionRow(listOf(listOf(tr("Zero the gauge"), tr("Wake")), listOf(title))) { index, cell ->
+        if (index == 0) {
+            GaugeZeroButton(canTare = true, modifier = cell.testTag("cf.tare"))
+        } else {
+            PrimaryButton(title, icon = Icons.Filled.PlayArrow, tint = palette.bleu,
+                enabled = device.state.isConnected, modifier = cell.testTag(tag)) { onStart() }
+        }
+    }
+}
+
 @Composable
 private fun Plateau(means: List<Double?>, total: Int, current: Int?) {
     val palette = LocalGripPalette.current

@@ -53,11 +53,6 @@
     <string name="a_this_session_finished_but_the_app_closed_before_it_was_s">This session finished, but the app closed before it was saved.</string>
     <string name="a_critical_force_648670">Critical force</string>
     <string name="a_critical_force_0bb609">CRITICAL FORCE</string>
-    <string name="a_test_your_endurance_4_min">Test your endurance · 4 min</string>
-    <string name="a_retest_due">Retest due</string>
-    <string name="a_opens_the_four_minute_critical_force_test">Opens the four-minute critical force test.</string>
-    <string name="a_opens_a_new_critical_force_test">Opens a new critical force test.</string>
-    <string name="a_all_tests">All tests</string>
     <string name="a_test_deleted">Test deleted</string>
     <string name="a_lld_pulls">%d pulls</string>
     <string name="a_lld_of_your_max">%d %% of your max</string>
@@ -78,7 +73,6 @@
     <string name="a_connect_your_gauge_to_test">Connect your gauge to test.</string>
     <string name="a_change">Change</string>
     <string name="a_body_weight">Body weight</string>
-    <string name="a_set_body_weight">Set body weight</string>
     <string name="a_used_to_show_critical_force_as_a_share_of_body_weight_ea">Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result.</string>
     <string name="a_the_test_starts_the_moment_you_pull_pull_as_hard_as_you">The test starts the moment you pull. Pull as hard as you can.</string>
     <string name="a_pull_to_start">PULL TO START</string>
@@ -125,7 +119,6 @@
     <string name="a_left_first">Left first</string>
     <string name="a_one_at_a_time">One at a time</string>
     <string name="a_one_hand">One hand</string>
-    <string name="a_hand_done_hand_next_the_test_starts_the_moment_you_pull">%1$s hand done. %2$s hand next: the test starts the moment you pull.</string>
     <string name="a_finish_with_hand_only">Finish with %s hand only</string>
     <string name="a_save_your_hardest_pull_as_a_max">Save your hardest pull as a max</string>
     <string name="a_save_your_hardest_pulls_as_maxes">Save your hardest pulls as maxes</string>
@@ -146,4 +139,12 @@
     <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target_a18171">No max on file for this grip yet, so this shows no target during a session. Add one on the Benchmarks tab.</string>
     <string name="a_no_max_for_your_hand_so_those_pulls_show_no_target_add_o">No max for your %s hand, so those pulls show no target. Add one on the Benchmarks tab.</string>
     <string name="a_each_grip_s_max_and_critical_force_measure_again_opens_t">Each grip\'s max and critical force. Measure again opens the gauge for a max; Test critical force runs the four-minute test. Edit changes your hand values.</string>
+    <string name="a_hand_done_get_set_on_your_hand_then_start">%1$s hand done. Get set on your %2$s hand, then start.</string>
+    <string name="a_start_hand">Start %s hand</string>
+    <string name="a_add_a_benchmark">Add a benchmark</string>
+    <string name="a_what_are_you_measuring">What are you measuring?</string>
+    <string name="a_a_max_is_your_hardest_pull_critical_force_is_the_four_mi">A max is your hardest pull. Critical force is the four-minute endurance test.</string>
+    <string name="a_max_one_hand_at_a_time">Max, one hand at a time</string>
+    <string name="a_max_both_hands_together">Max, both hands together</string>
+    <string name="a_critical_force_history">Critical force history</string>
 </resources>

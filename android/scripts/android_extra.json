@@ -218,26 +218,6 @@
       "fr": "FORCE CRITIQUE"
     },
     {
-      "en": "Test your endurance · 4 min",
-      "fr": "Teste ton endurance · 4 min"
-    },
-    {
-      "en": "Retest due",
-      "fr": "À retester"
-    },
-    {
-      "en": "Opens the four-minute critical force test.",
-      "fr": "Ouvre le test de force critique de quatre minutes."
-    },
-    {
-      "en": "Opens a new critical force test.",
-      "fr": "Ouvre un nouveau test de force critique."
-    },
-    {
-      "en": "All tests",
-      "fr": "Tous les tests"
-    },
-    {
       "en": "Test deleted",
       "fr": "Test supprimé"
     },
@@ -316,10 +296,6 @@
     {
       "en": "Body weight",
       "fr": "Poids du corps"
-    },
-    {
-      "en": "Set body weight",
-      "fr": "Indiquer ton poids"
     },
     {
       "en": "Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result.",
@@ -506,10 +482,6 @@
       "fr": "Une main"
     },
     {
-      "en": "%@ hand done. %@ hand next: the test starts the moment you pull.",
-      "fr": "Main %@ terminée. Main %@ ensuite : le test démarre dès que tu tires."
-    },
-    {
       "en": "Finish with %@ hand only",
       "fr": "Terminer avec la main %@ seulement"
     },
@@ -588,6 +560,38 @@
     {
       "en": "Each grip's max and critical force. Measure again opens the gauge for a max; Test critical force runs the four-minute test. Edit changes your hand values.",
       "fr": "Le max et la force critique de chaque prise. Mesurer à nouveau ouvre le capteur pour un max ; Tester la force critique lance le test de quatre minutes. Modifier change les valeurs de tes mains."
+    },
+    {
+      "en": "%@ hand done. Get set on your %@ hand, then start.",
+      "fr": "%@ : terminé. Mets en place ta main %@, puis démarre."
+    },
+    {
+      "en": "Start %@ hand",
+      "fr": "Démarrer la main %@"
+    },
+    {
+      "en": "Add a benchmark",
+      "fr": "Ajouter un test"
+    },
+    {
+      "en": "What are you measuring?",
+      "fr": "Que mesures-tu ?"
+    },
+    {
+      "en": "A max is your hardest pull. Critical force is the four-minute endurance test.",
+      "fr": "Un max, c’est ton tirage le plus fort. La force critique, c’est le test d’endurance de quatre minutes."
+    },
+    {
+      "en": "Max, one hand at a time",
+      "fr": "Max, une main à la fois"
+    },
+    {
+      "en": "Max, both hands together",
+      "fr": "Max, deux mains ensemble"
+    },
+    {
+      "en": "Critical force history",
+      "fr": "Historique de force critique"
     }
   ]
 }
