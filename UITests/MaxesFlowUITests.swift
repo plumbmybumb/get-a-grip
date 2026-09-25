@@ -113,6 +113,7 @@ final class MaxesFlowUITests: XCTestCase {
         let app = launch()
         defer { app.terminate() }
         tap(app.buttons["maxes.add"], in: app)
+        tap(app.buttons["maxes.add.max"], in: app)   // + is a menu: a max or critical force
         XCTAssertTrue(app.navigationBars["New max"].waitForExistence(timeout: 3))
         tap(app.buttons["Enter by hand"], in: app)
         XCTAssertTrue(app.buttons["maxEdit.save"].waitForExistence(timeout: 3))
@@ -170,6 +171,7 @@ final class MaxesFlowUITests: XCTestCase {
         let app = launch()
         defer { app.terminate() }
         tap(app.buttons["maxes.add"], in: app)
+        tap(app.buttons["maxes.add.max"], in: app)   // + is a menu: a max or critical force
         let recent = app.descendants(matching: .any).matching(identifier: "newMax.recentGrips").firstMatch
         XCTAssertTrue(recent.waitForExistence(timeout: 3))
         let choice = app.buttons["newMax.grip.\(splitGrip)"]
