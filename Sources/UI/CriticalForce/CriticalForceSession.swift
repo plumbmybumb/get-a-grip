@@ -34,7 +34,17 @@ final class CriticalForceSession {
     func arm() {
         test = CriticalForceTest()
         publish()
-        if !cuesRunning { cues.begin(); cuesRunning = true }
+        // A runloop turn later, like the runner: `AVAudioEngine.start()` and the haptic
+        // engine's start put tens of milliseconds between the Start tap and the screen.
+        // Nothing sounds until the first pull.
+        if !cuesRunning {
+            cuesRunning = true
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                guard let self, self.cuesRunning else { return }
+                self.cues.begin()
+            }
+        }
         ticker?.cancel()
         ticker = Task { [weak self] in
             while !Task.isCancelled {
@@ -44,9 +54,12 @@ final class CriticalForceSession {
         }
     }
 
+    /// ~80 readings a second. Only what a single reading can change is republished here
+    /// (the phase, when the first pull arms the test); the bars and the clock follow on
+    /// the 20 Hz tick, which is as often as either can visibly move.
     func receive(kg: Double, at t: TimeInterval) {
         play(test.sample(kg: kg, at: t))
-        publish()
+        publishPhase()
     }
 
     /// Hold-to-stop. Keeps a result past `minRepsForResult`, voids before.
@@ -103,9 +116,14 @@ final class CriticalForceSession {
         }
     }
 
-    private func publish() {
+    private func publishPhase() {
         let p = test.phase
         if phase != p { phase = p }
+    }
+
+    private func publish() {
+        publishPhase()
+        let p = test.phase
         let left = Int(test.remaining(at: Self.now).rounded(.up))
         if secondsLeft != left { secondsLeft = left }
         let pull: Int = switch p {
