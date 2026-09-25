@@ -29,7 +29,11 @@ import kotlin.math.exp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import run.nuri.getagrip.ble.StreamStartCause
+import run.nuri.getagrip.engine.ForceSample
+import run.nuri.getagrip.engine.ProgressorEvent
 
 /// One visit, one hand after the other: the flow iOS keeps in `CriticalForceTestView`
 /// (`start`, `arm`, `finishIfDone`, `nextHandOrFinish`), which on this side lives in
@@ -228,5 +232,82 @@ class CriticalForceVisitTests {
         assertEquals(g15 to CriticalForceHands.OneAtATime(Side.left), newCriticalForceTest(tests, listOf(g20)))
         assertEquals(CriticalForceHands.BothHands, criticalForceHandsFor(g20, tests))
         assertEquals(CriticalForceHands.OneAtATime(Side.left), criticalForceHandsFor(GripSpec(edgeMM = 6), tests))
+    }
+
+    // MARK: - Zeroed before each hand (iOS f2378af)
+
+    /// A live reading on the gauge, through the client, as the radio delivers it.
+    private var micros = 0u
+    private fun World.onGauge(kg: Double) {
+        if (!device.isStreaming) device.startStreaming(StreamStartCause.manualWake)
+        micros += 12_500u
+        client.emit(ProgressorEvent.Sample(ForceSample(kg, micros)))
+    }
+
+    private fun World.indexOf(command: ProgressorCommand, after: Int = -1): Int =
+        client.commands.withIndex().first { it.index > after && it.value == command }.index
+
+    /// Every test starts on a zeroed gauge, as a routine does: tare FIRST, then the stream.
+    @Test
+    fun startZeroesTheGaugeBeforeTheStream() {
+        val w = World()
+        val request = w.request(CriticalForceHands.Single(Side.left))
+        request.start(w.device)
+        assertEquals(CriticalForceStage.Testing, request.stage)
+        assertTrue(w.indexOf(ProgressorCommand.tare) < w.indexOf(ProgressorCommand.startWeightMeasurement),
+            "tare must precede the stream: ${w.client.commands}")
+        assertNull(request.loadOnGaugeKg)
+    }
+
+    /// A hand still on the gauge: Start zeroes nothing, arms nothing, and says why.
+    @Test
+    fun startIsRefusedUnderLoad() {
+        val w = World()
+        val request = w.request(CriticalForceHands.OneAtATime(Side.left))
+        w.onGauge(5.0)
+        assertTrue(w.device.isReadingLive)
+        request.start(w.device)
+        assertEquals(CriticalForceStage.Setup, request.stage)
+        assertEquals(5.0, request.loadOnGaugeKg)
+        assertTrue(ProgressorCommand.tare !in w.client.commands, "no tare under load")
+        assertEquals(null, w.device.onTracePoint, "no test armed")
+        assertEquals(0, w.service.begun)
+
+        // Let go, and the next Start goes through and clears the warning.
+        w.onGauge(0.3)
+        request.start(w.device)
+        assertEquals(CriticalForceStage.Testing, request.stage)
+        assertNull(request.loadOnGaugeKg)
+        assertTrue(ProgressorCommand.tare in w.client.commands)
+    }
+
+    /// Between hands the check runs on the live reading BEFORE the stream stops: afterwards
+    /// the load is unknown, and a tare must not be guessed at.
+    @Test
+    fun theNextHandIsRefusedUnderLoadAndZeroedWhenLetGo() {
+        val w = World()
+        val request = w.request(CriticalForceHands.OneAtATime(Side.left))
+        request.start(w.device)
+        w.pull(request, floor = 20.0)
+        assertTrue(request.awaitingNextHand)
+        val before = w.client.commands.size
+        w.onGauge(6.0)
+        request.startNextHand(w.device)
+        assertTrue(request.awaitingNextHand, "still waiting")
+        assertEquals(6.0, request.loadOnGaugeKg)
+        assertEquals(null, w.device.onTracePoint)
+        assertTrue(w.client.commands.drop(before).none {
+            it == ProgressorCommand.tare || it == ProgressorCommand.stopWeightMeasurement
+        }, "nothing sent under load: ${w.client.commands.drop(before)}")
+
+        w.onGauge(0.2)
+        request.startNextHand(w.device)
+        assertTrue(!request.awaitingNextHand)
+        assertNull(request.loadOnGaugeKg)
+        val stop = w.indexOf(ProgressorCommand.stopWeightMeasurement, before - 1)
+        val tare = w.indexOf(ProgressorCommand.tare, stop)
+        val start = w.indexOf(ProgressorCommand.startWeightMeasurement, stop)
+        assertTrue(tare < start, "the next hand is zeroed before its stream: ${w.client.commands}")
+        assertEquals(CriticalForceTest.Phase.Armed, request.session.phase)
     }
 }

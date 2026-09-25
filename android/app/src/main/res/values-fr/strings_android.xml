@@ -138,7 +138,6 @@
     <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target_a18171">Pas encore de max pour cette prise, donc aucune cible pendant une séance. Ajoutes-en un dans l’onglet Tests.</string>
     <string name="a_no_max_for_your_hand_so_those_pulls_show_no_target_add_o">Pas de max pour ta main %s, donc ces tirages n’ont pas de cible. Ajoutes-en un dans l’onglet Tests.</string>
     <string name="a_each_grip_s_max_and_critical_force_measure_again_opens_t">Le max et la force critique de chaque prise. Mesurer à nouveau ouvre le capteur pour un max ; Tester la force critique lance le test de quatre minutes. Modifier change les valeurs de tes mains.</string>
-    <string name="a_hand_done_get_set_on_your_hand_then_start">%1$s : terminé. Mets en place ta main %2$s, puis démarre.</string>
     <string name="a_start_hand">Démarrer la main %s</string>
     <string name="a_add_a_benchmark">Ajouter un test</string>
     <string name="a_what_are_you_measuring">Que mesures-tu ?</string>
@@ -146,4 +145,7 @@
     <string name="a_max_one_hand_at_a_time">Max, une main à la fois</string>
     <string name="a_max_both_hands_together">Max, deux mains ensemble</string>
     <string name="a_critical_force_history">Historique de force critique</string>
+    <string name="a_start_zeroes_the_gauge_then_waits_for_your_first_pull">Commencer met le capteur à zéro, puis attend ton premier tirage.</string>
+    <string name="a_there_s_on_the_gauge_let_go_then_start_it_zeroes_first">Il y a %s sur le capteur. Relâche, puis commence : il se remet d’abord à zéro.</string>
+    <string name="a_hand_done_set_up_your_hand_with_the_gauge_unloaded_then">%1$s : terminé. Mets en place ta main %2$s sans charger le capteur, puis démarre : il se remet d’abord à zéro.</string>
 </resources>

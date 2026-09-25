@@ -22,6 +22,7 @@ import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.runner.NoSessionServiceController
 import run.nuri.getagrip.runner.SessionServiceController
 import run.nuri.getagrip.store.DeviceStore
+import run.nuri.getagrip.store.TarePolicy
 
 /// The four screens of one visit.
 sealed interface CriticalForceStage {
@@ -82,6 +83,11 @@ class CriticalForceTestRequest(
 
     var alsoSaveMaxes: Boolean by mutableStateOf(true)
     var saveFailed: Boolean by mutableStateOf(false)
+
+    /// Set when Start was refused because the gauge was loaded; cleared on the next Start
+    /// that goes through. The dock says why nothing happened.
+    var loadOnGaugeKg: Double? by mutableStateOf(null)
+        private set
     var isSaving: Boolean by mutableStateOf(false)
 
     /// The test for the hand on the gauge now.
@@ -128,6 +134,7 @@ class CriticalForceTestRequest(
     /// test runs, so demo mode sees a real-looking plateau.
     fun start(device: DeviceStore) {
         if (!device.state.isConnected) return
+        if (refusesUnderLoad(device)) return
         handIndex = 0
         awaitingNextHand = false
         results = emptyList()
@@ -136,8 +143,7 @@ class CriticalForceTestRequest(
         streamingDevice = device
         previousMockProfile = device.mockProfile
         device.setMockProfile(MockForceProfile.allOut)
-        device.resetPeak()
-        device.startStreaming(StreamStartCause.manualMeasurement)
+        zeroThenStream(device)
         // The runner's rule: only a connected gauge that can stream in the background is
         // worth keeping the process alive for.
         if (device.gaugeCapabilities.sustainsBackgroundStreaming) service.begin()
@@ -200,12 +206,34 @@ class CriticalForceTestRequest(
     /// same re-kick the runner sends), and the demo gauge replays its test from the start.
     fun startNextHand(device: DeviceStore) {
         if (!awaitingNextHand || !device.state.isConnected) return
+        // Checked on the live reading BEFORE the stream stops: afterwards the load is
+        // unknown, and a tare must not be guessed at.
+        if (refusesUnderLoad(device)) return
         awaitingNextHand = false
         streamingDevice = device
         if (device.isStreaming) device.stopStreaming(StreamStopCause.measurementComplete)
+        zeroThenStream(device)
+        arm(newSession())
+    }
+
+    /// **Every test starts on a zeroed gauge**, as a routine does (`RunnerSession.startIfReady`).
+    /// Refused while a live reading shows a hand still on it: taring under load would shift
+    /// every reading of the test by that load. The threshold is `TarePolicy`'s confirm one.
+    private fun refusesUnderLoad(device: DeviceStore): Boolean {
+        if (device.isReadingLive && TarePolicy.shouldConfirm(device.currentKg)) {
+            loadOnGaugeKg = device.currentKg
+            return true
+        }
+        return false
+    }
+
+    /// Tare FIRST, then start the stream: the vendor's order; the reverse killed a fresh
+    /// stream on hardware.
+    private fun zeroThenStream(device: DeviceStore) {
+        loadOnGaugeKg = null
+        device.tare()
         device.resetPeak()
         device.startStreaming(StreamStartCause.manualMeasurement)
-        arm(newSession())
     }
 
     /// "Finish with the first hand only", from between the hands.

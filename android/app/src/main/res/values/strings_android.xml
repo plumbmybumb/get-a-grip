@@ -139,7 +139,6 @@
     <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target_a18171">No max on file for this grip yet, so this shows no target during a session. Add one on the Benchmarks tab.</string>
     <string name="a_no_max_for_your_hand_so_those_pulls_show_no_target_add_o">No max for your %s hand, so those pulls show no target. Add one on the Benchmarks tab.</string>
     <string name="a_each_grip_s_max_and_critical_force_measure_again_opens_t">Each grip\'s max and critical force. Measure again opens the gauge for a max; Test critical force runs the four-minute test. Edit changes your hand values.</string>
-    <string name="a_hand_done_get_set_on_your_hand_then_start">%1$s hand done. Get set on your %2$s hand, then start.</string>
     <string name="a_start_hand">Start %s hand</string>
     <string name="a_add_a_benchmark">Add a benchmark</string>
     <string name="a_what_are_you_measuring">What are you measuring?</string>
@@ -147,4 +146,7 @@
     <string name="a_max_one_hand_at_a_time">Max, one hand at a time</string>
     <string name="a_max_both_hands_together">Max, both hands together</string>
     <string name="a_critical_force_history">Critical force history</string>
+    <string name="a_start_zeroes_the_gauge_then_waits_for_your_first_pull">Start zeroes the gauge, then waits for your first pull.</string>
+    <string name="a_there_s_on_the_gauge_let_go_then_start_it_zeroes_first">There\'s %s on the gauge. Let go, then start: it zeroes first.</string>
+    <string name="a_hand_done_set_up_your_hand_with_the_gauge_unloaded_then">%1$s hand done. Set up your %2$s hand with the gauge unloaded, then start: it zeroes first.</string>
 </resources>

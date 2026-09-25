@@ -172,7 +172,8 @@ fun CriticalForceTestScreen(request: CriticalForceTestRequest, onClose: () -> Un
     fun start() {
         if (!device.state.isConnected) return
         request.start(device)
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        // Only for a Start that went through: a refusal under load says why in the dock.
+        if (request.stage == CriticalForceStage.Testing) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
     fun save() {
@@ -346,6 +347,13 @@ private fun FormScreen(request: CriticalForceTestRequest, ended: String?, onClos
                             modifier = Modifier.fillMaxWidth().testTag("cf.connect"),
                         ) { device.connect() }
                     } else {
+                        if (request.loadOnGaugeKg == null) {
+                            Text(tr("Start zeroes the gauge, then waits for your first pull."),
+                                style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                        }
+                        LoadWarning(request)
                         // The max test's pair of actions, so the measurement screens share one shape.
                         TareAndStart(tr("Start"), "cf.start", onStart)
                     }
@@ -618,11 +626,12 @@ internal fun TestingScreen(request: CriticalForceTestRequest) {
             Dock(Modifier.testTag("cf.dock")) {
                 if (request.awaitingNextHand) {
                     val first = request.hands.sides.first()
-                    Text(tr("%s hand done. Get set on your %s hand, then start.",
+                    Text(tr("%s hand done. Set up your %s hand with the gauge unloaded, then start: it zeroes first.",
                             first.displayName, request.side.displayName.lowercase()),
                         style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
                         color = palette.inkSecondary, textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                    LoadWarning(request)
                     TareAndStart(tr("Start %s hand", request.side.displayName.lowercase()), "cf.startNextHand") {
                         request.startNextHand(device)
                     }
@@ -761,6 +770,16 @@ private fun LivePlateau(request: CriticalForceTestRequest) {
         total = session.proto.reps,
         current = if (!waiting && session.phase.isRunning) session.pullNumber else null,
     )
+}
+
+/// Why Start did nothing: the gauge is loaded, and it zeroes before a test.
+@Composable
+private fun LoadWarning(request: CriticalForceTestRequest) {
+    val kg = request.loadOnGaugeKg ?: return
+    Text(tr("There's %s on the gauge. Let go, then start: it zeroes first.", WeightUnits.text(kg)),
+        style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
+        color = LocalGripPalette.current.armedText, textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp).testTag("cf.loadWarning"))
 }
 
 /// Tare (or Wake) beside a Start, as the max test's dock pairs them.

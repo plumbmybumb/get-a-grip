@@ -14,7 +14,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1358) {
+val STRING_KEYS: Map<String, Int> = buildMap(1360) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -82,7 +82,7 @@ private fun string_keysChunk0(into: MutableMap<String, Int>) {
     into["%1\$s at the gym today, plus %2\$d hang sessions"] = R.string.s_at_the_gym_today_plus_lld_hang_sessions
     into["%1\$s finger, %2\$s"] = R.string.s_finger
     into["%1\$s for %2\$s"] = R.string.s_for_905fc0
-    into["%1\$s hand done. Get set on your %2\$s hand, then start."] = R.string.a_hand_done_get_set_on_your_hand_then_start
+    into["%1\$s hand done. Set up your %2\$s hand with the gauge unloaded, then start: it zeroes first."] = R.string.a_hand_done_set_up_your_hand_with_the_gauge_unloaded_then
     into["%1\$s is the gauge this app has been verified against on real hardware. %2\$s"] = R.string.s_is_the_gauge_this_app_has_been_verified_against_on_real
     into["%1\$s kg  →  %2\$s kg"] = R.string.s_kg_kg
     into["%1\$s of each hand's max · %2\$s %3\$s"] = R.string.s_of_each_hand_s_max
@@ -201,7 +201,7 @@ private fun string_keysChunk1(into: MutableMap<String, Int>) {
     into["%s finger, %s"] = R.string.s_finger
     into["%s for %s"] = R.string.s_for_905fc0
     into["%s hand"] = R.string.s_hand_4d50dc
-    into["%s hand done. Get set on your %s hand, then start."] = R.string.a_hand_done_get_set_on_your_hand_then_start
+    into["%s hand done. Set up your %s hand with the gauge unloaded, then start: it zeroes first."] = R.string.a_hand_done_set_up_your_hand_with_the_gauge_unloaded_then
     into["%s hold"] = R.string.s_hold_71ed74
     into["%s is the gauge this app has been verified against on real hardware. %s"] = R.string.s_is_the_gauge_this_app_has_been_verified_against_on_real
     into["%s kg  →  %s kg"] = R.string.s_kg_kg
@@ -1109,6 +1109,7 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["Start with the left hand"] = R.string.s_start_with_the_left_hand
     into["Start with the right hand"] = R.string.s_start_with_the_right_hand
     into["Start without a gauge"] = R.string.s_start_without_a_gauge
+    into["Start zeroes the gauge, then waits for your first pull."] = R.string.a_start_zeroes_the_gauge_then_waits_for_your_first_pull
     into["Starts on the left hand"] = R.string.s_starts_on_the_left_hand
     into["Starts on the right hand"] = R.string.s_starts_on_the_right_hand
     into["Status"] = R.string.s_status
@@ -1193,6 +1194,7 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["There's %1\$s %2\$s on the gauge. Zero it?"] = R.string.s_there_s_on_the_gauge_zero_it
     into["There's %s %s on the gauge. Zero it?"] = R.string.s_there_s_on_the_gauge_zero_it
     into["There's %s kg on the gauge. Zero it?"] = R.string.s_there_s_kg_on_the_gauge_zero_it
+    into["There's %s on the gauge. Let go, then start: it zeroes first."] = R.string.a_there_s_on_the_gauge_let_go_then_start_it_zeroes_first
     into["These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets."] = R.string.s_these_are_workout_peaks_not_necessarily_maximum_efforts
     into["These were typed by hand, so they never move on their own. Scale them with the new max, or leave them."] = R.string.s_these_were_typed_by_hand_so_they_never_move_on_their_own
     into["This Dyno did not report a serial number, so its calibration cannot be looked up."] = R.string.s_this_dyno_did_not_report_a_serial_number_so_its_calibrat
@@ -1247,11 +1249,11 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["Upper bound"] = R.string.s_upper_bound
     into["Use + to add a max. Each grip has an Edit button for changing hand values and reviewing earlier records. Your charts and percentage targets use these same numbers."] = R.string.a_use_to_add_a_max_each_grip_has_an_edit_button_for_changi
     into["Use as max"] = R.string.s_use_as_max
-    into["Use this max"] = R.string.s_use_this_max
-    into["Used for both hands. Pick a hand if yours differ — most people's do."] = R.string.s_used_for_both_hands_pick_a_hand_if_yours_differ_most_peo
 }
 
 private fun string_keysChunk8(into: MutableMap<String, Int>) {
+    into["Use this max"] = R.string.s_use_this_max
+    into["Used for both hands. Pick a hand if yours differ — most people's do."] = R.string.s_used_for_both_hands_pick_a_hand_if_yours_differ_most_peo
     into["Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result."] = R.string.a_used_to_show_critical_force_as_a_share_of_body_weight_ea
     into["Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged."] = R.string.s_used_when_a_hand_has_no_individual_max_and_for_pulls_wit
     into["Used when a hand has no max of its own, and for two-handed pulls."] = R.string.s_used_when_a_hand_has_no_max_of_its_own_and_for_two_hande
@@ -1400,11 +1402,11 @@ private fun string_keysChunk8(into: MutableMap<String, Int>) {
     into["target %s to %s %s"] = R.string.s_target_to_bd15c7
     into["target %s to %s kilograms"] = R.string.s_target_to_kilograms_5ca076
     into["target %s to %s percent of your max"] = R.string.s_target_to_percent_of_your_max
-    into["tested your maxes"] = R.string.s_tested_your_maxes_f31019
-    into["they show"] = R.string.s_they_show
 }
 
 private fun string_keysChunk9(into: MutableMap<String, Int>) {
+    into["tested your maxes"] = R.string.s_tested_your_maxes_f31019
+    into["they show"] = R.string.s_they_show
     into["today"] = R.string.s_today_2dd2be
     into["up"] = R.string.s_up
     into["version query"] = R.string.s_version_query

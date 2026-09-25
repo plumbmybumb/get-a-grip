@@ -564,10 +564,6 @@
       "fr": "Le max et la force critique de chaque prise. Mesurer à nouveau ouvre le capteur pour un max ; Tester la force critique lance le test de quatre minutes. Modifier change les valeurs de tes mains."
     },
     {
-      "en": "%@ hand done. Get set on your %@ hand, then start.",
-      "fr": "%@ : terminé. Mets en place ta main %@, puis démarre."
-    },
-    {
       "en": "Start %@ hand",
       "fr": "Démarrer la main %@"
     },
@@ -594,6 +590,18 @@
     {
       "en": "Critical force history",
       "fr": "Historique de force critique"
+    },
+    {
+      "en": "Start zeroes the gauge, then waits for your first pull.",
+      "fr": "Commencer met le capteur à zéro, puis attend ton premier tirage."
+    },
+    {
+      "en": "There's %@ on the gauge. Let go, then start: it zeroes first.",
+      "fr": "Il y a %@ sur le capteur. Relâche, puis commence : il se remet d’abord à zéro."
+    },
+    {
+      "en": "%@ hand done. Set up your %@ hand with the gauge unloaded, then start: it zeroes first.",
+      "fr": "%@ : terminé. Mets en place ta main %@ sans charger le capteur, puis démarre : il se remet d’abord à zéro."
     }
   ]
 }
