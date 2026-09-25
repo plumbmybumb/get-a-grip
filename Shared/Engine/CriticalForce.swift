@@ -101,9 +101,6 @@ enum CriticalForceRules {
     static let gapSeconds: Double = 0.25
     /// A window with less data than this fraction has no mean.
     static let minCoverage: Double = 0.5
-    /// When Today starts suggesting a retest. The literature retests every four to eight
-    /// weeks, and a maximal test is not something to repeat weekly.
-    static let retestAfterDays = 42
 }
 
 // MARK: - Readings and results

@@ -272,18 +272,4 @@ extension WorkoutLog {
         let minutes = Int((elapsed / 60).rounded())
         return minutes > 0 ? minutes : nil
     }
-
-    var wasCompleted: Bool { plannedReps > 0 && completedReps >= plannedReps }
-
-    /// What this session asked of each grip, keyed by the CANONICAL key — the join
-    /// between a pull made in March and one made in December.
-    ///
-    /// Folded out of the frozen plan rather than the reps, so the per-grip line reads
-    /// identically here and in the builder. `uniquingKeysWith`, because a trap would
-    /// take History down for one malformed blob.
-    func totalsByGripKey() -> [String: PlanMath.GripTotals] {
-        guard let plan else { return [:] }
-        return Dictionary(PlanMath.gripTotals(plan).map { ($0.grip.key, $0) },
-                          uniquingKeysWith: { first, _ in first })
-    }
 }

@@ -127,11 +127,11 @@ final class RunnerSession {
     /// change, so a second of holding invalidates the UI ~1–2 times instead of ~80.
     private(set) var snapshot = RunnerSnapshot()
 
-    /// The exact measured fraction, kept off the coarse snapshot: only the progress bar
-    /// observes it.
+    /// The exact measured fraction, kept off the coarse snapshot: only the time bar
+    /// (`RunnerTimeBar`) observes it.
     private(set) var repProgress: Double = 0
-    var repProgressBucket: Int { Int((repProgress * 100).rounded()) }
-    /// Timer-only ring state. Keep this 10 Hz fraction off the screen snapshot too.
+    /// The rest's countdown and the timer-only ring. Keep this 10 Hz fraction off the
+    /// screen snapshot too.
     private(set) var phaseRemainingFraction: Double?
     private(set) var startedAt = Date.now
     private(set) var finishedAt: Date?
@@ -664,8 +664,8 @@ final class RunnerSession {
         // Sub-percent: rounding makes a long hold visibly stop between 1% boundaries.
         let progress = runner.repProgress
         if progress != repProgress { repProgress = progress }
-        // TEST BRANCH: published for measured sessions too, for STACKED's rest time bar.
-        // The engine returns nil while a measured pull works, so this changes only on
+        // Published for measured sessions too, for the time bar's rest countdown. The
+        // engine returns nil while a measured pull works, so this changes only on
         // countdown ticks (10 Hz), and only leaf views observe it.
         let remaining = runner.phaseRemainingFraction(at: now)
         if remaining != phaseRemainingFraction { phaseRemainingFraction = remaining }

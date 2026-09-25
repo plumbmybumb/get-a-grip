@@ -917,12 +917,6 @@ final class TemplateStore {
         }
     }
 
-    func dismissUndo() {
-        undoExpiry?.cancel()
-        undoExpiry = nil
-        lastDeleted = nil
-    }
-
     func move(fromOffsets offsets: IndexSet, toOffset destination: Int) {
         guard var routines = fetchRoutines() else { return }
         routines.move(fromOffsets: offsets, toOffset: destination)
@@ -1076,12 +1070,6 @@ final class TemplateStore {
         log.notes = restorable.notes
         log.kindRaw = restorable.kindRaw
         return log
-    }
-
-    func dismissSessionUndo() {
-        sessionUndoExpiry?.cancel()
-        sessionUndoExpiry = nil
-        lastDeletedSession = nil
     }
 
     private func armSessionUndoExpiry() {
