@@ -53,7 +53,7 @@
     <string name="a_critical_force_648670">Force critique</string>
     <string name="a_critical_force_0bb609">FORCE CRITIQUE</string>
     <string name="a_test_deleted">Test supprimé</string>
-    <string name="a_lld_pulls">%d tirages</string>
+    <string name="a_pull_options">Options du tirage</string>
     <string name="a_lld_of_your_max">%d %% de ton max</string>
     <string name="a_lld_of_body_weight">%d %% du poids du corps</string>
     <string name="a_critical_force_kilograms_a5fa99">Force critique %s kilogrammes</string>

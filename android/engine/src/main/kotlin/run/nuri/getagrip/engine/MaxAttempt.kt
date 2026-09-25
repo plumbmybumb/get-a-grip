@@ -18,7 +18,12 @@ package run.nuri.getagrip.engine
 ///
 /// TRANSLATION NOTE (from Shared/Engine/MaxAttempt.swift): Swift's `struct` with
 /// `mutating add`/`finish` is a class here; `private set` twins `private(set) var`.
-class MaxAttempt {
+class MaxAttempt(
+    /// This attempt's own release window. A single test keeps the default; a visit of
+    /// repeated pulls (`MaxAttemptLog`) ends each one sooner, because there a re-grip that
+    /// splits one effort in two still logs its highest reading.
+    val endsAfter: Double = releaseSeconds,
+) {
 
     /// THE RESULT — the hardest single reading. Only ever climbs, so the figure on
     /// screen is always exactly what would be recorded right now.
@@ -56,7 +61,7 @@ class MaxAttempt {
         if (!hasResult) return
         val since = releasedAt ?: at
         releasedAt = since
-        if (at - since >= releaseSeconds) isComplete = true
+        if (at - since >= endsAfter) isComplete = true
     }
 
     /// Take what has been pulled so far — the manual "Done", and the timeout.
@@ -71,7 +76,7 @@ class MaxAttempt {
         /// there is one number rather than two that could disagree.
         const val releaseKg: Double = 2.0
 
-        /// Off the edge this long, after pulling, ends the attempt. Erring late is cheap:
+        /// Off the edge this long, after pulling, ends a single-test attempt. Erring late is cheap:
         /// ending early on a re-grip throws away an effort someone paid for.
         const val releaseSeconds: Double = 2.0
     }

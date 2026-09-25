@@ -173,11 +173,18 @@ class MaxEditFlowTests {
         compose.onNodeWithTag("newMax.grip.${candidate.key}").performScrollTo().performClick().assertIsSelected()
         compose.onNodeWithTag("newMax.enter").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(candidate, entered) }
+        // Measure asks one question first: one hand at a time, or both together.
         compose.onNodeWithTag("newMax.measure").performScrollTo().performClick()
+        compose.onNodeWithText("How are you measuring?").assertIsDisplayed()
+        compose.onNodeWithTag("max.mode.criticalForce").assertDoesNotExist()
+        compose.onNodeWithTag("max.mode.hands").performClick()
         compose.runOnIdle { assertEquals(candidate to Side.left, measured) }
-        compose.onNodeWithTag("newMax.options").performClick()
-        compose.onNodeWithText("Measure both hands together").performClick()
+        compose.onNodeWithTag("newMax.measure").performScrollTo().performClick()
+        compose.onNodeWithTag("max.mode.both").performClick()
         compose.runOnIdle { assertEquals(candidate to Side.both, measured) }
+        // The menu no longer carries its own "both together" door.
+        compose.onNodeWithTag("newMax.options").performClick()
+        compose.onNodeWithText("Measure both hands together").assertDoesNotExist()
         assertEquals(emptyList(), w.records())
     }
 }

@@ -63,13 +63,17 @@ class StringCatalogTests {
         val context = RuntimeEnvironment.getApplication()
         for ((key, id) in PLURAL_KEYS) {
             for (quantity in listOf(0, 1, 2, 5)) {
+                // One argument per slot, the count in the numeric one: `%s %s, best of %d
+                // pulls` carries two words before its count.
+                val template = context.resources.getQuantityText(id, quantity).toString()
+                val args: Array<Any> = slots(template).map<String, Any> { if (it == "d") quantity else "x" }.toTypedArray()
                 val value = runCatching {
-                    context.resources.getQuantityString(id, quantity, quantity)
+                    context.resources.getQuantityString(id, quantity, *args)
                 }.getOrNull()
                 assertTrue(value != null, "no plural behind '$key' at $quantity")
             }
         }
-        assertEquals(10, PLURAL_KEYS.values.toSet().size, "the catalog's ten counted strings")
+        assertEquals(13, PLURAL_KEYS.values.toSet().size, "the catalog's thirteen counted strings")
     }
 
     /// A key that had to be POSITIONED for French is reachable under BOTH spellings — the

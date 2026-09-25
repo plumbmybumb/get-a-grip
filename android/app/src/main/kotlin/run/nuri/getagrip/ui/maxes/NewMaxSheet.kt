@@ -47,15 +47,14 @@ fun NewMaxSheet(
     val templates = LocalTemplateStore.current
     val haptics = LocalHapticFeedback.current
     var menuOpen by remember { mutableStateOf(false) }
+    /// Measure asks one question first: one hand at a time, or both together.
+    var choosingMode by remember { mutableStateOf(false) }
     MaxesFlowScaffold(title = tr("New max"), onClose = onClose, actions = {
         Box {
             IconButton(onClick = { menuOpen = true }, modifier = Modifier.testTag("newMax.options")) {
                 Icon(Icons.Filled.MoreVert, tr("More max options"))
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(text = { Text(tr("Measure both hands together")) }, onClick = {
-                    menuOpen = false; onMeasure(draft.grip, Side.both)
-                })
                 DropdownMenuItem(text = { Text(tr("One value for both hands")) }, onClick = {
                     menuOpen = false; onShared(draft.grip)
                 })
@@ -116,15 +115,21 @@ fun NewMaxSheet(
             }
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 PrimaryButton(tr("Measure on the gauge"), modifier = Modifier.testTag("newMax.measure")) {
-                    onMeasure(draft.grip, Side.left)
+                    choosingMode = true
                 }
                 SecondaryButton(tr("Enter by hand"), modifier = Modifier.fillMaxWidth().testTag("newMax.enter")) {
                     onEnter(draft.grip)
                 }
-                Text(tr("Measure your left and right hands in one visit, or enter the values you already know."),
+                Text(tr("Pull as many times as you like with each hand, or enter the values you already know."),
                     style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary,
                     modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
         }
+    }
+    if (choosingMode) {
+        MaxMeasureModeDialog(
+            onMax = { side -> choosingMode = false; onMeasure(draft.grip, side) },
+            onDismiss = { choosingMode = false },
+        )
     }
 }

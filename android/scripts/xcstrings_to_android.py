@@ -342,6 +342,16 @@ def english(key: str, entry: dict) -> str:
     return unit["value"] if unit else key
 
 
+def english_plural(entry: dict) -> dict | None:
+    """The English plural forms, when the catalog carries them (`%lld pulls` has a
+    `one` of "%lld pull"). Most counted keys have none: the key IS the English, and
+    both quantities then render it, exactly as iOS does."""
+    plural = entry.get("localizations", {}).get("en", {}).get("variations", {}).get("plural")
+    if not plural:
+        return None
+    return {q: plural[q]["stringUnit"]["value"] for q in plural if "stringUnit" in plural[q]}
+
+
 def french(entry: dict) -> dict | None:
     """`{"value": …}` for a plain unit, `{"plural": {...}}` for variations."""
     loc = entry.get("localizations", {}).get("fr")
@@ -412,12 +422,16 @@ def main() -> int:
 
         if is_plural:
             plural_names[key] = name
-            # English has no variations in the catalog: iOS renders the key for
-            # every count, so both quantities carry the same sentence.
+            # English usually has no variations in the catalog: iOS renders the key
+            # for every count, so both quantities carry the same sentence. Where the
+            # catalog DOES give English forms ("Review %lld pull"), they are used.
+            forms_en = english_plural(catalog[key]) or {}
             lines_en.append(f"    <plurals name={quote(name)}>")
             for quantity in ("one", "other"):
+                text_en = forms_en.get(quantity)
+                item_en = value_en if text_en is None else java_format(escape_stray_percent(text_en), positional)
                 lines_en.append(
-                    f"        <item quantity=\"{quantity}\">{xml_value(value_en)}</item>"
+                    f"        <item quantity=\"{quantity}\">{xml_value(item_en)}</item>"
                 )
             lines_en.append("    </plurals>")
             lines_fr.append(f"    <plurals name={quote(name)}>")

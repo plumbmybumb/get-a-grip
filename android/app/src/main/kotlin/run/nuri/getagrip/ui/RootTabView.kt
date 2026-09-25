@@ -256,6 +256,17 @@ fun RootTabView() {
             val (grip, hands) = newCriticalForceTest(templates.criticalForceRecords, templates.recentGrips)
             openCriticalForce(grip, hands)
         }
+        // DEBUG `--ez previewMaxMeasure true` (`--ez previewMaxBoth true` for both hands): the
+        // max visit, opened bare. It connects and reads on its own — the thing being shown.
+        if (BuildConfig.DEBUG && !presentation.previewedMaxMeasure &&
+            launchIntent?.getBooleanExtra("previewMaxMeasure", false) == true) {
+            presentation.previewedMaxMeasure = true
+            current = Tab.Maxes
+            presentation.measuring = MeasureRequest(
+                templates.recentGrips.firstOrNull() ?: GripSpec(),
+                if (launchIntent.getBooleanExtra("previewMaxBoth", false)) Side.both else Side.left,
+            )
+        }
     }
     val criticalForce = presentation.criticalForce
     if (criticalForce != null) {
@@ -286,6 +297,7 @@ fun RootTabView() {
         MaxMeasureScreen(
             grip = measure.grip,
             initialSide = measure.side,
+            session = presentation.liveMaxSession(measure),
             onSave = { values ->
                 val receipt = templates.recordMaxesWithReceipt(values.map {
                     TemplateStore.MaxSave(measure.grip, it.side, it.kg, it.source)

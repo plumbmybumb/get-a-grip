@@ -11,6 +11,7 @@ import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.ui.builder.BuilderMode
 import run.nuri.getagrip.ui.criticalforce.CriticalForceTestRequest
+import run.nuri.getagrip.ui.maxes.LiveMaxSession
 import run.nuri.getagrip.ui.maxes.NewMaxDraft
 
 /// **What the root is presenting, retained across a rotation** — the same move
@@ -34,6 +35,21 @@ internal class RootPresentation : ViewModel() {
     var editingSharedMax: MaxEditRequest? by mutableStateOf(null)
 
     var measuring: MeasureRequest? by mutableStateOf(null)
+
+    /// The max VISIT's pulls, held here for the runner's reason: a rotation that dropped
+    /// them would throw away every pull of the visit. One per `measuring` request.
+    private var liveMaxFor: MeasureRequest? = null
+    private var liveMax: LiveMaxSession? = null
+    fun liveMaxSession(request: MeasureRequest): LiveMaxSession {
+        liveMax?.let { if (liveMaxFor === request) return it }
+        return LiveMaxSession(bothTogether = request.side == Side.both, side = request.side).also {
+            liveMax = it
+            liveMaxFor = request
+        }
+    }
+
+    /// DEBUG `previewMaxMeasure` opens the visit once per task, not on every recreation.
+    var previewedMaxMeasure: Boolean = false
 
     /// Whether THIS visit to the measure screen saved. Held as the visit it belongs to, so a
     /// new measurement starts unsaved without anybody remembering to reset it — the job

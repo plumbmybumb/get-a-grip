@@ -3,158 +3,132 @@
 
 package run.nuri.getagrip.ui
 
-import run.nuri.getagrip.engine.MaxAttempt
+import run.nuri.getagrip.engine.MaxAttemptLog
+import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.store.DeviceStore
-import run.nuri.getagrip.ui.maxes.MaxMeasureTiming
-import run.nuri.getagrip.ui.maxes.MaxMeasurement
+import run.nuri.getagrip.ui.maxes.LiveMaxSession
+import run.nuri.getagrip.ui.maxes.maxToBeat
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/// The measure screen's state holder: what it publishes, when, and when the attempt ends.
+/// The max visit's state holder: what it publishes, and when.
 ///
-/// Pure — it owns a `MaxAttempt` and two snapshot values, so nothing here needs a Canvas, a
-/// gauge or Robolectric. That is the whole reason the rule lives in a class rather than in
-/// the composable.
+/// Pure — it owns a `MaxMeasurementDraft` and a few snapshot values, so nothing here needs a
+/// Canvas, a gauge or Robolectric. The screen's per-sample cost is exactly what this class
+/// publishes, which is why the rule lives here rather than in the composable.
 class MaxMeasurementTests {
 
     private fun point(kg: Double, t: Double) = DeviceStore.TracePoint(kg = kg, t = t)
 
-    // MARK: - Publish on CHANGE, never on every sample
-
-    /// **The rule this class exists for.** Samples arrive ~80 times a second and the peak
-    /// climbs during the ramp and then holds still; a mirror that wrote unconditionally would
-    /// invalidate the screen on every one of them — the exact pattern that made the routine
-    /// deck feel laggy. Eighty identical samples must publish exactly once.
+    /// **The rule this class exists for.** Samples arrive ~80 times a second; a mirror that
+    /// wrote unconditionally would invalidate the hero on every one of them. A steady load
+    /// publishes twice — the pull beginning, and its peak — however many samples arrive.
     @Test
     fun aSteadyLoadPublishesOnceHoweverManySamplesArrive() {
-        val m = MaxMeasurement()
+        val session = LiveMaxSession(bothTogether = false, side = Side.left)
         var t = 0.0
         repeat(80) {
-            m.receive(point(18.0, t))
+            session.receive(point(18.0, t))
             t += 1.0 / 80.0
         }
-        assertEquals(1, m.publishes)
-        assertEquals(18.0, m.peakKg)
+        assertEquals(2, session.publishes)
+        assertTrue(session.isPulling)
+        assertEquals(18.0, session.pullPeakKg)
     }
 
-    /// A CLIMBING pull publishes on each real step, because each one is a different number on
-    /// screen. The guard is about equality, not about rate limiting.
+    /// A CLIMBING pull publishes each real step: each one is a different number on screen.
     @Test
     fun eachGenuineClimbPublishes() {
-        val m = MaxMeasurement()
-        listOf(5.0, 10.0, 15.0, 20.0).forEachIndexed { index, kg ->
-            m.receive(point(kg, index * 0.1))
-        }
-        assertEquals(4, m.publishes)
-        assertEquals(20.0, m.peakKg)
+        val session = LiveMaxSession(bothTogether = false, side = Side.left)
+        listOf(5.0, 10.0, 15.0, 20.0).forEachIndexed { index, kg -> session.receive(point(kg, index * 0.1)) }
+        assertEquals(1 + 4, session.publishes)
+        assertEquals(20.0, session.pullPeakKg)
     }
 
-    /// Coming back DOWN publishes nothing: `peakKg` is a running maximum, so the number on
-    /// screen has not changed. This is what stops the hero flickering back toward zero while
-    /// you ease off — the reason the live reading is demoted to its own line.
+    /// Easing off publishes nothing: the pull's peak is a running maximum.
     @Test
     fun easingOffDoesNotRepublishThePeak() {
-        val m = MaxMeasurement()
-        m.receive(point(24.0, 0.0))
-        assertEquals(1, m.publishes)
-        m.receive(point(20.0, 0.1))
-        m.receive(point(12.0, 0.2))
-        m.receive(point(6.0, 0.3))
-        assertEquals(1, m.publishes)
-        assertEquals(24.0, m.peakKg)
+        val session = LiveMaxSession(bothTogether = false, side = Side.left)
+        session.receive(point(24.0, 0.0))
+        val before = session.publishes
+        session.receive(point(20.0, 0.1))
+        session.receive(point(12.0, 0.2))
+        session.receive(point(6.0, 0.3))
+        assertEquals(before, session.publishes)
+        assertEquals(24.0, session.pullPeakKg)
     }
 
-    /// Completion is a publish of its own, because `isComplete` is what the screen watches to
-    /// leave the measuring phase.
+    /// Drift under the threshold is not a pull, and costs the screen nothing at all.
     @Test
-    fun completingPublishesOnceMore() {
-        val m = MaxMeasurement()
-        m.receive(point(24.0, 0.0))
-        val before = m.publishes
-        m.finish()
-        assertTrue(m.isComplete)
-        assertEquals(before + 1, m.publishes)
-        // Idempotent: a Done tap after a timeout must not publish a second time.
-        m.finish()
-        assertEquals(before + 1, m.publishes)
+    fun driftPublishesNothing() {
+        val session = LiveMaxSession(bothTogether = false, side = Side.left)
+        repeat(200) { session.receive(point(0.4, it / 80.0)) }
+        assertEquals(0, session.publishes)
+        assertFalse(session.isPulling)
+        assertNull(session.pullPeakKg)
     }
 
-    // MARK: - hasResult
-
-    /// **A result means you PULLED, not merely that a number arrived.** Every load cell drifts
-    /// a few hundred grams with nothing on it, so the screen must not offer to save a 0.4 kg
-    /// max for somebody who never touched the edge. Mirrored off `MaxAttempt.releaseKg` so the
-    /// screen and the engine cannot disagree about what counts.
+    /// Letting go logs the pull with no tap: the hero shows it as the last pull, the pull's
+    /// own values clear, and a new best is announced once.
     @Test
-    fun driftIsNotAResult() {
-        val m = MaxMeasurement()
-        m.receive(point(0.4, 0.0))
-        assertFalse(m.hasResult)
-        m.receive(point(MaxAttempt.releaseKg, 0.1))
-        assertTrue(m.hasResult)
+    fun lettingGoLogsThePullAndAnnouncesANewBest() {
+        val session = LiveMaxSession(bothTogether = false, side = Side.left)
+        session.receive(point(26.0, 0.0))
+        session.receive(point(0.2, 0.5))
+        assertTrue(session.isPulling, "A quick re-grip is still the same pull")
+        session.receive(point(0.2, 0.5 + MaxAttemptLog.releaseSeconds))
+        assertFalse(session.isPulling)
+        assertNull(session.pullPeakKg)
+        assertEquals(26.0, session.lastAttempt?.peakKg)
+        assertEquals(1, session.newBestTick)
+        // A weaker second pull logs, but is no new best.
+        session.receive(point(20.0, 3.0))
+        session.receive(point(0.2, 3.1))
+        session.receive(point(0.2, 3.2 + MaxAttemptLog.releaseSeconds))
+        assertEquals(20.0, session.lastAttempt?.peakKg)
+        assertEquals(1, session.newBestTick)
+        assertEquals(listOf(26.0, 20.0), session.snapshot.log.attempts.map { it.peakKg })
     }
 
-    /// Pull, hold, let go — no tap. The attempt ends itself once the load has been off the
-    /// edge for `releaseSeconds`, which is what the screen's completion effect watches.
+    /// Switching hands forgets the hero's last pull (it belonged to the other hand) and logs a
+    /// pull in progress against the hand that pulled it.
     @Test
-    fun lettingGoEndsTheAttemptWithoutATap() {
-        val m = MaxMeasurement()
-        m.receive(point(26.0, 0.0))
-        m.receive(point(0.2, 0.5))
-        assertFalse(m.isComplete)
-        m.receive(point(0.2, 0.5 + MaxAttempt.releaseSeconds))
-        assertTrue(m.isComplete)
-        assertEquals(26.0, m.peakKg)
+    fun switchingHandsLogsThePullInProgressAndClearsTheHero() {
+        val session = LiveMaxSession(bothTogether = false, side = Side.left)
+        session.receive(point(30.0, 0.0))
+        session.select(Side.right)
+        assertEquals(Side.right, session.side)
+        assertNull(session.lastAttempt)
+        assertFalse(session.isPulling)
+        assertEquals(listOf(Side.left), session.snapshot.log.attempts.map { it.side })
     }
 
+    /// The dashed rule is the number to beat: this visit's best on the selected hand, else
+    /// that hand's saved max — never the other hand's.
     @Test
-    fun resetClearsEverythingIncludingTheCounter() {
-        val m = MaxMeasurement()
-        m.receive(point(26.0, 0.0))
-        m.finish()
-        m.reset()
-        assertEquals(0.0, m.peakKg)
-        assertFalse(m.isComplete)
-        assertFalse(m.hasResult)
-        assertEquals(0, m.publishes)
+    fun theNumberToBeatIsTheVisitsBestElseTheSavedMax() {
+        val session = LiveMaxSession(bothTogether = false, side = Side.left)
+        val saved = { side: Side -> if (side == Side.right) 40.0 else 30.0 }
+        assertEquals(30.0, maxToBeat(session.snapshot, saved))
+        session.receive(point(26.0, 0.0))
+        session.close()
+        assertEquals(26.0, maxToBeat(session.snapshot, saved), "This visit's best beats the saved max as the rule")
+        session.select(Side.right)
+        assertEquals(40.0, maxToBeat(session.snapshot, saved))
     }
 
-    // MARK: - The timeout
-
-    /// Long enough for a full attempt including a slow set-up on the edge; short enough that a
-    /// screen left open cannot flatten the gauge's battery.
+    /// Deleting the last pull from the review takes it off the hero too.
     @Test
-    fun theAttemptTimesOutAtFortyFiveSeconds() {
-        assertEquals(45.0, MaxMeasureTiming.TIMEOUT_SECONDS)
-        assertFalse(MaxMeasureTiming.hasTimedOut(0.0))
-        assertFalse(MaxMeasureTiming.hasTimedOut(44.9))
-        assertTrue(MaxMeasureTiming.hasTimedOut(45.0))
-        assertTrue(MaxMeasureTiming.hasTimedOut(120.0))
-    }
-
-    /// **A timeout KEEPS the result.** It is the same `finish()` the Done button calls, so a
-    /// pull that happened is still offered — only the reason for stopping differs, and that
-    /// travels with the stream-stop cause rather than with the number.
-    @Test
-    fun timingOutKeepsWhateverWasPulled() {
-        val m = MaxMeasurement()
-        m.receive(point(29.5, 1.0))
-        m.finish()
-        assertTrue(m.isComplete)
-        assertTrue(m.hasResult)
-        assertEquals(29.5, m.peakKg)
-    }
-
-    /// A screen opened and forgotten times out with NOTHING, and must not offer to save the
-    /// gauge's drift as a max.
-    @Test
-    fun timingOutWithNoPullOffersNothing() {
-        val m = MaxMeasurement()
-        m.receive(point(0.3, 1.0))
-        m.finish()
-        assertTrue(m.isComplete)
-        assertFalse(m.hasResult)
+    fun removingTheLastPullClearsTheHero() {
+        val session = LiveMaxSession(bothTogether = false, side = Side.left)
+        session.receive(point(30.0, 0.0))
+        session.close()
+        val id = session.lastAttempt!!.id
+        session.remove(id)
+        assertNull(session.lastAttempt)
+        assertTrue(session.snapshot.log.attempts.isEmpty())
     }
 }

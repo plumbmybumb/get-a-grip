@@ -57,11 +57,11 @@ fun Context.tr(key: String, vararg args: Any): String {
     return if (args.isEmpty()) getString(id) else getString(id, *args)
 }
 
-/// The quantity a plural selects on. It is the FIRST argument by construction: every
-/// counted string in the catalog leads with its count (`%lld minutes`), which is also why
-/// `variations.plural` is only ever put on single-specifier keys: a variation selects on
-/// ONE number, so a key carrying two specifiers has no unambiguous count to select on.
-private fun count(args: Array<out Any>): Int = (args.firstOrNull() as? Number)?.toInt() ?: 0
+/// The quantity a plural selects on: the first NUMBER among the arguments. Most counted
+/// strings lead with their count (`%lld minutes`); one carries two words before it
+/// (`%@ %@, best of %lld pulls`), and its count is still its only number. A variation
+/// selects on ONE number, so a key with two numeric specifiers must never be plural.
+private fun count(args: Array<out Any>): Int = (args.firstOrNull { it is Number } as? Number)?.toInt() ?: 0
 
 private fun fallback(key: String, args: Array<out Any>): String {
     if (args.isEmpty()) return key

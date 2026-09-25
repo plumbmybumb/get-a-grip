@@ -54,7 +54,7 @@
     <string name="a_critical_force_648670">Critical force</string>
     <string name="a_critical_force_0bb609">CRITICAL FORCE</string>
     <string name="a_test_deleted">Test deleted</string>
-    <string name="a_lld_pulls">%d pulls</string>
+    <string name="a_pull_options">Pull options</string>
     <string name="a_lld_of_your_max">%d %% of your max</string>
     <string name="a_lld_of_body_weight">%d %% of body weight</string>
     <string name="a_critical_force_kilograms_a5fa99">Critical force %s kilograms</string>

@@ -222,8 +222,9 @@
       "fr": "Test supprimé"
     },
     {
-      "en": "%lld pulls",
-      "fr": "%lld tirages"
+      "en": "Pull options",
+      "fr": "Options du tirage",
+      "//": "The max review's ⋮ on each pull. iOS hides Move and Delete behind a swipe and a context menu, which a plain Android row does not have."
     },
     {
       "en": "%lld %% of your max",

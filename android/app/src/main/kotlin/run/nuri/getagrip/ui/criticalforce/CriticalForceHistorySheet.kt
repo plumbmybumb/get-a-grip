@@ -202,7 +202,8 @@ private fun TestRow(record: CriticalForceRecordEntity, onOpen: () -> Unit) {
 
 private fun rowDetail(record: CriticalForceRecordEntity): String =
     record.percentOfMax?.let { L10n.tr("%d %% of max", roundedPercent(it)) }
-        ?: L10n.tr("%d pulls", record.repsRun)
+        // Counted: the catalog now carries its plural ("1 pull"), which `L10n` cannot pick.
+        ?: run.nuri.getagrip.l10n.trQuantity("%d pulls", record.repsRun)
 
 /// A saved test as it was saved, titled with its date, the hand beneath.
 @Composable

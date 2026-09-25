@@ -6,90 +6,127 @@ package run.nuri.getagrip.engine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/// Twin of Tests/MaxMeasurementDraftTests.swift: one visit's pulls, picks and corrections.
 class MaxMeasurementDraftTests {
-    @Test fun activeHandCannotSwitchOrSaveMidAttempt() {
+    /// One logged pull at `kg` on the draft's selected hand, starting at `t`.
+    private fun pull(draft: MaxMeasurementDraft, kg: Double, at: Double): Double {
+        draft.add(kg, at)
+        draft.add(kg, at + 0.5)
+        draft.add(0.1, at + 0.6)
+        draft.add(0.1, at + 0.6 + MaxAttemptLog.releaseSeconds)
+        return at + 1 + MaxAttemptLog.releaseSeconds
+    }
+
+    private fun r(side: Side, kg: Double, source: MaxSource = MaxSource.measured) = MaxMeasurementResult(side, kg, source)
+
+    @Test fun eachHandSavesItsHardestPullByDefault() {
         val draft = MaxMeasurementDraft()
-        assertTrue(draft.begin(Side.left))
-        assertFalse(draft.begin(Side.right))
-        assertEquals(Side.left, draft.activeSide)
-        assertTrue(draft.results.isEmpty())
-        assertEquals(Side.left, draft.finish(30.0))
-        assertNull(draft.activeSide)
-        assertEquals(listOf(MaxMeasurementResult(Side.left, 30.0)), draft.results)
+        var t = pull(draft, 37.0, 0.0)
+        t = pull(draft, 39.0, t)
+        t = pull(draft, 38.0, t)
+        draft.select(Side.right)
+        pull(draft, 42.0, t)
+        assertEquals(listOf(r(Side.left, 39.0), r(Side.right, 42.0)), draft.results)
     }
 
-    @Test fun handsRemainIndependentAndAlwaysHaveStableOrdering() {
+    @Test fun aPickSurvivesLaterPullsAndFollowsItsAttempt() {
         val draft = MaxMeasurementDraft()
-        draft.begin(Side.right)
-        draft.finish(40.0)
-        draft.begin(Side.left)
-        draft.finish(30.0)
-        assertEquals(listOf(MaxMeasurementResult(Side.left, 30.0), MaxMeasurementResult(Side.right, 40.0)), draft.results)
+        var t = pull(draft, 37.0, 0.0)
+        t = pull(draft, 40.0, t)
+        draft.pick(draft.log.attempts[0].id)
+        t = pull(draft, 44.0, t)
+        assertEquals(listOf(r(Side.left, 37.0)), draft.results, "A deliberate pick is kept even after a harder pull")
+        draft.move(draft.log.attempts[0].id, Side.right)
+        assertEquals(listOf(r(Side.left, 44.0), r(Side.right, 37.0)), draft.results,
+            "Moving the picked pull clears the pick on both hands")
     }
 
-    @Test fun aCombinedMeasurementRequiresExplicitCombinedMode() {
-        assertFalse(MaxMeasurementDraft().begin(Side.both))
-        val draft = MaxMeasurementDraft(bothTogether = true)
-        assertFalse(draft.begin(Side.left))
-        assertFalse(draft.begin(Side.right))
-        assertTrue(draft.begin(Side.both))
-        draft.finish(70.0)
-        assertEquals(listOf(MaxMeasurementResult(Side.both, 70.0)), draft.results)
+    @Test fun correctionBelongsToThePullItCorrects() {
+        val draft = MaxMeasurementDraft()
+        var t = pull(draft, 37.0, 0.0)
+        assertTrue(draft.correct(listOf(r(Side.left, 36.5))))
+        assertEquals(listOf(r(Side.left, 36.5, MaxSource.manual)), draft.results)
+        assertEquals(37.0, draft.measuredPeak(Side.left))
+        assertTrue(draft.correct(listOf(r(Side.left, 37.0))))
+        assertEquals(MaxSource.measured, draft.results.first().source, "The exact peak restores measured provenance")
+        draft.correct(listOf(r(Side.left, 36.5)))
+        t = pull(draft, 35.0, t)
+        assertEquals(listOf(r(Side.left, 37.0)), draft.results, "A new pull on the hand retires the correction")
     }
 
-    @Test fun anEmptyOrInvalidRetryPreservesThePreviousCorrectedResult() {
-        for (invalid in listOf(0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY, MaxAttempt.releaseKg - 0.1)) {
-            val draft = MaxMeasurementDraft()
-            draft.begin(Side.left)
-            draft.finish(30.0)
-            assertTrue(draft.correct(listOf(MaxMeasurementResult(Side.left, 29.0))))
-            draft.begin(Side.left)
-            draft.finish(invalid)
-            assertEquals(30.0, draft.measuredPeak(Side.left))
-            assertEquals(listOf(MaxMeasurementResult(Side.left, 29.0, MaxSource.manual)), draft.results)
+    @Test fun correctionRejectsInvalidValuesAtomicallyAndCannotInventAHand() {
+        val draft = MaxMeasurementDraft()
+        val t = pull(draft, 37.0, 0.0)
+        draft.select(Side.right)
+        pull(draft, 42.0, t)
+        val original = draft.results
+        for (bad in listOf(0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY)) {
+            assertFalse(draft.correct(listOf(r(Side.left, 36.0), r(Side.right, bad))))
+            assertEquals(original, draft.results)
         }
+        assertFalse(draft.correct(listOf(r(Side.both, 80.0))))
+        assertFalse(draft.correct(listOf(r(Side.left, 36.0), r(Side.left, 35.0))))
+        assertEquals(original, draft.results)
     }
 
-    @Test fun validRetryReplacesOnlyItsOwnHandAndRestoresMeasuredSource() {
+    @Test fun correctionIsRefusedMidPull() {
         val draft = MaxMeasurementDraft()
-        draft.begin(Side.left); draft.finish(30.0)
-        draft.begin(Side.right); draft.finish(40.0)
-        draft.correct(listOf(MaxMeasurementResult(Side.left, 29.0)))
-        draft.begin(Side.left); draft.finish(28.0)
-        assertEquals(listOf(MaxMeasurementResult(Side.left, 28.0), MaxMeasurementResult(Side.right, 40.0)), draft.results)
+        val t = pull(draft, 37.0, 0.0)
+        draft.add(30.0, t)
+        assertFalse(draft.correct(listOf(r(Side.left, 36.0))))
     }
 
+    /// Provenance comes from the VALUE, not an input label (kept from the Android suite).
     @Test fun correctionProvenanceComesFromItsValueNotAnInputLabel() {
         val draft = MaxMeasurementDraft()
-        draft.begin(Side.left); draft.finish(30.0)
-        draft.correct(listOf(MaxMeasurementResult(Side.left, 29.0, MaxSource.measured)))
+        pull(draft, 30.0, 0.0)
+        draft.correct(listOf(r(Side.left, 29.0, MaxSource.measured)))
         assertEquals(MaxSource.manual, draft.results.single().source)
-        draft.correct(listOf(MaxMeasurementResult(Side.left, 30.0, MaxSource.manual)))
+        draft.correct(listOf(r(Side.left, 30.0, MaxSource.manual)))
         assertEquals(MaxSource.measured, draft.results.single().source)
     }
 
-    @Test fun correctionRejectsEveryHandWhenAnyValueIsInvalidOrUnmeasured() {
+    @Test fun aHandWithNoPullSavesNothing() {
         val draft = MaxMeasurementDraft()
-        draft.begin(Side.left); draft.finish(30.0)
-        assertFalse(draft.correct(listOf(MaxMeasurementResult(Side.left, 29.0), MaxMeasurementResult(Side.right, 40.0))))
-        assertEquals(30.0, draft.peak(Side.left))
-        assertFalse(draft.correct(listOf(MaxMeasurementResult(Side.left, 29.0), MaxMeasurementResult(Side.left, 28.0))))
-        assertFalse(draft.correct(listOf(MaxMeasurementResult(Side.left, Double.NaN))))
-        draft.begin(Side.right)
-        assertFalse(draft.correct(listOf(MaxMeasurementResult(Side.left, 29.0))))
-        assertEquals(30.0, draft.peak(Side.left))
+        draft.select(Side.right)
+        pull(draft, 41.0, 0.0)
+        assertEquals(listOf(r(Side.right, 41.0)), draft.results)
+        for (value in listOf(Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, -3.0, 0.0,
+            MaxAttempt.releaseKg - 0.01)) {
+            val empty = MaxMeasurementDraft()
+            pull(empty, value, 0.0)
+            assertTrue(empty.results.isEmpty())
+        }
     }
 
-    @Test fun copiedDraftHasIndependentCapturedValuesAndCorrections() {
-        val original = MaxMeasurementDraft()
-        original.begin(Side.left); original.finish(30.0)
-        val copy = original.copy()
-        copy.correct(listOf(MaxMeasurementResult(Side.left, 29.0)))
-        copy.begin(Side.right); copy.finish(40.0)
-        assertEquals(listOf(MaxMeasurementResult(Side.left, 30.0)), original.results)
-        assertEquals(2, copy.results.size)
+    @Test fun deletingThePickedPullFallsBackToTheBest() {
+        val draft = MaxMeasurementDraft()
+        var t = pull(draft, 37.0, 0.0)
+        t = pull(draft, 40.0, t)
+        draft.pick(draft.log.attempts[0].id)
+        draft.remove(draft.log.attempts[0].id)
+        assertEquals(listOf(r(Side.left, 40.0)), draft.results)
+    }
+
+    @Test fun separateHandsNeverProduceASharedBenchmark() {
+        val draft = MaxMeasurementDraft()
+        draft.select(Side.both)
+        assertEquals(Side.left, draft.log.side)
+        pull(draft, 37.0, 0.0)
+        assertEquals(listOf(Side.left), draft.results.map { it.side })
+    }
+
+    @Test fun combinedModeSavesOneSharedValueAndCannotSplit() {
+        val draft = MaxMeasurementDraft(bothTogether = true)
+        assertEquals(Side.both, draft.log.side)
+        draft.select(Side.left)
+        val t = pull(draft, 76.0, 0.0)
+        pull(draft, 80.0, t)
+        draft.move(draft.log.attempts[0].id, Side.left)
+        assertEquals(listOf(r(Side.both, 80.0)), draft.results)
+        assertTrue(draft.correct(listOf(r(Side.both, 78.0))))
+        assertEquals(listOf(r(Side.both, 78.0, MaxSource.manual)), draft.results)
     }
 }

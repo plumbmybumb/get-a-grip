@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.engine.RunnerPhase
 import run.nuri.getagrip.store.LocalDeviceStore
@@ -35,7 +37,16 @@ import run.nuri.getagrip.ui.units.WeightUnits
 /// is false once a measurement runs, and is re-read when the confirmation is answered, so
 /// a dialog left open across the start of a measurement can never zero a live one.
 @Composable
-fun GaugeZeroButton(canTare: Boolean, modifier: Modifier = Modifier) {
+fun GaugeZeroButton(
+    canTare: Boolean,
+    modifier: Modifier = Modifier,
+    /// The title while a live reading makes it a tare. The critical force test says "Zero the
+    /// gauge"; the max visit's dock says "Tare", as iOS's.
+    liveTitle: String = tr("Zero the gauge"),
+    /// Spoken while `canTare` is false — why the control is off (the max visit: "Let go of
+    /// the edge first.").
+    disabledReason: String? = null,
+) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
@@ -44,10 +55,12 @@ fun GaugeZeroButton(canTare: Boolean, modifier: Modifier = Modifier) {
     var promptedEpoch by remember { mutableStateOf(0uL) }
 
     SecondaryButton(
-        title = if (device.isReadingLive) tr("Zero the gauge") else tr("Wake"),
+        title = if (device.isReadingLive) liveTitle else tr("Wake"),
         icon = Icons.Outlined.Refresh,
         enabled = canTare,
-        modifier = modifier,
+        modifier = if (!canTare && disabledReason != null) {
+            modifier.semantics { stateDescription = disabledReason }
+        } else modifier,
     ) {
         if (!allowed || !device.state.isConnected) return@SecondaryButton
         when (TarePolicy.tapDecision(phase = RunnerPhase.Idle,

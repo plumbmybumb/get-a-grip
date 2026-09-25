@@ -22,6 +22,10 @@
     <string name="s_x_dc3df0">"%1$s %2$s  →  %3$s %4$s"</string>
     <string name="s_since">%1$s de %2$s %3$s depuis %4$s</string>
     <string name="s_kg_since">%1$s de %2$s kg depuis %3$s</string>
+    <plurals name="s_best_of_lld_pulls">
+        <item quantity="one">%1$s %2$s, meilleur de %3$d tirage</item>
+        <item quantity="other">%1$s %2$s, meilleur de %3$d tirages</item>
+    </plurals>
     <string name="s_ready_to_save_3a4d28">%1$s %2$s, prêt à enregistrer</string>
     <string name="s_your_hardest_pull">%1$s %2$s, ton tirage le plus fort</string>
     <string name="s_thumb_55886d">%s + pouce</string>
@@ -124,6 +128,10 @@
     <string name="s_lld_per_side_under_tension_per_side">%1$d par côté · %2$s sous tension par côté</string>
     <string name="s_lld_per_side_lld_pulls_total">%1$d par côté · %2$d tirages au total</string>
     <string name="s_lld_per_side_lld_s_hold_lld_s_rest">%1$d par côté · tenue %2$d s · repos %3$d s</string>
+    <plurals name="s_lld_pulls">
+        <item quantity="one">%d tirage</item>
+        <item quantity="other">%d tirages</item>
+    </plurals>
     <string name="s_lld_pulls_per_side_under_tension_per_side">%1$d tirages par côté · %2$s sous tension par côté</string>
     <string name="s_lld_pulls_total">%d tirages au total</string>
     <string name="s_lld_s">%d s</string>
@@ -192,6 +200,7 @@
     <string name="s_a_pinch_always_includes_the_thumb_c3d051">Une pince inclut toujours le pouce</string>
     <string name="s_a_pinch_always_includes_the_thumb_baeb2e">Une pince inclut toujours le pouce.</string>
     <string name="s_a_pull_counts_above">Un tirage compte au-dessus de</string>
+    <string name="s_a_rehab_plan_is_not_a_diagnosis_load_an_injured_finger_o">Un plan de rééducation n’est pas un diagnostic. Ne charge un doigt blessé qu’autant que ton kiné ou ton médecin le conseille.</string>
     <string name="s_a_rest_day_plan_a_max_day_whatever_this_one_isn_t">Un plan de jour de repos, un jour de max —\ntout ce que celle-ci n\'est pas.</string>
     <string name="s_a_session_on_the_board">Une séance sur la poutre.</string>
     <string name="s_a_text_file_of_the_recent_connection_and_signal_breadcru">Un fichier texte des dernières traces de connexion et de signal — ce que le capteur et l\'app ont fait ces dernières minutes.</string>
@@ -206,6 +215,9 @@
     <string name="s_add_to_my_routines">Ajouter à mes routines</string>
     <string name="s_adjust_values">Ajuster les valeurs</string>
     <string name="s_adjusted_values_are_saved_as_manual_entries_your_recorde">Les valeurs ajustées sont enregistrées comme saisies manuelles. Le tracé mesuré reste inchangé.</string>
+    <string name="s_after_camp4_human_performance">D’après Camp4 Human Performance</string>
+    <string name="s_after_emil_abrahamsson">D’après Emil Abrahamsson</string>
+    <string name="s_after_hooper_s_beta">D’après Hooper’s Beta</string>
     <string name="s_all_lld_on_the_left_then_all_lld_on_the_right">Les %1$d à gauche, puis les %2$d à droite</string>
     <string name="s_all_lld_on_the_right_then_all_lld_on_the_left">Les %1$d à droite, puis les %2$d à gauche</string>
     <string name="s_all_i_had">À fond</string>
@@ -235,7 +247,8 @@
     <string name="s_battery">Batterie</string>
     <string name="s_below_this_the_clock_stops">En dessous, le chrono s\'arrête.</string>
     <string name="s_benchmark">Test de référence</string>
-    <string name="s_best">Record %1$s %2$s</string>
+    <string name="s_best_77003d">Meilleur</string>
+    <string name="s_best_080060">Record %1$s %2$s</string>
     <string name="s_best_kg">Record %s kg</string>
     <string name="s_bluetooth_access_is_off_for_get_a_grip">L\'accès Bluetooth est désactivé pour Get a Grip.</string>
     <string name="s_bluetooth_denied">Bluetooth refusé</string>
@@ -250,9 +263,13 @@
     <string name="s_both_sessions_done_today">Les deux séances faites aujourd\'hui</string>
     <string name="s_break_between_sets">Pause entre séries</string>
     <string name="s_build_force_gradually_and_stop_if_it_hurts_this_measures">Augmentez la force progressivement et arrêtez en cas de douleur. Ce test mesure un pic, pas une limite d’entraînement sans risque.</string>
+    <string name="s_build_from_scratch">Partir de zéro</string>
     <string name="s_build_my_routine">Créer ma routine</string>
     <string name="s_build_one_now">En créer une maintenant</string>
+    <string name="s_build_your_own_or_start_from_a_known_protocol">Crée la tienne, ou pars d’un protocole connu.</string>
     <string name="s_builder_hints_reset">Conseils du créateur réinitialisés</string>
+    <string name="s_c4_max">Max C4</string>
+    <string name="s_c4_warm_up">Échauffement C4</string>
     <string name="s_connecting_48b998">CONNEXION</string>
     <string name="s_csv">CSV · %s</string>
     <string name="s_curl">FLEX</string>
@@ -282,10 +299,12 @@
     <string name="s_connect_and_start">Connecter et commencer</string>
     <string name="s_connect_gauge">Connecter le capteur</string>
     <string name="s_connect_your_gauge_to_measure">Connecte ton capteur pour mesurer.</string>
+    <string name="s_connect_your_gauge_to_measure_every_pull_counts">Connecte ton capteur pour mesurer. Chaque tirage compte.</string>
     <string name="s_connect_your_gauge_to_measure_you_can_always_type_a_max">Connecte ton capteur pour mesurer. Tu peux toujours saisir un max à la place.</string>
     <string name="s_connect_your_gauge_to_try_it_you_can_change_this_any_tim">Connecte ton capteur pour l\'essayer — tu peux changer ça quand tu veux.</string>
     <string name="s_connected">Connecté</string>
     <string name="s_connected_but_no_readings_yet_tap_wake_to_restart_it">Connecté, mais aucune lecture. Touche Réveiller pour le relancer.</string>
+    <string name="s_connecting_to_your_gauge">Connexion au capteur…</string>
     <string name="s_connecting_fd3e79">Connexion…</string>
     <string name="s_connection_attempts_exhausted">Tentatives de connexion épuisées</string>
     <string name="s_connection_timed_out">Délai de connexion dépassé</string>
@@ -307,6 +326,7 @@
     <string name="s_couldn_t_share">Partage impossible</string>
     <string name="s_couldn_t_save_your_maxes_your_changes_are_still_here_ple">Impossible d’enregistrer tes max. Tes modifications sont toujours là — réessaie.</string>
     <string name="s_couldn_t_save_your_measurements_are_still_here_try_again">Impossible d’enregistrer. Tes mesures sont toujours là — réessaie.</string>
+    <string name="s_couldn_t_save_your_pulls_are_still_here_try_again">Impossible d’enregistrer. Tes tirages sont toujours là — réessaie.</string>
     <string name="s_couldn_t_update_the_weight_targets_your_maxes_are_saved">Impossible de mettre à jour les cibles de poids. Tes max sont enregistrés. Réessaie ou conserve les cibles actuelles.</string>
     <string name="s_counting">Décompte</string>
     <string name="s_current_kilograms_peak_kilograms">Actuel %1$s kilogrammes, pic %2$s kilogrammes%3$s</string>
@@ -384,6 +404,7 @@
     <string name="s_fingers_804c25">DOIGTS</string>
     <string name="s_fine_tuning">Réglages fins</string>
     <string name="s_finger_curl">Flexion</string>
+    <string name="s_finger_rehab">Rééducation des doigts</string>
     <string name="s_fingers_c8a2d1">Doigts %s</string>
     <string name="s_fingers_on_the_edge">Doigts sur la réglette</string>
     <string name="s_finish">Terminer</string>
@@ -461,6 +482,7 @@
     <string name="s_holding">En tenue</string>
     <string name="s_holding_steady_around">Stable autour de %1$s %2$s.</string>
     <string name="s_holding_steady_around_kg">Stable autour de %s kg.</string>
+    <string name="s_how_are_you_measuring">Comment mesures-tu ?</string>
     <string name="s_how_hard_did_it_feel">Quel effort avez-vous ressenti ?</string>
     <string name="s_how_hard_it_was_on_your_fingers">À quel point c\'était dur pour tes doigts</string>
     <string name="s_how_hard_the_session_was_overall">À quel point la séance était dure dans l\'ensemble</string>
@@ -484,8 +506,10 @@
     <string name="s_i_m_donghyun_kim_founder_of_frez">I’m Donghyun Kim, founder of Frez.</string>
     <string name="s_jlyscales">Jlyscales</string>
     <string name="s_jlyscales_cts500">Jlyscales CTS500</string>
+    <string name="s_known_protocols">PROTOCOLES CONNUS</string>
     <string name="s_keep_editing">Continuer à modifier</string>
     <string name="s_keep_holding">Maintiens…</string>
+    <string name="s_keep_pulling">Continuer</string>
     <string name="s_keep_pulling_to_beat_it_or_let_go_to_finish">Continue de tirer pour le battre, ou relâche pour terminer.</string>
     <string name="s_keep_the_gauge_unloaded_while_get_a_grip_connects_and_ta">Laissez le capteur déchargé pendant la connexion et la tare. Si le capteur est en veille, l’application attend.</string>
     <string name="s_keep_the_gauge_unloaded_while_it_connects_and_tares">Laissez le capteur déchargé pendant la connexion et la tare.</string>
@@ -500,6 +524,8 @@
     <string name="s_last_14_days">14 derniers jours</string>
     <string name="s_last_5_weeks">5 dernières semaines</string>
     <string name="s_last_8_weeks">8 dernières semaines</string>
+    <string name="s_last_pull_e9fb36">Dernier tirage</string>
+    <string name="s_last_pull_64f22b">Dernier tirage %1$s %2$s</string>
     <string name="s_lead_in_before_each_set">Décompte avant chaque série</string>
     <string name="s_leave_demo_mode">Quitter le mode démo</string>
     <string name="s_leave_them_as_they_are">Les laisser telles quelles</string>
@@ -510,8 +536,11 @@
     <string name="s_left_right_left_right">Gauche, droite, gauche, droite — %s</string>
     <string name="s_left_right_left_right_swapping_hands_every_pull">Gauche, droite, gauche, droite — on change de main à chaque tirage.</string>
     <string name="s_let_go_f2de3c">Relâche</string>
+    <string name="s_let_go_of_the_edge_first">Lâche d’abord la prise.</string>
     <string name="s_let_go_when_you_are_ready_to_finish">Relâchez lorsque vous souhaitez terminer.</string>
     <string name="s_light">Léger</string>
+    <string name="s_light_10_second_pulls_at_15_25_of_max_to_reload_an_injur">Des tractions légères de 10 secondes à 15–25 % du max pour recharger un doigt blessé.</string>
+    <string name="s_light_no_hangs_across_six_grips_twice_a_day_every_day">Des no-hangs légers sur six prises, deux fois par jour, tous les jours.</string>
     <string name="s_limit">Limite</string>
     <string name="s_limit_climbing">Escalade à la limite</string>
     <string name="s_limit_session">Séance à la limite</string>
@@ -529,6 +558,7 @@
     <string name="s_manage">Gérer</string>
     <string name="s_manage_maxes">Gérer les max</string>
     <string name="s_max_a95e85">Max</string>
+    <string name="s_max_e3fe61">Max %s</string>
     <string name="s_max_day">Jour de max</string>
     <string name="s_max_on_this_grip">Max sur cette prise</string>
     <string name="s_max_testing">Test de max</string>
@@ -560,6 +590,8 @@
     <string name="s_missing_data_characteristic">Caractéristique de données manquante</string>
     <string name="s_more_max_options">Autres options de max</string>
     <string name="s_move_down">Descendre</string>
+    <string name="s_move_to_left_hand">Passer à la main gauche</string>
+    <string name="s_move_to_right_hand">Passer à la main droite</string>
     <string name="s_move_up">Monter</string>
     <string name="s_my_routine">Ma routine</string>
     <string name="s_no_maxes_yet_1e8f10">AUCUN MAX POUR L\'INSTANT</string>
@@ -570,6 +602,7 @@
     <string name="s_nsphotolibraryaddusagedescription">Get a Grip enregistre tes images à partager dans ta photothèque.</string>
     <string name="s_name">Nom</string>
     <string name="s_name_it_first">Nomme-la d\'abord</string>
+    <string name="s_name_it_add_a_set_make_it_yours">Donne-lui un nom, ajoute une série, fais-la tienne.</string>
     <string name="s_new_grip_d5bda8">Nouvelle prise</string>
     <string name="s_new_grip_next">Nouvelle prise ensuite : %s</string>
     <string name="s_new_grip_next_target_to">Nouvelle prise ensuite : %1$s, cible de %2$s à %3$s %4$s</string>
@@ -602,6 +635,7 @@
     <string name="s_no_new_pull_recorded_your_previous_measurement_is_still">Aucun nouveau tirage enregistré. Ta mesure précédente est toujours prête à être enregistrée.</string>
     <string name="s_no_pull_was_recorded_you_can_close_this_or_try_again">Aucune traction enregistrée. Vous pouvez fermer cet écran ou réessayer.</string>
     <string name="s_no_pull_yet">Aucun tirage pour l\'instant</string>
+    <string name="s_no_pulls_with_this_hand">Aucun tirage avec cette main.</string>
     <string name="s_no_scale_found">Aucune balance trouvée</string>
     <string name="s_no_session_done_today">Aucune séance faite aujourd\'hui</string>
     <plurals name="s_no_sessions_done_today_lld_planned">
@@ -686,13 +720,18 @@
     <string name="s_privacy_policy_opens_in_your_browser">Politique de confidentialité. S\'ouvre dans ton navigateur.</string>
     <string name="s_protocol_support_for_every_gauge_other_than_the_tindeq_p">La prise en charge des protocoles de tous les capteurs autres que le Tindeq Progressor est reprise de hangtime-grip-connect (BSD-2-Clause, © 2024 Stevie-Ray Hartog).</string>
     <string name="s_pull_5219eb">Tirage</string>
+    <string name="s_pull_lld">Tirage %d</string>
     <string name="s_pull_lld_of_lld">Tirage %1$d sur %2$d</string>
     <string name="s_pull_and_watch_the_force_in_real_time">Tire et regarde la force en temps réel</string>
     <string name="s_pull_as_hard_as_you_can_get_a_grip_keeps_the_hardest_the_c40be2">Tire aussi fort que possible — Get a Grip retient le plus fort que le capteur voit. Ou saisis-le à la main ci-dessous.</string>
     <string name="s_pull_as_hard_as_you_can_get_a_grip_keeps_the_hardest_the_90e4db">Tire aussi fort que possible. Get a Grip retient le plus fort que le capteur voit.</string>
+    <string name="s_pull_as_many_times_as_you_like_with_each_hand_or_enter_t">Tire autant de fois que tu veux avec chaque main, ou saisis les valeurs que tu connais déjà.</string>
+    <string name="s_pull_as_many_times_as_you_like_each_hand_keeps_its_harde">Tire autant de fois que tu veux. Chaque main garde son tirage le plus fort.</string>
     <string name="s_pull_now">Tire maintenant</string>
+    <string name="s_pull_when_ready">Tire quand tu es prêt</string>
     <string name="s_pull_anything_above_the_line_counts">Tire — tout ce qui dépasse la ligne compte.</string>
     <string name="s_pulling">Tirage</string>
+    <string name="s_pulling_so_far">En tirage, %1$s %2$s pour l’instant</string>
     <string name="s_pulls_4ce481">Tirages</string>
     <string name="s_pulls_per_side">Tirages par côté</string>
     <string name="s_pull_9effc2">Tire…</string>
@@ -722,6 +761,11 @@
     <string name="s_rest_between_pulls">Repos entre les tirages</string>
     <string name="s_restart_the_reading_the_gauge_is_connected_but_not_sendi">Relance la lecture. Le capteur est connecté mais n\'envoie rien.</string>
     <string name="s_resume">Reprendre</string>
+    <plurals name="s_review_lld_pulls">
+        <item quantity="one">Revoir %d tirage</item>
+        <item quantity="other">Revoir %d tirages</item>
+    </plurals>
+    <string name="s_review_pulls">Revoir les tirages</string>
     <string name="s_right_954daa">Droite</string>
     <string name="s_right_hand">Main droite</string>
     <string name="s_right_hand_first_then_left_within_each_set">La main droite, puis la gauche, dans chaque série.</string>
@@ -757,6 +801,8 @@
     <string name="s_saved_c0ae8f">Enregistré</string>
     <string name="s_saved_maxes_update_percentage_targets_weight_targets_sta">Les max enregistrés mettent à jour les cibles en pourcentage. Les cibles de poids restent inchangées.</string>
     <string name="s_saved_to_photos">Enregistré dans Photos</string>
+    <string name="s_saves_adjusted_by_hand">Enregistre %s, ajusté à la main.</string>
+    <string name="s_saves">Enregistre %s.</string>
     <string name="s_saving">Enregistrement…</string>
     <string name="s_scale_stopped_broadcasting">La balance a cessé d\'émettre</string>
     <string name="s_scale_with_the_new_max">Recalculer avec le nouveau max</string>
@@ -807,6 +853,7 @@
     <string name="s_show_the_builder_s_hints_again">Réafficher les conseils du créateur</string>
     <string name="s_shown_once_the_first_time_you_pick_the_dyno">Affiché une seule fois, la première fois que vous choisissez le Dyno.</string>
     <string name="s_shows_the_earlier_maxes_for_this_grip">Affiche les max antérieurs pour cette prise</string>
+    <string name="s_shows_the_whole_protocol_before_adding_it">Affiche tout le protocole avant de l’ajouter.</string>
     <string name="s_skip">Passer</string>
     <string name="s_skip_is_unavailable_while_connecting">Passer est indisponible pendant la connexion.</string>
     <string name="s_skip_is_unavailable_while_paused">Passer est indisponible en pause.</string>
@@ -825,6 +872,7 @@
     <string name="s_start_another">En commencer une autre</string>
     <string name="s_start_first_session">Commencer la première séance</string>
     <string name="s_start_fourth_session">Commencer la quatrième séance</string>
+    <string name="s_start_from_a_known_protocol">Partir d’un protocole connu</string>
     <string name="s_start_here">Commence ici</string>
     <string name="s_start_in_half_crimp_and_build_force_by_trying_to_curl_yo">Pars en semi-arquée et augmente la force en essayant de fléchir les doigts sur la réglette.</string>
     <string name="s_start_measuring">Commencer la mesure</string>
@@ -912,10 +960,12 @@
     <string name="s_this_is_what_today_calls_it_everything_else_you_build_un">C\'est ainsi qu\'Aujourd\'hui l\'appelle. Tout le reste se construit en dessous, et rien n\'est enregistré tant que tu ne touches pas Enregistrer.</string>
     <string name="s_this_is_your_routine">Voici ta routine</string>
     <string name="s_this_link_isn_t_a_routine_from_get_a_grip">Ce lien n\'est pas une routine Get a Grip.</string>
+    <string name="s_this_pull">Ce tirage</string>
     <string name="s_this_routine_code_couldn_t_be_read">Ce code de routine n\'a pas pu être lu.</string>
     <string name="s_this_routine_code_couldn_t_be_read_it_may_be_damaged_or">Ce code de routine n\'a pas pu être lu. Il est peut-être abîmé ou incomplet.</string>
     <string name="s_this_routine_is_too_large_to_import">Cette routine est trop grande pour être importée.</string>
     <string name="s_this_routine_was_shared_from_a_newer_version_of_get_a_gr">Cette routine a été partagée depuis une version plus récente de Get a Grip. Mets l\'app à jour pour l\'importer.</string>
+    <string name="s_three_sets_of_three_at_80_100_of_max_when_you_re_fresh">Trois séries de trois à 80–100 % du max, quand tu es frais.</string>
     <string name="s_thumb_557518">Pouce</string>
     <string name="s_thumb_2ce0ce">Pouce, %s</string>
     <string name="s_time_for_a_session">C\'est l\'heure d\'une séance.</string>
@@ -933,6 +983,7 @@
     <string name="s_try_demo_mode">Essayer le mode démo</string>
     <string name="s_twice_a_day">Deux fois par jour</string>
     <string name="s_twice_a_day_each">Deux fois par jour · %s chacune</string>
+    <string name="s_two_pulls_a_hand_per_rung_ramping_from_45_to_95_of_max">Deux tractions par main à chaque palier, de 45 à 95 % du max.</string>
     <string name="s_under_tension_430597">Sous tension</string>
     <string name="s_undo_39fc72">Annuler</string>
     <string name="s_undo_e86500">Annuler. %s</string>
@@ -978,6 +1029,7 @@
     <string name="s_workouts_lld_pulls_lld_maxes_lld">Séances : %1$d · Tirages : %2$d · Max : %3$d</string>
     <string name="s_wrecked">Explosé</string>
     <string name="s_write_failed_twice_for">Échec d\'écriture à deux reprises pour %1$s : %2$s</string>
+    <string name="s_written_up_from_what_each_author_published_get_a_grip_is">Rédigés d’après ce que chaque auteur a publié. Get a Grip n’est ni affilié à ces auteurs ni approuvé par eux.</string>
     <string name="s_your_max_on_this_grip">TON MAX SUR CETTE PRISE</string>
     <string name="s_your_maxes">TES MAX</string>
     <string name="s_your_routine_c1886e">TA ROUTINE</string>

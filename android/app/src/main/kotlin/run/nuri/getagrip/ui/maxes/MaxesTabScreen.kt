@@ -256,7 +256,8 @@ private fun MaxesOverview(
         CriticalForceHistorySheet(gripKey = grip.key, title = grip.displayName, onClose = { historyGrip = null })
     }
     choosing?.let { grip ->
-        MeasureChooser(
+        // Both max choices open the max VISIT; see `MaxMeasureModeDialog`.
+        MaxMeasureModeDialog(
             onMax = { side -> choosing = null; onMeasure(grip, side) },
             onCriticalForce = {
                 choosing = null
@@ -265,43 +266,6 @@ private fun MaxesOverview(
             onDismiss = { choosing = null },
         )
     }
-}
-
-/// **The one question before a measurement on a grip** (Nuri, 2026-09-25: "when you hit
-/// measure… shouldn't it ask if you are measuring CF or max?"). It decides what the visit
-/// can save.
-///
-/// TRANSLATION NOTE (iOS `maxMeasureModeDialog`): a Material dialog with the three
-/// choices as rows. "One hand at a time" opens the max measure on the left hand (it takes
-/// both hands in turn); "both hands together" opens its combined measurement.
-@Composable
-internal fun MeasureChooser(onMax: (Side) -> Unit, onCriticalForce: () -> Unit, onDismiss: () -> Unit) {
-    val palette = LocalGripPalette.current
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(tr("What are you measuring?")) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(tr("A max is your hardest pull. Critical force is the four-minute endurance test."),
-                    modifier = Modifier.padding(bottom = 8.dp))
-                listOf(
-                    Triple(tr("Max, one hand at a time"), "max.mode.hands") { onMax(Side.left) },
-                    Triple(tr("Max, both hands together"), "max.mode.both") { onMax(Side.both) },
-                    Triple(tr("Critical force test"), "max.mode.criticalForce", onCriticalForce),
-                ).forEach { (label, tag, action) ->
-                    TextButton(onClick = action, modifier = Modifier.fillMaxWidth().testTag(tag)) {
-                        Text(label, color = palette.graphite, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.fillMaxWidth())
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancel"), color = palette.inkSecondary) } },
-        containerColor = palette.card,
-        titleContentColor = palette.inkPrimary,
-        textContentColor = palette.inkSecondary,
-    )
 }
 
 /// On a grip already tested, the hands of its last visit; otherwise one at a time.
