@@ -312,8 +312,11 @@ final class MaxesFlowUITests: XCTestCase {
         tap(app.buttons["maxes.measure.\(grip)"], in: app)
         // The one question before a visit. Matched by title: a dialog action does not
         // reliably carry its identifier, and the French run asks in French.
+        // On a Benchmarks card the question also offers a critical force test, so the max
+        // choices are labelled "Max, …" there.
         let oneHand = app.buttons.matching(NSPredicate(format: "label IN %@",
-                                                       ["One hand at a time", "Une main à la fois"])).firstMatch
+                                                       ["One hand at a time", "Une main à la fois",
+                                                        "Max, one hand at a time"])).firstMatch
         XCTAssertTrue(oneHand.waitForExistence(timeout: 3))
         oneHand.tap()
         XCTAssertTrue(app.buttons["max.measure.left"].waitForExistence(timeout: 5))
@@ -401,6 +404,10 @@ final class MaxesFlowUITests: XCTestCase {
 
     private func tap(_ element: XCUIElement, in app: XCUIApplication) {
         revealInSheet(element, in: app)
+        // A tap on a page still coasting from the reveal's swipe is swallowed by the scroll
+        // view. At French accessibility sizes the Benchmarks page is long enough (critical
+        // force rows on a seeded card) that the Measure and Edit taps were landing mid-coast.
+        Thread.sleep(forTimeInterval: 0.6)
         element.tap()
     }
 
