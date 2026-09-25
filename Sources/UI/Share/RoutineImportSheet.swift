@@ -11,7 +11,21 @@ struct ImportRequest: Identifiable {
 }
 
 /// The other side of a QR code: somebody else's routine, read out in full, before it is
-/// yours.
+/// yours. The sheet is only the navigation chrome; the content is `RoutinePreview`, which
+/// the "New routine" chooser pushes for a known protocol.
+struct RoutineImportSheet: View {
+    let draft: RoutineDraft
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            RoutinePreview(draft: draft, title: String(localized: "Shared routine"),
+                           onDone: { dismiss() })
+        }
+    }
+}
+
+/// A routine that is not yours yet, read out in full, with the one decision: add it.
 ///
 /// A PREVIEW, not an editor: a routine you have not accepted is not one you can edit.
 /// Once it lands, the card it becomes opens the builder in one tap.
@@ -20,13 +34,20 @@ struct ImportRequest: Identifiable {
 /// per hand, when a session starts — the reason the app prescribes fractions, so one
 /// code prescribes the right load for two very different people. The footnotes cover
 /// where that is not the whole story.
-struct RoutineImportSheet: View {
+struct RoutinePreview: View {
     @Environment(\.weightUnit) private var weightUnit
     /// NORMALIZED at init. Read as a value; the sheet observes no store beyond its one save.
     let draft: RoutineDraft
+    let title: String
+    /// Who published it — a protocol's attribution. nil for a shared code.
+    var source: String? = nil
+    /// A protocol's own warning, shown with the footnotes.
+    var caution: String? = nil
+    /// Called after a successful add and on "Not now". The PRESENTER closes: pushed inside
+    /// the chooser, `dismiss` would only pop back to the list.
+    var onDone: () -> Void
 
     @Environment(TemplateStore.self) private var templates
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Whether THIS sheet's add failed. Local, not `templates.saveError`: keyed to the store
@@ -38,7 +59,12 @@ struct RoutineImportSheet: View {
     /// identity doing it.
     private let summary: RoutineSummary
 
-    init(draft: RoutineDraft) {
+    init(draft: RoutineDraft, title: String, source: String? = nil, caution: String? = nil,
+         onDone: @escaping () -> Void) {
+        self.title = title
+        self.source = source
+        self.caution = caution
+        self.onDone = onDone
         // Normalized HERE so the preview shows what will land (default name, emptied
         // sets dropped, inheritance consolidated); previewing raw and saving
         // normalized is how a preview and its card disagree. Idempotent.
@@ -52,30 +78,28 @@ struct RoutineImportSheet: View {
     private var sets: [SetPlan] { draft.plan.executable.sets }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    header
-                    planCard
-                    rhythmCard
-                    notes
-                }
-                .padding(.horizontal, Metrics.hPadding)
-                .padding(.top, 12)
-                .padding(.bottom, 28)
-                .frame(maxWidth: Metrics.maxContentWidth)
-                .frame(maxWidth: .infinity)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                header
+                planCard
+                rhythmCard
+                notes
             }
-            // ALWAYS via `.background {}`, never as a ZStack sibling.
-            .background { AppBackground() }
-            .scrollBounceBehavior(.basedOnSize)
-            .scrollEdgeEffectStyle(.soft, for: .bottom)
-            .navigationTitle("Shared routine")
-            .navigationBarTitleDisplayMode(.inline)
-            // The decision lives in the safe area: with up to fifty sets, a primary
-            // action that must be scrolled to is not found.
-            .safeAreaInset(edge: .bottom) { actions }
+            .padding(.horizontal, Metrics.hPadding)
+            .padding(.top, 12)
+            .padding(.bottom, 28)
+            .frame(maxWidth: Metrics.maxContentWidth)
+            .frame(maxWidth: .infinity)
         }
+        // ALWAYS via `.background {}`, never as a ZStack sibling.
+        .background { AppBackground() }
+        .scrollBounceBehavior(.basedOnSize)
+        .scrollEdgeEffectStyle(.soft, for: .bottom)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        // The decision lives in the safe area: with up to fifty sets, a primary
+        // action that must be scrolled to is not found.
+        .safeAreaInset(edge: .bottom) { actions }
     }
 
     // MARK: - Identity
@@ -105,12 +129,18 @@ struct RoutineImportSheet: View {
                     .monospacedDigit()
                     .foregroundStyle(Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if let source {
+                    Text(source)
+                        .font(.system(.footnote))
+                        .foregroundStyle(Ink.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(landingName)
         // The rung's colour is invisible to VoiceOver and greyscale — see `RoutineCard`.
-        .accessibilityValue(summary.metaLine + intensitySuffix)
+        .accessibilityValue(summary.metaLine + intensitySuffix + (source.map { ". \($0)" } ?? ""))
     }
 
     private var intensitySuffix: String {
@@ -284,8 +314,9 @@ struct RoutineImportSheet: View {
     @ViewBuilder private var notes: some View {
         // Guarded around the STACK: an empty VStack still takes the 18 pt spacing,
         // under most routines, which prescribe no load.
-        if hasPercentTargets || hasKilogramTargets {
+        if hasPercentTargets || hasKilogramTargets || caution != nil {
             VStack(alignment: .leading, spacing: 8) {
+                if let caution { note(caution) }
                 if hasPercentTargets {
                     note(String(localized: "Percentage targets use your saved maxes. These may no longer reflect your current strength."))
                 }
@@ -336,7 +367,7 @@ struct RoutineImportSheet: View {
             }
 
             // Quiet, never destructive-looking: declining costs and undoes nothing.
-            Button("Not now") { dismiss() }
+            Button("Not now") { onDone() }
                 .buttonStyle(PressFeedbackButtonStyle())
                 .font(.system(.footnote, weight: .semibold))
                 .foregroundStyle(Accent.graphite)
@@ -362,6 +393,6 @@ struct RoutineImportSheet: View {
             return
         }
         saveFailed = false
-        dismiss()
+        onDone()
     }
 }
