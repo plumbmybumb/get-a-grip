@@ -43,6 +43,8 @@ import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.ui.components.PalmHand
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.runner.RunnerLive
+import run.nuri.getagrip.ui.runner.RunnerProgressStyle
+import run.nuri.getagrip.ui.runner.RunnerProgressStyles
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.units.WeightUnit
@@ -61,6 +63,12 @@ class RestFocusUiTests {
 
     @Before fun usePredictableUnits() { originalUnits = WeightUnits.current; WeightUnits.current = WeightUnit.kg }
     @After fun restoreUnits() { WeightUnits.current = originalUnits }
+
+    // These pin TODAY's rest summary, with its own Set and Pull counts. The shipping default
+    // (STACKED) keeps the counters row instead — see `StackedProgressTests`. As iOS's UI tests
+    // run with `-progressStyle baseline` on the set/rep-bars branch.
+    @Before fun useTodaysLayout() { RunnerProgressStyles.current = RunnerProgressStyle.baseline }
+    @After fun restoreStyle() { RunnerProgressStyles.current = RunnerProgressStyle.stacked }
 
     @Test fun longRestShowsTheNextHandAndFullGripAboveTheUnchangedLiveGraph() {
         Harness(target = true).use { h ->

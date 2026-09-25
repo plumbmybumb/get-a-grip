@@ -77,8 +77,16 @@ internal fun RestFocusHeaderFrame(
 /** The current phase and remaining rest own the largest type. The next hand stays
  * gray; only a real grip change earns orange. Reads coarse snapshot state only.
  */
+///
+/// `showsCounts` false drops the Set / Pull counts: a routine-line style keeps its own counters
+/// row under the summary. `progressRow` rides above the counts (the routine at accessibility
+/// sizes, where the summary stands alone).
 @Composable
-internal fun RunnerRestFocus(snapshot: RunnerSnapshot) {
+internal fun RunnerRestFocus(
+    snapshot: RunnerSnapshot,
+    showsCounts: Boolean = true,
+    progressRow: (@Composable () -> Unit)? = null,
+) {
     val palette = LocalGripPalette.current
     val largeText = LocalDensity.current.fontScale >= 1.5f
     val hand = tr(when (snapshot.side) {
@@ -129,7 +137,8 @@ internal fun RunnerRestFocus(snapshot: RunnerSnapshot) {
         if (largeText) {
             RestCountdown(snapshot.secondsShown, phase,
                 Modifier.height(with(LocalDensity.current) { 104.sp.toDp() }))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            progressRow?.invoke()
+            if (showsCounts) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 RestCount("Set", snapshot.setNumber ?: 1, snapshot.setCount,
                     "runner.restFocus.setCount", Modifier.weight(1f))
                 RestCount("Pull", nextPull(snapshot), snapshot.plannedRepCount,
@@ -138,12 +147,13 @@ internal fun RunnerRestFocus(snapshot: RunnerSnapshot) {
         } else {
             Row(Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RestCount("Set", snapshot.setNumber ?: 1, snapshot.setCount,
+                if (showsCounts) RestCount("Set", snapshot.setNumber ?: 1, snapshot.setCount,
                     "runner.restFocus.setCount", Modifier.weight(1f))
                 RestCountdown(snapshot.secondsShown, phase, Modifier.weight(1.8f))
-                RestCount("Pull", nextPull(snapshot), snapshot.plannedRepCount,
+                if (showsCounts) RestCount("Pull", nextPull(snapshot), snapshot.plannedRepCount,
                     "runner.restFocus.pullCount", Modifier.weight(1f))
             }
+            progressRow?.invoke()
         }
     }
 }

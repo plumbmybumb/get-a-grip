@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -390,7 +391,10 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
         } else {
             // The hand owns the top band, so only the grip's NAME goes here (the glyph would be the
             // same picture twice); the counters move DOWN above the graph — checked between pulls.
-            RestFocusHeaderFrame(
+            val style = RunnerProgressStyles.current
+            if (style.keepsRoutineLine) {
+                RoutineLineHeader(session, snapshot, style, tint, timerOnly, device.state.isConnected)
+            } else RestFocusHeaderFrame(
                 focused = snapshot.showsRestFocus,
                 liveHeader = {
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -750,13 +754,83 @@ private fun RepProgress(session: RunnerSession, snapshot: RunnerSnapshot, palett
     }
 }
 
+/// STACKED and UNDERLINE (iOS `keepsRoutineLine`): today's panel exactly, plus the whole
+/// routine under the hero. The routine line and the counters stay where they are through a
+/// long rest — that is when the whole routine is worth reading — and only the block above
+/// them hands over to the rest summary.
+///
+/// STACKED's rhythm groups by proximity: the time bar sits CLOSE under the hero (it belongs to
+/// the seconds), then a clear gap, then the pills sitting tight on the labels, which read as
+/// one group: 8 + 6 + 11 + 3 + 4.
+@Composable
+private fun RoutineLineHeader(
+    session: RunnerSession,
+    snapshot: RunnerSnapshot,
+    style: RunnerProgressStyle,
+    tint: Color,
+    timerOnly: Boolean,
+    isConnected: Boolean,
+) {
+    val palette = LocalGripPalette.current
+    val focused = snapshot.showsRestFocus
+    // `results` changes only when the recorded count does, so the snapshot keys the model.
+    val model = remember(snapshot.completedRepCount, snapshot.phase, session) {
+        SessionProgressModel.of(session.runner.slots, session.runner.results, snapshot.phase)
+    }
+    if (focused && LocalDensity.current.fontScale >= 1.5f) {
+        // Accessibility sizes reflow the rest into the summary alone. The routine rides above
+        // the summary's own compact counts — re-stacking the full labels row there cost 55 pt
+        // at AX3 on iOS.
+        RunnerRestFocus(snapshot, progressRow = {
+            if (style == RunnerProgressStyle.underline) RoutineUnderline(model)
+            else StackedRoutinePills(model, isLive = false)
+        })
+        return
+    }
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        RestFocusHeaderFrame(
+            focused = focused,
+            liveHeader = {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
+                    GripNameRow(snapshot, palette, timerOnly = false)
+                    Prompt(snapshot, tint, timerOnly, isConnected)
+                    Hero(session, snapshot, palette, timerOnly, measureOnly = focused)
+                }
+            },
+            restHeader = { RunnerRestFocus(snapshot, showsCounts = false) },
+        )
+        if (style == RunnerProgressStyle.stacked) {
+            Spacer(Modifier.height(8.dp))
+            // One bar, always there: the hold while pulling, the rest's countdown while resting.
+            StackedTimeBar(session, timeBarMode(snapshot.phase), identity = snapshot.phase.slotIndex ?: -1)
+            Spacer(Modifier.height(11.dp))
+            StackedRoutinePills(model, isLive = isHoldLive(snapshot.phase))
+            Spacer(Modifier.height(4.dp))
+        } else {
+            Spacer(Modifier.height(8.dp))
+            // Today's bar, untouched, with the routine 2 pt beneath it.
+            RepProgress(session, snapshot, palette)
+            Spacer(Modifier.height(2.dp))
+            RoutineUnderline(model)
+            Spacer(Modifier.height(8.dp))
+        }
+        // The summary's badge already says REST; the row keeps its height.
+        Counters(snapshot, showsPhaseWord = !focused, routineLeft = true)
+    }
+}
+
 /// At the screen edges and a size up: the two numbers you check from a metre away between pulls.
 @Composable
-internal fun Counters(snapshot: RunnerSnapshot) {
+internal fun Counters(snapshot: RunnerSnapshot, showsPhaseWord: Boolean = true, routineLeft: Boolean = false) {
     val palette = LocalGripPalette.current
     val fontScale = LocalDensity.current.fontScale
-    val annotation = if (snapshot.phase is RunnerPhase.Paused) nextHandText(snapshot)
+    val annotation = if (!showsPhaseWord) null
+        else if (snapshot.phase is RunnerPhase.Paused) nextHandText(snapshot)
         else restPhaseText(snapshot)
+    // A routine line draws the whole routine, so the spoken line gains how much is left.
+    val spoken = spokenState(snapshot) +
+        if (routineLeft) routineLeftSpoken(snapshot.plannedRepCount, snapshot.completedRepCount) else ""
     Row(
         Modifier
             .widthIn(max = Metrics.maxContentWidth)
@@ -765,7 +839,7 @@ internal fun Counters(snapshot: RunnerSnapshot) {
             // breaks/paused hand guidance readable without shifting the graph on change.
             .height((40 * fontScale).dp)
             .testTag("runner-counters")
-            .semantics(mergeDescendants = true) { contentDescription = spokenState(snapshot) },
+            .semantics(mergeDescendants = true) { contentDescription = spoken },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
