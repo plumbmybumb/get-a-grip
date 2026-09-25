@@ -160,8 +160,8 @@ struct TodayView: View {
             // One line, not a card: a test every few weeks is not the ritual. Below the
             // routines it serves and above the strip it fills on a testing day.
             if !deck.ordered.isEmpty {
-                CriticalForceTodayLine { grip, side in
-                    criticalForceTest = CriticalForceTestRequest(grip: grip, side: side)
+                CriticalForceTodayLine { grip, hands in
+                    criticalForceTest = CriticalForceTestRequest(grip: grip, hands: hands)
                 }
                 .staggerIn(2)
             }
@@ -215,7 +215,7 @@ struct TodayView: View {
             NavigationStack { GaugeView(presentedAsCover: true) }
         }
         .fullScreenCover(item: $criticalForceTest, onDismiss: { drainImportInbox() }) { request in
-            CriticalForceTestView(grip: request.grip, side: request.side)
+            CriticalForceTestView(grip: request.grip, hands: request.hands)
         }
         // `initial: true`: both the start and the resume trigger. The routine list is a
         // `@Query`, unknowable on the first frame, so `onAppear` would show the
@@ -236,7 +236,7 @@ struct TodayView: View {
             if ProcessInfo.processInfo.arguments.contains("-previewCriticalForce"),
                criticalForceTest == nil {
                 criticalForceTest = CriticalForceTestRequest(grip: templates.recentGrips.first ?? GripSpec(),
-                                                             side: .both)
+                                                             hands: .oneAtATime(first: .left))
             }
             if ProcessInfo.processInfo.arguments.contains("-startFirstRoutine"),
                running == nil, let first = ordered.first {

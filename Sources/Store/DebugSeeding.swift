@@ -78,14 +78,17 @@ enum DebugSeeding {
         }
     }
 
-    /// Two critical force tests on the main grip, seven and one week old, built by the
+    /// Two critical force visits on the main grip (both hands each), seven and one week old, built by the
     /// REAL analysis from a synthetic all-out trace, so Today's line, the Maxes card and
     /// the detail screen draw exactly what a live test would save.
     private static func seedCriticalForce(context: ModelContext) {
         let plan = RoutineDraft.starter.normalized.plan.executable
         let grip = PlanMath.sequence(for: plan).first?.grip ?? GripSpec()
         let today = DayStamp.today()
-        for (weeksAgo, floor) in [(7, 16.4), (1, 18.5)] {
+        // One hand at a time, as the test now defaults to: each visit saves both hands
+        // at one instant, the right a little weaker.
+        for (weeksAgo, floor, side) in [(7, 16.4, Side.left), (7, 15.1, .right),
+                                        (1, 18.5, .left), (1, 17.2, .right)] {
             let points = stride(from: 0.0, through: 237, by: 1.0 / 40).map { t -> CriticalForcePoint in
                 let rep = Int(t / 10), phase = t - Double(rep) * 10
                 guard phase < 7 else { return CriticalForcePoint(t: t, kg: 0.2) }
@@ -94,7 +97,7 @@ enum DebugSeeding {
             }
             guard case .success(let result) = CriticalForceAnalysis.analyze(points, repsRun: 24) else { continue }
             let at = (today - weeksAgo * 7).date().addingTimeInterval(13 * 3600)
-            context.insert(CriticalForceRecord(grip: grip, side: .both, result: result,
+            context.insert(CriticalForceRecord(grip: grip, side: side, result: result,
                                                trace: CriticalForceTrace.encode(points),
                                                bodyMassKg: 70, maxAtTestKg: 30.5, recordedAt: at))
         }

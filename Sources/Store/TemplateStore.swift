@@ -620,9 +620,9 @@ final class TemplateStore {
         // and the benchmark still shows in History.
         if benchmarkedToday {
             switch done {
-            case 0:  return String(localized: "Maxes tested today")
-            case 1:  return String(localized: "Maxes tested today, plus a hang session")
-            default: return String(localized: "Maxes tested today, plus \(done) hang sessions")
+            case 0:  return String(localized: "Testing day today")
+            case 1:  return String(localized: "Testing day today, plus a hang session")
+            default: return String(localized: "Testing day today, plus \(done) hang sessions")
             }
         }
         if template.isOnDemand {
@@ -1161,29 +1161,51 @@ final class TemplateStore {
 
     // MARK: - Critical force
 
-    /// Save a critical force test, and optionally the max it measured, in ONE save.
+    /// One hand's test, ready to save.
+    struct CriticalForceSave: Sendable {
+        let side: Side
+        let result: CriticalForceResult
+        let trace: Data
+    }
+
+    /// Save one visit's critical force tests (one hand, both together, or each hand in
+    /// turn) and any maxes the climber chose to take from them, in ONE save.
     ///
-    /// The test makes today a benchmark day exactly as a measured max does. It is maximal
+    /// A test makes today a benchmark day exactly as a measured max does. It is maximal
     /// testing, so it settles the day, fills the calendar cell and silences the evening
-    /// reminder. The grip's current max for this hand is frozen onto the record, so its
-    /// "% of max" never moves when a later max lands. `alsoMax` is the test's hardest
-    /// pull, saved only when the climber ticked the offer. Never silently.
+    /// reminder. Each hand's current max is frozen onto its record, so its "% of max"
+    /// never moves when a later max lands. `alsoMaxes` are the tests' hardest pulls,
+    /// saved only when ticked. Never silently.
+    @discardableResult
+    func recordCriticalForces(_ tests: [CriticalForceSave], grip: GripSpec, bodyMassKg: Double?,
+                              alsoMaxes: [MaxSave] = []) -> [CriticalForceRecord]? {
+        guard !tests.isEmpty,
+              tests.allSatisfy({ $0.result.criticalForceKg.isFinite && $0.result.criticalForceKg > 0 }),
+              Set(tests.map(\.side)).count == tests.count,
+              alsoMaxes.allSatisfy({ $0.kg.isFinite && $0.kg > 0 }) else { return nil }
+        let now = Date.now
+        let records = tests.map { test in
+            CriticalForceRecord(grip: grip, side: test.side, result: test.result, trace: test.trace,
+                                bodyMassKg: bodyMassKg,
+                                maxAtTestKg: maxTable.max(grip: grip.key, side: test.side),
+                                recordedAt: now)
+        }
+        records.forEach(context.insert)
+        for max in alsoMaxes {
+            context.insert(MaxRecord(grip: max.grip, kg: max.kg, source: max.source, side: max.side))
+        }
+        stampBenchmarkDay()
+        persistAndSync(maxesChanged: !alsoMaxes.isEmpty)
+        return saveError == nil ? records : nil
+    }
+
+    /// One test — the single-hand form of `recordCriticalForces`.
     @discardableResult
     func recordCriticalForce(_ result: CriticalForceResult, trace: Data, grip: GripSpec,
                              side: Side, bodyMassKg: Double?, alsoMax: MaxSave? = nil) -> CriticalForceRecord? {
-        guard result.criticalForceKg.isFinite, result.criticalForceKg > 0 else { return nil }
-        if let alsoMax, !(alsoMax.kg.isFinite && alsoMax.kg > 0) { return nil }
-        let record = CriticalForceRecord(grip: grip, side: side, result: result, trace: trace,
-                                         bodyMassKg: bodyMassKg,
-                                         maxAtTestKg: maxTable.max(grip: grip.key, side: side))
-        context.insert(record)
-        if let alsoMax {
-            context.insert(MaxRecord(grip: alsoMax.grip, kg: alsoMax.kg,
-                                     source: alsoMax.source, side: alsoMax.side))
-        }
-        stampBenchmarkDay()
-        persistAndSync(maxesChanged: alsoMax != nil)
-        return saveError == nil ? record : nil
+        recordCriticalForces([CriticalForceSave(side: side, result: result, trace: trace)],
+                             grip: grip, bodyMassKg: bodyMassKg,
+                             alsoMaxes: alsoMax.map { [$0] } ?? [])?.first
     }
 
     /// Everything needed to put a deleted test back exactly, blobs included.

@@ -170,6 +170,24 @@ card. Options are in section 6.
    dock. The pull in progress draws a LIVE bar, its running average, which locks at the
    bell.
 
+6. **The hands, in the routine builder's words** (Nuri: "Both to me is like alternating"):
+   - **One at a time** is the default. All 24 pulls on one hand, then all 24 on the
+     other; between the hands the screen waits for the first pull, with "Finish with
+     left hand only" on offer. There is one result screen with both hands (tap a hand
+     to see its pulls), and one Save.
+   - **Both hands** means both pulling together through one gauge, on a hangboard or a
+     two-handed block.
+   - **One hand** tests a single hand.
+   - **No alternating each pull.** L R L R gives each hand 7 s on and 13 s off, a
+     different duty cycle, and would read far above the published test.
+7. **Critical force lives IN each grip's card**, beside the max it is a share of, on a
+   tab renamed **Benchmarks**:
+   - The card shows "Max" and "Critical force" rows, with the CF rows giving % of max per
+     hand.
+   - One chart carries both: max in bleu, CF in steel, hands still told apart by dash.
+   - "All tests" and "Test critical force" appear only on grips already tested.
+   - A testing day reads "Testing day" on Today.
+
 ## 7. As built
 
 - **Engine** `Shared/Engine/CriticalForce.swift`, pure and tested
@@ -190,8 +208,9 @@ card. Options are in section 6.
 - **Store:** the testing day is the existing `.benchmark` log (`stampBenchmarkDay`, shared
   with measured maxes), and delete comes with Undo.
 - **UI:**
-  - `Sources/UI/CriticalForce/` holds the test cover, the Today line, the Maxes cards,
-    the history sheet with swipe-to-delete and Undo, and the result.
+  - `Sources/UI/CriticalForce/` holds the test cover, the Today line, the per-grip
+    history sheet with swipe-to-delete and Undo, and the result.
+  - `MaxesTab` (the Benchmarks tab) draws CF inside each grip's card.
   - Settings has a new body weight card.
   - The calendar legend reads "Testing".
 - **Demo:** the mock gauge switches to `MockForceProfile.allOut` while a test runs, so

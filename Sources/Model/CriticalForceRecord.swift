@@ -102,6 +102,48 @@ extension CriticalForceRecord {
 }
 
 extension Collection where Element == CriticalForceRecord {
-    /// The newest test overall: what Today's line reports.
+    /// The newest test overall.
     var newest: CriticalForceRecord? { self.max { $0.recordedAt < $1.recordedAt } }
+
+    /// The newest VISIT: the newest test plus the other hand's, when both were tested one
+    /// at a time (same grip, saved together). Left before right. What Today reports.
+    var latestVisit: [CriticalForceRecord] {
+        guard let newest else { return [] }
+        return filter { $0.gripKey == newest.gripKey
+                        && abs($0.recordedAt.timeIntervalSince(newest.recordedAt)) < 15 * 60 }
+            .reduce(into: [Side: CriticalForceRecord]()) { byHand, record in
+                if let held = byHand[record.side], held.recordedAt >= record.recordedAt { return }
+                byHand[record.side] = record
+            }
+            .values
+            .sorted { $0.side.sortRank < $1.side.sortRank }
+    }
+
+    /// How that visit's hands were tested, to open the next test the same way.
+    var latestHands: CriticalForceHands? {
+        let visit = latestVisit
+        guard let first = visit.first else { return nil }
+        if visit.count > 1 { return .oneAtATime(first: .left) }
+        return first.side == .both ? .bothHands : .single(first.side)
+    }
+}
+
+extension Side {
+    /// "L", "R", "B": a hand on a line with no room for its name.
+    var initial: String {
+        switch self {
+        case .left: String(localized: "L", comment: "Left hand, abbreviated")
+        case .right: String(localized: "R", comment: "Right hand, abbreviated")
+        case .both: String(localized: "B", comment: "Both hands, abbreviated")
+        }
+    }
+
+    /// Left, right, both: the order hands are listed in.
+    var sortRank: Int {
+        switch self {
+        case .left: 0
+        case .right: 1
+        case .both: 2
+        }
+    }
 }

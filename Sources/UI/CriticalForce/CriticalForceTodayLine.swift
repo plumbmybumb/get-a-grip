@@ -13,7 +13,7 @@ import SwiftUI
 ///
 /// Its own `@Query`, in a leaf, so a saved test redraws this line and nothing else.
 struct CriticalForceTodayLine: View {
-    var onTest: (GripSpec, Side) -> Void
+    var onTest: (GripSpec, CriticalForceHands) -> Void
 
     @Query(sort: [SortDescriptor(\CriticalForceRecord.recordedAt)])
     private var records: [CriticalForceRecord]
@@ -23,10 +23,11 @@ struct CriticalForceTodayLine: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let latest = records.last
+        let visit = records.latestVisit
+        let latest = visit.first
         Button {
-            if let latest { onTest(latest.grip, latest.side) }
-            else { onTest(templates.recentGrips.first ?? GripSpec(), .both) }
+            if let latest { onTest(latest.grip, records.latestHands ?? .oneAtATime(first: .left)) }
+            else { onTest(templates.recentGrips.first ?? GripSpec(), .oneAtATime(first: .left)) }
         } label: {
             // **Stacked at accessibility sizes.** In one row the pinned label and kilograms
             // have an ideal width wider than the phone, and on Today a child's IDEAL width
@@ -38,7 +39,15 @@ struct CriticalForceTodayLine: View {
             HStack(spacing: 8) {
                 layout {
                     CapsLabel(String(localized: "Critical force"))
-                    if let latest {
+                    if visit.count > 1 {
+                        // Two hands: "L 17.2 · R 16.1 kg". The percentages would not fit, and
+                        // the card on Benchmarks has them.
+                        Text(visit.map { "\($0.side.initial) \(weightUnit.number($0.criticalForceKg))" }
+                                .joined(separator: " · ") + " \(weightUnit.symbol)")
+                            .font(.system(.subheadline, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Ink.primary)
+                    } else if let latest {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(weightUnit.text(latest.criticalForceKg))
                                 .font(.system(.subheadline, weight: .semibold))

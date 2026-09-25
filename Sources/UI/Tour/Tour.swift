@@ -113,8 +113,8 @@ extension TourStep {
             tab: 1),
         TourStep(
             target: .maxesCurves,
-            title: String(localized: "Maxes"),
-            body: String(localized: "Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom."),
+            title: String(localized: "Benchmarks"),
+            body: String(localized: "Each grip's max and critical force. Measure again opens the gauge for a max; Test critical force runs the four-minute test. Edit changes your hand values."),
             tab: 2),
         TourStep(
             target: nil,

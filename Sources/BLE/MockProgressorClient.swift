@@ -271,7 +271,11 @@ enum MockForceProfile: String, CaseIterable, Sendable {
         return max(0, plateau * envelope)
     }
 
-    private static func allOutForce(at seconds: Double, jitter: Double) -> Double {
+    private static func allOutForce(at elapsed: Double, jitter: Double) -> Double {
+        // Three seconds of setting up first, so the armed PULL TO START state (and, between
+        // hands, "Right hand next") is on screen before the first pull.
+        let seconds = elapsed - 3
+        guard seconds >= 0 else { return max(0, 0.2 + jitter * 0.3) }
         let rep = Int(seconds / 10)
         let phase = seconds - Double(rep) * 10
         let hold = rep % 5 == 2 ? 7.8 : 6.9

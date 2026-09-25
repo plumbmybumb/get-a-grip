@@ -226,8 +226,8 @@ struct RoutineCard: View, Equatable {
                     .foregroundStyle(Ink.secondary)
             } else if summary.benchmarkedToday {
                 // Same anatomy as the climb line: what the day WAS, then any hangs as
-                // the extra. Never "at the gym" — testing maxes is a different day.
-                Text("Maxes tested")
+                // the extra. Never "at the gym" — a testing day (a max or critical force) is its own kind of day.
+                Text("Testing day")
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(Ink.primary)
                 if summary.completedToday > 0 {

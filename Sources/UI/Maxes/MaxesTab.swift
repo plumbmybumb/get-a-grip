@@ -23,6 +23,10 @@ struct MaxesTab: View {
     /// Oldest first — each grip's slice is then already in chart order.
     @Query(sort: [SortDescriptor(\MaxRecord.recordedAt)])
     private var records: [MaxRecord]
+    /// Critical force lives on the SAME card as the max it is a share of: the ratio is the
+    /// point of it, and a section of its own at the bottom left it far from that max.
+    @Query(sort: [SortDescriptor(\CriticalForceRecord.recordedAt)])
+    private var tests: [CriticalForceRecord]
     /// Only to know whether routines exist: invitations come from real routines, never the
     /// seed palette.
     @Query private var routines: [SessionTemplate]
@@ -33,6 +37,7 @@ struct MaxesTab: View {
     @State private var editing: MeasureTarget?
     @State private var adding = false
     @State private var criticalForceTest: CriticalForceTestRequest?
+    @State private var criticalForceHistory: MeasureTarget?
 
     /// Size CLASS, never the idiom — see `CardGrid`.
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -40,7 +45,7 @@ struct MaxesTab: View {
     var body: some View {
         let gripGroups = groups
         let untestedInvitations = invitations
-        ScreenScaffold(title: String(localized: "Maxes"), subtitle: subtitle,
+        ScreenScaffold(title: String(localized: "Benchmarks"), subtitle: subtitle,
                        gridsOnWideScreens: true) {
             VStack(alignment: .leading, spacing: Metrics.spacing) {
                 if gripGroups.isEmpty && untestedInvitations.isEmpty {
@@ -51,9 +56,6 @@ struct MaxesTab: View {
                     CardGrid { cards(gripGroups, untestedInvitations) }
                 } else {
                     cards(gripGroups, untestedInvitations)
-                }
-                CriticalForceCards { grip, side in
-                    criticalForceTest = CriticalForceTestRequest(grip: grip, side: side)
                 }
                 footnote
             }
@@ -77,7 +79,10 @@ struct MaxesTab: View {
             MaxEditSheet(grip: target.grip) { editing = nil }
         }
         .fullScreenCover(item: $criticalForceTest) { request in
-            CriticalForceTestView(grip: request.grip, side: request.side)
+            CriticalForceTestView(grip: request.grip, hands: request.hands)
+        }
+        .sheet(item: $criticalForceHistory) { target in
+            CriticalForceHistorySheet(gripKey: target.id, title: target.grip.displayName)
         }
         .sheet(isPresented: $adding) {
             NewMaxSheet(seed: templates.recentGrips.first ?? GripSpec()) { adding = false }
@@ -108,7 +113,7 @@ struct MaxesTab: View {
 
     /// The staleness line the soft nudge is the icon-sized version of.
     private var subtitle: String {
-        guard let last = templates.lastMeasuredMaxAt else { return String(localized: "Your ceiling, per grip") }
+        guard let last = templates.lastMeasuredMaxAt else { return String(localized: "Your ceiling and endurance, per grip") }
         return String(localized: "Tested \(last.formatted(.relative(presentation: .named)))")
     }
 
@@ -124,19 +129,29 @@ struct MaxesTab: View {
         let grip: GripSpec
         /// Oldest first, every hand mixed — the per-side slices are cut in the card.
         let records: [MaxRecord]
+        /// Critical force tests on this grip, oldest first, every hand mixed.
+        let tests: [CriticalForceRecord]
         var id: String { key }
+        var lastActivity: Date {
+            max(records.last?.recordedAt ?? .distantPast, tests.last?.recordedAt ?? .distantPast)
+        }
     }
 
-    /// Most recently tested grip first — the one you are mid-progression on leads.
+    /// Most recently tested grip first — the one you are mid-progression on leads. A grip
+    /// with only a critical force test still gets its card.
     private var groups: [GripGroup] {
-        var byKey: [String: [MaxRecord]] = [:]
-        for record in records { byKey[record.gripKey, default: []].append(record) }
-        return byKey
-            .map { GripGroup(key: $0.key, grip: $0.value.last!.grip, records: $0.value) }
+        var maxes: [String: [MaxRecord]] = [:]
+        for record in records { maxes[record.gripKey, default: []].append(record) }
+        var cf: [String: [CriticalForceRecord]] = [:]
+        for test in tests { cf[test.gripKey, default: []].append(test) }
+        return Set(maxes.keys).union(cf.keys)
+            .map { key in
+                let grip = maxes[key]?.last?.grip ?? cf[key]!.last!.grip
+                return GripGroup(key: key, grip: grip, records: maxes[key] ?? [], tests: cf[key] ?? [])
+            }
             .sorted { a, b in
-                let (ta, tb) = (a.records.last!.recordedAt, b.records.last!.recordedAt)
                 // Date tie (same morning): key order, so grips don't swap between launches.
-                return ta == tb ? a.key < b.key : ta > tb
+                a.lastActivity == b.lastActivity ? a.key < b.key : a.lastActivity > b.lastActivity
             }
     }
 
@@ -144,7 +159,7 @@ struct MaxesTab: View {
     /// reproach, and only once routines exist.
     private var invitations: [GripSpec] {
         guard !routines.isEmpty else { return [] }
-        let tested = Set(records.map(\.gripKey))
+        let tested = Set(records.map(\.gripKey)).union(tests.map(\.gripKey))
         return templates.recentGrips.filter { !tested.contains($0.key) }
     }
 
@@ -165,33 +180,83 @@ struct MaxesTab: View {
                     Spacer(minLength: 0)
                 }
 
-                currentReadout(group, sides: sides)
+                VStack(alignment: .leading, spacing: 6) {
+                    if !group.tests.isEmpty { CapsLabel(String(localized: "Max")) }
+                    if group.records.isEmpty {
+                        Text("No max yet. Measure one to see critical force as a share of it.")
+                            .font(.system(.footnote))
+                            .foregroundStyle(Ink.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        currentReadout(group, sides: sides)
+                    }
+                }
 
-                if group.records.count >= 2 {
+                if !group.tests.isEmpty {
+                    criticalForceReadout(group)
+                }
+
+                if group.records.count + group.tests.count >= 2 {
                     chart(group, sides: sides)
                 }
 
-                Text(progressLine(group))
-                    .font(.system(.footnote))
-                    .monospacedDigit()
-                    .foregroundStyle(Ink.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+                if !group.records.isEmpty {
+                    Text(progressLine(group))
+                        .font(.system(.footnote))
+                        .monospacedDigit()
+                        .foregroundStyle(Ink.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let line = criticalForceProgressLine(group) {
+                    Text(line)
+                        .font(.system(.footnote))
+                        .monospacedDigit()
+                        .foregroundStyle(Ink.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 HStack(spacing: 12) {
-                    Button {
-                        editing = MeasureTarget(grip: group.grip)
-                    } label: {
-                        Label("Edit", systemImage: "slider.horizontal.3")
-                            .font(.system(.subheadline, weight: .semibold))
-                            .foregroundStyle(Accent.graphite)
-                            .actionLabelLayout(minHeight: 44)
-                            .contentShape(.capsule)
+                    if !group.records.isEmpty {
+                        Button {
+                            editing = MeasureTarget(grip: group.grip)
+                        } label: {
+                            Label("Edit", systemImage: "slider.horizontal.3")
+                                .font(.system(.subheadline, weight: .semibold))
+                                .foregroundStyle(Accent.graphite)
+                                .actionLabelLayout(minHeight: 44)
+                                .contentShape(.capsule)
+                        }
+                        .buttonStyle(PressFeedbackButtonStyle())
+                        .accessibilityLabel("Edit maxes for \(group.grip.spoken)")
+                        .accessibilityIdentifier("maxes.edit.\(group.grip.key)")
                     }
-                    .buttonStyle(PressFeedbackButtonStyle())
-                    .accessibilityLabel("Edit maxes for \(group.grip.spoken)")
-                    .accessibilityIdentifier("maxes.edit.\(group.grip.key)")
                     Spacer(minLength: 0)
-                    measureButton(group.grip, label: String(localized: "Measure again"))
+                    measureButton(group.grip, label: group.records.isEmpty ? String(localized: "Measure max")
+                                                                           : String(localized: "Measure again"))
+                }
+                // Only on a grip that has been tested: a CF door on every card was an
+                // orphan row, and the test's own setup reaches any grip.
+                if !group.tests.isEmpty {
+                    HStack(spacing: 12) {
+                        Button {
+                            criticalForceHistory = MeasureTarget(grip: group.grip)
+                        } label: {
+                            Label("All tests", systemImage: "list.bullet")
+                                .font(.system(.subheadline, weight: .semibold))
+                                .foregroundStyle(Accent.graphite)
+                                .actionLabelLayout(minHeight: 44)
+                                .contentShape(.capsule)
+                        }
+                        .buttonStyle(PressFeedbackButtonStyle())
+                        .accessibilityLabel("All critical force tests on \(group.grip.spoken)")
+                        .accessibilityIdentifier("maxes.cf.history.\(group.grip.key)")
+                        Spacer(minLength: 0)
+                        capsuleButton(String(localized: "Test critical force"),
+                                      identifier: "maxes.cf.test.\(group.grip.key)") {
+                            criticalForceTest = CriticalForceTestRequest(
+                                grip: group.grip, hands: group.tests.latestHands ?? .oneAtATime(first: .left))
+                        }
+                    }
                 }
             }
         }
@@ -253,6 +318,76 @@ struct MaxesTab: View {
                 FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 5, gap: 2.5)
             }
             .accessibilityHidden(true)
+    }
+
+    /// The house outlined capsule, for an action beside a number.
+    private func capsuleButton(_ label: String, identifier: String,
+                               action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(.subheadline, weight: .semibold))
+                .foregroundStyle(Accent.graphite)
+                .actionLabelLayout(minHeight: 44)
+                .overlay(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
+                .contentShape(.capsule)
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityIdentifier(identifier)
+    }
+
+    /// Critical force per hand, each with its share of that hand's max when it was tested.
+    @ViewBuilder
+    private func criticalForceReadout(_ group: GripGroup) -> some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 20))
+        VStack(alignment: .leading, spacing: 6) {
+            CapsLabel(String(localized: "Critical force"))
+            layout {
+                ForEach(criticalForceSides(group), id: \.self) { side in
+                    if let test = group.tests.last(where: { $0.side == side }) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(side == .both ? String(localized: "Both hands") : side.name)
+                                .font(.system(.caption, weight: .medium))
+                                .foregroundStyle(Ink.secondary)
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                weightText(test.criticalForceKg, style: .title2)
+                                if let pct = test.percentOfMax {
+                                    Text("\(Int(pct.rounded())) %")
+                                        .font(.system(.footnote))
+                                        .foregroundStyle(Ink.secondary)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(String(localized: "Critical force, \(side == .both ? String(localized: "both hands") : side.name)"))
+                        .accessibilityValue(test.percentOfMax.map { "\(weightUnit.text(test.criticalForceKg)), \(Int($0.rounded())) % of max" }
+                                            ?? weightUnit.text(test.criticalForceKg))
+                    }
+                }
+            }
+        }
+    }
+
+    private func criticalForceSides(_ group: GripGroup) -> [Side] {
+        [Side.both, .left, .right].filter { side in group.tests.contains { $0.side == side } }
+    }
+
+    /// "Critical force up 1.2 kg since 12 Jul" — the newest test against the one before it,
+    /// on the same hand.
+    private func criticalForceProgressLine(_ group: GripGroup) -> String? {
+        guard let newest = group.tests.last else { return nil }
+        let series = group.tests.filter { $0.side == newest.side }
+        guard series.count >= 2 else {
+            return String(localized: "Critical force tested \(newest.recordedAt.formatted(.relative(presentation: .named)))")
+        }
+        let previous = series[series.count - 2]
+        let delta = newest.criticalForceKg - previous.criticalForceKg
+        let when = previous.recordedAt.formatted(.dateTime.day().month(.abbreviated))
+        guard abs(delta) >= 0.05 else { return String(localized: "Critical force held since \(when)") }
+        let verb = delta > 0 ? String(localized: "up") : String(localized: "down")
+        return String(localized: "Critical force \(verb) \(weightUnit.number(abs(delta))) \(weightUnit.symbol) since \(when)")
     }
 
     private func measureButton(_ grip: GripSpec, label: String) -> some View {
@@ -358,7 +493,9 @@ struct MaxesTab: View {
             Chart {
                 ForEach(sides, id: \.self) { side in
                     let series = group.records.filter { $0.side == side }
-                    if sides.count == 1 {
+                    // The wash only when the max stands alone: beside critical force it
+                    // ended at the last max while the grey lines ran on, and read as cut off.
+                    if sides.count == 1, group.tests.isEmpty {
                         ForEach(series) { record in
                             AreaMark(x: .value("Date", record.recordedAt),
                                      y: .value("Max", weightUnit.fromKg(record.kg)))
@@ -371,7 +508,7 @@ struct MaxesTab: View {
                     ForEach(series) { record in
                         LineMark(x: .value("Date", record.recordedAt),
                                  y: .value("Max", weightUnit.fromKg(record.kg)),
-                                 series: .value("Hand", side.name))
+                                 series: .value("Hand", "max·" + side.name))
                             .interpolationMethod(.monotone)
                             .foregroundStyle(Accent.bleu)
                             .lineStyle(dash(for: side))
@@ -379,6 +516,24 @@ struct MaxesTab: View {
                                   y: .value("Max", weightUnit.fromKg(record.kg)))
                             .foregroundStyle(Accent.bleu)
                             .symbolSize(24)
+                    }
+                }
+                // Critical force under the max, in steel: the gap between the two lines is
+                // the picture, the ceiling against what you can keep using. Hands still
+                // differ by dash, so the two vocabularies never cross.
+                ForEach(criticalForceSides(group), id: \.self) { side in
+                    ForEach(group.tests.filter { $0.side == side }) { test in
+                        LineMark(x: .value("Date", test.recordedAt),
+                                 y: .value("Critical force", weightUnit.fromKg(test.criticalForceKg)),
+                                 series: .value("Hand", "cf·" + side.name))
+                            .interpolationMethod(.monotone)
+                            .foregroundStyle(StatusTint.calm)
+                            .lineStyle(dash(for: side))
+                        PointMark(x: .value("Date", test.recordedAt),
+                                  y: .value("Critical force", weightUnit.fromKg(test.criticalForceKg)))
+                            .foregroundStyle(StatusTint.calm)
+                            .symbol(.square)
+                            .symbolSize(22)
                     }
                 }
             }
@@ -399,13 +554,25 @@ struct MaxesTab: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(group.grip.spoken): \(progressLine(group))")
 
-            if sides.contains(.left) || sides.contains(.right) {
-                Text("dashed left · dotted right")
+            if let legend = chartLegend(group, sides: sides) {
+                Text(legend)
                     .font(.system(.caption2))
                     .foregroundStyle(Ink.tertiary)
                     .accessibilityHidden(true)
             }
         }
+    }
+
+    private func chartLegend(_ group: GripGroup, sides: [Side]) -> String? {
+        var parts: [String] = []
+        if !group.tests.isEmpty, !group.records.isEmpty {
+            parts.append(String(localized: "blue max · grey critical force"))
+        }
+        let allSides = Set(sides).union(criticalForceSides(group))
+        if allSides.contains(.left) || allSides.contains(.right) {
+            parts.append(String(localized: "dashed left · dotted right"))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func dash(for side: Side) -> StrokeStyle {

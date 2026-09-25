@@ -624,3 +624,27 @@ enum CriticalForceRepsCodec {
         (try? JSONDecoder().decode([CriticalForceRep].self, from: data)) ?? []
     }
 }
+
+// MARK: - The hands
+
+/// How the hands take the test, in the routine builder's own words.
+///
+/// There is deliberately no "alternate each pull". L R L R would give each hand 7 s on and
+/// 13 s off, a different duty cycle, so the number would read far above the published
+/// 7:3 test and compare with nothing, including your own tests.
+enum CriticalForceHands: Hashable, Sendable {
+    /// All 24 pulls on one hand, then all 24 on the other. Two results, one Save.
+    case oneAtATime(first: Side)
+    /// Both hands together through one gauge. One result.
+    case bothHands
+    /// One hand only.
+    case single(Side)
+
+    var sides: [Side] {
+        switch self {
+        case .oneAtATime(let first): first == .right ? [.right, .left] : [.left, .right]
+        case .bothHands: [.both]
+        case .single(let side): [side == .right ? .right : .left]
+        }
+    }
+}

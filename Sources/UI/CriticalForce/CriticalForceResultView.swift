@@ -95,18 +95,44 @@ struct CriticalForceHeadline: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(spokenHero)
 
-            HStack(spacing: 0) {
-                stat(String(localized: "RESERVE (W′)"),
-                     value: weightUnit.number(summary.wPrimeKgS, decimals: 0),
-                     unit: "\(weightUnit.symbol)·s")
-                Divider().frame(height: 36)
-                stat(String(localized: "HARDEST PULL"),
-                     value: weightUnit.number(summary.peakKg), unit: weightUnit.symbol)
-            }
-            .padding(.vertical, 10)
-            .background(Ink.primary.opacity(0.05),
-                        in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
+            CriticalForceStatsRow(summary: summary)
         }
+    }
+
+    private var ratioLine: String? {
+        var parts: [String] = []
+        if let pct = summary.percentOfMax {
+            parts.append(String(localized: "\(Int(pct.rounded())) % of your max"))
+        }
+        if let pct = summary.percentOfBodyMass {
+            parts.append(String(localized: "\(Int(pct.rounded())) % of body weight"))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private var spokenHero: String {
+        let base = String(localized: "Critical force \(weightUnit.number(summary.criticalForceKg)) \(weightUnit.spokenName)")
+        return [base, ratioLine].compactMap { $0 }.joined(separator: ". ")
+    }
+}
+
+/// W′ and the hardest pull, in secondary voice under the headline.
+struct CriticalForceStatsRow: View {
+    let summary: CriticalForceSummary
+    @Environment(\.weightUnit) private var weightUnit
+
+    var body: some View {
+        HStack(spacing: 0) {
+            stat(String(localized: "RESERVE (W′)"),
+                 value: weightUnit.number(summary.wPrimeKgS, decimals: 0),
+                 unit: "\(weightUnit.symbol)·s")
+            Divider().frame(height: 36)
+            stat(String(localized: "HARDEST PULL"),
+                 value: weightUnit.number(summary.peakKg), unit: weightUnit.symbol)
+        }
+        .padding(.vertical, 10)
+        .background(Ink.primary.opacity(0.05),
+                    in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
     }
 
     private func stat(_ label: String, value: String, unit: String) -> some View {
@@ -125,21 +151,54 @@ struct CriticalForceHeadline: View {
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
+}
 
-    private var ratioLine: String? {
-        var parts: [String] = []
-        if let pct = summary.percentOfMax {
-            parts.append(String(localized: "\(Int(pct.rounded())) % of your max"))
-        }
-        if let pct = summary.percentOfBodyMass {
-            parts.append(String(localized: "\(Int(pct.rounded())) % of body weight"))
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
+/// One hand's critical force in a two-hand result: the hand, the number, its share of
+/// that hand's max. Tapping it shows that hand's pulls. The two columns ARE the switch,
+/// so no extra control is needed to choose a hand.
+struct CriticalForceHandColumn: View {
+    let side: Side
+    let summary: CriticalForceSummary
+    let selected: Bool
+    let action: () -> Void
 
-    private var spokenHero: String {
-        let base = String(localized: "Critical force \(weightUnit.number(summary.criticalForceKg)) \(weightUnit.spokenName)")
-        return [base, ratioLine].compactMap { $0 }.joined(separator: ". ")
+    @Environment(\.weightUnit) private var weightUnit
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 52
+    @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 18
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous)
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Text(side.name)
+                    .font(.system(.subheadline, weight: .semibold))
+                    .foregroundStyle(selected ? Ink.primary : Ink.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(weightUnit.number(summary.criticalForceKg))
+                        .font(.system(size: heroSize, weight: .thin))
+                        .displayTracking(heroSize)
+                        .monospacedDigit()
+                    Text(weightUnit.symbol)
+                        .font(.system(size: unitSize))
+                        .foregroundStyle(Ink.tertiary)
+                }
+                .foregroundStyle(Ink.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                Text(summary.percentOfMax.map { String(localized: "\(Int($0.rounded())) % of max") } ?? " ")
+                    .font(.system(.footnote))
+                    .foregroundStyle(Ink.secondary)
+            }
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(Ink.primary.opacity(selected ? 0.07 : 0), in: shape)
+            .overlay { shape.strokeBorder(selected ? StatusTint.engaged : .clear, lineWidth: 1.5) }
+            .contentShape(shape)
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityLabel("\(side.name), critical force \(weightUnit.number(summary.criticalForceKg)) \(weightUnit.spokenName)")
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityHint("Shows this hand's pulls")
     }
 }
 
@@ -188,8 +247,11 @@ struct CriticalForcePullChart: View {
         }
         .chartXScale(domain: 0.5...(Double(max(1, summary.repMeans.count)) + 0.5))
         .chartXAxis {
-            AxisMarks(values: [1, 8, 16, 24].filter { $0 <= max(1, summary.repMeans.count) }) { _ in
-                AxisValueLabel()
+            let last = max(1, summary.repMeans.count)
+            AxisMarks(values: [1, 8, 16, 24].filter { $0 <= last }) { value in
+                // The last label hangs INSIDE the plot: centred on the final bar it ran
+                // past the edge and was clipped, then truncated to an ellipsis.
+                AxisValueLabel(anchor: value.as(Int.self) == last ? .topTrailing : .top)
             }
         }
         .chartYAxis {
@@ -198,8 +260,6 @@ struct CriticalForcePullChart: View {
                 AxisValueLabel()
             }
         }
-        // Room for the last axis label, which sits on the plot's trailing edge.
-        .padding(.trailing, 8)
         .accessibilityLabel("Average force per pull")
         .accessibilityValue(spokenPlateau)
     }

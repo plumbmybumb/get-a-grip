@@ -17,7 +17,7 @@ final class LegalAgreementUITests: XCTestCase {
         app.buttons["Cancel"].tap()
         // Scrolling to Add collapses the native tab bar; expand it before switching.
         let settings = app.tabBars.buttons["Settings"]
-        if !settings.exists { app.tabBars.buttons["Maxes"].tap() }
+        if !settings.exists { app.tabBars.buttons["Benchmarks"].tap() }
         XCTAssertTrue(settings.waitForExistence(timeout: 3))
         settings.tap()
         XCTAssertFalse(app.buttons["Maxes. What you can pull on each grip."].exists)
@@ -165,7 +165,7 @@ final class LegalAgreementUITests: XCTestCase {
                                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
         app.launch()
         dismissTour(in: app)
-        app.tabBars.buttons["Maxes"].tap()
+        app.tabBars.buttons["Benchmarks"].tap()
         let addMax = app.buttons["Measure for 20 mm edge, 4 fingers, half crimp"]
         XCTAssertTrue(addMax.waitForExistence(timeout: 5))
         addMax.tap()

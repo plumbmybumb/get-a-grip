@@ -2395,6 +2395,30 @@ extension TemplateStoreTests {
         XCTAssertTrue(try w.context.fetch(FetchDescriptor<CriticalForceRecord>()).isEmpty)
     }
 
+    /// One hand at a time: both hands land in one save, each frozen against its OWN max,
+    /// with one benchmark day.
+    func testBothHandsInTurnSaveTogetherAgainstTheirOwnMaxes() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        XCTAssertTrue(w.store.recordMaxes([.init(grip: grip, side: .left, kg: 36, source: .measured),
+                                           .init(grip: grip, side: .right, kg: 32, source: .measured)]))
+        let saved = try XCTUnwrap(w.store.recordCriticalForces(
+            [.init(side: .left, result: cfResult(cf: 18), trace: Data()),
+             .init(side: .right, result: cfResult(cf: 16), trace: Data())],
+            grip: grip, bodyMassKg: 70,
+            alsoMaxes: [.init(grip: grip, side: .right, kg: 38, source: .measured)]))
+        XCTAssertEqual(saved.map(\.side), [.left, .right])
+        XCTAssertEqual(saved.map(\.maxAtTestKg), [36, 32], "each hand against its own max, before the new one")
+        XCTAssertEqual(saved[0].recordedAt, saved[1].recordedAt, "one visit, one instant")
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .right), 38)
+        XCTAssertEqual(workoutLogs(w).filter { $0.kind == .benchmark }.count, 1)
+
+        XCTAssertNil(w.store.recordCriticalForces(
+            [.init(side: .left, result: cfResult(), trace: Data()),
+             .init(side: .left, result: cfResult(), trace: Data())], grip: grip, bodyMassKg: nil),
+                     "two results for one hand in one visit is a bug, not a save")
+    }
+
     /// Undo puts the test back EXACTLY: same id, date, blobs and frozen values.
     func testDeletingATestUndoesExactly() throws {
         let w = try makeWorld()

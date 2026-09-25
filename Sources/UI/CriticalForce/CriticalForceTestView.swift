@@ -4,11 +4,18 @@
 import SwiftData
 import SwiftUI
 
-/// What opens the test: a grip and a hand, fixed at the tap.
+/// What opens the test: a grip and how the hands take it, fixed at the tap.
 struct CriticalForceTestRequest: Identifiable {
     let grip: GripSpec
-    let side: Side
+    let hands: CriticalForceHands
     let id = UUID()
+}
+
+/// One hand's finished test, before it is saved.
+struct CriticalForceHandResult: Equatable {
+    let side: Side
+    let result: CriticalForceResult
+    let trace: Data
 }
 
 /// The critical force test, start to saved. A full-screen cover like the max test: the
@@ -33,34 +40,67 @@ struct CriticalForceTestView: View {
     private enum Stage: Equatable {
         case setup
         case testing
-        case result(CriticalForceResult, trace: Data)
+        case result
         case ended(String)
     }
 
+    /// The setup's choice, in the routine builder's words. See `CriticalForceHands`.
+    private enum HandChoice: Hashable { case oneAtATime, bothHands, single }
+
     @State private var stage: Stage = .setup
     @State private var grip: GripSpec
-    @State private var side: Side
+    @State private var handChoice: HandChoice
+    /// Which hand starts (one at a time), or the hand (one hand).
+    @State private var pickedSide: Side
+    /// Index into `hands.sides` of the hand on the gauge now.
+    @State private var handIndex = 0
+    @State private var results: [CriticalForceHandResult] = []
+    /// What happened to a hand that produced no result, said on the result screen.
+    @State private var notes: [String] = []
+    /// Which hand's pulls the result screen is showing.
+    @State private var shownSide: Side = .left
     @State private var editingGrip = false
     /// The first test asks; afterwards the value lives in Settings.
     @State private var bodyWeightDraft: Double = 70
     @State private var session = CriticalForceSession()
-    @State private var alsoSaveMax = true
+    @State private var alsoSaveMaxes = true
     @State private var saveFailed = false
     @State private var startTick = 0
     @State private var savedTick = 0
     /// The open region's top edge on screen, where the phase wash fades out.
     @State private var openTop: CGFloat = 0
 
-    init(grip: GripSpec, side: Side = .both) {
+    init(grip: GripSpec, hands: CriticalForceHands = .oneAtATime(first: .left)) {
         _grip = State(initialValue: grip)
-        _side = State(initialValue: side)
+        switch hands {
+        case .oneAtATime(let first):
+            _handChoice = State(initialValue: .oneAtATime)
+            _pickedSide = State(initialValue: first == .right ? .right : .left)
+        case .bothHands:
+            _handChoice = State(initialValue: .bothHands)
+            _pickedSide = State(initialValue: .left)
+        case .single(let side):
+            _handChoice = State(initialValue: .single)
+            _pickedSide = State(initialValue: side == .right ? .right : .left)
+        }
     }
+
+    private var hands: CriticalForceHands {
+        switch handChoice {
+        case .oneAtATime: .oneAtATime(first: pickedSide)
+        case .bothHands: .bothHands
+        case .single: .single(pickedSide)
+        }
+    }
+
+    /// The hand on the gauge now.
+    private var side: Side { hands.sides[min(handIndex, hands.sides.count - 1)] }
 
     var body: some View {
         Group {
             switch stage {
             case .testing: testingScreen
-            case .result(let result, _): resultScreen(result)
+            case .result: resultScreen
             case .setup, .ended: formScreen
             }
         }
@@ -169,23 +209,48 @@ struct CriticalForceTestView: View {
         }
     }
 
-    /// The result on the same stage: the number on glass, the pulls that made it in the
-    /// open, the decision in the dock.
-    private func resultScreen(_ result: CriticalForceResult) -> some View {
-        let summary = CriticalForceSummary(result, maxKg: templates.maxTable.max(grip: grip.key, side: side),
-                                           bodyMassKg: settings.bodyWeightKg)
+    /// The result on the same stage: the numbers on glass, the pulls that made them in
+    /// the open, the decision in the dock. With two hands the two numbers ARE the switch:
+    /// tap a hand to see its pulls.
+    private var resultScreen: some View {
+        let summaries = results.map { hand in
+            (side: hand.side,
+             summary: CriticalForceSummary(hand.result, maxKg: templates.maxTable.max(grip: grip.key, side: hand.side),
+                                           bodyMassKg: settings.bodyWeightKg))
+        }
+        let shown = summaries.first { $0.side == shownSide } ?? summaries.first
         return fullScreen(washTint: StatusTint.engaged) {
-            CriticalForceHeadline(summary: summary)
-                .padding(16)
-                .frame(maxWidth: .infinity)
-                .accessibleGlass(nil, in: RunnerGlass.surfaceShape)
-                .runnerFloatingShadow()
-            openRegion {
-                CriticalForcePullChart(summary: summary)
-                    .padding(.horizontal, Metrics.hPadding)
-                    .padding(.vertical, 8)
+            Group {
+                if summaries.count > 1 {
+                    VStack(spacing: 14) {
+                        CapsLabel(String(localized: "CRITICAL FORCE"))
+                        HStack(spacing: 8) {
+                            ForEach(summaries, id: \.side) { item in
+                                CriticalForceHandColumn(side: item.side, summary: item.summary,
+                                                        selected: item.side == shown?.side) {
+                                    withAnimation(Motion.state(reduceMotion)) { shownSide = item.side }
+                                }
+                            }
+                        }
+                        if let shown { CriticalForceStatsRow(summary: shown.summary) }
+                    }
+                } else if let shown {
+                    CriticalForceHeadline(summary: shown.summary)
+                }
             }
-            resultDock(result)
+            .padding(16)
+            .frame(maxWidth: .infinity)
+            .accessibleGlass(nil, in: RunnerGlass.surfaceShape)
+            .runnerFloatingShadow()
+            openRegion {
+                if let shown {
+                    CriticalForcePullChart(summary: shown.summary)
+                        .padding(.horizontal, Metrics.hPadding)
+                        .padding(.vertical, 8)
+                        .id(shown.side)
+                }
+            }
+            resultDock
         }
     }
 
@@ -266,7 +331,18 @@ struct CriticalForceTestView: View {
 
     private var testingDock: some View {
         VStack(spacing: 8) {
-            if session.phase == .armed {
+            if session.phase == .armed, handIndex > 0 {
+                Text("\(hands.sides[0].name) hand done. \(side.name) hand next: the test starts the moment you pull.")
+                    .font(.system(.footnote, weight: .medium))
+                    .foregroundStyle(Ink.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
+                DockButton(String(localized: "Finish with \(hands.sides[0].name.lowercased()) hand only")) {
+                    finishEarlyBetweenHands()
+                }
+                .accessibilityIdentifier("cf.finishFirstHand")
+            } else if session.phase == .armed {
                 Text("The test starts the moment you pull. Pull as hard as you can.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
@@ -286,24 +362,39 @@ struct CriticalForceTestView: View {
         .accessibilityIdentifier("cf.dock")
     }
 
-    private func resultDock(_ result: CriticalForceResult) -> some View {
+    /// Hands whose hardest pull beats that hand's own max on file (or has none).
+    private var maxOffers: [TemplateStore.MaxSave] {
+        results.compactMap { hand in
+            beatsMax(hand.result, side: hand.side)
+                ? .init(grip: grip, side: hand.side, kg: hand.result.peakKg, source: .measured) : nil
+        }
+    }
+
+    private var resultDock: some View {
         VStack(spacing: 8) {
-            if beatsMax(result) {
-                let maxKg = templates.maxTable.exact(grip: grip.key, side: side)
-                Toggle(isOn: $alsoSaveMax) {
+            if !maxOffers.isEmpty {
+                Toggle(isOn: $alsoSaveMaxes) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Save \(weightUnit.text(result.peakKg)) as your max")
+                        Text(maxOffers.count == 1 ? "Save your hardest pull as a max" : "Save your hardest pulls as maxes")
                             .font(.system(.subheadline, weight: .semibold))
-                        Text(maxKg.map { String(localized: "Your hardest pull beat your max of \(weightUnit.text($0)).") }
-                             ?? String(localized: "No max on this grip and hand yet."))
+                        Text(maxOffers.map(offerLine).joined(separator: "\n"))
                             .font(.system(.footnote))
                             .foregroundStyle(Ink.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .tint(Accent.bleu)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .accessibilityIdentifier("cf.alsoMax")
+            }
+            ForEach(notes, id: \.self) { note in
+                Text(note)
+                    .font(.system(.footnote))
+                    .foregroundStyle(StatusTint.armed)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 12)
             }
             if saveFailed {
                 Text("Couldn’t save. Your result is still here — try again.")
@@ -313,7 +404,7 @@ struct CriticalForceTestView: View {
             }
             AdaptiveActionRow(spacing: 8) {
                 DockButton(String(localized: "Don’t save")) { dismiss() }
-                DockTintedButton(String(localized: "Save"), systemImage: "checkmark", tint: .graphite) { save(result) }
+                DockTintedButton(String(localized: "Save"), systemImage: "checkmark", tint: .graphite) { save() }
                     .accessibilityIdentifier("cf.save")
             }
         }
@@ -323,8 +414,25 @@ struct CriticalForceTestView: View {
         .accessibilityElement(children: .contain)
     }
 
+    private func offerLine(_ offer: TemplateStore.MaxSave) -> String {
+        let hand = offer.side == .both ? String(localized: "Both hands") : offer.side.name
+        if let old = templates.maxTable.exact(grip: grip.key, side: offer.side) {
+            return String(localized: "\(hand): \(weightUnit.text(offer.kg)), up from \(weightUnit.text(old))")
+        }
+        return String(localized: "\(hand): \(weightUnit.text(offer.kg)), the first max on this grip")
+    }
+
     private var subtitle: String {
-        "\(grip.displayName) · \(side.name)"
+        "\(grip.displayName) · \(handsName)"
+    }
+
+    private var handsName: String {
+        switch hands {
+        case .oneAtATime(let first): first == .right ? String(localized: "Right, then left")
+                                                     : String(localized: "Left, then right")
+        case .bothHands: String(localized: "Both hands")
+        case .single(let side): side.name
+        }
     }
 
     // MARK: - Setup
@@ -347,19 +455,57 @@ struct CriticalForceTestView: View {
         gripRow
         if editingGrip { gripEditor }
 
-        VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "HAND"))
-            Picker("Hand", selection: $side) {
-                Text("Left").tag(Side.left)
-                Text("Right").tag(Side.right)
-                Text("Both").tag(Side.both)
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("cf.hand")
-        }
+        handPicker
 
         bodyWeightRow
         lastTestLine
+    }
+
+    /// The routine builder's words for the hands, so "both" means one thing everywhere:
+    /// both hands pulling together. One at a time is 24 pulls on one hand, then 24 on the
+    /// other.
+    private var handPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            CapsLabel(String(localized: "HANDS"))
+            Picker("Hands", selection: $handChoice) {
+                Text("One at a time").tag(HandChoice.oneAtATime)
+                Text("Both hands").tag(HandChoice.bothHands)
+                Text("One hand").tag(HandChoice.single)
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("cf.hands")
+            if handChoice != .bothHands {
+                HStack {
+                    Text(handChoice == .oneAtATime ? "Start with" : "Hand")
+                        .font(.system(.subheadline, weight: .medium))
+                        .foregroundStyle(Ink.secondary)
+                    Spacer(minLength: 12)
+                    Picker(handChoice == .oneAtATime ? "Start with" : "Hand", selection: $pickedSide) {
+                        Text("Left").tag(Side.left)
+                        Text("Right").tag(Side.right)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 200)
+                }
+                .transition(.opacity)
+            }
+            Text(handExplainer)
+                .font(.system(.footnote))
+                .foregroundStyle(Ink.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .animation(Motion.state(reduceMotion), value: handChoice)
+    }
+
+    private var handExplainer: String {
+        switch handChoice {
+        case .oneAtATime:
+            String(localized: "All 24 pulls on one hand, then all 24 on the other. About 8 minutes, and each hand gets its own number.")
+        case .bothHands:
+            String(localized: "Both hands pulling together through the gauge, on a hangboard or a two-handed block. One number.")
+        case .single:
+            String(localized: "Just one hand, for when only one needs testing.")
+        }
     }
 
     private var gripRow: some View {
@@ -480,9 +626,14 @@ struct CriticalForceTestView: View {
 
     @ViewBuilder
     private var lastTestLine: some View {
-        let key = MaxTable.key(grip: grip.key, side: side)
-        if let last = records.last(where: { $0.testKey == key }) {
-            Text("Last test: \(weightUnit.text(last.criticalForceKg)), \(last.recordedAt.formatted(.relative(presentation: .named)))")
+        let lines = hands.sides.compactMap { side -> String? in
+            let key = MaxTable.key(grip: grip.key, side: side)
+            guard let last = records.last(where: { $0.testKey == key }) else { return nil }
+            let hand = side == .both ? String(localized: "Both hands") : side.name
+            return String(localized: "Last test, \(hand): \(weightUnit.text(last.criticalForceKg)), \(last.recordedAt.formatted(.relative(presentation: .named)))")
+        }
+        if !lines.isEmpty {
+            Text(lines.joined(separator: "\n"))
                 .font(.system(.footnote))
                 .foregroundStyle(Ink.tertiary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -498,7 +649,7 @@ struct CriticalForceTestView: View {
 
     /// The exact hand's max, not the both-hands fallback: a one-handed test beating a
     /// two-handed max says nothing.
-    private func beatsMax(_ result: CriticalForceResult) -> Bool {
+    private func beatsMax(_ result: CriticalForceResult, side: Side) -> Bool {
         guard let exact = templates.maxTable.exact(grip: grip.key, side: side) else {
             return result.peakKg >= MaxAttempt.releaseKg
         }
@@ -525,41 +676,89 @@ struct CriticalForceTestView: View {
     private func start() {
         guard device.state.isConnected else { return }
         if settings.bodyWeightKg == nil { settings.bodyWeightKg = bodyWeightDraft }
-        session.arm()
+        handIndex = 0
+        results = []
+        notes = []
         device.setMockProfile(.allOut)
         device.resetPeak()
-        device.onTracePoint = { [session] point in session.receive(kg: point.kg, at: point.t) }
         device.startStreaming(cause: .manualMeasurement)
+        arm(CriticalForceSession())
         withAnimation(Motion.state(reduceMotion)) { stage = .testing }
         startTick += 1
     }
 
+    /// A fresh test for the hand now on the gauge. The stream keeps running between
+    /// hands; only the reading callback moves to the new session.
+    private func arm(_ next: CriticalForceSession) {
+        session.end()
+        session = next
+        next.arm()
+        device.onTracePoint = { [next] point in next.receive(kg: point.kg, at: point.t) }
+    }
+
     private func finishIfDone(_ phase: CriticalForceTest.Phase) {
         guard stage == .testing else { return }
+        let hand = side == .both ? String(localized: "Both hands") : side.name
         switch phase {
         case .finished:
-            stopStream(cause: .measurementComplete)
             guard let (outcome, trace) = session.outcome() else { return }
-            withAnimation(Motion.state(reduceMotion)) {
-                switch outcome {
-                case .success(let result): stage = .result(result, trace: trace)
-                case .failure(let failure): stage = .ended(Self.words(for: failure))
-                }
+            switch outcome {
+            case .success(let result):
+                results.append(CriticalForceHandResult(side: side, result: result, trace: trace))
+            case .failure(let failure):
+                notes.append("\(hand): \(Self.words(for: failure))")
             }
+            nextHandOrFinish(canContinue: true)
         case .voided(let reason):
-            stopStream(cause: .userStopped)
-            withAnimation(Motion.state(reduceMotion)) { stage = .ended(Self.words(for: reason)) }
+            // Stopping by hand, losing the gauge or leaving the app ends the VISIT: the
+            // next hand would start on a gauge that is gone or a climber who said stop.
+            if results.isEmpty {
+                stopStream(cause: .userStopped)
+                withAnimation(Motion.state(reduceMotion)) { stage = .ended(Self.words(for: reason)) }
+            } else {
+                notes.append("\(hand): \(Self.words(for: reason))")
+                nextHandOrFinish(canContinue: false)
+            }
         default:
             break
         }
     }
 
-    private func save(_ result: CriticalForceResult) {
-        guard case .result(_, let trace) = stage else { return }
-        let alsoMax: TemplateStore.MaxSave? = beatsMax(result) && alsoSaveMax
-            ? .init(grip: grip, side: side, kg: result.peakKg, source: .measured) : nil
-        guard templates.recordCriticalForce(result, trace: trace, grip: grip, side: side,
-                                            bodyMassKg: settings.bodyWeightKg, alsoMax: alsoMax) != nil else {
+    private func nextHandOrFinish(canContinue: Bool) {
+        if canContinue, handIndex + 1 < hands.sides.count {
+            handIndex += 1
+            // A fresh stream for the fresh hand: harmless on a gauge (the same re-kick the
+            // runner sends), and the demo gauge replays its test from the start.
+            device.stopStreaming(cause: .measurementComplete)
+            device.startStreaming(cause: .manualMeasurement)
+            arm(CriticalForceSession())
+            return
+        }
+        showResults()
+    }
+
+    /// "Finish with the first hand only", from between the hands.
+    private func finishEarlyBetweenHands() {
+        showResults()
+    }
+
+    private func showResults() {
+        stopStream(cause: .measurementComplete)
+        withAnimation(Motion.state(reduceMotion)) {
+            if results.isEmpty {
+                stage = .ended(notes.isEmpty ? Self.words(for: .tooFewReps) : notes.joined(separator: "\n\n"))
+            } else {
+                shownSide = results[0].side
+                stage = .result
+            }
+        }
+    }
+
+    private func save() {
+        guard stage == .result, !results.isEmpty else { return }
+        let saves = results.map { TemplateStore.CriticalForceSave(side: $0.side, result: $0.result, trace: $0.trace) }
+        guard templates.recordCriticalForces(saves, grip: grip, bodyMassKg: settings.bodyWeightKg,
+                                             alsoMaxes: alsoSaveMaxes ? maxOffers : []) != nil else {
             saveFailed = true
             return
         }
@@ -685,9 +884,11 @@ struct CriticalForcePanel: View {
         .accessibilityIdentifier("cf.panel")
     }
 
-    /// Before the first pull the clock shows the full pull it is waiting to start.
+    /// Before the first pull the clock shows the full pull it is waiting to start; once
+    /// the last bell has rung, nothing is left.
     private var clock: String {
-        "\(seconds ?? Int(session.proto.workSeconds))"
+        if let seconds { return "\(seconds)" }
+        return session.phase == .armed ? "\(Int(session.proto.workSeconds))" : "0"
     }
 
     private var word: String {
