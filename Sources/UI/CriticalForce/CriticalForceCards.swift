@@ -205,7 +205,9 @@ struct CriticalForceHistorySheet: View {
                     } label: {
                         row(record)
                     }
-                    .houseListRow()
+                    // History's Music-style row: tests are things that happened, not
+                    // separate documents. No artwork, so the separator runs from the text.
+                    .sessionListRow(leadingInset: 0)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             withAnimation { _ = templates.deleteCriticalForce(record) }

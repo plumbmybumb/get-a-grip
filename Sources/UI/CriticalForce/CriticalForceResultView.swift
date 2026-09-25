@@ -198,6 +198,8 @@ struct CriticalForcePullChart: View {
                 AxisValueLabel()
             }
         }
+        // Room for the last axis label, which sits on the plot's trailing edge.
+        .padding(.trailing, 8)
         .accessibilityLabel("Average force per pull")
         .accessibilityValue(spokenPlateau)
     }
