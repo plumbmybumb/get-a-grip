@@ -163,6 +163,9 @@ final class LegalAgreementUITests: XCTestCase {
         app.terminate()
     }
 
+    /// The max visit at a large accessibility size: no legal gate in front of it, and
+    /// every control it needs reachable. Rewritten for the live-max visit (Measure asks
+    /// the question, the visit reads on open and has no Start).
     func testMaxMeasurementControlsRemainReachableWithLargeText() {
         let app = XCUIApplication()
         app.launchArguments = ["-seedRoutine", "-mockDevice",
@@ -170,25 +173,31 @@ final class LegalAgreementUITests: XCTestCase {
         app.launch()
         dismissTour(in: app)
         app.tabBars.buttons["Benchmarks"].tap()
-        let addMax = app.buttons["Measure for 20 mm edge, 4 fingers, half crimp"]
-        XCTAssertTrue(addMax.waitForExistence(timeout: 5))
-        addMax.tap()
-        let measure = app.buttons["Measure on the gauge"]
-        XCTAssertTrue(measure.waitForExistence(timeout: 5))
-        for _ in 0..<4 where !measure.isHittable { app.swipeUp() }
-        measure.tap()
+        let measureGrip = app.buttons["maxes.measure.20|IMRL|halfCrimp"]
+        XCTAssertTrue(measureGrip.waitForExistence(timeout: 5))
+        reveal(measureGrip, in: app)
+        Thread.sleep(forTimeInterval: 0.6)   // a tap on a coasting page is swallowed
+        measureGrip.tap()
+        // The one question before a visit. Matched by title: a dialog action does not
+        // reliably carry its identifier.
+        let oneHand = app.buttons.matching(NSPredicate(format: "label IN %@",
+                                                       ["Max, one hand at a time", "One hand at a time"])).firstMatch
+        XCTAssertTrue(oneHand.waitForExistence(timeout: 5))
+        oneHand.tap()
         XCTAssertFalse(app.switches["legal.agree"].exists)
         XCTAssertFalse(app.buttons["legal.continue"].exists)
         XCTAssertTrue(app.navigationBars["Measure a max"].waitForExistence(timeout: 5))
-        let connect = app.buttons["Connect"]
+        let connect = app.buttons["max.measure.connect"]
         if connect.waitForExistence(timeout: 2) {
-            for _ in 0..<4 where !connect.isHittable { app.swipeUp() }
+            reveal(connect, in: app, bidirectional: true)
             connect.tap()
         }
-        let start = app.buttons["Start"]
-        XCTAssertTrue(start.waitForExistence(timeout: 5))
-        for _ in 0..<4 where !start.isHittable { app.swipeUp() }
-        XCTAssertTrue(start.isHittable)
+        for id in ["max.measure.left", "max.measure.right", "max.measure.tare", "max.measure.save"] {
+            let control = app.buttons[id]
+            XCTAssertTrue(control.waitForExistence(timeout: 5), id)
+            reveal(control, in: app, bidirectional: true)
+            XCTAssertTrue(control.isHittable, id)
+        }
         attachScreenshot(app, name: "Max controls with large text")
         app.terminate()
     }
