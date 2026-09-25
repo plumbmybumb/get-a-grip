@@ -10,6 +10,7 @@ struct NewMaxSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var grip: GripSpec
     @State private var capture: Capture?
+    @State private var choosingMode: GripSpec?
     @State private var editing = false
     @State private var shared = false
     @State private var saved = false
@@ -56,12 +57,13 @@ struct NewMaxSheet: View {
                     }
                     VStack(spacing: 12) {
                         PrimaryGlassButton(title: String(localized: "Measure on the gauge"), tint: Accent.graphite) {
-                            capture = Capture(grip: grip, side: .left)
+                            choosingMode = grip
                         }
+                        .accessibilityIdentifier("newMax.measure")
                         SecondaryGlassButton(title: String(localized: "Enter by hand"), systemImage: "pencil") {
                             editing = true
                         }
-                        Text("Measure your left and right hands in one visit, or enter the values you already know.")
+                        Text("Pull as many times as you like with each hand, or enter the values you already know.")
                             .font(.system(.footnote))
                             .foregroundStyle(Ink.secondary)
                             .multilineTextAlignment(.center)
@@ -83,15 +85,15 @@ struct NewMaxSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Measure both hands together") {
-                            capture = Capture(grip: grip, side: .both)
-                        }
                         Button("One value for both hands") { shared = true }
                     } label: {
                         Image(systemName: "ellipsis")
                     }
                     .accessibilityLabel("More max options")
                 }
+            }
+            .maxMeasureModeDialog(for: $choosingMode) { chosen, side in
+                capture = Capture(grip: chosen, side: side)
             }
             .fullScreenCover(item: $capture, onDismiss: closeAfterSave) { target in
                 MaxMeasureView(grip: target.grip, initialSide: target.side) { readings in

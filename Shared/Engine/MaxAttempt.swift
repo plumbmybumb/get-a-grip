@@ -21,9 +21,18 @@ struct MaxAttempt: Hashable, Sendable {
     /// there is one number rather than two that could disagree.
     static let releaseKg: Double = 2
 
-    /// Off the edge this long, after pulling, ends the attempt. Erring late is cheap:
+    /// Off the edge this long, after pulling, ends a single-test attempt. Erring late is cheap:
     /// ending early on a re-grip throws away an effort someone paid for.
     static let releaseSeconds: TimeInterval = 2
+
+    /// This attempt's own release window. A single test keeps the default; a visit of
+    /// repeated pulls (`MaxAttemptLog`) ends each one sooner, because there a re-grip that
+    /// splits one effort in two still logs its highest reading.
+    let endsAfter: TimeInterval
+
+    init(endsAfter: TimeInterval = MaxAttempt.releaseSeconds) {
+        self.endsAfter = endsAfter
+    }
 
     /// THE RESULT — the hardest single reading. Only ever climbs, so the figure on
     /// screen is always exactly what would be recorded right now.
@@ -59,7 +68,7 @@ struct MaxAttempt: Hashable, Sendable {
         guard hasResult else { return }
         let since = releasedAt ?? t
         releasedAt = since
-        if t - since >= Self.releaseSeconds { isComplete = true }
+        if t - since >= endsAfter { isComplete = true }
     }
 
     /// Take what has been pulled so far — the manual "Done", and the timeout.

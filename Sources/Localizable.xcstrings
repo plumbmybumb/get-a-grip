@@ -101,12 +101,92 @@
         }
       }
     },
+    "%@ %@, best of %lld pulls" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$@ %2$@, best of %3$lld pull"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$@ %2$@, best of %3$lld pulls"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$@ %2$@, meilleur de %3$lld tirage"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$@ %2$@, meilleur de %3$lld tirages"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%@ t" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ t"
+          }
+        }
+      }
+    },
+    "%lld pulls" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pull"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pulls"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld tirage"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld tirages"
+                }
+              }
+            }
           }
         }
       }
@@ -141,12 +221,52 @@
         }
       }
     },
+    "Best" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meilleur"
+          }
+        }
+      }
+    },
     "Climbing days" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Jours d'escalade"
+          }
+        }
+      }
+    },
+    "Connect your gauge to measure. Every pull counts." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecte ton capteur pour mesurer. Chaque tirage compte."
+          }
+        }
+      }
+    },
+    "Connecting to your gauge…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion au capteur…"
+          }
+        }
+      }
+    },
+    "Couldn’t save. Your pulls are still here — try again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’enregistrer. Tes tirages sont toujours là — réessaie."
           }
         }
       }
@@ -171,12 +291,232 @@
         }
       }
     },
+    "How are you measuring?" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comment mesures-tu ?"
+          }
+        }
+      }
+    },
+    "Keep pulling" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuer"
+          }
+        }
+      }
+    },
+    "Last pull" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernier tirage"
+          }
+        }
+      }
+    },
+    "Last pull %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernier tirage %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "Let go of the edge first." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lâche d’abord la prise."
+          }
+        }
+      }
+    },
+    "Max %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max %@"
+          }
+        }
+      }
+    },
+    "Move to left hand" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer à la main gauche"
+          }
+        }
+      }
+    },
+    "Move to right hand" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer à la main droite"
+          }
+        }
+      }
+    },
+    "No pulls with this hand." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun tirage avec cette main."
+          }
+        }
+      }
+    },
+    "Pull %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tirage %lld"
+          }
+        }
+      }
+    },
+    "Pull as many times as you like with each hand, or enter the values you already know." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tire autant de fois que tu veux avec chaque main, ou saisis les valeurs que tu connais déjà."
+          }
+        }
+      }
+    },
+    "Pull as many times as you like. Each hand keeps its hardest pull." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tire autant de fois que tu veux. Chaque main garde son tirage le plus fort."
+          }
+        }
+      }
+    },
+    "Pull when ready" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tire quand tu es prêt"
+          }
+        }
+      }
+    },
+    "Pulling, %@ %@ so far" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En tirage, %1$@ %2$@ pour l’instant"
+          }
+        }
+      }
+    },
+    "Review %lld pulls" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Review %lld pull"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Review %lld pulls"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Revoir %lld tirage"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Revoir %lld tirages"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Review pulls" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revoir les tirages"
+          }
+        }
+      }
+    },
+    "Saves %@, adjusted by hand." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistre %@, ajusté à la main."
+          }
+        }
+      }
+    },
+    "Saves %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistre %@."
+          }
+        }
+      }
+    },
     "Tap to choose yours — Get a Grip works with %lld different gauges." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Touche pour choisir le tien : Get a Grip fonctionne avec %lld capteurs différents."
+          }
+        }
+      }
+    },
+    "This pull" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce tirage"
           }
         }
       }

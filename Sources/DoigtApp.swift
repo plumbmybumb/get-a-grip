@@ -63,6 +63,11 @@ struct DoigtApp: App {
                             try? await Task.sleep(for: .seconds(1.5))
                             device.startStreaming(cause: .manualMeasurement)
                         }
+                } else if ProcessInfo.processInfo.arguments.contains("-previewMaxMeasure") {
+                    // The max visit, opened bare. It connects and reads on its own — which
+                    // is the thing being shown.
+                    MaxMeasureView(grip: GripSpec(),
+                                   initialSide: ProcessInfo.processInfo.arguments.contains("-previewMaxBoth") ? .both : .left) { _ in nil }
                 } else {
                     RootTabView()
                 }

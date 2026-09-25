@@ -30,6 +30,7 @@ struct MaxesTab: View {
     @Environment(TemplateStore.self) private var templates
 
     @State private var measuring: MeasureTarget?
+    @State private var choosingMode: GripSpec?
     @State private var editing: MeasureTarget?
     @State private var adding = false
 
@@ -63,11 +64,14 @@ struct MaxesTab: View {
             }
         }
         .fullScreenCover(item: $measuring) { target in
-            MaxMeasureView(grip: target.grip) { readings in
+            MaxMeasureView(grip: target.grip, initialSide: target.side) { readings in
                 templates.recordMaxesWithReceipt(readings.map {
                     .init(grip: target.grip, side: $0.side, kg: $0.kg, source: $0.source)
                 })
             }
+        }
+        .maxMeasureModeDialog(for: $choosingMode) { grip, side in
+            measuring = MeasureTarget(grip: grip, side: side)
         }
         .sheet(item: $editing) { target in
             MaxEditSheet(grip: target.grip) { editing = nil }
@@ -109,6 +113,7 @@ struct MaxesTab: View {
 
     private struct MeasureTarget: Identifiable {
         let grip: GripSpec
+        var side: Side = .left
         var id: String { grip.key }
     }
 
@@ -250,7 +255,7 @@ struct MaxesTab: View {
 
     private func measureButton(_ grip: GripSpec, label: String) -> some View {
         Button {
-            measuring = MeasureTarget(grip: grip)
+            choosingMode = grip
         } label: {
             Text(label)
                 .font(.system(.subheadline, weight: .semibold))

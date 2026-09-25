@@ -28,12 +28,16 @@ final class MaxesFlowUITests: XCTestCase {
         let rightValue = capture("right", in: app)
         XCTAssertEqual(app.buttons["max.measure.left"].value as? String, leftValue,
                        "Measuring right must retain the completed left-hand peak")
-        XCTAssertTrue(rightValue.contains("ready to save"))
+        XCTAssertTrue(rightValue.contains("best of"))
         revealInSheet(app.buttons["max.measure.left"], in: app)
         attachScreenshot(app, name: "Separate left and right peaks ready to save")
 
-        let save = app.buttons["max.measure.save"]
+        openReview(in: app)
+        XCTAssertTrue(app.staticTexts["max.review.saving.left"].label.contains(number(in: leftValue)))
+        XCTAssertTrue(app.staticTexts["max.review.saving.right"].label.contains(number(in: rightValue)))
+        let save = app.buttons["max.review.save"]
         XCTAssertEqual(save.label, "Save maxes")
+        attachScreenshot(app, name: "Review keeps each hand's hardest pull")
         tap(save, in: app)
         dismissReceiptIfPresent(in: app)
         XCTAssertTrue(app.buttons["maxes.edit.\(sharedGrip)"].waitForExistence(timeout: 5))
@@ -198,24 +202,27 @@ final class MaxesFlowUITests: XCTestCase {
         defer { app.terminate() }
         openMeasurement(for: sharedGrip, in: app)
         let measured = capture("left", in: app)
+        openReview(in: app)
+        let saving = app.staticTexts["max.review.saving.left"]
+        XCTAssertEqual(saving.label, "Saves \(number(in: measured)) kg.")
         tap(app.buttons["max.measure.adjust"], in: app)
         XCTAssertTrue(app.buttons["max.adjust.apply"].waitForExistence(timeout: 3))
         XCTAssertFalse(valueButton("Right hand", in: app).exists,
                        "Adjusting a captured left peak cannot fabricate a right-hand value")
         typeWithoutFinishing("27.4", for: "Left hand", in: app)
         tap(app.buttons["max.adjust.cancel"], in: app)
-        XCTAssertEqual(app.buttons["max.measure.left"].value as? String, measured,
+        XCTAssertEqual(saving.label, "Saves \(number(in: measured)) kg.",
                        "Cancelling correction must keep the original captured value")
-        XCTAssertEqual(app.buttons["max.measure.right"].value as? String, "Not measured")
+        XCTAssertFalse(app.staticTexts["max.review.saving.right"].exists)
 
         tap(app.buttons["max.measure.adjust"], in: app)
         XCTAssertTrue(valueButton("Left hand", in: app).label.contains("\(number(in: measured)) kg"))
         typeWithoutFinishing("24.5", for: "Left hand", in: app)
         attachScreenshot(app, name: "Correct captured left-hand value before saving")
         tap(app.buttons["max.adjust.apply"], in: app)
-        XCTAssertTrue((app.buttons["max.measure.left"].value as? String ?? "").hasPrefix("24.5 "))
-        XCTAssertEqual(app.buttons["max.measure.right"].value as? String, "Not measured")
-        tap(app.buttons["max.measure.save"], in: app)
+        XCTAssertEqual(saving.label, "Saves 24.5 kg, adjusted by hand.")
+        XCTAssertFalse(app.staticTexts["max.review.saving.right"].exists)
+        tap(app.buttons["max.review.save"], in: app)
 
         XCTAssertTrue(app.buttons["max.receipt.done"].waitForExistence(timeout: 5))
         let dailyChange = app.descendants(matching: .any).matching(NSPredicate(
@@ -263,10 +270,12 @@ final class MaxesFlowUITests: XCTestCase {
         }
         attachScreenshot(app, name: "French separate hand measurement at accessibility text size")
         connectIfNeeded(in: app)
-        let start = app.buttons["max.measure.start"]
-        XCTAssertTrue(start.waitForExistence(timeout: 5))
-        revealInSheet(start, in: app)
-        XCTAssertTrue(start.isHittable)
+        let tare = app.buttons["max.measure.tare"]
+        XCTAssertTrue(tare.waitForExistence(timeout: 5), "The visit connects on its own")
+        revealInSheet(tare, in: app)
+        XCTAssertTrue(tare.isHittable)
+        revealInSheet(app.buttons["max.measure.save"], in: app)
+        XCTAssertTrue(app.buttons["max.measure.save"].isHittable)
         attachScreenshot(app, name: "French large text gauge controls remain reachable")
         tap(app.buttons["max.measure.cancel"], in: app)
 
@@ -299,6 +308,12 @@ final class MaxesFlowUITests: XCTestCase {
 
     private func openMeasurement(for grip: String, in app: XCUIApplication) {
         tap(app.buttons["maxes.measure.\(grip)"], in: app)
+        // The one question before a visit. Matched by title: a dialog action does not
+        // reliably carry its identifier, and the French run asks in French.
+        let oneHand = app.buttons.matching(NSPredicate(format: "label IN %@",
+                                                       ["One hand at a time", "Une main à la fois"])).firstMatch
+        XCTAssertTrue(oneHand.waitForExistence(timeout: 3))
+        oneHand.tap()
         XCTAssertTrue(app.buttons["max.measure.left"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["max.measure.right"].exists)
         XCTAssertFalse(app.buttons["maxEdit.save"].exists)
@@ -309,31 +324,33 @@ final class MaxesFlowUITests: XCTestCase {
         XCTAssertTrue(app.buttons["maxEdit.save"].waitForExistence(timeout: 5))
     }
 
+    /// Select a hand and wait for the visit to log a pull on it. No Start: the screen
+    /// reads from the moment it opens, and the clean mock pulls for ten seconds of every
+    /// thirty. Awaits the real logged result rather than sleeping or inventing a force.
     @discardableResult
     private func capture(_ side: String, in app: XCUIApplication) -> String {
         let hand = app.buttons["max.measure.\(side)"]
-        tap(hand, in: app)
+        let selectable = NSPredicate(format: "isEnabled == true")
+        expectation(for: selectable, evaluatedWith: hand)
+        waitForExpectations(timeout: 45)
+        if !hand.isSelected { tap(hand, in: app) }
+        XCTAssertTrue(hand.isSelected)
         connectIfNeeded(in: app)
-        tap(app.buttons["max.measure.start"], in: app)
-        XCTAssertTrue(app.buttons["max.measure.finish"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.buttons["max.measure.left"].isEnabled)
-        XCTAssertFalse(app.buttons["max.measure.right"].isEnabled,
-                       "An active pull cannot change hands midway through its samples")
-        // The clean mock pulls for ten seconds, then releases. Await the actual
-        // captured result rather than sleeping or inventing a force value in the test.
-        XCTAssertTrue(app.buttons["max.measure.save"].waitForExistence(timeout: 20))
+        expectation(for: NSPredicate(format: "value CONTAINS %@", "best of"), evaluatedWith: hand)
+        waitForExpectations(timeout: 50)
         let value = hand.value as? String ?? ""
-        XCTAssertTrue(value.contains("ready to save"), value)
-        XCTAssertTrue(hand.isEnabled)
+        XCTAssertTrue(value.contains("best of 1 pull"), value)
         return value
     }
 
+    private func openReview(in app: XCUIApplication) {
+        tap(app.buttons["max.measure.save"], in: app)
+        XCTAssertTrue(app.buttons["max.review.save"].waitForExistence(timeout: 3))
+    }
+
     private func connectIfNeeded(in app: XCUIApplication) {
-        let connect = app.buttons["Connect"]
-        if connect.exists { tap(connect, in: app) }
-        // The French localized title shares the same connection action.
-        let frenchConnect = app.buttons["Connecter"]
-        if frenchConnect.exists { tap(frenchConnect, in: app) }
+        let connect = app.buttons["max.measure.connect"]
+        if connect.exists, connect.isEnabled { tap(connect, in: app) }
     }
 
     private func dismissReceiptIfPresent(in app: XCUIApplication) {
