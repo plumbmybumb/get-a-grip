@@ -68,7 +68,7 @@ struct AnalysisExportSheet: View {
                         Text("Every pull").tag(AnalysisExport.CSVDetail.pulls)
                     }
                     .pickerStyle(.segmented)
-                    Text("A compact CSV for your AI assistant or spreadsheet. Summary groups pulls by set and hand. Choose Every pull for individual measurements and timing.")
+                    Text("A CSV for your AI assistant or spreadsheet. Summary groups pulls by set and hand.")
                         .font(.subheadline)
                         .foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -83,7 +83,7 @@ struct AnalysisExportSheet: View {
                                 .font(.footnote).monospacedDigit().foregroundStyle(Ink.secondary)
                             Text("CSV · \(ByteCountFormatter.string(fromByteCount: Int64(document.byteCount), countStyle: .file))")
                                 .font(.footnote).foregroundStyle(Ink.tertiary)
-                            Text("Column names and the data guide stay in English. Your notes stay as written.")
+                            Text("Column names and the data guide are in English.")
                                 .font(.footnote).foregroundStyle(Ink.tertiary)
                         }
                     } else {

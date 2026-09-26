@@ -71,8 +71,8 @@ targets:
         # "force gauge", not "Tindeq Progressor": multi-gauge made the branded string
         # under-describing, the same rule the photo string below already follows.
         NSBluetoothAlwaysUsageDescription: >-
-          Get a Grip connects to your force gauge over Bluetooth to measure the
-          force you pull during a training session.
+          Get a Grip uses Bluetooth to connect to your force gauge and measure
+          your pulls.
         # "calendar" was true while the calendar card was the only thing the app exported;
         # a routine's QR code is the second, so the copy moved with the feature rather
         # than quietly under-describing it.
@@ -246,8 +246,8 @@ targets:
         UIBackgroundModes:
           - bluetooth-central
         NSBluetoothAlwaysUsageDescription: >-
-          Get a Grip connects to your force gauge over Bluetooth to measure the
-          force you pull during a training session.
+          Get a Grip uses Bluetooth to connect to your force gauge and measure
+          your pulls.
         NSHealthShareUsageDescription: >-
           Get a Grip does not read your health data.
         NSHealthUpdateUsageDescription: >-

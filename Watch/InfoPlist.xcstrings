@@ -26,13 +26,13 @@
         "en": {
           "stringUnit": {
             "state": "new",
-            "value": "Get a Grip connects to your force gauge over Bluetooth to measure the force you pull during a training session."
+            "value": "Get a Grip uses Bluetooth to connect to your force gauge and measure your pulls."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Get a Grip se connecte à ton capteur de force en Bluetooth pour mesurer la force que tu exerces pendant une séance d'entraînement."
+            "value": "Get a Grip utilise le Bluetooth pour se connecter à ton capteur de force et mesurer tes tirages."
           }
         }
       }

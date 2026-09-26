@@ -211,7 +211,7 @@ struct WatchRunnerView: View {
             if keeper.state == .denied || keeper.state == .unavailable {
                 // Said plainly: without a workout session the app sleeps with the
                 // wrist, and a rep would stall in silence.
-                Text("Keep the screen on — Health didn't allow a workout.")
+                Text("Health didn't allow a workout. Keep the screen on.")
                     .font(.caption2)
                     .foregroundStyle(ink)
                     .multilineTextAlignment(.center)

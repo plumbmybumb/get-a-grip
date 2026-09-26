@@ -211,12 +211,12 @@
         }
       }
     },
-    "All time. Your numbers land here after the first session." : {
+    "All time. Totals appear after your first session." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Depuis toujours. Tes chiffres arrivent ici après la première séance."
+            "value" : "Depuis le début. Les totaux apparaissent après ta première séance."
           }
         }
       }
@@ -491,12 +491,12 @@
         }
       }
     },
-    "Tap to choose yours — Get a Grip works with %lld different gauges." : {
+    "Tap to choose from %lld supported gauges." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touche pour choisir le tien : Get a Grip fonctionne avec %lld capteurs différents."
+            "value" : "Touche pour choisir parmi %lld capteurs compatibles."
           }
         }
       }
@@ -521,22 +521,22 @@
         }
       }
     },
-    "Volume is load × pulls, added up. Under tension is every second on the edge." : {
+    "Volume is load × pulls. Under tension is total time on the edge." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le volume, c'est charge × tirages, additionnés. Sous tension, chaque seconde sur la réglette."
+            "value" : "Volume : charge × tirages. Sous tension : temps total sur la réglette."
           }
         }
       }
     },
-    "Your all-time numbers land here after the first session." : {
+    "Your all-time totals appear after your first session." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tes chiffres depuis toujours arrivent ici après la première séance."
+            "value" : "Tes totaux apparaissent après ta première séance."
           }
         }
       }
@@ -933,12 +933,12 @@
         }
       }
     },
-    "%@ broadcasts its weight instead of connecting, so there is nothing to pair and nothing to zero on the device — Tare subtracts what is hanging on it. iOS stops delivering broadcasts while Get a Grip is in the background, so a session on one pauses when you leave the app." : {
+    "%@ broadcasts its weight instead of connecting, so there's nothing to pair. Tare works in the app. Sessions pause when you leave the app." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ diffuse son poids au lieu de se connecter : il n'y a donc rien à appairer ni rien à mettre à zéro sur l'appareil — Tarer soustrait ce qui y est suspendu. iOS cesse de délivrer les diffusions quand Get a Grip est en arrière-plan, une séance sur ce capteur se met donc en pause dès que tu quittes l'app."
+            "value" : "%@ diffuse son poids au lieu de se connecter, il n'y a donc rien à appairer. La tare se fait dans l'app. Les séances se mettent en pause quand tu quittes l'app."
           }
         }
       }
@@ -983,12 +983,12 @@
         }
       }
     },
-    "%@ is the gauge this app has been verified against on real hardware. %@" : {
+    "%@ is verified on real hardware. %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ est le capteur avec lequel l'app a été vérifiée sur du vrai matériel. %@"
+            "value" : "%1$@ est vérifié sur du vrai matériel. %2$@"
           }
         }
       }
@@ -1046,34 +1046,22 @@
         }
       }
     },
-    "%@ sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server." : {
+    "%@ needs a one-time calibration lookup from its maker, by serial number. It's then kept on this phone. No other gauge uses a server." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ envoie des valeurs brutes de capteur : la première fois qu'un exemplaire se connecte, l'app demande une seule fois son étalonnage à son fabricant, par numéro de série. La réponse reste sur ce téléphone et n'est plus jamais redemandée ; aucun autre capteur ne passe par un serveur."
+            "value" : "%@ demande une recherche unique de calibration auprès de son fabricant, par numéro de série. Elle est ensuite gardée sur ce téléphone. Aucun autre capteur n'utilise de serveur."
           }
         }
       }
     },
-    "%@ speaks a protocol its maker published, but no unit has been tried on this app yet." : {
+    "%@ uses its maker's published protocol, not yet tested with this app." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ speaks a protocol its maker published, but no unit has been tried on this app yet."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ parle un protocole publié par son fabricant, mais aucun exemplaire n'a encore été essayé avec cette app."
+            "value" : "%@ utilise le protocole publié par son fabricant, pas encore testé avec cette app."
           }
         }
       }
@@ -2146,12 +2134,12 @@
         }
       }
     },
-    "A compact CSV for your AI assistant or spreadsheet. Summary groups pulls by set and hand. Choose Every pull for individual measurements and timing." : {
+    "A CSV for your AI assistant or spreadsheet. Summary groups pulls by set and hand." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un CSV compact pour votre assistant IA ou tableur. Le résumé regroupe les tractions par série et par main. Choisissez Chaque traction pour les mesures et les temps individuels."
+            "value" : "Un CSV pour ton assistant IA ou ton tableur. Le résumé regroupe les tirages par série et par main."
           }
         }
       }
@@ -2274,12 +2262,12 @@
         }
       }
     },
-    "A text file of the recent connection and signal breadcrumbs — what the gauge and the app did in the last few minutes." : {
+    "A text file of the last few minutes of gauge connection events." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un fichier texte des dernières traces de connexion et de signal — ce que le capteur et l'app ont fait ces dernières minutes."
+            "value" : "Un fichier texte des dernières minutes d'événements de connexion du capteur."
           }
         }
       }
@@ -2509,12 +2497,12 @@
         }
       }
     },
-    "Anything marked as a ported protocol speaks a protocol taken from the open-source hangtime-grip-connect project and has never been tested against that hardware here. Check the first pull on one against a number you already trust." : {
+    "Ported protocols come from the open-source hangtime-grip-connect project and are untested here. Check your first pull against a known weight." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tout ce qui est marqué protocole porté parle un protocole repris du projet open source hangtime-grip-connect et n'a jamais été testé ici sur ce matériel. Compare le premier tirage à un chiffre auquel tu fais déjà confiance."
+            "value" : "Les protocoles portés viennent du projet open source hangtime-grip-connect et n'ont pas été testés ici. Vérifie ton premier tirage avec un poids connu."
           }
         }
       }
@@ -2953,12 +2941,12 @@
         }
       }
     },
-    "Changes how weights are shown and entered. Your scale’s own unit setting is separate." : {
+    "Doesn't change your gauge's own unit setting." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Change l’affichage et la saisie des poids. Le réglage de l’unité sur la balance reste indépendant."
+            "value" : "Ne change pas le réglage d'unité de ton capteur."
           }
         }
       }
@@ -3133,12 +3121,12 @@
         }
       }
     },
-    "Column names and the data guide stay in English. Your notes stay as written." : {
+    "Column names and the data guide are in English." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les noms des colonnes et le guide restent en anglais. Tes notes sont conservées telles quelles."
+            "value" : "Les noms de colonnes et le guide des données sont en anglais."
           }
         }
       }
@@ -3726,12 +3714,12 @@
         }
       }
     },
-    "Deleting a session removes it from your streak and your trends too. Your routines are untouched." : {
+    "Deleting a session also removes it from your streak and trends." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supprimer une séance la retire aussi de ta série et de tes tendances. Tes routines ne changent pas."
+            "value" : "Supprimer une séance la retire aussi de ta série et de tes tendances."
           }
         }
       }
@@ -4401,12 +4389,12 @@
         }
       }
     },
-    "Finish a session and it lands here — what you did, how hard it felt, and how your load is moving per grip." : {
+    "Your finished sessions and trends show up here." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Termine une séance et elle atterrit ici — ce que tu as fait, l'effort ressenti, et l'évolution de ta charge par prise."
+            "value" : "Tes séances terminées et tes tendances s'affichent ici."
           }
         }
       }
@@ -4881,18 +4869,12 @@
         }
       }
     },
-    "Get a Grip is free and open source. A rating helps other climbers find it." : {
+    "A rating helps other climbers find Get a Grip." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Get a Grip is free and open source. A rating helps other climbers find it."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Get a Grip est gratuit et open source. Une note aide d'autres grimpeurs à le trouver."
+            "value" : "Une note aide d'autres grimpeurs à trouver Get a Grip."
           }
         }
       }
@@ -7267,12 +7249,12 @@
         }
       }
     },
-    "One session so far. A second gives this a direction." : {
+    "One session so far. The trend starts after two." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une seule séance pour l'instant. Une deuxième donnera une direction."
+            "value" : "Une seule séance pour l'instant. La tendance commence après deux."
           }
         }
       }
@@ -7574,12 +7556,12 @@
         }
       }
     },
-    "Photos access is off for Get a Grip — Settings > Privacy > Photos." : {
+    "Photos access is off. Allow it in Settings > Privacy > Photos." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'accès à Photos est désactivé pour Get a Grip — Réglages > Confidentialité > Photos."
+            "value" : "L'accès aux Photos est désactivé. Autorise-le dans Réglages > Confidentialité > Photos."
           }
         }
       }
@@ -7940,22 +7922,6 @@
         }
       }
     },
-    "Rate on the App Store. Opens the App Store." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rate on the App Store. Opens the App Store."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noter sur l'App Store. Ouvre l'App Store."
-          }
-        }
-      }
-    },
     "RE-GRIP" : {
       "localizations" : {
         "fr" : {
@@ -7983,12 +7949,12 @@
         }
       }
     },
-    "Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit." : {
+    "Recent connection events. Kept in memory only and cleared when the app quits." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Traces récentes de connexion et de signal, gardées sur cet appareil en mémoire seulement — elles sont perdues si l'app est forcée à quitter."
+            "value" : "Événements de connexion récents. Gardés en mémoire seulement et effacés quand l'app se ferme."
           }
         }
       }
@@ -8953,12 +8919,12 @@
         }
       }
     },
-    "Share or save this PNG. Other apps may flatten its transparent background." : {
+    "Some apps may flatten the transparent background." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Partage ou enregistre ce PNG. D’autres apps peuvent aplatir son fond transparent."
+            "value" : "Certaines apps peuvent aplatir le fond transparent."
           }
         }
       }
@@ -9169,12 +9135,12 @@
         }
       }
     },
-    "Some fixed weight targets were set by the sender. Review them for your own training." : {
+    "The sender set some fixed weight targets. Check they suit you." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Certaines cibles de poids fixes ont été définies par l’expéditeur. Vérifiez-les pour votre entraînement."
+            "value" : "L'expéditeur a fixé certaines cibles de poids. Vérifie qu'elles te conviennent."
           }
         }
       }
@@ -9287,12 +9253,12 @@
         }
       }
     },
-    "Start in half crimp and build force by trying to curl your fingers into the edge." : {
+    "Start in half crimp and curl your fingers into the edge." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pars en semi-arquée et augmente la force en essayant de fléchir les doigts sur la réglette."
+            "value" : "Pars en semi-arquée et fléchis les doigts sur la réglette."
           }
         }
       }
@@ -9755,42 +9721,32 @@
         }
       }
     },
-    "That completes %@ — no reminders, and a full day on your calendar. You can still do a hang session if you want one." : {
+    "Marks %@ as trained and stops its reminders." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ça complète %@ — pas de rappels, et une journée pleine sur ton calendrier. Tu peux quand même faire une séance de poutre si tu veux."
+            "value" : "Marque %@ comme jour d'entraînement et coupe ses rappels."
           }
         }
       }
     },
-    "That couldn't be saved — nothing was logged. Try again." : {
+    "Counts as one session for %@." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ça n'a pas pu être enregistré — rien n'a été consigné. Réessaie."
+            "value" : "Compte comme une séance pour %@."
           }
         }
       }
     },
-    "That counts as one session for %@, but it does not settle the day. You can still do another session if you want one." : {
+    "Couldn't save this routine. Try again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ça compte comme une séance pour %@, mais ça ne clôt pas la journée. Tu peux encore faire une autre séance si tu veux."
-          }
-        }
-      }
-    },
-    "That routine couldn't be saved just now — nothing was added. Try again." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cette routine n'a pas pu être enregistrée à l'instant — rien n'a été ajouté. Réessaie."
+            "value" : "Impossible d'enregistrer cette routine. Réessaie."
           }
         }
       }
@@ -9805,28 +9761,22 @@
         }
       }
     },
-    "The calibration lookup needs an internet connection the first time a Dyno is used." : {
+    "Connect to the internet for the Dyno's first calibration." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The calibration lookup needs an internet connection the first time a Dyno is used."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La recherche de l'étalonnage a besoin d'une connexion internet la première fois qu'un Dyno est utilisé."
+            "value" : "Connecte-toi à Internet pour la première calibration du Dyno."
           }
         }
       }
     },
-    "The camera scanner isn't available right now. Try again when the camera is available, or open the routine link directly." : {
+    "The camera isn't available. Try again later, or open the routine link." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le scanner est indisponible pour le moment. Réessaie quand l’appareil photo sera disponible, ou ouvre directement le lien de la routine."
+            "value" : "L'appareil photo n'est pas disponible. Réessaie plus tard, ou ouvre le lien de la routine."
           }
         }
       }
@@ -9944,18 +9894,12 @@
         }
       }
     },
-    "This build has no Frez access key, so the Dyno's calibration cannot be fetched." : {
+    "This build has no Frez access key, so it can't fetch the Dyno's calibration." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This build has no Frez access key, so the Dyno's calibration cannot be fetched."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette version de l'app n'a pas de clé d'accès Frez, l'étalonnage du Dyno ne peut donc pas être récupéré."
+            "value" : "Cette version n'a pas de clé d'accès Frez et ne peut donc pas récupérer la calibration du Dyno."
           }
         }
       }
@@ -10000,18 +9944,12 @@
         }
       }
     },
-    "This Dyno did not report a serial number, so its calibration cannot be looked up." : {
+    "This Dyno sent no serial number, so its calibration can't be looked up." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This Dyno did not report a serial number, so its calibration cannot be looked up."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce Dyno n'a pas indiqué de numéro de série, son étalonnage ne peut donc pas être recherché."
+            "value" : "Ce Dyno n'a envoyé aucun numéro de série, sa calibration ne peut donc pas être recherchée."
           }
         }
       }
@@ -10137,12 +10075,12 @@
         }
       }
     },
-    "To add %@, scan with Camera on iPhone. On Android, open Get a Grip and choose Scan a routine in the Today menu." : {
+    "To add %@, scan with the iPhone Camera. On Android, use Scan a routine in the Today menu." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pour ajouter %@, scanne avec Appareil photo sur iPhone. Sur Android, ouvre Get a Grip et choisis Scanner une routine dans le menu Aujourd’hui."
+            "value" : "Pour ajouter %@, scanne avec l'appareil photo de l'iPhone. Sur Android, utilise Scanner une routine dans le menu Aujourd'hui."
           }
         }
       }
@@ -11954,12 +11892,12 @@
         }
       }
     },
-    "Routine reminders are scheduled on each device separately. A session logged on any of them silences the day’s reminders everywhere once it syncs." : {
+    "Each device sends its own reminders. A logged session silences them everywhere once synced." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les rappels de routine sont programmés sur chaque appareil séparément. Une séance enregistrée sur l’un d’eux coupe les rappels du jour partout, une fois synchronisée."
+            "value" : "Chaque appareil envoie ses propres rappels. Une séance enregistrée les coupe partout une fois synchronisée."
           }
         }
       }
@@ -11984,12 +11922,12 @@
         }
       }
     },
-    "Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result." : {
+    "Shows critical force as a share of body weight. Past tests keep their weight." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sert à afficher la force critique en proportion du poids du corps. Chaque test garde le poids du moment, donc le modifier ne change jamais un ancien résultat."
+            "value" : "Affiche la force critique en part du poids du corps. Les tests passés gardent leur poids."
           }
         }
       }

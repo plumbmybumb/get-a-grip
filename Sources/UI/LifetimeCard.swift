@@ -23,7 +23,7 @@ struct LifetimeCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(title)
                 if stats.isEmpty {
-                    Text("Your all-time numbers land here after the first session.")
+                    Text("Your all-time totals appear after your first session.")
                         .foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
@@ -36,7 +36,7 @@ struct LifetimeCard: View {
                         row(String(localized: "Climbing days"), stats.climbDays.formatted())
                     }
                     row(String(localized: "Heaviest pull"), weightUnit.text(stats.heaviestPullKg))
-                    Text("Volume is load × pulls, added up. Under tension is every second on the edge.")
+                    Text("Volume is load × pulls. Under tension is total time on the edge.")
                         .font(.system(.caption))
                         .foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -89,7 +89,7 @@ struct LifetimeCard: View {
     }
 
     private var spoken: String {
-        guard !stats.isEmpty else { return String(localized: "All time. Your numbers land here after the first session.") }
+        guard !stats.isEmpty else { return String(localized: "All time. Totals appear after your first session.") }
         var parts = [
             String(localized: "\(stats.sessions) sessions"),
             String(localized: "\(stats.pulls) pulls"),

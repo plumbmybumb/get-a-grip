@@ -135,7 +135,7 @@ struct PositionChipRow: View {
         VStack(alignment: .leading, spacing: 8) {
             ChipGrid(base: 3) { chips }
             if selection == .fingerCurl {
-                Text("Start in half crimp and build force by trying to curl your fingers into the edge.")
+                Text("Start in half crimp and curl your fingers into the edge.")
                     .font(.system(.caption))
                     .foregroundStyle(Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)

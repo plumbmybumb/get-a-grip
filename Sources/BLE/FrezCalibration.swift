@@ -81,8 +81,8 @@ enum GaugeCalibrationFailure: Error, Sendable, Equatable {
     /// something to do; the rest name whose problem it is.
     var label: String {
         switch self {
-        case .missingSerial: String(localized: "This Dyno did not report a serial number, so its calibration cannot be looked up.")
-        case .noAccessKey: String(localized: "This build has no Frez access key, so the Dyno's calibration cannot be fetched.")
+        case .missingSerial: String(localized: "This Dyno sent no serial number, so its calibration can't be looked up.")
+        case .noAccessKey: String(localized: "This build has no Frez access key, so it can't fetch the Dyno's calibration.")
         case .invalidRequest: String(localized: "Frez rejected the calibration request.")
         case .invalidAccessKey: String(localized: "Frez did not accept this app's access key.")
         case .deviceLimitReached: String(localized: "Frez has reached the number of Dynos this app may register.")
@@ -91,7 +91,7 @@ enum GaugeCalibrationFailure: Error, Sendable, Equatable {
         case .calibrationUnavailable: String(localized: "Frez could not produce a calibration for this Dyno.")
         case .rateLimited: String(localized: "Frez is busy. Try again in a minute.")
         case .badResponse: String(localized: "Frez sent an answer this app could not read.")
-        case .network: String(localized: "The calibration lookup needs an internet connection the first time a Dyno is used.")
+        case .network: String(localized: "Connect to the internet for the Dyno's first calibration.")
         }
     }
 }

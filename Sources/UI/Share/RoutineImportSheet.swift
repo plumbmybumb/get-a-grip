@@ -287,10 +287,10 @@ struct RoutineImportSheet: View {
         if hasPercentTargets || hasKilogramTargets {
             VStack(alignment: .leading, spacing: 8) {
                 if hasPercentTargets {
-                    note(String(localized: "Percentage targets use your saved maxes. These may no longer reflect your current strength."))
+                    note(String(localized: "Targets use your saved maxes. Retest when they're out of date."))
                 }
                 if hasKilogramTargets {
-                    note(String(localized: "Some fixed weight targets were set by the sender. Review them for your own training."))
+                    note(String(localized: "The sender set some fixed weight targets. Check they suit you."))
                 }
             }
         }
@@ -321,7 +321,7 @@ struct RoutineImportSheet: View {
             if saveFailed {
                 // STAYS OPEN on a rollback: dismissing loses the code too, and rescanning
                 // is somebody else's phone away. Same as the builder's failed save.
-                Text("That routine couldn't be saved just now — nothing was added. Try again.")
+                Text("Couldn't save this routine. Try again.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Accent.alarm)
                     .fixedSize(horizontal: false, vertical: true)

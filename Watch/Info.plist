@@ -23,7 +23,7 @@
 	<key>GetAGripCloudContainer</key>
 	<string>$(GETAGRIP_CLOUD_CONTAINER)</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Get a Grip connects to your force gauge over Bluetooth to measure the force you pull during a training session.</string>
+	<string>Get a Grip uses Bluetooth to connect to your force gauge and measure your pulls.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Get a Grip does not read your health data.</string>
 	<key>NSHealthUpdateUsageDescription</key>

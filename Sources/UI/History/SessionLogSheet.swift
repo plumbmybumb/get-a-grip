@@ -194,16 +194,16 @@ struct SessionLogSheet: View {
         let day = daysAgo == 0 ? String(localized: "today") : String(localized: "yesterday")
         switch kind {
         case .hangManual:
-            return String(localized: "That counts as one session for \(day), but it does not settle the day. You can still do another session if you want one.")
+            return String(localized: "Counts as one session for \(day).")
         case .climbVolume, .climbLimit:
-            return String(localized: "That completes \(day) — no reminders, and a full day on your calendar. You can still do a hang session if you want one.")
+            return String(localized: "Marks \(day) as trained and stops its reminders.")
         case nil, .hang, .benchmark:
             return String(localized: "Choose a session kind to see how it counts.")
         }
     }
 
     private var errorLine: some View {
-        Text("That couldn't be saved — nothing was logged. Try again.")
+        Text("Couldn't save. Try again.")
             .font(.system(.footnote, weight: .medium))
             .foregroundStyle(Accent.alarm)
             .fixedSize(horizontal: false, vertical: true)

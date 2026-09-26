@@ -164,7 +164,7 @@ struct ShareCalendarSheet: View {
 
                     actionStack
 
-                    Text("Share or save this PNG. Other apps may flatten its transparent background.")
+                    Text("Some apps may flatten the transparent background.")
                         .font(.system(.footnote))
                         .foregroundStyle(Ink.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -252,7 +252,7 @@ struct ShareCalendarSheet: View {
             .disabled(renderedImage == nil || savingToPhotos)
 
             if photosAccessDenied {
-                Text("Photos access is off for Get a Grip — Settings > Privacy > Photos.")
+                Text("Photos access is off. Allow it in Settings > Privacy > Photos.")
                     .font(.system(.footnote))
                     .foregroundStyle(Ink.tertiary)
                     .fixedSize(horizontal: false, vertical: true)

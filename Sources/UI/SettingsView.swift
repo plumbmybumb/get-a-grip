@@ -66,7 +66,7 @@ struct SettingsView: View {
                         .font(.system(.headline, weight: .semibold))
                 }
                 .accessibilityIdentifier("settings.remindsOnThisDevice")
-                Text("Routine reminders are scheduled on each device separately. A session logged on any of them silences the day’s reminders everywhere once it syncs.")
+                Text("Each device sends its own reminders. A logged session silences them everywhere once synced.")
                     .font(.system(.caption)).foregroundStyle(Ink.secondary)
             }
         }
@@ -84,7 +84,7 @@ struct SettingsView: View {
                 // Typed, never a slider — see `BodyWeightField`.
                 BodyWeightField(kilograms: $settings.bodyWeightKg,
                                 titleFont: .system(.headline, weight: .semibold))
-                Text("Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result.")
+                Text("Shows critical force as a share of body weight. Past tests keep their weight.")
                     .font(.system(.caption)).foregroundStyle(Ink.secondary)
             }
         }
@@ -102,7 +102,7 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("settings.weightUnits")
-                Text("Changes how weights are shown and entered. Your scale’s own unit setting is separate.")
+                Text("Doesn't change your gauge's own unit setting.")
                     .font(.system(.caption)).foregroundStyle(Ink.secondary)
             }
         }
@@ -191,7 +191,7 @@ struct SettingsView: View {
     /// Counted from the registry, like the makers sentence in About, so a ninth gauge
     /// cannot leave this line claiming eight.
     private var gaugeChoiceNote: String {
-        String(localized: "Tap to choose yours — Get a Grip works with \(GaugeKind.selectable.count) different gauges.")
+        String(localized: "Tap to choose from \(GaugeKind.selectable.count) supported gauges.")
     }
 
     /// Every maker the app speaks to, in picker order, de-duplicated so the sentence stays
@@ -316,7 +316,7 @@ struct SettingsView: View {
                                 }
                                 .buttonStyle(PressFeedbackButtonStyle())
                             }
-                            Text("Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit.")
+                            Text("Recent connection events. Kept in memory only and cleared when the app quits.")
                                 .font(.system(.caption))
                                 .foregroundStyle(Ink.tertiary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -460,7 +460,7 @@ private struct SupportCard: View {
                 compose(subject: Self.bugSubject, withDiagnostics: false)
             }
         } message: {
-            Text("A text file of the recent connection and signal breadcrumbs — what the gauge and the app did in the last few minutes.")
+            Text("A text file of the last few minutes of gauge connection events.")
         }
         .sheet(item: $mail) { request in
             MailComposer(recipients: [Self.address],
@@ -491,8 +491,8 @@ private struct SupportCard: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(PressFeedbackButtonStyle(scales: false))
-            .accessibilityLabel(String(localized: "Rate on the App Store. Opens the App Store."))
-            Text("Get a Grip is free and open source. A rating helps other climbers find it.")
+            .accessibilityLabel(String(localized: "Rate on the App Store"))
+            Text("A rating helps other climbers find Get a Grip.")
                 .font(.system(.caption))
                 .foregroundStyle(Ink.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -775,9 +775,9 @@ private struct GaugePickerView: View {
         let verified = GaugeKind.selectable
             .filter { $0.capabilities.hardwareVerified }
             .map(\.displayName)
-        let ported = String(localized: "Anything marked as a ported protocol speaks a protocol taken from the open-source hangtime-grip-connect project and has never been tested against that hardware here. Check the first pull on one against a number you already trust.")
+        let ported = String(localized: "Ported protocols come from the open-source hangtime-grip-connect project and are untested here. Check your first pull against a known weight.")
         guard !verified.isEmpty else { return ported }
-        return String(localized: "\(verified.formatted(.list(type: .and))) is the gauge this app has been verified against on real hardware. \(ported)")
+        return String(localized: "\(verified.formatted(.list(type: .and))) is verified on real hardware. \(ported)")
     }
 
     /// Broadcast gauges are a different shape of device, not a worse one, and the two
@@ -787,7 +787,7 @@ private struct GaugePickerView: View {
             .filter { $0.capabilities.isBroadcast }
             .map(\.displayName)
         guard !names.isEmpty else { return nil }
-        return String(localized: "\(names.formatted(.list(type: .and))) broadcasts its weight instead of connecting, so there is nothing to pair and nothing to zero on the device — Tare subtracts what is hanging on it. iOS stops delivering broadcasts while Get a Grip is in the background, so a session on one pauses when you leave the app.")
+        return String(localized: "\(names.formatted(.list(type: .and))) broadcasts its weight instead of connecting, so there's nothing to pair. Tare works in the app. Sessions pause when you leave the app.")
     }
 
     /// A protocol the maker published is a different kind of unknown from a port: the
@@ -797,7 +797,7 @@ private struct GaugePickerView: View {
             .filter { $0.capabilities.protocolSource == .vendorDocumented && !$0.capabilities.hardwareVerified }
             .map(\.displayName)
         guard !names.isEmpty else { return nil }
-        return String(localized: "\(names.formatted(.list(type: .and))) speaks a protocol its maker published, but no unit has been tried on this app yet.")
+        return String(localized: "\(names.formatted(.list(type: .and))) uses its maker's published protocol, not yet tested with this app.")
     }
 
     /// The one gauge that needs a lookup, and the only time the app talks to a server
@@ -807,6 +807,6 @@ private struct GaugePickerView: View {
             .filter { $0.capabilities.requiresRemoteCalibration }
             .map(\.displayName)
         guard !names.isEmpty else { return nil }
-        return String(localized: "\(names.formatted(.list(type: .and))) sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server.")
+        return String(localized: "\(names.formatted(.list(type: .and))) needs a one-time calibration lookup from its maker, by serial number. It's then kept on this phone. No other gauge uses a server.")
     }
 }

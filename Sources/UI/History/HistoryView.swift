@@ -407,7 +407,7 @@ struct HistoryView: View {
     /// deleting a session moves the month grid and the trend, which is a lot of
     /// consequence for a swipe, so the screen says so.
     private var footnote: some View {
-        Text("Deleting a session removes it from your streak and your trends too. Your routines are untouched.")
+        Text("Deleting a session also removes it from your streak and trends.")
             .font(.system(.footnote))
             .foregroundStyle(Ink.tertiary)
             .fixedSize(horizontal: false, vertical: true)
@@ -427,7 +427,7 @@ struct HistoryView: View {
                     .font(.system(.largeTitle, weight: .light))
                     .foregroundStyle(Ink.tertiary.opacity(0.55))
                     .accessibilityHidden(true)
-                Text("Finish a session and it lands here — what you did, how hard it felt, and how your load is moving per grip.")
+                Text("Your finished sessions and trends show up here.")
                     .font(.system(.subheadline))
                     .foregroundStyle(Ink.secondary)
             }

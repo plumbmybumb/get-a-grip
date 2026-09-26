@@ -421,12 +421,12 @@
         }
       }
     },
-    "Build one on your iPhone. It syncs here on its own." : {
+    "Build one on your iPhone. It syncs here." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Crées-en une sur ton iPhone. Elle arrivera ici toute seule."
+            "value" : "Crées-en une sur ton iPhone. Elle se synchronise ici."
           }
         }
       }
@@ -1251,12 +1251,12 @@
         }
       }
     },
-    "Keep the screen on — Health didn't allow a workout." : {
+    "Health didn't allow a workout. Keep the screen on." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Garde l'écran allumé — Santé n'a pas autorisé l'entraînement."
+            "value" : "Santé n'a pas autorisé l'entraînement. Garde l'écran allumé."
           }
         }
       }
@@ -2261,18 +2261,12 @@
         }
       }
     },
-    "The calibration lookup needs an internet connection the first time a Dyno is used." : {
+    "Connect to the internet for the Dyno's first calibration." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The calibration lookup needs an internet connection the first time a Dyno is used."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La recherche de l'étalonnage a besoin d'une connexion internet la première fois qu'un Dyno est utilisé."
+            "value" : "Connecte-toi à Internet pour la première calibration du Dyno."
           }
         }
       }
@@ -2287,18 +2281,12 @@
         }
       }
     },
-    "This build has no Frez access key, so the Dyno's calibration cannot be fetched." : {
+    "This build has no Frez access key, so it can't fetch the Dyno's calibration." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This build has no Frez access key, so the Dyno's calibration cannot be fetched."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette version de l'app n'a pas de clé d'accès Frez, l'étalonnage du Dyno ne peut donc pas être récupéré."
+            "value" : "Cette version n'a pas de clé d'accès Frez et ne peut donc pas récupérer la calibration du Dyno."
           }
         }
       }
@@ -2313,18 +2301,12 @@
         }
       }
     },
-    "This Dyno did not report a serial number, so its calibration cannot be looked up." : {
+    "This Dyno sent no serial number, so its calibration can't be looked up." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This Dyno did not report a serial number, so its calibration cannot be looked up."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce Dyno n'a pas indiqué de numéro de série, son étalonnage ne peut donc pas être recherché."
+            "value" : "Ce Dyno n'a envoyé aucun numéro de série, sa calibration ne peut donc pas être recherchée."
           }
         }
       }

@@ -44,7 +44,7 @@ struct RoutineShareSheet: View {
                     QRCodeView(string: payload)
                         .frame(maxWidth: .infinity)
 
-                    Text("To add \(request.name), scan with Camera on iPhone. On Android, open Get a Grip and choose Scan a routine in the Today menu.")
+                    Text("To add \(request.name), scan with the iPhone Camera. On Android, use Scan a routine in the Today menu.")
                         .font(.system(.footnote))
                         .foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)

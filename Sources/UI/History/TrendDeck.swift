@@ -134,7 +134,7 @@ struct TrendDeck: View, Equatable {
                 gripPicker(routine.grips, selected: selected)
 
                 if series.count < 2 {
-                    Text("One session so far. A second gives this a direction.")
+                    Text("One session so far. The trend starts after two.")
                         .font(.system(.subheadline))
                         .foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)

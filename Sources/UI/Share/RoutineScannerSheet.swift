@@ -45,7 +45,7 @@ struct RoutineScannerSheet: View {
                     ContentUnavailableView {
                         Label("Scanner unavailable", systemImage: "qrcode.viewfinder")
                     } description: {
-                        Text("The camera scanner isn't available right now. Try again when the camera is available, or open the routine link directly.")
+                        Text("The camera isn't available. Try again later, or open the routine link.")
                     }
                 }
             }

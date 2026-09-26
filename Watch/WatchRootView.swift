@@ -152,7 +152,7 @@ private struct WatchTodayList: View {
                 .accessibilityHidden(true)
             Text("No routines yet")
                 .font(.headline)
-            Text("Build one on your iPhone. It syncs here on its own.")
+            Text("Build one on your iPhone. It syncs here.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
