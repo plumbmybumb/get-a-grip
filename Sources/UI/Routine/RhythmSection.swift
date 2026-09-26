@@ -3,13 +3,15 @@
 
 import SwiftUI
 
-/// REST & HANDS — the parts of a session every set genuinely shares.
+/// Page 1 of the builder: the routine's own timing and how the hands share the work.
 ///
-/// Hold and rest moved onto every set row once the Max day protocol showed timing is a
-/// property of a SET (Nuri, 2026-08-10). What is left is what cannot vary per set: the
-/// break between sets, how the hands share the work, and when a rest starts counting.
+/// **Laid out to fit ONE screen while creating, iPhone SE included** — measured at 484 of
+/// 628 pt on an iPhone 17 and 485 of 497 pt on an SE (2026-09-26); three full dials took
+/// 985. Every number is a `− value +` row on the dial's own ladder (see
+/// `ValueControl.ladderStepper`), so the exact values a protocol names are one tap apart.
 ///
-/// The label is a plain row, never a `Section` header: plain-style headers PIN.
+/// Hold and rest here are what every set FOLLOWS; a set opts out with Custom timing
+/// (`SetRowView`). The label is a plain row, never a `Section` header: plain headers PIN.
 struct RhythmSection: View, Equatable {
     /// The write path. Nothing is DRAWN from it — see `defaults`, `==` and `BuilderInputs`.
     let access: DraftAccess
@@ -19,71 +21,33 @@ struct RhythmSection: View, Equatable {
     /// The strip previews the first set's pulls — the one set-level number read, so the one
     /// compared.
     let firstSetReps: Int
-    /// The PAGED builder's Rhythm page (DEBUG prototype, `-builderPages`): the routine's own
-    /// hold and rest lead the card, and the hands get a card of their own. Sets still
-    /// override per row; a new set follows these.
-    var includesPullTiming = false
-    /// How the paged Rhythm page draws its timing — see `PagedRhythmStyle`.
-    var pagedStyle: PagedRhythmStyle = .dials
-    /// The ladder page's L/R strip under the segmented control — kept (a) or dropped (b).
-    var showsOrderStrip = true
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
     nonisolated static func == (a: Self, b: Self) -> Bool {
         a.defaults.rhythmKey == b.defaults.rhythmKey && a.firstSetReps == b.firstSetReps
-            && a.includesPullTiming == b.includesPullTiming
-            && a.pagedStyle == b.pagedStyle
-            && a.showsOrderStrip == b.showsOrderStrip
-            && (!a.includesPullTiming
-                || (a.defaults.holdSeconds == b.defaults.holdSeconds
-                    && a.defaults.restSeconds == b.defaults.restSeconds))
     }
 
     var body: some View {
-        if !includesPullTiming {
-            documentBody
-        } else if pagedStyle == .ladder {
-            ladderBody
-        } else {
-            pagedBody
-        }
-    }
-
-    // MARK: - One screen: the ladder stepper (V2)
-
-    /// Page 1 on ONE screen: three 48 pt `− value +` rows on the dial's own ladder, the
-    /// release toggle, and the hands as one segmented control with the order strip and the
-    /// starting hand on the row beneath it.
-    private var ladderBody: some View {
         VStack(alignment: .leading, spacing: 14) {
             MaterialCard(verticalPadding: 4, surface: .flat) {
                 VStack(alignment: .leading, spacing: 0) {
-                    IntValueRow(title: String(localized: "Hold"), unit: String(localized: "s"),
-                                value: access.binding(\.plan.holdSeconds, current: defaults.holdSeconds),
-                                range: 1...60, limit: SetPlan.holdRange,
-                                control: .ladderStepper([1] + SetRowView.secondsLadder),
-                                spokenUnit: String(localized: "seconds"))
+                    TimingStepper(kind: .hold,
+                                  value: access.binding(\.plan.holdSeconds, current: defaults.holdSeconds))
                     rowDivider
-                    IntValueRow(title: String(localized: "Rest between pulls"), unit: String(localized: "s"),
-                                value: access.binding(\.plan.restSeconds, current: defaults.restSeconds),
-                                range: 0...60, limit: SetPlan.restRange,
-                                control: .ladderStepper([0] + SetRowView.secondsLadder),
-                                spokenUnit: String(localized: "seconds"))
+                    TimingStepper(kind: .rest,
+                                  value: access.binding(\.plan.restSeconds, current: defaults.restSeconds))
                     rowDivider
-                    IntValueRow(title: String(localized: "Break between sets"), unit: String(localized: "s"),
-                                value: access.binding(\.plan.setBreakSeconds, current: defaults.setBreakSeconds),
-                                range: 0...240, limit: SessionPlan.setBreakRange,
-                                control: .ladderStepper([0, 15, 30, 45, 60, 90, 120, 180, 240]),
-                                spokenUnit: String(localized: "seconds"))
+                    TimingStepper(kind: .setBreak,
+                                  value: access.binding(\.plan.setBreakSeconds, current: defaults.setBreakSeconds))
                     rowDivider
                     releaseToggle
                         .frame(minHeight: 46)
                 }
             }
 
-            // The critical force setup's hands, exactly: the label row carries which hand
-            // goes first, one segmented control underneath, no card.
+            // The critical force setup's hands, exactly (Nuri, 2026-09-26): the label row
+            // carries which hand goes first, one segmented control underneath, no card.
             VStack(alignment: .leading, spacing: 8) {
                 HandsHeader(menuTitle: defaults.handMode.sideCount > 1 ? startingHandTitle : nil,
                             side: access.binding(\.plan.startingHand, current: defaults.startingHand),
@@ -93,13 +57,13 @@ struct RhythmSection: View, Equatable {
                             reservesMenuHeight: true)
                     .padding(.leading, 6)
                 handModePicker
-                if showsOrderStrip {
-                    HandOrderStrip(mode: defaults.handMode,
-                                   startingHand: defaults.startingHand,
-                                   repsPerSide: firstSetReps)
-                        .padding(.leading, 6)
-                        .padding(.top, 4)
-                }
+                // The only picture of what "Alternate" does to a set, so it stays; centred
+                // under the control it describes.
+                HandOrderStrip(mode: defaults.handMode,
+                               startingHand: defaults.startingHand,
+                               repsPerSide: firstSetReps)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
             }
         }
     }
@@ -126,108 +90,6 @@ struct RhythmSection: View, Equatable {
         }
     }
 
-    /// Two cards: TIMING (hold, rest, break, when the rest starts) and HANDS.
-    private var pagedBody: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 10) {
-                CapsLabel(String(localized: "TIMING"))
-                MaterialCard(surface: .flat) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        IntValueRow(title: String(localized: "Hold"), unit: String(localized: "s"),
-                                    value: access.binding(\.plan.holdSeconds, current: defaults.holdSeconds),
-                                    range: 1...60, limit: SetPlan.holdRange,
-                                    control: .dial([1] + SetRowView.secondsLadder))
-                        IntValueRow(title: String(localized: "Rest between pulls"), unit: String(localized: "s"),
-                                    value: access.binding(\.plan.restSeconds, current: defaults.restSeconds),
-                                    range: 0...60, limit: SetPlan.restRange,
-                                    control: .dial([0] + SetRowView.secondsLadder))
-                        breakRow
-                        releaseToggle
-                    }
-                }
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                CapsLabel(String(localized: "HANDS"))
-                MaterialCard(surface: .flat) {
-                    VStack(alignment: .leading, spacing: 12) { handsBlock }
-                }
-            }
-        }
-    }
-
-    private var breakRow: some View {
-        IntValueRow(title: String(localized: "Break between sets"),
-                    unit: String(localized: "s"),
-                    value: access.binding(\.plan.setBreakSeconds, current: defaults.setBreakSeconds),
-                    range: 0...240, limit: SessionPlan.setBreakRange,
-                    control: .dial([0, 30, 60, 90, 120, 180]))
-    }
-
-    @ViewBuilder
-    private var handsBlock: some View {
-        HandModeChipRow(selection: access.binding(\.plan.handMode, current: defaults.handMode))
-        HandOrderStrip(mode: defaults.handMode,
-                       startingHand: defaults.startingHand,
-                       repsPerSide: firstSetReps)
-        if defaults.handMode.sideCount > 1 {
-            HStack(alignment: .center, spacing: 12) {
-                Text(defaults.startingHand == .right
-                     ? "Starts on the right hand"
-                     : "Starts on the left hand")
-                    .font(.system(.footnote, weight: .medium))
-                    .foregroundStyle(Ink.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                swapHandsButton
-            }
-        }
-    }
-
-    private var documentBody: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            CapsLabel(String(localized: "REST & HANDS"))
-
-            MaterialCard(surface: .flat) {
-                VStack(alignment: .leading, spacing: 12) {
-                    IntValueRow(title: String(localized: "Break between sets"),
-                                unit: String(localized: "s"),
-                                value: access.binding(\.plan.setBreakSeconds, current: defaults.setBreakSeconds),
-                                range: 0...240, limit: SessionPlan.setBreakRange,
-                                control: .dial([0, 30, 60, 90, 120, 180]))
-
-                    // Here, not in Fine tuning: it decides when every rest STARTS, and a rest
-                    // whose meaning is set two cards away cannot be trusted.
-                    releaseToggle
-
-                    rowDivider
-
-                    // Categorical, so chips — and ALWAYS expanded: the strip under it is the
-                    // only place the app shows what "alternate each pull" does to a set.
-                    CapsLabel(String(localized: "HANDS"))
-                        .padding(.top, 2)
-                    HandModeChipRow(selection: access.binding(\.plan.handMode, current: defaults.handMode))
-                    HandOrderStrip(mode: defaults.handMode,
-                                   startingHand: defaults.startingHand,
-                                   repsPerSide: firstSetReps)
-                    if defaults.handMode.sideCount > 1 {
-                        // The strip has no legend, so it cannot say which hand starts (Nuri,
-                        // 2026-09-18). The sentence says it; the button swaps it.
-                        HStack(alignment: .center, spacing: 12) {
-                            Text(defaults.startingHand == .right
-                                 ? "Starts on the right hand"
-                                 : "Starts on the left hand")
-                                .font(.system(.footnote, weight: .medium))
-                                .foregroundStyle(Ink.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 0)
-                            swapHandsButton
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     /// Whether the rest clock waits for your hand to come off the edge.
     ///
     /// ON by default: otherwise the two or three seconds of standing down off a 20 mm edge
@@ -244,43 +106,48 @@ struct RhythmSection: View, Equatable {
     private var rowDivider: some View {
         Divider().overlay(Ink.tertiary.opacity(0.22))
     }
+}
 
-    /// The strip draws the FIRST set's sequence, the one about to be done; `executable` so an
-    /// emptied-out row cannot decide it.
-    /// The one writer of `startingHand` (Nuri, 2026-09-18), beside the sentence naming the
-    /// starting hand: tap, and both flip. Hidden under Both hands. The spoken label names
-    /// the tap's OUTCOME, as a toggle should.
-    private var swapHandsButton: some View {
-        let startsRight = defaults.startingHand == .right
-        return Button {
-            access.mutate { $0.plan.startingHand = startsRight ? .left : .right }
-        } label: {
-            Label(String(localized: "Swap"), systemImage: "arrow.left.arrow.right")
-                .font(.system(.footnote, weight: .medium))
-                .foregroundStyle(Ink.secondary)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)
-                .overlay(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
-                .contentShape(.capsule)
+// MARK: - Timing steppers
+
+/// One timing number as a `− value +` row on its ladder. Shared by the Rhythm page and a
+/// set's Custom timing, so the two can never offer different stops.
+struct TimingStepper: View {
+    enum Kind {
+        case hold, rest, setBreak
+    }
+
+    let kind: Kind
+    @Binding var value: Int
+
+    /// Every detent the shipping protocols use (3 s C4 holds, 5/7/10/12 s repeaters,
+    /// 15–60 s rests). Hold and rest differ only at the floor: a 0 s rest is a cadence, a
+    /// 0 s hold is not a hold.
+    static let secondsLadder: [Double] = [3, 5, 7, 10, 12, 15, 20, 30, 45, 60]
+
+    var body: some View {
+        switch kind {
+        case .hold:
+            IntValueRow(title: String(localized: "Hold"), unit: String(localized: "s"),
+                        value: $value, range: 1...60, limit: SetPlan.holdRange,
+                        control: .ladderStepper([1] + Self.secondsLadder),
+                        spokenUnit: String(localized: "seconds"))
+        case .rest:
+            IntValueRow(title: String(localized: "Rest between pulls"), unit: String(localized: "s"),
+                        value: $value, range: 0...60, limit: SetPlan.restRange,
+                        control: .ladderStepper([0] + Self.secondsLadder),
+                        spokenUnit: String(localized: "seconds"))
+        case .setBreak:
+            IntValueRow(title: String(localized: "Break between sets"), unit: String(localized: "s"),
+                        value: $value, range: 0...240, limit: SessionPlan.setBreakRange,
+                        control: .ladderStepper([0, 15, 30, 45, 60, 90, 120, 180, 240]),
+                        spokenUnit: String(localized: "seconds"))
         }
-        .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityLabel(startsRight
-                            ? String(localized: "Start with the left hand")
-                            : String(localized: "Start with the right hand"))
-        .sensoryFeedback(.selection, trigger: defaults.startingHand)
     }
 }
 
-/// The paged Rhythm page's timing controls (DEBUG prototype, `-builderPagesRhythm`).
-enum PagedRhythmStyle: Equatable {
-    /// Three full dials (A) — about 1010 pt, scrolls.
-    case dials
-    /// Three `− value +` rows on the dial's ladder (V2) — one screen.
-    case ladder
-}
-
 extension HandMode {
-    /// The segmented control's short form: the card is labelled HANDS, so the noun goes.
+    /// The segmented control's short form: the section is labelled HANDS, so the noun goes.
     var segmentName: String {
         switch self {
         case .alternateEachRep: String(localized: "Alternate")

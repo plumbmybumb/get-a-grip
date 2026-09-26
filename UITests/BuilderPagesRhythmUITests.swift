@@ -3,15 +3,13 @@
 
 import XCTest
 
-/// The paged builder's one-screen Rhythm page (DEBUG prototype, `-builderPagesRhythm
-/// ladder`): each timing row is ONE adjustable VoiceOver element, so the − and + are
-/// found by position inside it, which is also where a thumb finds them.
+/// The builder's one-screen Rhythm page and a set's Custom timing: each timing row is ONE
+/// adjustable VoiceOver element, so the − and + are found by position inside it, which is
+/// also where a thumb finds them.
 @MainActor
 final class BuilderPagesRhythmUITests: XCTestCase {
-    private func launch() -> XCUIApplication {
-        launchApp(arguments: ["-seedTwoRoutines", "-mockDevice", "-previewBuilderNew",
-                              "-builderPages", "-builderPage", "1",
-                              "-builderPagesRhythm", "ladder"])
+    private func launch(_ extra: [String] = ["-builderPage", "1"]) -> XCUIApplication {
+        launchApp(arguments: ["-seedTwoRoutines", "-mockDevice", "-previewBuilderNew"] + extra)
     }
 
     private func row(_ title: String, in app: XCUIApplication) -> XCUIElement {
@@ -75,5 +73,31 @@ final class BuilderPagesRhythmUITests: XCTestCase {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.lifetime = .keepAlways
         add(shot)
+    }
+
+    /// Off, a set follows the Rhythm page; on, it gets its own steppers seeded from the
+    /// routine; its closed row then says so; off again, it follows once more.
+    func testCustomTimingOverridesOneSetAndTurnsBackOff() throws {
+        let app = launch(["-builderSeedSets", "2", "-builderPage", "2", "-builderExpandSet", "1"])
+        defer { app.terminate() }
+        let toggle = app.switches["Custom timing"].firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 8))
+        XCTAssertEqual(toggle.value as? String, "0")
+        XCTAssertFalse(row("Hold", in: app).exists, "Off, the set shows no timing of its own")
+
+        toggle.switches.firstMatch.tap()
+        let hold = row("Hold", in: app)
+        XCTAssertTrue(hold.waitForExistence(timeout: 3))
+        XCTAssertEqual(hold.value as? String, "10 seconds", "Seeded from the routine")
+        tap("plus", of: hold)
+        XCTAssertEqual(hold.value as? String, "12 seconds")
+
+        let header = app.buttons.matching(NSPredicate(
+            format: "label BEGINSWITH %@", "20 mm edge, 4 fingers, half crimp.")).firstMatch
+        XCTAssertTrue(header.label.contains("12 second hold"), header.label)
+
+        toggle.switches.firstMatch.tap()
+        XCTAssertTrue(hold.waitForNonExistence(timeout: 3))
+        XCTAssertFalse(header.label.contains("second hold"), header.label)
     }
 }

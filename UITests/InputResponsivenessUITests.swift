@@ -17,6 +17,10 @@ final class InputResponsivenessUITests: XCTestCase {
         let edit = app.buttons["routine.overview.edit"]
         XCTAssertTrue(edit.waitForExistence(timeout: 5))
         edit.tap()
+        // The builder opens on Rhythm; the sets live on their own page.
+        let setsPage = app.buttons["Sets"].firstMatch
+        XCTAssertTrue(setsPage.waitForExistence(timeout: 5))
+        setsPage.tap()
         let increase = app.buttons["Increase Pulls per side"].firstMatch
         for _ in 0..<7 where !increase.isHittable {
             let row = app.buttons.matching(NSPredicate(

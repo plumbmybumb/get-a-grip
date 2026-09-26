@@ -209,7 +209,7 @@ struct TodayView: View {
                builder == nil, let first = ordered.first {
                 builder = .edit(first.id)
             }
-            // `-previewBuilderNew`: the create door, for the paged-builder prototype.
+            // `-previewBuilderNew`: the create door (a new routine), for headless screenshots.
             if ProcessInfo.processInfo.arguments.contains("-previewBuilderNew"), builder == nil {
                 builder = ordered.isEmpty ? .firstRun : .addAnother
             }

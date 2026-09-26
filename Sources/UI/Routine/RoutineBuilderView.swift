@@ -5,15 +5,16 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-/// THE DOCUMENT — one view, one scrollable document, zero pushes.
+/// THE BUILDER — one view, three pages, zero pushes: RHYTHM → SETS → SCHEDULE.
 ///
-/// The `NavigationStack` inside only owns the title, the live subtitle and the
-/// Cancel/Save toolbar; nothing pushes onto it. Creating a routine and the 30th edit are
-/// the same screen in the same order, with no second surface to keep in sync.
+/// Replaced the single scrolling document for 1.3.0 (a reviewer: "should be really simple
+/// and obvious but the UI for this screen is so busy and confusing"). Creating walks the
+/// pages with Next and Back; editing jumps between them with a switcher. It is still ONE
+/// view for both — the mode changes the chrome, never the pages — so there is no second
+/// surface to keep in sync. RHYTHM still comes first: constants above variables.
 ///
-/// Document order is NAME → RHYTHM → SETS → EVERY DAY → FINE TUNING → finish/danger.
-/// RHYTHM sits ABOVE the set list on purpose — constants above variables — which is what
-/// makes changing every rest interval four taps.
+/// The `NavigationStack` only owns the title, the live subtitle and Cancel/Save; nothing
+/// pushes onto it.
 struct RoutineBuilderView: View {
     let mode: BuilderMode
     var onFinish: (UUID, Bool) -> Void
@@ -58,7 +59,7 @@ struct RoutineBuilderView: View {
             // that the plan is yours.
             #if DEBUG
             // Headless: a routine part-way built, `-builderSeedSets N` of the starter's sets.
-            if let n = BuilderPagesPrototype.debugInt("-builderSeedSets") {
+            if let n = BuilderDebug.int("-builderSeedSets") {
                 var draft = RoutineDraft.starter
                 draft.plan.sets = Array(draft.plan.sets.prefix(max(0, n)))
                 draft.plan.targetLoPercent = 0.20
@@ -116,8 +117,6 @@ private struct BuilderDocument: View {
     @State private var undoTask: Task<Void, Never>?
     @FocusState private var nameFocused: Bool
 
-    /// The paged prototype (`-builderPages`, DEBUG). Off, this is the single document.
-    private let pages = BuilderPagesPrototype.current
     @State private var page: BuilderPage = .rhythm
     /// Which way the last page turn went, so the incoming page slides from the right side.
     @State private var pageForward = true
@@ -128,19 +127,19 @@ private struct BuilderDocument: View {
         self.mode = mode
         self.onClose = onClose
         self.onFinish = onFinish
-        var editable = BuilderDraftPreparation.editable(seed)
-        if BuilderPagesPrototype.current.isOn, BuilderPagesPrototype.current.targetOnRhythm {
-            editable = BuilderDraftPreparation.promotingUniformBand(editable)
-        }
+        // The Rhythm page edits ONE routine-wide band, so a band every set shares is
+        // folded back up to the routine for editing (and demoted again on Save).
+        let editable = BuilderDraftPreparation.promotingUniformBand(
+            BuilderDraftPreparation.editable(seed))
         _draft = State(initialValue: editable)
         _initialDraft = State(initialValue: editable)
         #if DEBUG
         // Headless states: `-builderPage N` (1-based), `-builderExpandSet N` (1-based).
-        if let n = BuilderPagesPrototype.debugInt("-builderPage"),
+        if let n = BuilderDebug.int("-builderPage"),
            let start = BuilderPage(rawValue: n - 1) {
             _page = State(initialValue: start)
         }
-        if let n = BuilderPagesPrototype.debugInt("-builderExpandSet"),
+        if let n = BuilderDebug.int("-builderExpandSet"),
            editable.plan.sets.indices.contains(n - 1) {
             _expanded = State(initialValue: editable.plan.sets[n - 1].id)
         }
@@ -152,23 +151,16 @@ private struct BuilderDocument: View {
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
-                Group {
-                    if pages.isOn { pagedScroll(proxy) } else { documentScroll(proxy) }
-                }
+                pagedScroll(proxy)
                 // ALWAYS via `.background {}`, never a ZStack sibling, which disturbs the
                 // ScrollView's safe-area layout.
                 .background { AppBackground() }
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
-                // The price of every edit, always visible, for zero document space. If this
-                // ever stops rendering under an inline title, flip `subtitleInNavigationBar`
-                // and the line draws in the bottom safe-area inset instead.
-                //
-                // **Also the disabled Save's only NEARBY explanation.** In edit mode
-                // `finishBlock` never draws a primary button, so the toolbar Save is the only
-                // save path, and `subtitleText` swaps to the validation issue the instant it
-                // refuses, right beside it.
-                .navigationSubtitle(Self.subtitleInNavigationBar ? subtitleText : "")
+                // The price of every edit, on every page, for zero page space — and the
+                // disabled Save's explanation, right beside it: `subtitleText` swaps to the
+                // validation issue the instant Save refuses.
+                .navigationSubtitle(subtitleText)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { cancel() }
@@ -196,10 +188,10 @@ private struct BuilderDocument: View {
                 // BARS, not insets: content scrolling under them gets the system's scroll
                 // edge treatment, where a plain inset leaves text colliding with buttons.
                 .safeAreaBar(edge: .top, spacing: 0) {
-                    if showsPageSwitcher { pageSwitcher }
+                    if !mode.isCreating { pageSwitcher }
                 }
                 .safeAreaBar(edge: .bottom) {
-                    if pages.isOn, mode.isCreating { createNavigation }
+                    if mode.isCreating { createNavigation }
                 }
             }
         }
@@ -246,48 +238,6 @@ private struct BuilderDocument: View {
         }
     }
 
-    // MARK: The single document
-
-    private func documentScroll(_ proxy: ScrollViewProxy) -> some View {
-                // ScrollView + eager VStack, not a `List`: `List` + zero min row height +
-                // accordion rows + a bottom `safeAreaInset` in a sheet was the riskiest
-                // combination here. It costs swipe-to-delete and `.onMove`, both with
-                // guaranteed equivalents (expanded-row chevrons, context menu, undo bar).
-                //
-                // NOT `LazyVStack`: adding a set's `scrollTo` must find a row below the
-                // fold. A routine is a dozen rows, so eager layout is free.
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        // The NAME first, in every mode (Nuri, 2026-08-19), so creating and
-                        // editing open on the same first screenful.
-                        nameBlock
-                        rhythmBlock
-                        setsBlock(proxy)
-                            .id("anchor.sets")
-                        totalsBlock
-                        everyDayBlock
-                            .id("anchor.schedule")
-                        FineTuningSection(access: access, defaults: draft.plan.routineLevel)
-                            .equatable()
-                        finishBlock
-                    }
-                    .padding(.horizontal, Metrics.hPadding)
-                    .padding(.top, 12)
-                    .padding(.bottom, 28)
-                    .debugMeasure("document")
-                    // The regular-width column on an iPad: a 440 pt set list centred in a
-                    // full-screen cover is a phone in a frame.
-                    .frame(maxWidth: sizeClass == .regular ? Metrics.maxContentWidthRegular
-                                                           : Metrics.maxContentWidth)
-                    .frame(maxWidth: .infinity)
-                }
-                .scrollDismissesKeyboard(.interactively)
-                .scrollEdgeEffectStyle(.soft, for: .bottom)
-                #if DEBUG
-                .onAppear { debugScroll(proxy) }
-                #endif
-    }
-
     @ViewBuilder
     private var gripPanel: some View {
         if let id = editingGrip, let index = draft.plan.sets.firstIndex(where: { $0.id == id }) {
@@ -301,7 +251,7 @@ private struct BuilderDocument: View {
 
     // MARK: Blocks
 
-    /// THE DOCUMENT OPENS ON THE NAME (Nuri, 2026-08-19).
+    /// THE BUILDER OPENS ON THE NAME (Nuri, 2026-08-19).
     ///
     /// A START FROM row of prefill chips used to sit above this, spending the top of the
     /// first screenful on a question with one honest answer, and answering it wrong
@@ -319,123 +269,9 @@ private struct BuilderDocument: View {
             .accessibilityLabel(String(localized: "Routine name"))
     }
 
-    private var rhythmBlock: some View {
-        RhythmSection(access: access,
-                      defaults: draft.plan.routineLevel,
-                      firstSetReps: draft.plan.executable.sets.first?.repsPerSide ?? 6)
-            .equatable()
-    }
-
-    private func setsBlock(_ proxy: ScrollViewProxy) -> some View {
-        let percentBandsVary = Set(draft.plan.executable.sets.map(\.targetPercentBand)).count > 1
-        // Once per body, not once per row: every row compares itself on this.
-        let defaults = draft.plan.routineLevel
-        let last = draft.plan.sets.count - 1
-        return VStack(alignment: .leading, spacing: 10) {
-            // A plain row, never a `Section` header: plain-style headers PIN, and
-            // content then scrolls illegibly behind them.
-            CapsLabel(String(localized: "SETS"))
-            ForEach(Array(draft.plan.sets.enumerated()), id: \.element.id) { index, set in
-                // VALUES in, one write path, and `.equatable()` so a row re-runs only when
-                // its own numbers change (see `SetRowView`). Actions are keyed on the set's
-                // ID, never `index`: a row whose neighbour was removed keeps its old
-                // closures, and a captured index would point one row off.
-                SetRowView(set: set,
-                           defaults: defaults,
-                           isExpanded: expanded == set.id,
-                           canMoveUp: index > 0,
-                           canMoveDown: index < last,
-                           maxes: templates.maxTable,
-                           percentBandsVary: percentBandsVary,
-                           live: setAccess(for: set),
-                           onTap: { toggle(set.id) },
-                           onEditGrip: { editingGrip = set.id },
-                           onMoveUp: { move(set.id, by: -1) },
-                           onMoveDown: { move(set.id, by: 1) },
-                           onDuplicate: { duplicate(set.id) },
-                           onRemove: { remove(set.id) })
-                    .equatable()
-                    // The context menu lives on the row's HEADER in `SetRowView`; chevrons
-                    // cover reordering, so no drag gesture is load-bearing. The id lets adding a
-                    // set scroll its TOP into view.
-                    .id(set.id)
-            }
-            addSetRow(proxy)
-        }
-    }
-
-    /// Two quiet lines and, when the plan gets silly, one advisory that FLAGS and never
-    /// blocks — an hour of no-hangs is a choice, not an error.
-    private var totalsBlock: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(PlanMath.totalsLine(draft.plan))
-                .font(.system(.footnote, weight: .medium))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .foregroundStyle(Ink.secondary)
-            if let perSide = PlanMath.perSideLine(draft.plan) {
-                Text(perSide)
-                    .font(.system(.footnote))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .foregroundStyle(Ink.tertiary)
-            }
-            if draft.plan.executable.sets.contains(where: { $0.targetBand == nil && PlanMath.targetPercent($0, in: draft.plan) != nil }) {
-                Text("Targets use your saved maxes. Retest when they're out of date.")
-                    .font(.system(.footnote))
-                    .foregroundStyle(Ink.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if PlanMath.missingBenchmarkGripCount(draft.plan, maxes: templates.maxTable) > 0 {
-                Label("Some grips have no max yet, so their sets have no target.", systemImage: "exclamationmark.circle")
-                    .font(.system(.footnote, weight: .medium))
-                    .foregroundStyle(StatusTint.armed)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if PlanMath.totalSeconds(draft.plan) > 3600 {
-                Label("This routine runs over an hour.", systemImage: "clock")
-                    .font(.system(.footnote, weight: .medium))
-                    .foregroundStyle(StatusTint.armed)
-                    .padding(.top, 4)
-            }
-        }
-    }
-
     private var everyDayBlock: some View {
         EveryDaySection(access: access, schedule: draft.schedule)
             .equatable()
-    }
-
-    @ViewBuilder
-    private var finishBlock: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let issue = draft.validationIssue {
-                Label(issue, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(.footnote, weight: .medium))
-                    .foregroundStyle(StatusTint.armed)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if templates.saveError != nil {
-                // The sheet STAYS OPEN on a rollback: dismissing would destroy the routine
-                // with the form. The plain sentence reassures; `localizedDescription` would not.
-                Text("Couldn't save the change. Try again.")
-                    .font(.system(.footnote, weight: .medium))
-                    .foregroundStyle(Accent.alarm)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if let id = mode.editingID {
-                deleteRow(id)
-            } else {
-                // Saves and stops: building a routine and doing one are two decisions, and
-                // Start lives on Today (Nuri, 2026-08-09).
-                PrimaryGlassButton(title: String(localized: "Save routine"),
-                                   systemImage: "checkmark",
-                                   tint: Accent.graphite) {
-                    save(andStart: false)
-                }
-                .disabled(draft.validationIssue != nil)
-            }
-        }
     }
 
     private func deleteRow(_ id: UUID) -> some View {
@@ -451,41 +287,9 @@ private struct BuilderDocument: View {
         }
     }
 
-    /// Duplicates the previous set AND opens it, because editing the copy is the next
-    /// thing you will do.
-    ///
-    /// The RECENT rail above this is gone (Nuri, 2026-08-11: too cluttered); the island
-    /// picker makes a second grip cheap from inside the set itself.
-    private func addSetRow(_ proxy: ScrollViewProxy) -> some View {
-        Button {
-            addSet(proxy)
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "plus")
-                Text("Add a set")
-                Spacer(minLength: 0)
-            }
-            .font(.system(.subheadline, weight: .semibold))
-            .foregroundStyle(Accent.graphite)
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
-                    .strokeBorder(Ink.tertiary.opacity(0.45),
-                                  style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
-            }
-            // MANDATORY: a full-width label with a Spacer is otherwise not hit-tested
-            // outside its glyphs.
-            .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
-        }
-        .buttonStyle(PressFeedbackButtonStyle())
-    }
-
     @ViewBuilder
     private var bottomBar: some View {
         VStack(spacing: 10) {
-            // PROBE 1's fallback lives here; see `subtitleInNavigationBar`.
-            if !Self.subtitleInNavigationBar { totalsBar }
             if let removed = removedSet {
                 UndoBar(message: String(localized: "Set removed")) { undoRemove() }
                     .id(removed.set.id)
@@ -497,24 +301,13 @@ private struct BuilderDocument: View {
                    value: removedSet)
     }
 
-    private var totalsBar: some View {
-        Text(subtitleText)
-            .font(.system(.footnote, weight: .medium))
-            .monospacedDigit()
-            .contentTransition(.numericText())
-            .foregroundStyle(draft.validationIssue != nil ? StatusTint.armed : Ink.secondary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 9)
-            .accessibleGlass(in: .capsule)
-    }
-
     /// The live totals, or the validation reason the moment Save would refuse. Both the
     /// nav-bar subtitle and its bottom-bar fallback quote this line, so a disabled Save
     /// always has its explanation beside it.
     private var subtitleText: String {
         // Paged, creating, on page 1 with nothing built yet: no line rather than a
         // complaint about sets the person has not reached.
-        if pages.isOn, mode.isCreating, page == .rhythm, draft.plan.executable.sets.isEmpty {
+        if mode.isCreating, page == .rhythm, draft.plan.executable.sets.isEmpty {
             return ""
         }
         return draft.validationIssue ?? PlanMath.subtitleLine(draft.plan)
@@ -548,9 +341,8 @@ private struct BuilderDocument: View {
     }
 
     private func addSet(_ proxy: ScrollViewProxy) {
-        // Paged: "Add a set" is a FRESH set that follows the Rhythm page, because
-        // "Duplicate last set" now sits beside it.
-        var new = pages.isOn ? SetPlan() : (draft.plan.sets.last ?? SetPlan())
+        // A FRESH set that follows the Rhythm page; "Duplicate last set" sits beside it.
+        var new = SetPlan()
         new.id = UUID()          // a duplicate must never share row identity with its source
         withAnimation(Motion.state(reduceMotion)) {
             draft.plan.sets.append(new)
@@ -681,14 +473,9 @@ private struct BuilderDocument: View {
 
     private var title: String {
         if mode.editingID != nil { return String(localized: "Edit routine") }
-        // Paged with dots: the page names itself, the dots say how far along.
-        if pages.isOn, pages.indicator == .dots { return page.title }
-        return String(localized: "Your routine")
+        // Creating: the page names itself, and the dots say how far along.
+        return page.title
     }
-
-    /// PROBE 1. `true` ships the live total as the navigation subtitle; `false` moves the
-    /// identical line into the bottom safe-area inset above the undo-bar slot.
-    private static let subtitleInNavigationBar = true
 }
 
 // MARK: - Local value types
@@ -699,14 +486,9 @@ private struct RemovedSet: Equatable {
     var set: SetPlan
 }
 
-// MARK: - The paged prototype (`-builderPages`)
+// MARK: - The pages
 
 extension BuilderDocument {
-    /// Edit mode always; creating only in the "steps" indicator variant.
-    fileprivate var showsPageSwitcher: Bool {
-        pages.isOn && (!mode.isCreating || pages.indicator == .steps)
-    }
-
     fileprivate func pagedScroll(_ proxy: ScrollViewProxy) -> some View {
         ZStack {
             ScrollView {
@@ -750,8 +532,8 @@ extension BuilderDocument {
         }
     }
 
-    /// The ladder Rhythm page, which is laid out to fit one screen.
-    private var onePageRhythm: Bool { page == .rhythm && pages.rhythm == .ladder }
+    /// The Rhythm page is laid out to fit one screen while creating (iPhone SE included).
+    private var onePageRhythm: Bool { page == .rhythm }
 
     private var pageTransition: AnyTransition {
         if reduceMotion { return .opacity }
@@ -793,7 +575,7 @@ extension BuilderDocument {
     /// Back · Next while creating; Save routine in Next's place on the last page.
     fileprivate var createNavigation: some View {
         VStack(spacing: 12) {
-            if pages.indicator == .dots { BuilderPageDots(current: page) }
+            BuilderPageDots(current: page)
             // Side by side while Back keeps its one line; stacked, forward action first,
             // at the sizes where it would wrap to "Bac / k".
             ViewThatFits(in: .horizontal) {
@@ -842,19 +624,15 @@ extension BuilderDocument {
         nameBlock
         RhythmSection(access: access,
                       defaults: draft.plan.routineLevel,
-                      firstSetReps: draft.plan.executable.sets.first?.repsPerSide ?? 6,
-                      includesPullTiming: true,
-                      pagedStyle: pages.rhythm,
-                      showsOrderStrip: pages.showsOrderStrip)
+                      firstSetReps: draft.plan.executable.sets.first?.repsPerSide ?? 6)
             .equatable()
-        if pages.targetOnRhythm { routineLoadBlock }
+        routineLoadBlock
     }
 
     private var routineLoadBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // The one-screen page drops the caps label: the row names itself.
-            if pages.rhythm != .ladder { CapsLabel(String(localized: "LOAD")) }
-            MaterialCard(verticalPadding: pages.rhythm == .ladder ? 4 : 16, surface: .flat) {
+            // No caps label: the row names itself, and page 1 has to fit one screen.
+            MaterialCard(verticalPadding: 4, surface: .flat) {
                 RoutineTargetRow(
                     band: draft.plan.targetPercentBand,
                     setsVary: draft.plan.sets.contains { $0.hasTarget || $0.hasPercentTarget },
@@ -891,30 +669,20 @@ extension BuilderDocument {
         let percentBandsVary = Set(draft.plan.executable.sets.map(\.targetPercentBand)).count > 1
         let defaults = draft.plan.routineLevel
         let last = draft.plan.sets.count - 1
-        if pages.rowFace == .table, !draft.plan.sets.isEmpty {
-            VStack(spacing: 0) {
-                ForEach(Array(draft.plan.sets.enumerated()), id: \.element.id) { index, set in
-                    if index > 0 {
-                        Divider().overlay(Ink.tertiary.opacity(0.22)).padding(.leading, 16)
-                    }
-                    pagedRow(set, index: index, last: last, defaults: defaults,
-                             percentBandsVary: percentBandsVary)
-                }
-            }
-            .cardSurface(.flat, in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
-        } else {
-            VStack(spacing: 8) {
-                ForEach(Array(draft.plan.sets.enumerated()), id: \.element.id) { index, set in
-                    pagedRow(set, index: index, last: last, defaults: defaults,
-                             percentBandsVary: percentBandsVary)
-                }
+        // Values in, one write path, `.equatable()` so a row re-runs only when its own
+        // numbers change. Actions are keyed on the set's ID, never `index`: a row whose
+        // neighbour was removed keeps its old closures.
+        VStack(spacing: 8) {
+            ForEach(Array(draft.plan.sets.enumerated()), id: \.element.id) { index, set in
+                setRow(set, index: index, last: last, defaults: defaults,
+                       percentBandsVary: percentBandsVary)
             }
         }
         setButtons(proxy)
         setAdvisories
     }
 
-    private func pagedRow(_ set: SetPlan, index: Int, last: Int, defaults: SessionPlan,
+    private func setRow(_ set: SetPlan, index: Int, last: Int, defaults: SessionPlan,
                           percentBandsVary: Bool) -> some View {
         SetRowView(set: set,
                    defaults: defaults,
@@ -929,8 +697,7 @@ extension BuilderDocument {
                    onMoveUp: { move(set.id, by: -1) },
                    onMoveDown: { move(set.id, by: 1) },
                    onDuplicate: { duplicate(set.id) },
-                   onRemove: { remove(set.id) },
-                   face: pages.rowFace)
+                   onRemove: { remove(set.id) })
             .equatable()
             .id(set.id)
     }
@@ -992,17 +759,10 @@ extension BuilderDocument {
         }
     }
 
-    /// The document's advisories that are about the sets — never the totals, which the
-    /// subtitle already states.
+    /// Advisories about the sets — never the totals, which the subtitle already states.
+    /// Missing maxes are flagged on the Rhythm page, under the band that needs them.
     @ViewBuilder
     private var setAdvisories: some View {
-        if !pages.targetOnRhythm,
-           PlanMath.missingBenchmarkGripCount(draft.plan, maxes: templates.maxTable) > 0 {
-            Label("Some grips have no max yet, so their sets have no target.", systemImage: "exclamationmark.circle")
-                .font(.system(.footnote, weight: .medium))
-                .foregroundStyle(StatusTint.armed)
-                .fixedSize(horizontal: false, vertical: true)
-        }
         if PlanMath.totalSeconds(draft.plan) > 3600 {
             Label("This routine runs over an hour.", systemImage: "clock")
                 .font(.system(.footnote, weight: .medium))
@@ -1032,15 +792,12 @@ extension BuilderDocument {
     // MARK: Headless hooks
 
     #if DEBUG
-    /// `-builderScrollTo sets|schedule|expanded` — the single document's equivalents of the
-    /// three pages, for side-by-side screenshots.
+    /// `-builderScrollTo expanded|end` — for screenshots of what is below the fold.
     fileprivate func debugScroll(_ proxy: ScrollViewProxy) {
-        guard let target = BuilderPagesPrototype.debugString("-builderScrollTo") else { return }
+        guard let target = BuilderDebug.string("-builderScrollTo") else { return }
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
             switch target {
-            case "sets": proxy.scrollTo("anchor.sets", anchor: .top)
-            case "schedule": proxy.scrollTo("anchor.schedule", anchor: .top)
             case "expanded": if let id = expanded { proxy.scrollTo(id, anchor: .top) }
             case "end": proxy.scrollTo("anchor.end", anchor: .bottom)
             default: break

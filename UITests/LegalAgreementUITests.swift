@@ -128,6 +128,10 @@ final class LegalAgreementUITests: XCTestCase {
         let edit = app.buttons["routine.overview.edit"]
         XCTAssertTrue(edit.waitForExistence(timeout: 5))
         edit.tap()
+        // The builder opens on Rhythm; a SET's own target lives on the Sets page.
+        let setsPage = app.buttons["Sets"].firstMatch
+        XCTAssertTrue(setsPage.waitForExistence(timeout: 5))
+        setsPage.tap()
         let target = app.buttons["Target load"].firstMatch
         for _ in 0..<7 where !target.isHittable {
             let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "20 mm edge, 4 fingers, half crimp.")).firstMatch

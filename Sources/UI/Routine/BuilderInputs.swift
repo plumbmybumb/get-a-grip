@@ -44,9 +44,10 @@ extension SessionPlan {
                   targetLoPercent: targetLoPercent, targetHiPercent: targetHiPercent)
     }
 
-    /// What the REST & HANDS card draws.
+    /// What the Rhythm page draws.
     var rhythmKey: RhythmKey {
-        RhythmKey(setBreakSeconds: setBreakSeconds,
+        RhythmKey(holdSeconds: holdSeconds, restSeconds: restSeconds,
+                  setBreakSeconds: setBreakSeconds,
                   waitForReleaseBeforeRest: waitForReleaseBeforeRest,
                   handMode: handMode, startingHand: startingHand)
     }
@@ -69,6 +70,8 @@ struct SetRowKey: Equatable {
 }
 
 struct RhythmKey: Equatable {
+    let holdSeconds: Int
+    let restSeconds: Int
     let setBreakSeconds: Int
     let waitForReleaseBeforeRest: Bool
     let handMode: HandMode

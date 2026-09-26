@@ -3,18 +3,10 @@
 
 import SwiftUI
 
-// MARK: - The paged builder (1.3.0 design prototype)
+// MARK: - The builder's pages
 //
-// The same `BuilderDocument`, laid out as three pages — Rhythm · Sets · Schedule —
-// instead of one scrolling document. ONE view for creating and editing, as ever: creating
-// walks Next/Back, editing jumps with a switcher, and everything else is shared.
-//
-// DEBUG only, behind `-builderPages`, so the single document stays the default. The
-// variants are launch arguments too, so the same build can be screenshotted both ways:
-//
-//   -builderPagesIndicator dots|steps   dots under the buttons (A) or the switcher (B)
-//   -builderPagesTarget rhythm|sets     routine-wide % on page 1 (A) or per set only (B)
-//   -builderPagesRows compact|table     a card per set (A) or one card of rows (B)
+// See `RoutineBuilderView`: one view for creating and editing, three pages. Creating walks
+// them with Next and Back under page dots; editing jumps with a segmented switcher.
 
 /// The three pages, in the order creating walks them.
 enum BuilderPage: Int, CaseIterable, Identifiable {
@@ -34,53 +26,19 @@ enum BuilderPage: Int, CaseIterable, Identifiable {
     var previous: BuilderPage? { BuilderPage(rawValue: rawValue - 1) }
 }
 
-/// Which layout the builder draws, read once from the launch arguments.
-struct BuilderPagesPrototype {
-    enum Indicator { case dots, steps }
-
-    let isOn: Bool
-    let indicator: Indicator
-    let targetOnRhythm: Bool
-    let rowFace: SetRowFace
-    let rhythm: PagedRhythmStyle
-    let showsOrderStrip: Bool
-
-    static let current: BuilderPagesPrototype = {
-        #if DEBUG
-        let args = ProcessInfo.processInfo.arguments
-        func value(_ flag: String) -> String? {
-            guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
-            return args[i + 1]
-        }
-        return BuilderPagesPrototype(
-            isOn: args.contains("-builderPages"),
-            indicator: value("-builderPagesIndicator") == "steps" ? .steps : .dots,
-            targetOnRhythm: value("-builderPagesTarget") != "sets",
-            rowFace: value("-builderPagesRows") == "table" ? .table : .compact,
-            rhythm: value("-builderPagesRhythm") == "ladder" ? .ladder : .dials,
-            showsOrderStrip: value("-builderPagesStrip") != "off")
-        #else
-        return BuilderPagesPrototype(isOn: false, indicator: .dots,
-                                     targetOnRhythm: true, rowFace: .compact, rhythm: .dials,
-                                     showsOrderStrip: true)
-        #endif
-    }()
-
-    #if DEBUG
-    /// `-flag N`, for the headless states (`simctl` cannot tap).
-    static func debugInt(_ flag: String) -> Int? {
-        let args = ProcessInfo.processInfo.arguments
-        guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
-        return Int(args[i + 1])
-    }
-
-    static func debugString(_ flag: String) -> String? {
+#if DEBUG
+/// Headless states for `simctl` screenshots, which cannot tap: `-builderPage N`,
+/// `-builderExpandSet N`, `-builderSeedSets N`, `-builderScrollTo expanded|end`.
+enum BuilderDebug {
+    static func string(_ flag: String) -> String? {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
         return args[i + 1]
     }
-    #endif
+
+    static func int(_ flag: String) -> Int? { string(flag).flatMap(Int.init) }
 }
+#endif
 
 // MARK: - Page dots
 
