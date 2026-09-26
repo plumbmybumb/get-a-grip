@@ -90,10 +90,6 @@ struct MaxEditSheet: View {
                 handValue(.left, kilograms: $draft.leftKg)
                 Divider()
                 handValue(.right, kilograms: $draft.rightKg)
-                Text("Percentage targets follow the values you save. Earlier records stay in your history.")
-                    .font(.system(.footnote))
-                    .foregroundStyle(Ink.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
                 if draft.hasInvalidChanges {
                     Text("Enter a max above zero. To remove a record, open Earlier records.")
                         .font(.system(.footnote))

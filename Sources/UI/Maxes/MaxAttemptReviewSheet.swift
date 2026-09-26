@@ -145,13 +145,6 @@ struct MaxAttemptReviewSheet: View {
             }
             .disabled(draft.results.isEmpty)
             .accessibilityIdentifier("max.measure.adjust")
-            Text(draft.results.contains { $0.source == .manual }
-                 ? String(localized: "Adjusted values are saved as manual entries. Your recorded trace stays unchanged.")
-                 : String(localized: "Saved maxes update percentage targets. Weight targets stay as entered."))
-                .font(.caption)
-                .foregroundStyle(Ink.tertiary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, Metrics.hPadding)
         .padding(.top, 10)

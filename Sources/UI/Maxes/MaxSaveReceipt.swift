@@ -110,10 +110,6 @@ struct MaxSaveReceiptView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("max.receipt.percent.\(item.id)")
                 }
-                Text("Percent targets always follow your newest max — nothing to do.")
-                    .font(.footnote)
-                    .foregroundStyle(Ink.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -142,10 +138,6 @@ struct MaxSaveReceiptView: View {
                         .foregroundStyle(Ink.secondary)
                         .accessibilityIdentifier("max.receipt.scaled.\(offer.id)")
                 } else {
-                    Text("These were typed by hand, so they never move on their own. Scale them with the new max, or leave them.")
-                        .font(.footnote)
-                        .foregroundStyle(Ink.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
                     PrimaryGlassButton(title: String(localized: "Scale with the new max"), tint: Accent.graphite) {
                         if templates.applyMaxRescale(offer) {
                             scaled.insert(offer.id)

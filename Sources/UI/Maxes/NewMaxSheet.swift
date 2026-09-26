@@ -63,11 +63,6 @@ struct NewMaxSheet: View {
                         SecondaryGlassButton(title: String(localized: "Enter by hand"), systemImage: "pencil") {
                             editing = true
                         }
-                        Text("Pull as many times as you like with each hand, or enter the values you already know.")
-                            .font(.system(.footnote))
-                            .foregroundStyle(Ink.secondary)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .padding(.horizontal, Metrics.hPadding)
@@ -153,10 +148,6 @@ struct NewMaxSheet: View {
             .scrollIndicators(.hidden)
             .scrollBounceBehavior(.basedOnSize)
             .accessibilityIdentifier("newMax.recentGrips")
-            Text("Grips from your routines. Tap one, then change anything you like.")
-                .font(.system(.footnote))
-                .foregroundStyle(Ink.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .sensoryFeedback(.selection, trigger: gripSelectionTick)
     }

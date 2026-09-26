@@ -47,8 +47,6 @@ struct MaxesView: View {
                 ForEach(rowEntries) { entry in
                     row(for: entry)
                 }
-
-                footnote.houseListRow(top: 14, bottom: 24)
             }
         }
         .listStyle(.plain)
@@ -224,22 +222,9 @@ struct MaxesView: View {
                     .foregroundStyle(Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need.")
-                    .font(.system(.footnote))
-                    .foregroundStyle(Ink.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    /// Provenance, stated plainly. The rows mark "measured" individually, so this only says
-    /// the distinction exists and what the numbers are for.
-    private var footnote: some View {
-        Text("A max is either measured on the gauge or set by you — the measured ones say so. The percentages elsewhere in the app are worked out from these.")
-            .font(.system(.footnote))
-            .foregroundStyle(Ink.tertiary)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Derived
@@ -472,10 +457,6 @@ struct MaxEntrySheet: View {
                                     .foregroundStyle(Ink.secondary)
                             }
                         }
-                        Text("Percent targets always follow your newest max — nothing to do.")
-                            .font(.system(.footnote))
-                            .foregroundStyle(Ink.tertiary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -496,10 +477,6 @@ struct MaxEntrySheet: View {
                                 }
                             }
                         }
-                        Text("These were typed by hand, so they never move on their own. Scale them with the new max, or leave them.")
-                            .font(.system(.footnote))
-                            .foregroundStyle(Ink.tertiary)
-                            .fixedSize(horizontal: false, vertical: true)
 
                         PrimaryGlassButton(title: String(localized: "Scale with the new max"),
                                            tint: Accent.graphite) {

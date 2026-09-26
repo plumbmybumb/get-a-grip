@@ -401,16 +401,6 @@
         }
       }
     },
-    "Pull as many times as you like with each hand, or enter the values you already know." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tire autant de fois que tu veux avec chaque main, ou saisis les valeurs que tu connais déjà."
-          }
-        }
-      }
-    },
     "Pull as many times as you like. Each hand keeps its hardest pull." : {
       "localizations" : {
         "fr" : {
@@ -2145,16 +2135,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un CSV compact pour votre assistant IA ou tableur. Le résumé regroupe les tractions par série et par main. Choisissez Chaque traction pour les mesures et les temps individuels."
-          }
-        }
-      }
-    },
-    "A max is either measured on the gauge or set by you — the measured ones say so. The percentages elsewhere in the app are worked out from these." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un max est soit mesuré au capteur, soit saisi par toi — les mesurés le disent. Les pourcentages ailleurs dans l'app en découlent."
           }
         }
       }
@@ -4992,16 +4972,6 @@
         }
       }
     },
-    "Grips from your routines. Tap one, then change anything you like." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les prises de tes routines. Touche-en une, puis change ce que tu veux."
-          }
-        }
-      }
-    },
     "grips have" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6215,17 +6185,6 @@
         }
       }
     },
-    "Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mesurez un pic avec votre capteur ou saisissez une mesure précédente. Vous pouvez le mettre à jour à tout moment."
-          }
-        }
-      }
-    },
     "Measure again" : {
       "localizations" : {
         "fr" : {
@@ -6317,16 +6276,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mesurer la main droite"
-          }
-        }
-      }
-    },
-    "Measure the most a grip can hold and it lands here — every later test draws the curve of you getting stronger." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mesure le maximum qu'une prise peut tenir et ça atterrit ici — chaque test suivant trace la courbe de ta progression."
           }
         }
       }
@@ -7634,32 +7583,6 @@
         }
       }
     },
-    "Percent targets always follow your newest max — nothing to do." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les cibles en pourcentage suivent toujours ton max le plus récent — rien à faire."
-          }
-        }
-      }
-    },
-    "Percentage targets follow the values you save. Earlier records stay in your history." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Percentage targets follow the values you save. Earlier records stay in your history."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les cibles en pourcentage suivent les valeurs enregistrées. Les anciens max restent dans l’historique."
-          }
-        }
-      }
-    },
     "Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8634,22 +8557,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ENREGISTRÉ"
-          }
-        }
-      }
-    },
-    "Saved maxes update percentage targets. Weight targets stay as entered." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saved maxes update percentage targets. Weight targets stay as entered."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les max enregistrés mettent à jour les cibles en pourcentage. Les cibles de poids restent inchangées."
           }
         }
       }
@@ -10076,16 +9983,6 @@
         }
       }
     },
-    "These were typed by hand, so they never move on their own. Scale them with the new max, or leave them." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elles ont été saisies à la main, elles ne bougent donc jamais toutes seules. Recalcule-les avec le nouveau max, ou laisse-les."
-          }
-        }
-      }
-    },
     "they show" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11019,16 +10916,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tes séances apparaîtront ici."
-          }
-        }
-      }
-    },
-    "Your working max is the newest test, best is your record. Percentage targets follow the newest number — up or down." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ton max de travail est le test le plus récent, le record est ton meilleur. Les cibles en pourcentage suivent le chiffre le plus récent — à la hausse comme à la baisse."
           }
         }
       }

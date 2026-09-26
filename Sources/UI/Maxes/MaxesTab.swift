@@ -57,7 +57,6 @@ struct MaxesTab: View {
                 } else {
                     cards(gripGroups, untestedInvitations)
                 }
-                footnote
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -135,8 +134,8 @@ struct MaxesTab: View {
     }
 
     /// The staleness line the soft nudge is the icon-sized version of.
-    private var subtitle: String {
-        guard let last = templates.lastMeasuredMaxAt else { return String(localized: "Your ceiling and endurance, per grip") }
+    private var subtitle: String? {
+        guard let last = templates.lastMeasuredMaxAt else { return nil }
         return String(localized: "Tested \(last.formatted(.relative(presentation: .named)))")
     }
 
@@ -310,21 +309,8 @@ struct MaxesTab: View {
                     .font(.system(.largeTitle, weight: .light))
                     .foregroundStyle(Ink.tertiary.opacity(0.55))
                     .accessibilityHidden(true)
-                Text("Measure the most a grip can hold and it lands here — every later test draws the curve of you getting stronger.")
-                    .font(.system(.subheadline))
-                    .foregroundStyle(Ink.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-
-    /// What this screen's numbers are and are not. Percent targets follow the NEWEST number,
-    /// including downward — worth one honest line where a bad testing day shows.
-    private var footnote: some View {
-        Text("Your working max is the newest test, best is your record. Percentage targets follow the newest number — up or down.")
-            .font(.system(.footnote))
-            .foregroundStyle(Ink.tertiary)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Pieces
