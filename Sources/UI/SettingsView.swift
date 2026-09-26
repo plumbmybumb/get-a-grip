@@ -38,12 +38,6 @@ struct SettingsView: View {
     @Environment(SettingsStore.self) private var settings
     @Environment(\.weightUnit) private var weightUnit
 
-    /// Confirmation for the tap that just happened — not persisted, so reopening Settings
-    /// offers the reset again.
-    @State private var guideReset = false
-    /// Back to Today after a reset, or it happens two tabs away and reads as dead.
-    var onShowToday: () -> Void = {}
-
     var body: some View {
         ScreenScaffold(title: String(localized: "Settings")) {
             // WHICH gauge first: everything below describes whatever it selects.
@@ -345,30 +339,6 @@ struct SettingsView: View {
                             .frame(maxHeight: 240)
                         }
                     }
-                }
-
-                SettingsDisclosure("Builder hints") {
-                    // The step-by-step hints INSIDE the routine builder.
-                    Button {
-                        settings.builderGuideDone = false
-                        guideReset = true
-                        onShowToday()
-                    } label: {
-                        Label(guideReset ? "Hints reset — open a routine to see them"
-                                         : "Show the builder's hints again",
-                              systemImage: guideReset ? "checkmark" : "arrow.counterclockwise")
-                            .font(.system(.footnote, weight: .semibold))
-                            .foregroundStyle(guideReset ? Ink.secondary : Accent.graphite)
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                            // Holds a Label and draws full-width, so the shape must be declared.
-                            .contentShape(Rectangle())
-                    }
-                    // `scales: false`, like every bare row on a shared `MaterialCard`: scaling
-                    // shrinks the content while the card's backdrop stays put.
-                    .buttonStyle(PressFeedbackButtonStyle(scales: false))
-                    .disabled(guideReset)
-                    .accessibilityLabel(guideReset ? "Builder hints reset"
-                                                   : "Show the builder's hints again")
                 }
             }
             .fixedSize(horizontal: false, vertical: true)

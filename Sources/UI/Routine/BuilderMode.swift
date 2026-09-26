@@ -5,13 +5,11 @@ import Foundation
 
 /// Which door the routine document was opened through.
 ///
-/// ONE builder view, because the wizard IS the editor. The mode changes exactly three
-/// things: which draft seeds the document, whether the guide starts at step 1 or
-/// retired, and whether the last block is the finish button or the delete row.
-/// Everything between is the same screen, so "this same screen is the editor" is a fact
-/// about the code, not a promise in a coach mark.
+/// ONE builder view for creating and editing. The mode changes exactly two things:
+/// which draft seeds the document, and whether the last block is the finish button or
+/// the delete row. Everything between is the same screen.
 enum BuilderMode: Identifiable, Hashable {
-    /// No routine exists yet: blank document, guide on.
+    /// No routine exists yet: blank document.
     case firstRun
     /// A second (rest day, max day) routine — blank too, presuming nothing from the first.
     case addAnother
@@ -49,10 +47,4 @@ enum BuilderMode: Identifiable, Hashable {
         if case .edit(let uuid) = self { return uuid }
         return nil
     }
-}
-
-/// Scroll targets for the guide's `Next`, each on an ALWAYS-BUILT block wrapper, never a
-/// lazily-created row: a missed `scrollTo` must degrade to "no auto-scroll".
-enum BuilderAnchor: Hashable {
-    case name, rhythm, sets, totals, everyDay, finish
 }

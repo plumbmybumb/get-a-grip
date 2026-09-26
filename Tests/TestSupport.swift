@@ -110,7 +110,6 @@ extension XCTestCase {
     @MainActor
     @discardableResult
     func resetSettings(_ settings: SettingsStore) -> SettingsStore {
-        settings.builderGuideDone = false
         settings.didAskNotificationPermission = true
         settings.lastStartedRoutineID = nil
         settings.lastStartedDayRaw = 0

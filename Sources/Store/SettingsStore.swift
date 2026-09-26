@@ -19,12 +19,6 @@ final class SettingsStore {
     /// back to an unshared container — so this optional only guards a malformed name.
     private let store: UserDefaults
 
-    /// The builder's five inline coach cards. Retired on the first save and replayable
-    /// from Settings › "Show the setup guide again", so it is a preference, not a flag.
-    var builderGuideDone: Bool {
-        didSet { store.set(builderGuideDone, forKey: "builderGuideDone") }
-    }
-
     /// One-shot: the contextual permission ask happens on the first Save with reminders
     /// on, once. Never at launch, and never gating anything.
     var didAskNotificationPermission: Bool {
@@ -108,9 +102,7 @@ final class SettingsStore {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-previewWeightLb") { weightUnit = .lb }
         #endif
-        // `bool(forKey:)` is false for an absent key, which is the correct reading for
-        // both one-shots: a fresh install has not seen the guide and has not asked.
-        builderGuideDone = s.bool(forKey: "builderGuideDone")
+        // `bool(forKey:)` is false for an absent key: a fresh install has not asked.
         didAskNotificationPermission = s.bool(forKey: "didAskNotificationPermission")
         lastStartedRoutineID = s.string(forKey: "lastStartedRoutineID").flatMap(UUID.init(uuidString:))
         lastStartedDayRaw = s.object(forKey: "lastStartedDayRaw") as? Int ?? 0

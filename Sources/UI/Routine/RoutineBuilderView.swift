@@ -8,9 +8,8 @@ import UIKit
 /// THE DOCUMENT — one view, one scrollable document, zero pushes.
 ///
 /// The `NavigationStack` inside only owns the title, the live subtitle and the
-/// Cancel/Save toolbar; nothing pushes onto it. That makes "the wizard IS the editor" a
-/// literal identity: the first-run walkthrough and the 30th edit are the same screen in
-/// the same order, with no second surface to keep in sync.
+/// Cancel/Save toolbar; nothing pushes onto it. Creating a routine and the 30th edit are
+/// the same screen in the same order, with no second surface to keep in sync.
 ///
 /// Document order is NAME → RHYTHM → SETS → EVERY DAY → FINE TUNING → finish/danger.
 /// RHYTHM sits ABOVE the set list on purpose — constants above variables — which is what
@@ -45,7 +44,7 @@ struct RoutineBuilderView: View {
         // retired 2026-08-10 (Nuri): it modelled "many grips, one intensity" and
         // fought every protocol shaped like "one grip, many intensities". The
         // document states the skeleton first and the sets inherit it, which is how
-        // protocols are written. First-run guidance is the coach cards.
+        // protocols are written.
         BuilderDocument(mode: mode, seed: seed, onClose: onClose, onFinish: onFinish)
     }
 
@@ -80,7 +79,6 @@ private struct BuilderDocument: View {
     var onClose: () -> Void
 
     @Environment(TemplateStore.self) private var templates
-    @Environment(SettingsStore.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Changes only when the window does, so unlike `dismiss` it costs the document nothing.
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -96,8 +94,6 @@ private struct BuilderDocument: View {
     /// control cluster on screen at a time.
     @State private var expanded: UUID?
 
-    /// 1…5 are the inline cards, 6 is the closing card, `retiredCoachStep` is off.
-    @State private var coachStep: Int = BuilderDocument.retiredCoachStep
     /// Held with its ORIGINAL id and original index so Undo restores the same row
     /// rather than an equal-looking new one.
     @State private var removedSet: RemovedSet?
@@ -121,13 +117,6 @@ private struct BuilderDocument: View {
         _initialDraft = State(initialValue: editable)
     }
 
-    /// Where the guide sits when it is off. One past the closing card, so `max`-style
-    /// advancement can never revive it.
-    static let retiredCoachStep = 7
-    /// The closing card's step. The five numbered cards are 1…5.
-    static let closingCoachStep = 6
-    static let coachTotal = 5
-
     // MARK: Body
 
     var body: some View {
@@ -138,17 +127,17 @@ private struct BuilderDocument: View {
                 // combination here. It costs swipe-to-delete and `.onMove`, both with
                 // guaranteed equivalents (expanded-row chevrons, context menu, undo bar).
                 //
-                // NOT `LazyVStack`: the guide's `scrollTo` must find anchors below the
+                // NOT `LazyVStack`: adding a set's `scrollTo` must find a row below the
                 // fold. A routine is a dozen rows, so eager layout is free.
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         // The NAME first, in every mode (Nuri, 2026-08-19), so creating and
                         // editing open on the same first screenful.
-                        nameBlock(proxy)
-                        rhythmBlock(proxy)
+                        nameBlock
+                        rhythmBlock
                         setsBlock(proxy)
-                        totalsBlock(proxy)
-                        everyDayBlock(proxy)
+                        totalsBlock
+                        everyDayBlock
                         FineTuningSection(access: access, defaults: draft.plan.routineLevel)
                             .equatable()
                         finishBlock
@@ -225,7 +214,6 @@ private struct BuilderDocument: View {
             Button("Discard", role: .destructive) { discard() }
             Button("Keep editing", role: .cancel) {}
         }
-        .sensoryFeedback(.selection, trigger: coachStep)
         .sensoryFeedback(.success, trigger: undoTick)
         .task { start() }
         // The rescue copy: create modes ONLY, and cleared on BOTH Save and Cancel.
@@ -241,13 +229,6 @@ private struct BuilderDocument: View {
                 stashTask = nil
             }
         }
-        // The guide advances on a real VALUE EDIT only — not on scroll or expanding
-        // a row — so it never runs away from someone still reading.
-        .onChange(of: draft.plan.name) { noteEdit(reaching: 2) }
-        .onChange(of: rhythmSignature) { noteEdit(reaching: 3) }
-        .onChange(of: gripSignature) { noteEdit(reaching: 4) }
-        .onChange(of: repsSignature) { noteEdit(reaching: 5) }
-        .onChange(of: everyDaySignature) { noteEdit(reaching: 6) }
         .onDisappear {
             stashTask?.cancel()
             stashTask = nil
@@ -274,33 +255,23 @@ private struct BuilderDocument: View {
     /// first screenful on a question with one honest answer, and answering it wrong
     /// replaced the document under you. The seeds live on in `SessionPlan`; only the
     /// OFFER went away.
-    private func nameBlock(_ proxy: ScrollViewProxy) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            coachCard(1, proxy)
-            TextField("Daily no-hangs", text: $draft.plan.name)
-                .font(.system(.title3, weight: .semibold))
-                .foregroundStyle(Ink.primary)
-                .focused($nameFocused)
-                .submitLabel(.done)
-                .textInputAutocapitalization(.sentences)
-                .onSubmit { nameFocused = false }
-                .glassFieldChrome()
-                .accessibilityLabel(String(localized: "Routine name"))
-        }
-        .id(BuilderAnchor.name)
+    private var nameBlock: some View {
+        TextField("Daily no-hangs", text: $draft.plan.name)
+            .font(.system(.title3, weight: .semibold))
+            .foregroundStyle(Ink.primary)
+            .focused($nameFocused)
+            .submitLabel(.done)
+            .textInputAutocapitalization(.sentences)
+            .onSubmit { nameFocused = false }
+            .glassFieldChrome()
+            .accessibilityLabel(String(localized: "Routine name"))
     }
 
-    /// RHYTHM and LOAD share one anchor and one coach step: both are the defaults every
-    /// set inherits, and splitting them would add a sixth step to a setup meant to be short.
-    private func rhythmBlock(_ proxy: ScrollViewProxy) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            coachCard(2, proxy)
-            RhythmSection(access: access,
-                          defaults: draft.plan.routineLevel,
-                          firstSetReps: draft.plan.executable.sets.first?.repsPerSide ?? 6)
-                .equatable()
-        }
-        .id(BuilderAnchor.rhythm)
+    private var rhythmBlock: some View {
+        RhythmSection(access: access,
+                      defaults: draft.plan.routineLevel,
+                      firstSetReps: draft.plan.executable.sets.first?.repsPerSide ?? 6)
+            .equatable()
     }
 
     private func setsBlock(_ proxy: ScrollViewProxy) -> some View {
@@ -309,7 +280,6 @@ private struct BuilderDocument: View {
         let defaults = draft.plan.routineLevel
         let last = draft.plan.sets.count - 1
         return VStack(alignment: .leading, spacing: 10) {
-            coachCard(3, proxy)
             // A plain row, never a `Section` header: plain-style headers PIN, and
             // content then scrolls illegibly behind them.
             CapsLabel(String(localized: "SETS"))
@@ -340,14 +310,12 @@ private struct BuilderDocument: View {
             }
             addSetRow(proxy)
         }
-        .id(BuilderAnchor.sets)
     }
 
     /// Two quiet lines and, when the plan gets silly, one advisory that FLAGS and never
     /// blocks — an hour of no-hangs is a choice, not an error.
-    private func totalsBlock(_ proxy: ScrollViewProxy) -> some View {
+    private var totalsBlock: some View {
         VStack(alignment: .leading, spacing: 6) {
-            coachCard(4, proxy)
             Text(PlanMath.totalsLine(draft.plan))
                 .font(.system(.footnote, weight: .medium))
                 .monospacedDigit()
@@ -379,16 +347,11 @@ private struct BuilderDocument: View {
                     .padding(.top, 4)
             }
         }
-        .id(BuilderAnchor.totals)
     }
 
-    private func everyDayBlock(_ proxy: ScrollViewProxy) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            coachCard(5, proxy)
-            EveryDaySection(access: access, schedule: draft.schedule)
-                .equatable()
-        }
-        .id(BuilderAnchor.everyDay)
+    private var everyDayBlock: some View {
+        EveryDaySection(access: access, schedule: draft.schedule)
+            .equatable()
     }
 
     @ViewBuilder
@@ -411,7 +374,6 @@ private struct BuilderDocument: View {
             if let id = mode.editingID {
                 deleteRow(id)
             } else {
-                if coachStep == Self.closingCoachStep { CoachClosingCard() }
                 // Saves and stops: building a routine and doing one are two decisions, and
                 // Start lives on Today (Nuri, 2026-08-09).
                 PrimaryGlassButton(title: String(localized: "Save routine"),
@@ -422,7 +384,6 @@ private struct BuilderDocument: View {
                 .disabled(draft.validationIssue != nil)
             }
         }
-        .id(BuilderAnchor.finish)
     }
 
     private func deleteRow(_ id: UUID) -> some View {
@@ -502,74 +463,14 @@ private struct BuilderDocument: View {
         draft.validationIssue ?? PlanMath.subtitleLine(draft.plan)
     }
 
-    // MARK: The guide
-
-    @ViewBuilder
-    private func coachCard(_ step: Int, _ proxy: ScrollViewProxy) -> some View {
-        if coachStep == step, let script = Self.script[safe: step - 1] {
-            CoachCard(step: step, total: Self.coachTotal,
-                      title: script.title, body: script.message,
-                      onNext: { advanceCoach(to: step + 1, proxy: proxy) },
-                      onSkip: { retireCoach() })
-                .transition(.opacity)
-        }
-    }
-
-    /// `Next` scrolls to the next section — that motion IS the step-by-step setup, with no
-    /// modal sequence. The card draws at its anchor regardless, so a `scrollTo` misfire
-    /// degrades to "no auto-scroll".
-    private func advanceCoach(to step: Int, proxy: ScrollViewProxy) {
-        withAnimation(Motion.state(reduceMotion)) {
-            coachStep = step
-            proxy.scrollTo(Self.anchor(forStep: step), anchor: .top)
-        }
-    }
-
-    private func retireCoach() {
-        withAnimation(Motion.state(reduceMotion)) {
-            coachStep = Self.retiredCoachStep
-        }
-        // "Not now and not next time" — but reversible: Settings › Show the setup
-        // guide again.
-        settings.builderGuideDone = true
-    }
-
-    /// Advance on a real value edit only, and only forwards.
-    private func noteEdit(reaching step: Int) {
-        guard coachStep < step, coachStep <= Self.closingCoachStep else { return }
-        withAnimation(Motion.state(reduceMotion)) {
-            coachStep = step
-        }
-    }
-
-    private static func anchor(forStep step: Int) -> BuilderAnchor {
-        switch step {
-        case 1: .name
-        case 2: .rhythm
-        case 3: .sets
-        case 4: .totals
-        case 5: .everyDay
-        default: .finish
-        }
-    }
-
     // MARK: Lifecycle
 
     private func start() {
-        // `@State` cannot read the environment in `init`, so the starting step is
-        // set on the first frame, behind the presentation animation.
-        // CREATING only: over an existing routine the guide narrates work already
-        // done, and saving a routine sets `builderGuideDone` anyway.
-        if mode.isCreating, !settings.builderGuideDone { coachStep = 1 }
-
         // The rescue copy exists only if a previous session died mid-build.
         // `initialDraft` stays at the seed, so the restored document is DIRTY and
         // Cancel still asks before discarding it.
         if mode.isCreating, let rescued = templates.restoreDraft(), rescued != draft {
             draft = BuilderDraftPreparation.editable(rescued)
-            // A rescued build was already under way, so the walkthrough has been walked;
-            // retiring it also keeps the restore's value changes from picking a card.
-            coachStep = Self.retiredCoachStep
         }
     }
 
@@ -676,8 +577,6 @@ private struct BuilderDocument: View {
         // A rolled-back save leaves the sheet OPEN with the error inline, and the rescue
         // copy has to survive for the retry — `store.save` only clears it on success.
         guard let saved = templates.save(draft) else { return }
-        // The guide has done its job the moment a routine exists.
-        settings.builderGuideDone = true
         // Cancel the pending stash write, or it re-stashes the draft the save just
         // cleared and it comes back as a ghost.
         stashTask?.cancel()
@@ -717,47 +616,9 @@ private struct BuilderDocument: View {
         mode.editingID == nil ? String(localized: "Your routine") : String(localized: "Edit routine")
     }
 
-    /// Cheap string signatures: `onChange` needs one Equatable value per thing the guide
-    /// reacts to, and the draft as a whole changes on every keystroke.
-    private var rhythmSignature: String {
-        "\(draft.plan.setBreakSeconds)|\(draft.plan.handMode.rawValue)|\(draft.plan.waitForReleaseBeforeRest)"
-    }
-
-    private var gripSignature: String {
-        draft.plan.sets.map(\.grip.key).joined(separator: ",")
-    }
-
-    private var repsSignature: String {
-        draft.plan.sets.map { String($0.repsPerSide) }.joined(separator: ",")
-    }
-
-    private var everyDaySignature: String {
-        "\(draft.sessionsPerDay)|\(draft.remindersEnabled)|\(draft.reminders.map(\.slot).joined(separator: "-"))"
-    }
-
     /// PROBE 1. `true` ships the live total as the navigation subtitle; `false` moves the
     /// identical line into the bottom safe-area inset above the undo-bar slot.
     private static let subtitleInNavigationBar = true
-
-    private struct CoachScript {
-        let title: String
-        let message: String
-    }
-
-    /// Five cards, in document order. Card 1 was rewritten twice after describing controls
-    /// the document no longer had; a card naming a control not on screen reads as a bug.
-    private static let script: [CoachScript] = [
-        CoachScript(title: String(localized: "Name it first"),
-                    message: String(localized: "This is what Today calls it. Everything else you build underneath, and nothing is saved until you tap Save.")),
-        CoachScript(title: String(localized: "What every set shares"),
-                    message: String(localized: "The break between sets, how your hands split the work, and whether a rest waits for you to let go. Everything else lives on each set.")),
-        CoachScript(title: String(localized: "Your sets, in order"),
-                    message: String(localized: "Tap a set for its grip, its pulls, its own hold and rest, and its target. Add a set copies the last one, so a uniform routine is quick.")),
-        CoachScript(title: String(localized: "How much on each side"),
-                    message: String(localized: "Each set says how many pulls you do per side. The line underneath adds up your total time under tension per side.")),
-        CoachScript(title: String(localized: "Ritual or whenever"),
-                    message: String(localized: "A daily ritual has a target and reminders. A whenever routine just waits on Today until you feel like it.")),
-    ]
 }
 
 // MARK: - Local value types
@@ -766,12 +627,4 @@ private struct BuilderDocument: View {
 private struct RemovedSet: Equatable {
     var index: Int
     var set: SetPlan
-}
-
-private extension Array {
-    /// The coach script is indexed by step number; an out-of-range step must draw
-    /// nothing rather than trap.
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
-    }
 }

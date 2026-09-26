@@ -39,11 +39,7 @@ struct RootTabView: View {
                     .symbolEffect(.pulse, options: .repeat(.continuous),
                                   isActive: templates.benchmarkNudge && !reduceMotion)
             }
-            Tab("Settings", systemImage: "gearshape.fill", value: 3) {
-                SettingsView(onShowToday: {
-                    withAnimation(Motion.state(reduceMotion)) { selection = 0 }
-                })
-            }
+            Tab("Settings", systemImage: "gearshape.fill", value: 3) { SettingsView() }
         }
         // The bar collapses to a pill on scroll-down and returns on scroll-up.
         .tabBarMinimizeBehavior(.onScrollDown)

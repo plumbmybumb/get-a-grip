@@ -2169,16 +2169,6 @@
         }
       }
     },
-    "A daily ritual has a target and reminders. A whenever routine just waits on Today until you feel like it." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un rituel quotidien a un objectif et des rappels. Une routine libre attend simplement sur Aujourd'hui que tu en aies envie."
-          }
-        }
-      }
-    },
     "A fixed load, the same on both hands — it stays put when your max moves." : {
       "localizations" : {
         "fr" : {
@@ -2970,26 +2960,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Créer ma routine"
-          }
-        }
-      }
-    },
-    "Builder hints" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conseils du créateur"
-          }
-        }
-      }
-    },
-    "Builder hints reset" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conseils du créateur réinitialisés"
           }
         }
       }
@@ -4054,16 +4024,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dupliquer"
-          }
-        }
-      }
-    },
-    "Each set says how many pulls you do per side. The line underneath adds up your total time under tension per side." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chaque série indique combien de tirages tu fais par côté. La ligne en dessous additionne ton temps total sous tension par côté."
           }
         }
       }
@@ -5240,16 +5200,6 @@
         }
       }
     },
-    "Hints reset — open a routine to see them" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conseils réinitialisés — ouvre une routine pour les voir"
-          }
-        }
-      }
-    },
     "History" : {
       "localizations" : {
         "fr" : {
@@ -5417,16 +5367,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Combien de temps a duré la séance"
-          }
-        }
-      }
-    },
-    "How much on each side" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Combien de chaque côté"
           }
         }
       }
@@ -6626,16 +6566,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nom"
-          }
-        }
-      }
-    },
-    "Name it first" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nomme-la d'abord"
           }
         }
       }
@@ -9334,16 +9264,6 @@
         }
       }
     },
-    "Show the builder's hints again" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réafficher les conseils du créateur"
-          }
-        }
-      }
-    },
     "Shown once, the first time you pick the Dyno." : {
       "localizations" : {
         "en" : {
@@ -9416,16 +9336,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Passer la série"
-          }
-        }
-      }
-    },
-    "Skip the guide" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Passer le guide"
           }
         }
       }
@@ -9754,16 +9664,6 @@
         }
       }
     },
-    "STEP %lld OF %lld" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ÉTAPE %lld SUR %lld"
-          }
-        }
-      }
-    },
     "Stop" : {
       "localizations" : {
         "fr" : {
@@ -9826,16 +9726,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inverser"
-          }
-        }
-      }
-    },
-    "Tap a set for its grip, its pulls, its own hold and rest, and its target. Add a set copies the last one, so a uniform routine is quick." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touche une série pour sa prise, ses tirages, sa tenue et son repos propres, et sa cible. Ajouter une série copie la dernière, une routine uniforme est donc rapide."
           }
         }
       }
@@ -10128,26 +10018,6 @@
         }
       }
     },
-    "That's the whole routine." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voilà toute la routine."
-          }
-        }
-      }
-    },
-    "The break between sets, how your hands split the work, and whether a rest waits for you to let go. Everything else lives on each set." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La pause entre séries, la répartition du travail entre tes mains, et si un repos attend que tu relâches. Tout le reste vit sur chaque série."
-          }
-        }
-      }
-    },
     "The calibration lookup needs an internet connection the first time a Dyno is used." : {
       "localizations" : {
         "en" : {
@@ -10405,16 +10275,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ce Dyno n'a pas indiqué de numéro de série, son étalonnage ne peut donc pas être recherché."
-          }
-        }
-      }
-    },
-    "This is what Today calls it. Everything else you build underneath, and nothing is saved until you tap Save." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "C'est ainsi qu'Aujourd'hui l'appelle. Tout le reste se construit en dessous, et rien n'est enregistré tant que tu ne touches pas Enregistrer."
           }
         }
       }
@@ -10976,16 +10836,6 @@
         }
       }
     },
-    "What every set shares" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ce que toutes les séries partagent"
-          }
-        }
-      }
-    },
     "WHAT KIND OF SESSION" : {
       "localizations" : {
         "fr" : {
@@ -11133,16 +10983,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hier"
-          }
-        }
-      }
-    },
-    "You can change any of it later — this same screen is the editor." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tu peux tout changer plus tard — c'est ce même écran qui sert d'éditeur."
           }
         }
       }
@@ -11299,16 +11139,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tes séances apparaîtront ici."
-          }
-        }
-      }
-    },
-    "Your sets, in order" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tes séries, dans l'ordre"
           }
         }
       }
