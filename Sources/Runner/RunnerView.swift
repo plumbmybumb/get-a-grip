@@ -617,17 +617,16 @@ struct RunnerView: View {
         VStack(spacing: 12 * scale) {
             // The identity block is its own stack, at the SAME spacing, so the rest
             // summary can cover exactly it and leave the rows below in place.
-            VStack(spacing: 12 * scale) {
-                if hasIsland {
-                    gripLineText(session)
+            // `.hidden()`, not opacity plus `accessibilityHidden`: that pair left the
+            // live weight and the pull prompt in the accessibility tree under the rest
+            // summary. Hidden keeps the geometry and removes both.
+            Group {
+                if focused {
+                    identityBlock(session, scale: scale).hidden()
                 } else {
-                    gripLine(session, scale: scale)
+                    identityBlock(session, scale: scale)
                 }
-                prompt(session, scale: scale)
-                hero(session, scale: scale)
             }
-            .opacity(focused ? 0 : 1)
-            .accessibilityHidden(focused)
             .overlay {
                 if focused {
                     RunnerRestFocusSummary(snapshot: session.snapshot, showsGlyph: !hasIsland,
@@ -639,6 +638,19 @@ struct RunnerView: View {
             routineLine(session)
             // The summary's badge already says REST; the row keeps its height.
             counters(session, showsPhaseWord: !focused)
+        }
+    }
+
+    /// The grip, the prompt and the live weight — what the rest summary stands in for.
+    private func identityBlock(_ session: RunnerSession, scale: CGFloat) -> some View {
+        VStack(spacing: 12 * scale) {
+            if hasIsland {
+                gripLineText(session)
+            } else {
+                gripLine(session, scale: scale)
+            }
+            prompt(session, scale: scale)
+            hero(session, scale: scale)
         }
     }
 
