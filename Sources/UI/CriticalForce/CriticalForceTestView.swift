@@ -334,13 +334,6 @@ struct CriticalForceTestView: View {
                         .padding(.top, 4)
                     GaugeConnectButton(connectTitle: String(localized: "Connect"))
                 } else {
-                    if loadOnGaugeKg == nil {
-                        Text("Start zeroes the gauge, then waits for your first pull.")
-                            .font(.system(.footnote))
-                            .foregroundStyle(Ink.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 6)
-                    }
                     loadWarning
                     // The max test's dock, so the two measurement screens share one shape.
                     AdaptiveActionRow(spacing: 8) {
@@ -648,12 +641,7 @@ struct CriticalForceTestView: View {
     /// slider. Left empty, the test saves without it and asks again next time.
     private var bodyWeightRow: some View {
         @Bindable var settings = settings
-        return VStack(alignment: .leading, spacing: 4) {
-            BodyWeightField(kilograms: $settings.bodyWeightKg)
-            Text("Asked once; change it in Settings.")
-                .font(.system(.footnote))
-                .foregroundStyle(Ink.tertiary)
-        }
+        return BodyWeightField(kilograms: $settings.bodyWeightKg)
     }
 
     /// One quiet line: "Last: L 17.5 · R 16.3 kg · last week".
