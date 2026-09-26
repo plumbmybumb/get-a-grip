@@ -9,8 +9,9 @@ Status: **prepared on branch `release/next`, not yet uploaded.** What's New:
 - **Critical force** (see [CRITICAL_FORCE.md](CRITICAL_FORCE.md)): the 24 × 7:3 all-out
   test on the runner's screen, one hand at a time / both hands / one hand, tare before each
   hand, Start before the second; results per grip with W′, % of max and % of body weight;
-  in Export. New CloudKit record type `CriticalForceRecord` — **deploy the schema to
-  Production before the iOS build goes out.**
+  in Export. New CloudKit record type `CriticalForceRecord` — schema **deployed to
+  Production 26 Sep**, together with two fields earlier builds had shipped without
+  deploying (see the release record).
 - **Maxes → Benchmarks**; measuring a max is a visit (every pull an attempt, review sheet).
 - **Runner:** the stacked set/pull rows are the one design; the progress-style picker and
   the other seven styles are gone.
@@ -24,7 +25,7 @@ Status: **prepared on branch `release/next`, not yet uploaded.** What's New:
   axes and monotone curve; History trend deck; rating row + one-time ask; the missing
   `VIBRATE` permission (session haptics were silently failing).
 
-Owed before upload: CloudKit schema deploy (Nuri), Android signing (Nuri's script),
+Owed before upload: Android signing (Nuri's script),
 hardware checks — critical force timing on a real Progressor, Android haptics on a phone,
 the new Android session screen on a small phone. Baseline profile should be regenerated on
 a device (`:app:generateBaselineProfile`); the stale one only lists deleted classes.
