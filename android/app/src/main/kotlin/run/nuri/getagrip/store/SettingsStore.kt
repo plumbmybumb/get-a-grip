@@ -138,6 +138,8 @@ class SettingsStore(
         val draftStashKey = stringPreferencesKey("draftStash")
         val shareCardStyleKey = stringPreferencesKey("shareCardStyle")
         val frezIntroSeenKey = booleanPreferencesKey("frezIntroSeen")
+        /// iOS's key: the once-only review ask — see `ReviewRequestPolicy`.
+        val reviewRequestedKey = booleanPreferencesKey("reviewRequested")
         val scheduledRemindersKey = stringPreferencesKey("reminders.scheduled")
         val trainingDayRepairKey = intPreferencesKey("repair.trainingDays.version")
         val bodyWeightKgKey = doublePreferencesKey("bodyWeightKg")
@@ -190,6 +192,7 @@ class SettingsStore(
     private var stash: String? by mutableStateOf(loaded[draftStashKey])
     private var cardStyle: String by mutableStateOf(loaded[shareCardStyleKey] ?: "white")
     private var frezIntro: Boolean by mutableStateOf(loaded[frezIntroSeenKey] ?: false)
+    private var reviewAsked: Boolean = loaded[reviewRequestedKey] ?: false
     private var scheduled: Set<String> by mutableStateOf(
         loaded[scheduledRemindersKey]?.split('\n')?.filter { it.isNotEmpty() }?.toSet()
             ?: emptySet()
@@ -238,6 +241,11 @@ class SettingsStore(
     /// One-shot: the note Frez asks to show the first time the Dyno is selected has been
     /// read on this device. Never shown for any other gauge.
     val frezIntroSeen: Boolean get() = frezIntro
+
+    /// One-shot: the rating ask has been shown on this device. Set BEFORE the prompt
+    /// appears, so the ask never repeats here whatever happens to it — see
+    /// `ReviewRequestPolicy`.
+    val reviewRequested: Boolean get() = reviewAsked
 
     /// The reminder identifiers this app believes it has scheduled. `AlarmManager` alarms
     /// cannot be enumerated, so the planner's "note, add, THEN drop the remainder" rule
@@ -299,6 +307,11 @@ class SettingsStore(
     fun setFrezIntroSeen(value: Boolean) {
         frezIntro = value
         write { it[frezIntroSeenKey] = value }
+    }
+
+    fun setReviewRequested(value: Boolean) {
+        reviewAsked = value
+        write { it[reviewRequestedKey] = value }
     }
 
     fun setShareCardStyle(value: String) {

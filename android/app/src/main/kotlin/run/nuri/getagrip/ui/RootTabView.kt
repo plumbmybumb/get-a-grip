@@ -185,6 +185,8 @@ fun RootTabView() {
     }
 
     val request = workouts.active
+    // ABOVE the early return: the rating ask compares the save counter across the runner.
+    val review = rememberReviewRequest(runnerOpen = request != null)
     if (request != null) {
         // **Every presented container needs its own host**: the runner replaces the root, so the
         // session act is hosted here.
@@ -473,5 +475,6 @@ fun RootTabView() {
 
     // Below the runner's early return, so it never appears over a workout still going.
     UnsavedSessionPrompt()
+    ReviewRequestDialog(review)
 
 }

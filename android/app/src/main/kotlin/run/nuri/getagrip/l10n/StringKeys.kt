@@ -14,7 +14,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1360) {
+val STRING_KEYS: Map<String, Int> = buildMap(1361) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -958,8 +958,9 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["RHYTHM"] = R.string.s_rhythm
     into["RIGHT"] = R.string.s_right_952532
     into["RIGHT HAND NEXT"] = R.string.s_right_hand_next_0ba39f
-    into["Rate on the App Store"] = R.string.s_rate_on_the_app_store
-    into["Rate on the App Store. Opens the App Store."] = R.string.s_rate_on_the_app_store_opens_the_app_store
+    into["Rate Get a Grip"] = R.string.a_rate_get_a_grip
+    into["Rate on Google Play"] = R.string.a_rate_on_google_play
+    into["Rate on Google Play. Opens Google Play."] = R.string.a_rate_on_google_play_opens_google_play
     into["Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit."] = R.string.s_recent_connection_and_signal_breadcrumbs_kept_on_this_de
     into["Recent connection and signal details will be added to your email. You can review them before sending."] = R.string.a_recent_connection_and_signal_details_will_be_added_to_yo
     into["Record another test"] = R.string.s_record_another_test
@@ -1095,10 +1096,10 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Start fourth session"] = R.string.s_start_fourth_session
     into["Start from a known protocol"] = R.string.s_start_from_a_known_protocol
     into["Start here"] = R.string.s_start_here
-    into["Start in half crimp and build force by trying to curl your fingers into the edge."] = R.string.s_start_in_half_crimp_and_build_force_by_trying_to_curl_yo
 }
 
 private fun string_keysChunk7(into: MutableMap<String, Int>) {
+    into["Start in half crimp and build force by trying to curl your fingers into the edge."] = R.string.s_start_in_half_crimp_and_build_force_by_trying_to_curl_yo
     into["Start measuring"] = R.string.s_start_measuring
     into["Start second session"] = R.string.s_start_second_session
     into["Start session"] = R.string.s_start_session
@@ -1248,10 +1249,10 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["Up next"] = R.string.a_up_next
     into["Upper bound"] = R.string.s_upper_bound
     into["Use + to add a max. Each grip has an Edit button for changing hand values and reviewing earlier records. Your charts and percentage targets use these same numbers."] = R.string.a_use_to_add_a_max_each_grip_has_an_edit_button_for_changi
-    into["Use as max"] = R.string.s_use_as_max
 }
 
 private fun string_keysChunk8(into: MutableMap<String, Int>) {
+    into["Use as max"] = R.string.s_use_as_max
     into["Use this max"] = R.string.s_use_this_max
     into["Used for both hands. Pick a hand if yours differ — most people's do."] = R.string.s_used_for_both_hands_pick_a_hand_if_yours_differ_most_peo
     into["Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result."] = R.string.a_used_to_show_critical_force_as_a_share_of_body_weight_ea
@@ -1401,10 +1402,10 @@ private fun string_keysChunk8(into: MutableMap<String, Int>) {
     into["target %1\$s to %2\$s percent of your max"] = R.string.s_target_to_percent_of_your_max
     into["target %s to %s %s"] = R.string.s_target_to_bd15c7
     into["target %s to %s kilograms"] = R.string.s_target_to_kilograms_5ca076
-    into["target %s to %s percent of your max"] = R.string.s_target_to_percent_of_your_max
 }
 
 private fun string_keysChunk9(into: MutableMap<String, Int>) {
+    into["target %s to %s percent of your max"] = R.string.s_target_to_percent_of_your_max
     into["tested your maxes"] = R.string.s_tested_your_maxes_f31019
     into["they show"] = R.string.s_they_show
     into["today"] = R.string.s_today_2dd2be

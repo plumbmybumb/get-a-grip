@@ -149,4 +149,7 @@
     <string name="a_start_zeroes_the_gauge_then_waits_for_your_first_pull">Start zeroes the gauge, then waits for your first pull.</string>
     <string name="a_there_s_on_the_gauge_let_go_then_start_it_zeroes_first">There\'s %s on the gauge. Let go, then start: it zeroes first.</string>
     <string name="a_hand_done_set_up_your_hand_with_the_gauge_unloaded_then">%1$s hand done. Set up your %2$s hand with the gauge unloaded, then start: it zeroes first.</string>
+    <string name="a_rate_on_google_play">Rate on Google Play</string>
+    <string name="a_rate_on_google_play_opens_google_play">Rate on Google Play. Opens Google Play.</string>
+    <string name="a_rate_get_a_grip">Rate Get a Grip</string>
 </resources>

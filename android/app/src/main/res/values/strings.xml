@@ -753,8 +753,6 @@
     <string name="s_rhythm">RHYTHM</string>
     <string name="s_right_952532">RIGHT</string>
     <string name="s_right_hand_next_0ba39f">RIGHT HAND NEXT</string>
-    <string name="s_rate_on_the_app_store">Rate on the App Store</string>
-    <string name="s_rate_on_the_app_store_opens_the_app_store">Rate on the App Store. Opens the App Store.</string>
     <string name="s_recent_connection_and_signal_breadcrumbs_kept_on_this_de">Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit.</string>
     <string name="s_record_another_test">Record another test</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not.</string>

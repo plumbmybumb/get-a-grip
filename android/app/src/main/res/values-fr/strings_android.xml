@@ -148,4 +148,7 @@
     <string name="a_start_zeroes_the_gauge_then_waits_for_your_first_pull">Commencer met le capteur à zéro, puis attend ton premier tirage.</string>
     <string name="a_there_s_on_the_gauge_let_go_then_start_it_zeroes_first">Il y a %s sur le capteur. Relâche, puis commence : il se remet d’abord à zéro.</string>
     <string name="a_hand_done_set_up_your_hand_with_the_gauge_unloaded_then">%1$s : terminé. Mets en place ta main %2$s sans charger le capteur, puis démarre : il se remet d’abord à zéro.</string>
+    <string name="a_rate_on_google_play">Noter sur Google Play</string>
+    <string name="a_rate_on_google_play_opens_google_play">Noter sur Google Play. Ouvre Google Play.</string>
+    <string name="a_rate_get_a_grip">Noter Get a Grip</string>
 </resources>
