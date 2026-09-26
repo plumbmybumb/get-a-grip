@@ -11981,6 +11981,136 @@
           }
         }
       }
+    },
+    "Rhythm" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rythme"
+          }
+        }
+      }
+    },
+    "Schedule" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Planning"
+          }
+        }
+      }
+    },
+    "Duplicate last set" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dupliquer la dernière série"
+          }
+        }
+      }
+    },
+    "Custom timing" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durées personnalisées"
+          }
+        }
+      }
+    },
+    "Alternate" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alterner"
+          }
+        }
+      }
+    },
+    "Type a value" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisir une valeur"
+          }
+        }
+      }
+    },
+    "Per set" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Par série"
+          }
+        }
+      }
+    },
+    "From" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De"
+          }
+        }
+      }
+    },
+    "To" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À"
+          }
+        }
+      }
+    },
+    "seconds" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "secondes"
+          }
+        }
+      }
+    },
+    "Both hands pull together, so neither goes first." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les deux mains tirent ensemble, aucune ne commence."
+          }
+        }
+      }
+    },
+    "%@, page %lld of 3" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, page %2$lld sur 3"
+          }
+        }
+      }
+    },
+    "Page" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"
