@@ -315,7 +315,8 @@ final class MaxesFlowUITests: XCTestCase {
         // choices are labelled "Max, …" there.
         let oneHand = app.buttons.matching(NSPredicate(format: "label IN %@",
                                                        ["One hand at a time", "Une main à la fois",
-                                                        "Max, one hand at a time"])).firstMatch
+                                                        "Max, one hand at a time",
+                                                        "Max, une main à la fois"])).firstMatch
         XCTAssertTrue(oneHand.waitForExistence(timeout: 3))
         oneHand.tap()
         XCTAssertTrue(app.buttons["max.measure.left"].waitForExistence(timeout: 5))
