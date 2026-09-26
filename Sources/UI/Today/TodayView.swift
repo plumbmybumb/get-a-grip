@@ -68,10 +68,6 @@ struct TodayView: View {
     @State private var shareRequest: RoutineShareRequest?
     @State private var shareFailed = false
     @State private var scanningRoutine = false
-    /// The "New routine" chooser: build your own, or start from a known protocol.
-    @State private var choosingNewRoutine = false
-    /// "Build from scratch" was chosen; the builder opens once the chooser has gone.
-    @State private var pendingScratchBuild = false
     @State private var scannedRoutine: String?
     /// The scanned routine ON SCREEN, claimed from the store's inbox by
     /// `drainImportInbox()`. Here, not in `RootTabView` where the link arrives, because
@@ -88,7 +84,6 @@ struct TodayView: View {
         builder == nil && running == nil && pendingStartID == nil
             && overview == nil && pendingOverviewEditID == nil
             && !loggingSession && shareRequest == nil && !scanningRoutine
-            && !choosingNewRoutine && !pendingScratchBuild
             && !showingGauge && importPreview == nil && importError == nil
     }
 
@@ -235,19 +230,6 @@ struct TodayView: View {
         }
         .sheet(item: $shareRequest, onDismiss: { drainImportInbox() }) { request in
             RoutineShareSheet(request: request) { shareRequest = nil }
-        }
-        .sheet(isPresented: $choosingNewRoutine, onDismiss: {
-            // After the sheet is gone: a cover cannot present over a dismissing sheet.
-            if pendingScratchBuild {
-                pendingScratchBuild = false
-                builder = ordered.isEmpty ? .firstRun : .addAnother
-            }
-            drainImportInbox()
-        }) {
-            NewRoutineSheet(onBuildFromScratch: {
-                pendingScratchBuild = true
-                choosingNewRoutine = false
-            }, onClose: { choosingNewRoutine = false })
         }
         .sheet(isPresented: $scanningRoutine, onDismiss: {
             // Route only after the camera sheet has dismissed; the inbox owns
@@ -418,7 +400,7 @@ struct TodayView: View {
     /// chip — a routine that could exist, next to ones that do.
     private var newRoutineGhost: some View {
         VStack(spacing: 12) {
-            Button { choosingNewRoutine = true } label: {
+            Button { builder = .addAnother } label: {
                 VStack(spacing: 10) {
                     Image(systemName: "plus")
                         .font(.system(.title2, weight: .medium))
@@ -437,7 +419,7 @@ struct TodayView: View {
             }
             .buttonStyle(PressFeedbackButtonStyle())
             .accessibilityLabel("New routine")
-            .accessibilityHint("Build your own, or start from a known protocol.")
+            .accessibilityHint("Opens the routine builder.")
             .matchedTransitionSource(id: BuilderMode.addAnother.zoomID, in: zoom)
             scanRoutineButton
         }
@@ -447,21 +429,6 @@ struct TodayView: View {
             RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
                 .strokeBorder(Ink.tertiary.opacity(0.35), lineWidth: 1)
         )
-    }
-
-    /// The empty card's door to the known protocols. Beside "Build my routine", never in
-    /// place of it: the first-run tour hands off through that button.
-    private var protocolsButton: some View {
-        Button { choosingNewRoutine = true } label: {
-            Label("Start from a known protocol", systemImage: "list.bullet.rectangle")
-                .font(.system(.footnote, weight: .medium))
-                .foregroundStyle(Ink.secondary)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)
-                .contentShape(.rect)
-        }
-        .buttonStyle(PressFeedbackButtonStyle())
-        .frame(maxWidth: .infinity)
     }
 
     private var scanRoutineButton: some View {
@@ -501,7 +468,7 @@ struct TodayView: View {
             onShare: { share(routine) },
             // Zooms out of the ghost card when the deck exists; from the menu there is
             // no source on screen and it degrades to the standard presentation.
-            onNew: { choosingNewRoutine = true },
+            onNew: { builder = .addAnother },
             onMakePrimary: { templates.makePrimary(routine) },
             onDelete: { _ = templates.delete(routine) },
             onDemo: { device.useMockDevice(true) }
@@ -537,8 +504,6 @@ struct TodayView: View {
                     builder = .firstRun
                 }
                 .tourAnchor(.buildRoutine)
-
-                protocolsButton
 
                 scanRoutineButton
 

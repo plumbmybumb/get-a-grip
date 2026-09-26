@@ -151,46 +151,6 @@
         }
       }
     },
-    "A rehab plan is not a diagnosis. Load an injured finger only as far as your physio or doctor advises." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un plan de rééducation n’est pas un diagnostic. Ne charge un doigt blessé qu’autant que ton kiné ou ton médecin le conseille."
-          }
-        }
-      }
-    },
-    "After Camp4 Human Performance" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "D’après Camp4 Human Performance"
-          }
-        }
-      }
-    },
-    "After Emil Abrahamsson" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "D’après Emil Abrahamsson"
-          }
-        }
-      }
-    },
-    "After Hooper's Beta" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "D’après Hooper’s Beta"
-          }
-        }
-      }
-    },
     "%lld pulls" : {
       "localizations" : {
         "en" : {
@@ -261,42 +221,12 @@
         }
       }
     },
-    "Build from scratch" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Partir de zéro"
-          }
-        }
-      }
-    },
-    "Build your own, or start from a known protocol." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Crée la tienne, ou pars d’un protocole connu."
-          }
-        }
-      }
-    },
     "C4 max" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Max C4"
-          }
-        }
-      }
-    },
-    "C4 warm-up" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Échauffement C4"
           }
         }
       }
@@ -361,82 +291,12 @@
         }
       }
     },
-    "Finger rehab" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rééducation des doigts"
-          }
-        }
-      }
-    },
     "Heaviest pull" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tirage le plus lourd"
-          }
-        }
-      }
-    },
-    "KNOWN PROTOCOLS" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PROTOCOLES CONNUS"
-          }
-        }
-      }
-    },
-    "Light 10-second pulls at 15–25 % of max to reload an injured finger." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Des tractions légères de 10 secondes à 15–25 % du max pour recharger un doigt blessé."
-          }
-        }
-      }
-    },
-    "Light no-hangs across six grips, twice a day, every day." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Des no-hangs légers sur six prises, deux fois par jour, tous les jours."
-          }
-        }
-      }
-    },
-    "Name it, add a set, make it yours." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Donne-lui un nom, ajoute une série, fais-la tienne."
-          }
-        }
-      }
-    },
-    "Shows the whole protocol before adding it." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Affiche tout le protocole avant de l’ajouter."
-          }
-        }
-      }
-    },
-    "Start from a known protocol" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Partir d’un protocole connu"
           }
         }
       }
@@ -661,26 +521,6 @@
         }
       }
     },
-    "Three sets of three at 80–100 % of max, when you're fresh." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trois séries de trois à 80–100 % du max, quand tu es frais."
-          }
-        }
-      }
-    },
-    "Two pulls a hand per rung, ramping from 45 to 95 % of max." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deux tractions par main à chaque palier, de 45 à 95 % du max."
-          }
-        }
-      }
-    },
     "This pull" : {
       "localizations" : {
         "fr" : {
@@ -707,16 +547,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le volume, c'est charge × tirages, additionnés. Sous tension, chaque seconde sur la réglette."
-          }
-        }
-      }
-    },
-    "Written up from what each author published. Get a Grip is not affiliated with or endorsed by them." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rédigés d’après ce que chaque auteur a publié. Get a Grip n’est ni affilié à ces auteurs ni approuvé par eux."
           }
         }
       }
