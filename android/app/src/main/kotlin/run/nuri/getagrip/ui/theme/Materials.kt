@@ -99,10 +99,18 @@ fun InstrumentSurface(
     border: BorderStroke? = null,
     content: @Composable () -> Unit,
 ) {
-    val palette = LocalGripPalette.current
-    val rim = remember(palette) { BorderStroke(.75.dp, Brush.verticalGradient(
+    val rim = instrumentRim(LocalGripPalette.current)
+    Surface(modifier, shape, color, contentColor, tonalElevation, shadowElevation, border ?: rim, content)
+}
+
+/** The lit hairline every instrument surface carries: light catching the top edge, fading to
+ * a trace of ink at the bottom. Shared by `InstrumentSurface` and the session stage's panel
+ * and dock, so the three cannot drift.
+ */
+@Composable
+fun instrumentRim(palette: GripPalette): BorderStroke = remember(palette) {
+    BorderStroke(.75.dp, Brush.verticalGradient(
         listOf(Color.White.copy(alpha = if (palette == DarkPalette) .14f else .8f),
             palette.inkPrimary.copy(alpha = .06f)),
-    )) }
-    Surface(modifier, shape, color, contentColor, tonalElevation, shadowElevation, border ?: rim, content)
+    ))
 }

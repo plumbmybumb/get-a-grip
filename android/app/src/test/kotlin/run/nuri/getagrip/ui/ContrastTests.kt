@@ -9,6 +9,8 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertTrue
+import run.nuri.getagrip.ui.components.DockTint
+import run.nuri.getagrip.ui.components.InstrumentStage
 import run.nuri.getagrip.ui.theme.DarkPalette
 import run.nuri.getagrip.ui.theme.GripPalette
 import run.nuri.getagrip.ui.theme.LightPalette
@@ -208,6 +210,49 @@ class ContrastTests {
         for ((name, p) in schemes()) {
             val step = ratio(p.card, p.field)
             assertTrue(step > 1.05, "$name card does not separate from the field (%.3f:1)".format(step))
+        }
+    }
+
+    // MARK: - The session stage
+
+    /// The ground a stage surface sits on at its worst: the field under the phase wash at full
+    /// strength, in the phase colour that darkens or lightens it most.
+    private fun stageGrounds(p: GripPalette): List<Color> =
+        listOf(p.bleu, p.armed, p.calm, p.alarm).map { tint ->
+            over(tint.copy(alpha = InstrumentStage.WASH_ALPHA), p.field)
+        } + p.field
+
+    /// **The panel carries the phase in its own fill**, standing in for the colour iOS glass
+    /// picks up from the wash. Every ink must still read on it in every phase, over every wash —
+    /// the tint is a mood, never a legibility cost.
+    @Test
+    fun everyInkReadsOnThePhaseTintedPanelInEveryPhase() {
+        for ((name, p) in schemes()) {
+            for (tint in listOf(null, p.bleu, p.armed, p.calm, p.alarm)) for (ground in stageGrounds(p)) {
+                val panel = over(InstrumentStage.panelFill(p, tint), ground)
+                for ((inkName, ink) in listOf("primary" to p.inkPrimary, "secondary" to p.inkSecondary,
+                    "tertiary" to p.inkTertiary)) {
+                    assertContrast("$name $inkName on the $tint panel", ink, panel, TEXT_FLOOR)
+                }
+                assertContrast("$name bleu numeral on the $tint panel", p.bleu, panel, GRAPHIC_FLOOR)
+            }
+        }
+    }
+
+    /// **A tinted dock action writes in the tint's OWN ink, never the accent**: the accent on a
+    /// 22 % well measured 2.5:1 in dark mode on iOS. Checked on the dock over every wash, since
+    /// the well is translucent.
+    @Test
+    fun tintedDockActionsCarryLegibleInk() {
+        for ((name, p) in schemes()) for (ground in stageGrounds(p)) {
+            val dock = over(InstrumentStage.panelFill(p, null), ground)
+            for (tint in DockTint.values()) {
+                val well = over(tint.well().copy(alpha = DockTint.WELL_ALPHA), dock)
+                assertContrast("$name $tint dock label", tint.ink(p), well, TEXT_FLOOR)
+            }
+            val plainWell = over(p.inkPrimary.copy(alpha = 0.08f), dock)
+            assertContrast("$name dock label", p.inkPrimary, plainWell, TEXT_FLOOR)
+            assertContrast("$name quiet dock label", p.inkSecondary, plainWell, TEXT_FLOOR)
         }
     }
 }

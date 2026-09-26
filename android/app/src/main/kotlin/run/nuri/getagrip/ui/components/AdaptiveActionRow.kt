@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import run.nuri.getagrip.ui.theme.Metrics
 
@@ -28,15 +29,16 @@ import run.nuri.getagrip.ui.theme.Metrics
 internal fun AdaptiveActionRow(
     labels: List<List<String>>,
     modifier: Modifier = Modifier,
+    /// The gap between cells, and between rows once they wrap. A dock packs at its own 8 dp.
+    spacing: Dp = 10.dp,
     content: @Composable (index: Int, modifier: Modifier) -> Unit,
 ) {
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val density = LocalDensity.current
     val style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
-    val spacing = 10.dp
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val horizontalInsets = with(density) { (Metrics.buttonHorizontalPadding * 2).roundToPx() }
-        val columns = remember(labels, maxWidth, style, density.density, density.fontScale) {
+        val columns = remember(labels, maxWidth, spacing, style, density.density, density.fontScale) {
             val variants = labels.flatten()
             (labels.size downTo 1).firstOrNull { count ->
                 val width = with(density) {
