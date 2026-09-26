@@ -95,8 +95,8 @@ class RunnerProgressBarsTests {
         compose.onNodeWithTag("runner.routinePills").assertExists()
         Composer.setTracer(object : CompositionTracer {
             override fun traceEventStart(key: Int, dirty1: Int, dirty2: Int, info: String) {
-                val name = info.substringBefore(" (")
-                counts.getOrPut(name) { AtomicInteger() }.incrementAndGet()
+                // The whole trace line, source position included: sibling lambdas share a name.
+                counts.getOrPut(info) { AtomicInteger() }.incrementAndGet()
             }
             override fun traceEventEnd() = Unit
             override fun isTraceInProgress() = true
@@ -111,9 +111,11 @@ class RunnerProgressBarsTests {
         val bar = count(".RunnerTimeBar")
         assertTrue(bar >= 10, "the time bar must follow the hold: $bar")
         // The whole-second numeral turns once in that second, which is the snapshot's own
-        // republish; per reading would be eighty.
+        // republish; per reading would be eighty. Counted per GROUP: the session stage nests
+        // the screen's content in the panel's, the graph's and the dock's lambdas, and one
+        // republish runs each of them once — summing them would count structure, not samples.
         for (still in listOf(".RunnerLive", ".RunnerPanelHeader", ".RoutinePills", ".Counters")) {
-            val n = count(still)
+            val n = counts.filterKeys { it.contains(still) }.values.maxOfOrNull { it.get() } ?: 0
             assertTrue(n <= 2, "$still recomposed $n times across 80 readings")
         }
     }

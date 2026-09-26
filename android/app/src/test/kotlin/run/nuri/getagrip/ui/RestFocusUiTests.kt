@@ -142,8 +142,10 @@ class RestFocusUiTests {
             compose.runOnIdle { h.clock.uptime += 20; h.session.tickNow() }
             assertText("countdown", "2")
             assertAboveGraph()
+            // The outline rides the information panel, where the grip is named (iOS `infoPanel`):
+            // around an open, edge-to-edge graph a rounded stroke would redraw the card that is gone.
             assertTrue(orangeEdgeFraction() > 0.08,
-                "The actual orange graph stroke must remain after its entry animation and during pause")
+                "The actual orange panel stroke must remain after its entry animation and during pause")
             capture("android-grip-change-paused-final-two.png")
             compose.onNodeWithText("Resume").performClick()
             compose.runOnIdle { h.clock.uptime += 2.1; h.session.tickNow() }
@@ -328,9 +330,13 @@ class RestFocusUiTests {
     }
     private fun assertAboveGraph() {
         val graph = compose.onNodeWithTag("runner-plot").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        // 150: the time bar and the routine's pills cost the graph ~28 dp over the old single
-        // hold bar; the tightest case here (360 × 740, French, 1.3× text) measures 152.
-        assertTrue(graph.height > 150, "The graph must remain a useful live plot: ${graph.height}")
+        // The time bar and the routine's pills cost the graph ~28 dp over the old single hold
+        // bar, and the session stage's panel and dock surfaces ~12 dp more; the tightest case here
+        // (360 × 740, French, 1.3× text, a three-row dock) measures 140. The plot no longer sits
+        // in a card: it runs the full screen width (360 dp against the card's 312 dp of plot), so
+        // 140 dp of it is MORE drawable graph than the card's old 152 — the floor keeps that
+        // area, it does not trade it away.
+        assertTrue(graph.height > 135, "The graph must remain a useful live plot: ${graph.height}")
         for (id in listOf("hand", "grip", "countdown", "phase", "setCount", "pullCount")) {
             node(id).assertIsDisplayed()
             assertTrue(bounds(id).bottom <= graph.top, "$id must stay entirely above the graph")
@@ -372,7 +378,7 @@ class RestFocusUiTests {
         }
     }
     private fun orangeEdgeFraction(): Double {
-        val image = compose.onNodeWithTag("runner-plot").captureToImage().asAndroidBitmap()
+        val image = compose.onNodeWithTag("runner.panel").captureToImage().asAndroidBitmap()
         var orange = 0
         var sampled = 0
         fun sample(x: Int, y: Int) {

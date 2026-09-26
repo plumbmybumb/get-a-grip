@@ -13,7 +13,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,11 +42,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SettingsInputAntenna
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -114,12 +110,18 @@ import run.nuri.getagrip.store.TarePolicy
 import run.nuri.getagrip.store.TareTapDecision
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.AdaptiveActionRow
+import run.nuri.getagrip.ui.components.DockButton
+import run.nuri.getagrip.ui.components.InstrumentDock
+import run.nuri.getagrip.ui.components.InstrumentPanel
+import run.nuri.getagrip.ui.components.InstrumentStage
+import run.nuri.getagrip.ui.components.OpenGraphRegion
+import run.nuri.getagrip.ui.components.phaseWash
+import run.nuri.getagrip.ui.components.rememberStageGeometry
 import run.nuri.getagrip.ui.components.ForceTraceView
 import run.nuri.getagrip.ui.components.HoldToEndButton
 import run.nuri.getagrip.ui.components.cameraHandOffset
 import run.nuri.getagrip.ui.components.PalmGeometry
 import run.nuri.getagrip.ui.components.PalmHand
-import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.gauge.calibrationNote
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
@@ -318,6 +320,15 @@ private fun RunnerLifecycle(session: RunnerSession, device: DeviceStore, timerOn
 
 // MARK: - The session screen
 
+/// **The session stage** (iOS `RunnerView.stackedContent`): the phase colour washing down from
+/// the top of the screen, the numbers on ONE panel that takes the phase's colour, the trace
+/// running in the clear between panel and dock — stretched to the screen's edges, drawn lit —
+/// and every action on ONE dock. Gauge-free sessions keep their ring and lose the wash, as on
+/// iOS: there is no graph to hang it from, and REST would be steel over nothing.
+///
+/// Recomposes on the SNAPSHOT's cadence only (whole seconds, phase changes, recorded reps):
+/// the kilograms, the trace, the time bar and the target chip are leaves that read the store
+/// themselves, and the wash, the panel fill and the plot's position are read in the draw phase.
 @Composable
 internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
     val device = LocalDeviceStore.current
@@ -326,55 +337,73 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
     val tint = RunnerTint.of(snapshot, palette, timerOnly, device.state.isConnected)
     val scrollsForLargeText = LocalDensity.current.fontScale >= 1.5f
     val scrollState = rememberScrollState()
+    val stage = rememberStageGeometry()
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            // The gesture bar only. The TOP inset is NOT consumed: drawing behind the hidden status
-            // bar is what lets the fingers align beneath the camera.
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .readablePageWidth()
-            .padding(horizontal = Metrics.hPadding)
-            // The longest finger grows 9.5dp during its cue. Fourteen dp clears that
-            // expansion; the remaining space belongs to the graph, not an empty header.
-            .padding(
-                top = PalmGeometry.TOTAL_HEIGHT.dp + cameraHandOffset() + if (timerOnly) 22.dp else 14.dp,
-                bottom = if (timerOnly) Metrics.spacing else 12.dp,
-            )
-            .then(if (scrollsForLargeText) Modifier.verticalScroll(scrollState) else Modifier),
-        verticalArrangement = Arrangement.spacedBy(if (timerOnly) 12.dp else 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        if (timerOnly) {
-            GripNameRow(snapshot, palette, timerOnly = true)
-            GripChangeNotice(snapshot, palette)
-            TimerDial(session, snapshot, tint, palette)
-            Counters(snapshot)
-        } else {
-            // The hand owns the top band, so only the grip's NAME goes here (the glyph would be the
-            // same picture twice); the counters move DOWN above the graph — checked between pulls.
-            RunnerPanelHeader(session, snapshot, tint, timerOnly, device.state.isConnected)
-            Surface(
-                shape = RoundedCornerShape(Metrics.radiusCard),
-                color = palette.card,
-                modifier = Modifier
-                    .widthIn(max = Metrics.maxContentWidth)
-                    .fillMaxWidth()
-                    .then(if (scrollsForLargeText) Modifier.height(220.dp) else Modifier.weight(1f)),
-            ) {
-                Box(Modifier.testTag("runner-plot"), contentAlignment = Alignment.Center) {
-                    ForceTraceView(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
-                        thresholdKg = session.plan.thresholdKg,
-                        // Only while the rep is live: a lane during the rest asks for a load you are not holding.
-                        targetBand = if (isWorking(snapshot) || isArmed(snapshot)) {
-                            snapshot.targetBand
-                        } else {
-                            null
-                        },
-                        tint = tint,
-                        lit = true,
-                    )
+    Box(Modifier.fillMaxSize().phaseWash(if (timerOnly) null else tint, stage)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                // The gesture bar only. The TOP inset is NOT consumed: drawing behind the hidden status
+                // bar is what lets the fingers align beneath the camera.
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .readablePageWidth()
+                .padding(horizontal = Metrics.hPadding)
+                // The longest finger grows 9.5dp during its cue. Fourteen dp clears that
+                // expansion; the remaining space belongs to the graph, not an empty header.
+                .padding(
+                    top = PalmGeometry.TOTAL_HEIGHT.dp + cameraHandOffset() + if (timerOnly) 22.dp else 14.dp,
+                    bottom = if (timerOnly) Metrics.spacing else 8.dp,
+                )
+                .then(if (scrollsForLargeText) Modifier.verticalScroll(scrollState) else Modifier),
+            // Tight around the open graph: the trace carries its own top and bottom inset, so the
+            // gaps read as air either way and every point here is a point of graph.
+            verticalArrangement = Arrangement.spacedBy(if (timerOnly) 12.dp else 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (timerOnly) {
+                GripNameRow(snapshot, palette, timerOnly = true)
+                GripChangeNotice(snapshot, palette)
+                TimerDial(session, snapshot, tint, palette)
+                Counters(snapshot)
+            } else {
+                // The hand owns the top band, so only the grip's NAME goes on the panel (the glyph
+                // would be the same picture twice).
+                InstrumentPanel(
+                    tint = tint,
+                    modifier = Modifier.testTag("runner.panel"),
+                    // 12, not iOS's 16: the width goes to the counters and the rest summary, which
+                    // must fit a French set break at 360 dp.
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        start = 12.dp, top = 10.dp, end = 12.dp, bottom = 6.dp),
+                    overlay = {
+                        GraphGripChangeCue(snapshot, palette, Modifier.matchParentSize(),
+                            showBanner = false, cornerRadius = Metrics.radiusSheet)
+                    },
+                ) {
+                    RunnerPanelHeader(session, snapshot, tint, timerOnly, device.state.isConnected)
+                }
+                OpenGraphRegion(
+                    geometry = stage,
+                    modifier = Modifier
+                        .widthIn(max = Metrics.maxContentWidth)
+                        .fillMaxWidth()
+                        .then(if (scrollsForLargeText) Modifier.height(220.dp) else Modifier.weight(1f))
+                        .testTag("runner-plot"),
+                    trace = {
+                        ForceTraceView(
+                            modifier = Modifier.fillMaxSize(),
+                            thresholdKg = session.plan.thresholdKg,
+                            // Only while the rep is live: a lane during the rest asks for a load you are not holding.
+                            targetBand = if (isWorking(snapshot) || isArmed(snapshot)) {
+                                snapshot.targetBand
+                            } else {
+                                null
+                            },
+                            tint = tint,
+                            lit = true,
+                        )
+                    },
+                ) {
                     // A connected gauge that is not sending renders "0.0 kg" as a lie: a device measuring
                     // nothing and an app receiving nothing look identical. Say it, and say what to do.
                     // Focus replaces the prompt that normally reports a lost link. hasSignal means a sample
@@ -383,12 +412,13 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                             (snapshot.linkIsDown || !device.state.isConnected || !device.isSignalFresh))) {
                         NoSignalNotice(device)
                     }
+                    // The banner stays on the graph; its outline moved to the panel above.
                     GraphGripChangeCue(snapshot, palette, Modifier.matchParentSize(),
-                        showBanner = !snapshot.showsRestFocus)
+                        showBanner = !snapshot.showsRestFocus, showOutline = false)
                 }
             }
+            RunnerDock(session, snapshot, timerOnly)
         }
-        Controls(session, snapshot, timerOnly)
     }
 }
 
@@ -920,22 +950,23 @@ private fun LiveTimerRing(
 
 // MARK: - Controls
 
+/// **The dock** (iOS `RunnerView.controls`): the five actions on ONE surface, each in a quiet
+/// ink well — Pause and the gauge's action above, the two skips and Hold to end below. Hold
+/// to end keeps its red well, as a toolbar's one destructive action would.
 @Composable
-private fun Controls(session: RunnerSession, snapshot: RunnerSnapshot, timerOnly: Boolean) {
+private fun RunnerDock(session: RunnerSession, snapshot: RunnerSnapshot, timerOnly: Boolean) {
     val device = LocalDeviceStore.current
     val phase = snapshot.phase
     val pauseEnabled = RunnerControlPolicy.pauseEnabled(phase)
     val skipEnabled = RunnerControlPolicy.skipEnabled(phase)
+    val spacing = InstrumentStage.dockSpacing
 
-    Column(
-        Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    InstrumentDock(Modifier.testTag("runner.dock")) {
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(spacing)) {
             // Buttons KEEP their labels while disabled; the prompt above says PAUSED / CONNECTING.
             // Swapped labels made TalkBack read "Paused, dimmed. Paused." twice; the sentence rides
             // the description instead.
-            WideButton(
+            DockButton(
                 title = if (phase.isPaused) tr("Resume") else tr("Pause"),
                 icon = if (phase.isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
                 enabled = pauseEnabled,
@@ -949,7 +980,7 @@ private fun Controls(session: RunnerSession, snapshot: RunnerSnapshot, timerOnly
                 if (device.state.isConnected) {
                     TareButton(session, snapshot, Modifier.weight(1f).fillMaxHeight())
                 } else {
-                    WideButton(
+                    DockButton(
                         title = tr("Connect"),
                         icon = Icons.Outlined.SettingsInputAntenna,
                         modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -960,66 +991,18 @@ private fun Controls(session: RunnerSession, snapshot: RunnerSnapshot, timerOnly
         val skipPull = tr("Skip pull")
         val skipSet = tr("Skip set")
         AdaptiveActionRow(listOf(listOf(skipPull), listOf(skipSet),
-            listOf(tr("Hold to end"), tr("Keep holding…")))) { index, cell ->
+            listOf(tr("Hold to end"), tr("Keep holding…"))), spacing = spacing) { index, cell ->
             when (index) {
-                0 -> WideButton(title = skipPull, enabled = skipEnabled,
+                0 -> DockButton(title = skipPull, enabled = skipEnabled,
                     disabledReason = RunnerControlPolicy.skipDisabledReason(phase), modifier = cell) {
                     session.send(RunnerEvent.SkipRep)
                 }
-                1 -> WideButton(title = skipSet, enabled = skipEnabled,
+                1 -> DockButton(title = skipSet, enabled = skipEnabled,
                     disabledReason = RunnerControlPolicy.skipDisabledReason(phase), modifier = cell) {
                     session.send(RunnerEvent.SkipSet)
                 }
                 else -> HoldToEndButton(cell) { session.send(RunnerEvent.Abort) }
             }
-        }
-    }
-}
-
-/// Flexible-width tonal button. `SecondaryButton` hugs its label, which is right on a sheet
-/// and wrong here — three hugging buttons in one row truncate "Pause" to "Pa…".
-@Composable
-private fun WideButton(
-    title: String,
-    modifier: Modifier = Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    enabled: Boolean = true,
-    disabledReason: String? = null,
-    onClick: () -> Unit,
-) {
-    val palette = LocalGripPalette.current
-    val interactionSource = remember { MutableInteractionSource() }
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        interactionSource = interactionSource,
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = palette.card,
-            contentColor = palette.inkPrimary,
-            disabledContainerColor = palette.card.copy(alpha = 0.6f),
-            disabledContentColor = palette.inkTertiary.copy(alpha = 0.5f),
-        ),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding),
-        modifier = modifier
-            .heightIn(min = Metrics.controlMinHeight)
-            .pressFeedback(interactionSource)
-            .semantics {
-                if (disabledReason != null) contentDescription = L10n.tr("%s. %s", title, disabledReason)
-            },
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-            Text(
-                title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }
@@ -1048,7 +1031,7 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
         else -> TarePolicy.disabledLabel(snapshot.phase) ?: tr("Tare")
     }
 
-    WideButton(
+    DockButton(
         title = title,
         icon = Icons.Outlined.Refresh,
         enabled = enabled,
@@ -1057,7 +1040,7 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
     ) {
         // Re-check on the tap against the live stores. A pull that starts after an unloaded
         // press must not slip through an enabled frame and zero load.
-        if (!device.state.isConnected) return@WideButton
+        if (!device.state.isConnected) return@DockButton
         when (TarePolicy.tapDecision(
             phase = session.snapshot.phase,
             isReadingLive = device.isReadingLive,

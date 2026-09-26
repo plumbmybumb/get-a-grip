@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import run.nuri.getagrip.engine.L10n
@@ -39,10 +40,16 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.components.rememberGripChangeEmphasis
 
-/** Draw-only attention inside the chart: it cannot resize the plot or its neighbours. */
+/** Draw-only attention: it cannot resize the plot, the panel or their neighbours.
+ *
+ * Drawn in two places since the session stage: the OUTLINE rides the information panel (the
+ * panel is where the grip is NAMED — iOS `infoPanel`; around an open, edge-to-edge graph a
+ * rounded outline would read as the card that is no longer there), and the BANNER stays on
+ * the graph. Both instances run the same emphasis and pulse from the same inputs.
+ */
 @Composable
 internal fun GraphGripChangeCue(snapshot: RunnerSnapshot, palette: GripPalette, modifier: Modifier = Modifier,
-    showBanner: Boolean = true) {
+    showBanner: Boolean = true, showOutline: Boolean = true, cornerRadius: Dp = Metrics.radiusCard) {
     val reduceMotion = rememberReduceMotion()
     val visibility = rememberGripChangeEmphasis(snapshot.newGripID, snapshot.gripChangesNext, reduceMotion)
     val pulse = remember { Animatable(1f) }
@@ -60,13 +67,13 @@ internal fun GraphGripChangeCue(snapshot: RunnerSnapshot, palette: GripPalette, 
     val grip = snapshot.grip ?: return
     if (!snapshot.hasSignal || visibility.value == 0f) return
     Box(modifier) {
-        Canvas(Modifier.fillMaxSize()) {
+        if (showOutline) Canvas(Modifier.fillMaxSize()) {
             val width = 3.dp.toPx()
             drawRoundRect(
                 color = palette.armed.copy(alpha = visibility.value * pulse.value),
                 topLeft = Offset(width / 2, width / 2),
                 size = Size((size.width - width).coerceAtLeast(0f), (size.height - width).coerceAtLeast(0f)),
-                cornerRadius = CornerRadius((Metrics.radiusCard.toPx() - width / 2).coerceAtLeast(0f)),
+                cornerRadius = CornerRadius((cornerRadius.toPx() - width / 2).coerceAtLeast(0f)),
                 style = Stroke(width),
             )
         }

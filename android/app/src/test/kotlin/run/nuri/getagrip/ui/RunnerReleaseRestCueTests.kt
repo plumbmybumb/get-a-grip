@@ -297,10 +297,15 @@ class RunnerReleaseRestCueTests {
             val viewport = compose.onRoot().fetchSemanticsNode().boundsInRoot
             assertEquals(440f, plot.width, 1f)
             assertEquals(viewport.center.x, plot.center.x, 1f)
+            // The dock spans the plot's column exactly, and its actions sit inside it by the same
+            // inset on both sides, so the controls stay centred on the graph.
+            val dock = compose.onNodeWithTag("runner.dock").fetchSemanticsNode().boundsInRoot
             val pause = compose.onNode(hasText("Pause") and hasClickAction()).fetchSemanticsNode().boundsInRoot
             val hold = compose.onNodeWithContentDescription("End session").fetchSemanticsNode().boundsInRoot
-            assertEquals(plot.left, pause.left, 1f)
-            assertEquals(plot.right, hold.right, 1f)
+            assertEquals(plot.left, dock.left, 1f)
+            assertEquals(plot.right, dock.right, 1f)
+            assertEquals(pause.left - dock.left, dock.right - hold.right, 1f)
+            assertTrue(pause.left - dock.left in 1f..12f, "Pause sits inside the dock: ${pause.left - dock.left}")
             capture("android-tablet-runner-centered-margins.png")
         }
     }
