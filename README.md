@@ -8,7 +8,8 @@ set: edge depth, fingers, and position. There is no grip library to maintain.
 
 - Timed pulls, rest, hand changes, target bands, and live force feedback.
 - Half crimp, open, full crimp, drag, pinch, and finger curl.
-- Workout history, per-grip maxes, reminders, and CSV analysis exports.
+- Benchmarks per grip: max tests and the 4-minute critical force test.
+- Workout history, per-grip trends, reminders, and CSV analysis exports.
 - Cross-platform routine sharing with QR codes and links.
 - Demo gauge and timer-only training without hardware.
 - English and French; native accessibility, sound, and reduced-motion support.
