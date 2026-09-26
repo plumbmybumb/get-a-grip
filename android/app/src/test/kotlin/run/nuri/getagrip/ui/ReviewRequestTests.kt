@@ -10,6 +10,7 @@ import android.content.Intent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -21,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
@@ -72,6 +74,25 @@ class ReviewRequestTests {
     }
 
     private fun finishWrites() = runBlocking { owner.coroutineContext[Job]!!.children.toList().joinAll() }
+
+    /// Run a store call on the COMPOSITION's own dispatcher and let the test clock drive it —
+    /// never `runBlocking` it from the test thread once a composition is live.
+    ///
+    /// **Why this is not `runBlocking`** (it hung a full `test` run for 55 minutes): the prompt's
+    /// `LaunchedEffect` reads `hangSessionCount()`, which takes the gateway's lane and hops to
+    /// Room's thread for the query. The lane is released only when that effect RESUMES — on the
+    /// composition's dispatcher, which in a Compose test is driven by the test's own scheduler
+    /// on this very thread. `runBlocking` here then waits for the same lane inside
+    /// `recordSession`, and nothing can ever resume the effect that holds it: a deadlock
+    /// whenever the read is still in flight, i.e. by timing. In the app both run as main-thread
+    /// coroutines and simply queue on the lane; launching the save in the composition's scope
+    /// and waiting with `waitUntil` (which advances that scheduler) gives the test the same
+    /// ordering. A lane that stays held now fails in ten seconds instead of hanging.
+    private fun <T> onComposition(scope: CoroutineScope, block: suspend () -> T): T {
+        val call = scope.async { block() }
+        compose.waitUntil(10_000) { call.isCompleted }
+        return runBlocking { call.await() }
+    }
 
     private fun store(): TemplateStore {
         val db = GetAGripDatabase.inMemory(context)
@@ -179,7 +200,9 @@ class ReviewRequestTests {
         settings.setReviewRequested(false)
         finishWrites()
         var runnerOpen by mutableStateOf(false)
+        lateinit var composition: CoroutineScope
         compose.setContent {
+            composition = rememberCoroutineScope()
             CompositionLocalProvider(LocalTemplateStore provides templates, LocalSettingsStore provides settings) {
                 GetAGripTheme {
                     val review = rememberReviewRequest(runnerOpen)
@@ -190,7 +213,7 @@ class ReviewRequestTests {
         fun session(save: Boolean) {
             compose.runOnIdle { runnerOpen = true }
             compose.waitForIdle()
-            if (save) runBlocking { templates.saveRunnerSession() }
+            if (save) onComposition(composition) { templates.saveRunnerSession() }
             compose.runOnIdle { runnerOpen = false }
             compose.mainClock.advanceTimeBy(REVIEW_PROMPT_DELAY_MILLIS + 100)
             compose.waitForIdle()
