@@ -23,17 +23,107 @@ struct RhythmSection: View, Equatable {
     /// hold and rest lead the card, and the hands get a card of their own. Sets still
     /// override per row; a new set follows these.
     var includesPullTiming = false
+    /// How the paged Rhythm page draws its timing — see `PagedRhythmStyle`.
+    var pagedStyle: PagedRhythmStyle = .dials
+    /// The ladder page's L/R strip under the segmented control — kept (a) or dropped (b).
+    var showsOrderStrip = true
+
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     nonisolated static func == (a: Self, b: Self) -> Bool {
         a.defaults.rhythmKey == b.defaults.rhythmKey && a.firstSetReps == b.firstSetReps
             && a.includesPullTiming == b.includesPullTiming
+            && a.pagedStyle == b.pagedStyle
+            && a.showsOrderStrip == b.showsOrderStrip
             && (!a.includesPullTiming
                 || (a.defaults.holdSeconds == b.defaults.holdSeconds
                     && a.defaults.restSeconds == b.defaults.restSeconds))
     }
 
     var body: some View {
-        if includesPullTiming { pagedBody } else { documentBody }
+        if !includesPullTiming {
+            documentBody
+        } else if pagedStyle == .ladder {
+            ladderBody
+        } else {
+            pagedBody
+        }
+    }
+
+    // MARK: - One screen: the ladder stepper (V2)
+
+    /// Page 1 on ONE screen: three 48 pt `− value +` rows on the dial's own ladder, the
+    /// release toggle, and the hands as one segmented control with the order strip and the
+    /// starting hand on the row beneath it.
+    private var ladderBody: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            MaterialCard(verticalPadding: 4, surface: .flat) {
+                VStack(alignment: .leading, spacing: 0) {
+                    IntValueRow(title: String(localized: "Hold"), unit: String(localized: "s"),
+                                value: access.binding(\.plan.holdSeconds, current: defaults.holdSeconds),
+                                range: 1...60, limit: SetPlan.holdRange,
+                                control: .ladderStepper([1] + SetRowView.secondsLadder),
+                                spokenUnit: String(localized: "seconds"))
+                    rowDivider
+                    IntValueRow(title: String(localized: "Rest between pulls"), unit: String(localized: "s"),
+                                value: access.binding(\.plan.restSeconds, current: defaults.restSeconds),
+                                range: 0...60, limit: SetPlan.restRange,
+                                control: .ladderStepper([0] + SetRowView.secondsLadder),
+                                spokenUnit: String(localized: "seconds"))
+                    rowDivider
+                    IntValueRow(title: String(localized: "Break between sets"), unit: String(localized: "s"),
+                                value: access.binding(\.plan.setBreakSeconds, current: defaults.setBreakSeconds),
+                                range: 0...240, limit: SessionPlan.setBreakRange,
+                                control: .ladderStepper([0, 15, 30, 45, 60, 90, 120, 180, 240]),
+                                spokenUnit: String(localized: "seconds"))
+                    rowDivider
+                    releaseToggle
+                        .frame(minHeight: 46)
+                }
+            }
+
+            // The critical force setup's hands, exactly: the label row carries which hand
+            // goes first, one segmented control underneath, no card.
+            VStack(alignment: .leading, spacing: 8) {
+                HandsHeader(menuTitle: defaults.handMode.sideCount > 1 ? startingHandTitle : nil,
+                            side: access.binding(\.plan.startingHand, current: defaults.startingHand),
+                            leftTitle: String(localized: "Left first"),
+                            rightTitle: String(localized: "Right first"),
+                            hiddenReason: String(localized: "Both hands pull together, so neither goes first."),
+                            reservesMenuHeight: true)
+                    .padding(.leading, 6)
+                handModePicker
+                if showsOrderStrip {
+                    HandOrderStrip(mode: defaults.handMode,
+                                   startingHand: defaults.startingHand,
+                                   repsPerSide: firstSetReps)
+                        .padding(.leading, 6)
+                        .padding(.top, 4)
+                }
+            }
+        }
+    }
+
+    private var startingHandTitle: String {
+        defaults.startingHand == .right ? String(localized: "Right first") : String(localized: "Left first")
+    }
+
+    /// ONE native segmented control. At accessibility sizes its three labels would
+    /// truncate, so the wrapping chips come back there — words over a tidy row.
+    @ViewBuilder
+    private var handModePicker: some View {
+        if typeSize.isAccessibilitySize {
+            HandModeChipRow(selection: access.binding(\.plan.handMode, current: defaults.handMode))
+        } else {
+            Picker(String(localized: "Hands"),
+                   selection: access.binding(\.plan.handMode, current: defaults.handMode)) {
+                ForEach(HandMode.allCases, id: \.self) { mode in
+                    Text(mode.segmentName).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .sensoryFeedback(.selection, trigger: defaults.handMode)
+        }
     }
 
     /// Two cards: TIMING (hold, rest, break, when the rest starts) and HANDS.
@@ -178,5 +268,24 @@ struct RhythmSection: View, Equatable {
                             ? String(localized: "Start with the left hand")
                             : String(localized: "Start with the right hand"))
         .sensoryFeedback(.selection, trigger: defaults.startingHand)
+    }
+}
+
+/// The paged Rhythm page's timing controls (DEBUG prototype, `-builderPagesRhythm`).
+enum PagedRhythmStyle: Equatable {
+    /// Three full dials (A) — about 1010 pt, scrolls.
+    case dials
+    /// Three `− value +` rows on the dial's ladder (V2) — one screen.
+    case ladder
+}
+
+extension HandMode {
+    /// The segmented control's short form: the card is labelled HANDS, so the noun goes.
+    var segmentName: String {
+        switch self {
+        case .alternateEachRep: String(localized: "Alternate")
+        case .alternateEachSet: String(localized: "One at a time")
+        case .bothHands:        String(localized: "Both")
+        }
     }
 }

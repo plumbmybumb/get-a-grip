@@ -69,6 +69,8 @@ struct ValueRow: View {
     ///
     /// Tap-to-type works in all three — the escape hatch, never the only door.
     var control: ValueControl = .slider
+    /// What VoiceOver says after the number ("seconds" for "s"). Defaults to `unit`.
+    var spokenUnit: String? = nil
 
     /// Whether the number has become a field. Two changes per edit, so it lives here; the
     /// DRAFT STRING changes per keypress and does not (see `ValueField`).
@@ -84,7 +86,7 @@ struct ValueRow: View {
     private var hasTrack: Bool {
         switch control {
         case .slider, .dial: true
-        case .stepper, .none: false
+        case .stepper, .ladderStepper, .none: false
         }
     }
 
@@ -110,6 +112,14 @@ struct ValueRow: View {
     }
 
     var body: some View {
+        if case .ladderStepper(let ladder) = control {
+            ladderRow(ladder)
+        } else {
+            standardBody
+        }
+    }
+
+    private var standardBody: some View {
         // Tighter without a track — see `hasTrack`.
         VStack(alignment: .leading, spacing: hasTrack ? 8 : 4) {
             HStack(alignment: .firstTextBaseline) {
@@ -138,7 +148,7 @@ struct ValueRow: View {
                           format: { $0.formatted(.number.precision(.fractionLength(decimals))) },
                           spokenUnit: unit)
                     .accessibilityLabel(title)
-            case .stepper, .none:
+            case .stepper, .ladderStepper, .none:
                 EmptyView()
             }
 
@@ -151,6 +161,80 @@ struct ValueRow: View {
             }
         }
         .padding(.vertical, hasTrack ? 4 : 0)
+    }
+
+    // MARK: - Ladder stepper
+
+    /// `− value +` stepping through the dial's OWN ladder (3, 5, 7, 10, 12, 15, 20 …), so it
+    /// lands on exactly the numbers the dial would, one row high. Tap the number to type
+    /// anything else; a typed off-ladder value steps to its nearest neighbour.
+    ///
+    /// ONE VoiceOver element while not typing: "Hold, 10 seconds, adjustable" — swipe up or
+    /// down steps the ladder, and the actions rotor offers typing. The buttons themselves
+    /// are hidden from it, so the row is one stop rather than three.
+    @ViewBuilder
+    private func ladderRow(_ ladder: [Double]) -> some View {
+        let stops = dialValues(ladder)
+        // Accessibility sizes STACK the title over the stepper: side by side, the three
+        // 44 pt controls crushed "Rest between pulls" into one syllable per line.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 0))
+        let row = layout {
+            Text(title)
+                .font(.system(.subheadline, weight: .medium))
+                .foregroundStyle(Ink.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 0) {
+                Spacer(minLength: 8)
+                if isTyping {
+                    field
+                } else {
+                    RepeatingStep(symbol: "minus", enabled: ladderNeighbour(stops, up: false) != nil) {
+                        ladderStep(stops, up: false)
+                    }
+                    tappableValue
+                        .frame(minWidth: 64)
+                    RepeatingStep(symbol: "plus", enabled: ladderNeighbour(stops, up: true) != nil) {
+                        ladderStep(stops, up: true)
+                    }
+                }
+            }
+        }
+        .frame(minHeight: 46)
+
+        if isTyping {
+            row
+        } else {
+            row
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(title)
+                .accessibilityValue("\(text) \(spokenUnit ?? unit)")
+                .accessibilityAdjustableAction { direction in
+                    switch direction {
+                    case .increment: ladderStep(stops, up: true)
+                    case .decrement: ladderStep(stops, up: false)
+                    @unknown default: break
+                    }
+                }
+                .accessibilityAction(named: Text("Type a value")) {
+                    isTyping = true
+                    fieldFocused = true
+                }
+        }
+    }
+
+    /// The next stop above or below the CURRENT value — which may sit between stops after
+    /// typing, so this is a search, not an index.
+    private func ladderNeighbour(_ stops: [Double], up: Bool) -> Double? {
+        up ? stops.first { $0 > value + 0.0001 } : stops.last { $0 < value - 0.0001 }
+    }
+
+    @discardableResult
+    private func ladderStep(_ stops: [Double], up: Bool) -> Bool {
+        guard let next = ladderNeighbour(stops, up: up) else { return false }
+        value = next
+        return true
     }
 
     /// One step, clamped to the TYPED limit rather than the slider's range: a stepper is
@@ -369,6 +453,8 @@ enum ValueControl: Hashable {
     /// A `DialTrack` over the given ladder: evenly-spaced detents, one per value. Right for
     /// a quantity that is EXACT and drawn from a handful of real numbers — nearly all of them.
     case dial([Double])
+    /// `− value +` stepping through the same ladder a `.dial` would draw — one 48 pt row.
+    case ladderStepper([Double])
     case none
 }
 
@@ -498,6 +584,7 @@ struct IntValueRow: View {
     /// The stepper's increment, when it differs from the slider's: a stepper moving in the
     /// slider's fives could never reach 12.
     var stepBy: Int?
+    var spokenUnit: String? = nil
 
     var body: some View {
         ValueRow(
@@ -511,7 +598,8 @@ struct IntValueRow: View {
             presets: presets.map(Double.init),
             decimals: 0,
             caption: caption,
-            control: control
+            control: control,
+            spokenUnit: spokenUnit
         )
     }
 }

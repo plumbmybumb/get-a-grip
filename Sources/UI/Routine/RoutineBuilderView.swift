@@ -523,6 +523,14 @@ private struct BuilderDocument: View {
     // MARK: Lifecycle
 
     private func start() {
+        #if DEBUG
+        // A headless create (`-previewBuilderNew`) must open on what its arguments seed,
+        // never on a rescue copy a previous run left behind.
+        if ProcessInfo.processInfo.arguments.contains("-previewBuilderNew") {
+            templates.clearDraft()
+            return
+        }
+        #endif
         // The rescue copy exists only if a previous session died mid-build.
         // `initialDraft` stays at the seed, so the restored document is DIRTY and
         // Cancel still asks before discarding it.
@@ -702,7 +710,9 @@ extension BuilderDocument {
     fileprivate func pagedScroll(_ proxy: ScrollViewProxy) -> some View {
         ZStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                // The one-screen Rhythm page runs tighter: its bottom gutter is the bar's own
+                // scroll-edge treatment, and 18 pt between three blocks was 12 pt of fold.
+                VStack(alignment: .leading, spacing: onePageRhythm ? 14 : 18) {
                     switch page {
                     case .rhythm:   rhythmPage
                     case .sets:     setsPage(proxy)
@@ -711,8 +721,8 @@ extension BuilderDocument {
                     Color.clear.frame(height: 0).id("anchor.end")
                 }
                 .padding(.horizontal, Metrics.hPadding)
-                .padding(.top, 12)
-                .padding(.bottom, 28)
+                .padding(.top, onePageRhythm ? 8 : 12)
+                .padding(.bottom, onePageRhythm ? 12 : 28)
                 .debugMeasure("page\(page.rawValue + 1)")
                 .frame(maxWidth: sizeClass == .regular ? Metrics.maxContentWidthRegular
                                                        : Metrics.maxContentWidth)
@@ -720,6 +730,17 @@ extension BuilderDocument {
             }
             .scrollDismissesKeyboard(.interactively)
             .scrollEdgeEffectStyle(.soft, for: .bottom)
+            #if DEBUG
+            // `-builderMeasure`: the height the page has to fit in, between the bars.
+            .onScrollGeometryChange(for: [CGFloat].self) { geo in
+                [geo.containerSize.height, geo.contentInsets.top, geo.contentInsets.bottom,
+                 geo.contentSize.height]
+            } action: { _, g in
+                if ProcessInfo.processInfo.arguments.contains("-builderMeasure") {
+                    print("BUILDER_VISIBLE container=\(Int(g[0])) insetTop=\(Int(g[1])) insetBottom=\(Int(g[2])) content=\(Int(g[3]))")
+                }
+            }
+            #endif
             // A fresh scroll view per page, so every page opens at its top.
             .id(page)
             .transition(pageTransition)
@@ -728,6 +749,9 @@ extension BuilderDocument {
             #endif
         }
     }
+
+    /// The ladder Rhythm page, which is laid out to fit one screen.
+    private var onePageRhythm: Bool { page == .rhythm && pages.rhythm == .ladder }
 
     private var pageTransition: AnyTransition {
         if reduceMotion { return .opacity }
@@ -819,15 +843,18 @@ extension BuilderDocument {
         RhythmSection(access: access,
                       defaults: draft.plan.routineLevel,
                       firstSetReps: draft.plan.executable.sets.first?.repsPerSide ?? 6,
-                      includesPullTiming: true)
+                      includesPullTiming: true,
+                      pagedStyle: pages.rhythm,
+                      showsOrderStrip: pages.showsOrderStrip)
             .equatable()
         if pages.targetOnRhythm { routineLoadBlock }
     }
 
     private var routineLoadBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
-            CapsLabel(String(localized: "LOAD"))
-            MaterialCard(surface: .flat) {
+            // The one-screen page drops the caps label: the row names itself.
+            if pages.rhythm != .ladder { CapsLabel(String(localized: "LOAD")) }
+            MaterialCard(verticalPadding: pages.rhythm == .ladder ? 4 : 16, surface: .flat) {
                 RoutineTargetRow(
                     band: draft.plan.targetPercentBand,
                     setsVary: draft.plan.sets.contains { $0.hasTarget || $0.hasPercentTarget },

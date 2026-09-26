@@ -42,6 +42,8 @@ struct BuilderPagesPrototype {
     let indicator: Indicator
     let targetOnRhythm: Bool
     let rowFace: SetRowFace
+    let rhythm: PagedRhythmStyle
+    let showsOrderStrip: Bool
 
     static let current: BuilderPagesPrototype = {
         #if DEBUG
@@ -54,10 +56,13 @@ struct BuilderPagesPrototype {
             isOn: args.contains("-builderPages"),
             indicator: value("-builderPagesIndicator") == "steps" ? .steps : .dots,
             targetOnRhythm: value("-builderPagesTarget") != "sets",
-            rowFace: value("-builderPagesRows") == "table" ? .table : .compact)
+            rowFace: value("-builderPagesRows") == "table" ? .table : .compact,
+            rhythm: value("-builderPagesRhythm") == "ladder" ? .ladder : .dials,
+            showsOrderStrip: value("-builderPagesStrip") != "off")
         #else
         return BuilderPagesPrototype(isOn: false, indicator: .dots,
-                                     targetOnRhythm: true, rowFace: .compact)
+                                     targetOnRhythm: true, rowFace: .compact, rhythm: .dials,
+                                     showsOrderStrip: true)
         #endif
     }()
 
@@ -119,6 +124,7 @@ struct RoutineTargetRow: View, Equatable {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var expanded = false
     @State private var custom = false
 
@@ -169,21 +175,27 @@ struct RoutineTargetRow: View, Equatable {
         Button {
             withAnimation(Motion.state(reduceMotion)) { expanded.toggle() }
         } label: {
-            HStack(spacing: 8) {
+            // Stacked at accessibility sizes, where "20–30 %" beside the label truncated.
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+                : AnyLayout(HStackLayout(spacing: 8))
+            layout {
                 Text("Target load")
                     .font(.system(.subheadline, weight: .medium))
                     .foregroundStyle(Ink.primary)
-                Spacer(minLength: 8)
-                Text(valueText)
-                    .font(.system(.title3, weight: .semibold))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .foregroundStyle(band == nil ? Ink.tertiary : Ink.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Ink.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    Spacer(minLength: 8)
+                    Text(valueText)
+                        .font(.system(.title3, weight: .semibold))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .foregroundStyle(band == nil ? Ink.tertiary : Ink.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.system(.footnote, weight: .semibold))
+                        .foregroundStyle(Ink.tertiary)
+                }
             }
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(.rect)

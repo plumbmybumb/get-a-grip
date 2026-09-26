@@ -464,30 +464,13 @@ struct CriticalForceTestView: View {
         @Bindable var visit = visit
         let handChoice = visit.handChoice
         return VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                CapsLabel(String(localized: "HANDS"))
-                Spacer(minLength: 8)
-                // Which hand goes first (or which hand), as a quiet menu in the label's
-                // row rather than a second segmented control.
-                if handChoice != .bothHands {
-                    Menu {
-                        Picker("Hand", selection: $visit.pickedSide) {
-                            Text(handChoice == .oneAtATime ? "Left first" : "Left").tag(Side.left)
-                            Text(handChoice == .oneAtATime ? "Right first" : "Right").tag(Side.right)
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(sideMenuTitle)
-                            Image(systemName: "chevron.up.chevron.down").font(.caption2)
-                        }
-                        .font(.system(.subheadline, weight: .semibold))
-                        .foregroundStyle(Accent.graphite)
-                        .frame(minHeight: 44)
-                        .contentShape(.rect)
-                    }
-                    .accessibilityIdentifier("cf.side")
-                }
-            }
+            // Which hand goes first (or which hand), as a quiet menu in the label's row
+            // rather than a second segmented control. Shared with the routine builder.
+            HandsHeader(menuTitle: handChoice == .bothHands ? nil : sideMenuTitle,
+                        side: $visit.pickedSide,
+                        leftTitle: handChoice == .oneAtATime ? String(localized: "Left first") : String(localized: "Left"),
+                        rightTitle: handChoice == .oneAtATime ? String(localized: "Right first") : String(localized: "Right"),
+                        menuIdentifier: "cf.side")
             Picker("Hands", selection: $visit.handChoice) {
                 Text("One at a time").tag(CriticalForceHandChoice.oneAtATime)
                 Text("Both hands").tag(CriticalForceHandChoice.bothHands)
