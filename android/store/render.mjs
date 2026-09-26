@@ -23,12 +23,12 @@ const iconPaths=[...iconXml.matchAll(/android:fillColor="#FF([A-F0-9]+)" android
 const icon=`<svg viewBox="18 18 72 72" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#E3E6EB"/><stop offset="1" stop-color="#C3C9D2"/></linearGradient></defs><path fill="url(#bg)" d="M18 18H90V90H18Z"/>${iconPaths}</svg>`;
 const style=`<style>*{box-sizing:border-box}body{margin:0;color:#2B3038;background:linear-gradient(#F7F8FA,#D6DFE9);font-family:'Avenir Next',Arial,sans-serif}.frame{position:relative;width:1080px;height:1920px;overflow:hidden}.mountains{position:absolute;inset:0;width:100%;height:100%}.headline{position:absolute;left:50px;right:50px;top:80px;margin:0;font-size:86px;line-height:1.12;font-weight:900;text-align:center;letter-spacing:-2.5px}.line{display:block;white-space:nowrap}.blue{color:#1E6FC4}.phone{position:absolute;top:360px;left:207px;width:666px;border:8px solid #12141A;border-radius:60px;background:#12141A;box-shadow:0 22px 60px #1E263452;overflow:hidden}.phone img{display:block;width:650px;height:auto}.feature{width:1024px;height:500px;position:relative;overflow:hidden}.feature h1{position:absolute;left:65px;top:72px;margin:0;font-weight:900;font-size:76px;letter-spacing:-2px;line-height:1.1}.feature p{position:absolute;left:70px;top:185px;margin:0;font-weight:600;font-size:27px;line-height:1.4}.feature .mark{position:absolute;right:73px;top:85px;width:255px;height:255px;border-radius:52px;overflow:hidden;box-shadow:0 16px 40px #1e263428}</style>`;
 const shots=[
- ['01_today.png',['your routine,','<span class="blue">one tap</span> from pulling'],'01_one_tap.png',.4],
- ['02_working.png',['the clock runs only','<span class="blue">while you hold</span>'],'02_only_while_you_hold.png',1.6],
- ['03_rest.png',['new grip?','<span class="blue">you’ll see it coming</span>'],'03_grip_changes.png',2.8],
- ['04_builder.png',['build it once,','<span class="blue">train it daily</span>'],'04_build_it_once.png',4.1],
- ['05_history.png',['every pull,','<span class="blue">part of your progress</span>'],'05_your_progress.png',5.3],
- ['06_share_qr.png',['the code <span class="blue">is</span>','the routine'],'06_the_code_is_the_routine.png',6.6]
+ ['01_today.png',['Your routine,','<span class="blue">one tap away</span>'],'01_one_tap.png',.4],
+ ['02_working.png',['The clock runs only','<span class="blue">while you hold</span>'],'02_only_while_you_hold.png',1.6],
+ ['03_rest.png',['Rest starts','<span class="blue">when you let go</span>'],'03_rest_when_you_let_go.png',2.8],
+ ['04_critical_force.png',['Measure your','<span class="blue">critical force</span>'],'04_critical_force.png',4.1],
+ ['05_history.png',['Every session,','<span class="blue">remembered</span>'],'05_every_session.png',5.3],
+ ['06_builder.png',['Set it up once,','<span class="blue">hang every day</span>'],'06_set_it_up_once.png',6.6]
 ];
 for(const [raw,lines,name,phase] of shots){
  let b;try{b=await fs.readFile(path.join(root,'raw',raw))}catch{continue}

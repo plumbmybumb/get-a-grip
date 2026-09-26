@@ -6,10 +6,13 @@ TRAIN WITH LIVE FORCE FEEDBACK
 Connect a compatible Bluetooth force gauge and see your load on a live graph. Hold timing follows your measured effort, with clear cues for pulling, releasing and resting. Set target loads in kilograms or as a percentage of a saved maximum. Choose whether rest begins when you let go.
 
 MAKE EVERY SET CLEAR
-Build grips directly into your routine: edge depth, selected fingers and position, including finger curl. Alternate hands, train one side at a time or use both hands. Orange grip-change cues make the next grip easier to notice while keeping your metrics visible.
+Build grips directly into your routine: edge depth, selected fingers and position, including finger curl. Alternate hands, train one side at a time or use both hands. An amber cue marks a new grip before you pull, without covering your numbers.
+
+MEASURE YOUR STRENGTH
+Benchmarks keeps each grip's max and critical force together. Measuring a max is simple: pull your hardest, every pull counts, keep the best. The critical force test is 24 all-out pulls in four minutes and finds the load each hand can sustain.
 
 KEEP YOUR DAILY RITUAL
-Create multiple named routines, set a daily session goal and use optional reminders. Review your workout history, time under tension and maximums. Export training records as CSV files when you want to review them elsewhere. Exports are shared only when you choose; nothing is automatically sent to an AI service.
+Create multiple named routines, set a daily session goal and use optional reminders. Review your workout history, your load per grip over time and your time under tension. Export training records as CSV files when you want to review them elsewhere. Exports are shared only when you choose; nothing is automatically sent to an AI service.
 
 SHARE A ROUTINE
 Share a routine by QR code or link, and scan a friend's routine inside the app. Routine sharing works between Get a Grip on Android and iPhone.
