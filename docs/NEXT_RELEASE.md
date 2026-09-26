@@ -1,5 +1,34 @@
 # Release record and the queue behind it
 
+## iOS 1.2.0 (24) and Android 1.2.0 (14) — critical force, Benchmarks, fewer words
+
+Status: **prepared on branch `release/next`, not yet uploaded.** What's New:
+[docs/releases/1.2.0/](releases/1.2.0/) (iOS, English and French) and
+[ANDROID_1.2.0_WHATS_NEW.txt](releases/notes/ANDROID_1.2.0_WHATS_NEW.txt).
+
+- **Critical force** (see [CRITICAL_FORCE.md](CRITICAL_FORCE.md)): the 24 × 7:3 all-out
+  test on the runner's screen, one hand at a time / both hands / one hand, tare before each
+  hand, Start before the second; results per grip with W′, % of max and % of body weight;
+  in Export. New CloudKit record type `CriticalForceRecord` — **deploy the schema to
+  Production before the iOS build goes out.**
+- **Maxes → Benchmarks**; measuring a max is a visit (every pull an attempt, review sheet).
+- **Runner:** the stacked set/pull rows are the one design; the progress-style picker and
+  the other seven styles are gone.
+- **No tutorials:** the first-run tour and the builder's coach cards are removed; an
+  app-wide copy pass shortened ~125 strings on both platforms. The premade routines that
+  were being tested ("known protocols") were dropped before release.
+- **French:** ~150 strings that command-line builds never wrote into the catalogs now have
+  French; the watch app had none at all and now has its own catalog.
+- **Android parity:** the runner, gauge, critical-force and max screens share the iPhone's
+  anatomy (trace full-screen, one tinted panel, one dock); lit trace; Benchmarks chart with
+  axes and monotone curve; History trend deck; rating row + one-time ask; the missing
+  `VIBRATE` permission (session haptics were silently failing).
+
+Owed before upload: CloudKit schema deploy (Nuri), Android signing (Nuri's script),
+hardware checks — critical force timing on a real Progressor, Android haptics on a phone,
+the new Android session screen on a small phone. Baseline profile should be regenerated on
+a device (`:app:generateBaselineProfile`); the stale one only lists deleted classes.
+
 **iOS 1.1.2 (12)** and **Android 1.1.0 (13)** were submitted on **23 September 2026** and are
 **both live** since 24 September (App Store; Google Play production, the first public
 Android release) ([iOS record](releases/notes/RELEASE_2026-09-23_IOS_1.1.2.md),
@@ -283,5 +312,7 @@ StoreKit `RequestReviewAction` reference and App Store Review Guidelines 1.1.7 a
   under the line "Get a Grip is free and open source. A rating helps other climbers
   find it." The open-source framing lives here because the system prompt cannot
   carry it.
-- [ ] Android: the same policy over Google Play's in-app review API, which has its own
-  quota and forbids incentives in the same way.
+- [x] Android (1.2.0): the same policy, but as the app's own one-time dialog ("Rate on
+  Google Play" / "Not now") plus a Settings › Support row, both opening the Play listing.
+  Google's in-app review API was not used: it is proprietary Play Core and pulls in Play
+  services, which `scripts/generate-notices.py` refuses as non-FOSS runtime.
