@@ -1,3 +1,4 @@
+• Un nouvel éditeur de routine en trois pages courtes : rythme, séries et planning. Les durées se règlent avec − et +, et une série peut garder ses propres durées.
 • Force critique : un test de 4 minutes, 24 tractions à fond (7 s d'effort, 3 s de repos), qui mesure la charge que chaque main peut tenir sur n'importe quelle prise. Lancez-le depuis l’onglet Tests.
 • L’onglet Max devient Tests : la carte de chaque prise montre son maximum et sa force critique, avec l'historique des deux.
 • Mesurer un maximum devient une visite : tirez autant de fois que vous voulez, chaque traction compte comme une tentative, puis passez-les en revue et gardez la meilleure pour chaque main.

@@ -1,3 +1,4 @@
+• A new routine builder in three short pages: rhythm, sets and schedule. Timing is − and + steppers, and a set can keep its own timing.
 • Critical force: a 4-minute test of 24 all-out pulls (7 s on, 3 s off) that measures the load each hand can sustain on any grip. Start it from Benchmarks.
 • Maxes is now Benchmarks: each grip's card shows its max and its critical force together, with the history of both.
 • Measuring a max is a visit: pull as often as you like, every pull counts as an attempt, then review and keep the best for each hand.
