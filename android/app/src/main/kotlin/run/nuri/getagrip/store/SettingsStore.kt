@@ -28,8 +28,6 @@ import run.nuri.getagrip.engine.GaugeKind
 import java.util.UUID
 import run.nuri.getagrip.ui.units.WeightUnit
 import run.nuri.getagrip.ui.units.WeightUnits
-import run.nuri.getagrip.ui.runner.RunnerProgressStyle
-import run.nuri.getagrip.ui.runner.RunnerProgressStyles
 
 /// Which gauge the app is driving. Its own interface because `DeviceStore.init` chooses its
 /// client from it, so it must be available synchronously — see `SettingsStore`.
@@ -141,8 +139,6 @@ class SettingsStore(
         val scheduledRemindersKey = stringPreferencesKey("reminders.scheduled")
         val trainingDayRepairKey = intPreferencesKey("repair.trainingDays.version")
         val bodyWeightKgKey = doublePreferencesKey("bodyWeightKg")
-        /// TEST BUILDS ONLY (iOS design/set-rep-bars): the runner's progress style. iOS's key.
-        val runnerProgressStyleKey = stringPreferencesKey("test.runnerProgressStyle")
 
         /// `tour.seen.<act>` — one key per act, holding a VERSION rather than a Bool, so a
         /// bumped act can run again for people who saw the old one.
@@ -156,15 +152,6 @@ class SettingsStore(
 
     init {
         WeightUnits.current = WeightUnit.fromRaw(loaded[weightUnitKey])
-        RunnerProgressStyles.current = RunnerProgressStyle.fromRaw(loaded[runnerProgressStyleKey])
-    }
-
-    /// TEST BUILDS ONLY: how the runner shows sets and pulls. Default Stacked.
-    val runnerProgressStyle: RunnerProgressStyle get() = RunnerProgressStyles.current
-
-    fun setRunnerProgressStyle(value: RunnerProgressStyle) {
-        RunnerProgressStyles.current = value
-        write { it[runnerProgressStyleKey] = value.rawValue }
     }
 
     val weightUnit: WeightUnit get() = WeightUnits.current

@@ -43,8 +43,6 @@ import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.ui.components.PalmHand
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.runner.RunnerLive
-import run.nuri.getagrip.ui.runner.RunnerProgressStyle
-import run.nuri.getagrip.ui.runner.RunnerProgressStyles
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.units.WeightUnit
@@ -64,11 +62,9 @@ class RestFocusUiTests {
     @Before fun usePredictableUnits() { originalUnits = WeightUnits.current; WeightUnits.current = WeightUnit.kg }
     @After fun restoreUnits() { WeightUnits.current = originalUnits }
 
-    // These pin TODAY's rest summary, with its own Set and Pull counts. The shipping default
-    // (STACKED) keeps the counters row instead — see `StackedProgressTests`. As iOS's UI tests
-    // run with `-progressStyle baseline` on the set/rep-bars branch.
-    @Before fun useTodaysLayout() { RunnerProgressStyles.current = RunnerProgressStyle.baseline }
-    @After fun restoreStyle() { RunnerProgressStyles.current = RunnerProgressStyle.stacked }
+    // The Set and Pull counts: the counters row under the routine's pills, which stays put
+    // through a rest, except at accessibility sizes, where the summary stands alone and
+    // carries its own counts (see `RunnerPanelHeader`).
 
     @Test fun longRestShowsTheNextHandAndFullGripAboveTheUnchangedLiveGraph() {
         Harness(target = true).use { h ->
@@ -295,7 +291,7 @@ class RestFocusUiTests {
             assertEquals(10_000, h.session.snapshot.plannedRepCount)
             showRunner(h, fontScale = 1.3f)
             assertText("countdown", "900")
-            assertText("pullCount", "Pull 2 of 10000")
+            assertText("pullCount", "Pull 2 of 10000", ignoreCase = true)
             assertAboveGraph()
             capture("android-rest-focus-10000-pulls.png")
             for (id in listOf("setCount", "pullCount", "countdown")) assertTextFits(id)
@@ -312,7 +308,14 @@ class RestFocusUiTests {
         compose.onNode(hasText("Pause") and hasClickAction()).fetchSemanticsNode().boundsInRoot,
         compose.onNodeWithContentDescription("End session").fetchSemanticsNode().boundsInRoot,
     )
-    private fun node(suffix: String) = compose.onNodeWithTag("runner.restFocus.$suffix", useUnmergedTree = true)
+    private fun tagFor(suffix: String): String {
+        val own = "runner.restFocus.$suffix"
+        val counters = mapOf("setCount" to "runner-set-count", "pullCount" to "runner-pull-count")[suffix]
+            ?: return own
+        return if (compose.onAllNodesWithTag(own, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) own
+        else counters
+    }
+    private fun node(suffix: String) = compose.onNodeWithTag(tagFor(suffix), useUnmergedTree = true)
     private fun bounds(suffix: String) = node(suffix).fetchSemanticsNode().boundsInRoot
     private fun text(suffix: String): String {
         val config = node(suffix).fetchSemanticsNode().config
@@ -325,14 +328,16 @@ class RestFocusUiTests {
     }
     private fun assertAboveGraph() {
         val graph = compose.onNodeWithTag("runner-plot").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        assertTrue(graph.height > 160, "The graph must remain a useful live plot")
+        // 150: the time bar and the routine's pills cost the graph ~28 dp over the old single
+        // hold bar; the tightest case here (360 × 740, French, 1.3× text) measures 152.
+        assertTrue(graph.height > 150, "The graph must remain a useful live plot: ${graph.height}")
         for (id in listOf("hand", "grip", "countdown", "phase", "setCount", "pullCount")) {
             node(id).assertIsDisplayed()
             assertTrue(bounds(id).bottom <= graph.top, "$id must stay entirely above the graph")
         }
     }
     private fun assertTextFits(suffix: String) {
-        val tag = "runner.restFocus.$suffix"
+        val tag = tagFor(suffix)
         val texts = compose.onAllNodes(
             (hasTestTag(tag) or hasAnyAncestor(hasTestTag(tag))) and
                 SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult),

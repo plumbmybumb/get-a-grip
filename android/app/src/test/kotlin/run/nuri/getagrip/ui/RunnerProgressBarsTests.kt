@@ -30,21 +30,19 @@ import run.nuri.getagrip.runner.RunnerSession
 import run.nuri.getagrip.store.DeviceStore
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.ui.runner.RunnerLive
-import run.nuri.getagrip.ui.runner.RunnerProgressStyle
-import run.nuri.getagrip.ui.runner.RunnerProgressStyles
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertTrue
 
-/// STACKED on the runner: one time bar and the routine's pills, identical in every phase, with
+/// The runner's progress rows: one time bar and the routine's pills, identical in every phase, with
 /// the counters row kept through a long rest. And the performance rule the iOS commits
 /// measured: only the leaf reads the per-sample progress, never the runner screen.
 @OptIn(InternalComposeTracingApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w393dp-h820dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class StackedProgressTests {
+class RunnerProgressBarsTests {
     @get:Rule val compose = createComposeRule()
 
     private val clock = FakeClock()
@@ -52,12 +50,12 @@ class StackedProgressTests {
     private val client = RecordingProgressorClient()
     private val device = DeviceStore(client, scope = scope, clock = clock).also { client.connect() }
     private val session = RunnerSession(
-        plan = SessionPlan(name = "Stacked", sets = listOf(
+        plan = SessionPlan(name = "Progress", sets = listOf(
             SetPlan(grip = GripSpec(edgeMM = 20), repsPerSide = 2),
             SetPlan(grip = GripSpec(edgeMM = 15), repsPerSide = 3)),
             handMode = HandMode.bothHands, holdSeconds = 7, restSeconds = 30, leadInSeconds = 0,
             waitForReleaseBeforeRest = false),
-        routineName = "Stacked", device = device, scope = scope, clock = clock,
+        routineName = "Progress", device = device, scope = scope, clock = clock,
     ).also { it.begin() }
     private var micros = 0u
     private val counts = mutableMapOf<String, AtomicInteger>()
@@ -85,12 +83,10 @@ class StackedProgressTests {
             override fun traceEventEnd() = Unit
             override fun isTraceInProgress() = false
         })
-        RunnerProgressStyles.current = RunnerProgressStyle.stacked
         session.end(); scope.cancel()
     }
 
     @Test fun aHoldMovesTheTimeBarAndNeverTheRunnerScreen() {
-        assertTrue(RunnerProgressStyles.current == RunnerProgressStyle.stacked, "STACKED is the shipping default")
         show()
         compose.runOnIdle { repeat(10) { sample(20.0) } }
         compose.waitForIdle()
@@ -112,11 +108,11 @@ class StackedProgressTests {
         }
         compose.waitForIdle()
         assertTrue(session.snapshot.phase is RunnerPhase.Working, "${session.snapshot.phase}")
-        val bar = count(".StackedTimeBar")
+        val bar = count(".RunnerTimeBar")
         assertTrue(bar >= 10, "the time bar must follow the hold: $bar")
         // The whole-second numeral turns once in that second, which is the snapshot's own
         // republish; per reading would be eighty.
-        for (still in listOf(".RunnerLive", ".RoutineLineHeader", ".StackedRoutinePills", ".Counters")) {
+        for (still in listOf(".RunnerLive", ".RunnerPanelHeader", ".RoutinePills", ".Counters")) {
             val n = count(still)
             assertTrue(n <= 2, "$still recomposed $n times across 80 readings")
         }
@@ -141,26 +137,11 @@ class StackedProgressTests {
             .assert(SemanticsMatcher("says how much is left") {
                 it.config.getOrNull(SemanticsProperties.ContentDescription)?.any { d: String -> d.endsWith("4 pulls left") } == true
             })
-        capture("stacked-rest.png")
-    }
-
-    @Test fun todaysLayoutHasNoRoutineLine() {
-        RunnerProgressStyles.current = RunnerProgressStyle.baseline
-        show()
-        compose.onNodeWithTag("runner.timeBar").assertDoesNotExist()
-        compose.onNodeWithTag("runner.routinePills").assertDoesNotExist()
-        compose.onNodeWithTag("runner-counters").assertExists()
-    }
-
-    @Test fun underlineKeepsTodaysBarWithTheRoutineBeneath() {
-        RunnerProgressStyles.current = RunnerProgressStyle.underline
-        show()
-        compose.onNodeWithTag("runner.routineUnderline").assertExists()
-        compose.onNodeWithTag("runner.timeBar").assertDoesNotExist()
+        capture("runner-rest.png")
     }
 
     private fun capture(name: String) {
-        val output = File("../../build/review/stacked/$name").canonicalFile
+        val output = File("../../build/review/runner/$name").canonicalFile
         output.parentFile?.mkdirs()
         output.outputStream().use {
             compose.onRoot().captureToImage().asAndroidBitmap()

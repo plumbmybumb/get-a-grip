@@ -123,7 +123,7 @@ class RunnerSession(
         private set
     val repProgressBucket: Int get() = (repProgress * 100).roundToInt()
 
-    /// The running countdown's fraction left: the timer-only ring, and STACKED's time bar
+    /// The running countdown's fraction left: the timer-only ring, and the runner's time bar
     /// draining through a rest. Keep this 10 Hz fraction off the screen snapshot too; only
     /// leaf views read it.
     var phaseRemainingFraction: Double? by mutableStateOf(null)
@@ -548,7 +548,7 @@ class RunnerSession(
         val slot = runner.displaySlot
         // Published separately so only the progress bar reads this sample-rate state.
         repProgress = runner.repProgress.toFloat().coerceIn(0f, 1f)
-        // Measured sessions too, for STACKED's rest time bar (iOS ce36b1f). The engine returns
+        // Measured sessions too, for the time bar's rest countdown (iOS ce36b1f). The engine returns
         // null while a measured pull works, so this changes only on countdown ticks.
         val remaining = runner.phaseRemainingFraction(now)
         if (remaining != phaseRemainingFraction) phaseRemainingFraction = remaining

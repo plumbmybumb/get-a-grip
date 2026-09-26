@@ -3,50 +3,15 @@
 
 package run.nuri.getagrip.ui.runner
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import run.nuri.getagrip.engine.RepOutcome
 import run.nuri.getagrip.engine.RepSlot
 import run.nuri.getagrip.engine.RepSummary
 import run.nuri.getagrip.engine.RunnerPhase
 
-// DESIGN EXPLORATION, from iOS `RunnerProgressBars.swift` (branch design/set-rep-bars): where
-// the session's position lives on the runner. A TEST build chooses the style in Settings ›
-// "Progress style (test)"; STACKED is the shipping default.
-//
-// Strings in this family are VERBATIM, as on iOS: it is a prototype, and localized keys
-// would land in the shipping string catalog.
-
-/// How the runner shows sets and pulls. The raw values are iOS's, and a STORAGE FORMAT
-/// (`test.runnerProgressStyle`).
-///
-/// TRANSLATION NOTE: iOS carries eight (baseline, segments, timeline, rails, nested, zoom,
-/// underline, stacked). Android ports the shipping default, STACKED, the cheap UNDERLINE and
-/// today's layout; a stored raw value this build lacks falls back to STACKED.
-enum class RunnerProgressStyle(val rawValue: String, val settingsName: String) {
-    stacked("stacked", "Stacked"),
-    underline("underline", "Underline"),
-    baseline("baseline", "Today");
-
-    /// STACKED and UNDERLINE keep today's panel and add the whole routine under the hero,
-    /// through rests too.
-    val keepsRoutineLine: Boolean get() = this != baseline
-
-    companion object {
-        /// What the Settings picker offers, in iOS's order.
-        val selectable: List<RunnerProgressStyle> = listOf(stacked, underline, baseline)
-
-        fun fromRaw(raw: String?): RunnerProgressStyle = entries.firstOrNull { it.rawValue == raw } ?: stacked
-    }
-}
-
-/// Observable, cached once from `SettingsStore` — the `WeightUnits` pattern, so the runner
-/// reads it with no store in its tree (and a test gets the shipping default).
-object RunnerProgressStyles {
-    var current: RunnerProgressStyle by mutableStateOf(RunnerProgressStyle.stacked)
-        internal set
-}
+// Where the session's position lives on the runner (iOS `RunnerProgressBars.swift`): ONE
+// time bar under the hero, then the whole routine as quiet pills, then the SET / PULL labels.
+// This file is the pure half — the model, the pill layout and what the time bar measures —
+// so it is testable without Compose.
 
 /// Where the session is, folded from the runner's resolved slots and results. Built when the
 /// coarse snapshot changes: `results` only changes when `snapshot.completedRepCount` does.
@@ -58,15 +23,13 @@ data class SessionProgressModel(
     val finished: List<Boolean>,
     /// The pull being pulled, or the next one while resting; null once finished.
     val current: Int?,
-    /// The current pull's clock has run (working, or paused mid-pull).
-    val isLive: Boolean,
 ) {
     val total: Int get() = setSizes.sum()
     val done: Int get() = finished.size
     val pullsLeft: Int get() = total - done
 
     companion object {
-        fun of(slots: List<RepSlot>, results: List<RepSummary>, phase: RunnerPhase): SessionProgressModel {
+        fun of(slots: List<RepSlot>, results: List<RepSummary>): SessionProgressModel {
             val sizes = mutableListOf<Int>()
             var lastSet: Int? = null
             for (slot in slots) {
@@ -74,12 +37,10 @@ data class SessionProgressModel(
                 lastSet = slot.setIndex
             }
             val next = results.size
-            val inner = (phase as? RunnerPhase.Paused)?.before ?: phase
             return SessionProgressModel(
                 setSizes = sizes,
                 finished = results.map { it.outcome == RepOutcome.completed },
                 current = if (next < slots.size) next else null,
-                isLive = inner is RunnerPhase.Working,
             )
         }
     }
@@ -92,7 +53,7 @@ data class SessionProgressModel(
 /// 8-unit slot and goes under 6, leaving set gaps only (which narrow before a set becomes a
 /// sliver). Units are whatever `width` is in — the caller passes pixels with density-scaled
 /// gaps.
-object ZoomLayout {
+object RoutinePillLayout {
     fun cells(
         sizes: List<Int>,
         width: Float,
@@ -124,7 +85,7 @@ object ZoomLayout {
     }
 }
 
-/// STACKED's time bar: what the one bar measures in this phase.
+/// What the runner's one time bar measures in this phase.
 enum class TimeBarMode { hold, armed, released, countdown, none }
 
 fun timeBarMode(phase: RunnerPhase): TimeBarMode = when ((phase as? RunnerPhase.Paused)?.before ?: phase) {
@@ -150,8 +111,8 @@ fun timeBarFraction(mode: TimeBarMode, repProgress: Float, remaining: Double?): 
     TimeBarMode.armed, TimeBarMode.none -> 0f
 }.coerceIn(0f, 1f)
 
-/// The counters' spoken line gains what the routine line shows and the words do not: how
-/// much is left. Verbatim, as iOS's `routineLeftSpoken`.
+/// The counters' spoken line gains what the pills show and the words do not: how much is
+/// left. Verbatim, as iOS's `routineLeftSpoken`.
 fun routineLeftSpoken(planned: Int, completed: Int): String {
     val left = planned - completed
     return if (left == 1) ", 1 pull left" else ", ${maxOf(0, left)} pulls left"

@@ -207,7 +207,6 @@ private fun SettingsRoot(
             }
 
             WeightUnitSetting(LocalSettingsStore.current)
-            ProgressStyleSetting(LocalSettingsStore.current)
             BodyWeightSetting(LocalSettingsStore.current)
 
             // The live gauge is a button on Today's bar (2026-09-20): one door, not two.
@@ -833,36 +832,6 @@ internal fun WeightUnitSetting(settings: run.nuri.getagrip.store.SettingsStore) 
                 ) { settings.setWeightUnit(option) }
             }
         }
-    }
-}
-
-/// TEST BUILDS ONLY (iOS `progressStyleCard`, branch design/set-rep-bars): how the runner
-/// shows sets and pulls, so a test build can compare the styles on real hardware. Strings are
-/// VERBATIM, as on iOS: a prototype's words must not land in the shipping string catalog.
-///
-/// TRANSLATION NOTE: iOS offers seven styles from a menu ("six names do not fit one segmented
-/// row"); this port carries three, which fit one row of chips like Weight units.
-@Composable
-internal fun ProgressStyleSetting(settings: run.nuri.getagrip.store.SettingsStore) {
-    val palette = LocalGripPalette.current
-    Card {
-        CapsLabel("Test build · not in the App Store version")
-        Text("Progress style (test)", style = MaterialTheme.typography.titleMedium, color = palette.inkPrimary)
-        Row(Modifier.fillMaxWidth().selectableGroup().testTag("settings.test.progressStyle"),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            run.nuri.getagrip.ui.runner.RunnerProgressStyle.selectable.forEach { option ->
-                Chip(
-                    title = option.settingsName,
-                    isSelected = settings.runnerProgressStyle == option,
-                    modifier = Modifier.weight(1f).testTag("settings.test.progressStyle.${option.rawValue}"),
-                ) { settings.setRunnerProgressStyle(option) }
-            }
-        }
-        Text(
-            "Test builds only. How the session screen shows sets and pulls. Stacked: today's bar with the whole routine as pills beneath it. Underline: today's bar with the routine as a thin line beneath. Today is the shipping layout.",
-            style = MaterialTheme.typography.bodySmall,
-            color = palette.inkSecondary,
-        )
     }
 }
 

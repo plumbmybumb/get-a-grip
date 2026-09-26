@@ -42,10 +42,10 @@ internal fun GripPalette.timeTrack(): Color =
 internal fun GripPalette.pillTrack(): Color =
     Color(0xFF767680).copy(alpha = if (this == DarkPalette) 0.24f else 0.12f)
 
-/// STACKED's top row: ONE bar that is always there, so the panel never changes shape between
-/// pull and rest (owner, 2026-09-25).
+/// The runner's time bar (iOS `RunnerTimeBar`): ONE bar that is always there, so the panel
+/// never changes shape between pull and rest (owner, 2026-09-25).
 ///
-/// - Pulling: today's hold bar exactly (the system track, bleu fill growing with held time).
+/// - Pulling: the hold bar (the system track, bleu fill growing with held time).
 ///   Released but still on the edge: full. Armed: empty, waiting.
 /// - Rest, set break, count-in: the rest's own countdown, DRAINING from full to empty in the
 ///   calm steel. Drain, not fill, because it is time REMAINING, and it makes both seams
@@ -57,12 +57,12 @@ internal fun GripPalette.pillTrack(): Color =
 /// A LEAF: it alone reads `repProgress` and `phaseRemainingFraction`, both sample- or
 /// tick-rate. The fraction is the engine's own countdown, the one behind the rest numeral.
 @Composable
-internal fun StackedTimeBar(session: RunnerSession, mode: TimeBarMode, identity: Int, modifier: Modifier = Modifier) {
+internal fun RunnerTimeBar(session: RunnerSession, mode: TimeBarMode, identity: Int, modifier: Modifier = Modifier) {
     val palette = LocalGripPalette.current
     val reduceMotion = rememberReduceMotion()
     val key = TimeBarKey(isRest = mode == TimeBarMode.countdown, identity = identity)
     Box(
-        modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().height(STACKED_TIME_BAR_HEIGHT)
+        modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().height(TIME_BAR_HEIGHT)
             .clip(CircleShape).background(palette.timeTrack())
             .testTag("runner.timeBar").clearAndSetSemantics {},
     ) {
@@ -86,11 +86,10 @@ internal fun StackedTimeBar(session: RunnerSession, mode: TimeBarMode, identity:
 
 private data class TimeBarKey(val isRest: Boolean, val identity: Int)
 
-internal val STACKED_TIME_BAR_HEIGHT = 6.dp
-internal val STACKED_PILL_HEIGHT = 3.dp
-internal val UNDERLINE_HEIGHT = 2.dp
+internal val TIME_BAR_HEIGHT = 6.dp
+internal val PILL_HEIGHT = 3.dp
 
-/// The routine's pills: every pull of every set, done in ink, skipped lighter, and the pull
+/// The routine's pills (iOS `RoutinePills`): every pull of every set, done in ink, skipped lighter, and the pull
 /// this is all about marked. SECONDARY to the time bar above: slimmer, on a lighter track.
 ///
 /// While a pull runs its pill is marked in INK — the time bar is the one bleu thing on the
@@ -100,44 +99,19 @@ internal val UNDERLINE_HEIGHT = 2.dp
 ///
 /// Coarse: it reads only its model, which changes when a pull is recorded or the phase moves.
 @Composable
-internal fun StackedRoutinePills(model: SessionProgressModel, isLive: Boolean, modifier: Modifier = Modifier) {
+internal fun RoutinePills(model: SessionProgressModel, isLive: Boolean, modifier: Modifier = Modifier) {
     val palette = LocalGripPalette.current
     val track = palette.pillTrack()
     val done = palette.inkPrimary.copy(alpha = 0.6f)
     val skipped = palette.inkPrimary.copy(alpha = 0.2f)
     val next = if (isLive) palette.inkPrimary.copy(alpha = 0.85f) else palette.bleu.copy(alpha = 0.72f)
-    Canvas(modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().height(STACKED_PILL_HEIGHT)
+    Canvas(modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().height(PILL_HEIGHT)
         .testTag("runner.routinePills").clearAndSetSemantics {}) {
-        val cells = ZoomLayout.cells(model.setSizes, size.width, unit = density)
+        val cells = RoutinePillLayout.cells(model.setSizes, size.width, unit = density)
         drawSlots(cells, cells.indices, track)
         drawSlots(cells, model.finished.indices.filter { model.finished[it] }, done)
         drawSlots(cells, model.finished.indices.filter { !model.finished[it] }, skipped)
         model.current?.let { drawSlots(cells, listOf(it), next) }
-    }
-}
-
-/// UNDERLINE: today's bar untouched, and under it the whole routine as a 2 pt line — hairline
-/// set breaks, done in ink, the current pull in bleu.
-@Composable
-internal fun RoutineUnderline(model: SessionProgressModel, modifier: Modifier = Modifier) {
-    val palette = LocalGripPalette.current
-    val track = palette.timeTrack()
-    val done = palette.inkPrimary.copy(alpha = 0.55f)
-    val skipped = palette.inkPrimary.copy(alpha = 0.26f)
-    val bleu = palette.bleu
-    Canvas(modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().height(UNDERLINE_HEIGHT)
-        .testTag("runner.routineUnderline").clearAndSetSemantics {}) {
-        val cells = ZoomLayout.cells(model.setSizes, size.width, pullGap = 0f, setGap = 2f, unit = density)
-        drawSlots(cells, cells.indices, track)
-        drawSlots(cells, model.finished.indices.filter { model.finished[it] }, done)
-        drawSlots(cells, model.finished.indices.filter { !model.finished[it] }, skipped)
-        model.current?.takeIf { it in cells.indices }?.let { current ->
-            // A tick at least 3 pt wide, so a 60-pull routine still shows it.
-            val cell = cells[current]
-            val width = maxOf(3 * density, cell.endInclusive - cell.start)
-            val x = minOf(cell.start, size.width - width)
-            drawRoundRect(bleu, Offset(x, 0f), Size(width, size.height), CornerRadius(size.height / 2))
-        }
     }
 }
 
