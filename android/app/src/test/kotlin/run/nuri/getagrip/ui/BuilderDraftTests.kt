@@ -10,7 +10,6 @@ import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.ui.builder.BuilderDraft
-import run.nuri.getagrip.ui.builder.BuilderAnchor
 import run.nuri.getagrip.ui.builder.BuilderMode
 import java.util.UUID
 import kotlin.test.Test
@@ -19,8 +18,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
-/// The builder's non-drawing decisions: the draft-rescue policy, the dirty guard, the
-/// validation copy and the coach's one-way advance.
+/// The builder's non-drawing decisions: the draft-rescue policy, the dirty guard and the
+/// validation copy.
 ///
 /// They live in `BuilderDraft` precisely so they can be asserted here — each is easy to
 /// break by accident and impossible to notice from a screenshot.
@@ -100,48 +99,6 @@ class BuilderDraftTests {
         val draft = RoutineDraft.starter.copy(remindersEnabled = true, reminders = emptyList())
         assertFalse(BuilderDraft.canSave(draft))
         assertEquals(draft.validationIssue, BuilderDraft.subtitle(draft))
-    }
-
-    // MARK: - The guide
-
-    /// **Forwards only, and never back from retirement.** The guide advances on a real value
-    /// edit; a step that could move backwards would run away from someone still reading, and
-    /// a retired guide that could revive would replay itself on the next keystroke.
-    @Test
-    fun theGuideOnlyEverMovesForward() {
-        assertEquals(3, BuilderDraft.advancing(current = 2, reaching = 3))
-        assertEquals(4, BuilderDraft.advancing(current = 4, reaching = 2))
-        assertEquals(
-            BuilderDraft.retiredCoachStep,
-            BuilderDraft.advancing(current = BuilderDraft.retiredCoachStep, reaching = 3),
-        )
-    }
-
-    /// Creating with the guide unseen starts at step 1; everything else starts retired —
-    /// opening the walkthrough over a routine that already exists narrates work already done.
-    @Test
-    fun theGuideStartsOnlyWhenCreatingAndUnseen() {
-        assertEquals(1, BuilderDraft.startingCoachStep(BuilderMode.FirstRun, guideDone = false))
-        assertEquals(
-            BuilderDraft.retiredCoachStep,
-            BuilderDraft.startingCoachStep(BuilderMode.FirstRun, guideDone = true),
-        )
-        assertEquals(
-            BuilderDraft.retiredCoachStep,
-            BuilderDraft.startingCoachStep(BuilderMode.Edit(UUID.randomUUID()), guideDone = false),
-        )
-    }
-
-    /// The five cards walk DOWN the document in its own order — that motion IS the
-    /// step-by-step setup, so the anchors have to match the blocks they name.
-    @Test
-    fun theCoachWalksTheDocumentInOrder() {
-        assertEquals(BuilderAnchor.Name, BuilderDraft.anchorForStep(1))
-        assertEquals(BuilderAnchor.Rhythm, BuilderDraft.anchorForStep(2))
-        assertEquals(BuilderAnchor.Sets, BuilderDraft.anchorForStep(3))
-        assertEquals(BuilderAnchor.Totals, BuilderDraft.anchorForStep(4))
-        assertEquals(BuilderAnchor.EveryDay, BuilderDraft.anchorForStep(5))
-        assertEquals(BuilderAnchor.Finish, BuilderDraft.anchorForStep(6))
     }
 
     // MARK: - What the rows show

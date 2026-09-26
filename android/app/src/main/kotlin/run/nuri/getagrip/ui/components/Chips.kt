@@ -122,8 +122,8 @@ val chipMinHeight: Dp = 44.dp
 /// indistinguishable.
 ///
 /// TRANSLATION NOTE: SwiftUI's `LazyVGrid(.adaptive(minimum:))`, reproduced with
-/// `BoxWithConstraints` and eager rows — eager because the coach's scroll-to needs anchors a
-/// lazy grid has not built.
+/// `BoxWithConstraints` and eager rows: a handful of chips costs nothing to lay out, and a lazy
+/// grid inside the builder's scrolling document would need a fixed height.
 @Composable
 fun ChipGrid(
     base: Int,

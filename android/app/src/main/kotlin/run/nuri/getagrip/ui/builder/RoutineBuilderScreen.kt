@@ -59,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import run.nuri.getagrip.engine.L10n
@@ -86,8 +85,8 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 /// meant scrolling past the whole list every time.
 ///
 /// **The wizard IS the editor**: first run and the 30th edit are this same file, so there is
-/// no second surface to keep in sync. `BuilderMode` changes only the seed draft, whether the
-/// guide starts at step 1, and whether the last block is Save or the delete row.
+/// no second surface to keep in sync. `BuilderMode` changes only the seed draft and whether the
+/// last block is Save or the delete row.
 ///
 /// **Nothing touches the store until Save.** The document is a DRAFT VALUE: Cancel IS undo,
 /// and a held stepper cannot fire dozens of writes. It reads the stores itself, so the caller
@@ -144,9 +143,8 @@ fun RoutineBuilderHost(
     /// of the screen, out of any scrolling row's reach.
     var editingSet by rememberSaveable { mutableStateOf<UUID?>(null) }
 
-    var coachStep by rememberSaveable { mutableStateOf(BuilderDraft.retiredCoachStep) }
-    /// Whether this document has been OPENED (guide seeded, stash swept). Saved, so a rotation
-    /// does not restart the guide or swap in an older stash.
+    /// Whether this document has been OPENED (stash swept). Saved, so a rotation does not swap
+    /// in an older stash.
     var opened by rememberSaveable { mutableStateOf(false) }
     /// Held with its ORIGINAL id and index, so Undo restores the same row in the same place.
     var removedSet by remember { mutableStateOf<RemovedSet?>(null) }
@@ -164,27 +162,20 @@ fun RoutineBuilderHost(
 
     fun scrollTo(key: Any) {
         val y = anchors.offset(key) ?: return
-        // Reduce Motion: the coach lands on its block instead of flying to it.
+        // Reduce Motion: the document lands on the row instead of flying to it.
         scope.launch {
             if (reduceMotion) scrollState.scrollTo(y) else scrollState.animateScrollTo(y)
         }
     }
 
-    // The guide's starting step, once — read here, keeping the store read out of a state constructor.
     LaunchedEffect(mode) {
         if (opened) return@LaunchedEffect
         opened = true
-        coachStep = BuilderDraft.startingCoachStep(mode, settings.builderGuideDone)
         // A rescue copy exists only if a previous session died mid-build (Save and Cancel clear it).
         // `initialDraft` stays at the seed, so a restored document is DIRTY and Cancel still asks.
         if (BuilderDraft.stashes(mode)) {
             val rescued = templates.restoreDraft()
-            if (rescued != null && rescued != draft) {
-                draft = BuilderDraft.editable(rescued)
-                // A rescued build has already walked the guide; retiring it also stops the restore's own
-                // value changes from choosing a card.
-                coachStep = BuilderDraft.retiredCoachStep
-            }
+            if (rescued != null && rescued != draft) draft = BuilderDraft.editable(rescued)
         }
     }
 
@@ -195,29 +186,6 @@ fun RoutineBuilderHost(
             val stash = DraftStashCoalescer(this) { templates.stashDraft(draft) }
             snapshotFlow { draft }.drop(1).collect { stash.changed() }
         }
-    }
-
-    // The guide advances on a real VALUE EDIT only — never a scroll or an expand — so it cannot
-    // run away from someone still reading.
-    LaunchedEffect(Unit) {
-        snapshotFlow { draft.plan.name }.drop(1).distinctUntilChanged()
-            .collect { coachStep = BuilderDraft.advancing(coachStep, 2) }
-    }
-    LaunchedEffect(Unit) {
-        snapshotFlow { BuilderDraft.rhythmSignature(draft) }.drop(1).distinctUntilChanged()
-            .collect { coachStep = BuilderDraft.advancing(coachStep, 3) }
-    }
-    LaunchedEffect(Unit) {
-        snapshotFlow { BuilderDraft.gripSignature(draft) }.drop(1).distinctUntilChanged()
-            .collect { coachStep = BuilderDraft.advancing(coachStep, 4) }
-    }
-    LaunchedEffect(Unit) {
-        snapshotFlow { BuilderDraft.repsSignature(draft) }.drop(1).distinctUntilChanged()
-            .collect { coachStep = BuilderDraft.advancing(coachStep, 5) }
-    }
-    LaunchedEffect(Unit) {
-        snapshotFlow { BuilderDraft.everyDaySignature(draft) }.drop(1).distinctUntilChanged()
-            .collect { coachStep = BuilderDraft.advancing(coachStep, 6) }
     }
 
     // The undo bar: `SnackbarDuration.Long` is Material's ten seconds, the house window.
@@ -266,8 +234,6 @@ fun RoutineBuilderHost(
                 // A rolled-back save leaves the document OPEN with the error inline; the stash survives for
                 // the retry.
                 if (saved == null) return@launch
-                // The guide has done its job the moment a routine exists.
-                settings.setBuilderGuideDone(true)
                 onDone(saved.id)
             } finally {
                 saving = false
@@ -333,8 +299,8 @@ fun RoutineBuilderHost(
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { insets ->
-            // **An eager Column, NOT a LazyColumn**: the coach's scroll-to must find anchors below the
-            // fold, which a lazy list has not built. A dozen rows cost nothing to lay out eagerly.
+            // **An eager Column, NOT a LazyColumn**: adding a set scrolls to its row, which may be below
+            // the fold, where a lazy list has not built it. A dozen rows cost nothing to lay out eagerly.
             Column(
                 Modifier
                     .fillMaxSize()
@@ -351,20 +317,17 @@ fun RoutineBuilderHost(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 // NAME opens the document in every mode, so creating and editing share a first screenful.
-                Block(BuilderAnchor.Name, anchors) {
-                    Coach(coachStep, 1, scope, settings, { coachStep = it }, ::scrollTo)
+                Block {
                     NameSection(draft.plan.name) { name ->
                         update { it.copy(plan = it.plan.copy(name = name)) }
                     }
                 }
 
-                Block(BuilderAnchor.Rhythm, anchors) {
-                    Coach(coachStep, 2, scope, settings, { coachStep = it }, ::scrollTo)
+                Block {
                     RhythmSection(RhythmValues.of(draft.plan), update = update)
                 }
 
-                Block(BuilderAnchor.Sets, anchors) {
-                    Coach(coachStep, 3, scope, settings, { coachStep = it }, ::scrollTo)
+                Block {
                     val percentBandsVary = BuilderDraft.percentBandsVary(draft)
                     // Folded once and compared by VALUE: a name keystroke redraws no row, and a set edit
                     // redraws only its own.
@@ -428,15 +391,13 @@ fun RoutineBuilderHost(
                     }
                 }
 
-                Block(BuilderAnchor.Totals, anchors) {
-                    Coach(coachStep, 4, scope, settings, { coachStep = it }, ::scrollTo)
+                Block {
                     val maxes = templates.maxTable
                     val totals = remember(draft, maxes) { TotalsValues.of(draft, maxes) }
                     TotalsBar(totals)
                 }
 
-                Block(BuilderAnchor.EveryDay, anchors) {
-                    Coach(coachStep, 5, scope, settings, { coachStep = it }, ::scrollTo)
+                Block {
                     EveryDaySection(
                         EveryDayValues.of(draft),
                         notificationsRefused = settings.deniedNotifications,
@@ -446,13 +407,12 @@ fun RoutineBuilderHost(
 
                 FineTuningSection(FineTuningValues.of(draft.plan), update = update)
 
-                Block(BuilderAnchor.Finish, anchors) {
+                Block {
                     FinishBlock(
                         validationIssue = validationIssue,
                         saving = saving,
                         mode = mode,
                         templates = templates,
-                        showsClosingCard = coachStep == BuilderDraft.closingCoachStep,
                         onSave = { save() },
                         onDeleted = { onDone(null) },
                     )
@@ -502,51 +462,12 @@ fun RoutineBuilderHost(
     }
 }
 
-/// One document block, registering its own scroll anchor. Always built — see `BuilderAnchor`.
+/// One document block: its heading and controls, grouped tighter than the blocks around it.
 @Composable
-private fun Block(
-    anchor: BuilderAnchor,
-    anchors: BuilderScrollAnchors,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .onGloballyPositioned { anchors.placed(anchor, it) },
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
+private fun Block(content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         content()
     }
-}
-
-/// The coach card for one step, inline at its anchor. `Next` scrolls to the next section —
-/// that motion IS the setup, with no modal sequence. A scroll misfire just means no scroll.
-@Composable
-private fun Coach(
-    coachStep: Int,
-    step: Int,
-    scope: kotlinx.coroutines.CoroutineScope,
-    settings: run.nuri.getagrip.store.SettingsStore,
-    onStep: (Int) -> Unit,
-    scrollTo: (Any) -> Unit,
-) {
-    if (coachStep != step) return
-    val script = coachScript.getOrNull(step - 1) ?: return
-    CoachCard(
-        step = step,
-        total = BuilderDraft.coachTotal,
-        title = script.title,
-        message = script.message,
-        onNext = {
-            onStep(step + 1)
-            scrollTo(BuilderDraft.anchorForStep(step + 1))
-        },
-        onSkip = {
-            onStep(BuilderDraft.retiredCoachStep)
-            // "Not now and not next time" — a PREFERENCE Settings can reset, not a one-way door.
-            settings.setBuilderGuideDone(true)
-        },
-    )
 }
 
 @Composable
@@ -583,7 +504,6 @@ private fun FinishBlock(
     saving: Boolean,
     mode: BuilderMode,
     templates: TemplateStore,
-    showsClosingCard: Boolean,
     onSave: () -> Unit,
     onDeleted: () -> Unit,
 ) {
@@ -640,7 +560,6 @@ private fun FinishBlock(
                 color = palette.inkTertiary,
             )
         } else {
-            if (showsClosingCard) CoachClosingCard()
             // Saves and STOPS: building a routine and doing one are two decisions, and Start lives on
             // Today (Nuri, 2026-08-09).
             PrimaryButton(
@@ -661,7 +580,7 @@ private data class RemovedSet(val index: Int, val set: SetPlan)
 private fun BuilderFirstRunPreview() {
     GetAGripTheme {
         // Drawn from a draft: a preview cannot reach a store.
-        BuilderDocumentPreview(RoutineDraft.blank(), coachStep = 1)
+        BuilderDocumentPreview(RoutineDraft.blank())
     }
 }
 
@@ -669,13 +588,13 @@ private fun BuilderFirstRunPreview() {
 @Composable
 private fun BuilderEditPreview() {
     GetAGripTheme {
-        BuilderDocumentPreview(RoutineDraft.starter, coachStep = BuilderDraft.retiredCoachStep)
+        BuilderDocumentPreview(RoutineDraft.starter)
     }
 }
 
 /// A store-free rehearsal of the document for previews.
 @Composable
-private fun BuilderDocumentPreview(seed: RoutineDraft, coachStep: Int) {
+private fun BuilderDocumentPreview(seed: RoutineDraft) {
     val palette = LocalGripPalette.current
     var draft by remember { mutableStateOf(seed) }
     var expanded by remember { mutableStateOf<UUID?>(null) }
@@ -691,9 +610,6 @@ private fun BuilderDocumentPreview(seed: RoutineDraft, coachStep: Int) {
             style = MaterialTheme.typography.bodySmall,
             color = if (BuilderDraft.canSave(draft)) palette.inkSecondary else palette.armed,
         )
-        if (coachStep == 1) {
-            CoachCard(1, 5, coachScript[0].title, coachScript[0].message, onNext = {}, onSkip = {})
-        }
         val update: DraftUpdate = { transform -> draft = transform(draft) }
         NameSection(draft.plan.name) { draft = draft.copy(plan = draft.plan.copy(name = it)) }
         RhythmSection(RhythmValues.of(draft.plan), update = update)

@@ -80,7 +80,6 @@ class DoubleSaveTests {
     }
 
     @Test fun doubleTappingSaveInTheBuilderCreatesOneRoutine() {
-        settings.setBuilderGuideDone(true)
         var closed = 0
         compose.setContent {
             CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings) {

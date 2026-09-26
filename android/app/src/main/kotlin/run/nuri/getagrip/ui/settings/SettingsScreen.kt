@@ -38,7 +38,6 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SettingsInputAntenna
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -533,9 +532,6 @@ private fun AboutCard() {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
     val context = LocalContext.current
-    val settings = LocalSettingsStore.current
-    // One-shot LATCHES, not toggles: the row states what it did and stands down.
-    var guideReset by remember { mutableStateOf(false) }
     var diagnosticsCopied by remember { mutableStateOf(false) }
     var copyGeneration by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     androidx.compose.runtime.LaunchedEffect(copyGeneration) {
@@ -586,66 +582,6 @@ private fun AboutCard() {
             ),
             style = MaterialTheme.typography.bodySmall,
             color = palette.inkSecondary,
-        )
-
-        HorizontalDivider(color = palette.inkTertiary.copy(alpha = 0.25f))
-
-        ResetRow(
-            done = guideReset,
-            title = tr("Show the builder's hints again"),
-            doneTitle = tr("Hints reset — open a routine to see them"),
-            spoken = tr("Builder hints reset"),
-            icon = Icons.Outlined.Refresh,
-        ) {
-            settings.setBuilderGuideDone(false)
-            guideReset = true
-        }
-    }
-}
-
-/// A full-width row that does one irreversible-but-harmless thing and then says it did.
-/// Disabled once fired: a row that still looks live after working gets pressed three times.
-@Composable
-private fun ResetRow(
-    done: Boolean,
-    title: String,
-    doneTitle: String,
-    spoken: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-) {
-    val palette = LocalGripPalette.current
-    val interaction = remember { MutableInteractionSource() }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            // Full-width but tappable only on its words is half dead.
-            .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(Metrics.radiusInner))
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                enabled = !done,
-                role = Role.Button,
-                onClick = onClick,
-            )
-            // `scales: false`, like every bare row on a shared card (see the gauge picker).
-            .pressFeedback(interaction, scales = false)
-            .semantics(mergeDescendants = true) { contentDescription = spoken },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            if (done) Icons.Filled.Check else icon,
-            contentDescription = null,
-            tint = if (done) palette.inkSecondary else palette.graphite,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            if (done) doneTitle else title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = if (done) palette.inkSecondary else palette.graphite,
         )
     }
 }

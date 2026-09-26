@@ -14,8 +14,7 @@ import run.nuri.getagrip.engine.RoutineDraft
 
 /// The builder's non-drawing decisions, lifted out so each is JVM-testable. Each rule was paid
 /// for once on iOS and is easy to break: a stash outliving a Cancel returns as a ghost; a
-/// coach step moving backwards runs away from a reader; a disabled Save with its reason a
-/// screen away is a dead control.
+/// disabled Save with its reason a screen away is a dead control.
 object BuilderDraft {
 
     /// Materialize legacy inherited loads only in the local editor draft. No persistence
@@ -40,14 +39,6 @@ object BuilderDraft {
     /// in place of a confirmation dialog.
     const val undoWindowMillis: Long = 10_000
 
-    /// The guide when off: one past the closing card, so forward-only advancement never revives it.
-    const val retiredCoachStep: Int = 7
-
-    /// The closing card's step. The five numbered cards are 1…5.
-    const val closingCoachStep: Int = 6
-
-    const val coachTotal: Int = 5
-
     /// **The rescue copy is CREATE-ONLY**: restoring a stale draft into an edit could overwrite an
     /// unseen merge.
     fun stashes(mode: BuilderMode): Boolean = mode.isCreating
@@ -62,40 +53,6 @@ object BuilderDraft {
     /// title so a disabled Save's explanation sits right beside it.
     fun subtitle(draft: RoutineDraft): String =
         draft.validationIssue ?: PlanMath.subtitleLine(draft.plan)
-
-    /// Where the guide starts. CREATING only: over an existing routine it narrates work already
-    /// done, and saving a routine retires it anyway.
-    fun startingCoachStep(mode: BuilderMode, guideDone: Boolean): Int =
-        if (mode.isCreating && !guideDone) 1 else retiredCoachStep
-
-    /// **Advance on a real value EDIT only, and only forwards**, so the guide never runs away from
-    /// a reader and a retired guide never returns.
-    fun advancing(current: Int, reaching: Int): Int =
-        if (current < reaching && current <= closingCoachStep) reaching else current
-
-    fun anchorForStep(step: Int): BuilderAnchor = when (step) {
-        1 -> BuilderAnchor.Name
-        2 -> BuilderAnchor.Rhythm
-        3 -> BuilderAnchor.Sets
-        4 -> BuilderAnchor.Totals
-        5 -> BuilderAnchor.EveryDay
-        else -> BuilderAnchor.Finish
-    }
-
-    /// Cheap string signatures: one comparable value per trigger, since the draft changes on every
-    /// keystroke.
-    fun rhythmSignature(draft: RoutineDraft): String =
-        "${draft.plan.setBreakSeconds}|${draft.plan.handMode.rawValue}|${draft.plan.startingHand.rawValue}|" +
-            "${draft.plan.waitForReleaseBeforeRest}"
-
-    fun gripSignature(draft: RoutineDraft): String =
-        draft.plan.sets.joinToString(",") { it.grip.key }
-
-    fun repsSignature(draft: RoutineDraft): String =
-        draft.plan.sets.joinToString(",") { it.repsPerSide.toString() }
-
-    fun everyDaySignature(draft: RoutineDraft): String =
-        "${draft.sessionsPerDay}|${draft.remindersEnabled}|${draft.reminders.joinToString("-") { it.slot }}"
 
     /// An hour of no-hangs is a CHOICE, not an error — this flags and never blocks.
     fun isVeryLong(draft: RoutineDraft): Boolean = PlanMath.totalSeconds(draft.plan) > 3600

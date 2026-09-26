@@ -44,7 +44,6 @@ class RoutineOverviewNavigationTests {
 
     @Before fun launchActualApp() {
         application = ApplicationProvider.getApplicationContext()
-        application.settings.setBuilderGuideDone(true)
         val plan = SessionPlan(
             name = "Precision routine",
             sets = listOf(

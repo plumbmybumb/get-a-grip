@@ -125,10 +125,9 @@ class SettingsStore(
 
     private companion object {
         /// **These keys and raw values are a STORAGE FORMAT**: renaming one silently resets
-        /// a chosen gauge, replays the builder hints, or re-asks for notification permission.
+        /// a chosen gauge or re-asks for notification permission.
         val weightUnitKey = stringPreferencesKey("weightUnit")
         val gaugeKindKey = stringPreferencesKey("gauge.kind")
-        val builderGuideDoneKey = booleanPreferencesKey("builderGuideDone")
         val didAskNotificationPermissionKey = booleanPreferencesKey("didAskNotificationPermission")
         val deniedNotificationsKey = booleanPreferencesKey("deniedNotifications")
         val lastStartedRoutineIDKey = stringPreferencesKey("lastStartedRoutineID")
@@ -160,7 +159,6 @@ class SettingsStore(
 
     // Backing state. Public `val` + `setX(…)`, so every write updates the cache before
     // persisting.
-    private var guideDone: Boolean by mutableStateOf(loaded[builderGuideDoneKey] ?: false)
     private var asked: Boolean by mutableStateOf(loaded[didAskNotificationPermissionKey] ?: false)
     private var denied: Boolean by mutableStateOf(loaded[deniedNotificationsKey] ?: false)
     private var routineID: UUID? by mutableStateOf(
@@ -175,10 +173,6 @@ class SettingsStore(
     )
     private var repairVersion: Int = loaded[trainingDayRepairKey] ?: 0
     private var bodyWeight: Double? by mutableStateOf(loaded[bodyWeightKgKey]?.takeIf { it > 0 && it.isFinite() })
-
-    /// The builder's five coach cards: retired on first save, replayable from Settings, so
-    /// a preference, not a flag.
-    val builderGuideDone: Boolean get() = guideDone
 
     /// One-shot: the permission ask happens once, on the first Save with reminders on.
     /// Never at launch, never gating anything.
@@ -228,11 +222,6 @@ class SettingsStore(
     //
     // Every setter updates the cache FIRST, then persists: a read right after a write must
     // answer with it, and DataStore's read-back is a suspend away.
-
-    fun setBuilderGuideDone(value: Boolean) {
-        guideDone = value
-        write { it[builderGuideDoneKey] = value }
-    }
 
     override fun setDidAskNotificationPermission(value: Boolean) {
         asked = value
