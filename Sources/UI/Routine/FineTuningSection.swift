@@ -56,17 +56,9 @@ struct FineTuningSection: View, Equatable {
                     .foregroundStyle(Accent.graphite)
                     .frame(width: 20)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Fine tuning")
-                        .font(.system(.subheadline, weight: .semibold))
-                        .foregroundStyle(Ink.primary)
-                    if !isOpen {
-                        Text("What counts as a pull, whether the range pauses you, and the lead-in.")
-                            .font(.system(.caption, weight: .medium))
-                            .foregroundStyle(Ink.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
+                Text("Fine tuning")
+                    .font(.system(.subheadline, weight: .semibold))
+                    .foregroundStyle(Ink.primary)
 
                 Spacer(minLength: 8)
 
@@ -101,11 +93,6 @@ struct FineTuningSection: View, Equatable {
                      presets: weightUnit == .kg ? [1, 2, 3, 5] : [2, 5, 7, 10],
                      decimals: 1)
 
-            Text("Below this, the clock stops.")
-                .font(.system(.caption, weight: .medium))
-                .foregroundStyle(Ink.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-
             ThresholdGaugeStrip(thresholdKg: defaults.thresholdKg)
         }
         .accessibilityElement(children: .contain)
@@ -118,24 +105,13 @@ struct FineTuningSection: View, Equatable {
     ///
     /// Between the threshold and the lead-in: all three answer "what counts as a pull", and
     /// this is the range's half where the threshold is the floor's. Phrased as the thing
-    /// you'd turn ON, with the consequence said either way — a switch whose off-state is
-    /// silent makes you flip it to find out.
+    /// you'd turn ON.
     private var bandGateBlock: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Toggle("Pause when I'm out of range",
-                   isOn: access.binding(\.plan.pausesOutsideTargetBand, current: defaults.pausesOutsideTargetBand))
-                .font(.system(.subheadline, weight: .medium))
-                .foregroundStyle(Ink.primary)
-                .tint(Accent.graphite)
-
-            Text(defaults.pausesOutsideTargetBand
-                 ? "The clock only runs while you are inside the target range."
-                 : "The clock runs whenever you are on the edge, whatever the load — the range is still drawn, it just stops judging. Letting go still stops the rep.")
-                .font(.system(.caption, weight: .medium))
-                .foregroundStyle(Ink.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .accessibilityElement(children: .contain)
+        Toggle("Pause when I'm out of range",
+               isOn: access.binding(\.plan.pausesOutsideTargetBand, current: defaults.pausesOutsideTargetBand))
+            .font(.system(.subheadline, weight: .medium))
+            .foregroundStyle(Ink.primary)
+            .tint(Accent.graphite)
     }
 
     // MARK: - Lead-in
@@ -152,11 +128,6 @@ struct FineTuningSection: View, Equatable {
                         range: 0...20, limit: 0...60,
                         step: 5,
                         presets: [0, 3, 5, 10])
-
-            Text("Time to get your fingers on the edge.")
-                .font(.system(.caption, weight: .medium))
-                .foregroundStyle(Ink.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Lead-in before each set"))
@@ -190,10 +161,6 @@ private struct ThresholdGaugeStrip: View {
                     // for the 15 s of a check (the miss `GaugeView` fixed in its own leaves).
                     ThresholdReadout(thresholdKg: thresholdKg)
                     ThresholdBar(thresholdKg: thresholdKg)
-                    Text("Pull — anything above the line counts.")
-                        .font(.system(.caption, weight: .medium))
-                        .foregroundStyle(Ink.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
                     SecondaryGlassButton(title: String(localized: "Stop"), systemImage: "stop.fill") {
                         stop(cause: .userStopped)
                     }

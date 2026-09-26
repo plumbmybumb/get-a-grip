@@ -258,13 +258,10 @@ struct TargetBandRow: View {
         return weightUnit.bandText(kg)
     }
 
+    /// Only what the header cannot show: a hand with no max to resolve against, or the two
+    /// hands' different loads.
     private var caption: String? {
-        if kgBand != nil {
-            // The part worth stating: an explicit load goes stale, the trade for not
-            // needing a max.
-            return String(localized: "A fixed load, the same on both hands — it stays put when your max moves.")
-        }
-        guard let band else { return nil }
+        guard kgBand == nil, let band else { return nil }
         let resolvedSides = sides.filter { resolved($0) != nil }
 
         if resolvedSides.isEmpty {
@@ -276,9 +273,7 @@ struct TargetBandRow: View {
         if resolvedSides.count < sides.count, let missing = sides.first(where: { resolved($0) == nil }) {
             return String(localized: "No max for your \(missing.name.lowercased()) hand, so those pulls show no target. Add one on the Benchmarks tab.")
         }
-        guard differsByHand else {
-            return String(localized: "\(percentText(band)) of your max on this grip")
-        }
+        guard differsByHand else { return nil }
         let loads = sides.compactMap { side -> String? in
             guard let kg = resolved(side) else { return nil }
             return "\(side.prompt.prefix(1)) \(weightUnit.bandText(kg, withUnit: false))"

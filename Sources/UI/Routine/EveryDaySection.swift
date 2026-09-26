@@ -39,14 +39,9 @@ struct EveryDaySection: View, Equatable {
             MaterialCard(surface: .flat) {
                 VStack(alignment: .leading, spacing: 18) {
                     kindBlock
-                    if schedule.isOnDemand {
-                        // The times are KEPT in the draft — flipping back to a ritual restores
-                        // them — so nothing is destroyed, only quiet.
-                        Text("No daily target and no reminders — it waits on Today until you feel like it.")
-                            .font(.system(.footnote))
-                            .foregroundStyle(Ink.tertiary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else {
+                    // On demand, the times are KEPT in the draft — flipping back to a ritual
+                    // restores them — so nothing is destroyed, only hidden.
+                    if !schedule.isOnDemand {
                         sessionsBlock
                         reminderBlock
                     }

@@ -75,20 +75,11 @@ struct RhythmSection: View, Equatable {
     /// come out of every rest. Off is a real choice — a fixed cadence you pace yourself to,
     /// as metronome-style protocols want.
     private var releaseToggle: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Toggle("Start the rest when I let go",
-                   isOn: access.binding(\.plan.waitForReleaseBeforeRest, current: defaults.waitForReleaseBeforeRest))
-                .font(.system(.subheadline, weight: .medium))
-                .foregroundStyle(Ink.primary)
-                .tint(Accent.graphite)
-
-            Text(defaults.waitForReleaseBeforeRest
-                 ? "The hold ends on time; the rest waits until you are off the edge."
-                 : "The rest starts the moment the hold ends, whether or not you have let go.")
-                .font(.system(.caption, weight: .medium))
-                .foregroundStyle(Ink.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        Toggle("Start the rest when I let go",
+               isOn: access.binding(\.plan.waitForReleaseBeforeRest, current: defaults.waitForReleaseBeforeRest))
+            .font(.system(.subheadline, weight: .medium))
+            .foregroundStyle(Ink.primary)
+            .tint(Accent.graphite)
     }
 
     private var rowDivider: some View {

@@ -1050,16 +1050,6 @@
         }
       }
     },
-    "%@ of your max on this grip" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ de ton max sur cette prise"
-          }
-        }
-      }
-    },
     "%@ rest" : {
       "localizations" : {
         "fr" : {
@@ -2003,16 +1993,6 @@
         }
       }
     },
-    "= %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "= %@"
-          }
-        }
-      }
-    },
     "≈%lld min" : {
       "localizations" : {
         "fr" : {
@@ -2165,16 +2145,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un CSV compact pour votre assistant IA ou tableur. Le résumé regroupe les tractions par série et par main. Choisissez Chaque traction pour les mesures et les temps individuels."
-          }
-        }
-      }
-    },
-    "A fixed load, the same on both hands — it stays put when your max moves." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Une charge fixe, la même aux deux mains — elle ne bouge pas quand ton max change."
           }
         }
       }
@@ -2724,16 +2694,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "bat tes %@ kg"
-          }
-        }
-      }
-    },
-    "Below this, the clock stops." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En dessous, le chrono s'arrête."
           }
         }
       }
@@ -6780,16 +6740,6 @@
         }
       }
     },
-    "No daily target and no reminders — it waits on Today until you feel like it." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun objectif quotidien et aucun rappel — elle attend sur Aujourd'hui que tu en aies envie."
-          }
-        }
-      }
-    },
     "No fingers" : {
       "localizations" : {
         "fr" : {
@@ -7945,16 +7895,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tirage"
-          }
-        }
-      }
-    },
-    "Pull — anything above the line counts." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tire — tout ce qui dépasse la ligne compte."
           }
         }
       }
@@ -10054,26 +9994,6 @@
         }
       }
     },
-    "The clock only runs while you are inside the target range." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le chrono ne tourne que tant que tu es dans la plage cible."
-          }
-        }
-      }
-    },
-    "The clock runs whenever you are on the edge, whatever the load — the range is still drawn, it just stops judging. Letting go still stops the rep." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le chrono tourne dès que tu es en prise, quelle que soit la charge — la plage est toujours dessinée, elle cesse simplement de juger. Relâcher arrête toujours le tirage."
-          }
-        }
-      }
-    },
     "The document is always written in English, whatever language the app is in, so the assistant reads one consistent schema." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -10096,16 +10016,6 @@
         }
       }
     },
-    "The hold ends on time; the rest waits until you are off the edge." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La tenue se termine à l'heure ; le repos attend que tu aies quitté la réglette."
-          }
-        }
-      }
-    },
     "The plan in one line: edge, sets, pulls and how long it runs. Tap it to change any of that." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -10113,16 +10023,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le plan en une ligne : réglette, séries, tirages et durée. Touche-le pour changer tout ça."
-          }
-        }
-      }
-    },
-    "The rest starts the moment the hold ends, whether or not you have let go." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le repos démarre dès la fin de la tenue, que tu aies relâché ou non."
           }
         }
       }
@@ -10366,16 +10266,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "C'est l'heure d'une séance."
-          }
-        }
-      }
-    },
-    "Time to get your fingers on the edge." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le temps de mettre tes doigts sur la réglette."
           }
         }
       }
@@ -10822,16 +10712,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Peson WH-C06"
-          }
-        }
-      }
-    },
-    "What counts as a pull, whether the range pauses you, and the lead-in." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ce qui compte comme un tirage, si la plage te met en pause, et le décompte."
           }
         }
       }

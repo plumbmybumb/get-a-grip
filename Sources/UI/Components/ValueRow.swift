@@ -57,8 +57,7 @@ struct ValueRow: View {
     var step: Double = 1
     var presets: [Double] = []
     var decimals: Int = 0
-    /// Shown under the row when the value deserves a consequence ("= 1:00 under
-    /// tension per side", "Below this, the clock stops").
+    /// Shown under the row when the value deserves a consequence ("Measured: 42.0 kg").
     var caption: String?
     /// WHICH control the row carries (Nuri, 2026-08-04: "not loving how everything is a
     /// button").
