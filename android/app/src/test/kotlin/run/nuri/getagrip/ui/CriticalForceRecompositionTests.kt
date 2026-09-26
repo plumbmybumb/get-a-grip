@@ -52,7 +52,7 @@ class CriticalForceRecompositionTests {
     private val client = RecordingProgressorClient()
     private val device = DeviceStore(client, scope = scope, clock = clock).also { client.connect() }
     private val request = CriticalForceTestRequest(
-        grip = GripSpec(), hands = CriticalForceHands.Single(Side.left),
+        grip = GripSpec(), hands = CriticalForceHands.Single(Side.left), scope = scope,
         newSession = { CriticalForceSession(CoroutineScope(StandardTestDispatcher()), CueSink { }, clock) },
     ).also { it.start(device) }
 

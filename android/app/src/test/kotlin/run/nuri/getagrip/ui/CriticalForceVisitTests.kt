@@ -3,8 +3,11 @@
 
 package run.nuri.getagrip.ui
 
+import androidx.compose.runtime.snapshots.Snapshot
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import run.nuri.getagrip.FakeClock
 import run.nuri.getagrip.RecordingProgressorClient
 import run.nuri.getagrip.ble.ProgressorConnectionState
@@ -35,9 +38,15 @@ import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.engine.ForceSample
 import run.nuri.getagrip.engine.ProgressorEvent
 
-/// One visit, one hand after the other: the flow iOS keeps in `CriticalForceTestView`
-/// (`start`, `arm`, `finishIfDone`, `nextHandOrFinish`), which on this side lives in
+/// One visit, one hand after the other: the flow iOS keeps in `CriticalForceVisit`
+/// (`start`, `arm`, `phaseChanged`, `nextHandOrFinish`), which on this side lives in
 /// `CriticalForceTestRequest` so it can be driven with no screen.
+///
+/// No test here replays a phase by hand: the request follows its own session and the
+/// gauge's link on `scope`, exactly as it does with the Activity stopped. Phase changes
+/// reach it once the snapshot applies (`settle`), which is what the app's global snapshot
+/// manager does after every write.
+@OptIn(ExperimentalCoroutinesApi::class)
 class CriticalForceVisitTests {
 
     private class Service : SessionServiceController {
@@ -53,18 +62,24 @@ class CriticalForceVisitTests {
         val device = DeviceStore(client = client, scope = inertScope(), clock = clock)
         val service = Service()
         val cues = CueSink { }
+        /// The visit's watchers: `RootPresentation.viewModelScope` in the app.
+        val scope = CoroutineScope(UnconfinedTestDispatcher())
 
         init { client.setState(ProgressorConnectionState.Connected) }
 
         fun request(hands: CriticalForceHands) = CriticalForceTestRequest(
-            grip = GripSpec(), hands = hands,
+            grip = GripSpec(), hands = hands, scope = scope,
             newSession = { CriticalForceSession(CoroutineScope(StandardTestDispatcher()), cues, clock) },
             service = service,
         )
     }
 
-    /// One hand's full test through the device's own callback, the screen's phase watch
-    /// replayed after every step. `upTo` stops early (seconds from the first pull).
+    /// What the app's global snapshot manager does after a write: the visit's phase watch
+    /// sees it.
+    private fun settle() = Snapshot.sendApplyNotifications()
+
+    /// One hand's full test through the device's own callback, the snapshot applied after
+    /// every tick. `upTo` stops early (seconds from the first pull).
     private fun World.pull(request: CriticalForceTestRequest, floor: Double, upTo: Double = 238.0) {
         val start = clock.wall
         var rel = 0.0
@@ -77,7 +92,7 @@ class CriticalForceVisitTests {
             device.onTracePoint?.invoke(DeviceStore.TracePoint(kg, clock.wall))
             if (rel >= nextTick) {
                 request.session.tick()
-                request.phaseChanged(request.session.phase)
+                settle()
                 nextTick += 0.1
             }
             rel += 1.0 / 40
@@ -142,7 +157,7 @@ class CriticalForceVisitTests {
         request.start(w.device)
         w.pull(request, floor = 20.0, upTo = 50.0)
         request.session.stop()
-        request.phaseChanged(request.session.phase)
+        settle()
         val ended = assertIs<CriticalForceStage.Ended>(request.stage)
         assertTrue(ended.message.startsWith("Stopped before pull 16"))
         assertTrue(request.results.isEmpty())
@@ -158,7 +173,7 @@ class CriticalForceVisitTests {
         request.startNextHand(w.device)
         w.pull(request, floor = 17.0, upTo = 40.0)
         request.session.interrupt(CriticalForceTest.VoidReason.lostGauge)
-        request.phaseChanged(request.session.phase)
+        settle()
         assertEquals(CriticalForceStage.Result, request.stage)
         assertEquals(listOf(Side.left), request.results.map { it.side })
         assertEquals(1, request.notes.size)
@@ -208,7 +223,7 @@ class CriticalForceVisitTests {
         val played = mutableListOf<RunnerCue>()
         val w = World()
         val request = CriticalForceTestRequest(
-            grip = GripSpec(), hands = CriticalForceHands.Single(Side.right),
+            grip = GripSpec(), hands = CriticalForceHands.Single(Side.right), scope = w.scope,
             newSession = { CriticalForceSession(CoroutineScope(StandardTestDispatcher()), CueSink { played += it }, w.clock) },
         )
         request.start(w.device)
@@ -232,6 +247,134 @@ class CriticalForceVisitTests {
         assertEquals(g15 to CriticalForceHands.OneAtATime(Side.left), newCriticalForceTest(tests, listOf(g20)))
         assertEquals(CriticalForceHands.BothHands, criticalForceHandsFor(g20, tests))
         assertEquals(CriticalForceHands.OneAtATime(Side.left), criticalForceHandsFor(GripSpec(edgeMM = 6), tests))
+    }
+
+    // MARK: - Back never discards a finished hand
+
+    /// Armed on the SECOND hand, Back used to return to setup, and setup's Start (or
+    /// Cancel) then threw the first hand's finished test away. It returns to between the
+    /// hands instead, where the first hand can still be kept on its own.
+    @Test
+    fun backOnTheSecondHandReturnsBetweenHandsAndKeepsTheFirst() {
+        val w = World()
+        val request = w.request(CriticalForceHands.OneAtATime(Side.left))
+        request.start(w.device)
+        w.pull(request, floor = 20.0)
+        request.startNextHand(w.device)
+        assertEquals(CriticalForceTest.Phase.Armed, request.session.phase)
+
+        request.back()
+        assertEquals(CriticalForceStage.Testing, request.stage, "not setup")
+        assertTrue(request.awaitingNextHand, "back between the hands")
+        assertEquals(1, request.handIndex)
+        assertEquals(Side.right, request.side)
+        assertEquals(listOf(Side.left), request.results.map { it.side })
+        assertNull(w.device.onTracePoint, "nothing is measuring between hands")
+        assertEquals(0, w.service.ended, "the visit is still open")
+
+        // Setup's Start cannot restart the visit from here.
+        request.start(w.device)
+        assertEquals(listOf(Side.left), request.results.map { it.side })
+        assertTrue(request.awaitingNextHand)
+
+        // Both ways on from between the hands still work: the second hand again…
+        request.startNextHand(w.device)
+        assertEquals(CriticalForceTest.Phase.Armed, request.session.phase)
+        request.back()
+        // …or keeping the first hand alone.
+        request.finishEarlyBetweenHands()
+        assertEquals(CriticalForceStage.Result, request.stage)
+        assertEquals(listOf(Side.left), request.results.map { it.side })
+        assertEquals(1, w.service.ended)
+    }
+
+    /// On the first hand nothing has been measured, so Back is free: setup, stream off.
+    @Test
+    fun backOnTheFirstHandReturnsToSetup() {
+        val w = World()
+        val request = w.request(CriticalForceHands.OneAtATime(Side.left))
+        request.start(w.device)
+        request.back()
+        assertEquals(CriticalForceStage.Setup, request.stage)
+        assertTrue(!w.device.isStreaming)
+        assertNull(w.device.onTracePoint)
+        assertEquals(1, w.service.ended)
+        // And the visit starts again from setup.
+        request.start(w.device)
+        assertEquals(CriticalForceStage.Testing, request.stage)
+    }
+
+    /// Back is only for a hand that has not pulled: mid-test the hold is the only way out.
+    @Test
+    fun backDoesNothingOnceATestRuns() {
+        val w = World()
+        val request = w.request(CriticalForceHands.Single(Side.left))
+        request.start(w.device)
+        w.pull(request, floor = 20.0, upTo = 20.0)
+        request.back()
+        assertEquals(CriticalForceStage.Testing, request.stage)
+        assertTrue(request.session.phase.isRunning)
+    }
+
+    // MARK: - Followed with no screen
+
+    /// A gauge that drops mid-test voids it before pull 16, and the visit ends and turns
+    /// everything off, with no composable to notice (a locked screen runs no effects).
+    @Test
+    fun aDropMidTestEndsTheVisitWithNoScreen() {
+        val w = World()
+        val request = w.request(CriticalForceHands.OneAtATime(Side.left))
+        request.start(w.device)
+        w.pull(request, floor = 20.0, upTo = 50.0)
+        w.client.setState(ProgressorConnectionState.Disconnected(reason = null))
+        assertEquals(CriticalForceTest.Phase.Voided(CriticalForceTest.VoidReason.lostGauge), request.session.phase)
+        settle()
+        val ended = assertIs<CriticalForceStage.Ended>(request.stage)
+        assertTrue(ended.message.startsWith("The gauge disconnected"), ended.message)
+        assertEquals(1, w.service.ended)
+        assertNull(w.device.onTracePoint)
+    }
+
+    /// A drop and a reconnect between two collections conflate into one new link: still a
+    /// gap in the readings the test never saw.
+    @Test
+    fun aReconnectMidTestIsStillADrop() {
+        val w = World()
+        val request = w.request(CriticalForceHands.Single(Side.left))
+        request.start(w.device)
+        w.pull(request, floor = 20.0, upTo = 30.0)
+        w.client.setState(ProgressorConnectionState.Disconnected(reason = null))
+        w.client.setState(ProgressorConnectionState.Connected)
+        settle()
+        assertIs<CriticalForceStage.Ended>(request.stage)
+    }
+
+    /// A test that finishes behind a locked screen stops the stream and the service then,
+    /// not when the screen next comes back.
+    @Test
+    fun aFinishedTestStopsTheStreamWithNoScreen() {
+        val w = World()
+        val request = w.request(CriticalForceHands.Single(Side.left))
+        request.start(w.device)
+        assertTrue(w.device.isStreaming)
+        w.pull(request, floor = 20.0)
+        assertEquals(CriticalForceStage.Result, request.stage)
+        assertTrue(!w.device.isStreaming, "the stream stopped")
+        assertEquals(1, w.service.ended, "the service stopped")
+    }
+
+    /// Between hands nothing is measuring: a drop voids nothing and keeps the first hand.
+    @Test
+    fun aDropBetweenHandsVoidsNothing() {
+        val w = World()
+        val request = w.request(CriticalForceHands.OneAtATime(Side.left))
+        request.start(w.device)
+        w.pull(request, floor = 20.0)
+        w.client.setState(ProgressorConnectionState.Disconnected(reason = null))
+        settle()
+        assertTrue(request.awaitingNextHand)
+        assertEquals(CriticalForceStage.Testing, request.stage)
+        assertEquals(listOf(Side.left), request.results.map { it.side })
     }
 
     // MARK: - Zeroed before each hand (iOS f2378af)

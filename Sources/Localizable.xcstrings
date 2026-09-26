@@ -11102,7 +11102,7 @@
         }
       }
     },
-    "Don’t save" : {
+    "Don't save" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -11232,7 +11232,7 @@
         }
       }
     },
-    "Stopped before pull 16, so there’s no result." : {
+    "Stopped before pull 16, so there's no result." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {

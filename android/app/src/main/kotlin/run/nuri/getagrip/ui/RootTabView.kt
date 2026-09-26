@@ -231,6 +231,7 @@ fun RootTabView() {
         presentation.criticalForce = CriticalForceTestRequest(
             grip = grip,
             hands = hands,
+            scope = scope,
             newSession = { CriticalForceSession(scope = scope, cues = cues) },
             service = CriticalForceServiceController(appContext),
         )

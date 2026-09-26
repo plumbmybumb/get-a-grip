@@ -407,11 +407,11 @@
     <string name="s_disconnect">Disconnect</string>
     <string name="s_disconnected">Disconnected</string>
     <string name="s_doesn_t_change_your_gauge_s_own_unit_setting">Doesn\'t change your gauge\'s own unit setting.</string>
+    <string name="s_don_t_save">Don\'t save</string>
     <string name="s_done_e9b450">Done</string>
     <string name="s_done_lld_times_today">Done %d times today</string>
     <string name="s_done_today">Done today</string>
     <string name="s_donghyun_kim">Donghyun Kim</string>
-    <string name="s_don_t_save">Don’t save</string>
     <string name="s_down_across_lld_sessions">Down %1$s %2$s across %3$d sessions.</string>
     <string name="s_down_kg_across_lld_sessions">Down %1$s kg across %2$d sessions.</string>
     <string name="s_drag">Drag</string>
@@ -942,8 +942,8 @@
     <string name="s_stop">Stop</string>
     <string name="s_stop_test">Stop test</string>
     <string name="s_stopped_51e911">Stopped</string>
+    <string name="s_stopped_before_pull_16_so_there_s_no_result">Stopped before pull 16, so there\'s no result.</string>
     <string name="s_stopped_before_pull_16_so_there_s_no_result_rest_at_leas">Stopped before pull 16, so there\'s no result. Rest at least 30 minutes before retesting.</string>
-    <string name="s_stopped_before_pull_16_so_there_s_no_result">Stopped before pull 16, so there’s no result.</string>
     <string name="s_stored_on_this_device_and_synced_to_your_private_icloud">Stored on this device and synced to your private iCloud when available.</string>
     <string name="s_summary">Summary</string>
     <string name="s_support">Support</string>

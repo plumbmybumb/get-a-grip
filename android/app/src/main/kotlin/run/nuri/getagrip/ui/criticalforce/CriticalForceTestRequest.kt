@@ -8,6 +8,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import run.nuri.getagrip.ble.MockForceProfile
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
@@ -49,10 +53,19 @@ enum class CriticalForceHandChoice { oneAtATime, bothHands, single }
 /// It is also where the visit's FLOW lives (iOS: the view's `start`, `arm`,
 /// `finishIfDone`, `nextHandOrFinish`), so the one-hand-at-a-time sequence is testable
 /// without a screen. The composable only draws it and forwards taps.
+///
+/// **The visit follows the gauge and the test on its OWN scope** (`watch`), never from a
+/// `LaunchedEffect`: a stopped Activity runs no effects, so a test kept alive behind a
+/// locked screen by the foreground service never heard its gauge drop, and a test that
+/// finished there kept the stream and the service running until the screen came back.
+/// The runner learned this first — see `RunnerSession.watchConnection`.
 @Stable
 class CriticalForceTestRequest(
     grip: GripSpec,
     hands: CriticalForceHands,
+    /// Where the visit's watchers run: `RootPresentation.viewModelScope`, which no screen
+    /// can pause.
+    private val scope: CoroutineScope,
     /// A fresh test for each hand. Each shares the visit's cue player.
     private val newSession: () -> CriticalForceSession,
     /// What keeps a connected test alive in the background — the runner's foreground
@@ -128,12 +141,23 @@ class CriticalForceTestRequest(
     private var previousMockProfile: MockForceProfile? = null
     private var streamingDevice: DeviceStore? = null
 
+    /// The link and the phase, followed from `start` until the stream stops.
+    private var watching: Job? = null
+
+    /// The link the current hand was armed on. A flow CONFLATES, so a drop and reconnect
+    /// between two collections reads as a new epoch rather than a drop — still a gap in
+    /// the readings the test cannot have seen.
+    private var armedEpoch: ULong? = null
+
+    /// Measuring now: a hand's test is armed or running. Between hands nothing is.
+    val isMeasuring: Boolean get() = stage == CriticalForceStage.Testing && !awaitingNextHand
+
     // MARK: - Flow
 
     /// Start the visit on the first hand. The demo gauge pulls an all-out profile while a
     /// test runs, so demo mode sees a real-looking plateau.
     fun start(device: DeviceStore) {
-        if (!device.state.isConnected) return
+        if (stage != CriticalForceStage.Setup || !device.state.isConnected) return
         if (refusesUnderLoad(device)) return
         handIndex = 0
         awaitingNextHand = false
@@ -149,6 +173,7 @@ class CriticalForceTestRequest(
         if (device.gaugeCapabilities.sustainsBackgroundStreaming) service.begin()
         arm(newSession())
         stage = CriticalForceStage.Testing
+        watch(device)
     }
 
     /// A fresh test for the hand now on the gauge. Only the reading callback moves.
@@ -156,12 +181,34 @@ class CriticalForceTestRequest(
         session.end()
         session = next
         next.arm()
+        armedEpoch = streamingDevice?.link?.value?.epoch
         streamingDevice?.onTracePoint = { point -> next.receive(point.kg, point.t) }
     }
 
-    /// The screen reports every phase change of the current session here.
-    fun phaseChanged(phase: CriticalForceTest.Phase) {
-        if (stage != CriticalForceStage.Testing || awaitingNextHand) return
+    /// Follow the gauge's link and the current hand's phase for as long as the visit
+    /// streams. A drop mid-test interrupts it (void before pull 16, the end of that hand's
+    /// test after); a finished or voided hand moves the visit on, which stops the stream
+    /// and the service even with no screen to notice.
+    private fun watch(device: DeviceStore) {
+        watching?.cancel()
+        watching = scope.launch {
+            launch {
+                device.link.collect { link ->
+                    if (isMeasuring && (!link.isConnected || link.epoch != armedEpoch)) {
+                        session.interrupt(CriticalForceTest.VoidReason.lostGauge)
+                    }
+                }
+            }
+            // The session is state too: a new hand's test is followed from its first phase.
+            snapshotFlow { session to session.phase }.collect { (watched, phase) ->
+                if (watched === session) phaseChanged(phase)
+            }
+        }
+    }
+
+    /// Every phase change of the current session lands here, from `watch`.
+    internal fun phaseChanged(phase: CriticalForceTest.Phase) {
+        if (!isMeasuring) return
         val hand = handName(side)
         when (phase) {
             CriticalForceTest.Phase.Finished -> {
@@ -255,8 +302,20 @@ class CriticalForceTestRequest(
         }
     }
 
-    /// Nothing has been measured while armed on the first hand, so leaving is free.
-    fun backToSetup() {
+    /// Back, from an armed hand that has not pulled yet.
+    ///
+    /// On the FIRST hand nothing has been measured, so leaving is free and it is setup
+    /// again. On a later hand the visit already holds a finished hand, and setup's Start and
+    /// Cancel both begin again from nothing: Back there must never discard it. It returns
+    /// to between the hands, where the next hand's Start and "Finish with … only" wait.
+    fun back() {
+        if (!isMeasuring || session.phase != CriticalForceTest.Phase.Armed) return
+        if (handIndex > 0) {
+            session.end()
+            streamingDevice?.onTracePoint = null
+            awaitingNextHand = true
+            return
+        }
         stopStream(StreamStopCause.userStopped)
         stage = CriticalForceStage.Setup
     }
@@ -271,6 +330,9 @@ class CriticalForceTestRequest(
         }
         streamingDevice = null
         previousMockProfile = null
+        armedEpoch = null
+        watching?.cancel()
+        watching = null
         session.end()
         service.end()
     }
@@ -300,7 +362,7 @@ internal fun words(reason: CriticalForceTest.VoidReason): String = when (reason)
 }
 
 internal fun words(failure: CriticalForceFailure): String = when (failure) {
-    is CriticalForceFailure.TooFewReps -> L10n.tr("Stopped before pull 16, so there’s no result.")
+    is CriticalForceFailure.TooFewReps -> L10n.tr("Stopped before pull 16, so there's no result.")
     CriticalForceFailure.TooLittleData ->
         L10n.tr("Too many gaps in the gauge's readings to give a result. Keep the phone closer next time.")
     CriticalForceFailure.NoPull ->

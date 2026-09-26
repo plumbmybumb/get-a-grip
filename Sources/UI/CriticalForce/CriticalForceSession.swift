@@ -25,8 +25,17 @@ final class CriticalForceSession {
 
     @ObservationIgnored private(set) var test = CriticalForceTest()
     @ObservationIgnored private var ticker: Task<Void, Never>?
-    @ObservationIgnored private let cues = CuePlayer()
+    @ObservationIgnored private let cues: any RunnerCuePlaying
     @ObservationIgnored private var cuesRunning = false
+    /// Wall time on the playback clock's epoch — see `CriticalForceTest`. A seam for
+    /// tests, which run four minutes of test in no time.
+    @ObservationIgnored private let now: @MainActor () -> TimeInterval
+
+    init(cues: (any RunnerCuePlaying)? = nil,
+         now: @escaping @MainActor () -> TimeInterval = { Date().timeIntervalSinceReferenceDate }) {
+        self.cues = cues ?? CuePlayer()
+        self.now = now
+    }
 
     var proto: CriticalForceProtocol { test.proto }
 
@@ -48,7 +57,9 @@ final class CriticalForceSession {
         ticker?.cancel()
         ticker = Task { [weak self] in
             while !Task.isCancelled {
-                self?.tick()
+                // A released session ends the loop rather than sleeping on forever. Bound
+                // only for the tick, so the sleep holds no reference to it.
+                if let self { self.tick() } else { return }
                 try? await Task.sleep(for: .milliseconds(50))
             }
         }
@@ -64,12 +75,12 @@ final class CriticalForceSession {
 
     /// Hold-to-stop. Keeps a result past `minRepsForResult`, voids before.
     func stop() {
-        play(test.stop(now: Self.now))
+        play(test.stop(now: now()))
         publish()
     }
 
     func interrupt(_ reason: CriticalForceTest.VoidReason) {
-        play(test.interrupt(reason, now: Self.now))
+        play(test.interrupt(reason, now: now()))
         publish()
     }
 
@@ -88,11 +99,9 @@ final class CriticalForceSession {
 
     // MARK: -
 
-    /// Wall time on the playback clock's epoch — see `CriticalForceTest`.
-    private static var now: TimeInterval { Date().timeIntervalSinceReferenceDate }
-
-    private func tick() {
-        play(test.tick(now: Self.now))
+    /// One metronome step. Internal for tests; the ticker calls it every 50 ms.
+    func tick() {
+        play(test.tick(now: now()))
         publish()
         switch test.phase {
         case .finished, .voided:
@@ -124,7 +133,7 @@ final class CriticalForceSession {
     private func publish() {
         publishPhase()
         let p = test.phase
-        let left = Int(test.remaining(at: Self.now).rounded(.up))
+        let left = Int(test.remaining(at: now()).rounded(.up))
         if secondsLeft != left { secondsLeft = left }
         let pull: Int = switch p {
         case .pulling(let rep): rep + 1

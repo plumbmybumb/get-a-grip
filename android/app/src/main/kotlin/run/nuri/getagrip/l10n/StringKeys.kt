@@ -499,11 +499,11 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Disconnect"] = R.string.s_disconnect
     into["Disconnected"] = R.string.s_disconnected
     into["Doesn't change your gauge's own unit setting."] = R.string.s_doesn_t_change_your_gauge_s_own_unit_setting
+    into["Don't save"] = R.string.s_don_t_save
     into["Done"] = R.string.s_done_e9b450
     into["Done %d times today"] = R.string.s_done_lld_times_today
     into["Done today"] = R.string.s_done_today
     into["Donghyun Kim"] = R.string.s_donghyun_kim
-    into["Don’t save"] = R.string.s_don_t_save
     into["Down %1\$s %2\$s across %3\$d sessions."] = R.string.s_down_across_lld_sessions
     into["Down %1\$s kg across %2\$d sessions."] = R.string.s_down_kg_across_lld_sessions
     into["Down %s %s across %d sessions."] = R.string.s_down_across_lld_sessions
@@ -1079,8 +1079,8 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Stop"] = R.string.s_stop
     into["Stop test"] = R.string.s_stop_test
     into["Stopped"] = R.string.s_stopped_51e911
+    into["Stopped before pull 16, so there's no result."] = R.string.s_stopped_before_pull_16_so_there_s_no_result
     into["Stopped before pull 16, so there's no result. Rest at least 30 minutes before retesting."] = R.string.s_stopped_before_pull_16_so_there_s_no_result_rest_at_leas
-    into["Stopped before pull 16, so there’s no result."] = R.string.s_stopped_before_pull_16_so_there_s_no_result
     into["Stored on this device and synced to your private iCloud when available."] = R.string.s_stored_on_this_device_and_synced_to_your_private_icloud
     into["Stored on this device only. Nothing syncs between devices."] = R.string.a_stored_on_this_device_only_nothing_syncs_between_devices
     into["Summary"] = R.string.s_summary

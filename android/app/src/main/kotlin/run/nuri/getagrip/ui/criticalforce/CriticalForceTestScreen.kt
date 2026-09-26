@@ -67,7 +67,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -158,7 +157,6 @@ fun CriticalForceTestScreen(request: CriticalForceTestRequest, onClose: () -> Un
     val settings = LocalSettingsStore.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
-    val session = request.session
     val activity = LocalActivity.current
 
     KeepScreenOn(true)
@@ -197,16 +195,10 @@ fun CriticalForceTestScreen(request: CriticalForceTestRequest, onClose: () -> Un
         }
     }
 
-    // The test ends itself on the clock; the visit follows each hand's phase.
-    LaunchedEffect(session, session.phase) { request.phaseChanged(session.phase) }
-
-    // A dropped gauge interrupts: void before pull 16, the end of that hand's test after it.
-    LaunchedEffect(device.state.isConnected) {
-        // Between hands nothing is measuring, so a drop voids nothing.
-        if (!device.state.isConnected && request.stage == CriticalForceStage.Testing && !request.awaitingNextHand) {
-            request.session.interrupt(CriticalForceTest.VoidReason.lostGauge)
-        }
-    }
+    // The test ends itself on the clock and a dropped gauge interrupts it; the visit follows
+    // both on its own scope (`CriticalForceTestRequest.watch`), because a stopped Activity
+    // runs no effects and the foreground service keeps the test running behind a locked
+    // screen.
 
     // The runner's own background rule: a connected gauge that keeps streaming in the
     // background keeps the test running (the cues still sound, and the session's foreground
@@ -216,7 +208,7 @@ fun CriticalForceTestScreen(request: CriticalForceTestRequest, onClose: () -> Un
     DisposableEffect(owner, request) {
         val observer = LifecycleEventObserver { _, event ->
             // Between hands nothing is measuring, so leaving the app costs nothing.
-            if (request.stage != CriticalForceStage.Testing || request.awaitingNextHand) return@LifecycleEventObserver
+            if (!request.isMeasuring) return@LifecycleEventObserver
             // A recreation is not the climber leaving: the request outlives it.
             if (activity?.isChangingConfigurations == true) return@LifecycleEventObserver
             when (event) {
@@ -251,14 +243,14 @@ fun CriticalForceTestScreen(request: CriticalForceTestRequest, onClose: () -> Un
         }
     }
 
-    // System back: free in setup and on the words; while armed on the first hand it steps
-    // back to setup. Mid-test the hold is the only way out, and a result is kept or
+    // System back: free in setup and on the words; while armed it is the dock's Back (setup
+    // on the first hand, between the hands on a later one — a finished hand is never
+    // discarded by it). Mid-test the hold is the only way out, and a result is kept or
     // discarded by its own two buttons, never by a reflex gesture.
     BackHandler {
         when (request.stage) {
             CriticalForceStage.Setup, is CriticalForceStage.Ended -> close()
-            CriticalForceStage.Testing ->
-                if (session.phase == CriticalForceTest.Phase.Armed && request.handIndex == 0) request.backToSetup()
+            CriticalForceStage.Testing -> request.back()
             CriticalForceStage.Result -> Unit
         }
     }
@@ -628,7 +620,7 @@ internal fun TestingScreen(request: CriticalForceTestRequest) {
                 } else if (session.phase == CriticalForceTest.Phase.Armed) {
                     DockNote(tr("The test starts when you pull. Pull as hard as you can."))
                     DockButton(tr("Back"), icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        modifier = Modifier.fillMaxWidth().testTag("cf.back")) { request.backToSetup() }
+                        modifier = Modifier.fillMaxWidth().testTag("cf.back")) { request.back() }
                 } else {
                     HoldToStopTestButton(canKeep = session.canFinishEarly, modifier = Modifier.testTag("cf.stop")) {
                         session.stop()
@@ -900,7 +892,7 @@ private fun ResultScreen(request: CriticalForceTestRequest, onDiscard: () -> Uni
                             style = MaterialTheme.typography.bodySmall, color = palette.alarm,
                             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().testTag("cf.saveFailed"))
                     }
-                    val discard = tr("Don’t save")
+                    val discard = tr("Don't save")
                     val save = tr("Save")
                     AdaptiveActionRow(listOf(listOf(discard), listOf(save)),
                         spacing = InstrumentStage.dockSpacing) { index, cell ->

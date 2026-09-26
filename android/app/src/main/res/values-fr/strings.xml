@@ -406,11 +406,11 @@
     <string name="s_disconnect">Déconnecter</string>
     <string name="s_disconnected">Déconnecté</string>
     <string name="s_doesn_t_change_your_gauge_s_own_unit_setting">Ne change pas le réglage d\'unité de ton capteur.</string>
+    <string name="s_don_t_save">Ne pas enregistrer</string>
     <string name="s_done_e9b450">Terminé</string>
     <string name="s_done_lld_times_today">Fait %d fois aujourd\'hui</string>
     <string name="s_done_today">Fait aujourd\'hui</string>
     <string name="s_donghyun_kim">Donghyun Kim</string>
-    <string name="s_don_t_save">Ne pas enregistrer</string>
     <string name="s_down_across_lld_sessions">En baisse de %1$s %2$s sur %3$d séances.</string>
     <string name="s_down_kg_across_lld_sessions">En baisse de %1$s kg sur %2$d séances.</string>
     <string name="s_drag">À plat</string>
@@ -940,8 +940,8 @@
     <string name="s_stop">Arrêter</string>
     <string name="s_stop_test">Arrêter le test</string>
     <string name="s_stopped_51e911">Arrêté</string>
-    <string name="s_stopped_before_pull_16_so_there_s_no_result_rest_at_leas">Arrêté avant le tirage 16, donc pas de résultat. Repose-toi au moins 30 minutes avant de refaire le test.</string>
     <string name="s_stopped_before_pull_16_so_there_s_no_result">Arrêté avant le tirage 16, donc pas de résultat.</string>
+    <string name="s_stopped_before_pull_16_so_there_s_no_result_rest_at_leas">Arrêté avant le tirage 16, donc pas de résultat. Repose-toi au moins 30 minutes avant de refaire le test.</string>
     <string name="s_stored_on_this_device_and_synced_to_your_private_icloud">Enregistré sur cet appareil et synchronisé avec ton iCloud privé quand il est disponible.</string>
     <string name="s_summary">Résumé</string>
     <string name="s_support">Assistance</string>
