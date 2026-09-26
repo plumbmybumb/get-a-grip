@@ -118,9 +118,6 @@ import run.nuri.getagrip.ui.theme.Metrics
 fun HistoryScreen(
     onLogSession: () -> Unit,
     modifier: Modifier = Modifier,
-    /// The tour's anchor for the month calendar, passed IN so this screen knows nothing of the
-    /// tour and stays previewable (as `SetRowView` does with `palette` and `maxes`).
-    monthAnchor: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
 ) {
     val palette = LocalGripPalette.current
@@ -210,7 +207,7 @@ fun HistoryScreen(
                     // One card per 5-WEEK WINDOW, swiped like every other deck (Nuri, 2026-08-10) — and a deck
                     // only once a second window exists, as on Today.
                     if (windowCount > 1) {
-                        MonthDeck(windowCount, ledger, today, monthAnchor) { shareRequest = it }
+                        MonthDeck(windowCount, ledger, today) { shareRequest = it }
                     } else {
                         Box(Modifier.padding(horizontal = Metrics.hPadding, vertical = 12.dp)) {
                             MonthCard(0, ledger, today) { shareRequest = it }
@@ -383,13 +380,10 @@ private fun MonthDeck(
     windowCount: Int,
     ledger: DayLedger,
     today: DayStamp,
-    anchor: Modifier,
     onShare: (ShareCalendarRequest) -> Unit,
 ) {
     val state = rememberLazyListState()
-    // Anchor the DECK, not a card: a `LazyRow` card's anchor vanishes on swipe (why the anchor
-    // registry keeps a list per target).
-    BoxWithConstraints(Modifier.fillMaxWidth().then(anchor)) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
         val cardWidth = maxWidth - Metrics.hPadding * 2
         LazyRow(
             state = state,

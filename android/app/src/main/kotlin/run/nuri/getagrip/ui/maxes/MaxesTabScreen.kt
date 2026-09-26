@@ -107,15 +107,13 @@ fun MaxesTabScreen(
     onMeasure: (GripSpec, Side) -> Unit,
     onEdit: (GripSpec) -> Unit,
     modifier: Modifier = Modifier,
-    cardsAnchor: Modifier = Modifier,
-    manageAnchor: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
     /// The critical force test, for a grip and how its hands are tested. The host decides
     /// where it shows.
     onCriticalForce: (GripSpec, CriticalForceHands) -> Unit = { _, _ -> },
 ) {
     MaxesOverview(onAddMax, onMeasure, onEdit, modifier = modifier,
-        cardsAnchor = cardsAnchor, manageAnchor = manageAnchor, feed = feed, onCriticalForce = onCriticalForce)
+        feed = feed, onCriticalForce = onCriticalForce)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,10 +123,6 @@ private fun MaxesOverview(
     onMeasure: (GripSpec, Side) -> Unit,
     onEdit: (GripSpec) -> Unit,
     modifier: Modifier = Modifier,
-    /// The spotlight tour's anchor for the grip cards. Passed IN, so this screen never reads
-    /// a tour and stays previewable.
-    cardsAnchor: Modifier = Modifier,
-    manageAnchor: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
     onCriticalForce: (GripSpec, CriticalForceHands) -> Unit = { _, _ -> },
 ) {
@@ -169,7 +163,7 @@ private fun MaxesOverview(
                     // (Nuri, 2026-09-25).
                     Box {
                         IconButton(onClick = { addMenu = true },
-                            modifier = manageAnchor.testTag("maxes.add")) {
+                            modifier = Modifier.testTag("maxes.add")) {
                             Icon(Icons.Default.Add, contentDescription = tr("Add a benchmark"), tint = palette.inkPrimary)
                         }
                         DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
@@ -220,18 +214,14 @@ private fun MaxesOverview(
             }
 
             if (groups.isEmpty() && invitations.isEmpty()) {
-                item("empty") { EmptyCard(cardsAnchor) }
+                item("empty") { EmptyCard() }
             } else {
                 items(groups, key = { it.key }) { group ->
-                    // The FIRST card carries the anchor. Lighting the whole `LazyColumn` would
-                    // be lighting the screen, which is not a spotlight; the first card is what
-                    // "a grip's ceiling, drawn over time" actually looks like.
                     GripCard(group, onMeasure = { choosing = group.grip }, onEdit,
-                        onHistory = { historyGrip = group.grip },
-                        anchor = if (group.key == groups.first().key) cardsAnchor else Modifier)
+                        onHistory = { historyGrip = group.grip })
                 }
                 items(invitations, key = { "invite-${it.key}" }) { grip ->
-                    InvitationCard(grip, if (groups.isEmpty() && grip == invitations.first()) cardsAnchor else Modifier) { choosing = grip }
+                    InvitationCard(grip) { choosing = grip }
                 }
                 item("footnote") {
                     // The same footnote contract as History's: what this screen's numbers
@@ -386,7 +376,6 @@ private fun GripCard(
     onMeasure: () -> Unit,
     onEdit: (GripSpec) -> Unit,
     onHistory: () -> Unit,
-    anchor: Modifier = Modifier,
 ) {
     val palette = LocalGripPalette.current
     val group = benchmark.maxes
@@ -397,7 +386,7 @@ private fun GripCard(
     val line = remember(group, WeightUnits.current) { if (hasMax) progressLine(group) else null }
     val cfLine = remember(tests, WeightUnits.current) { criticalForceProgressLine(tests) }
 
-    Card(anchor) {
+    Card {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -531,9 +520,9 @@ private fun CriticalForceReadout(group: BenchmarkGroup, sides: List<Side>) {
 }
 
 @Composable
-private fun InvitationCard(grip: GripSpec, anchor: Modifier = Modifier, onMeasure: () -> Unit) {
+private fun InvitationCard(grip: GripSpec, onMeasure: () -> Unit) {
     val palette = LocalGripPalette.current
-    Card(anchor) {
+    Card {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -561,9 +550,9 @@ private fun InvitationCard(grip: GripSpec, anchor: Modifier = Modifier, onMeasur
 }
 
 @Composable
-private fun EmptyCard(anchor: Modifier = Modifier) {
+private fun EmptyCard() {
     val palette = LocalGripPalette.current
-    Card(anchor) {
+    Card {
         CapsLabel(tr("No maxes yet"))
         Text(
             tr("Measure the most a grip can hold and it lands here — every later test draws the curve of you getting stronger."),

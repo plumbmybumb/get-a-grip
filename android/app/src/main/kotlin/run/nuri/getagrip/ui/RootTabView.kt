@@ -92,11 +92,6 @@ import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 import run.nuri.getagrip.ui.gauge.LiveGaugeHost
 import run.nuri.getagrip.ui.today.TodayScreen
-import run.nuri.getagrip.ui.tour.LocalTourController
-import run.nuri.getagrip.ui.tour.TourAct
-import run.nuri.getagrip.ui.tour.TourHost
-import run.nuri.getagrip.ui.tour.TourTarget
-import run.nuri.getagrip.ui.tour.tourAnchor
 
 /// Three tabs on iOS became four when Maxes earned its own; the anti-Frez tab count is still
 /// "the fewest that can carry the ritual".
@@ -163,7 +158,6 @@ fun RootTabView() {
     val palette = LocalGripPalette.current
     val templates = LocalTemplateStore.current
     val feed = LocalHistoryFeed.current
-    val tour = LocalTourController.current
     val reduceMotion = rememberReduceMotion()
 
     // Retain the route AND runner across Activity recreation — not process death, where the
@@ -186,9 +180,6 @@ fun RootTabView() {
 
     val request = workouts.active
     if (request != null) {
-        // **Every presented container needs its own host**: the runner replaces the root, so the
-        // session act is hosted here.
-        TourHost(TourAct.Session) {
         RunnerHost(
             workout = request,
             submissionScope = workouts.viewModelScope,
@@ -214,7 +205,6 @@ fun RootTabView() {
             },
             onExit = { workouts.finish(request) },
         )
-        }
         return
     }
 
@@ -279,9 +269,7 @@ fun RootTabView() {
     var building by presentation::building
     val builderMode = building
     if (builderMode != null) {
-        TourHost(TourAct.Builder) {
-            RoutineBuilderHost(mode = builderMode, onDone = { building = null })
-        }
+        RoutineBuilderHost(mode = builderMode, onDone = { building = null })
         return
     }
 
@@ -340,23 +328,6 @@ fun RootTabView() {
     // set of rules about what settles a day.
     var loggingSession by presentation::loggingSession
 
-    // See `TourController.requestedTab`; cleared the moment it is honoured.
-    val tourTab = tour.requestedTab
-    LaunchedEffect(tourTab) {
-        if (tourTab != null) {
-            current = Tab.entries.getOrElse(tourTab) { Tab.Today }
-            tour.requestedTab = null
-        }
-    }
-    // The step names its tab — see `TourStep.tab`.
-    val stepTab = if (tour.act == TourAct.Intro) tour.current?.tab else null
-    LaunchedEffect(stepTab) {
-        if (stepTab != null) current = Tab.entries.getOrElse(stepTab) { Tab.Today }
-    }
-
-    // The intro act's host sits ABOVE the tab bar: its last steps light History, Maxes and
-    // Settings chrome that tab content cannot reach.
-    TourHost(TourAct.Intro) {
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
@@ -434,8 +405,6 @@ fun RootTabView() {
                     },
                     onBuild = {
                         building = if (templates.routines.isEmpty()) BuilderMode.FirstRun else BuilderMode.AddAnother
-                        // Takes over from a RUNNING intro act — see `TourController.builderOpened`.
-                        tour.builderOpened()
                     },
                     onEdit = { template -> building = BuilderMode.Edit(template.id) },
                     onShowHistory = { current = Tab.History },
@@ -445,26 +414,18 @@ fun RootTabView() {
                     // guard has to be told.
                     canPresentImport = !loggingSession,
                 )
-                Tab.History -> HistoryScreen(
-                    onLogSession = { loggingSession = true },
-                    // The step SWITCHES to this tab — see `TourStep.tab`.
-                    monthAnchor = Modifier.tourAnchor(TourTarget.HistoryMonth),
-                )
+                Tab.History -> HistoryScreen(onLogSession = { loggingSession = true })
                 Tab.Maxes -> MaxesTabScreen(
                     onAddMax = { seed -> newMax = NewMaxDraft(seed ?: templates.recentGrips.firstOrNull() ?: GripSpec()) },
                     onEdit = { grip -> editingMax = MaxEditRequest(grip) },
                     onMeasure = { grip, side -> measuring = MeasureRequest(grip, side) },
                     onCriticalForce = ::openCriticalForce,
-                    cardsAnchor = Modifier.tourAnchor(TourTarget.MaxesCurves),
-                    manageAnchor = Modifier.tourAnchor(TourTarget.MaxesManage),
                 )
                 Tab.Settings -> SettingsScreen()
             }
         }
         }
         }
-    }
-
     }
 
     if (loggingSession) {

@@ -69,8 +69,6 @@ import run.nuri.getagrip.ui.share.RoutineShareSheet
 import run.nuri.getagrip.ui.share.rememberRoutineScanner
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
-import run.nuri.getagrip.ui.tour.LocalTourController
-import run.nuri.getagrip.ui.tour.TourAct
 
 /// The ritual front door — the screen Nuri sees twice a day, every day.
 ///
@@ -109,25 +107,8 @@ fun TodayScreen(
     val feed = LocalHistoryFeed.current
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    val tour = LocalTourController.current
 
     val routines = templates.routines
-
-    // **THE TOUR IS STARTED FROM TODAY, not from `RootTabView`.** Two acts chosen at runtime:
-    // with no routine, every card step would light nothing, so the script hands you to the
-    // builder and `routineCreated()` resumes with the Today script once one is saved. Only this
-    // screen reads the routine list, and "is there a routine" is unknowable on the first frame.
-    //
-    // Keyed on the COUNT, as both start and resume trigger, so it runs on its first pass too.
-    LaunchedEffect(routines.size) {
-        if (routines.isEmpty()) {
-            tour.beginIfUnseen(TourAct.Intro, hasRoutine = false)
-        } else {
-            // A routine now exists: resume the tour if it handed you to the builder.
-            tour.routineCreated()
-            tour.beginIfUnseen(TourAct.Intro, hasRoutine = true)
-        }
-    }
 
     /// FROZEN at tap time — see `RoutineShareRequest` — so a swipe, edit or delete cannot change
     /// the code under a pointed camera.

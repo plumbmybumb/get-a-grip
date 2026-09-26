@@ -29,8 +29,6 @@ import run.nuri.getagrip.engine.HandMode
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
-import run.nuri.getagrip.ui.tour.TourAct
-import run.nuri.getagrip.ui.tour.TourController
 import kotlin.test.assertEquals
 
 /** Exercise the real routes: a card-only callback test cannot distinguish an
@@ -46,9 +44,6 @@ class RoutineOverviewNavigationTests {
 
     @Before fun launchActualApp() {
         application = ApplicationProvider.getApplicationContext()
-        for (act in TourAct.entries) {
-            application.settings.setTourSeenVersion(act.rawValue, TourController.VERSION)
-        }
         application.settings.setBuilderGuideDone(true)
         val plan = SessionPlan(
             name = "Precision routine",

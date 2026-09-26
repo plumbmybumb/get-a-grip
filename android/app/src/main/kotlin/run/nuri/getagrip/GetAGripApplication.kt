@@ -37,8 +37,6 @@ import run.nuri.getagrip.store.asHistorySource
 import run.nuri.getagrip.store.SettingsStore
 import run.nuri.getagrip.store.StorageMode
 import run.nuri.getagrip.store.TemplateStore
-import run.nuri.getagrip.ui.tour.SettingsTourSeenStore
-import run.nuri.getagrip.ui.tour.TourController
 
 /// Process-wide setup lives here, the engine's string lookup included.
 class GetAGripApplication : Application() {
@@ -66,11 +64,6 @@ class GetAGripApplication : Application() {
     val finishedSessionDrafts: FinishedSessionDraftStore by lazy {
         FinishedSessionDraftStore(java.io.File(filesDir, FinishedSessionDraftStore.FILE_NAME))
     }
-
-    /// THE SPOTLIGHT TOUR — one controller per PROCESS: three acts days apart on three
-    /// screens are one tour, and a rotation must not restart an act mid-way. The `seen`
-    /// flags live in `SettingsStore`, so a relaunch honours a Skip.
-    val tour: TourController by lazy { TourController(SettingsTourSeenStore(settings)) }
 
     private val scheduler: AlarmScheduler by lazy { AndroidAlarmScheduler(this, settings) }
 

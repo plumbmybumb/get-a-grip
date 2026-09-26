@@ -17,12 +17,12 @@ import org.junit.runner.RunWith
 /// **The journeys the shipped profile is recorded from** — the three that are slowest on a
 /// cold process: launching onto Today, switching tabs, and opening the builder.
 ///
-/// **Screens are found by their ENGLISH text** ("Today", "Skip", "Build my routine"), so run
+/// **Screens are found by their ENGLISH text** ("Today", "Build my routine"), so run
 /// the generator on a device or emulator whose language is English — on any other locale
 /// the steps find nothing, are skipped, and the profile silently shrinks to the launch.
 ///
-/// Every step is written to survive the app's first-launch state (the intro tour, no
-/// routine yet) and every later one (tour seen, a routine saved by nobody), because the rule
+/// Every step is written to survive the app's first-launch state (no routine yet) and every
+/// later one (a routine saved by nobody), because the rule
 /// runs the journey repeatedly against the same install until the profile is stable. A step
 /// whose control is not on screen is skipped, never failed: a missing tap costs the profile
 /// a few methods, a failure costs it everything.
@@ -47,8 +47,7 @@ class BaselineProfileGenerator {
         launchOntoToday()
 
         // The builder, from Today's own door — the first-run card or the deck's ghost card.
-        if (openBuilder() || (skipTourIfShown() && openBuilder())) {
-            skipTourIfShown()
+        if (openBuilder()) {
             // The whole document, eagerly built: scroll it end to end and back.
             device.findObject(By.scrollable(true))?.let { page ->
                 page.fling(Direction.DOWN)
@@ -63,7 +62,6 @@ class BaselineProfileGenerator {
         for (tab in listOf("History", "Benchmarks", "Settings")) {
             tabBar(tab)?.click()
             device.waitForIdle()
-            skipTourIfShown()
         }
         // Settings' one push, and back.
         find(By.textContains("Tap to choose yours"))?.let {
@@ -79,10 +77,7 @@ class BaselineProfileGenerator {
     private fun MacrobenchmarkScope.launchOntoToday() {
         pressHome()
         startActivityAndWait()
-        // On a fresh install the intro tour arrives a beat AFTER the first frame (it waits to
-        // learn whether a routine exists), and its scrim swallows taps meant for the page.
         device.wait(Until.hasObject(By.text("Today")), TIMEOUT)
-        skipTourIfShown(firstLaunch = true)
     }
 
     private fun MacrobenchmarkScope.find(selector: BySelector) =
@@ -97,14 +92,6 @@ class BaselineProfileGenerator {
         val door = find(By.text("Build my routine")) ?: find(By.text("New routine")) ?: return false
         door.click()
         return device.wait(Until.hasObject(By.desc("Routine name")), TIMEOUT)
-    }
-
-    /// True when there was a tour step to skip.
-    private fun MacrobenchmarkScope.skipTourIfShown(firstLaunch: Boolean = false): Boolean {
-        val skip = device.wait(Until.findObject(By.text("Skip")), if (firstLaunch) 3_000 else 1_500)
-        skip?.click()
-        device.waitForIdle()
-        return skip != null
     }
 
     private companion object {

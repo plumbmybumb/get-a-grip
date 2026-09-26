@@ -70,8 +70,6 @@ fun PalmHand(
     holdsGripCueForRest: Boolean = false,
     /// A small, drawn-only lift while the long-rest header prepares the next pull.
     restFocus: Boolean = false,
-    /// The tour's anchor, passed IN so this drawing knows nothing of the tour.
-    tourAnchor: Modifier = Modifier,
 ) {
     val reduceMotion = rememberReduceMotion()
     val darkTheme = isSystemInDarkTheme()
@@ -135,7 +133,6 @@ fun PalmHand(
             .fillMaxWidth()
             .padding(top = cameraHandOffset())
             .height(PalmGeometry.TOTAL_HEIGHT.dp)
-            .then(tourAnchor)
             // Decoration: never eats a touch, and TalkBack hears the grip from the runner's line.
             .clearAndSetSemantics {},
     ) {

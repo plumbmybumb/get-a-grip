@@ -136,10 +136,6 @@ import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.units.WeightUnits
-import run.nuri.getagrip.ui.tour.LocalTourController
-import run.nuri.getagrip.ui.tour.TourAct
-import run.nuri.getagrip.ui.tour.TourTarget
-import run.nuri.getagrip.ui.tour.tourAnchor
 
 /// The hero numeral, at the size the whole screen is arranged around. `sp`, not `dp`: a bare
 /// pixel height renders identically at every accessibility setting while the controls around
@@ -169,30 +165,6 @@ fun RunnerHost(
     val timerOnly = session.timerOnly
     // The ViewModel owns begin/end and the ticker. Disposing this drawing during
     // Activity recreation must not stop the gauge or discard the workout.
-
-    // **THE SESSION ACT, on the first MEASURED session.** Started inside the effect that creates
-    // the session: as its own modifier it ran first, found no session, and taught over a live
-    // workout. A gauge-free session has no lane to point at.
-    val tour = LocalTourController.current
-    LaunchedEffect(session, timerOnly) {
-        if (!timerOnly) tour.beginIfUnseen(TourAct.Session)
-    }
-
-    // **The session act PAUSES the runner.** Teaching over a running clock costs the pull being
-    // explained. It sends the same `RunnerEvent.Pause` as the button, and resumes only if it was
-    // the one to pause, so ending the tour never restarts a session the climber paused.
-    val teaching = tour.sessionPausesRunner
-    LaunchedEffect(teaching) {
-        if (teaching) {
-            if (!session.snapshot.phase.isPaused) {
-                session.send(RunnerEvent.Pause)
-                workout.pausedByTour = true
-            }
-        } else if (workout.pausedByTour) {
-            workout.pausedByTour = false
-            if (session.snapshot.phase.isPaused) session.send(RunnerEvent.Resume)
-        }
-    }
 
     // The screen you look at with both hands on an edge; the phone timing out mid-pull is
     // the app going blind.
@@ -248,8 +220,6 @@ fun RunnerHost(
                     newGripID = snapshot.newGripID,
                     holdsGripCueForRest = snapshot.gripChangesNext,
                     side = snapshot.side ?: Side.both,
-                    // The tour's first session step lights the palm.
-                    tourAnchor = Modifier.tourAnchor(TourTarget.RunnerHand),
                     // Dimmed while resting: this is what's COMING, not "pull this now".
                     isActive = !isResting(snapshot),
                     restFocus = !timerOnly && snapshot.showsRestFocus,
@@ -397,10 +367,7 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                 modifier = Modifier
                     .widthIn(max = Metrics.maxContentWidth)
                     .fillMaxWidth()
-                    .then(if (scrollsForLargeText) Modifier.height(220.dp) else Modifier.weight(1f))
-                    // The "lane" step lights the whole card: a hole cropped to the plot would cut the card's
-                    // corners off.
-                    .tourAnchor(TourTarget.RunnerTrace),
+                    .then(if (scrollsForLargeText) Modifier.height(220.dp) else Modifier.weight(1f)),
             ) {
                 Box(Modifier.testTag("runner-plot"), contentAlignment = Alignment.Center) {
                     ForceTraceView(
@@ -629,7 +596,7 @@ private fun Hero(
             seconds = snapshot.secondsShown,
             tint = if (isStalled(snapshot)) palette.armed else palette.inkPrimary,
             palette = palette,
-            modifier = Modifier.weight(1f).tourAnchor(TourTarget.RunnerClock),
+            modifier = Modifier.weight(1f),
         )
     }
 }

@@ -125,7 +125,7 @@ class SettingsStore(
 
     private companion object {
         /// **These keys and raw values are a STORAGE FORMAT**: renaming one silently resets
-        /// a chosen gauge, replays a seen tour, or re-asks for notification permission.
+        /// a chosen gauge, replays the builder hints, or re-asks for notification permission.
         val weightUnitKey = stringPreferencesKey("weightUnit")
         val gaugeKindKey = stringPreferencesKey("gauge.kind")
         val builderGuideDoneKey = booleanPreferencesKey("builderGuideDone")
@@ -139,12 +139,6 @@ class SettingsStore(
         val scheduledRemindersKey = stringPreferencesKey("reminders.scheduled")
         val trainingDayRepairKey = intPreferencesKey("repair.trainingDays.version")
         val bodyWeightKgKey = doublePreferencesKey("bodyWeightKg")
-
-        /// `tour.seen.<act>` — one key per act, holding a VERSION rather than a Bool, so a
-        /// bumped act can run again for people who saw the old one.
-        fun tourSeenKey(act: String) = intPreferencesKey("tour.seen.$act")
-
-        const val tourSeenPrefix = "tour.seen."
     }
 
     /// One blocking read for every key, rather than one per accessor on the same file.
@@ -183,12 +177,6 @@ class SettingsStore(
     )
     private var repairVersion: Int = loaded[trainingDayRepairKey] ?: 0
     private var bodyWeight: Double? by mutableStateOf(loaded[bodyWeightKgKey]?.takeIf { it > 0 && it.isFinite() })
-    private var tourSeen: Map<String, Int> by mutableStateOf(
-        loaded.asMap().mapNotNull { (key, value) ->
-            if (!key.name.startsWith(tourSeenPrefix)) return@mapNotNull null
-            (value as? Int)?.let { key.name.removePrefix(tourSeenPrefix) to it }
-        }.toMap()
-    )
 
     /// The builder's five coach cards: retired on first save, replayable from Settings, so
     /// a preference, not a flag.
@@ -240,10 +228,6 @@ class SettingsStore(
     /// freezes its own copy, so changing this later never rewrites an old result.
     /// Device-local like the rest of this store; the frozen copies are what persist.
     val bodyWeightKg: Double? get() = bodyWeight
-
-    /// The version of `act` seen, or 0 for never. A map because `TourAct` is the tour's
-    /// vocabulary, not this file's.
-    fun tourSeenVersion(act: String): Int = tourSeen[act] ?: 0
 
     // MARK: - Writes
     //
@@ -308,17 +292,6 @@ class SettingsStore(
         val kg = value?.takeIf { it > 0 && it.isFinite() }
         bodyWeight = kg
         write { if (kg == null) it.remove(bodyWeightKgKey) else it[bodyWeightKgKey] = kg }
-    }
-
-    fun setTourSeenVersion(act: String, version: Int) {
-        tourSeen = tourSeen + (act to version)
-        write { it[tourSeenKey(act)] = version }
-    }
-
-    /// Clears every act's flag — Settings › "Take the tour again".
-    fun clearTourSeen(acts: List<String>) {
-        tourSeen = emptyMap()
-        write { prefs -> acts.forEach { prefs.remove(tourSeenKey(it)) } }
     }
 
     // MARK: - GaugeKindStore

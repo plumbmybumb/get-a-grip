@@ -39,7 +39,6 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SettingsInputAntenna
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -90,7 +89,6 @@ import run.nuri.getagrip.engine.GaugeProtocolSource
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.store.LocalSettingsStore
-import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.l10n.tr
@@ -99,7 +97,6 @@ import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
-import run.nuri.getagrip.ui.tour.LocalTourController
 
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_GAUGE_PICKER = "gauge-picker"
@@ -538,11 +535,8 @@ private fun AboutCard() {
     val palette = LocalGripPalette.current
     val context = LocalContext.current
     val settings = LocalSettingsStore.current
-    val templates = LocalTemplateStore.current
-    val tour = LocalTourController.current
     // One-shot LATCHES, not toggles: the row states what it did and stands down.
     var guideReset by remember { mutableStateOf(false) }
-    var tourReset by remember { mutableStateOf(false) }
     var diagnosticsCopied by remember { mutableStateOf(false) }
     var copyGeneration by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     androidx.compose.runtime.LaunchedEffect(copyGeneration) {
@@ -597,8 +591,6 @@ private fun AboutCard() {
 
         HorizontalDivider(color = palette.inkTertiary.copy(alpha = 0.25f))
 
-        // **TWO DIFFERENT THINGS**, and the old labels read as one feature listed twice: this is the
-        // hints INSIDE the routine builder; the one below is the whole-app spotlight tour.
         ResetRow(
             done = guideReset,
             title = tr("Show the builder's hints again"),
@@ -608,29 +600,7 @@ private fun AboutCard() {
         ) {
             settings.setBuilderGuideDone(false)
             guideReset = true
-            // Back to Today, or the reset happens two tabs away and reads as a dead button.
-            tour.requestedTab = 0
         }
-
-        // The spotlight tour. `replay` clears ALL THREE `tour.seen.<act>` flags: the builder and
-        // session acts come later, and restarting only the intro would never reach them.
-        ResetRow(
-            done = tourReset,
-            title = tr("Take the spotlight tour again"),
-            doneTitle = tr("Tour restarted — it is running on Today"),
-            spoken = tr("Tour restarted"),
-            icon = Icons.Outlined.AutoAwesome,
-        ) {
-            tour.replay(hasRoutine = templates.routines.isNotEmpty())
-            tourReset = true
-        }
-
-        Text(
-            tr("The hints are written into the routine builder. The tour dims the screen and walks you through Today, the builder and a session."),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = palette.inkTertiary,
-        )
     }
 }
 

@@ -59,8 +59,6 @@ import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
-import run.nuri.getagrip.ui.tour.TourTarget
-import run.nuri.getagrip.ui.tour.tourAnchor
 
 /// Fourteen days, oldest to newest, ending today.
 ///
@@ -80,8 +78,7 @@ fun ConsistencyCard(
     Surface(
         shape = RoundedCornerShape(Metrics.radiusCard),
         color = palette.card,
-        // The tour lights the whole strip, including the row that logs into it.
-        modifier = modifier.fillMaxWidth().tourAnchor(TourTarget.Consistency),
+        modifier = modifier.fillMaxWidth(),
     ) {
         // 12, not the house 16, vertically: the least load-bearing card on Today gave up the points
         // the page needed to fit.

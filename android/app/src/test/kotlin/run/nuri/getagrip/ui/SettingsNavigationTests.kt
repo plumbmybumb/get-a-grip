@@ -25,8 +25,6 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import run.nuri.getagrip.GetAGripApplication
 import run.nuri.getagrip.MainActivity
-import run.nuri.getagrip.ui.tour.TourAct
-import run.nuri.getagrip.ui.tour.TourController
 
 /** A second tap landing during a push or a pop must not stack a second picker, nor pop
  * Settings out from under its own tab. Real Activity, real NavHost, the clock held still so
@@ -41,9 +39,6 @@ class SettingsNavigationTests {
 
     @Before fun openSettings() {
         application = ApplicationProvider.getApplicationContext()
-        for (act in TourAct.entries) {
-            application.settings.setTourSeenVersion(act.rawValue, TourController.VERSION)
-        }
         compose.runOnUiThread {
             val intent = Intent(application, MainActivity::class.java).putExtra("mockDevice", true)
             controller = Robolectric.buildActivity(MainActivity::class.java, intent).setup().visible()

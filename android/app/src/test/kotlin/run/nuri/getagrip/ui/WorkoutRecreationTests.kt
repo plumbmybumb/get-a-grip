@@ -53,8 +53,6 @@ import run.nuri.getagrip.runner.RunnerSession
 import run.nuri.getagrip.runner.SessionServiceController
 import run.nuri.getagrip.runner.WorkoutViewModel
 import run.nuri.getagrip.store.DeviceStore
-import run.nuri.getagrip.ui.tour.TourAct
-import run.nuri.getagrip.ui.tour.TourController
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotSame
@@ -79,9 +77,6 @@ class WorkoutRecreationTests {
 
     @Before fun launchActualApp() {
         application = ApplicationProvider.getApplicationContext()
-        for (act in TourAct.entries) {
-            application.settings.setTourSeenVersion(act.rawValue, TourController.VERSION)
-        }
         val plan = SessionPlan(name = "Appearance recovery", sets = listOf(SetPlan(repsPerSide = 3)),
             handMode = HandMode.bothHands, holdSeconds = 4, restSeconds = 20,
             leadInSeconds = 0, waitForReleaseBeforeRest = true)

@@ -29,7 +29,6 @@ import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.engine.RoutineShare
 import run.nuri.getagrip.ui.RootTabView
 import run.nuri.getagrip.ui.theme.GetAGripTheme
-import run.nuri.getagrip.ui.tour.LocalTourController
 
 /// One activity, Compose all the way down. `enableEdgeToEdge()` before `super.onCreate` so
 /// the first frame already draws the slate field behind the system bars.
@@ -139,9 +138,6 @@ class MainActivity : ComponentActivity() {
                     LocalSettingsStore provides app.settings,
                     LocalDayClock provides clock,
                     LocalHistoryFeed provides app.historyFeed,
-                    // ONE controller for the process, so the three acts (days apart, three
-                    // screens) are one tour.
-                    LocalTourController provides app.tour,
                 ) {
                     val preview = androidx.compose.runtime.remember {
                         androidx.compose.runtime.mutableStateOf(BuildConfig.DEBUG && intent.getBooleanExtra("previewSummary", false))

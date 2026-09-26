@@ -20,11 +20,9 @@ import kotlin.test.assertTrue
 /// is recorded on `Tab`, next to the icons themselves.
 class TabIconTests {
 
-    /// **Order is the tab bar's contract**, and it is not only cosmetic: `TourStep.tab` is an
-    /// INDEX, so History at 1, Maxes at 2 and Settings at 3 is what makes the tour's
-    /// tab-switching steps land where they say they do.
+    /// **Order is the tab bar's contract**: Today first, then History, Maxes and Settings.
     @Test
-    fun theFourTabsAreInTheOrderTheTourIndexesThem() {
+    fun theFourTabsAreInTheirOrder() {
         assertEquals(listOf(Tab.Today, Tab.History, Tab.Maxes, Tab.Settings), Tab.entries)
         assertEquals(0, Tab.entries.indexOf(Tab.Today))
         assertEquals(1, Tab.entries.indexOf(Tab.History))

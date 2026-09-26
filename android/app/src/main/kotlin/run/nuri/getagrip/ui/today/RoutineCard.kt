@@ -78,8 +78,6 @@ import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
-import run.nuri.getagrip.ui.tour.TourTarget
-import run.nuri.getagrip.ui.tour.tourAnchor
 
 /// The routine you are committing to, as one card in three ZONES: identity + today's status,
 /// the plan as one line (which IS the edit surface), and the one action. Spacing does the
@@ -158,9 +156,7 @@ fun RoutineCard(
             // mirroring the ⋯ button.
             .semantics {
                 onLongClick(label = L10n.tr("Routine options")) { menuOpen = true; true }
-            }
-            // The tour lights the WHOLE card for its first step: "one card, one ritual".
-            .tourAnchor(TourTarget.RoutineCard),
+            },
     ) {
         Column(
             Modifier.padding(16.dp),
@@ -247,8 +243,7 @@ private fun TitleRow(
                     .size(44.dp)
                     .clip(CircleShape)
                     .clickable(interactionSource = interaction, indication = null, role = Role.Button) { onMenuOpen() }
-                    .pressFeedback(interaction)
-                    .tourAnchor(TourTarget.StartWithoutGauge),
+                    .pressFeedback(interaction),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -455,7 +450,6 @@ private fun PlanRow(summary: RoutineSummary, onOverview: () -> Unit) {
                 onClick = onOverview,
             )
             .pressFeedback(interaction, scales = false)
-            .tourAnchor(TourTarget.GripLadder)
             .testTag("today.routineOverview")
             .semantics {
                 contentDescription = L10n.tr("Routine overview")
@@ -640,7 +634,7 @@ private fun StartBlock(
             SecondaryButton(
                 title = tr("Start another"),
                 icon = Icons.Filled.PlayArrow,
-                modifier = Modifier.fillMaxWidth().tourAnchor(TourTarget.StartButton),
+                modifier = Modifier.fillMaxWidth(),
                 onClick = onStart,
             )
         } else {
@@ -650,7 +644,6 @@ private fun StartBlock(
             PrimaryButton(
                 title = startTitle(summary, deviceState),
                 icon = Icons.Filled.PlayArrow,
-                modifier = Modifier.tourAnchor(TourTarget.StartButton),
                 onClick = onStart,
             )
         }
@@ -678,7 +671,6 @@ private fun StartBlock(
                         onClick = onStartTimerOnly,
                     )
                     .pressFeedback(interaction, scales = false)
-                    .tourAnchor(TourTarget.StartWithoutGauge)
                     .semantics {
                         stateDescription = L10n.tr("Runs the timers and hand prompts only. Nothing is measured.")
                     },

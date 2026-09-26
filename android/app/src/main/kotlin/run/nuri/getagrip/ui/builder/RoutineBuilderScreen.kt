@@ -80,8 +80,6 @@ import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
-import run.nuri.getagrip.ui.tour.TourTarget
-import run.nuri.getagrip.ui.tour.tourAnchor
 
 /// **THE ROUTINE BUILDER — one screen, one scrollable document, zero pushes.**
 ///
@@ -323,11 +321,9 @@ fun RoutineBuilderHost(
                         TextButton(onClick = { cancel() }) { Text(tr("Cancel")) }
                     },
                     actions = {
-                        // The tour's last builder step lights THIS Save: it is on screen wherever you have scrolled.
                         TextButton(
                             onClick = { save() },
                             enabled = canSave && !saving,
-                            modifier = Modifier.tourAnchor(TourTarget.BuilderFinish),
                         ) {
                             Text(tr("Save"), fontWeight = FontWeight.SemiBold)
                         }
@@ -365,12 +361,12 @@ fun RoutineBuilderHost(
                     }
                 }
 
-                Block(BuilderAnchor.Rhythm, anchors, Modifier.tourAnchor(TourTarget.BuilderRhythm)) {
+                Block(BuilderAnchor.Rhythm, anchors) {
                     Coach(coachStep, 2, scope, settings, { coachStep = it }, ::scrollTo)
                     RhythmSection(RhythmValues.of(draft.plan), update = update)
                 }
 
-                Block(BuilderAnchor.Sets, anchors, Modifier.tourAnchor(TourTarget.BuilderSets)) {
+                Block(BuilderAnchor.Sets, anchors) {
                     Coach(coachStep, 3, scope, settings, { coachStep = it }, ::scrollTo)
                     val percentBandsVary = BuilderDraft.percentBandsVary(draft)
                     // Folded once and compared by VALUE: a name keystroke redraws no row, and a set edit
@@ -514,13 +510,10 @@ fun RoutineBuilderHost(
 private fun Block(
     anchor: BuilderAnchor,
     anchors: BuilderScrollAnchors,
-    /// The spotlight tour's anchor for the three blocks it teaches. Kept apart from the coach's
-    /// registry: that is a scroll offset in the document, this a window rect for the scrim.
-    tourAnchor: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     Column(
-        tourAnchor
+        Modifier
             .fillMaxWidth()
             .onGloballyPositioned { anchors.placed(anchor, it) },
         verticalArrangement = Arrangement.spacedBy(10.dp),

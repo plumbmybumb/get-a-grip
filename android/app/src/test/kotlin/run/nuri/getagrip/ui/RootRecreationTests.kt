@@ -34,8 +34,6 @@ import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.ui.builder.BuilderMode
-import run.nuri.getagrip.ui.tour.TourAct
-import run.nuri.getagrip.ui.tour.TourController
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -54,9 +52,6 @@ class RootRecreationTests {
 
     @Before fun launchActualApp() {
         application = ApplicationProvider.getApplicationContext()
-        for (act in TourAct.entries) {
-            application.settings.setTourSeenVersion(act.rawValue, TourController.VERSION)
-        }
         val plan = SessionPlan(name = "Morning", sets = listOf(SetPlan(repsPerSide = 3), SetPlan(repsPerSide = 4)))
         template = SessionTemplateEntity.from(RoutineDraft.blank(plan.name).copy(plan = plan), 0)
         runBlocking { application.database.routines().upsert(template) }

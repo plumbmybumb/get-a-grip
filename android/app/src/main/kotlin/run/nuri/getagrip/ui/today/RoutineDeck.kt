@@ -64,8 +64,6 @@ import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
-import run.nuri.getagrip.ui.tour.TourTarget
-import run.nuri.getagrip.ui.tour.tourAnchor
 
 /// The routines as a PAGED DECK — Music's Top Picks, not a browse feed.
 ///
@@ -315,13 +313,7 @@ fun EmptyRoutineCard(
                 color = palette.inkSecondary,
             )
 
-            // ACT ONE's only lit control: on first launch the tour hands you to the builder from here,
-            // and the step is `interactive`, so the tap lands.
-            PrimaryButton(
-                tr("Build my routine"),
-                modifier = Modifier.tourAnchor(TourTarget.BuildRoutine),
-                onClick = onBuild,
-            )
+            PrimaryButton(tr("Build my routine"), onClick = onBuild)
 
             if (onScan != null) {
                 SubtleScanAction(tr("Scan a shared routine"), onScan)
