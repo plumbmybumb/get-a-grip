@@ -205,10 +205,11 @@ enum class MockForceProfile(val rawValue: String) {
     allOut("allOut");
 
     companion object {
-        /// Matches the default no-hang shape (10 s on, 20 s off) so a mock run lines up
-        /// with a real routine.
-        const val workSeconds: Double = 10.0
-        const val restSeconds: Double = 20.0
+        /// The default no-hang shape (10 s on, 20 s off), with the pull held a second and a
+        /// half longer: the ramps and the engage debounce eat into a bare 10 s, so a demo
+        /// rep ended on RE-GRIP with a second to go and waited out a whole rest to finish.
+        const val workSeconds: Double = 11.5
+        const val restSeconds: Double = 18.5
 
         fun fromRaw(raw: String): MockForceProfile? = entries.firstOrNull { it.rawValue == raw }
 
