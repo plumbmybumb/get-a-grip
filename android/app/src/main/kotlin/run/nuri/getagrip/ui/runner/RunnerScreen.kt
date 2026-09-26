@@ -380,6 +380,7 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                             null
                         },
                         tint = tint,
+                        lit = true,
                     )
                     // A connected gauge that is not sending renders "0.0 kg" as a lie: a device measuring
                     // nothing and an app receiving nothing look identical. Say it, and say what to do.

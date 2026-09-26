@@ -149,6 +149,7 @@ fun GaugeScreen(modifier: Modifier = Modifier) {
             ForceTraceView(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
                 tint = if (device.isStreaming) palette.bleu else palette.inkTertiary,
+                lit = true,
             )
         }
         // Only once a stream was ASKED for: connected-and-idle is not silent, just not started

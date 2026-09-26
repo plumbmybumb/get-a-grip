@@ -508,6 +508,7 @@ private fun MaxLiveTrace(session: LiveMaxSession, savedMax: (Side) -> Double?) {
         modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp).clearAndSetSemantics {},
         thresholdKg = toBeat,
         tint = if (device.isStreaming) palette.bleu else palette.inkTertiary,
+        lit = true,
     )
 }
 

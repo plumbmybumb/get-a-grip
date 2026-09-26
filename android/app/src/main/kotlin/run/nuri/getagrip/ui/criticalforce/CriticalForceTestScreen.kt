@@ -617,6 +617,7 @@ internal fun TestingScreen(request: CriticalForceTestRequest) {
                     modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
                     thresholdKg = if (session.phase == CriticalForceTest.Phase.Armed) CriticalForceRules.startKg else null,
                     tint = tint,
+                    lit = true,
                 )
             }
             // A LEAF that reads the session itself: the live bar moves several times a second,

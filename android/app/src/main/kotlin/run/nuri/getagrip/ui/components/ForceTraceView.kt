@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -48,6 +49,8 @@ private val STROKE_WIDTH = 2.5.dp
 private val RULE_WIDTH = 1.dp
 private val RULE_DASH = 4.dp
 private val HEAD_RADIUS = 4.dp
+/// The lit head's glow: a radial fade around the live point, readable from across a room.
+private val GLOW_RADIUS = 16.dp
 
 /// The fill's left edge ramps up over this much, so history BEGINS rather than starts.
 private val FILL_RAMP_WIDTH = 40.dp
@@ -86,6 +89,11 @@ fun ForceTraceView(
     tint: Color = LocalGripPalette.current.bleu,
     clock: HostClock = SystemHostClock,
     frozenSamples: List<DeviceStore.TracePoint>? = null,
+    /// **Drawn as a LIT object** (iOS `lit`) — the full-screen traces: the runner, the live
+    /// gauge, the critical force and max tests. The stroke brightens toward now, the live point
+    /// glows, and the lane's edges are solid hairlines. Plain fills and one radial gradient at
+    /// one point: no blur, no layer over the whole trace.
+    lit: Boolean = false,
 ) {
     val store = LocalDeviceStore.current
     val palette = LocalGripPalette.current
@@ -143,6 +151,7 @@ fun ForceTraceView(
             tint = tint,
             neutral = palette.inkTertiary,
             gapSeconds = TraceGeometry.streamGapSeconds(caps.nominalSampleRate, caps.isBroadcast),
+            lit = lit,
         )
     }
 }
@@ -151,6 +160,49 @@ private class TracePaths {
     val line = Path()
     val fill = Path()
     val layer = Paint()
+
+    // The gradients, rebuilt only when what they depend on changes (the tint moves with the
+    // phase, the extent with the canvas), never per frame.
+    private val fillCache = CachedBrush()
+    private val litStrokeCache = CachedBrush()
+    private val glowCache = CachedBrush()
+
+    fun fillGradient(tint: Color, height: Float): Brush = fillCache.get(tint, height) {
+        Brush.verticalGradient(
+            colors = listOf(tint.copy(alpha = 0.28f), tint.copy(alpha = 0.02f)),
+            startY = 0f,
+            endY = height,
+        )
+    }
+
+    /// History dims toward the left and NOW is full strength, so the eye lands on the end
+    /// that matters.
+    fun litStrokeGradient(tint: Color, width: Float): Brush = litStrokeCache.get(tint, width) {
+        Brush.horizontalGradient(colors = listOf(tint.copy(alpha = 0.45f), tint), startX = 0f, endX = width)
+    }
+
+    /// Centred on (radius, radius): the caller translates it onto the head, so a moving
+    /// point needs no new shader.
+    fun glowGradient(tint: Color, radius: Float): Brush = glowCache.get(tint, radius) {
+        Brush.radialGradient(
+            colors = listOf(tint.copy(alpha = 0.55f), tint.copy(alpha = 0f)),
+            center = Offset(radius, radius),
+            radius = radius,
+        )
+    }
+}
+
+/// One brush, remembered against the tint and the one extent it was built for.
+private class CachedBrush {
+    private var tint = Color.Unspecified
+    private var extent = Float.NaN
+    private var brush: Brush? = null
+
+    inline fun get(tint: Color, extent: Float, build: () -> Brush): Brush {
+        val cached = brush
+        if (cached != null && tint == this.tint && extent == this.extent) return cached
+        return build().also { this.tint = tint; this.extent = extent; brush = it }
+    }
 }
 
 private fun DrawScope.drawTrace(
@@ -163,6 +215,7 @@ private fun DrawScope.drawTrace(
     tint: Color,
     neutral: Color,
     gapSeconds: Double,
+    lit: Boolean,
 ) {
     val insetTop = INSET_TOP.toPx()
     val plotHeight = maxOf(1f, size.height - insetTop - INSET_BOTTOM.toPx())
@@ -180,23 +233,24 @@ private fun DrawScope.drawTrace(
         val top = y(targetBand.endInclusive)
         val bottom = y(targetBand.start)
         drawRect(
-            color = neutral.copy(alpha = 0.13f),
+            color = neutral.copy(alpha = if (lit) 0.11f else 0.13f),
             topLeft = Offset(0f, top),
             size = Size(size.width, maxOf(1f, bottom - top)),
         )
+        // Lit: solid hairlines. On an open screen dashed rules read as chart furniture.
         for (edge in listOf(top, bottom)) {
             drawLine(
-                color = neutral.copy(alpha = 0.5f),
+                color = neutral.copy(alpha = if (lit) 0.38f else 0.5f),
                 start = Offset(0f, edge),
                 end = Offset(size.width, edge),
                 strokeWidth = RULE_WIDTH.toPx(),
-                pathEffect = dash,
+                pathEffect = if (lit) null else dash,
             )
         }
     } else if (thresholdKg != null && thresholdKg > 0 && thresholdKg < ceiling) {
         val line = y(thresholdKg)
         drawLine(
-            color = neutral.copy(alpha = 0.55f),
+            color = neutral.copy(alpha = if (lit) 0.35f else 0.55f),
             start = Offset(0f, line),
             end = Offset(size.width, line),
             strokeWidth = RULE_WIDTH.toPx(),
@@ -273,15 +327,7 @@ private fun DrawScope.drawTrace(
     val needsRamp = first.x > 0f
     drawIntoCanvas { canvas ->
         if (needsRamp) canvas.saveLayer(Rect(Offset.Zero, size), paths.layer)
-        drawPath(
-            path = fill,
-            brush = Brush.verticalGradient(
-                colors = listOf(tint.copy(alpha = 0.28f), tint.copy(alpha = 0.02f)),
-                startY = 0f,
-                endY = size.height,
-            ),
-            alpha = runAlpha,
-        )
+        drawPath(path = fill, brush = paths.fillGradient(tint, size.height), alpha = runAlpha)
         if (needsRamp) {
             // DstIn multiplies the fill's alpha by this gradient only inside its rect — the "fill black
             // to keep" half of the iOS mask.
@@ -299,16 +345,17 @@ private fun DrawScope.drawTrace(
         }
     }
 
-    drawPath(
-        path = line,
-        color = tint,
-        alpha = runAlpha,
-        style = Stroke(
-            width = STROKE_WIDTH.toPx(),
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round,
-        ),
-    )
+    val stroke = Stroke(width = STROKE_WIDTH.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+    if (lit) {
+        drawPath(path = line, brush = paths.litStrokeGradient(tint, size.width), alpha = runAlpha, style = stroke)
+        // The glow marks the live point from across a room.
+        val glow = GLOW_RADIUS.toPx()
+        translate(head.x - glow, head.y - glow) {
+            drawCircle(brush = paths.glowGradient(tint, glow), radius = glow, center = Offset(glow, glow), alpha = runAlpha)
+        }
+    } else {
+        drawPath(path = line, color = tint, alpha = runAlpha, style = stroke)
+    }
 
     drawCircle(color = tint, radius = HEAD_RADIUS.toPx(), center = head, alpha = runAlpha)
 }
