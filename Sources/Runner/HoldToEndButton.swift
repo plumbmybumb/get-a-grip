@@ -33,6 +33,10 @@ struct HoldToEndButton: View {
                     .animation(nil, value: isHolding)
             }
             .font(.system(.subheadline, weight: .semibold))
+            // One line in the dock: a third of the row is narrow, and "Hold / to end" on two
+            // lines reads as two labels. Accessibility sizes still wrap rather than shrink.
+            .lineLimit(allowsScrolling ? nil : 1)
+            .minimumScaleFactor(allowsScrolling ? 1 : 0.8)
             .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
             .background {
                 HoldFill(progress: progress, tint: Accent.alarm, track: 0.16, fill: 0.42)
