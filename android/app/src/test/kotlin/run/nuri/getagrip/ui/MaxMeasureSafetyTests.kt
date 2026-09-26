@@ -260,7 +260,7 @@ class MaxMeasureSafetyTests {
         compose.mainClock.advanceTimeBy(50)
         handValue("left", "41.0 kilograms, best of 1 pull")
         compose.onNodeWithTag("max.measure.connect").assertIsDisplayed()
-        compose.onNodeWithText("Connect your gauge to measure. Every pull counts.").assertIsDisplayed()
+        compose.onNodeWithText("Connect your gauge to measure.").assertIsDisplayed()
         compose.onNodeWithText("Try demo mode").assertDoesNotExist()
         click("max.measure.save")
         click("max.review.save")
@@ -345,7 +345,7 @@ class MaxMeasureSafetyTests {
         compose.runOnIdle { world.sample(1.5) }
         compose.onNodeWithTag("max.measure.tare").assertTextContains("Tare")
         click("max.measure.tare")
-        compose.onNodeWithText("Zero the gauge?").assertIsDisplayed()
+        compose.onNodeWithText("Tare under load?").assertIsDisplayed()
         compose.runOnIdle {
             world.client.setState(ProgressorConnectionState.Disconnected(null))
             world.client.setState(ProgressorConnectionState.Connected)
@@ -355,7 +355,7 @@ class MaxMeasureSafetyTests {
         compose.onAllNodesWithText("Tare").filterToOne(hasClickAction() and hasAnyAncestor(isDialog())).performClick()
         compose.mainClock.advanceTimeBy(50)
         compose.runOnIdle { assertEquals(0, world.client.commands.count { it == ProgressorCommand.tare }) }
-        compose.onNodeWithText("Zero the gauge?").assertDoesNotExist()
+        compose.onNodeWithText("Tare under load?").assertDoesNotExist()
     }
 
     @Test fun largeTextKeepsTareAndReviewReachable() {

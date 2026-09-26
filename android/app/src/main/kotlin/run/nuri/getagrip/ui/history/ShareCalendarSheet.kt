@@ -281,10 +281,9 @@ fun ShareCalendarSheet(request: ShareCalendarRequest, onClose: () -> Unit) {
 
             Text(
                 tr(
-                    "Saved at %d × %d points at %d×, so it lands in Photos at the size a story wants.",
-                    ShareCalendarGrid.EXPORT_SIDE.toInt(),
-                    ShareCalendarGrid.EXPORT_SIDE.toInt(),
-                    EXPORT_DENSITY.toInt(),
+                    "Saves to Photos at %d × %d pixels.",
+                    (ShareCalendarGrid.EXPORT_SIDE * EXPORT_DENSITY).toInt(),
+                    (ShareCalendarGrid.EXPORT_SIDE * EXPORT_DENSITY).toInt(),
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,

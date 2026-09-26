@@ -671,7 +671,7 @@ private fun StartBlock(
                     )
                     .pressFeedback(interaction, scales = false)
                     .semantics {
-                        stateDescription = L10n.tr("Runs the timers and hand prompts only. Nothing is measured.")
+                        stateDescription = L10n.tr("Timers only. Nothing is measured.")
                     },
                 contentAlignment = Alignment.Center,
             ) {
@@ -724,7 +724,7 @@ private fun connectionNote(
     is ProgressorConnectionState.Scanning, is ProgressorConnectionState.Connecting ->
         Note(null, L10n.tr("Searching for your gauge…"), quiet)
     is ProgressorConnectionState.BluetoothOff ->
-        Note(Icons.Outlined.Warning, L10n.tr("Bluetooth is off — turn it on to measure."), alarm)
+        Note(Icons.Outlined.Warning, L10n.tr("Bluetooth is off. Turn it on to measure."), alarm)
     is ProgressorConnectionState.Unauthorized ->
         Note(Icons.Outlined.Warning, L10n.tr("Bluetooth access is off for Get a Grip."), alarm)
     is ProgressorConnectionState.Unsupported ->
@@ -737,7 +737,7 @@ private fun batteryNote(battery: Double?, armed: Color): Note? {
     if (battery == null || battery >= 0.15) return null
     return Note(
         Icons.Outlined.BatteryAlert,
-        L10n.tr("Gauge battery at %d%% — charge it soon.", run.nuri.getagrip.ui.components.BatteryDisplay.percentage(battery)),
+        L10n.tr("Gauge battery at %d%%. Charge it soon.", run.nuri.getagrip.ui.components.BatteryDisplay.percentage(battery)),
         armed,
     )
 }

@@ -22,7 +22,7 @@ enum class StorageMode {
     val aboutLine: String
         get() = when (this) {
             localOnly -> L10n.tr(
-                "Your routines and sessions are stored on this device. They don't sync between devices."
+                "Stored on this device only. Nothing syncs between devices."
             )
         }
 }

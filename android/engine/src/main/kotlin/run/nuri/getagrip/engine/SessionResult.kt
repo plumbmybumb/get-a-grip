@@ -203,10 +203,10 @@ enum class SessionKind(val rawValue: String) {
     val explainer: String
         get() = when (this) {
             hang -> L10n.tr("A session on the board.")
-            climbVolume -> L10n.tr("Laps, circuits, an easy evening — real load, well short of maximal.")
-            climbLimit -> L10n.tr("Hard bouldering or projecting — a maximal pull on your fingers.")
-            hangManual -> L10n.tr("Weighted or max hangs you did on your own — no gauge behind it.")
-            benchmark -> L10n.tr("A testing day — a max or a critical force test on the gauge.")
+            climbVolume -> L10n.tr("Laps, circuits or an easy session, well below your limit.")
+            climbLimit -> L10n.tr("Hard bouldering or projecting, at your limit.")
+            hangManual -> L10n.tr("Weighted or max hangs done without the gauge.")
+            benchmark -> L10n.tr("A max or critical force test on the gauge.")
         }
 
     companion object {

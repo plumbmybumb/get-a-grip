@@ -83,7 +83,7 @@ class BLELifecycleTests {
             TarePolicy.disabledReason(RunnerPhase.Working(0)),
         )
         assertEquals(
-            "Tare is unavailable while waiting for you to let go.",
+            "Tare is unavailable until you let go.",
             TarePolicy.disabledReason(RunnerPhase.Releasing(0)),
         )
 

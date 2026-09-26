@@ -349,7 +349,7 @@ fun CriticalForcePullChart(summary: CriticalForceSummary, modifier: Modifier = M
         }
         if (showsCaptions) {
             Text(
-                tr("Each bar is one pull’s average. Critical force is the mean of pulls %d–%d, where your force levels off.",
+                tr("Each bar is one pull's average. Critical force is the mean of pulls %d–%d.",
                     summary.criticalForceReps.first, summary.criticalForceReps.last),
                 style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary,
             )
@@ -357,7 +357,7 @@ fun CriticalForcePullChart(summary: CriticalForceSummary, modifier: Modifier = M
             if (summary.restsTotal > 0) {
                 Text(
                     if (missed == 0) tr("Every rest kept on the beat.")
-                    else tr("Still on the edge after the bell in %d of %d rests. Force after the bell isn’t counted, but it eats into your rest.",
+                    else tr("Still on the edge after the bell in %d of %d rests. That force isn't counted and shortens your rest.",
                         missed, summary.restsTotal),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (missed == 0) palette.inkTertiary else palette.armed,

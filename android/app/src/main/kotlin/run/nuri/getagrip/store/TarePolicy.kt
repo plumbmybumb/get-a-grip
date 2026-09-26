@@ -125,7 +125,7 @@ object TarePolicy {
         is RunnerPhase.Paused -> disabledReason(phase.before)
         is RunnerPhase.Working -> L10n.tr("Tare is unavailable during the pull.")
         is RunnerPhase.Releasing ->
-            L10n.tr("Tare is unavailable while waiting for you to let go.")
+            L10n.tr("Tare is unavailable until you let go.")
         else -> null
     }
 

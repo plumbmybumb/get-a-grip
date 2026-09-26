@@ -54,7 +54,7 @@ fun LifetimeCard(stats: LifetimeStats, modifier: Modifier = Modifier) {
             CapsLabel(title)
             if (stats.isEmpty) {
                 Text(
-                    tr("Your all-time numbers land here after the first session."),
+                    tr("Your all-time totals appear after your first session."),
                     style = MaterialTheme.typography.bodyMedium,
                     color = palette.inkSecondary,
                 )
@@ -68,7 +68,7 @@ fun LifetimeCard(stats: LifetimeStats, modifier: Modifier = Modifier) {
                 if (stats.climbDays > 0) LedgerRow(tr("Climbing days"), integers.format(stats.climbDays))
                 LedgerRow(tr("Heaviest pull"), WeightUnits.current.text(stats.heaviestPullKg))
                 Text(
-                    tr("Volume is load × pulls, added up. Under tension is every second on the edge."),
+                    tr("Volume is load × pulls. Under tension is total time on the edge."),
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.inkTertiary,
                     modifier = Modifier.padding(top = 2.dp),

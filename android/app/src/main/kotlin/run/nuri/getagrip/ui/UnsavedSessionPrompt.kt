@@ -60,7 +60,7 @@ internal fun UnsavedSessionPrompt(recovery: UnsavedSessionRecovery) {
     LaunchedEffect(recovery) { draft = recovery.pending() }
 
     val pending = draft ?: return
-    val couldNotSave = tr("Couldn't save this workout. Please try again.")
+    val couldNotSave = tr("Couldn't save this workout. Try again.")
     val finished = remember(pending.finishedAt) {
         DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
             .format(pending.finishedAt.atZone(ZoneId.systemDefault()))
@@ -71,7 +71,7 @@ internal fun UnsavedSessionPrompt(recovery: UnsavedSessionRecovery) {
         title = { Text(tr("Unsaved session from %s", finished)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("This session finished, but the app closed before it was saved."))
+                Text(tr("The app closed before this session was saved."))
                 failure?.let { Text(it, color = palette.armed, style = MaterialTheme.typography.bodySmall) }
             }
         },

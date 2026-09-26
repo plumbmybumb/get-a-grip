@@ -86,12 +86,12 @@ data class SessionLogDraft(
             return when (kind) {
                 SessionKind.hangManual ->
                     L10n.tr(
-                        "That counts as one session for %s, but it does not settle the day. You can still do another session if you want one.",
+                        "Counts as one session for %s.",
                         day,
                     )
                 SessionKind.climbVolume, SessionKind.climbLimit ->
                     L10n.tr(
-                        "That completes %s — no reminders, and a full day on your calendar. You can still do a hang session if you want one.",
+                        "Marks %s as trained and stops its reminders.",
                         day,
                     )
                 else -> L10n.tr("Choose a session kind to see how it counts.")
@@ -238,7 +238,7 @@ fun SessionLogSheet(onClose: () -> Unit) {
 
                 if (failed) {
                     Text(
-                        tr("That couldn't be saved — nothing was logged. Try again."),
+                        tr("Couldn't save. Try again."),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         color = palette.alarm,

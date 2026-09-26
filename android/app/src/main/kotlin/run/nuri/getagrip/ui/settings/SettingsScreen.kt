@@ -178,7 +178,7 @@ private fun SettingsRoot(
                 title = tr("Gauge"),
                 subtitle = if (device.isMock) tr("Demo device") else device.gaugeKind.displayName,
                 // Counted from the registry, so a ninth gauge cannot leave this claiming eight.
-                note = tr("Tap to choose yours — Get a Grip works with %d different gauges.", GaugeKind.selectable.size),
+                note = tr("Tap to choose from %d supported gauges.", GaugeKind.selectable.size),
                 outline = palette.bleu,
                 onClick = onOpenGaugePicker,
             )
@@ -368,14 +368,14 @@ private fun Footnotes() {
     val calibrated = GaugeKind.selectable
         .filter { it.capabilities.requiresRemoteCalibration }
         .map { it.displayName }
-    val ported = tr("Anything marked as a ported protocol speaks a protocol taken from the open-source hangtime-grip-connect project and has never been tested against that hardware here. Check the first pull on one against a number you already trust.")
+    val ported = tr("Ported protocols come from the open-source hangtime-grip-connect project and are untested here. Check your first pull against a known weight.")
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             if (verified.isEmpty()) {
                 ported
             } else {
-                L10n.tr("%s is the gauge this app has been verified against on real hardware. %s", andList(verified), ported)
+                L10n.tr("%s is verified on real hardware. %s", andList(verified), ported)
             },
             style = MaterialTheme.typography.bodySmall,
             color = palette.inkTertiary,
@@ -383,7 +383,7 @@ private fun Footnotes() {
         if (official.isNotEmpty()) {
             Text(
                 tr(
-                    "%s speaks a protocol its maker published, but no unit has been tried on this app yet.",
+                    "%s uses its maker's published protocol, not yet tested with this app.",
                     andList(official),
                 ),
                 style = MaterialTheme.typography.bodySmall,
@@ -393,7 +393,7 @@ private fun Footnotes() {
         if (calibrated.isNotEmpty()) {
             Text(
                 tr(
-                    "%s sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server.",
+                    "%s needs a one-time calibration lookup from its maker, by serial number. It's then kept on this phone. No other gauge uses a server.",
                     andList(calibrated),
                 ),
                 style = MaterialTheme.typography.bodySmall,
@@ -403,10 +403,9 @@ private fun Footnotes() {
         if (broadcast.isNotEmpty()) {
             // Broadcast gauges are a different shape of device, not a worse one: one sentence for its two consequences.
             Text(
-                // ANDROID-ONLY WORDING: the iOS twin names iOS, so this lives in android_extra.json rather
-                // than a catalog key that would be wrong in one app.
+                // The catalog sentence no longer names an OS, so both apps share it.
                 tr(
-                    "%s broadcasts its weight instead of connecting, so there is nothing to pair and nothing to zero on the device — Tare subtracts what is hanging on it. Android stops delivering broadcasts while Get a Grip is in the background, so a session on one pauses when you leave the app.",
+                    "%s broadcasts its weight instead of connecting, so there's nothing to pair. Tare works in the app. Sessions pause when you leave the app.",
                     andList(broadcast),
                 ),
                 style = MaterialTheme.typography.bodySmall,
@@ -754,7 +753,7 @@ internal fun BodyWeightSetting(settings: run.nuri.getagrip.store.SettingsStore) 
             modifier = Modifier.testTag("settings.bodyWeight"),
         )
         Text(
-            tr("Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result."),
+            tr("Shows critical force as a share of body weight. Past tests keep their weight."),
             style = MaterialTheme.typography.bodySmall,
             color = palette.inkSecondary,
         )

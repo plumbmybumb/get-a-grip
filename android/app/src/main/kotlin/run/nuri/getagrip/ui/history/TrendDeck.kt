@@ -217,7 +217,7 @@ private fun TrendCard(
 
                 if (series.size < 2) {
                     Text(
-                        tr("One session so far. A second gives this a direction."),
+                        tr("One session so far. The trend starts after two."),
                         style = MaterialTheme.typography.bodyMedium,
                         color = palette.inkSecondary,
                     )

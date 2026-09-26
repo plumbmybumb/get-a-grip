@@ -131,7 +131,7 @@ fun MaxEditSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit) 
                 }
                 if (draft.hasInvalidChanges) Text(tr("Enter a max above zero. To remove a record, open Earlier records."),
                     style = MaterialTheme.typography.bodySmall, color = palette.alarm)
-                if (failed) Text(tr("Couldn’t save your maxes. Your changes are still here—please try again."),
+                if (failed) Text(tr("Couldn't save your maxes. Try again."),
                     style = MaterialTheme.typography.bodySmall, color = palette.alarm)
             }
             templates.maxTable.exact(grip.key, Side.both)?.let { shared ->
@@ -156,7 +156,7 @@ fun MaxEditSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit) 
 }
 
 internal fun manualBandCaption(kg: Double): String? {
-    if (kg <= 0) return L10n.tr("Not set. Enter a value to save a max for this hand.")
+    if (kg <= 0) return L10n.tr("Not set")
     val band = PlanMath.suggestedBand(kg) ?: return null
     return WeightUnits.tr("20–30 %% of that is %s–%s kg", WeightUnits.number(band.start), WeightUnits.number(band.endInclusive))
 }

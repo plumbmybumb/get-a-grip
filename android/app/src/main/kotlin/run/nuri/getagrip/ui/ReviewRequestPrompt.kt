@@ -80,7 +80,7 @@ fun ReviewRequestDialog(state: ReviewRequestState) {
     AlertDialog(
         onDismissRequest = { state.showing = false },
         title = { Text(tr("Rate Get a Grip")) },
-        text = { Text(tr("Get a Grip is free and open source. A rating helps other climbers find it.")) },
+        text = { Text(tr("A rating helps other climbers find Get a Grip.")) },
         confirmButton = {
             TextButton(onClick = {
                 state.showing = false

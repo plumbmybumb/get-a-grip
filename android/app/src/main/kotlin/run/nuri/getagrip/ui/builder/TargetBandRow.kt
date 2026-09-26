@@ -195,13 +195,13 @@ fun TargetBandRow(
             when {
                 // Named, not hinted: a percentage with no max resolves to no target at run time.
                 resolvedSides.isEmpty() ->
-                    tr("No max on file for this grip yet, so this shows no target during a session. Add one on the Benchmarks tab.")
+                    tr("No max for this grip yet. Measure one in Benchmarks.")
                 // One hand has a max, the other not (a left- or right-only max). Say WHICH, because the row
                 // above shows a confident band for the other.
                 resolvedSides.size < sides.size -> {
                     val missing = sides.first { resolved(it) == null }
                     tr(
-                        "No max for your %s hand, so those pulls show no target. Add one on the Benchmarks tab.",
+                        "No max for your %s hand yet. Measure one in Benchmarks.",
                         missing.displayName.lowercase(),
                     )
                 }

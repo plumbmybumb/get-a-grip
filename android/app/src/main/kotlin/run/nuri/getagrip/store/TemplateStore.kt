@@ -526,7 +526,7 @@ class TemplateStore(
         }
         if (template.isOnDemand) {
             return when (done) {
-                0 -> L10n.tr("A whenever routine — nothing owed today")
+                0 -> L10n.tr("No daily target")
                 1 -> L10n.tr("Done today")
                 else -> L10n.tr("Done %d times today", done)
             }
@@ -606,7 +606,7 @@ class TemplateStore(
         if (siblings == null) {
             // A failed READ is not "no routines": minting sortIndex 0 would make this the
             // primary routine.
-            saveError = L10n.tr("Couldn't read your routines just now — the new one wasn't saved.")
+            saveError = L10n.tr("Couldn't load your routines, so the new one wasn't saved.")
             return null
         }
         val normalized = draft.normalized
@@ -932,7 +932,7 @@ class TemplateStore(
         zone: ZoneId = ZoneId.systemDefault(),
     ): WorkoutLogEntity? {
         if (newMaxes.any { !it.kg.isFinite() || it.kg <= 0 }) {
-            saveError = L10n.tr("Couldn't save this workout. Please try again.")
+            saveError = L10n.tr("Couldn't save this workout. Try again.")
             return null
         }
         val log = WorkoutLogEntity.from(
@@ -1529,7 +1529,7 @@ class TemplateStore(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            saveError = L10n.tr("That change couldn't be saved — %s", error.message ?: "")
+            saveError = L10n.tr("Couldn't save the change: %s", error.message ?: "")
             false
         }
         syncDerived(refoldingMaxes = maxesChanged, refoldingCriticalForce = criticalForceChanged)

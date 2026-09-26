@@ -247,7 +247,7 @@ fun PositionChipRow(
         )
         if (selection == GripPosition.fingerCurl) {
             Text(
-                tr("Start in half crimp and build force by trying to curl your fingers into the edge."),
+                tr("Start in half crimp and curl your fingers into the edge."),
                 style = MaterialTheme.typography.bodySmall,
                 color = LocalGripPalette.current.inkSecondary,
             )

@@ -54,14 +54,14 @@ fun TotalsBar(
         }
         if (totals.usesSavedMaxes) {
             Text(
-                tr("Percentage targets use your saved maxes. These may no longer reflect your current strength."),
+                tr("Targets use your saved maxes. Retest when they're out of date."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )
         }
         if (totals.missingMaxes) {
             Text(
-                tr("Some percentage targets have no saved max, so they will show no target."),
+                tr("Some grips have no max yet, so their sets have no target."),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = palette.armed,
@@ -80,7 +80,7 @@ fun TotalsBar(
                     modifier = Modifier.size(16.dp),
                 )
                 Text(
-                    tr("That's over an hour. Fine if you mean it."),
+                    tr("This routine runs over an hour."),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
                     color = palette.armed,

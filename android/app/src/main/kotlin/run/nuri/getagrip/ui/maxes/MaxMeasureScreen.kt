@@ -530,9 +530,9 @@ private fun GraphNotice() {
     }
     val text = when {
         !device.state.isConnected ->
-            if (device.state.isBusy) tr("Connecting to your gauge…") else tr("Connect your gauge to measure. Every pull counts.")
+            if (device.state.isBusy) tr("Connecting to your gauge…") else tr("Connect your gauge to measure.")
         device.isStreaming && waitingForSignal && !device.isSignalFresh ->
-            tr("Waiting for the gauge. It's connected but not sending — try Wake.")
+            tr("Connected, but no readings yet. Tap Wake.")
         else -> null
     } ?: return
     Text(text, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary, textAlign = TextAlign.Center,

@@ -128,7 +128,7 @@ class RoutineOverviewNavigationTests {
 
         tab("Today").performClick()
         compose.onNodeWithContentDescription(
-            "Log a session you did elsewhere — climbing, or hangs off the gauge",
+            "Log a climb or hangs without the gauge",
         ).performScrollTo().performClick()
         compose.onNodeWithText("Log a session").assertIsDisplayed()
         compose.onNodeWithText("Cancel").performClick()

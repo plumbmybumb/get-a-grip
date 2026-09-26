@@ -135,7 +135,7 @@ fun MaxesListScreen(
 
         if (deleteFailed) {
             item("delete-error") {
-                Text(tr("Couldn't delete this max. Please try again."),
+                Text(tr("Couldn't delete this max. Try again."),
                     style = MaterialTheme.typography.bodySmall, color = palette.alarm)
             }
         }
@@ -432,13 +432,13 @@ private fun EmptyCard() {
                 tint = palette.inkTertiary.copy(alpha = 0.55f),
             )
             Text(
-                tr("A max records your hardest measured pull on a grip."),
+                tr("A max is your hardest pull on a grip."),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = palette.inkPrimary,
             )
             Text(
-                tr("Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit."),
+                tr("Targets are a percentage of this max. It's a reference, not a safe-load limit."),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = palette.inkSecondary,

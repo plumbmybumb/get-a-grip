@@ -28,16 +28,16 @@ fun rememberRoutineScanner(
     val unavailable by rememberUpdatedState(onUnavailable)
     val launcher = rememberLauncherForActivityResult(ScanContract()) { result ->
         handleRoutineScanResult(result, scanned) {
-            unavailable(context.tr("Allow camera access in Settings to scan a routine. You can still open a shared routine link."))
+            unavailable(context.tr("Allow camera access in Settings to scan a shared routine."))
         }
     }
     return {
         try {
             launcher.launch(routineScanOptions(context.tr("Point your camera at a Get a Grip routine QR code.")))
         } catch (_: android.content.ActivityNotFoundException) {
-            unavailable(context.tr("Couldn't open the camera. Try opening the shared routine link instead."))
+            unavailable(context.tr("Couldn't open the camera. Open the routine link instead."))
         } catch (_: SecurityException) {
-            unavailable(context.tr("Allow camera access in Settings to scan a routine. You can still open a shared routine link."))
+            unavailable(context.tr("Allow camera access in Settings to scan a shared routine."))
         }
     }
 }

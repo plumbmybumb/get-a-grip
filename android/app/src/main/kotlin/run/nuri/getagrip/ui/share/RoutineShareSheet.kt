@@ -139,7 +139,7 @@ fun RoutineShareSheet(request: RoutineShareRequest, onClose: () -> Unit) {
             }
 
             Text(
-                tr("To add %s, scan with Camera on iPhone. On Android, open Get a Grip and choose Scan a routine in the Today menu.", request.name),
+                tr("To add %s, scan with the iPhone Camera. On Android, use Scan a routine in the Today menu.", request.name),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkSecondary,
             )

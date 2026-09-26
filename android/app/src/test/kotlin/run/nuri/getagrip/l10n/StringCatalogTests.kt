@@ -73,7 +73,7 @@ class StringCatalogTests {
                 assertTrue(value != null, "no plural behind '$key' at $quantity")
             }
         }
-        assertEquals(13, PLURAL_KEYS.values.toSet().size, "the catalog's thirteen counted strings")
+        assertEquals(17, PLURAL_KEYS.values.toSet().size, "the catalog's seventeen counted strings")
     }
 
     /// A key that had to be POSITIONED for French is reachable under BOTH spellings — the

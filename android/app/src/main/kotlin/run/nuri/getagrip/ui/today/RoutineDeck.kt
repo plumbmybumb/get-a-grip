@@ -237,7 +237,7 @@ private fun NewRoutineGhost(onNew: () -> Unit, onScan: () -> Unit, modifier: Mod
                 color = palette.inkPrimary,
             )
             Text(
-                tr("A rest-day plan, a max day —\nwhatever this one isn't."),
+                tr("For rest days, max days and more."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
                 textAlign = TextAlign.Center,
@@ -300,13 +300,13 @@ fun EmptyRoutineCard(
             )
 
             Text(
-                tr("Get a Grip is built around one routine you actually commit to."),
+                tr("Build your hang routine"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = palette.inkPrimary,
             )
             Text(
-                tr("Start with a name and one set. Make it yours, then come back and pull."),
+                tr("Name it, add your grips and timing, and set reminders."),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = palette.inkSecondary,

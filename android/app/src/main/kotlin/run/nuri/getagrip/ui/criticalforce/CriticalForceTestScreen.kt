@@ -496,10 +496,10 @@ private fun HandPicker(request: CriticalForceTestRequest) {
     val choice = request.handChoice
     val explainer = when (choice) {
         CriticalForceHandChoice.oneAtATime ->
-            tr("All 24 pulls on one hand, then all 24 on the other. About 8 minutes, and each hand gets its own number.")
+            tr("24 pulls on one hand, then 24 on the other. About 8 minutes, one result per hand.")
         CriticalForceHandChoice.bothHands ->
-            tr("Both hands pulling together through the gauge, on a hangboard or a two-handed block. One number.")
-        CriticalForceHandChoice.single -> tr("Just one hand, for when only one needs testing.")
+            tr("Both hands pull together through the gauge. One result.")
+        CriticalForceHandChoice.single -> tr("Test one hand only.")
     }
     fun sideTitle(side: Side): String = if (choice == CriticalForceHandChoice.oneAtATime) {
         if (side == Side.right) L10n.tr("Right first") else L10n.tr("Left first")
@@ -615,7 +615,7 @@ internal fun TestingScreen(request: CriticalForceTestRequest) {
             InstrumentDock(Modifier.testTag("cf.dock")) {
                 if (request.awaitingNextHand) {
                     val first = request.hands.sides.first()
-                    DockNote(tr("%s hand done. Set up your %s hand with the gauge unloaded, then start: it zeroes first.",
+                    DockNote(tr("%s hand done. Unload the gauge, then start your %s hand.",
                             first.displayName, request.side.displayName.lowercase()))
                     LoadWarning(request)
                     TareAndStart(tr("Start %s hand", request.side.displayName.lowercase()), "cf.startNextHand") {
@@ -626,7 +626,7 @@ internal fun TestingScreen(request: CriticalForceTestRequest) {
                         request.finishEarlyBetweenHands()
                     }
                 } else if (session.phase == CriticalForceTest.Phase.Armed) {
-                    DockNote(tr("The test starts the moment you pull. Pull as hard as you can."))
+                    DockNote(tr("The test starts when you pull. Pull as hard as you can."))
                     DockButton(tr("Back"), icon = Icons.AutoMirrored.Filled.ArrowBack,
                         modifier = Modifier.fillMaxWidth().testTag("cf.back")) { request.backToSetup() }
                 } else {
@@ -758,7 +758,7 @@ private fun LivePlateau(request: CriticalForceTestRequest) {
 @Composable
 private fun LoadWarning(request: CriticalForceTestRequest) {
     val kg = request.loadOnGaugeKg ?: return
-    Text(tr("There's %s on the gauge. Let go, then start: it zeroes first.", WeightUnits.text(kg)),
+    Text(tr("There's %s on the gauge. Let go, then start.", WeightUnits.text(kg)),
         style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
         color = LocalGripPalette.current.armedText, textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(top = 6.dp).testTag("cf.loadWarning"))
@@ -769,7 +769,7 @@ private fun LoadWarning(request: CriticalForceTestRequest) {
 private fun TareAndStart(title: String, tag: String, onStart: () -> Unit) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
-    AdaptiveActionRow(listOf(listOf(tr("Zero the gauge"), tr("Wake")), listOf(title)),
+    AdaptiveActionRow(listOf(listOf(tr("Tare"), tr("Wake")), listOf(title)),
         spacing = InstrumentStage.dockSpacing) { index, cell ->
         if (index == 0) {
             GaugeZeroButton(canTare = true, modifier = cell.testTag("cf.tare"))
@@ -896,7 +896,7 @@ private fun ResultScreen(request: CriticalForceTestRequest, onDiscard: () -> Uni
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).testTag("cf.note"))
                     }
                     if (request.saveFailed) {
-                        Text(tr("Couldn’t save. Your result is still here — try again."),
+                        Text(tr("Couldn't save. Try again."),
                             style = MaterialTheme.typography.bodySmall, color = palette.alarm,
                             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().testTag("cf.saveFailed"))
                     }

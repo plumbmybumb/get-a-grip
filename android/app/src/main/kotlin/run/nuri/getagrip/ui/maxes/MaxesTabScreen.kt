@@ -397,7 +397,7 @@ private fun GripCard(
                 CurrentReadout(group, sides)
             } else {
                 Text(
-                    tr("No max yet. Measure one to see critical force as a share of it."),
+                    tr("No max yet. Measure one to compare with critical force."),
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.inkTertiary,
                 )
@@ -527,7 +527,7 @@ private fun InvitationCard(grip: GripSpec, onMeasure: () -> Unit) {
                 // In a routine, never tested: its percentage targets are waiting on this
                 // number.
                 Text(
-                    tr("In your routine — never tested"),
+                    tr("In your routine, not tested yet"),
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.inkTertiary,
                 )

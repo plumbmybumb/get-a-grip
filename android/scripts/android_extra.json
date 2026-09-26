@@ -36,11 +36,6 @@
       "fr": "Version"
     },
     {
-      "en": "%s broadcasts its weight instead of connecting, so there is nothing to pair and nothing to zero on the device — Tare subtracts what is hanging on it. Android stops delivering broadcasts while Get a Grip is in the background, so a session on one pauses when you leave the app.",
-      "fr": "%s diffuse son poids au lieu de se connecter : il n'y a donc rien à appairer ni rien à mettre à zéro sur l'appareil — Tarer soustrait ce qui y est suspendu. Android cesse de délivrer les diffusions quand Get a Grip est en arrière-plan, une séance sur ce capteur se met donc en pause dès que tu quittes l'app.",
-      "//": "The catalog's twin of this sentence names iOS. Same fact, different platform."
-    },
-    {
       "en": "Android will ask to allow notifications when you save.",
       "fr": "Android te demandera l'autorisation d'envoyer des notifications au moment d'enregistrer.",
       "//": "POST_NOTIFICATIONS is asked on the first Save of a routine with reminders on — a runtime permission iOS asks for at a different moment and in different words."
@@ -51,8 +46,8 @@
       "//": "A notification CHANNEL name — an Android concept with no iOS counterpart. Shown in the system's own notification settings."
     },
     {
-      "en": "Sharing a file isn't available on this build — use Copy, and paste the document where you need it.",
-      "fr": "Le partage de fichier n'est pas disponible sur cette version — utilise Copier, et colle le document où tu en as besoin."
+      "en": "Can't share files on this build. Use Copy instead.",
+      "fr": "Impossible de partager des fichiers sur cette version. Utilise Copier."
     },
     {
       "en": "Sharing an image isn't available on this build.",
@@ -63,8 +58,8 @@
       "fr": "Impossible d'écrire dans Photos."
     },
     {
-      "en": "Saved at %1$d × %2$d points at %3$d×, so it lands in Photos at the size a story wants.",
-      "fr": "Enregistré à %1$d × %2$d points en %3$d×, pour arriver dans Photos à la taille qu'attend une story."
+      "en": "Saves to Photos at %d × %d pixels.",
+      "fr": "Enregistrée dans Photos en %1$d × %2$d pixels."
     },
     {
       "en": "This code couldn't be drawn. The link below still works.",
@@ -124,8 +119,8 @@
       "fr": "Impossible de dessiner la carte. Réessaie."
     },
     {
-      "en": "Your routines and sessions are stored on this device. They don't sync between devices.",
-      "fr": "Tes routines et tes séances sont stockées sur cet appareil. Elles ne se synchronisent pas entre appareils.",
+      "en": "Stored on this device only. Nothing syncs between devices.",
+      "fr": "Enregistré sur cet appareil seulement. Rien ne se synchronise entre appareils.",
       "//": "Android stores locally; the iOS twin of this line talks about CloudKit."
     },
     {
@@ -134,28 +129,24 @@
       "//": "The Android summary screen says what the day still owes; the iOS summary does not carry this line."
     },
     {
-      "en": "Allow camera access in Settings to scan a routine. You can still open a shared routine link.",
-      "fr": "Autorise l’accès à la caméra dans les réglages pour scanner une routine. Tu peux toujours ouvrir un lien de routine partagé."
-    },
-    {
-      "en": "Couldn't open the camera. Try opening the shared routine link instead.",
-      "fr": "Impossible d’ouvrir la caméra. Essaie plutôt d’ouvrir le lien de routine partagé."
+      "en": "Couldn't open the camera. Open the routine link instead.",
+      "fr": "Impossible d’ouvrir la caméra. Ouvre plutôt le lien de la routine."
     },
     {
       "en": "Point your camera at a Get a Grip routine QR code.",
       "fr": "Vise le QR code d’une routine Get a Grip avec ta caméra."
     },
     {
-      "en": "Recent connection and signal details will be added to your email. You can review them before sending.",
-      "fr": "Les détails récents de connexion et de signal seront ajoutés à votre e-mail. Vous pourrez les consulter avant de l’envoyer."
+      "en": "Recent connection events are added to your email. You can check them before sending.",
+      "fr": "Les événements de connexion récents sont ajoutés à ton e-mail. Tu peux les vérifier avant l’envoi."
     },
     {
       "en": "No email app available",
       "fr": "Aucune application de messagerie disponible"
     },
     {
-      "en": "Copy your draft and send it to this address using your preferred email service.",
-      "fr": "Copiez votre brouillon et envoyez-le à cette adresse avec votre service de messagerie habituel."
+      "en": "Copy your draft and email it to this address.",
+      "fr": "Copie ton brouillon et envoie-le à cette adresse."
     },
     {
       "en": "Copy email draft",
@@ -183,21 +174,8 @@
       "//": "The session card once the last rep is done and the summary is waiting. The foreground service keeps running under it until Save or Discard."
     },
     {
-      "en": "This session finished, but the app closed before it was saved.",
-      "fr": "Cette séance s'est terminée, mais l'app s'est fermée avant qu'elle soit enregistrée."
-    },
-    {
-      "en": "Critical force",
-      "fr": "Force critique",
-      "//": "The critical force test (iOS 630c80e). These keys have no iOS catalog entry yet; move them to the catalog when iOS adds them."
-    },
-    {
-      "en": "CRITICAL FORCE",
-      "fr": "FORCE CRITIQUE"
-    },
-    {
-      "en": "Test deleted",
-      "fr": "Test supprimé"
+      "en": "The app closed before this session was saved.",
+      "fr": "L'app s'est fermée avant l'enregistrement de cette séance."
     },
     {
       "en": "Pull options",
@@ -205,364 +183,16 @@
       "//": "The max review's ⋮ on each pull. iOS hides Move and Delete behind a swipe and a context menu, which a plain Android row does not have."
     },
     {
-      "en": "%lld %% of your max",
-      "fr": "%lld %% de ton max"
-    },
-    {
-      "en": "%lld %% of body weight",
-      "fr": "%lld %% du poids du corps"
-    },
-    {
       "en": "Critical force %@ kilograms",
       "fr": "Force critique %@ kilogrammes"
-    },
-    {
-      "en": "RESERVE (W′)",
-      "fr": "RÉSERVE (W′)"
-    },
-    {
-      "en": "From %@ on the first pull to %@ on the last",
-      "fr": "De %@ au premier tirage à %@ au dernier"
-    },
-    {
-      "en": "Average force per pull",
-      "fr": "Force moyenne par tirage"
-    },
-    {
-      "en": "Each bar is one pull’s average. Critical force is the mean of pulls %lld–%lld, where your force levels off.",
-      "fr": "Chaque barre est la moyenne d’un tirage. La force critique est la moyenne des tirages %lld à %lld, là où ta force se stabilise."
-    },
-    {
-      "en": "Every rest kept on the beat.",
-      "fr": "Chaque repos pris dans le tempo."
-    },
-    {
-      "en": "Still on the edge after the bell in %lld of %lld rests. Force after the bell isn’t counted, but it eats into your rest.",
-      "fr": "Encore sur la réglette après le signal pour %lld repos sur %lld. La force après le signal n’est pas comptée, mais elle grignote ton repos."
-    },
-    {
-      "en": "Stopped before pull 16, before your force had levelled off, so there’s no result. Rest at least half an hour before trying again, or test another day.",
-      "fr": "Arrêté avant le tirage 16, avant que ta force ne se stabilise : pas de résultat. Repose-toi au moins une demi-heure avant de réessayer, ou teste un autre jour."
-    },
-    {
-      "en": "The gauge dropped before pull 16, so there’s no result. A paused test measures something else, because the reserve refills while you wait. Rest at least half an hour, then test again.",
-      "fr": "Le capteur a décroché avant le tirage 16 : pas de résultat. Un test mis en pause mesure autre chose, car la réserve se recharge pendant l’attente. Repose-toi au moins une demi-heure, puis refais le test."
-    },
-    {
-      "en": "The test stopped when you left the app before pull 16, so there’s no result. Rest at least half an hour, then test again.",
-      "fr": "Le test s’est arrêté quand tu as quitté l’app avant le tirage 16 : pas de résultat. Repose-toi au moins une demi-heure, puis refais le test."
-    },
-    {
-      "en": "Stopped before pull 16, so there’s no result.",
-      "fr": "Arrêté avant le tirage 16 : pas de résultat."
-    },
-    {
-      "en": "The gauge’s readings had too many gaps in the last pulls to give a result. Keep the phone close to the gauge next time.",
-      "fr": "Les mesures du capteur avaient trop de trous dans les derniers tirages pour donner un résultat. Garde le téléphone près du capteur la prochaine fois."
-    },
-    {
-      "en": "No pulls were recorded. Check the gauge is zeroed and that the pull goes through it.",
-      "fr": "Aucun tirage enregistré. Vérifie que le capteur est à zéro et que la traction passe bien par lui."
-    },
-    {
-      "en": "Connect your gauge to test.",
-      "fr": "Connecte ton capteur pour faire le test."
-    },
-    {
-      "en": "Change",
-      "fr": "Changer"
-    },
-    {
-      "en": "Body weight",
-      "fr": "Poids du corps"
-    },
-    {
-      "en": "Used to show critical force as a share of body weight. Each test keeps the weight it was taken at, so changing this never alters an old result.",
-      "fr": "Sert à exprimer la force critique en part de ton poids du corps. Chaque test garde le poids du jour où il a été fait, donc changer cette valeur ne modifie jamais un ancien résultat."
-    },
-    {
-      "en": "The test starts the moment you pull. Pull as hard as you can.",
-      "fr": "Le test démarre dès que tu tires. Tire aussi fort que possible."
-    },
-    {
-      "en": "PULL TO START",
-      "fr": "TIRE POUR COMMENCER"
-    },
-    {
-      "en": "PULL",
-      "fr": "TIRE"
-    },
-    {
-      "en": "STOPPED",
-      "fr": "ARRÊTÉ"
-    },
-    {
-      "en": "%@, %lld seconds. %@",
-      "fr": "%@, %lld secondes. %@"
-    },
-    {
-      "en": "Average per pull",
-      "fr": "Moyenne par tirage"
-    },
-    {
-      "en": "%lld of %lld pulls done",
-      "fr": "%lld tirages sur %lld faits"
-    },
-    {
-      "en": "Couldn’t save. Your result is still here — try again.",
-      "fr": "Enregistrement impossible. Ton résultat est toujours là — réessaie."
-    },
-    {
-      "en": "Don’t save",
-      "fr": "Ne pas enregistrer"
-    },
-    {
-      "en": "Hold to finish now",
-      "fr": "Maintiens pour terminer maintenant"
-    },
-    {
-      "en": "Hold to stop",
-      "fr": "Maintiens pour arrêter"
-    },
-    {
-      "en": "Finish test now",
-      "fr": "Terminer le test maintenant"
-    },
-    {
-      "en": "Stop test",
-      "fr": "Arrêter le test"
-    },
-    {
-      "en": "Workouts: %lld · Pulls: %lld · Maxes: %lld · Critical force tests: %lld",
-      "fr": "Séances : %lld · Tirages : %lld · Max : %lld · Tests de force critique : %lld"
-    },
-    {
-      "en": "Testing",
-      "fr": "Tests"
-    },
-    {
-      "en": "%lld testing",
-      "fr": "%lld en test"
-    },
-    {
-      "en": "A testing day — a max or a critical force test on the gauge.",
-      "fr": "Une journée de test — un max ou un test de force critique au capteur."
-    },
-    {
-      "en": "Critical force test",
-      "fr": "Test de force critique"
     },
     {
       "en": "The test keeps running while the gauge is connected.",
       "fr": "Le test continue tant que le capteur est connecté."
     },
     {
-      "en": "Testing day today",
-      "fr": "Journée de test aujourd’hui"
-    },
-    {
-      "en": "Testing day today, plus a hang session",
-      "fr": "Journée de test aujourd’hui, plus une séance de poutre"
-    },
-    {
-      "en": "Testing day today, plus %lld hang sessions",
-      "fr": "Journée de test aujourd’hui, plus %lld séances de poutre"
-    },
-    {
-      "en": "Testing day",
-      "fr": "Journée de test"
-    },
-    {
-      "en": "B",
-      "fr": "2M"
-    },
-    {
-      "en": "About the test",
-      "fr": "À propos du test"
-    },
-    {
-      "en": "What it measures",
-      "fr": "Ce qu’il mesure"
-    },
-    {
-      "en": "Critical force is the force your fingers can keep producing once the fast reserve is spent: your endurance ceiling. The test drains that reserve with 24 all-out pulls, and your force levels off at your critical force.",
-      "fr": "La force critique est la force que tes doigts peuvent encore produire une fois la réserve rapide épuisée : ton plafond d’endurance. Le test vide cette réserve en 24 tirages à fond, et ta force se stabilise à ta force critique."
-    },
-    {
-      "en": "The clock never waits",
-      "fr": "Le chrono n’attend jamais"
-    },
-    {
-      "en": "Seven seconds on, three off, every time. The result depends on that rhythm, so the rest does not wait for you to let go. Force pulled after the bell isn’t counted.",
-      "fr": "Sept secondes de traction, trois de repos, à chaque fois. Le résultat dépend de ce rythme, donc le repos n’attend pas que tu relâches. La force après le signal n’est pas comptée."
-    },
-    {
-      "en": "Keep tests comparable",
-      "fr": "Des tests comparables"
-    },
-    {
-      "en": "Warm up first. Use the same grip, hand and arm position each time, and leave a few weeks between tests. Your first test is partly practice.",
-      "fr": "Échauffe-toi d’abord. Garde la même prise, la même main et la même position du bras à chaque fois, et laisse quelques semaines entre deux tests. Ton premier test sert en partie d’entraînement."
-    },
-    {
-      "en": "Hands",
-      "fr": "Mains"
-    },
-    {
-      "en": "One at a time runs all 24 pulls on one hand, then all 24 on the other, and each hand gets its own number. Both hands means both pulling together through the gauge. The hands never alternate pull by pull, because that changes the rhythm and the result.",
-      "fr": "Une à la fois enchaîne les 24 tirages sur une main, puis les 24 sur l’autre, et chaque main a son propre résultat. Les deux mains, c’est les deux qui tirent ensemble sur le capteur. Les mains n’alternent jamais tirage par tirage, car cela change le rythme et le résultat."
-    },
-    {
       "en": "%@, critical force %@ kilograms",
       "fr": "%@, force critique %@ kilogrammes"
-    },
-    {
-      "en": "24 pulls · 7 s on · 3 s off",
-      "fr": "24 tirages · 7 s de traction · 3 s de repos"
-    },
-    {
-      "en": "Pull as hard as you can. Let go at the bell.",
-      "fr": "Tire aussi fort que possible. Relâche au signal."
-    },
-    {
-      "en": "Last: %@ · %@",
-      "fr": "Dernier : %@ · %@"
-    },
-    {
-      "en": "All 24 pulls on one hand, then all 24 on the other. About 8 minutes, and each hand gets its own number.",
-      "fr": "Les 24 tirages sur une main, puis les 24 sur l’autre. Environ 8 minutes, et chaque main a son propre résultat."
-    },
-    {
-      "en": "Both hands pulling together through the gauge, on a hangboard or a two-handed block. One number.",
-      "fr": "Les deux mains tirent ensemble sur le capteur, sur une poutre ou un bloc à deux mains. Un seul résultat."
-    },
-    {
-      "en": "Just one hand, for when only one needs testing.",
-      "fr": "Une seule main, quand une seule doit être testée."
-    },
-    {
-      "en": "Right first",
-      "fr": "Droite d’abord"
-    },
-    {
-      "en": "Left first",
-      "fr": "Gauche d’abord"
-    },
-    {
-      "en": "One at a time",
-      "fr": "Une à la fois"
-    },
-    {
-      "en": "One hand",
-      "fr": "Une main"
-    },
-    {
-      "en": "Finish with %@ hand only",
-      "fr": "Terminer avec la main %@ seulement"
-    },
-    {
-      "en": "Save your hardest pull as a max",
-      "fr": "Enregistrer ton tirage le plus fort comme max"
-    },
-    {
-      "en": "Save your hardest pulls as maxes",
-      "fr": "Enregistrer tes tirages les plus forts comme max"
-    },
-    {
-      "en": "%@: %@, up from %@",
-      "fr": "%@ : %@, contre %@ avant"
-    },
-    {
-      "en": "%@: %@, the first max on this grip",
-      "fr": "%@ : %@, le premier max sur cette prise"
-    },
-    {
-      "en": "Benchmarks",
-      "fr": "Tests"
-    },
-    {
-      "en": "No max yet. Measure one to see critical force as a share of it.",
-      "fr": "Pas encore de max. Mesures-en un pour voir la force critique en part de celui-ci."
-    },
-    {
-      "en": "Measure max",
-      "fr": "Mesurer le max"
-    },
-    {
-      "en": "Test critical force",
-      "fr": "Tester la force critique"
-    },
-    {
-      "en": "All critical force tests on %@",
-      "fr": "Tous les tests de force critique sur %@"
-    },
-    {
-      "en": "Critical force, %@",
-      "fr": "Force critique, %@"
-    },
-    {
-      "en": "both hands",
-      "fr": "deux mains"
-    },
-    {
-      "en": "Critical force %@ %@ %@ since %@",
-      "fr": "Force critique %@ de %@ %@ depuis le %@"
-    },
-    {
-      "en": "Critical force held since %@",
-      "fr": "Force critique stable depuis le %@"
-    },
-    {
-      "en": "Critical force tested %@",
-      "fr": "Force critique testée %@"
-    },
-    {
-      "en": "blue max · grey critical force",
-      "fr": "bleu : max · gris : force critique"
-    },
-    {
-      "en": "No max on file for this grip yet, so this shows no target during a session. Add one on the Benchmarks tab.",
-      "fr": "Pas encore de max pour cette prise, donc aucune cible pendant une séance. Ajoutes-en un dans l’onglet Tests."
-    },
-    {
-      "en": "No max for your %@ hand, so those pulls show no target. Add one on the Benchmarks tab.",
-      "fr": "Pas de max pour ta main %@, donc ces tirages n’ont pas de cible. Ajoutes-en un dans l’onglet Tests."
-    },
-    {
-      "en": "Start %@ hand",
-      "fr": "Démarrer la main %@"
-    },
-    {
-      "en": "Add a benchmark",
-      "fr": "Ajouter un test"
-    },
-    {
-      "en": "What are you measuring?",
-      "fr": "Que mesures-tu ?"
-    },
-    {
-      "en": "A max is your hardest pull. Critical force is the four-minute endurance test.",
-      "fr": "Un max, c’est ton tirage le plus fort. La force critique, c’est le test d’endurance de quatre minutes."
-    },
-    {
-      "en": "Max, one hand at a time",
-      "fr": "Max, une main à la fois"
-    },
-    {
-      "en": "Max, both hands together",
-      "fr": "Max, deux mains ensemble"
-    },
-    {
-      "en": "Critical force history",
-      "fr": "Historique de force critique"
-    },
-    {
-      "en": "There's %@ on the gauge. Let go, then start: it zeroes first.",
-      "fr": "Il y a %@ sur le capteur. Relâche, puis commence : il se remet d’abord à zéro."
-    },
-    {
-      "en": "%@ hand done. Set up your %@ hand with the gauge unloaded, then start: it zeroes first.",
-      "fr": "%@ : terminé. Mets en place ta main %@ sans charger le capteur, puis démarre : il se remet d’abord à zéro."
     },
     {
       "en": "Rate on Google Play",
@@ -570,14 +200,49 @@
       "//": "Settings › Support and the one-time prompt's button. iOS says 'Rate on the App Store', which Android must never say — the generator skips that pair."
     },
     {
-      "en": "Rate on Google Play. Opens Google Play.",
-      "fr": "Noter sur Google Play. Ouvre Google Play.",
-      "//": "TalkBack's label for the row: iOS's label plus where it goes."
-    },
-    {
       "en": "Rate Get a Grip",
       "fr": "Noter Get a Grip",
       "//": "The title of the one-time rating ask after the fifth session. iOS shows the system prompt, whose words are Apple's; Android asks in its own dialog (see ReviewRequestPolicy)."
+    },
+    {
+      "en": "Lost the gauge",
+      "fr": "Capteur perdu",
+      "//": "Disconnect reason when the Bluetooth link drops (LiveProgressorClient)."
+    },
+    {
+      "en": "Reminder time",
+      "fr": "Heure du rappel",
+      "//": "Title of the reminder time picker dialog."
+    },
+    {
+      "en": "Start next session",
+      "fr": "Lancer la séance suivante",
+      "//": "Start button once one of several daily sessions is done."
+    },
+    {
+      "en": "%s. Delete",
+      "fr": "%s. Supprimer",
+      "//": "TalkBack label of History's swipe-to-delete action."
+    },
+    {
+      "en": "Your hardest pull on this grip, measured on the gauge.",
+      "fr": "Ton tirage le plus fort sur cette prise, mesuré au capteur.",
+      "//": "Android's max entry sheet; iOS dropped this screen's twin."
+    },
+    {
+      "en": "Used for both hands. Pick a hand if yours differ.",
+      "fr": "Utilisé pour les deux mains. Choisis une main si elles diffèrent.",
+      "//": "Android's max entry sheet; iOS dropped this screen's twin."
+    },
+    {
+      "en": "Only your %s hand. The other hand needs its own max.",
+      "fr": "Seulement ta main %s. L'autre main a besoin de son propre max.",
+      "//": "Android's max entry sheet; iOS dropped this screen's twin."
+    },
+    {
+      "en": "Pull as hard as you can. The hardest pull is kept, or type a value below.",
+      "fr": "Tire aussi fort que possible. Le tirage le plus fort est gardé, ou saisis une valeur ci-dessous.",
+      "//": "Android's max entry sheet; iOS dropped this screen's twin."
     }
   ]
 }

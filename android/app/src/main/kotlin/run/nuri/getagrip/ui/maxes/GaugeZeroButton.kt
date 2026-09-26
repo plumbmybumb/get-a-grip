@@ -30,7 +30,7 @@ import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.units.WeightUnits
 
-/// Zero the gauge before a measurement: "Wake" while the stream is silent, a confirmation
+/// Tare the gauge before a measurement: "Wake" while the stream is silent, a confirmation
 /// quoting the real reading when there is load on it, a direct tare otherwise.
 ///
 /// Shared by the max test and the critical force test (iOS: `GaugeZeroButton`); `canTare`
@@ -40,9 +40,8 @@ import run.nuri.getagrip.ui.units.WeightUnits
 fun GaugeZeroButton(
     canTare: Boolean,
     modifier: Modifier = Modifier,
-    /// The title while a live reading makes it a tare. The critical force test says "Zero the
-    /// gauge"; the max visit's dock says "Tare", as iOS's.
-    liveTitle: String = tr("Zero the gauge"),
+    /// The title while a live reading makes it a tare: "Tare", the one word both apps use.
+    liveTitle: String = tr("Tare"),
     /// Spoken while `canTare` is false — why the control is off (the max visit: "Let go of
     /// the edge first.").
     disabledReason: String? = null,
@@ -86,12 +85,13 @@ fun GaugeZeroButton(
         // Taring under load — see the confirmation in `GaugeScreen`; same revalidation.
         AlertDialog(
             onDismissRequest = { promptedKg = null },
-            title = { Text(tr("Zero the gauge?")) },
+            title = { Text(tr("Tare under load?")) },
             text = {
                 Text(
                     WeightUnits.tr(
-                        "There is %s kg on the gauge. Taring now makes that the new zero for this measurement.",
+                        "There's %s %s on the gauge. Taring now counts it as zero.",
                         WeightUnits.number(if (prompted.isFinite()) prompted else 0.0, 1),
+                        WeightUnits.symbol,
                     ),
                 )
             },

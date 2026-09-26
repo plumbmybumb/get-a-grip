@@ -57,7 +57,7 @@ class SettingsNavigationTests {
         }
     }
 
-    private val pickerRow = hasText("Tap to choose yours", substring = true)
+    private val pickerRow = hasText("Tap to choose from", substring = true)
 
     private fun systemBack() {
         compose.runOnUiThread { controller.get().onBackPressedDispatcher.onBackPressed() }

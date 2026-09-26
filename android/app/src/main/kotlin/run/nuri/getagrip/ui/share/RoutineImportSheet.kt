@@ -126,7 +126,7 @@ fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
                 // STAYS OPEN on a rollback: dismissing loses the code too, and rescanning is somebody
                 // else's phone away.
                 Text(
-                    tr("That routine couldn't be saved just now — nothing was added. Try again."),
+                    tr("Couldn't save this routine. Try again."),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
                     color = palette.alarm,
@@ -418,14 +418,14 @@ private fun Notes(sets: List<SetPlan>, plan: SessionPlan) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (hasPercent) {
             Text(
-                tr("Percentage targets use your saved maxes. These may no longer reflect your current strength."),
+                tr("Targets use your saved maxes. Retest when they're out of date."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )
         }
         if (hasKilograms) {
             Text(
-                tr("Some fixed weight targets were set by the sender. Review them for your own training."),
+                tr("The sender set some fixed weight targets. Check they suit you."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )

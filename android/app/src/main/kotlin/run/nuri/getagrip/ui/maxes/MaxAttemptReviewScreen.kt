@@ -241,7 +241,7 @@ private fun Footer(session: LiveMaxSession, onSave: () -> Unit) {
     val results = session.snapshot.results
     Column(verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         if (session.saveFailed) {
-            Text(tr("Couldn’t save. Your pulls are still here — try again."),
+            Text(tr("Couldn't save. Try again."),
                 style = MaterialTheme.typography.bodySmall, color = palette.alarm, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().testTag("max.review.saveFailed"))
         }

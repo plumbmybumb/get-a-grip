@@ -61,9 +61,9 @@ sealed class RoutineShareError : Exception() {
     val errorDescription: String
         get() = when (this) {
             notARoutineLink -> L10n.tr("This link isn't a routine from Get a Grip.")
-            unreadable -> L10n.tr("This routine code couldn't be read. It may be damaged or incomplete.")
-            newerVersion -> L10n.tr("This routine was shared from a newer version of Get a Grip. Update the app to import it.")
-            emptyRoutine -> L10n.tr("This code contains a routine with no pulls in it.")
+            unreadable -> L10n.tr("Couldn't read this routine code. It may be damaged.")
+            newerVersion -> L10n.tr("This routine needs a newer Get a Grip. Update the app to import it.")
+            emptyRoutine -> L10n.tr("This routine has no pulls.")
             tooLarge -> L10n.tr("This routine is too large to import.")
         }
 

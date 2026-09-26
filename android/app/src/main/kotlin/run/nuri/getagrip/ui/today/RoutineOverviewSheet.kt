@@ -254,11 +254,11 @@ internal fun overviewHandOrder(mode: HandMode, startingHand: Side = Side.left): 
     val startsRight = startingHand == Side.right
     return when (mode) {
         HandMode.alternateEachRep ->
-            if (startsRight) L10n.tr("Right, left, right, left — swapping hands every pull.")
-            else L10n.tr("Left, right, left, right — swapping hands every pull.")
+            if (startsRight) L10n.tr("Hands swap every pull, right first.")
+            else L10n.tr("Hands swap every pull, left first.")
         HandMode.alternateEachSet ->
-            if (startsRight) L10n.tr("Right hand first, then left, within each set.")
-            else L10n.tr("Left hand first, then right, within each set.")
+            if (startsRight) L10n.tr("Right hand first, then left, in each set.")
+            else L10n.tr("Left hand first, then right, in each set.")
         HandMode.bothHands -> L10n.tr("One pull with both hands on the edge.")
     }
 }

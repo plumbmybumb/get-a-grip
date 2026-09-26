@@ -79,7 +79,7 @@ fun SharedMaxSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit
                     range = WeightUnits.sliderRange(MaxEntryDraft.sliderRange), limit = WeightUnits.fromKg(MaxEntryDraft.limit),
                     step = 0.5, decimals = 1, caption = manualBandCaption(kg),
                     modifier = Modifier.testTag("maxShared.value")) { kg = WeightUnits.toKg(it) }
-                if (failed) Text(tr("Couldn’t save your maxes. Your changes are still here—please try again."),
+                if (failed) Text(tr("Couldn't save your maxes. Try again."),
                     style = MaterialTheme.typography.bodySmall, color = palette.alarm)
             }
         }

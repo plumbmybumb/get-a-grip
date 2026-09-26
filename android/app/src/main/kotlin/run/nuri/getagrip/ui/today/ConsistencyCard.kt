@@ -148,7 +148,7 @@ private fun LogSessionButton(onLogSession: () -> Unit) {
                 // `clearAndSetSemantics` wipes `clickable`'s role; restate it, or TalkBack reads a sentence
                 // nobody knows to double-tap.
                 role = Role.Button
-                contentDescription = L10n.tr("Log a session you did elsewhere — climbing, or hangs off the gauge")
+                contentDescription = L10n.tr("Log a climb or hangs without the gauge")
                 onClick(label = L10n.tr("Log a session")) { onLogSession(); true }
             },
         horizontalArrangement = Arrangement.spacedBy(5.dp),

@@ -119,7 +119,7 @@ fun AnalysisExportSheet(request: AnalysisExportRequest, onClose: () -> Unit) {
                         label = { Text(tr(if (choice == AnalysisExport.CSVDetail.summary) "Summary" else "Every pull")) })
                 }
             }
-            Text(tr("A compact CSV for your AI assistant or spreadsheet. Summary groups pulls by set and hand. Choose Every pull for individual measurements and timing."),
+            Text(tr("A CSV for your AI assistant or spreadsheet. Summary groups pulls by set and hand."),
                 style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
             val ready = document
             if (ready == null) {
@@ -137,7 +137,7 @@ fun AnalysisExportSheet(request: AnalysisExportRequest, onClose: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
                 Text("CSV · ${android.text.format.Formatter.formatShortFileSize(context, ready.byteCount.toLong())}",
                     style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
-                Text(tr("Column names and the data guide stay in English. Your notes stay as written."),
+                Text(tr("Column names and the data guide are in English."),
                     style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
                 PrimaryButton(title = tr(if (sharing) "Preparing export…" else "Share CSV"), icon = Icons.Outlined.Share) {
                     if (!sharing) coroutineScope.launch {
@@ -154,7 +154,7 @@ fun AnalysisExportSheet(request: AnalysisExportRequest, onClose: () -> Unit) {
                     justCopied = true
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
-                if (shareFailed) Text(tr("Sharing a file isn't available on this build — use Copy, and paste the document where you need it."),
+                if (shareFailed) Text(tr("Can't share files on this build. Use Copy instead."),
                     style = MaterialTheme.typography.bodySmall, color = palette.alarm)
             }
         }

@@ -100,9 +100,9 @@ enum class HandMode(val rawValue: String) {
 
     val explainer: String
         get() = when (this) {
-            alternateEachRep -> L10n.tr("Left, right, left, right — swapping hands every pull.")
-            alternateEachSet -> L10n.tr("All the pulls on one hand, then all of them on the other, inside one set.")
-            bothHands -> L10n.tr("One pull with both hands on the edge. Reps per side is just the number of pulls.")
+            alternateEachRep -> L10n.tr("Hands swap every pull.")
+            alternateEachSet -> L10n.tr("All pulls on one hand, then the other, in each set.")
+            bothHands -> L10n.tr("Both hands pull together.")
         }
 
     companion object {

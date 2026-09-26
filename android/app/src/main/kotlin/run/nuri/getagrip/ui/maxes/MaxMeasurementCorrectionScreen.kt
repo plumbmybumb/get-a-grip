@@ -126,7 +126,7 @@ internal fun MaxMeasurementCorrectionScreen(
                 Text(tr("Enter a max above zero to save it."),
                      style = MaterialTheme.typography.bodySmall, color = palette.alarm)
             }
-            Text(tr("Adjusted values are saved as manual entries. Your recorded trace stays unchanged."),
+            Text(tr("Adjusted values save as manual entries. The trace is unchanged."),
                  style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
         }
     }

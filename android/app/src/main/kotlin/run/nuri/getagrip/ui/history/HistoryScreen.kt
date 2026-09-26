@@ -259,7 +259,7 @@ fun HistoryScreen(
                     // Deleting a session moves the grid under it — a lot of consequence for a swipe — so the
                     // foot of the list says so rather than letting the grid quietly change shape.
                     Text(
-                        tr("Deleting a session removes it from your streak and your trends too. Your routines are untouched."),
+                        tr("Deleting a session also removes it from your streak and trends."),
                         style = MaterialTheme.typography.bodySmall,
                         color = palette.inkTertiary,
                         modifier = Modifier
@@ -711,7 +711,7 @@ private fun EmptyCard(onLogSession: () -> Unit, modifier: Modifier = Modifier) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CapsLabel(tr("Nothing here yet"))
             Text(
-                tr("Finish a session and it lands here — what you did, how hard it felt, and how your load is moving per grip."),
+                tr("Your finished sessions and trends show up here."),
                 style = MaterialTheme.typography.bodyMedium,
                 color = palette.inkSecondary,
             )

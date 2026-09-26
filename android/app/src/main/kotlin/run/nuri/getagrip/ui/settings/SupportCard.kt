@@ -56,7 +56,7 @@ internal fun SupportCard(gauge: String, diagnostics: () -> String?) {
         AlertDialog(
             onDismissRequest = { pendingDiagnostics = null },
             title = { Text(tr("Include gauge diagnostics?")) },
-            text = { Text(tr("Recent connection and signal details will be added to your email. You can review them before sending.")) },
+            text = { Text(tr("Recent connection events are added to your email. You can check them before sending.")) },
             confirmButton = { TextButton(onClick = { pendingDiagnostics = null; compose(true, report) }) {
                 Text(tr("Include gauge diagnostics"))
             } },
@@ -70,7 +70,7 @@ internal fun SupportCard(gauge: String, diagnostics: () -> String?) {
             onDismissRequest = { fallback = null },
             title = { Text(tr("No email app available")) },
             text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(tr("Copy your draft and send it to this address using your preferred email service."))
+                Text(tr("Copy your draft and email it to this address."))
                 SelectionContainer { Text(SUPPORT_ADDRESS) }
             } },
             confirmButton = { TextButton(onClick = {
@@ -89,7 +89,7 @@ internal fun SupportCard(gauge: String, diagnostics: () -> String?) {
 @Composable
 private fun RateRow() {
     val context = LocalContext.current
-    val spoken = tr("Rate on Google Play. Opens Google Play.")
+    val spoken = tr("Rate on Google Play")
     Column {
         SupportRow(
             tr("Rate on Google Play"),
@@ -97,7 +97,7 @@ private fun RateRow() {
             Modifier.semantics { contentDescription = spoken },
         ) { PlayStoreListing.open(context) }
         Text(
-            tr("Get a Grip is free and open source. A rating helps other climbers find it."),
+            tr("A rating helps other climbers find Get a Grip."),
             style = MaterialTheme.typography.bodySmall,
             color = LocalGripPalette.current.inkTertiary,
         )

@@ -135,7 +135,7 @@ class SessionSummaryReviewTests {
         compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Use as max"))[1].performScrollTo().performClick()
         compose.onNodeWithContentDescription("New peaks to review").performScrollTo().performClick()
         compose.onNodeWithText("Save and finish").assertIsDisplayed().performClick()
-        compose.onNodeWithText("Couldn't save this workout. Please try again.").assertExists()
+        compose.onNodeWithText("Couldn't save this workout. Try again.").assertExists()
         compose.onNodeWithText("Save and finish").performClick()
         compose.runOnIdle {
             assertEquals(2, attempts.size)

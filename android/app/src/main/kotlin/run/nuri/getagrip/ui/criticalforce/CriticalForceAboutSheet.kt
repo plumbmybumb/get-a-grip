@@ -59,13 +59,13 @@ fun CriticalForceAboutSheet(onClose: () -> Unit) {
                 }
             }
             Section(tr("What it measures"),
-                tr("Critical force is the force your fingers can keep producing once the fast reserve is spent: your endurance ceiling. The test drains that reserve with 24 all-out pulls, and your force levels off at your critical force."))
+                tr("The force your fingers can sustain once their fast reserve is spent: your endurance ceiling. 24 all-out pulls drain that reserve, and your force levels off at critical force."))
             Section(tr("The clock never waits"),
-                tr("Seven seconds on, three off, every time. The result depends on that rhythm, so the rest does not wait for you to let go. Force pulled after the bell isn’t counted."))
+                tr("7 s on, 3 s off, with no pauses. The result depends on that rhythm, so rests don't wait for you. Force after the bell isn't counted."))
             Section(tr("Keep tests comparable"),
-                tr("Warm up first. Use the same grip, hand and arm position each time, and leave a few weeks between tests. Your first test is partly practice."))
+                tr("Warm up first. Use the same grip and arm position each time. Leave a few weeks between tests; the first is partly practice."))
             Section(tr("Hands"),
-                tr("One at a time runs all 24 pulls on one hand, then all 24 on the other, and each hand gets its own number. Both hands means both pulling together through the gauge. The hands never alternate pull by pull, because that changes the rhythm and the result."))
+                tr("One at a time: 24 pulls on one hand, then 24 on the other, one result each. Both hands: they pull together through the gauge. Hands never alternate pull by pull; that would change the rhythm."))
         }
     }
 }

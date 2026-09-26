@@ -275,9 +275,10 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
         val hand = if (draft.side == Side.both) "" else tr(" for that hand")
         Text(
             WeightUnits.tr(
-                "Your current max on this grip%s is %s kg, recorded %s. Saving adds a new one and keeps the old as history.",
+                "Your current max on this grip%s is %s %s, recorded %s. The old one stays in history.",
                 hand,
                 WeightUnits.number(existing.kg, 1),
+                WeightUnits.symbol,
                 relative(existing.recordedAt),
             ),
             style = MaterialTheme.typography.bodySmall,
@@ -287,7 +288,7 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
 
     if (failed) {
         Text(
-            tr("That couldn't be saved — nothing was recorded. Try again."),
+            tr("Couldn't save. Try again."),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             color = palette.alarm,
@@ -298,9 +299,9 @@ private fun ColumnScope.FormContent(draft: MaxEntryDraft, failed: Boolean, onMea
     // for you" had to MOVE with the measuring feature, not be deleted by it.
     Text(
         if (draft.source == MaxSource.measured) {
-            tr("Measured on the gauge — your hardest pull on this grip.")
+            tr("Your hardest pull on this grip, measured on the gauge.")
         } else {
-            tr("A number you entered. Check its value and units before using it for targets.")
+            tr("Entered by hand. Check the value and unit.")
         },
         style = MaterialTheme.typography.bodySmall,
         color = palette.inkTertiary,
@@ -360,10 +361,10 @@ private fun HandBlock(draft: MaxEntryDraft) {
         MaxHandPicker(selectedSide = draft.side, onSelected = { draft.side = it })
         Text(
             if (draft.side == Side.both) {
-                tr("Used for both hands. Pick a hand if yours differ — most people's do.")
+                tr("Used for both hands. Pick a hand if yours differ.")
             } else {
                 tr(
-                    "Only your %s hand. Its targets come from this number; your other hand needs its own.",
+                    "Only your %s hand. The other hand needs its own max.",
                     draft.side.displayName.lowercase(),
                 )
             },
@@ -386,7 +387,7 @@ private fun MeasureRow(onMeasure: () -> Unit) {
             onClick = onMeasure,
         )
         Text(
-            tr("Pull as hard as you can — Get a Grip keeps the hardest the gauge sees. Or set it by hand below."),
+            tr("Pull as hard as you can. The hardest pull is kept, or type a value below."),
             style = MaterialTheme.typography.bodySmall,
             color = palette.inkTertiary,
         )

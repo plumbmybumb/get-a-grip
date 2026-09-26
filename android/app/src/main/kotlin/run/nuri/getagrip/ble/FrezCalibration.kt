@@ -112,9 +112,9 @@ sealed interface GaugeCalibrationFailure {
     val label: String
         get() = when (this) {
             MissingSerial ->
-                L10n.tr("This Dyno did not report a serial number, so its calibration cannot be looked up.")
+                L10n.tr("This Dyno sent no serial number, so its calibration can't be looked up.")
             NoAccessKey ->
-                L10n.tr("This build has no Frez access key, so the Dyno's calibration cannot be fetched.")
+                L10n.tr("This build has no Frez access key, so it can't fetch the Dyno's calibration.")
             InvalidRequest -> L10n.tr("Frez rejected the calibration request.")
             InvalidAccessKey -> L10n.tr("Frez did not accept this app's access key.")
             DeviceLimitReached ->
@@ -126,7 +126,7 @@ sealed interface GaugeCalibrationFailure {
             RateLimited -> L10n.tr("Frez is busy. Try again in a minute.")
             BadResponse -> L10n.tr("Frez sent an answer this app could not read.")
             is Network ->
-                L10n.tr("The calibration lookup needs an internet connection the first time a Dyno is used.")
+                L10n.tr("Connect to the internet for the Dyno's first calibration.")
         }
 }
 

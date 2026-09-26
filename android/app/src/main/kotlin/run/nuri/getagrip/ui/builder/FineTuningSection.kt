@@ -237,7 +237,7 @@ private fun ThresholdGaugeStrip(thresholdKg: Double) {
         if (!device.state.isConnected) {
             // SHOWN, not a disabled button: the reason plus the reassurance is the content.
             Text(
-                tr("Connect your gauge to try it — you can change this any time."),
+                tr("Connect your gauge to check it."),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = palette.inkTertiary,

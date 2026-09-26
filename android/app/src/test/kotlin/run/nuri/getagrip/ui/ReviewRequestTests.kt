@@ -185,9 +185,9 @@ class ReviewRequestTests {
                 GetAGripTheme { SupportCard("Progressor") { null } }
             }
         }
-        compose.onNodeWithText("Get a Grip is free and open source. A rating helps other climbers find it.")
+        compose.onNodeWithText("A rating helps other climbers find Get a Grip.")
             .assertExists()
-        compose.onNodeWithContentDescription("Rate on Google Play. Opens Google Play.").performClick()
+        compose.onNodeWithContentDescription("Rate on Google Play").performClick()
         assertEquals(listOf(PlayStoreListing.marketUri(context.packageName)), intents.map { it.dataString })
         assertEquals(Intent.ACTION_VIEW, intents.single().action)
     }

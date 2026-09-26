@@ -826,12 +826,12 @@ private fun NoSignalNotice(device: DeviceStore) {
                 // A silent connected gauge is usually a stalled stream — unless a Dyno is still waiting on
                 // calibration, where Wake would not help. `calibrationNote` is nil for gauges that need none.
                 calibrationNote(device.calibrationStatus)
-                    ?: tr("Connected, but no readings yet. Tap Wake to restart it.")
+                    ?: tr("Connected, but no readings yet. Tap Wake.")
             } else {
                 // **Names the selected gauge and promises no pairing that does not exist**: a broadcast
                 // scale is only listened to, never paired.
                 if (device.gaugeCapabilities.isBroadcast) {
-                    tr("Tap Connect to start listening for your %s.", device.gaugeKind.displayName)
+                    tr("Tap Connect to listen for your %s.", device.gaugeKind.displayName)
                 } else {
                     tr("Tap Connect to pair with your %s.", device.gaugeKind.displayName)
                 }
@@ -1073,8 +1073,8 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
     if (prompted != null) {
         AlertDialog(
             onDismissRequest = { promptedKg = null },
-            title = { Text(tr("Zero the gauge?")) },
-            text = { Text(WeightUnits.tr("There's %s kg on the gauge. Zero it?", kgText(prompted))) },
+            title = { Text(tr("Tare under load?")) },
+            text = { Text(WeightUnits.tr("There's %s %s on the gauge. Taring now counts it as zero.", kgText(prompted), WeightUnits.symbol)) },
             confirmButton = {
                 TextButton(onClick = {
                     when (
@@ -1103,7 +1103,7 @@ private fun TareButton(session: RunnerSession, snapshot: RunnerSnapshot, modifie
                             session.tare()
                         }
                     }
-                }) { Text(tr("Zero it")) }
+                }) { Text(tr("Tare")) }
             },
             dismissButton = { TextButton(onClick = { promptedKg = null }) { Text(tr("Cancel")) } },
             containerColor = palette.card,

@@ -84,7 +84,7 @@ fun MaxSaveReceiptScreen(receipt: TemplateStore.MaxSaveReceipt, onDone: () -> Un
                     if (offer.id in scaled) {
                         Text(tr("Weight targets updated"), color = palette.inkSecondary)
                     } else {
-                        if (offer.id in failed) Text(tr("Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are."),
+                        if (offer.id in failed) Text(tr("Maxes saved, but the targets didn't update. Try again."),
                             color = palette.alarm, style = MaterialTheme.typography.bodySmall)
                         PrimaryButton(tr("Scale with the new max"), enabled = !submission.isRunning,
                             modifier = Modifier.testTag("max.receipt.scale.${offer.id}")) {

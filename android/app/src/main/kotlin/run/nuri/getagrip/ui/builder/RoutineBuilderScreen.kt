@@ -533,7 +533,7 @@ private fun FinishBlock(
         if (templates.saveError != null) {
             // The document STAYS OPEN on a rollback: closing destroys the form and the routine with it.
             Text(
-                tr("That change couldn't be saved — the routine is still here. Try again."),
+                tr("Couldn't save the change. Try again."),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = palette.alarm,
@@ -555,7 +555,7 @@ private fun FinishBlock(
                 }
             }
             Text(
-                tr("Past sessions keep the routine they were done with."),
+                tr("Its sessions are deleted too."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )

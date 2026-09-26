@@ -289,7 +289,7 @@ fun GaugeScreen(modifier: Modifier = Modifier, stage: StageGeometry = rememberSt
 
                 if (device.state is ProgressorConnectionState.Unsupported) {
                     DockNote(
-                        tr("This device has no Bluetooth radio. Use demo mode to look around."),
+                        tr("No Bluetooth on this device. Try demo mode."),
                         color = palette.inkTertiary,
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
@@ -306,12 +306,13 @@ fun GaugeScreen(modifier: Modifier = Modifier, stage: StageGeometry = rememberSt
         // authorize a write on a link it never saw.
         AlertDialog(
             onDismissRequest = { promptedKg = null },
-            title = { Text(tr("Zero the gauge?")) },
+            title = { Text(tr("Tare under load?")) },
             text = {
                 Text(
                     WeightUnits.tr(
-                        "There is %s kg on the gauge. Taring now makes that the new zero for the rest of this session.",
+                        "There's %s %s on the gauge. Taring now counts it as zero.",
                         kgText(prompted),
+                        WeightUnits.symbol,
                     ),
                 )
             },
@@ -537,7 +538,7 @@ private fun GaugeGraphNotice() {
     }
     if (!device.state.isConnected) {
         Text(
-            tr("Connect a gauge and pull — the force draws here."),
+            tr("Connect a gauge and pull to see the force."),
             style = MaterialTheme.typography.bodyMedium,
             color = palette.inkSecondary,
             textAlign = TextAlign.Center,
@@ -563,7 +564,7 @@ private fun GaugeGraphNotice() {
                 color = palette.inkSecondary,
             )
             Text(
-                tr("Connected, but no readings yet. Tap Wake to restart it."),
+                tr("Connected, but no readings yet. Tap Wake."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
                 textAlign = TextAlign.Center,

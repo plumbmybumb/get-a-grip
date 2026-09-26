@@ -102,10 +102,10 @@ class SessionLogDraftTests {
     /// is picked it says so rather than describing a day nobody chose.
     @Test
     fun theConsequenceFollowsTheKind() {
-        assertTrue(SessionLogDraft(kind = SessionKind.climbLimit).consequence.contains("completes today"))
+        assertTrue(SessionLogDraft(kind = SessionKind.climbLimit).consequence.contains("Marks today as trained"))
         assertTrue(
             SessionLogDraft(kind = SessionKind.hangManual).consequence
-                .contains("does not settle the day")
+                .contains("Counts as one session")
         )
         assertTrue(SessionLogDraft().consequence.contains("Choose a session kind"))
     }

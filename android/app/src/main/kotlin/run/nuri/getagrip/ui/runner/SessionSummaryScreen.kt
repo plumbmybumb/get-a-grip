@@ -189,7 +189,7 @@ fun SessionSummaryScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (state.saveFailed) {
-                Text(tr("Couldn't save this workout. Please try again."),
+                Text(tr("Couldn't save this workout. Try again."),
                      color = palette.armed, style = MaterialTheme.typography.bodySmall)
             }
             PrimaryButton(
@@ -199,7 +199,7 @@ fun SessionSummaryScreen(
 
             if (!outcome.didAnyWork) {
                 Text(
-                    tr("Nothing was held, so there's nothing to log."),
+                    tr("No pulls held. Nothing to log."),
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.inkTertiary,
                     textAlign = TextAlign.Center,
@@ -353,7 +353,7 @@ private fun NewMaxCard(
                      contentDescription = null, tint = palette.armed)
             }
             if (expanded) {
-                Text(tr("Select maximum efforts to use for future targets. Saved with this workout."),
+                Text(tr("Pick the peaks to save as maxes."),
                      style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
                 Column {
                     candidates.forEachIndexed { index, candidate ->

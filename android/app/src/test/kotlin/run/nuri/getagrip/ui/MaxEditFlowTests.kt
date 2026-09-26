@@ -112,7 +112,7 @@ class MaxEditFlowTests {
         type("left", "20.5", "22.2")
         compose.onNodeWithTag("maxEdit.save").performClick()
         compose.waitUntil(10_000) {
-            compose.onAllNodesWithText("Couldn’t save your maxes. Your changes are still here—please try again.")
+            compose.onAllNodesWithText("Couldn't save your maxes. Try again.")
                 .fetchSemanticsNodes().isNotEmpty()
         }
         assertEquals(false, closed)

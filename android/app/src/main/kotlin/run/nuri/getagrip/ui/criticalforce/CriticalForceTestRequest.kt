@@ -292,17 +292,17 @@ class CriticalForceTestRequest(
 
 internal fun words(reason: CriticalForceTest.VoidReason): String = when (reason) {
     CriticalForceTest.VoidReason.tooFewReps ->
-        L10n.tr("Stopped before pull 16, before your force had levelled off, so there’s no result. Rest at least half an hour before trying again, or test another day.")
+        L10n.tr("Stopped before pull 16, so there's no result. Rest at least 30 minutes before retesting.")
     CriticalForceTest.VoidReason.lostGauge ->
-        L10n.tr("The gauge dropped before pull 16, so there’s no result. A paused test measures something else, because the reserve refills while you wait. Rest at least half an hour, then test again.")
+        L10n.tr("The gauge disconnected before pull 16, so there's no result. Rest at least 30 minutes before retesting.")
     CriticalForceTest.VoidReason.leftApp ->
-        L10n.tr("The test stopped when you left the app before pull 16, so there’s no result. Rest at least half an hour, then test again.")
+        L10n.tr("You left the app before pull 16, so there's no result. Rest at least 30 minutes before retesting.")
 }
 
 internal fun words(failure: CriticalForceFailure): String = when (failure) {
     is CriticalForceFailure.TooFewReps -> L10n.tr("Stopped before pull 16, so there’s no result.")
     CriticalForceFailure.TooLittleData ->
-        L10n.tr("The gauge’s readings had too many gaps in the last pulls to give a result. Keep the phone close to the gauge next time.")
+        L10n.tr("Too many gaps in the gauge's readings to give a result. Keep the phone closer next time.")
     CriticalForceFailure.NoPull ->
-        L10n.tr("No pulls were recorded. Check the gauge is zeroed and that the pull goes through it.")
+        L10n.tr("No pulls recorded. Tare the gauge and pull through it.")
 }
