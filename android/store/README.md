@@ -41,7 +41,8 @@ previous world. Tap the gauge chip to connect the demo device.
   its per-pull bars read as gaps.
 - `05_history`: History scrolled so the calendar and the load-per-grip chart share the
   screen.
-- `06_builder`: the routine's overview › Edit routine, scrolled to the sets.
+- `06_builder`: the routine's overview › Edit routine › the Sets page, every set collapsed.
+  Picked over Rhythm, which carries the "some grips have no max" warning against the seeds.
 
 The store icon is derived from the app's actual launcher paths. Screenshot framing does
 not alter the app UI or force readings.
