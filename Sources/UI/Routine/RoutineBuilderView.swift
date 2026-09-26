@@ -64,6 +64,11 @@ struct RoutineBuilderView: View {
                 draft.plan.sets = Array(draft.plan.sets.prefix(max(0, n)))
                 draft.plan.targetLoPercent = 0.20
                 draft.plan.targetHiPercent = 0.30
+                // `-builderCustomTiming N`: set N carries its own 7 s hold, 15 s rest.
+                if let n = BuilderDebug.int("-builderCustomTiming"), draft.plan.sets.indices.contains(n - 1) {
+                    draft.plan.sets[n - 1].holdSeconds = 7
+                    draft.plan.sets[n - 1].restSeconds = 15
+                }
                 return draft
             }
             #endif

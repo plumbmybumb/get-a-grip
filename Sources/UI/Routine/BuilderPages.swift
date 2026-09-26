@@ -28,7 +28,8 @@ enum BuilderPage: Int, CaseIterable, Identifiable {
 
 #if DEBUG
 /// Headless states for `simctl` screenshots, which cannot tap: `-builderPage N`,
-/// `-builderExpandSet N`, `-builderSeedSets N`, `-builderScrollTo expanded|end`.
+/// `-builderExpandSet N`, `-builderSeedSets N`, `-builderCustomTiming N`,
+/// `-builderScrollTo expanded|end`.
 enum BuilderDebug {
     static func string(_ flag: String) -> String? {
         let args = ProcessInfo.processInfo.arguments
