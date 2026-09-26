@@ -35,6 +35,9 @@ import java.util.UUID
 /// seedHistory true
 /// ```
 ///
+/// The Play screenshots add `--ez mockDevice true --ez seedTargetKg true --ez seedOneToday
+/// true` (see `android/store/README.md`).
+///
 /// **The ONLY thing that inserts a routine without a user asking**, so it stays behind
 /// `BuildConfig.DEBUG` and an explicit extra: a silent seed reads as a sync bug.
 ///
@@ -52,6 +55,37 @@ object Seeds {
         "seedNoRoutines", "seedRoutine", "seedTwoRoutines", "seedHistory",
     )
 
+    /// The store screenshots' two refinements, read only alongside the flags above:
+    ///
+    /// - `seedTargetKg` types a 20–24 kg band on every set of the daily routine — the band
+    ///   the demo gauge's 22 kg plateau sits inside, so a demo run shows the target lane
+    ///   with the clock running. The seeded percentage resolves to about 6 kg against the
+    ///   seeded max, which the demo overshoots: EASE OFF, no clock.
+    /// - `seedOneToday` leaves today at one session of two, so Today offers "Start second
+    ///   session" as its primary button instead of the settled "Start another".
+    const val demoTargetLoKg = 20.0
+    const val demoTargetHiKg = 24.0
+
+    /// A typed kilogram band on every set, percentages cleared at both levels: kilograms
+    /// rank first anyway, and a leftover percentage would show one number and run another.
+    fun withDemoKgTarget(draft: RoutineDraft): RoutineDraft = draft.copy(
+        plan = draft.plan.copy(
+            targetLoPercent = null, targetHiPercent = null,
+            sets = draft.plan.sets.map {
+                it.copy(
+                    targetLoKg = demoTargetLoKg, targetHiKg = demoTargetHiKg,
+                    targetLoPercent = null, targetHiPercent = null,
+                )
+            },
+        )
+    )
+
+    /// Sessions the seeded history logs on a day: twice, once every fifth day, and ONCE
+    /// today when `oneToday` asks for the day still in progress. Rest days are skipped by
+    /// the caller.
+    fun sessionsOn(daysAgo: Int, oneToday: Boolean): Int =
+        if (daysAgo == 0 && oneToday) 1 else if (daysAgo % 5 == 1) 1 else 2
+
     suspend fun apply(db: GetAGripDatabase, intent: Intent?) {
         if (!requested(intent)) return
         val wants = { name: String -> intent?.getBooleanExtra(name, false) == true }
@@ -62,10 +96,12 @@ object Seeds {
             db.routines().deleteAll()
         } else if (wants("seedRoutine")) {
             db.routines().deleteAll()
-            db.routines().upsert(SessionTemplateEntity.from(RoutineDraft.starter.normalized, 0))
+            var starter = RoutineDraft.starter
+            if (wants("seedTargetKg")) starter = withDemoKgTarget(starter)
+            db.routines().upsert(SessionTemplateEntity.from(starter.normalized, 0))
         } else if (wants("seedTwoRoutines")) {
             db.routines().deleteAll()
-            seedTwoRoutines(db)
+            seedTwoRoutines(db, kgTarget = wants("seedTargetKg"))
         }
 
         // History has nothing to draw without sessions, and typing three weeks of them is
@@ -74,7 +110,7 @@ object Seeds {
             db.logs().deleteAll()
             db.maxes().deleteAll()
             db.criticalForce().deleteAll()
-            seedHistory(db)
+            seedHistory(db, oneToday = wants("seedOneToday"))
             seedMaxes(db)
             seedCriticalForce(db)
         }
@@ -113,7 +149,7 @@ object Seeds {
 
     /// The ritual plus a max-day routine — the pair `seedHistory` logs for, so the two
     /// extras make a coherent world.
-    private suspend fun seedTwoRoutines(db: GetAGripDatabase) {
+    private suspend fun seedTwoRoutines(db: GetAGripDatabase, kgTarget: Boolean) {
         // A percent band on the daily, so recording a max shows the "targets that followed"
         // half of the receipt…
         var daily = RoutineDraft.starter
@@ -129,6 +165,7 @@ object Seeds {
             }
             daily = daily.copy(plan = daily.plan.copy(sets = sets))
         }
+        if (kgTarget) daily = withDemoKgTarget(daily)
         db.routines().upsert(SessionTemplateEntity.from(daily.normalized, 0))
 
         // The C4 ladder as a WHENEVER routine, with one TYPED kg band on a ramp set to
@@ -145,7 +182,7 @@ object Seeds {
 
     /// Eight weeks of plausible sessions (mostly twice a day, a weekly rest day, slowly
     /// rising load) — enough for the month grid, trend line and "holding steady" copy.
-    private suspend fun seedHistory(db: GetAGripDatabase) {
+    private suspend fun seedHistory(db: GetAGripDatabase, oneToday: Boolean) {
         val plan = RoutineDraft.starter.normalized.plan.executable
         val slots = PlanMath.sequence(plan)
         val today = DayStamp.today()
@@ -160,7 +197,7 @@ object Seeds {
         for (daysAgo in 55 downTo 0) {
             val day = today - daysAgo
             if (daysAgo % 7 == 3) continue                  // a rest day each week
-            val sessions = if (daysAgo % 5 == 1) 1 else 2   // some days only once
+            val sessions = sessionsOn(daysAgo, oneToday)    // some days only once
             for (session in 0 until sessions) {
                 // Slow upward drift plus daily variation: a direction, not a straight line.
                 val drift = (20 - daysAgo) * 0.08
