@@ -6,6 +6,17 @@ import XCTest
 @MainActor
 final class WeightUnitsUITests: XCTestCase {
     func testSettingsPoundsChoicePersistsAndManualMaxUsesPounds() {
+        // The choice PERSISTS — that is what this test proves — so it must be handed back:
+        // left on pounds, every later launch on this simulator draws lb, and the next full
+        // run's SessionPeakHandsUITests (which reads "35.0") failed on this test's leftovers.
+        addTeardownBlock { @MainActor in
+            let app = self.launchApp(arguments: ["-seedRoutine", "-mockDevice", "-tab", "3"])
+            let kilograms = app.buttons["Kilograms (kg)"]
+            self.reveal(kilograms, in: app)
+            if !kilograms.isSelected { kilograms.tap() }
+            XCTAssertTrue(kilograms.isSelected, kilograms.debugDescription)
+            app.terminate()
+        }
         let app = launchApp(arguments: ["-seedRoutine", "-mockDevice", "-tab", "3"])
         let pounds = app.buttons["Pounds (lb)"]
         reveal(pounds, in: app)

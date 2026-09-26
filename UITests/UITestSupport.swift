@@ -79,8 +79,24 @@ extension XCTestCase {
                 file: StaticString = #filePath, line: UInt = #line) {
         let surface = scroller ?? app
         _ = element.waitForExistence(timeout: 5)
+        // **On screen but not yet hittable is an element still APPEARING** — the launch
+        // fade, a card's stagger, a sheet settling — so wait for it rather than swipe.
+        // Swiping then flung Settings' weight units, the third card and in plain view, off
+        // the TOP of the page, and every later swipe only pushed it further: the suite's
+        // WeightUnitsUITests failure under load, with the button at y = -230. Bounded, and
+        // only for a realized frame wholly on screen, so a row below the fold pays nothing.
+        if !element.isHittable, element.exists, !element.frame.isEmpty,
+           app.frame.contains(element.frame) {
+            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"),
+                                                                object: element)],
+                               timeout: 3)
+        }
         for _ in 0..<attempts where !element.isHittable {
-            if bidirectional, element.exists, element.frame.minY < app.frame.midY {
+            // A realized frame wholly above the viewport is reached by scrolling BACK,
+            // whatever `bidirectional` says: another swipe up can only lose it further.
+            // (An unrealized frame is empty, so it never reads as "above".)
+            let above = element.exists && !element.frame.isEmpty && element.frame.maxY <= app.frame.minY
+            if above || (bidirectional && element.exists && element.frame.minY < app.frame.midY) {
                 surface.swipeDown()
             } else {
                 surface.swipeUp()
