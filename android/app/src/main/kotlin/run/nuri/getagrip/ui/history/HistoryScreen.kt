@@ -110,9 +110,8 @@ import run.nuri.getagrip.ui.theme.Metrics
 /// save time, so editing or deleting a routine never rewrites what you DID. Its NAME is the
 /// one exception — see `displayName`.
 ///
-/// TRANSLATION NOTE: iOS also has a per-routine TREND deck here. Not ported: its grip picker
-/// needs the builder's `Chip`, and a trend card with no way to change grips would be worse
-/// than none. `MaxChart` is already the drawing it needs.
+/// Between the calendar and the odometer sits the per-routine TREND deck (`TrendDeck`): is
+/// the load going anywhere, grip by grip.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
@@ -217,9 +216,14 @@ fun HistoryScreen(
                         }
                     }
                 }
+                item("trends") {
+                    // One trend card per routine with measured pulls. It owns the grip selection and
+                    // builds its model off the main thread, so a chip tap recomposes that block alone.
+                    TrendDeck(logs, routineNames, feed::reps)
+                }
                 item("lifetime") {
-                    // SECOND, between calendar and log (Nuri, 2026-09-20): how often, then how much, then the
-                    // sessions it adds up. (iOS puts its trend deck here; Android has none.)
+                    // Between the trends and the log (Nuri, 2026-09-20): how often, then where it is
+                    // going, then how much, then the sessions it adds up.
                     LifetimeCard(lifetime, Modifier.padding(horizontal = Metrics.hPadding, vertical = 6.dp))
                 }
                 item("sessions-label") {
