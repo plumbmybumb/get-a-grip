@@ -36,8 +36,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material.icons.automirrored.outlined.ListAlt
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.abs
 import androidx.compose.ui.draw.clip
@@ -206,7 +204,7 @@ private fun NewRoutineGhost(onNew: () -> Unit, onScan: () -> Unit, modifier: Mod
     val palette = LocalGripPalette.current
     val interaction = remember { MutableInteractionSource() }
     // Read outside the semantics lambda, which is not composable.
-    val spoken = tr("New routine. Build your own, or start from a known protocol.")
+    val spoken = tr("New routine. Opens the routine builder.")
     Column(
         modifier
             .fillMaxWidth()
@@ -254,16 +252,7 @@ private fun NewRoutineGhost(onNew: () -> Unit, onScan: () -> Unit, modifier: Mod
 
 /** Quiet visual weight with a full-size touch target. Creating remains the primary action. */
 @Composable
-private fun SubtleScanAction(title: String, onClick: () -> Unit) =
-    SubtleAction(title, Icons.Outlined.QrCodeScanner, onClick)
-
-@Composable
-private fun SubtleAction(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun SubtleScanAction(title: String, onClick: () -> Unit) {
     val palette = LocalGripPalette.current
     val interaction = remember { MutableInteractionSource() }
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -272,9 +261,9 @@ private fun SubtleAction(
             interactionSource = interaction,
             colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = palette.inkSecondary),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            modifier = modifier.heightIn(min = 48.dp).pressFeedback(interaction, scales = false),
+            modifier = Modifier.heightIn(min = 48.dp).pressFeedback(interaction, scales = false),
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+            Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, modifier = Modifier.size(16.dp))
             androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
             Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
         }
@@ -283,8 +272,8 @@ private fun SubtleAction(
 
 /// With no routine there is nothing to start, and a card offering to would be lying.
 ///
-/// Exactly ONE PRIMARY button. The known protocols (2026-09-25) are a quiet SECONDARY door
-/// beside it, never in place of it: the first-run tour hands off through "Build my routine".
+/// Exactly ONE PRIMARY button; no "start from a preset" door — that would duplicate the
+/// document one tap away and push the button off screen at accessibility sizes.
 ///
 /// **"Scan a shared routine" is the exception**: its usual menu hangs off a routine card, and
 /// here there is none, so a friend's code would have no door. It stays a small text action:
@@ -295,8 +284,6 @@ fun EmptyRoutineCard(
     /// Only while nothing is connected: answers "do I need the hardware first?" when it arises.
     showsGaugeNote: Boolean = true,
     onBuild: () -> Unit,
-    /// The "New routine" chooser's protocols. Null (previews) removes the row.
-    onProtocols: (() -> Unit)? = null,
     /// Null (previews) removes the row rather than drawing a dead one.
     onScan: (() -> Unit)? = null,
 ) {
@@ -335,11 +322,6 @@ fun EmptyRoutineCard(
                 modifier = Modifier.tourAnchor(TourTarget.BuildRoutine),
                 onClick = onBuild,
             )
-
-            if (onProtocols != null) {
-                SubtleAction(tr("Start from a known protocol"), Icons.AutoMirrored.Outlined.ListAlt, onProtocols,
-                    Modifier.testTag("today.protocols"))
-            }
 
             if (onScan != null) {
                 SubtleScanAction(tr("Scan a shared routine"), onScan)

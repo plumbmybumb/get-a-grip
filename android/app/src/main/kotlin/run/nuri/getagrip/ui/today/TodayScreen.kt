@@ -64,7 +64,6 @@ import run.nuri.getagrip.ui.components.UndoSnackbar
 import run.nuri.getagrip.ui.components.UndoSnackbarEffect
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.share.RoutineImportSheet
-import run.nuri.getagrip.ui.routine.NewRoutineSheet
 import run.nuri.getagrip.ui.share.RoutineShareRequest
 import run.nuri.getagrip.ui.share.RoutineShareSheet
 import run.nuri.getagrip.ui.share.rememberRoutineScanner
@@ -147,16 +146,13 @@ fun TodayScreen(
     /// from `importError`, which is about a code that WAS read.
     var scannerError by remember { mutableStateOf<String?>(null) }
     var overviewID by rememberSaveable { mutableStateOf<String?>(null) }
-    /// The "New routine" chooser: build your own, or start from a known protocol.
-    var choosingNewRoutine by rememberSaveable { mutableStateOf(false) }
     val overview = routines.firstOrNull { it.id.toString() == overviewID }
 
     /// The single door from the store's inbox to the screen, called on arrival and whenever a
     /// presentation closes. Nothing here or in the host may be up.
     fun drainImportInbox() {
         if (!canPresentImport) return
-        if (shareRequest != null || importPreview != null || importError != null || overviewID != null ||
-            choosingNewRoutine) return
+        if (shareRequest != null || importPreview != null || importError != null || overviewID != null) return
         val message = templates.claimPendingImportError()
         if (message != null) {
             importError = message
@@ -256,8 +252,6 @@ fun TodayScreen(
                     Modifier.padding(horizontal = Metrics.hPadding),
                     showsGaugeNote = !device.state.isConnected,
                     onBuild = onBuild,
-                    // Beside "Build my routine", never in place of it: the tour hands off through that.
-                    onProtocols = { choosingNewRoutine = true },
                     // With no routine there is no card menu: this is the ONLY scanner door here.
                     onScan = startScan,
                 )
@@ -280,8 +274,7 @@ fun TodayScreen(
                     onOverview = { overviewID = it.id.toString() },
                     onEdit = onEdit,
                     onDuplicate = { routine -> scope.launch { templates.duplicate(routine) } },
-                    // The ghost card and "New routine…" both ask first: scratch or a protocol.
-                    onNew = { choosingNewRoutine = true },
+                    onNew = onBuild,
                     onMakePrimary = { routine -> scope.launch { templates.makePrimary(routine) } },
                     onShare = ::share,
                     onScan = startScan,
@@ -344,16 +337,6 @@ fun TodayScreen(
             shareRequest = null
             drainImportInbox()
         }
-    }
-
-    if (choosingNewRoutine) {
-        NewRoutineSheet(
-            onBuildFromScratch = {
-                choosingNewRoutine = false
-                onBuild()
-            },
-            onClose = { choosingNewRoutine = false; drainImportInbox() },
-        )
     }
 
     importPreview?.let { draft ->
