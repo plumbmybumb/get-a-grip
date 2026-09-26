@@ -78,11 +78,11 @@ struct MaxMeasureView: View {
         .sensoryFeedback(.success, trigger: session.newBestTick)
         .sensoryFeedback(.selection, trigger: selectionTick)
         .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: tareTick)
-        .alert("Zero the gauge?", isPresented: $showingTareConfirmation) {
-            Button("Zero it", role: .destructive) { confirmTare() }
+        .alert("Tare under load?", isPresented: $showingTareConfirmation) {
+            Button("Tare", role: .destructive) { confirmTare() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Zero it?"))
+            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Taring now counts it as zero."))
         }
         .onAppear { begin() }
         .onChange(of: device.state.isConnected) { _, connected in
@@ -168,9 +168,9 @@ struct MaxMeasureView: View {
             if !device.state.isConnected {
                 notice(device.state.isBusy
                        ? String(localized: "Connecting to your gauge…")
-                       : String(localized: "Connect your gauge to measure. Every pull counts."))
+                       : String(localized: "Connect your gauge to measure."))
             } else if device.isStreaming, waitingForSignal, !device.isSignalFresh {
-                notice(String(localized: "Waiting for the gauge. It's connected but not sending — try Wake."))
+                notice(String(localized: "Connected, but no readings yet. Tap Wake."))
             }
         }
         .frame(minHeight: typeSize.isAccessibilitySize ? 200 : nil, maxHeight: .infinity)

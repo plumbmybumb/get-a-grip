@@ -206,7 +206,7 @@ struct MaxesTab: View {
                 VStack(alignment: .leading, spacing: 6) {
                     if !group.tests.isEmpty { CapsLabel(String(localized: "Max")) }
                     if group.records.isEmpty {
-                        Text("No max yet. Measure one to see critical force as a share of it.")
+                        Text("No max yet. Measure one to compare with critical force.")
                             .font(.system(.footnote))
                             .foregroundStyle(Ink.tertiary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -291,7 +291,7 @@ struct MaxesTab: View {
                         .foregroundStyle(Ink.primary)
                     // In a routine, never tested: its percentage targets are waiting
                     // on this number.
-                    Text("In your routine — never tested")
+                    Text("In your routine, not tested yet")
                         .font(.system(.footnote))
                         .foregroundStyle(Ink.tertiary)
                 }

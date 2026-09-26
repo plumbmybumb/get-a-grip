@@ -111,7 +111,7 @@ enum TarePolicy {
         switch phase {
         case .paused(let inner): disabledReason(for: inner)
         case .working: String(localized: "Tare is unavailable during the pull.")
-        case .releasing: String(localized: "Tare is unavailable while waiting for you to let go.")
+        case .releasing: String(localized: "Tare is unavailable until you let go.")
         case .idle, .leadIn, .armed, .resting, .finished: nil
         }
     }

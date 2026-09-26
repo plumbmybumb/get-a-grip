@@ -21,7 +21,7 @@ struct HoldToEndButton: View {
         // still scrolls; otherwise a thumb may wander as long as it stays on the button.
         HoldToConfirm(cancel: allowsScrolling ? .drift(10) : .leavingBounds(slop: 24),
                       accessibilityLabel: "End session",
-                      accessibilityHint: "Press and hold to end. Everything you've already done is kept.",
+                      accessibilityHint: "Press and hold to end. Completed pulls are kept.",
                       action: { firedTick += 1; action() }) { isHolding, progress in
             ZStack {
                 // Reserve both titles so beginning a hold cannot reflow the action row.

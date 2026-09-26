@@ -77,7 +77,7 @@ struct SessionSummaryView: View {
                 finish()
             }
             if !didAnyWork {
-                Text("Nothing was held, so there's nothing to log.")
+                Text("No pulls held. Nothing to log.")
                     .font(.system(.footnote))
                     .foregroundStyle(Ink.tertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -167,7 +167,7 @@ struct SessionSummaryView: View {
                     .accessibilityIdentifier("summary.peaks")
                     .accessibilityValue(showsMaxes ? String(localized: "Expanded") : String(localized: "Collapsed"))
                     if showsMaxes {
-                        Text("Select maximum efforts to use for future targets. Saved with this workout.")
+                        Text("Pick the peaks to save as maxes.")
                             .font(.system(.caption)).foregroundStyle(Ink.secondary)
                         VStack(spacing: 0) {
                             ForEach(maxCandidates) { candidate in

@@ -34,7 +34,7 @@ struct MaxesView: View {
             }
 
             if deleteFailed {
-                Text("Couldn't delete this max. Please try again.")
+                Text("Couldn't delete this max. Try again.")
                     .font(.system(.footnote))
                     .foregroundStyle(Accent.alarm)
                     .houseListRow(top: 2, bottom: 6)
@@ -212,12 +212,12 @@ struct MaxesView: View {
                             tint: Ink.tertiary.opacity(0.55))
                     .accessibilityHidden(true)
 
-                Text("A max records your hardest measured pull on a grip.")
+                Text("A max is your hardest pull on a grip.")
                     .font(.system(.title3, weight: .semibold))
                     .foregroundStyle(Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit.")
+                Text("Targets are a percentage of this max. It's a reference, not a safe-load limit.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -400,7 +400,7 @@ struct MaxEntrySheet: View {
                 Text(grip.displayName)
                     .font(.system(.headline))
             }
-            Text("Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged.")
+            Text("Used when a hand has no max of its own, and for two-handed pulls.")
                 .font(.system(.subheadline))
                 .foregroundStyle(Ink.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -529,7 +529,7 @@ struct MaxEntrySheet: View {
         // Keyed by grip AND hand: quoting the other hand's max here would read as a
         // contradiction.
         if let existing = templates.currentMaxes[MaxTable.key(grip: grip.key, side: side)] {
-            Text(String(localized: "Your current max on this grip\(side == .both ? "" : String(localized: " for that hand")) is \(weightUnit.number(existing.kg)) \(weightUnit.symbol), recorded \(existing.recordedAt.formatted(.relative(presentation: .named))). Saving adds a new one and keeps the old as history."))
+            Text(String(localized: "Your current max on this grip\(side == .both ? "" : String(localized: " for that hand")) is \(weightUnit.number(existing.kg)) \(weightUnit.symbol), recorded \(existing.recordedAt.formatted(.relative(presentation: .named))). The old one stays in history."))
                 .font(.system(.footnote))
                 .foregroundStyle(Ink.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -539,7 +539,7 @@ struct MaxEntrySheet: View {
     /// A rolled-back save leaves the sheet OPEN with the error inline; dismissing would
     /// destroy the number with the form.
     private var errorLine: some View {
-        Text("That couldn't be saved — nothing was recorded. Try again.")
+        Text("Couldn't save. Try again.")
             .font(.system(.footnote, weight: .medium))
             .foregroundStyle(Accent.alarm)
             .fixedSize(horizontal: false, vertical: true)
@@ -548,7 +548,7 @@ struct MaxEntrySheet: View {
     /// Says which of the two this number IS, and keeps saying it as the number changes. Copy
     /// that denied measuring had to move with the feature, not be deleted by it.
     private var provenanceLine: some View {
-        Text("A number you entered. Check its value and units before using it for targets.")
+        Text("Entered by hand. Check the value and unit.")
             .font(.system(.footnote))
             .foregroundStyle(Ink.tertiary)
             .fixedSize(horizontal: false, vertical: true)

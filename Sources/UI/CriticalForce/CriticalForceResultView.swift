@@ -216,7 +216,7 @@ struct CriticalForcePullChart: View {
             chart
                 .frame(minHeight: chartHeight, maxHeight: .infinity)
             if showsCaptions {
-                Text("Each bar is one pull’s average. Critical force is the mean of pulls \(summary.criticalForceReps.lowerBound)–\(summary.criticalForceReps.upperBound), where your force levels off.")
+                Text("Each bar is one pull's average. Critical force is the mean of pulls \(summary.criticalForceReps.lowerBound)–\(summary.criticalForceReps.upperBound).")
                     .font(.system(.footnote))
                     .foregroundStyle(Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -268,7 +268,7 @@ struct CriticalForcePullChart: View {
         let missed = summary.restsTotal - summary.restsKept
         guard summary.restsTotal > 0 else { return "" }
         if missed == 0 { return String(localized: "Every rest kept on the beat.") }
-        return String(localized: "Still on the edge after the bell in \(missed) of \(summary.restsTotal) rests. Force after the bell isn’t counted, but it eats into your rest.")
+        return String(localized: "Still on the edge after the bell in \(missed) of \(summary.restsTotal) rests. That force isn't counted and shortens your rest.")
     }
 
     private var spokenPlateau: String {

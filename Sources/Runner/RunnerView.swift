@@ -1220,7 +1220,7 @@ struct RunnerView: View {
         case .failed(_, let failure):
             failure.label
         case .notRequired, .ready:
-            String(localized: "Connected, but no readings yet. Tap Wake to restart it.")
+            String(localized: "Connected, but no readings yet. Tap Wake.")
         }
     }
 
@@ -1229,7 +1229,7 @@ struct RunnerView: View {
     private var connectHint: String {
         if device.canCancelBroadcastSearch { return device.state.label }
         return device.gaugeCapabilities.isBroadcast
-            ? String(localized: "Tap Connect to start listening for your \(device.gaugeKind.displayName).")
+            ? String(localized: "Tap Connect to listen for your \(device.gaugeKind.displayName).")
             : String(localized: "Tap Connect to pair with your \(device.gaugeKind.displayName).")
     }
 

@@ -251,16 +251,6 @@
         }
       }
     },
-    "Connect your gauge to measure. Every pull counts." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connecte ton capteur pour mesurer. Chaque tirage compte."
-          }
-        }
-      }
-    },
     "Connecting to your gauge…" : {
       "localizations" : {
         "fr" : {
@@ -271,12 +261,12 @@
         }
       }
     },
-    "Couldn’t save. Your pulls are still here — try again." : {
+    "Couldn't save. Try again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d’enregistrer. Tes tirages sont toujours là — réessaie."
+            "value" : "Impossible d'enregistrer. Réessaie."
           }
         }
       }
@@ -2177,13 +2167,12 @@
         }
       }
     },
-    "A max records your hardest measured pull on a grip." : {
-      "extractionState" : "manual",
+    "A max is your hardest pull on a grip." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un max correspond à votre traction mesurée la plus forte sur une prise."
+            "value" : "Un max est ton tirage le plus fort sur une prise."
           }
         }
       }
@@ -2214,13 +2203,12 @@
         }
       }
     },
-    "A number you entered. Check its value and units before using it for targets." : {
-      "extractionState" : "manual",
+    "Entered by hand. Check the value and unit." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une valeur saisie par vous. Vérifiez sa valeur et son unité avant de l’utiliser pour vos cibles."
+            "value" : "Saisi à la main. Vérifie la valeur et l'unité."
           }
         }
       }
@@ -2415,18 +2403,12 @@
         }
       }
     },
-    "Adjusted values are saved as manual entries. Your recorded trace stays unchanged." : {
+    "Adjusted values save as manual entries. The trace is unchanged." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adjusted values are saved as manual entries. Your recorded trace stays unchanged."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les valeurs ajustées sont enregistrées comme saisies manuelles. Le tracé mesuré reste inchangé."
+            "value" : "Les valeurs ajustées sont enregistrées comme saisies manuelles. La courbe ne change pas."
           }
         }
       }
@@ -3181,12 +3163,12 @@
         }
       }
     },
-    "Connect a gauge and pull — the force draws here." : {
+    "Connect a gauge and pull to see the force." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connecte un capteur et tire : la force se dessine ici."
+            "value" : "Connecte un capteur et tire pour voir la force."
           }
         }
       }
@@ -3258,12 +3240,12 @@
         }
       }
     },
-    "Connected, but no readings yet. Tap Wake to restart it." : {
+    "Connected, but no readings yet. Tap Wake." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connecté, mais aucune lecture. Touche Réveiller pour le relancer."
+            "value" : "Connecté, mais aucune mesure pour l'instant. Touche Réveiller."
           }
         }
       }
@@ -3399,12 +3381,12 @@
         }
       }
     },
-    "Couldn't delete this max. Please try again." : {
+    "Couldn't delete this max. Try again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de supprimer ce maximum. Réessayez."
+            "value" : "Impossible de supprimer ce max. Réessaie."
           }
         }
       }
@@ -3459,18 +3441,12 @@
         }
       }
     },
-    "Couldn’t save your maxes. Your changes are still here—please try again." : {
+    "Couldn't save your maxes. Try again." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn’t save your maxes. Your changes are still here—please try again."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d’enregistrer tes max. Tes modifications sont toujours là — réessaie."
+            "value" : "Impossible d'enregistrer tes max. Réessaie."
           }
         }
       }
@@ -3501,18 +3477,12 @@
         }
       }
     },
-    "Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are." : {
+    "Maxes saved, but the targets didn't update. Try again." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de mettre à jour les cibles de poids. Tes max sont enregistrés. Réessaie ou conserve les cibles actuelles."
+            "value" : "Max enregistrés, mais les cibles n'ont pas été mises à jour. Réessaie."
           }
         }
       }
@@ -5431,12 +5401,12 @@
         }
       }
     },
-    "In your routine — never tested" : {
+    "In your routine, not tested yet" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dans ta routine — jamais testée"
+            "value" : "Dans ta routine, pas encore testée"
           }
         }
       }
@@ -7015,22 +6985,6 @@
         }
       }
     },
-    "Not set. Enter a value to save a max for this hand." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Not set. Enter a value to save a max for this hand."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Non défini. Saisis une valeur pour cette main."
-          }
-        }
-      }
-    },
     "Nothing" : {
       "localizations" : {
         "fr" : {
@@ -7072,12 +7026,12 @@
         }
       }
     },
-    "Nothing was held, so there's nothing to log." : {
+    "No pulls held. Nothing to log." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rien n'a été tenu, il n'y a donc rien à enregistrer."
+            "value" : "Aucun tirage tenu. Rien à enregistrer."
           }
         }
       }
@@ -7600,13 +7554,12 @@
         }
       }
     },
-    "Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit." : {
-      "extractionState" : "manual",
+    "Targets are a percentage of this max. It's a reference, not a safe-load limit." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les cibles en pourcentage utilisent le max enregistré pour cette prise et cette main. Un max est une référence, pas une limite de charge sans risque."
+            "value" : "Les cibles sont un pourcentage de ce max. C'est une référence, pas une limite de charge sans risque."
           }
         }
       }
@@ -7732,12 +7685,12 @@
         }
       }
     },
-    "Press and hold to end. Everything you've already done is kept." : {
+    "Press and hold to end. Completed pulls are kept." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Appuie et maintiens pour terminer. Tout ce que tu as déjà fait est conservé."
+            "value" : "Maintiens pour terminer. Les tirages faits sont conservés."
           }
         }
       }
@@ -8177,12 +8130,12 @@
         }
       }
     },
-    "Restart the reading. The gauge is connected but not sending." : {
+    "Restarts a stalled reading." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Relance la lecture. Le capteur est connecté mais n'envoie rien."
+            "value" : "Relance une mesure bloquée."
           }
         }
       }
@@ -8645,18 +8598,12 @@
         }
       }
     },
-    "Select maximum efforts to use for future targets. Saved with this workout." : {
+    "Pick the peaks to save as maxes." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Select maximum efforts to use for future targets. Saved with this workout."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sélectionnez les efforts maximaux à utiliser pour vos futures cibles. Enregistrés avec cette séance."
+            "value" : "Choisis les pics à enregistrer comme max."
           }
         }
       }
@@ -9590,12 +9537,12 @@
         }
       }
     },
-    "Tap Connect to start listening for your %@." : {
+    "Tap Connect to listen for your %@." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touche Connecter pour commencer à écouter ton %@."
+            "value" : "Touche Connecter pour écouter ton %@."
           }
         }
       }
@@ -9630,7 +9577,7 @@
         }
       }
     },
-    "Tare is unavailable while waiting for you to let go." : {
+    "Tare is unavailable until you let go." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -9828,16 +9775,6 @@
         }
       }
     },
-    "That couldn't be saved — nothing was recorded. Try again." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ça n'a pas pu être enregistré — rien n'a été enregistré. Réessaie."
-          }
-        }
-      }
-    },
     "That counts as one session for %@, but it does not settle the day. You can still do another session if you want one." : {
       "localizations" : {
         "fr" : {
@@ -9948,12 +9885,12 @@
         }
       }
     },
-    "There's %@ %@ on the gauge. Zero it?" : {
+    "There's %@ %@ on the gauge. Taring now counts it as zero." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il y a %1$@ %2$@ sur le capteur. Le mettre à zéro ?"
+            "value" : "Il y a %1$@ %2$@ sur le capteur. Tarer maintenant le compte comme zéro."
           }
         }
       }
@@ -10053,12 +9990,12 @@
         }
       }
     },
-    "This device has no Bluetooth radio. Use demo mode to look around." : {
+    "No Bluetooth on this device. Try demo mode." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cet appareil n'a pas de radio Bluetooth. Utilise le mode démo pour explorer."
+            "value" : "Pas de Bluetooth sur cet appareil. Essaie le mode démo."
           }
         }
       }
@@ -10422,22 +10359,6 @@
         }
       }
     },
-    "Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Used when a hand has no individual max, and for pulls with both hands together. Individual left and right maxes stay unchanged."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Utilisé lorsqu’une main n’a pas de max individuel, et pour les tirages à deux mains. Les max individuels de gauche et de droite restent inchangés."
-          }
-        }
-      }
-    },
     "Used when a hand has no max of its own, and for two-handed pulls." : {
       "localizations" : {
         "en" : {
@@ -10500,16 +10421,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En attente du capteur"
-          }
-        }
-      }
-    },
-    "Waiting for the gauge. It's connected but not sending — try Wake." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En attente du capteur. Il est connecté mais n'envoie rien : essaie Réveiller."
           }
         }
       }
@@ -10787,12 +10698,12 @@
         }
       }
     },
-    "Your current max on this grip%@ is %@ %@, recorded %@. Saving adds a new one and keeps the old as history." : {
+    "Your current max on this grip%@ is %@ %@, recorded %@. The old one stays in history." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ton max actuel sur cette prise%1$@ est de %2$@ %3$@, enregistré %4$@. Enregistrer en ajoute un nouveau et garde l'ancien dans l'historique."
+            "value" : "Ton max actuel sur cette prise%1$@ est de %2$@ %3$@, enregistré %4$@. L'ancien reste dans l'historique."
           }
         }
       }
@@ -10923,16 +10834,6 @@
         }
       }
     },
-    "Zero it" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mettre à zéro"
-          }
-        }
-      }
-    },
     "Zero the gauge" : {
       "localizations" : {
         "fr" : {
@@ -10943,22 +10844,22 @@
         }
       }
     },
-    "Zero the gauge?" : {
+    "Tare under load?" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mettre le capteur à zéro ?"
+            "value" : "Tarer sous charge ?"
           }
         }
       }
     },
-    "Zero the gauge." : {
+    "Sets the reading to zero." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mettre le capteur à zéro."
+            "value" : "Remet la mesure à zéro."
           }
         }
       }
@@ -11083,12 +10984,12 @@
         }
       }
     },
-    "Each bar is one pull’s average. Critical force is the mean of pulls %lld–%lld, where your force levels off." : {
+    "Each bar is one pull's average. Critical force is the mean of pulls %lld–%lld." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chaque barre est la moyenne d’un tirage. La force critique est la moyenne des tirages %1$lld à %2$lld, là où ta force se stabilise."
+            "value" : "Chaque barre est la moyenne d'un tirage. La force critique est la moyenne des tirages %1$lld à %2$lld."
           }
         }
       }
@@ -11113,12 +11014,12 @@
         }
       }
     },
-    "Still on the edge after the bell in %lld of %lld rests. Force after the bell isn’t counted, but it eats into your rest." : {
+    "Still on the edge after the bell in %lld of %lld rests. That force isn't counted and shortens your rest." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Encore sur la prise après le signal pour %1$lld repos sur %2$lld. La force après le signal ne compte pas, mais elle entame ton repos."
+            "value" : "Encore sur la réglette après le signal pendant %1$lld repos sur %2$lld. Cette force ne compte pas et raccourcit ton repos."
           }
         }
       }
@@ -11173,22 +11074,22 @@
         }
       }
     },
-    "There's %@ on the gauge. Let go, then start: it zeroes first." : {
+    "There's %@ on the gauge. Let go, then start." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il y a %@ sur le capteur. Relâche, puis commence : il se remet d’abord à zéro."
+            "value" : "Il y a %@ sur le capteur. Relâche, puis lance."
           }
         }
       }
     },
-    "%@ hand done. Set up your %@ hand with the gauge unloaded, then start: it zeroes first." : {
+    "%@ hand done. Unload the gauge, then start your %@ hand." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ : terminé. Place ta main %2$@ avec le capteur déchargé, puis commence : il se remet d’abord à zéro."
+            "value" : "Main %1$@ terminée. Décharge le capteur, puis lance ta main %2$@."
           }
         }
       }
@@ -11203,12 +11104,12 @@
         }
       }
     },
-    "The test starts the moment you pull. Pull as hard as you can." : {
+    "The test starts when you pull. Pull as hard as you can." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le test démarre dès que tu tires. Tire aussi fort que tu peux."
+            "value" : "Le test commence quand tu tires. Tire aussi fort que possible."
           }
         }
       }
@@ -11219,16 +11120,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Commencer la main %@"
-          }
-        }
-      }
-    },
-    "Couldn’t save. Your result is still here — try again." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Impossible d’enregistrer. Ton résultat est toujours là — réessaie."
           }
         }
       }
@@ -11363,32 +11254,32 @@
         }
       }
     },
-    "All 24 pulls on one hand, then all 24 on the other. About 8 minutes, and each hand gets its own number." : {
+    "24 pulls on one hand, then 24 on the other. About 8 minutes, one result per hand." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les 24 tirages d’une main, puis les 24 de l’autre. Environ 8 minutes, et chaque main a son propre résultat."
+            "value" : "24 tirages d'une main, puis 24 de l'autre. Environ 8 minutes, un résultat par main."
           }
         }
       }
     },
-    "Both hands pulling together through the gauge, on a hangboard or a two-handed block. One number." : {
+    "Both hands pull together through the gauge. One result." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les deux mains tirent ensemble à travers le capteur, sur une poutre ou un bloc à deux mains. Un seul résultat."
+            "value" : "Les deux mains tirent ensemble sur le capteur. Un seul résultat."
           }
         }
       }
     },
-    "Just one hand, for when only one needs testing." : {
+    "Test one hand only." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une seule main, quand une seule doit être testée."
+            "value" : "Teste une seule main."
           }
         }
       }
@@ -11413,52 +11304,52 @@
         }
       }
     },
-    "The gauge’s readings had too many gaps in the last pulls to give a result. Keep the phone close to the gauge next time." : {
+    "Too many gaps in the gauge's readings to give a result. Keep the phone closer next time." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les lectures du capteur avaient trop de trous sur les derniers tirages pour donner un résultat. Garde le téléphone près du capteur la prochaine fois."
+            "value" : "Trop de trous dans les mesures du capteur pour donner un résultat. Garde le téléphone plus près la prochaine fois."
           }
         }
       }
     },
-    "No pulls were recorded. Check the gauge is zeroed and that the pull goes through it." : {
+    "No pulls recorded. Tare the gauge and pull through it." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun tirage enregistré. Vérifie que le capteur est à zéro et que le tirage passe bien par lui."
+            "value" : "Aucun tirage enregistré. Tare le capteur et tire à travers lui."
           }
         }
       }
     },
-    "Stopped before pull 16, before your force had levelled off, so there’s no result. Rest at least half an hour before trying again, or test another day." : {
+    "Stopped before pull 16, so there's no result. Rest at least 30 minutes before retesting." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arrêté avant le tirage 16, avant que ta force se stabilise, donc pas de résultat. Repose-toi au moins une demi-heure avant de réessayer, ou fais le test un autre jour."
+            "value" : "Arrêté avant le tirage 16, donc pas de résultat. Repose-toi au moins 30 minutes avant de refaire le test."
           }
         }
       }
     },
-    "The gauge dropped before pull 16, so there’s no result. A paused test measures something else, because the reserve refills while you wait. Rest at least half an hour, then test again." : {
+    "The gauge disconnected before pull 16, so there's no result. Rest at least 30 minutes before retesting." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le capteur a décroché avant le tirage 16, donc pas de résultat. Un test mis en pause mesure autre chose, car la réserve se recharge pendant que tu attends. Repose-toi au moins une demi-heure, puis refais le test."
+            "value" : "Le capteur s'est déconnecté avant le tirage 16, donc pas de résultat. Repose-toi au moins 30 minutes avant de refaire le test."
           }
         }
       }
     },
-    "The test stopped when you left the app before pull 16, so there’s no result. Rest at least half an hour, then test again." : {
+    "You left the app before pull 16, so there's no result. Rest at least 30 minutes before retesting." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le test s’est arrêté quand tu as quitté l’app avant le tirage 16, donc pas de résultat. Repose-toi au moins une demi-heure, puis refais le test."
+            "value" : "Tu as quitté l'app avant le tirage 16, donc pas de résultat. Repose-toi au moins 30 minutes avant de refaire le test."
           }
         }
       }
@@ -11633,12 +11524,12 @@
         }
       }
     },
-    "Critical force is the force your fingers can keep producing once the fast reserve is spent: your endurance ceiling. The test drains that reserve with 24 all-out pulls, and your force levels off at your critical force." : {
+    "The force your fingers can sustain once their fast reserve is spent: your endurance ceiling. 24 all-out pulls drain that reserve, and your force levels off at critical force." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La force critique est la force que tes doigts peuvent continuer à produire une fois la réserve rapide épuisée : ton plafond d’endurance. Le test vide cette réserve avec 24 tirages à fond, et ta force se stabilise à ta force critique."
+            "value" : "La force que tes doigts peuvent maintenir une fois leur réserve rapide épuisée : ton plafond d'endurance. 24 tirages à fond vident cette réserve, et ta force se stabilise à la force critique."
           }
         }
       }
@@ -11653,12 +11544,12 @@
         }
       }
     },
-    "Seven seconds on, three off, every time. The result depends on that rhythm, so the rest does not wait for you to let go. Force pulled after the bell isn’t counted." : {
+    "7 s on, 3 s off, with no pauses. The result depends on that rhythm, so rests don't wait for you. Force after the bell isn't counted." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sept secondes d’effort, trois de repos, à chaque fois. Le résultat dépend de ce rythme, donc le repos n’attend pas que tu relâches. La force tirée après le signal ne compte pas."
+            "value" : "7 s de tirage, 3 s de repos, sans pause. Le résultat dépend de ce rythme, donc le repos ne t'attend pas. La force après le signal ne compte pas."
           }
         }
       }
@@ -11673,22 +11564,22 @@
         }
       }
     },
-    "Warm up first. Use the same grip, hand and arm position each time, and leave a few weeks between tests. Your first test is partly practice." : {
+    "Warm up first. Use the same grip and arm position each time. Leave a few weeks between tests; the first is partly practice." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Échauffe-toi d’abord. Garde la même prise et la même position de main et de bras à chaque fois, et laisse quelques semaines entre deux tests. Ton premier test sert en partie d’essai."
+            "value" : "Échauffe-toi d'abord. Garde la même prise et la même position de bras à chaque fois. Laisse quelques semaines entre deux tests ; le premier sert en partie d'entraînement."
           }
         }
       }
     },
-    "One at a time runs all 24 pulls on one hand, then all 24 on the other, and each hand gets its own number. Both hands means both pulling together through the gauge. The hands never alternate pull by pull, because that changes the rhythm and the result." : {
+    "One at a time: 24 pulls on one hand, then 24 on the other, one result each. Both hands: they pull together through the gauge. Hands never alternate pull by pull; that would change the rhythm." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "« Une à la fois » enchaîne les 24 tirages d’une main, puis les 24 de l’autre, et chaque main a son propre résultat. « Les deux mains » veut dire que les deux tirent ensemble à travers le capteur. Les mains n’alternent jamais tirage par tirage, car cela change le rythme et le résultat."
+            "value" : "Une à la fois : 24 tirages d'une main, puis 24 de l'autre, un résultat chacune. Deux mains : elles tirent ensemble sur le capteur. Les mains n'alternent jamais à chaque tirage ; cela changerait le rythme."
           }
         }
       }
@@ -11923,12 +11814,12 @@
         }
       }
     },
-    "No max yet. Measure one to see critical force as a share of it." : {
+    "No max yet. Measure one to compare with critical force." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pas encore de max. Mesures-en un pour voir la force critique en proportion."
+            "value" : "Pas encore de max. Mesures-en un pour le comparer à la force critique."
           }
         }
       }

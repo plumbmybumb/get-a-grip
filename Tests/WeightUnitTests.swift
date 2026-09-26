@@ -62,7 +62,7 @@ final class WeightUnitTests: XCTestCase {
         let cue = String(localized: "New grip next: \(name), target \(unit.number(4.5359237)) to \(unit.number(9.0718474)) \(unit.symbol)", bundle: french)
         XCTAssertTrue(cue.contains(name), "User text is never rewritten to change unit words")
         XCTAssertTrue(cue.contains("lb"))
-        let tare = String(localized: "There's \(unit.number(4.5359237)) \(unit.symbol) on the gauge. Zero it?", bundle: french)
+        let tare = String(localized: "There's \(unit.number(4.5359237)) \(unit.symbol) on the gauge. Taring now counts it as zero.", bundle: french)
         XCTAssertTrue(tare.contains("\u{00A0}lb"), "French nonbreaking spacing must keep the selected unit")
         XCTAssertFalse(tare.contains(" kg"))
     }

@@ -47,7 +47,7 @@ final class BLELifecycleTests: XCTestCase {
         )
         XCTAssertEqual(
             TarePolicy.disabledReason(for: .releasing(slot: 0)),
-            "Tare is unavailable while waiting for you to let go."
+            "Tare is unavailable until you let go."
         )
 
         for phase in [RunnerPhase.working(slot: 0), .releasing(slot: 0)] {

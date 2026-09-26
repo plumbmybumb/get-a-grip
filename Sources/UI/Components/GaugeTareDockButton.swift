@@ -28,11 +28,11 @@ struct GaugeTareDockButton: View {
                    enabled: enabled && device.state.isConnected,
                    disabledReason: disabledReason) { requestTare() }
             .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: tareTick)
-            .alert("Zero the gauge?", isPresented: $showingConfirmation) {
-                Button("Zero it", role: .destructive) { confirmTare() }
+            .alert("Tare under load?", isPresented: $showingConfirmation) {
+                Button("Tare", role: .destructive) { confirmTare() }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Zero it?"))
+                Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Taring now counts it as zero."))
             }
     }
 

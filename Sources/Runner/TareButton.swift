@@ -71,13 +71,13 @@ struct TareButton: View {
         .foregroundStyle(enabled ? Ink.primary : Ink.tertiary.opacity(0.5))
         .accessibilityHint(tareDisabledReason
                            ?? (tapDecision == .wakeStream
-                               ? String(localized: "Restart the reading. The gauge is connected but not sending.")
-                               : String(localized: "Zero the gauge.")))
-        .alert("Zero the gauge?", isPresented: $showingConfirmation) {
-            Button("Zero it", role: .destructive) { confirmTare() }
+                               ? String(localized: "Restarts a stalled reading.")
+                               : String(localized: "Sets the reading to zero.")))
+        .alert("Tare under load?", isPresented: $showingConfirmation) {
+            Button("Tare", role: .destructive) { confirmTare() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Zero it?"))
+            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Taring now counts it as zero."))
         }
     }
 

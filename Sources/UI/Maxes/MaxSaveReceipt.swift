@@ -149,7 +149,7 @@ struct MaxSaveReceiptView: View {
                     }
                     .accessibilityIdentifier("max.receipt.scale.\(offer.id)")
                     if failed.contains(offer.id) {
-                        Text("Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are.")
+                        Text("Maxes saved, but the targets didn't update. Try again.")
                             .font(.footnote)
                             .foregroundStyle(Accent.alarm)
                             .fixedSize(horizontal: false, vertical: true)

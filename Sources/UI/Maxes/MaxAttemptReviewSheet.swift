@@ -130,7 +130,7 @@ struct MaxAttemptReviewSheet: View {
     private func footer(_ draft: MaxMeasurementDraft) -> some View {
         VStack(spacing: 10) {
             if saveFailed {
-                Text("Couldn’t save. Your pulls are still here — try again.")
+                Text("Couldn't save. Try again.")
                     .font(.footnote)
                     .foregroundStyle(Accent.alarm)
                     .multilineTextAlignment(.center)

@@ -2231,7 +2231,7 @@
         }
       }
     },
-    "Tare is unavailable while waiting for you to let go." : {
+    "Tare is unavailable until you let go." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {

@@ -97,7 +97,7 @@ struct MaxEditSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if failed {
-                    Text("Couldn’t save your maxes. Your changes are still here—please try again.")
+                    Text("Couldn't save your maxes. Try again.")
                         .font(.system(.footnote))
                         .foregroundStyle(Accent.alarm)
                         .fixedSize(horizontal: false, vertical: true)
@@ -140,7 +140,7 @@ struct MaxEditSheet: View {
 
     private func bandCaption(_ kg: Double) -> String? {
         guard kg > 0 else {
-            return String(localized: "Not set. Enter a value to save a max for this hand.")
+            return String(localized: "Not set")
         }
         guard let band = PlanMath.suggestedBand(maxKg: kg) else { return nil }
         return String(localized: "20–30 % of that is \(weightUnit.number(band.lowerBound))–\(weightUnit.number(band.upperBound)) \(weightUnit.symbol)")

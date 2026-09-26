@@ -63,11 +63,11 @@ struct GaugeView: View {
             }
         }
         .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: tareTick)
-        .alert("Zero the gauge?", isPresented: $showingTareConfirmation) {
-            Button("Zero it", role: .destructive) { confirmTare() }
+        .alert("Tare under load?", isPresented: $showingTareConfirmation) {
+            Button("Tare", role: .destructive) { confirmTare() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Zero it?"))
+            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Taring now counts it as zero."))
         }
         .task(id: device.isStreaming) {
             waitingForSignal = false
@@ -159,9 +159,9 @@ struct GaugeView: View {
         ZStack {
             Color.clear
             if !device.state.isConnected {
-                notice(String(localized: "Connect a gauge and pull — the force draws here."))
+                notice(String(localized: "Connect a gauge and pull to see the force."))
             } else if device.isStreaming, waitingForSignal, !device.isSignalFresh {
-                notice(String(localized: "Waiting for the gauge. It's connected but not sending — try Wake."))
+                notice(String(localized: "Connected, but no readings yet. Tap Wake."))
                     .accessibilityIdentifier("gauge.signalWarning")
             }
         }
@@ -237,7 +237,7 @@ struct GaugeView: View {
                 }
 
                 if case .unsupported = device.state {
-                    Text("This device has no Bluetooth radio. Use demo mode to look around.")
+                    Text("No Bluetooth on this device. Try demo mode.")
                         .font(.system(.footnote))
                         .foregroundStyle(Ink.tertiary)
                         .multilineTextAlignment(.center)

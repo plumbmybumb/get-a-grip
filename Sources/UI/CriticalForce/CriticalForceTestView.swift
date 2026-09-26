@@ -354,7 +354,7 @@ struct CriticalForceTestView: View {
     @ViewBuilder
     private var loadWarning: some View {
         if let kg = loadOnGaugeKg {
-            Text("There's \(weightUnit.text(kg)) on the gauge. Let go, then start: it zeroes first.")
+            Text("There's \(weightUnit.text(kg)) on the gauge. Let go, then start.")
                 .font(.system(.footnote, weight: .medium))
                 .foregroundStyle(StatusTint.armed)
                 .multilineTextAlignment(.center)
@@ -366,7 +366,7 @@ struct CriticalForceTestView: View {
     private var testingDock: some View {
         VStack(spacing: 8) {
             if awaitingNextHand {
-                Text("\(hands.sides[0].name) hand done. Set up your \(side.name.lowercased()) hand with the gauge unloaded, then start: it zeroes first.")
+                Text("\(hands.sides[0].name) hand done. Unload the gauge, then start your \(side.name.lowercased()) hand.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
                     .multilineTextAlignment(.center)
@@ -385,7 +385,7 @@ struct CriticalForceTestView: View {
                 }
                 .accessibilityIdentifier("cf.finishFirstHand")
             } else if session.phase == .armed {
-                Text("The test starts the moment you pull. Pull as hard as you can.")
+                Text("The test starts when you pull. Pull as hard as you can.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
                     .multilineTextAlignment(.center)
@@ -439,7 +439,7 @@ struct CriticalForceTestView: View {
                     .padding(.horizontal, 12)
             }
             if saveFailed {
-                Text("Couldn’t save. Your result is still here — try again.")
+                Text("Couldn't save. Try again.")
                     .font(.footnote)
                     .foregroundStyle(Accent.alarm)
                     .multilineTextAlignment(.center)
@@ -540,11 +540,11 @@ struct CriticalForceTestView: View {
     private var handExplainer: String {
         switch handChoice {
         case .oneAtATime:
-            String(localized: "All 24 pulls on one hand, then all 24 on the other. About 8 minutes, and each hand gets its own number.")
+            String(localized: "24 pulls on one hand, then 24 on the other. About 8 minutes, one result per hand.")
         case .bothHands:
-            String(localized: "Both hands pulling together through the gauge, on a hangboard or a two-handed block. One number.")
+            String(localized: "Both hands pull together through the gauge. One result.")
         case .single:
-            String(localized: "Just one hand, for when only one needs testing.")
+            String(localized: "Test one hand only.")
         }
     }
 
@@ -834,11 +834,11 @@ struct CriticalForceTestView: View {
     static func words(for reason: CriticalForceTest.VoidReason) -> String {
         switch reason {
         case .tooFewReps:
-            String(localized: "Stopped before pull 16, before your force had levelled off, so there’s no result. Rest at least half an hour before trying again, or test another day.")
+            String(localized: "Stopped before pull 16, so there's no result. Rest at least 30 minutes before retesting.")
         case .lostGauge:
-            String(localized: "The gauge dropped before pull 16, so there’s no result. A paused test measures something else, because the reserve refills while you wait. Rest at least half an hour, then test again.")
+            String(localized: "The gauge disconnected before pull 16, so there's no result. Rest at least 30 minutes before retesting.")
         case .leftApp:
-            String(localized: "The test stopped when you left the app before pull 16, so there’s no result. Rest at least half an hour, then test again.")
+            String(localized: "You left the app before pull 16, so there's no result. Rest at least 30 minutes before retesting.")
         }
     }
 
@@ -847,9 +847,9 @@ struct CriticalForceTestView: View {
         case .tooFewReps:
             String(localized: "Stopped before pull 16, so there’s no result.")
         case .tooLittleData:
-            String(localized: "The gauge’s readings had too many gaps in the last pulls to give a result. Keep the phone close to the gauge next time.")
+            String(localized: "Too many gaps in the gauge's readings to give a result. Keep the phone closer next time.")
         case .noPull:
-            String(localized: "No pulls were recorded. Check the gauge is zeroed and that the pull goes through it.")
+            String(localized: "No pulls recorded. Tare the gauge and pull through it.")
         }
     }
 }
@@ -1054,13 +1054,13 @@ struct CriticalForceAboutSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     section(String(localized: "What it measures"),
-                            String(localized: "Critical force is the force your fingers can keep producing once the fast reserve is spent: your endurance ceiling. The test drains that reserve with 24 all-out pulls, and your force levels off at your critical force."))
+                            String(localized: "The force your fingers can sustain once their fast reserve is spent: your endurance ceiling. 24 all-out pulls drain that reserve, and your force levels off at critical force."))
                     section(String(localized: "The clock never waits"),
-                            String(localized: "Seven seconds on, three off, every time. The result depends on that rhythm, so the rest does not wait for you to let go. Force pulled after the bell isn’t counted."))
+                            String(localized: "7 s on, 3 s off, with no pauses. The result depends on that rhythm, so rests don't wait for you. Force after the bell isn't counted."))
                     section(String(localized: "Keep tests comparable"),
-                            String(localized: "Warm up first. Use the same grip, hand and arm position each time, and leave a few weeks between tests. Your first test is partly practice."))
+                            String(localized: "Warm up first. Use the same grip and arm position each time. Leave a few weeks between tests; the first is partly practice."))
                     section(String(localized: "Hands"),
-                            String(localized: "One at a time runs all 24 pulls on one hand, then all 24 on the other, and each hand gets its own number. Both hands means both pulling together through the gauge. The hands never alternate pull by pull, because that changes the rhythm and the result."))
+                            String(localized: "One at a time: 24 pulls on one hand, then 24 on the other, one result each. Both hands: they pull together through the gauge. Hands never alternate pull by pull; that would change the rhythm."))
                 }
                 .padding(.horizontal, Metrics.hPadding)
                 .padding(.vertical, 20)

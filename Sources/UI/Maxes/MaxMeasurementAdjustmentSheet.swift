@@ -34,7 +34,7 @@ struct MaxMeasurementAdjustmentSheet: View {
                                  limit: weightUnit.rangeFromKg(0...maximum), step: 0.5, decimals: 1,
                                  caption: String(localized: "Measured: \(weightUnit.text(measuredPeaks[value.side] ?? value.kg))"))
                     }
-                    Text("Adjusted values are saved as manual entries. Your recorded trace stays unchanged.")
+                    Text("Adjusted values save as manual entries. The trace is unchanged.")
                         .font(.footnote)
                         .foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
