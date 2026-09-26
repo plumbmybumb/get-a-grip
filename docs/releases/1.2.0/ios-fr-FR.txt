@@ -1,0 +1,8 @@
+• Force critique : un test de 4 minutes, 24 tractions à fond (7 s d'effort, 3 s de repos), qui mesure la charge que chaque main peut tenir sur n'importe quelle prise. Lancez-le depuis l’onglet Tests.
+• L’onglet Max devient Tests : la carte de chaque prise montre son maximum et sa force critique, avec l'historique des deux.
+• Mesurer un maximum devient une visite : tirez autant de fois que vous voulez, chaque traction compte comme une tentative, puis passez-les en revue et gardez la meilleure pour chaque main.
+• L'écran de séance montre toute la routine : une barre de temps au-dessus de chaque série et de chaque traction, pour toujours savoir où vous en êtes.
+• Votre poids de corps se règle dans Réglages et met la force critique en perspective.
+• La jauge en direct et le test de maximum gardent l'écran allumé.
+• Plus simple et plus court : la visite guidée et les conseils de l’éditeur disparaissent, et chaque écran ne dit que l’essentiel.
+• L'export pour analyse inclut les tests de force critique.

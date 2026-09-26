@@ -1,0 +1,8 @@
+• Critical force: a 4-minute test of 24 all-out pulls (7 s on, 3 s off) that measures the load each hand can sustain on any grip. Start it from Benchmarks.
+• Maxes is now Benchmarks: each grip's card shows its max and its critical force together, with the history of both.
+• Measuring a max is a visit: pull as often as you like, every pull counts as an attempt, then review and keep the best for each hand.
+• The session screen shows the whole routine: one time bar over every set and pull, so you always know where you are.
+• Your body weight lives in Settings and puts critical force in context.
+• The live gauge and the max test keep the screen awake.
+• Plainer and shorter: the tour and the builder's hints are gone, and every screen says only what it needs to.
+• Export for analysis includes critical force tests.
