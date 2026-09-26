@@ -47,7 +47,12 @@ struct CriticalForceProtocol: Hashable, Sendable {
     /// protocol, which is what every record so far used.
     init(key: String) {
         let parts = key.split(whereSeparator: { $0 == ":" || $0 == "x" }).compactMap { Double($0) }
-        if parts.count == 3, parts[0] > 0, parts[1] > 0, parts[2] >= 1 {
+        // Every guard is a trap avoided: `Int(_:)` on a Double traps for anything infinite,
+        // NaN or past `Int.max` ("7:3x1e20", "inf:3x24"), and so did `format` writing the
+        // key back. Unreadable reads as standard. The reps bound is Kotlin's `Int`, so the
+        // two platforms read every key the same way.
+        if parts.count == 3, parts.allSatisfy(\.isFinite), parts[0] > 0, parts[1] > 0,
+           parts[2] >= 1, parts[2] <= Double(Int32.max) {
             self.init(workSeconds: parts[0], restSeconds: parts[1], reps: Int(parts[2]))
         } else {
             self.init()
@@ -64,7 +69,7 @@ struct CriticalForceProtocol: Hashable, Sendable {
     func workEnd(_ rep: Int) -> Double { workStart(rep) + workSeconds }
 
     private static func format(_ value: Double) -> String {
-        value == value.rounded() ? String(Int(value)) : String(value)
+        value == value.rounded() && abs(value) < 1e15 ? String(Int(value)) : String(value)
     }
 }
 
@@ -338,6 +343,14 @@ struct CriticalForceTest: Sendable {
         case settling
         case finished
         case voided(VoidReason)
+
+        /// A test between its first pull and its result: the clock is running.
+        var isRunning: Bool {
+            switch self {
+            case .pulling, .resting, .settling: true
+            default: false
+            }
+        }
     }
 
     enum VoidReason: Hashable, Sendable {
@@ -372,12 +385,7 @@ struct CriticalForceTest: Sendable {
         self.proto = proto
     }
 
-    var isRunning: Bool {
-        switch phase {
-        case .pulling, .resting, .settling: true
-        default: false
-        }
-    }
+    var isRunning: Bool { phase.isRunning }
 
     /// Whether ending now keeps a result: `minRepsForResult` bells have rung.
     var canFinishEarly: Bool { isRunning && repsRun >= CriticalForceRules.minRepsForResult }
@@ -583,12 +591,22 @@ enum CriticalForceTrace {
         var data = Data([version, UInt8(hz)])
         withUnsafeBytes(of: UInt32(count).littleEndian) { data.append(contentsOf: $0) }
         for slot in 0..<count {
+            // Clamped as a Double BEFORE any integer conversion: `Int(_:)` traps on a huge
+            // or non-finite value, which `Int16(clamping:)` never got the chance to clamp.
             let value: Int16 = counts[slot] == 0 ? hole
-                : Int16(clamping: Int((sums[slot] / Double(counts[slot]) * 100).rounded()))
+                : Self.centi(sums[slot] / Double(counts[slot]))
             let stored = counts[slot] == 0 ? hole : max(hole + 1, value)
             withUnsafeBytes(of: stored.littleEndian) { data.append(contentsOf: $0) }
         }
         return data
+    }
+
+    /// Kilograms as clamped Int16 centi-kilograms, total: NaN reads as 0 (Kotlin's
+    /// `toInt()`), and anything past either end is that end.
+    static func centi(_ kg: Double) -> Int16 {
+        let scaled = (kg * 100).rounded()
+        guard !scaled.isNaN else { return 0 }
+        return Int16(min(max(scaled, Double(Int16.min)), Double(Int16.max)))
     }
 
     /// Total: malformed data decodes to what it can, never traps.

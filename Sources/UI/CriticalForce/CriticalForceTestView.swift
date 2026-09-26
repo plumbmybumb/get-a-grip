@@ -868,15 +868,6 @@ struct CriticalForceTestView: View {
     }
 }
 
-extension CriticalForceTest.Phase {
-    var isRunning: Bool {
-        switch self {
-        case .pulling, .resting, .settling: true
-        default: false
-        }
-    }
-}
-
 // MARK: - Live leaves
 
 /// One tint ladder for the test, the runner's: amber while it waits on you, bleu while a

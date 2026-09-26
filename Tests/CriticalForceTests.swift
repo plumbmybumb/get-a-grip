@@ -306,6 +306,29 @@ final class CriticalForceTests: XCTestCase {
         XCTAssertEqual(decoded[1].kg, 12.34, accuracy: 0.005)
     }
 
+    /// Out-of-range kilograms clamp to the storable range; nothing traps on the way. A
+    /// huge finite value used to reach `Int(_:)` before `Int16(clamping:)` could clamp it.
+    func testTheTraceClampsOutOfRangeReadingsInsteadOfTrapping() {
+        let points = [CriticalForcePoint(t: 0, kg: 1e20), CriticalForcePoint(t: 0.1, kg: -1e20),
+                      CriticalForcePoint(t: 0.2, kg: .greatestFiniteMagnitude),
+                      CriticalForcePoint(t: 0.3, kg: .nan)]
+        let decoded = CriticalForceTrace.decode(CriticalForceTrace.encode(points))
+        XCTAssertEqual(decoded.map(\.kg), [327.67, -327.67, 327.67, 0], "clamped, and never the hole")
+    }
+
+    /// Unreadable protocol keys read as the standard test, never trap: `Int(_:)` on a
+    /// non-finite or past-`Int` Double used to. Parity with Kotlin's `fromKey`.
+    func testOutOfRangeProtocolKeysReadAsStandard() {
+        let standard = CriticalForceProtocol.standard
+        for key in ["7:3x1e20", "7:3xinf", "7:3xnan", "inf:3x24", "7:infx24", "7:3x-inf",
+                    "1e400:3x24", "7:3x3000000000"] {
+            XCTAssertEqual(CriticalForceProtocol(key: key), standard, key)
+        }
+        XCTAssertEqual(CriticalForceProtocol(key: "7:3x2147483647").reps, 2_147_483_647, "Kotlin's Int.MAX_VALUE still reads")
+        XCTAssertEqual(CriticalForceProtocol(workSeconds: 1e20, restSeconds: 3, reps: 24).key, "1e+20:3x24",
+                       "a huge value writes back without trapping")
+    }
+
     func testMalformedTraceDecodesToNothing() {
         XCTAssertEqual(CriticalForceTrace.decode(Data([9, 9, 9])), [])
         XCTAssertEqual(CriticalForceTrace.decode(Data()), [])

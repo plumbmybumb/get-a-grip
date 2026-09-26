@@ -73,7 +73,9 @@ data class CriticalForceProtocol(
         /// standard protocol, which is what every record so far used.
         fun fromKey(key: String): CriticalForceProtocol {
             val parts = key.split(':', 'x').filter { it.isNotEmpty() }.mapNotNull { it.toDoubleOrNull() }
-            if (parts.size == 3 && parts[0] > 0 && parts[1] > 0 && parts[2] >= 1 && parts[2] <= Int.MAX_VALUE) {
+            // Finite throughout, as on iOS, where a non-finite part traps `Int(_:)`.
+            if (parts.size == 3 && parts.all { it.isFinite() } && parts[0] > 0 && parts[1] > 0 &&
+                parts[2] >= 1 && parts[2] <= Int.MAX_VALUE) {
                 return CriticalForceProtocol(parts[0], parts[1], parts[2].toInt())
             }
             return CriticalForceProtocol()

@@ -353,6 +353,26 @@ class CriticalForceTests {
         assertEquals(12.34, decoded[1].kg, 0.005)
     }
 
+    /// Out-of-range kilograms clamp to the storable range (iOS traps were fixed alongside).
+    @Test
+    fun theTraceClampsOutOfRangeReadings() {
+        val points = listOf(CriticalForcePoint(0.0, 1e20), CriticalForcePoint(0.1, -1e20),
+            CriticalForcePoint(0.2, Double.MAX_VALUE), CriticalForcePoint(0.3, Double.NaN))
+        val decoded = CriticalForceTrace.decode(CriticalForceTrace.encode(points))
+        assertEquals(listOf(327.67, -327.67, 327.67, 0.0), decoded.map { it.kg }, "clamped, and never the hole")
+    }
+
+    /// Unreadable protocol keys read as the standard test; parity with iOS, where `Int(_:)`
+    /// on a non-finite or past-`Int` Double traps.
+    @Test
+    fun outOfRangeProtocolKeysReadAsStandard() {
+        for (key in listOf("7:3x1e20", "7:3xinf", "7:3xNaN", "Infinity:3x24", "7:Infinityx24", "7:3x-Infinity",
+            "1e400:3x24", "7:3x3000000000")) {
+            assertEquals(proto, CriticalForceProtocol.fromKey(key), key)
+        }
+        assertEquals(Int.MAX_VALUE, CriticalForceProtocol.fromKey("7:3x2147483647").reps)
+    }
+
     @Test
     fun malformedTraceDecodesToNothing() {
         assertEquals(emptyList(), CriticalForceTrace.decode(byteArrayOf(9, 9, 9)))
