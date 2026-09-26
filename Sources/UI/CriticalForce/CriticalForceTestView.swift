@@ -120,6 +120,20 @@ struct CriticalForceTestView: View {
             #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("-startCriticalForce"),
                !device.state.isConnected { device.connect() }
+            // Headless: the result screen without four minutes per hand. Each hand is the
+            // demo gauge's all-out script run through the real engine, the second weaker.
+            if ProcessInfo.processInfo.arguments.contains("-previewCriticalForceResult"),
+               stage == .setup {
+                results = hands.sides.enumerated().compactMap { index, side in
+                    DebugSeeding.mockCriticalForceTest(scale: index == 0 ? 1 : 0.93).map {
+                        CriticalForceHandResult(side: side, result: $0.result, trace: $0.trace)
+                    }
+                }
+                if let first = results.first {
+                    shownSide = first.side
+                    stage = .result
+                }
+            }
             #endif
         }
         .onChange(of: session.phase) { _, phase in finishIfDone(phase) }

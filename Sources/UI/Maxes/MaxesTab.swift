@@ -98,9 +98,11 @@ struct MaxesTab: View {
         }
         #if DEBUG
         // Headless: `-tab 2 -previewCriticalForce` opens the test (add `-startCriticalForce`
-        // with `-mockDevice` to run it). `simctl` cannot tap the + menu.
+        // with `-mockDevice` to run it; `-previewCriticalForceResult` lands on a finished
+        // test's result screen instead). `simctl` cannot tap the + menu.
         .onAppear {
-            if ProcessInfo.processInfo.arguments.contains("-previewCriticalForce"),
+            let args = ProcessInfo.processInfo.arguments
+            if args.contains("-previewCriticalForce") || args.contains("-previewCriticalForceResult"),
                criticalForceTest == nil { startCriticalForce() }
         }
         #endif

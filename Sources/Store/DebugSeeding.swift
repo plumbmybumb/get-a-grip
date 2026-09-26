@@ -103,6 +103,24 @@ enum DebugSeeding {
         }
     }
 
+    /// One hand's whole critical force test, run offline through the REAL engine on the
+    /// demo gauge's all-out script — exactly what a live test on the mock would save,
+    /// without the four minutes. `-previewCriticalForceResult` lands on its result screen.
+    /// `scale` makes the second hand a little weaker, as the seeded visits are. Returns
+    /// engine types only: this file is compiled into the watch too.
+    static func mockCriticalForceTest(scale: Double = 1) -> (result: CriticalForceResult, trace: Data)? {
+        var test = CriticalForceTest()
+        let step = 1.0 / 80
+        var t = 0.0
+        while test.phase != .finished, t < test.proto.totalSeconds + 30 {
+            _ = test.sample(kg: MockForceProfile.force(at: t, profile: .allOut) * scale, at: t)
+            _ = test.tick(now: t)
+            t += step
+        }
+        guard case .success(let result)? = test.result() else { return nil }
+        return (result, CriticalForceTrace.encode(test.points))
+    }
+
     /// Three weeks of plausible sessions: mostly twice a day, a few single days, two rest
     /// days, and a load that drifts upward slowly — enough to exercise the month grid,
     /// the trend line and the "holding steady" copy without pretending to be real data.
