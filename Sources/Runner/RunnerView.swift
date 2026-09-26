@@ -478,15 +478,14 @@ struct RunnerView: View {
             .accessibilityIdentifier("runner.graph")
     }
 
-    /// On the phone the trace is this region's background, stretched to the screen's
-    /// trailing edge — where its newest seconds arrive — but never under the panel or
-    /// dock (see `backgroundTrace`); its leading edge stays on the column's margin. The
-    /// wide layout's trace is the whole screen's background instead.
+    /// On the phone the trace is this region's background, stretched sideways to the
+    /// screen edges but never under the panel or dock — see `backgroundTrace`. The wide
+    /// layout's trace is the whole screen's background instead.
     @ViewBuilder
     private func regionTrace(_ session: RunnerSession, wide: Bool) -> some View {
         if !timerOnly, !wide {
             liveTrace(session, plot: ForceTraceView.PlotInsets(top: 12, bottom: 6, trailing: 8))
-                .padding(.trailing, -Metrics.hPadding)
+                .padding(.horizontal, -Metrics.hPadding)
         }
     }
 
