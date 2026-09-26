@@ -344,11 +344,6 @@ private fun GripRail(draft: MaxEntryDraft) {
                 ) { draft.grip = candidate }
             }
         }
-        Text(
-            tr("Grips from your routines. Tap one, then change anything you like."),
-            style = MaterialTheme.typography.bodySmall,
-            color = palette.inkTertiary,
-        )
     }
 }
 
@@ -445,11 +440,6 @@ private fun ColumnScope.ImpactContent(
                     )
                 }
             }
-            Text(
-                tr("Percent targets always follow your newest max — nothing to do."),
-                style = MaterialTheme.typography.bodySmall,
-                color = palette.inkTertiary,
-            )
         }
     }
 
@@ -473,11 +463,6 @@ private fun ColumnScope.ImpactContent(
                     }
                 }
             }
-            Text(
-                tr("These were typed by hand, so they never move on their own. Scale them with the new max, or leave them."),
-                style = MaterialTheme.typography.bodySmall,
-                color = palette.inkTertiary,
-            )
             PrimaryButton(tr("Scale with the new max")) { onScale(ratio) }
         }
     }

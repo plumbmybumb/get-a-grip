@@ -129,8 +129,6 @@ fun MaxEditSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit) 
                         }
                     }
                 }
-                Text(tr("Percentage targets follow the values you save. Earlier records stay in your history."),
-                    style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
                 if (draft.hasInvalidChanges) Text(tr("Enter a max above zero. To remove a record, open Earlier records."),
                     style = MaterialTheme.typography.bodySmall, color = palette.alarm)
                 if (failed) Text(tr("Couldn’t save your maxes. Your changes are still here—please try again."),

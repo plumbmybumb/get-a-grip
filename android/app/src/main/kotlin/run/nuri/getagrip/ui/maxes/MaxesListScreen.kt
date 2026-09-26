@@ -167,16 +167,6 @@ fun MaxesListScreen(
                     }
                 }
             }
-
-            item("footnote") {
-                // Provenance: rows mark "measured"; this says the distinction exists and what the numbers are for.
-                Text(
-                    tr("A max is either measured on the gauge or set by you — the measured ones say so. The percentages elsewhere in the app are worked out from these."),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = palette.inkTertiary,
-                    modifier = Modifier.padding(top = 14.dp, bottom = 24.dp),
-                )
-            }
         }
     }
 }
@@ -452,11 +442,6 @@ private fun EmptyCard() {
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = palette.inkSecondary,
-            )
-            Text(
-                tr("Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need."),
-                style = MaterialTheme.typography.bodySmall,
-                color = palette.inkTertiary,
             )
         }
     }

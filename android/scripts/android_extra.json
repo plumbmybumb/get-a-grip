@@ -99,15 +99,6 @@
       "fr": "millimètres"
     },
     {
-      "en": "No max on file for this grip yet, so this shows no target during a session. Add one in Maxes.",
-      "fr": "Aucun max enregistré pour cette prise, donc rien ne s'affiche comme cible pendant une séance. Ajoutes-en un dans Max.",
-      "//": "ANDROID PATH: the catalog says \"Settings › Maxes\", where iOS keeps its max list. Android's Maxes is a tab of its own."
-    },
-    {
-      "en": "No max for your %s hand, so those pulls show no target. Add one in Maxes.",
-      "fr": "Aucun max pour ta main %s, donc ces tirages n'affichent aucune cible. Ajoutes-en un dans Max."
-    },
-    {
       "en": "%d days ago",
       "fr": "il y a %d jours",
       "//": "iOS gets these five from the system's relative-date formatter (`.relative(presentation: .named)`); Android's `relative()` is hand-written and coarse on purpose, so the words are too. Only ever reached with a count of 2 or more, which is why none of them needs a plural form."
@@ -143,11 +134,6 @@
       "//": "The Android summary screen says what the day still owes; the iOS summary does not carry this line."
     },
     {
-      "en": "The big word is the hand that goes on the edge. Your fingers hang off the palm at the top of the screen, so the grip reads without a word.",
-      "fr": "Le mot en gros, c'est la main qui va sur la réglette. Tes doigts pendent sous la paume en haut de l'écran, donc la préhension se lit sans un mot.",
-      "//": "The tour's runner-hand step. The iOS twin names the Dynamic Island, which is an iPhone fact this app cannot state — Android draws its own palm on every phone (PalmHand), so this sentence has no iOS twin."
-    },
-    {
       "en": "Allow camera access in Settings to scan a routine. You can still open a shared routine link.",
       "fr": "Autorise l’accès à la caméra dans les réglages pour scanner une routine. Tu peux toujours ouvrir un lien de routine partagé."
     },
@@ -158,10 +144,6 @@
     {
       "en": "Point your camera at a Get a Grip routine QR code.",
       "fr": "Vise le QR code d’une routine Get a Grip avec ta caméra."
-    },
-    {
-      "en": "Opens an email draft with your app version, Android version, phone model and selected gauge.",
-      "fr": "Ouvre un brouillon d’e-mail avec la version de l’application, la version d’Android, le modèle du téléphone et le capteur sélectionné."
     },
     {
       "en": "Recent connection and signal details will be added to your email. You can review them before sending.",
@@ -194,10 +176,6 @@
     {
       "en": "Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice.",
       "fr": "Get a Grip n’est pas un dispositif médical et ne diagnostique, ne traite, ne guérit ni ne prévient aucune affection. Consultez un professionnel de santé pour un avis médical."
-    },
-    {
-      "en": "Use + to add a max. Each grip has an Edit button for changing hand values and reviewing earlier records. Your charts and percentage targets use these same numbers.",
-      "fr": "Utilisez + pour ajouter un max. Chaque prise a un bouton Modifier pour ajuster les valeurs de chaque main et consulter les anciens tests. Ces mêmes valeurs servent aux graphiques et aux cibles en pourcentage."
     },
     {
       "en": "Open Get a Grip to save it.",
@@ -447,10 +425,6 @@
       "fr": "Tire aussi fort que possible. Relâche au signal."
     },
     {
-      "en": "Asked once; change it in Settings.",
-      "fr": "Demandé une seule fois ; modifiable dans les Réglages."
-    },
-    {
       "en": "Last: %@ · %@",
       "fr": "Dernier : %@ · %@"
     },
@@ -507,10 +481,6 @@
       "fr": "Tests"
     },
     {
-      "en": "Your ceiling and endurance, per grip",
-      "fr": "Ton plafond et ton endurance, par prise"
-    },
-    {
       "en": "No max yet. Measure one to see critical force as a share of it.",
       "fr": "Pas encore de max. Mesures-en un pour voir la force critique en part de celui-ci."
     },
@@ -559,10 +529,6 @@
       "fr": "Pas de max pour ta main %@, donc ces tirages n’ont pas de cible. Ajoutes-en un dans l’onglet Tests."
     },
     {
-      "en": "Each grip's max and critical force. Measure again opens the gauge for a max; Test critical force runs the four-minute test. Edit changes your hand values.",
-      "fr": "Le max et la force critique de chaque prise. Mesurer à nouveau ouvre le capteur pour un max ; Tester la force critique lance le test de quatre minutes. Modifier change les valeurs de tes mains."
-    },
-    {
       "en": "Start %@ hand",
       "fr": "Démarrer la main %@"
     },
@@ -589,10 +555,6 @@
     {
       "en": "Critical force history",
       "fr": "Historique de force critique"
-    },
-    {
-      "en": "Start zeroes the gauge, then waits for your first pull.",
-      "fr": "Commencer met le capteur à zéro, puis attend ton premier tirage."
     },
     {
       "en": "There's %@ on the gauge. Let go, then start: it zeroes first.",

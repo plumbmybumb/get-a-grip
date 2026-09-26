@@ -332,8 +332,6 @@ class MaxMeasureSafetyTests {
         compose.mainClock.advanceTimeBy(100)
         saving("left", "Saves 29.3 kg, adjusted by hand.")
         saving("right", "Saves 42.5 kg.")
-        compose.onNodeWithText("Adjusted values are saved as manual entries. Your recorded trace stays unchanged.")
-            .assertIsDisplayed()
         click("max.review.save")
         compose.runOnIdle {
             assertEquals(listOf(MaxMeasurementResult(Side.left, 29.3, MaxSource.manual),

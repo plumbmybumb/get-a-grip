@@ -186,11 +186,10 @@ fun TargetBandRow(
         else -> resolved(sides[0])?.let { WeightUnits.band(it) } ?: percentText(percentBand)
     }
 
+    // Only what the header cannot show: a hand with no max to resolve against, or the two
+    // hands' different loads.
     val caption: String? = when {
-        kgBand != null ->
-            // An explicit load is the one kind that goes stale — the price of not needing a max.
-            tr("A fixed load, the same on both hands — it stays put when your max moves.")
-        percentBand == null -> null
+        kgBand != null || percentBand == null -> null
         else -> {
             val resolvedSides = sides.filter { resolved(it) != null }
             when {
@@ -206,7 +205,7 @@ fun TargetBandRow(
                         missing.displayName.lowercase(),
                     )
                 }
-                !differsByHand -> tr("%s of your max on this grip", percentText(percentBand))
+                !differsByHand -> null
                 else -> {
                     val loads = sides.mapNotNull { side ->
                         resolved(side)?.let {

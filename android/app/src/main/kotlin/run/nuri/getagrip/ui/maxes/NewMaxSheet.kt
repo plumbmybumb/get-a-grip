@@ -97,8 +97,6 @@ fun NewMaxSheet(
                             })
                         }
                     }
-                    Text(tr("Grips from your routines. Tap one, then change anything you like."),
-                        style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
                 }
             }
             IntValueRow(title = tr("Edge"), value = draft.grip.edgeMM, range = 4..45,
@@ -120,9 +118,6 @@ fun NewMaxSheet(
                 SecondaryButton(tr("Enter by hand"), modifier = Modifier.fillMaxWidth().testTag("newMax.enter")) {
                     onEnter(draft.grip)
                 }
-                Text(tr("Pull as many times as you like with each hand, or enter the values you already know."),
-                    style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary,
-                    modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
         }
     }

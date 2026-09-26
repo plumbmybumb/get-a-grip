@@ -246,7 +246,6 @@ fun SetRowView(
                         value = set.repsPerSide,
                         range = 1..40,
                         limit = 1..SetPlan.repsRange.last,
-                        caption = tr("= %s", tensionText),
                         control = ValueControl.Stepper,
                     ) { onSetChange(set.copy(repsPerSide = it)) }
 

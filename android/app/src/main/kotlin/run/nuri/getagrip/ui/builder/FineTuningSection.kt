@@ -132,22 +132,13 @@ fun FineTuningSection(
                     tint = palette.graphite,
                     modifier = Modifier.size(20.dp),
                 )
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        tr("Fine tuning"),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = palette.inkPrimary,
-                    )
-                    if (!isOpen) {
-                        Text(
-                            tr("What counts as a pull, whether the range pauses you, and the lead-in."),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            color = palette.inkSecondary,
-                        )
-                    }
-                }
+                Text(
+                    tr("Fine tuning"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = palette.inkPrimary,
+                    modifier = Modifier.weight(1f),
+                )
                 Icon(
                     Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
@@ -181,7 +172,6 @@ fun FineTuningSection(
                             step = 0.1,
                             presets = if (WeightUnits.current == run.nuri.getagrip.ui.units.WeightUnit.kg) listOf(1.0, 2.0, 3.0, 5.0) else listOf(2.0, 4.0, 6.0, 10.0),
                             decimals = 1,
-                            caption = tr("Below this, the clock stops."),
                         ) { shown -> edit { it.copy(thresholdKg = WeightUnits.toKg(shown)) } }
                         ThresholdGaugeStrip(values.thresholdKg)
                     }
@@ -191,11 +181,6 @@ fun FineTuningSection(
                     ToggleRow(
                         title = tr("Pause when I'm out of range"),
                         checked = values.pausesOutsideTargetBand,
-                        explainer = if (values.pausesOutsideTargetBand) {
-                            tr("The clock only runs while you are inside the target range.")
-                        } else {
-                            tr("The clock runs whenever you are on the edge, whatever the load — the range is still drawn, it just stops judging. Letting go still stops the rep.")
-                        },
                     ) { pauses -> edit { it.copy(pausesOutsideTargetBand = pauses) } }
 
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -213,7 +198,6 @@ fun FineTuningSection(
                             limit = 0..60,
                             step = 5,
                             presets = listOf(0, 3, 5, 10),
-                            caption = tr("Time to get your fingers on the edge."),
                         ) { seconds -> edit { it.copy(leadInSeconds = seconds) } }
                     }
                 }
@@ -263,12 +247,6 @@ private fun ThresholdGaugeStrip(thresholdKg: Double) {
             // sample rate for fifteen seconds.
             ThresholdReadout(thresholdKg)
             ThresholdBar(thresholdKg)
-            Text(
-                tr("Pull — anything above the line counts."),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = palette.inkTertiary,
-            )
             SecondaryButton(tr("Stop"), icon = Icons.Filled.Stop) {
                 checking = false
                 if (device.isStreaming) device.stopStreaming(StreamStopCause.userStopped)

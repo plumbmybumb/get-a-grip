@@ -67,8 +67,6 @@ fun MaxSaveReceiptScreen(receipt: TemplateStore.MaxSaveReceipt, onDone: () -> Un
                             color = palette.inkSecondary)
                     }
                 }
-                Text(tr("Percent targets always follow your newest max — nothing to do."),
-                    style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
             }
             receipt.rescaleOffers.forEach { offer ->
                 MaxesContentCard {
@@ -86,8 +84,6 @@ fun MaxSaveReceiptScreen(receipt: TemplateStore.MaxSaveReceipt, onDone: () -> Un
                     if (offer.id in scaled) {
                         Text(tr("Weight targets updated"), color = palette.inkSecondary)
                     } else {
-                        Text(tr("These were typed by hand, so they never move on their own. Scale them with the new max, or leave them."),
-                            style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
                         if (offer.id in failed) Text(tr("Couldn’t update the weight targets. Your maxes are saved. Try again, or leave the targets as they are."),
                             color = palette.alarm, style = MaterialTheme.typography.bodySmall)
                         PrimaryButton(tr("Scale with the new max"), enabled = !submission.isRunning,

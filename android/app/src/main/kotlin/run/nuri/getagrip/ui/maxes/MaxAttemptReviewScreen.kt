@@ -60,7 +60,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import run.nuri.getagrip.engine.MaxAttemptLog
-import run.nuri.getagrip.engine.MaxSource
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.PrimaryButton
@@ -259,12 +258,6 @@ private fun Footer(session: LiveMaxSession, onSave: () -> Unit) {
             enabled = results.isNotEmpty() && !session.isSaving && !session.committed,
             modifier = Modifier.fillMaxWidth().testTag("max.measure.adjust"),
         ) { session.adjusting = true }
-        Text(
-            if (results.any { it.source == MaxSource.manual })
-                tr("Adjusted values are saved as manual entries. Your recorded trace stays unchanged.")
-            else tr("Saved maxes update percentage targets. Weight targets stay as entered."),
-            style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary, textAlign = TextAlign.Center,
-        )
     }
 }
 

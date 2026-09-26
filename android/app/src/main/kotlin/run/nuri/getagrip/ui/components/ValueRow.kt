@@ -90,8 +90,7 @@ fun ValueRow(
     step: Double = 1.0,
     presets: List<Double> = emptyList(),
     decimals: Int = 0,
-    /// Shown under the row when the value deserves a consequence ("= 1:00 under tension
-    /// per side", "Below this, the clock stops").
+    /// Shown under the row when the value deserves a consequence ("Measured: 42.0 kg").
     caption: String? = null,
     control: ValueControl = ValueControl.Slider,
     onValueChange: (Double) -> Unit,
@@ -448,7 +447,6 @@ private fun ValueRowPreview() {
                 step = 0.5,
                 presets = listOf(1.0, 2.0, 3.0, 5.0),
                 decimals = 1,
-                caption = tr("Below this, the clock stops."),
             ) { threshold = it }
             IntValueRow(
                 title = tr("Pulls per side"),
@@ -456,7 +454,6 @@ private fun ValueRowPreview() {
                 range = 1..40,
                 limit = 1..run.nuri.getagrip.engine.SetPlan.repsRange.last,
                 control = ValueControl.Stepper,
-                caption = L10n.tr("= %s", L10n.tr("%s under tension per side", "1:00")),
             ) { pulls = it }
             IntValueRow(
                 title = tr("Hold"),

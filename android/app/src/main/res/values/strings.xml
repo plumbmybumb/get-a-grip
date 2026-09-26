@@ -44,7 +44,6 @@
     <string name="s_kilograms_your_hardest_pull">%s kilograms, your hardest pull</string>
     <string name="s_of_each_hand_s_max">%1$s of each hand\'s max · %2$s %3$s</string>
     <string name="s_of_each_hand_s_max_kg">%1$s of each hand\'s max · %2$s kg</string>
-    <string name="s_of_your_max_on_this_grip">%s of your max on this grip</string>
     <string name="s_rest_1bd51a">%s rest</string>
     <string name="s_sends_raw_sensor_counts_so_the_first_time_a_unit_connect">%s sends raw sensor counts, so the first time a unit connects the app looks up its calibration once from its maker, by serial number. The answer is kept on this phone and never asked for again; no other gauge involves a server.</string>
     <string name="s_speaks_a_protocol_its_maker_published_but_no_unit_has_be">%s speaks a protocol its maker published, but no unit has been tried on this app yet.</string>
@@ -190,11 +189,8 @@
     <string name="s_4_fingers">4 fingers</string>
     <string name="s_45m">45m</string>
     <string name="s_4h">4h</string>
-    <string name="s_x_aa8315">= %s</string>
     <string name="s_a_compact_csv_for_your_ai_assistant_or_spreadsheet_inclu">A compact CSV for your AI assistant or spreadsheet. Includes workout totals, every recorded pull, and a short guide to the data.</string>
     <string name="s_a_compact_csv_for_your_ai_assistant_or_spreadsheet_summa">A compact CSV for your AI assistant or spreadsheet. Summary groups pulls by set and hand. Choose Every pull for individual measurements and timing.</string>
-    <string name="s_a_fixed_load_the_same_on_both_hands_it_stays_put_when_yo">A fixed load, the same on both hands — it stays put when your max moves.</string>
-    <string name="s_a_max_is_either_measured_on_the_gauge_or_set_by_you_the">A max is either measured on the gauge or set by you — the measured ones say so. The percentages elsewhere in the app are worked out from these.</string>
     <string name="s_a_max_is_the_hardest_you_can_pull_on_one_grip">A max is the hardest you can pull on one grip.</string>
     <string name="s_a_max_records_your_hardest_measured_pull_on_a_grip">A max records your hardest measured pull on a grip.</string>
     <string name="s_a_max_testing_day_new_ceilings_on_the_gauge">A max-testing day — new ceilings on the gauge.</string>
@@ -245,7 +241,6 @@
     <string name="s_back_3">Back 3</string>
     <string name="s_back_to_the_usual_values">Back to the usual values</string>
     <string name="s_battery">Battery</string>
-    <string name="s_below_this_the_clock_stops">Below this, the clock stops.</string>
     <string name="s_benchmark">Benchmark</string>
     <string name="s_best_77003d">Best</string>
     <string name="s_best_080060">Best %1$s %2$s</string>
@@ -445,7 +440,6 @@
     <string name="s_get_a_grip_training_export">Get a Grip — training export</string>
     <string name="s_get_ready_70c1b9">Get ready</string>
     <string name="s_grip_bcd6f0">Grip</string>
-    <string name="s_grips_from_your_routines_tap_one_then_change_anything_yo">Grips from your routines. Tap one, then change anything you like.</string>
     <string name="s_griptonite">Griptonite</string>
     <string name="s_griptonite_motherboard">Griptonite Motherboard</string>
     <string name="s_hands">HANDS</string>
@@ -552,7 +546,6 @@
     <string name="s_maxes_what_you_can_pull_on_each_grip">Maxes. What you can pull on each grip.</string>
     <string name="s_measure">Measure</string>
     <string name="s_measure_a_max">Measure a max</string>
-    <string name="s_measure_a_peak_on_your_gauge_or_record_a_previous_measur">Measure a peak on your gauge, or record a previous measurement. You can update it whenever you need.</string>
     <string name="s_measure_again">Measure again</string>
     <string name="s_measure_again_opens_the_gauge_for_this_grip_edit_changes">Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom.</string>
     <string name="s_measure_both_hands_together">Measure both hands together</string>
@@ -560,7 +553,6 @@
     <string name="s_measure_left_hand">Measure left hand</string>
     <string name="s_measure_on_the_gauge">Measure on the gauge</string>
     <string name="s_measure_right_hand">Measure right hand</string>
-    <string name="s_measure_the_most_a_grip_can_hold_and_it_lands_here_every">Measure the most a grip can hold and it lands here — every later test draws the curve of you getting stronger.</string>
     <string name="s_measure_your_left_and_right_hands_in_one_visit_or_enter">Measure your left and right hands in one visit, or enter the values you already know.</string>
     <string name="s_measured_955037">Measured</string>
     <string name="s_measured_on_the_gauge_your_hardest_pull_on_this_grip">Measured on the gauge — your hardest pull on this grip.</string>
@@ -603,7 +595,6 @@
     <string name="s_next_target_to_kilograms">Next: %1$s, target %2$s to %3$s kilograms</string>
     <string name="s_no_found">No %s found</string>
     <string name="s_no_bluetooth">No Bluetooth</string>
-    <string name="s_no_daily_target_and_no_reminders_it_waits_on_today_until">No daily target and no reminders — it waits on Today until you feel like it.</string>
     <string name="s_no_fingers">No fingers</string>
     <string name="s_no_gauge_found">No gauge found</string>
     <string name="s_no_live_reading">No live reading</string>
@@ -679,8 +670,6 @@
     <string name="s_pause_when_i_m_out_of_range">Pause when I\'m out of range</string>
     <string name="s_paused_c7dfb6">Paused</string>
     <string name="s_peak_c83dbb">Peak</string>
-    <string name="s_percent_targets_always_follow_your_newest_max_nothing_to">Percent targets always follow your newest max — nothing to do.</string>
-    <string name="s_percentage_targets_follow_the_values_you_save_earlier_re">Percentage targets follow the values you save. Earlier records stay in your history.</string>
     <string name="s_percentage_targets_use_the_max_saved_for_that_grip_and_h">Percentage targets use the max saved for that grip and hand. A saved max is a reference, not a safe-load limit.</string>
     <string name="s_percentage_targets_use_your_saved_maxes_these_may_no_lon">Percentage targets use your saved maxes. These may no longer reflect your current strength.</string>
     <string name="s_photos_access_is_off_for_get_a_grip_settings_privacy_pho">Photos access is off for Get a Grip — Settings &gt; Privacy &gt; Photos.</string>
@@ -703,11 +692,9 @@
     <string name="s_pull_and_watch_the_force_in_real_time">Pull and watch the force in real time</string>
     <string name="s_pull_as_hard_as_you_can_get_a_grip_keeps_the_hardest_the_c40be2">Pull as hard as you can — Get a Grip keeps the hardest the gauge sees. Or set it by hand below.</string>
     <string name="s_pull_as_hard_as_you_can_get_a_grip_keeps_the_hardest_the_90e4db">Pull as hard as you can. Get a Grip keeps the hardest the gauge sees.</string>
-    <string name="s_pull_as_many_times_as_you_like_with_each_hand_or_enter_t">Pull as many times as you like with each hand, or enter the values you already know.</string>
     <string name="s_pull_as_many_times_as_you_like_each_hand_keeps_its_harde">Pull as many times as you like. Each hand keeps its hardest pull.</string>
     <string name="s_pull_now">Pull now</string>
     <string name="s_pull_when_ready">Pull when ready</string>
-    <string name="s_pull_anything_above_the_line_counts">Pull — anything above the line counts.</string>
     <string name="s_pulling">Pulling</string>
     <string name="s_pulling_so_far">Pulling, %1$s %2$s so far</string>
     <string name="s_pulls_4ce481">Pulls</string>
@@ -775,7 +762,6 @@
     <string name="s_save_this_max_or_measure_your_other_hand">Save this max, or measure your other hand.</string>
     <string name="s_save_to_photos">Save to Photos</string>
     <string name="s_saved_c0ae8f">Saved</string>
-    <string name="s_saved_maxes_update_percentage_targets_weight_targets_sta">Saved maxes update percentage targets. Weight targets stay as entered.</string>
     <string name="s_saved_to_photos">Saved to Photos</string>
     <string name="s_saves_adjusted_by_hand">Saves %s, adjusted by hand.</string>
     <string name="s_saves">Saves %s.</string>
@@ -893,18 +879,13 @@
     <string name="s_the_calibration_lookup_needs_an_internet_connection_the">The calibration lookup needs an internet connection the first time a Dyno is used.</string>
     <string name="s_the_camera_scanner_isn_t_available_right_now_try_again_w">The camera scanner isn\'t available right now. Try again when the camera is available, or open the routine link directly.</string>
     <string name="s_the_clock">The clock</string>
-    <string name="s_the_clock_only_runs_while_you_are_inside_the_target_rang">The clock only runs while you are inside the target range.</string>
-    <string name="s_the_clock_runs_whenever_you_are_on_the_edge_whatever_the">The clock runs whenever you are on the edge, whatever the load — the range is still drawn, it just stops judging. Letting go still stops the rep.</string>
     <string name="s_the_document_is_always_written_in_english_whatever_langu">The document is always written in English, whatever language the app is in, so the assistant reads one consistent schema.</string>
     <string name="s_the_gauge_didn_t_see_a_pull_have_another_go">The gauge didn\'t see a pull. Have another go.</string>
-    <string name="s_the_hold_ends_on_time_the_rest_waits_until_you_are_off_t">The hold ends on time; the rest waits until you are off the edge.</string>
     <string name="s_the_plan_in_one_line_edge_sets_pulls_and_how_long_it_run">The plan in one line: edge, sets, pulls and how long it runs. Tap it to change any of that.</string>
-    <string name="s_the_rest_starts_the_moment_the_hold_ends_whether_or_not">The rest starts the moment the hold ends, whether or not you have let go.</string>
     <string name="s_there_is_nothing_to_export_yet_finish_a_session_or_recor">There is nothing to export yet. Finish a session or record a max, and it lands here.</string>
     <string name="s_there_s_on_the_gauge_zero_it">There\'s %1$s %2$s on the gauge. Zero it?</string>
     <string name="s_there_s_kg_on_the_gauge_zero_it">There\'s %s kg on the gauge. Zero it?</string>
     <string name="s_these_are_workout_peaks_not_necessarily_maximum_efforts">These are workout peaks, not necessarily maximum efforts. Choose only the ones you want to use for future percentage targets.</string>
-    <string name="s_these_were_typed_by_hand_so_they_never_move_on_their_own">These were typed by hand, so they never move on their own. Scale them with the new max, or leave them.</string>
     <string name="s_this_dyno_did_not_report_a_serial_number_so_its_calibrat">This Dyno did not report a serial number, so its calibration cannot be looked up.</string>
     <string name="s_this_build_can_t_reach_its_shared_storage_so_routines_sa">This build can\'t reach its shared storage, so routines saved earlier may not appear here.</string>
     <string name="s_this_build_has_no_frez_access_key_so_the_dyno_s_calibrat">This build has no Frez access key, so the Dyno\'s calibration cannot be fetched.</string>
@@ -921,7 +902,6 @@
     <string name="s_thumb_557518">Thumb</string>
     <string name="s_thumb_2ce0ce">Thumb, %s</string>
     <string name="s_time_for_a_session">Time for a session.</string>
-    <string name="s_time_to_get_your_fingers_on_the_edge">Time to get your fingers on the edge.</string>
     <string name="s_timing_only_7aea1c">Timing only</string>
     <string name="s_tindeq">Tindeq</string>
     <string name="s_tindeq_progressor">Tindeq Progressor</string>
@@ -964,7 +944,6 @@
     <string name="s_weighted_hangs">Weighted hangs</string>
     <string name="s_weighted_or_max_hangs_you_did_on_your_own_no_gauge_behin">Weighted or max hangs you did on your own — no gauge behind it.</string>
     <string name="s_weiheng">Weiheng</string>
-    <string name="s_what_counts_as_a_pull_whether_the_range_pauses_you_and_t">What counts as a pull, whether the range pauses you, and the lead-in.</string>
     <string name="s_what_you_can_pull_on_each_grip">What you can pull on each grip</string>
     <string name="s_whenever">Whenever</string>
     <string name="s_whenever_you_re_fresh">Whenever you\'re fresh</string>
@@ -991,7 +970,6 @@
     <string name="s_your_routines_and_sessions_are_stored_on_this_device_pri">Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing.</string>
     <string name="s_your_routines_and_sessions_stay_on_this_device_and_in_yo">Your routines and sessions stay on this device and in your private iCloud. Nobody else can read them — not even us.</string>
     <string name="s_your_sessions_will_show_up_here">Your sessions will show up here.</string>
-    <string name="s_your_working_max_is_the_newest_test_best_is_your_record">Your working max is the newest test, best is your record. Percentage targets follow the newest number — up or down.</string>
     <string name="s_zero_it">Zero it</string>
     <string name="s_zero_the_gauge_f8c91e">Zero the gauge</string>
     <string name="s_zero_the_gauge_6053e8">Zero the gauge.</string>

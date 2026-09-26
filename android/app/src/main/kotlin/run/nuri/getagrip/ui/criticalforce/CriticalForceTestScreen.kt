@@ -339,12 +339,6 @@ private fun FormScreen(request: CriticalForceTestRequest, ended: String?, onClos
                             modifier = Modifier.fillMaxWidth().testTag("cf.connect"),
                         ) { device.connect() }
                     } else {
-                        if (request.loadOnGaugeKg == null) {
-                            Text(tr("Start zeroes the gauge, then waits for your first pull."),
-                                style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
-                        }
                         LoadWarning(request)
                         // The max test's pair of actions, so the measurement screens share one shape.
                         TareAndStart(tr("Start"), "cf.start", onStart)
@@ -467,11 +461,7 @@ private fun Setup(request: CriticalForceTestRequest) {
     // Only until it is set: asked once, then it lives in Settings. Typed, never a slider.
     // Left empty, the test saves without it and asks again next time.
     if (settings.bodyWeightKg == null) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            BodyWeightField(kilograms = settings.bodyWeightKg, onChange = { settings.setBodyWeightKg(it) })
-            Text(tr("Asked once; change it in Settings."),
-                style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
-        }
+        BodyWeightField(kilograms = settings.bodyWeightKg, onChange = { settings.setBodyWeightKg(it) })
     }
 
     // One quiet line: "Last: L 17.5 · R 16.3 kg · last week".

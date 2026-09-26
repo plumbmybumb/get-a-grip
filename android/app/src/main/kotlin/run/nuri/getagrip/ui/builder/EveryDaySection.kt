@@ -123,14 +123,9 @@ fun EveryDaySection(
                     ),
                 )
 
-                if (values.isOnDemand) {
-                    // Declined in one sentence. The times stay in the draft, so flipping back restores them.
-                    Text(
-                        tr("No daily target and no reminders — it waits on Today until you feel like it."),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = palette.inkTertiary,
-                    )
-                } else {
+                // On demand, the times are KEPT in the draft — flipping back to a ritual restores them — so
+                // nothing is destroyed, only hidden.
+                if (!values.isOnDemand) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
                             tr("Sessions a day"),
@@ -152,7 +147,6 @@ fun EveryDaySection(
                         ToggleRow(
                             title = tr("Remind me"),
                             checked = values.remindersEnabled,
-                            explainer = null,
                         ) { enabled -> update { it.copy(remindersEnabled = enabled) } }
 
                         // The times follow the toggle; the draft keeps them either way. `Motion.state` — see

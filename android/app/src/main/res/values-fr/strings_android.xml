@@ -24,8 +24,6 @@
     <string name="a_increase">Augmenter</string>
     <string name="a_seconds">secondes</string>
     <string name="a_millimetres">millimètres</string>
-    <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target_5cb6de">Aucun max enregistré pour cette prise, donc rien ne s\'affiche comme cible pendant une séance. Ajoutes-en un dans Max.</string>
-    <string name="a_no_max_for_your_s_hand_so_those_pulls_show_no_target_add">Aucun max pour ta main %s, donc ces tirages n\'affichent aucune cible. Ajoutes-en un dans Max.</string>
     <string name="a_d_days_ago">il y a %d jours</string>
     <string name="a_last_week">la semaine dernière</string>
     <string name="a_d_weeks_ago">il y a %d semaines</string>
@@ -34,11 +32,9 @@
     <string name="a_couldn_t_render_the_card_try_again">Impossible de dessiner la carte. Réessaie.</string>
     <string name="a_your_routines_and_sessions_are_stored_on_this_device_the">Tes routines et tes séances sont stockées sur cet appareil. Elles ne se synchronisent pas entre appareils.</string>
     <string name="a_this_routine_asks_for_d_a_day">Cette routine en demande %d par jour.</string>
-    <string name="a_the_big_word_is_the_hand_that_goes_on_the_edge_your_fing">Le mot en gros, c\'est la main qui va sur la réglette. Tes doigts pendent sous la paume en haut de l\'écran, donc la préhension se lit sans un mot.</string>
     <string name="a_allow_camera_access_in_settings_to_scan_a_routine_you_ca">Autorise l’accès à la caméra dans les réglages pour scanner une routine. Tu peux toujours ouvrir un lien de routine partagé.</string>
     <string name="a_couldn_t_open_the_camera_try_opening_the_shared_routine">Impossible d’ouvrir la caméra. Essaie plutôt d’ouvrir le lien de routine partagé.</string>
     <string name="a_point_your_camera_at_a_get_a_grip_routine_qr_code">Vise le QR code d’une routine Get a Grip avec ta caméra.</string>
-    <string name="a_opens_an_email_draft_with_your_app_version_android_versi">Ouvre un brouillon d’e-mail avec la version de l’application, la version d’Android, le modèle du téléphone et le capteur sélectionné.</string>
     <string name="a_recent_connection_and_signal_details_will_be_added_to_yo">Les détails récents de connexion et de signal seront ajoutés à votre e-mail. Vous pourrez les consulter avant de l’envoyer.</string>
     <string name="a_no_email_app_available">Aucune application de messagerie disponible</string>
     <string name="a_copy_your_draft_and_send_it_to_this_address_using_your_p">Copiez votre brouillon et envoyez-le à cette adresse avec votre service de messagerie habituel.</string>
@@ -47,7 +43,6 @@
     <string name="a_terms_of_use">Conditions d’utilisation</string>
     <string name="a_open_in_a_browser">Ouvrir dans un navigateur</string>
     <string name="a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose">Get a Grip n’est pas un dispositif médical et ne diagnostique, ne traite, ne guérit ni ne prévient aucune affection. Consultez un professionnel de santé pour un avis médical.</string>
-    <string name="a_use_to_add_a_max_each_grip_has_an_edit_button_for_changi">Utilisez + pour ajouter un max. Chaque prise a un bouton Modifier pour ajuster les valeurs de chaque main et consulter les anciens tests. Ces mêmes valeurs servent aux graphiques et aux cibles en pourcentage.</string>
     <string name="a_open_get_a_grip_to_save_it">Ouvre Get a Grip pour l\'enregistrer.</string>
     <string name="a_this_session_finished_but_the_app_closed_before_it_was_s">Cette séance s\'est terminée, mais l\'app s\'est fermée avant qu\'elle soit enregistrée.</string>
     <string name="a_critical_force_648670">Force critique</string>
@@ -109,7 +104,6 @@
     <string name="a_critical_force_kilograms_ffb6e1">%1$s, force critique %2$s kilogrammes</string>
     <string name="a_24_pulls_7_s_on_3_s_off">24 tirages · 7 s de traction · 3 s de repos</string>
     <string name="a_pull_as_hard_as_you_can_let_go_at_the_bell">Tire aussi fort que possible. Relâche au signal.</string>
-    <string name="a_asked_once_change_it_in_settings">Demandé une seule fois ; modifiable dans les Réglages.</string>
     <string name="a_last">Dernier : %1$s · %2$s</string>
     <string name="a_all_24_pulls_on_one_hand_then_all_24_on_the_other_about">Les 24 tirages sur une main, puis les 24 sur l’autre. Environ 8 minutes, et chaque main a son propre résultat.</string>
     <string name="a_both_hands_pulling_together_through_the_gauge_on_a_hangb">Les deux mains tirent ensemble sur le capteur, sur une poutre ou un bloc à deux mains. Un seul résultat.</string>
@@ -124,7 +118,6 @@
     <string name="a_up_from">%1$s : %2$s, contre %3$s avant</string>
     <string name="a_the_first_max_on_this_grip">%1$s : %2$s, le premier max sur cette prise</string>
     <string name="a_benchmarks">Tests</string>
-    <string name="a_your_ceiling_and_endurance_per_grip">Ton plafond et ton endurance, par prise</string>
     <string name="a_no_max_yet_measure_one_to_see_critical_force_as_a_share">Pas encore de max. Mesures-en un pour voir la force critique en part de celui-ci.</string>
     <string name="a_measure_max">Mesurer le max</string>
     <string name="a_test_critical_force">Tester la force critique</string>
@@ -135,9 +128,8 @@
     <string name="a_critical_force_held_since">Force critique stable depuis le %s</string>
     <string name="a_critical_force_tested">Force critique testée %s</string>
     <string name="a_blue_max_grey_critical_force">bleu : max · gris : force critique</string>
-    <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target_a18171">Pas encore de max pour cette prise, donc aucune cible pendant une séance. Ajoutes-en un dans l’onglet Tests.</string>
+    <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target">Pas encore de max pour cette prise, donc aucune cible pendant une séance. Ajoutes-en un dans l’onglet Tests.</string>
     <string name="a_no_max_for_your_hand_so_those_pulls_show_no_target_add_o">Pas de max pour ta main %s, donc ces tirages n’ont pas de cible. Ajoutes-en un dans l’onglet Tests.</string>
-    <string name="a_each_grip_s_max_and_critical_force_measure_again_opens_t">Le max et la force critique de chaque prise. Mesurer à nouveau ouvre le capteur pour un max ; Tester la force critique lance le test de quatre minutes. Modifier change les valeurs de tes mains.</string>
     <string name="a_start_hand">Démarrer la main %s</string>
     <string name="a_add_a_benchmark">Ajouter un test</string>
     <string name="a_what_are_you_measuring">Que mesures-tu ?</string>
@@ -145,7 +137,6 @@
     <string name="a_max_one_hand_at_a_time">Max, une main à la fois</string>
     <string name="a_max_both_hands_together">Max, deux mains ensemble</string>
     <string name="a_critical_force_history">Historique de force critique</string>
-    <string name="a_start_zeroes_the_gauge_then_waits_for_your_first_pull">Commencer met le capteur à zéro, puis attend ton premier tirage.</string>
     <string name="a_there_s_on_the_gauge_let_go_then_start_it_zeroes_first">Il y a %s sur le capteur. Relâche, puis commence : il se remet d’abord à zéro.</string>
     <string name="a_hand_done_set_up_your_hand_with_the_gauge_unloaded_then">%1$s : terminé. Mets en place ta main %2$s sans charger le capteur, puis démarre : il se remet d’abord à zéro.</string>
 </resources>

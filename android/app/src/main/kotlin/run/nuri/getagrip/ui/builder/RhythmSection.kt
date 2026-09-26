@@ -96,11 +96,6 @@ fun RhythmSection(
                     checked = rhythm.waitForReleaseBeforeRest,
                     // ON by default: otherwise the two or three seconds of standing down off a 20 mm edge come
                     // out of every rest. Off is a real choice — a fixed cadence you pace yourself to.
-                    explainer = if (rhythm.waitForReleaseBeforeRest) {
-                        tr("The hold ends on time; the rest waits until you are off the edge.")
-                    } else {
-                        tr("The rest starts the moment the hold ends, whether or not you have let go.")
-                    },
                 ) { waits -> edit { it.copy(waitForReleaseBeforeRest = waits) } }
 
                 HorizontalDivider(color = palette.inkTertiary.copy(alpha = 0.22f))
@@ -174,7 +169,6 @@ private fun SwapHandsAction(startsRight: Boolean, onSwap: (Side) -> Unit) {
 internal fun ToggleRow(
     title: String,
     checked: Boolean,
-    explainer: String?,
     modifier: Modifier = Modifier,
     onCheckedChange: (Boolean) -> Unit,
 ) {
@@ -205,14 +199,6 @@ internal fun ToggleRow(
                     checkedTrackColor = palette.graphite,
                     checkedThumbColor = palette.graphiteInverse,
                 ),
-            )
-        }
-        if (explainer != null) {
-            Text(
-                explainer,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = palette.inkTertiary,
             )
         }
     }

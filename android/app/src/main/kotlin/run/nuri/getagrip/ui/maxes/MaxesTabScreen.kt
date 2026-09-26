@@ -200,15 +200,16 @@ private fun MaxesOverview(
         ),
             verticalArrangement = Arrangement.spacedBy(Metrics.spacing),
         ) {
-            item("subtitle") {
-                // The staleness line the soft nudge (`TemplateStore.benchmarkNudge`) is the
-                // icon-sized version of.
-                Text(
-                    templates.lastMeasuredMaxAt?.let { L10n.tr("Tested %s", relative(it)) }
-                        ?: tr("Your ceiling and endurance, per grip"),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = palette.inkTertiary,
-                )
+            // The staleness line the soft nudge (`TemplateStore.benchmarkNudge`) is the icon-sized
+            // version of. Nothing before the first test.
+            templates.lastMeasuredMaxAt?.let { last ->
+                item("subtitle") {
+                    Text(
+                        L10n.tr("Tested %s", relative(last)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.inkTertiary,
+                    )
+                }
             }
 
             if (groups.isEmpty() && invitations.isEmpty()) {
@@ -220,17 +221,6 @@ private fun MaxesOverview(
                 }
                 items(invitations, key = { "invite-${it.key}" }) { grip ->
                     InvitationCard(grip) { choosing = grip }
-                }
-                item("footnote") {
-                    // The same footnote contract as History's: what this screen's numbers
-                    // are and are not. Percent targets follow the NEWEST number, including
-                    // downward — worth one honest line on the screen where a bad testing day
-                    // becomes visible.
-                    Text(
-                        tr("Your working max is the newest test, best is your record. Percentage targets follow the newest number — up or down."),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = palette.inkTertiary,
-                    )
                 }
             }
 
@@ -549,14 +539,8 @@ private fun InvitationCard(grip: GripSpec, onMeasure: () -> Unit) {
 
 @Composable
 private fun EmptyCard() {
-    val palette = LocalGripPalette.current
     Card {
         CapsLabel(tr("No maxes yet"))
-        Text(
-            tr("Measure the most a grip can hold and it lands here — every later test draws the curve of you getting stronger."),
-            style = MaterialTheme.typography.bodyMedium,
-            color = palette.inkSecondary,
-        )
     }
 }
 

@@ -25,8 +25,6 @@
     <string name="a_increase">Increase</string>
     <string name="a_seconds">seconds</string>
     <string name="a_millimetres">millimetres</string>
-    <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target_5cb6de">No max on file for this grip yet, so this shows no target during a session. Add one in Maxes.</string>
-    <string name="a_no_max_for_your_s_hand_so_those_pulls_show_no_target_add">No max for your %s hand, so those pulls show no target. Add one in Maxes.</string>
     <string name="a_d_days_ago">%d days ago</string>
     <string name="a_last_week">last week</string>
     <string name="a_d_weeks_ago">%d weeks ago</string>
@@ -35,11 +33,9 @@
     <string name="a_couldn_t_render_the_card_try_again">Couldn\'t render the card. Try again.</string>
     <string name="a_your_routines_and_sessions_are_stored_on_this_device_the">Your routines and sessions are stored on this device. They don\'t sync between devices.</string>
     <string name="a_this_routine_asks_for_d_a_day">This routine asks for %d a day.</string>
-    <string name="a_the_big_word_is_the_hand_that_goes_on_the_edge_your_fing">The big word is the hand that goes on the edge. Your fingers hang off the palm at the top of the screen, so the grip reads without a word.</string>
     <string name="a_allow_camera_access_in_settings_to_scan_a_routine_you_ca">Allow camera access in Settings to scan a routine. You can still open a shared routine link.</string>
     <string name="a_couldn_t_open_the_camera_try_opening_the_shared_routine">Couldn\'t open the camera. Try opening the shared routine link instead.</string>
     <string name="a_point_your_camera_at_a_get_a_grip_routine_qr_code">Point your camera at a Get a Grip routine QR code.</string>
-    <string name="a_opens_an_email_draft_with_your_app_version_android_versi">Opens an email draft with your app version, Android version, phone model and selected gauge.</string>
     <string name="a_recent_connection_and_signal_details_will_be_added_to_yo">Recent connection and signal details will be added to your email. You can review them before sending.</string>
     <string name="a_no_email_app_available">No email app available</string>
     <string name="a_copy_your_draft_and_send_it_to_this_address_using_your_p">Copy your draft and send it to this address using your preferred email service.</string>
@@ -48,7 +44,6 @@
     <string name="a_terms_of_use">Terms of use</string>
     <string name="a_open_in_a_browser">Open in a browser</string>
     <string name="a_get_a_grip_is_not_a_medical_device_and_does_not_diagnose">Get a Grip is not a medical device and does not diagnose, treat, cure or prevent any medical condition. Consult a healthcare professional for medical advice.</string>
-    <string name="a_use_to_add_a_max_each_grip_has_an_edit_button_for_changi">Use + to add a max. Each grip has an Edit button for changing hand values and reviewing earlier records. Your charts and percentage targets use these same numbers.</string>
     <string name="a_open_get_a_grip_to_save_it">Open Get a Grip to save it.</string>
     <string name="a_this_session_finished_but_the_app_closed_before_it_was_s">This session finished, but the app closed before it was saved.</string>
     <string name="a_critical_force_648670">Critical force</string>
@@ -110,7 +105,6 @@
     <string name="a_critical_force_kilograms_ffb6e1">%1$s, critical force %2$s kilograms</string>
     <string name="a_24_pulls_7_s_on_3_s_off">24 pulls · 7 s on · 3 s off</string>
     <string name="a_pull_as_hard_as_you_can_let_go_at_the_bell">Pull as hard as you can. Let go at the bell.</string>
-    <string name="a_asked_once_change_it_in_settings">Asked once; change it in Settings.</string>
     <string name="a_last">Last: %1$s · %2$s</string>
     <string name="a_all_24_pulls_on_one_hand_then_all_24_on_the_other_about">All 24 pulls on one hand, then all 24 on the other. About 8 minutes, and each hand gets its own number.</string>
     <string name="a_both_hands_pulling_together_through_the_gauge_on_a_hangb">Both hands pulling together through the gauge, on a hangboard or a two-handed block. One number.</string>
@@ -125,7 +119,6 @@
     <string name="a_up_from">%1$s: %2$s, up from %3$s</string>
     <string name="a_the_first_max_on_this_grip">%1$s: %2$s, the first max on this grip</string>
     <string name="a_benchmarks">Benchmarks</string>
-    <string name="a_your_ceiling_and_endurance_per_grip">Your ceiling and endurance, per grip</string>
     <string name="a_no_max_yet_measure_one_to_see_critical_force_as_a_share">No max yet. Measure one to see critical force as a share of it.</string>
     <string name="a_measure_max">Measure max</string>
     <string name="a_test_critical_force">Test critical force</string>
@@ -136,9 +129,8 @@
     <string name="a_critical_force_held_since">Critical force held since %s</string>
     <string name="a_critical_force_tested">Critical force tested %s</string>
     <string name="a_blue_max_grey_critical_force">blue max · grey critical force</string>
-    <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target_a18171">No max on file for this grip yet, so this shows no target during a session. Add one on the Benchmarks tab.</string>
+    <string name="a_no_max_on_file_for_this_grip_yet_so_this_shows_no_target">No max on file for this grip yet, so this shows no target during a session. Add one on the Benchmarks tab.</string>
     <string name="a_no_max_for_your_hand_so_those_pulls_show_no_target_add_o">No max for your %s hand, so those pulls show no target. Add one on the Benchmarks tab.</string>
-    <string name="a_each_grip_s_max_and_critical_force_measure_again_opens_t">Each grip\'s max and critical force. Measure again opens the gauge for a max; Test critical force runs the four-minute test. Edit changes your hand values.</string>
     <string name="a_start_hand">Start %s hand</string>
     <string name="a_add_a_benchmark">Add a benchmark</string>
     <string name="a_what_are_you_measuring">What are you measuring?</string>
@@ -146,7 +138,6 @@
     <string name="a_max_one_hand_at_a_time">Max, one hand at a time</string>
     <string name="a_max_both_hands_together">Max, both hands together</string>
     <string name="a_critical_force_history">Critical force history</string>
-    <string name="a_start_zeroes_the_gauge_then_waits_for_your_first_pull">Start zeroes the gauge, then waits for your first pull.</string>
     <string name="a_there_s_on_the_gauge_let_go_then_start_it_zeroes_first">There\'s %s on the gauge. Let go, then start: it zeroes first.</string>
     <string name="a_hand_done_set_up_your_hand_with_the_gauge_unloaded_then">%1$s hand done. Set up your %2$s hand with the gauge unloaded, then start: it zeroes first.</string>
 </resources>
