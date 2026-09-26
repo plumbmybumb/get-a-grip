@@ -58,15 +58,14 @@ final class RestFocusUITests: XCTestCase {
         let countdown = element("runner.restFocus.countdown", in: app)
         XCTAssertEqual(countdown.label, "900")
         XCTAssertTrue(element("runner.restFocus.phase", in: app).label.contains("SET BREAK"))
-        XCTAssertEqual(element("runner.restFocus.pullCount", in: app).label, "Pull 201 of 10,000")
+        // Set and pull live in the panel's counters row, one spoken element.
+        let counters = element("runner.counters", in: app)
+        XCTAssertTrue(counters.label.contains("pull 201 of 10,000"), counters.label)
         assertRestSummaryAboveGraph(in: app)
-        for identifier in ["runner.restFocus.setCount", "runner.restFocus.pullCount"] {
-            let count = element(identifier, in: app)
-            XCTAssertFalse(count.frame.intersects(countdown.frame),
-                           "\(identifier) must remain clear of the three-digit countdown on compact phones")
-            XCTAssertGreaterThanOrEqual(count.frame.minX, app.frame.minX + 16, identifier)
-            XCTAssertLessThanOrEqual(count.frame.maxX, app.frame.maxX - 16, identifier)
-        }
+        XCTAssertFalse(counters.frame.intersects(countdown.frame),
+                       "The set and pull counters must remain clear of the three-digit countdown on compact phones")
+        XCTAssertGreaterThanOrEqual(counters.frame.minX, app.frame.minX + 16, "runner.counters")
+        XCTAssertLessThanOrEqual(counters.frame.maxX, app.frame.maxX - 16, "runner.counters")
         assertControlsVisible(in: app)
         attachScreenshot(app, name: "Rest focus — 900-second set break and 10000 planned pulls")
     }
@@ -273,9 +272,9 @@ final class RestFocusUITests: XCTestCase {
         XCTAssertTrue(graph.waitForExistence(timeout: 3), file: file, line: line)
         let graphFrame = graph.frame
         XCTAssertGreaterThan(graphFrame.height, 0, file: file, line: line)
+        // Set and pull are the panel's counters row, under the summary and the routine pills.
         let identifiers = ["runner.restFocus", "runner.restFocus.hand", "runner.restFocus.grip",
-                           "runner.restFocus.phase",
-                           "runner.restFocus.setCount", "runner.restFocus.pullCount"]
+                           "runner.restFocus.phase", "runner.counters"]
         for identifier in identifiers {
             let content = element(identifier, in: app)
             XCTAssertTrue(content.exists, identifier, file: file, line: line)

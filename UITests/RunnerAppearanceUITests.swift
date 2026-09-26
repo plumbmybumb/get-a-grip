@@ -28,23 +28,22 @@ final class RunnerAppearanceUITests: XCTestCase {
         //
         // The seeded routine rests 20 s, and a rest that long is the REST-FOCUS layout:
         // the panel names the next hand, grip and position, and the compact prompt and
-        // counters are `.hidden()` — which takes them out of the accessibility tree as
-        // well as out of the drawing. So live progress is read where the screen states
-        // it, not from the elements the compact layout used to carry.
+        // hero are hidden. Live progress is read from the panel's counters row, whose
+        // spoken line carries "pull N of M" beside the rest word that pausing removes.
         let restFocus = element("runner.restFocus", in: app)
         XCTAssertTrue(restFocus.waitForExistence(timeout: 25), app.debugDescription)
         let hand = element("runner.restFocus.hand", in: app)
-        let pullCount = element("runner.restFocus.pullCount", in: app)
+        let counters = element("runner.counters", in: app)
         waitFor(hand, NSPredicate(format: "label == %@", "Right hand next"), timeout: 5)
-        let position = pullCount.label
-        XCTAssertTrue(position.contains("Pull 2 of "), position)
+        let position = pullPosition(counters.label)
+        XCTAssertTrue(position.hasPrefix("pull 2 of "), counters.label)
 
         // This first switch happens during an actively counting rest, matching an
         // automatic sunset appearance change rather than an app background/relaunch.
         device.appearance = .dark
         XCTAssertEqual(app.state, .runningForeground)
         XCTAssertEqual(hand.label, "Right hand next")
-        XCTAssertEqual(pullCount.label, position)
+        XCTAssertEqual(pullPosition(counters.label), position)
         attachScreenshot(app, name: "Live rest survives light to dark")
 
         let pause = app.buttons["runner.pause"]
@@ -56,7 +55,7 @@ final class RunnerAppearanceUITests: XCTestCase {
             XCTAssertEqual(app.state, .runningForeground)
             XCTAssertTrue(phase.label.contains("PAUSED"), phase.label)
             XCTAssertEqual(hand.label, "Right hand next")
-            XCTAssertEqual(pullCount.label, position)
+            XCTAssertEqual(pullPosition(counters.label), position)
             XCTAssertTrue(pause.label.contains("Resume"), pause.label)
             XCTAssertTrue(app.buttons["runner.end"].isHittable)
         }
@@ -119,5 +118,12 @@ final class RunnerAppearanceUITests: XCTestCase {
         start.tap()
         XCTAssertTrue(app.buttons["runner.end"].waitForExistence(timeout: 10))
         return app
+    }
+
+    /// "pull N of M" out of the counters' spoken line, or "" when it is not there.
+    private func pullPosition(_ label: String) -> String {
+        guard let range = label.range(of: #"pull [0-9,]+ of [0-9,]+"#, options: .regularExpression)
+        else { return "" }
+        return String(label[range])
     }
 }
