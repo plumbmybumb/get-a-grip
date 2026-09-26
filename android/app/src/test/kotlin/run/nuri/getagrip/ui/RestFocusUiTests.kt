@@ -266,13 +266,14 @@ class RestFocusUiTests {
                 node("target").assertExists()
                 capture("android-rest-focus-french-accessibility-$suffix-top.png")
                 val graphTop = compose.onNodeWithTag("runner-plot").fetchSemanticsNode().positionInRoot.y
-                val ids = listOf("hand", "grip", "target", "phase", "countdown", "setCount", "pullCount")
+                val ids = listOf("hand", "grip", "target", "phase", "setCount", "pullCount")
                 for (id in ids) {
                     val semantic = node(id).fetchSemanticsNode()
                     assertTrue(semantic.positionInRoot.y + semantic.size.height <= graphTop,
                         "$id must remain above the graph at the largest text size")
                 }
-                for (id in ids) {
+                assertCountdownOnGraph()
+                for (id in ids + "countdown") {
                     node(id).performScrollTo().assertIsDisplayed()
                     assertTextFits(id)
                 }
@@ -337,10 +338,22 @@ class RestFocusUiTests {
         // 140 dp of it is MORE drawable graph than the card's old 152 — the floor keeps that
         // area, it does not trade it away.
         assertTrue(graph.height > 135, "The graph must remain a useful live plot: ${graph.height}")
-        for (id in listOf("hand", "grip", "countdown", "phase", "setCount", "pullCount")) {
+        for (id in listOf("hand", "grip", "phase", "setCount", "pullCount")) {
             node(id).assertIsDisplayed()
             assertTrue(bounds(id).bottom <= graph.top, "$id must stay entirely above the graph")
         }
+        assertCountdownOnGraph()
+    }
+    /// The rest's countdown is the AMBIENT numeral in the open graph (iOS `ambientCountdown`),
+    /// and the panel no longer repeats it — so it lives inside the graph, and only once.
+    private fun assertCountdownOnGraph() {
+        val graph = compose.onNodeWithTag("runner-plot").fetchSemanticsNode().boundsInRoot
+        val countdown = bounds("countdown")
+        node("countdown").assertIsDisplayed()
+        assertTrue(countdown.top >= graph.top - 1 && countdown.bottom <= graph.bottom + 1,
+            "The countdown belongs on the graph: $countdown in $graph")
+        assertEquals(1, compose.onAllNodesWithTag("runner.restFocus.countdown", useUnmergedTree = true)
+            .fetchSemanticsNodes().size, "One countdown, never a second one in the panel")
     }
     private fun assertTextFits(suffix: String) {
         val tag = tagFor(suffix)

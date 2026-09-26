@@ -3,6 +3,20 @@
 
 package run.nuri.getagrip.ui.runner
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import run.nuri.getagrip.ui.theme.Motion
+import run.nuri.getagrip.ui.theme.rememberReduceMotion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,8 +88,13 @@ internal fun RestFocusHeaderFrame(
     }
 }
 
-/** The current phase and remaining rest own the largest type. The next hand stays
- * gray; only a real grip change earns orange. Reads coarse snapshot state only.
+/** What the rest is FOR: the next hand, its grip (orange only for a real grip change) and
+ * the next target, with the phase stepped down to a badge. Reads coarse snapshot state only.
+ *
+ * **The countdown is not here** (iOS `RunnerRestFocusSummary`). It is the ambient numeral in
+ * the open graph (`AmbientRestCountdown`), readable from the wall; carrying it a second time
+ * in the panel said the same number twice a hand's width apart. The room goes to the grip you
+ * are about to pull.
  */
 ///
 /// At ordinary sizes it covers only the block above the time bar, which keeps its own counters
@@ -94,26 +113,27 @@ internal fun RunnerRestFocus(
         Side.both -> "Both hands next"
         null -> "Next grip"
     })
+    val paused = snapshot.phase is RunnerPhase.Paused
     val phase = tr(when {
-        snapshot.phase is RunnerPhase.Paused -> "PAUSED"
+        paused -> "PAUSED"
         snapshot.isSetBreak -> "SET BREAK"
         else -> "REST"
     })
-    val phaseColor = if (snapshot.phase is RunnerPhase.Paused) palette.armedText else palette.inkPrimary
     Column(
         Modifier.fillMaxWidth().then(if (largeText) Modifier else Modifier.fillMaxSize())
             .testTag("runner.restFocus"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
     ) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(hand, style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold, color = palette.inkSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().testTag("runner.restFocus.hand"))
             snapshot.grip?.let { grip ->
                 Text(grip.line, style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (snapshot.gripChangesNext) palette.armedText else palette.inkSecondary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().testTag("runner.restFocus.grip").semantics {
@@ -125,17 +145,17 @@ internal fun RunnerRestFocus(
             snapshot.targetBand?.let { band ->
                 Text(tr("Next target: %s–%s %s", WeightUnits.number(band.start),
                     WeightUnits.number(band.endInclusive), WeightUnits.symbol),
-                    style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"),
                     color = palette.inkSecondary, textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().testTag("runner.restFocus.target"))
             }
         }
-        Text(phase, style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold, color = phaseColor, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().testTag("runner.restFocus.phase"))
+        // One headline per surface: the hand is the instruction, and the giant countdown and
+        // the wash already say "rest" at screen scale, so the phase word steps down to a badge.
+        // PAUSED keeps its amber as a FILL with fixed dark ink — amber text cannot carry a word
+        // this small on the light field.
+        PhaseBadge(phase, paused)
         if (largeText) {
-            RestCountdown(snapshot.secondsShown, phase,
-                Modifier.height(with(LocalDensity.current) { 104.sp.toDp() }))
             routineRow?.invoke()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 RestCount("Set", snapshot.setNumber ?: 1, snapshot.setCount,
@@ -143,12 +163,79 @@ internal fun RunnerRestFocus(
                 RestCount("Pull", nextPull(snapshot), snapshot.plannedRepCount,
                     "runner.restFocus.pullCount", Modifier.weight(1f))
             }
-        } else {
-            Row(Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                RestCountdown(snapshot.secondsShown, phase, Modifier.weight(1f))
-            }
         }
     }
+}
+
+/// The badge is DRAWN around a full-width, centred line rather than laid out as a hugging
+/// capsule: a wrap-content label rounds its width down and reports a clipped line on some
+/// densities, and a French "REPOS" must never read as cut.
+@Composable
+private fun PhaseBadge(phase: String, paused: Boolean) {
+    val palette = LocalGripPalette.current
+    val fill = if (paused) palette.armed else palette.inkTertiary.copy(alpha = 0.16f)
+    var lineWidth by remember { mutableFloatStateOf(0f) }
+    Text(phase, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+        color = if (paused) Color(0xFF1B1F25) else palette.inkSecondary, textAlign = TextAlign.Center,
+        onTextLayout = { layout -> lineWidth = (0 until layout.lineCount).maxOfOrNull {
+            layout.getLineRight(it) - layout.getLineLeft(it) } ?: 0f },
+        modifier = Modifier.fillMaxWidth()
+            .drawBehind {
+                val width = (lineWidth + 20.dp.toPx()).coerceAtMost(size.width)
+                val height = size.height + 8.dp.toPx()
+                drawRoundRect(fill, topLeft = Offset((size.width - width) / 2, -4.dp.toPx()),
+                    size = Size(width, height), cornerRadius = CornerRadius(height / 2))
+            }
+            .testTag("runner.restFocus.phase"))
+}
+
+/// **The countdown you can read from the wall** (iOS `RunnerView.ambientCountdown`): while the
+/// clock is the only thing happening — the count-in, a rest, a paused rest — the seconds fill
+/// the open graph, huge and thin. It is THE rest countdown; the panel does not repeat it.
+///
+/// It SNAPS: Compose's digit slide read as laggy on the phone, so the Android clocks never roll.
+/// Secondary ink at 0.75, as iOS measured above 3:1 at this size.
+@Composable
+internal fun AmbientRestCountdown(snapshot: RunnerSnapshot, modifier: Modifier = Modifier) {
+    val palette = LocalGripPalette.current
+    val reduceMotion = rememberReduceMotion()
+    val phase = L10n.tr(when {
+        snapshot.phase is RunnerPhase.Paused -> "PAUSED"
+        snapshot.phase is RunnerPhase.LeadIn -> "GET READY"
+        snapshot.isSetBreak -> "SET BREAK"
+        else -> "REST"
+    })
+    // A whisper of scale with the fade when it arrives; the fade alone under Reduce Motion.
+    val shown = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { shown.animateTo(1f, Motion.state(reduceMotion)) }
+    Box(
+        modifier.graphicsLayer {
+            alpha = shown.value
+            val scale = if (reduceMotion) 1f else 0.96f + 0.04f * shown.value
+            scaleX = scale; scaleY = scale
+        }.padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            "${snapshot.secondsShown}",
+            maxLines = 1,
+            style = TextStyle(fontSize = AMBIENT_SIZE, fontWeight = FontWeight.Thin,
+                color = palette.inkSecondary.copy(alpha = 0.75f), fontFeatureSettings = "tnum",
+                letterSpacing = (-0.02).em, textAlign = TextAlign.Center),
+            autoSize = TextAutoSize.StepBased(minFontSize = 40.sp, maxFontSize = AMBIENT_SIZE),
+            modifier = Modifier.fillMaxWidth().testTag("runner.restFocus.countdown")
+                .semantics { contentDescription = L10n.tr("%s, %d seconds remaining", phase, snapshot.secondsShown) },
+        )
+    }
+}
+
+private val AMBIENT_SIZE = 176.sp
+
+/// The phases whose only news is the clock (iOS `showsAmbientCountdown`).
+internal fun showsAmbientCountdown(phase: RunnerPhase): Boolean = when (phase) {
+    is RunnerPhase.Resting, is RunnerPhase.LeadIn -> true
+    is RunnerPhase.Paused -> phase.before is RunnerPhase.Resting || phase.before is RunnerPhase.LeadIn
+    else -> false
 }
 
 private fun nextPull(snapshot: RunnerSnapshot) =
@@ -168,21 +255,5 @@ private fun RestCount(label: String, current: Int, total: Int, tag: String, modi
                 fontFeatureSettings = "tnum", textAlign = TextAlign.Center),
             autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 22.sp),
             modifier = Modifier.fillMaxWidth().testTag("$tag.value"))
-    }
-}
-
-@Composable
-private fun RestCountdown(seconds: Int, phase: String, modifier: Modifier) {
-    val palette = LocalGripPalette.current
-    Row(modifier, verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)) {
-        BasicText("$seconds", maxLines = 1,
-            style = TextStyle(fontSize = 80.sp, fontWeight = FontWeight.Thin,
-                color = palette.inkPrimary, fontFeatureSettings = "tnum", letterSpacing = (-0.02).em),
-            autoSize = TextAutoSize.StepBased(minFontSize = 40.sp, maxFontSize = 80.sp),
-            modifier = Modifier.weight(1f, fill = false).testTag("runner.restFocus.countdown")
-                .semantics { contentDescription = L10n.tr("%s, %d seconds remaining", phase, seconds) })
-        Text(tr("s"), style = MaterialTheme.typography.titleLarge, color = palette.inkTertiary,
-            modifier = Modifier.padding(bottom = 10.dp).clearAndSetSemantics {})
     }
 }

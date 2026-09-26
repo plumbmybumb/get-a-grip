@@ -375,10 +375,9 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                     // must fit a French set break at 360 dp.
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         start = 12.dp, top = 10.dp, end = 12.dp, bottom = 6.dp),
-                    overlay = {
-                        GraphGripChangeCue(snapshot, palette, Modifier.matchParentSize(),
-                            showBanner = false, cornerRadius = Metrics.radiusSheet)
-                    },
+                    // The grip-change cue lives here, where the grip is NAMED (iOS `infoPanel`): an amber
+                    // outline pulsing twice, with the polite announcement for TalkBack.
+                    overlay = { GripChangeOutline(snapshot, palette, Modifier.matchParentSize()) },
                 ) {
                     RunnerPanelHeader(session, snapshot, tint, timerOnly, device.state.isConnected)
                 }
@@ -408,13 +407,18 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                     // nothing and an app receiving nothing look identical. Say it, and say what to do.
                     // Focus replaces the prompt that normally reports a lost link. hasSignal means a sample
                     // arrived at least once, not that the gauge is still sending, so keep the warning visible.
-                    if (!snapshot.hasSignal || (snapshot.showsRestFocus &&
-                            (snapshot.linkIsDown || !device.state.isConnected || !device.isSignalFresh))) {
-                        NoSignalNotice(device)
+                    val notice = !snapshot.hasSignal || (snapshot.showsRestFocus &&
+                        (snapshot.linkIsDown || !device.state.isConnected || !device.isSignalFresh))
+                    // Both at once when the gauge goes quiet mid-rest: the countdown is the rest's own
+                    // clock and does not depend on the gauge, so losing the link must not hide it — it
+                    // moves up and the notice takes the room below.
+                    Column(Modifier.matchParentSize(), horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
+                        if (showsAmbientCountdown(snapshot.phase)) {
+                            AmbientRestCountdown(snapshot, Modifier.weight(1f).fillMaxWidth())
+                        }
+                        if (notice) NoSignalNotice(device)
                     }
-                    // The banner stays on the graph; its outline moved to the panel above.
-                    GraphGripChangeCue(snapshot, palette, Modifier.matchParentSize(),
-                        showBanner = !snapshot.showsRestFocus, showOutline = false)
                 }
             }
             RunnerDock(session, snapshot, timerOnly)
@@ -441,7 +445,7 @@ internal fun GripNameRow(snapshot: RunnerSnapshot, palette: GripPalette, timerOn
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (resting && snapshot.newGripID == null) RestBadge(snapshot.gripChangesNext, palette)
+        if (resting) RestBadge(snapshot.gripChangesNext, palette)
         Text(
             // The full name fits unless a badge or target chip shares the row.
             if (!timerOnly && snapshot.upcomingGrip != null) {

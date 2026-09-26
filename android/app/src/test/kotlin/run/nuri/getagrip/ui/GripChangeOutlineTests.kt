@@ -21,7 +21,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.runner.RunnerSnapshot
-import run.nuri.getagrip.ui.runner.GraphGripChangeCue
+import run.nuri.getagrip.ui.runner.GripChangeOutline
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import kotlin.test.assertEquals
@@ -30,8 +30,12 @@ import kotlin.test.assertNotEquals
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class GraphGripChangeCueTests {
+class GripChangeOutlineTests {
     @get:Rule val compose = createComposeRule()
+
+    /// The cue's node: the outline, carrying the polite TalkBack announcement the on-graph
+    /// banner used to (iOS dropped the banner; the panel rim is the cue).
+    private fun outline() = compose.onNodeWithTag("runner.gripChangeOutline", useUnmergedTree = true)
 
     @Test fun cueStaysForTheWholeRestIncludingPauseThenFadesWithoutRestarting() {
         var state by mutableStateOf(RunnerSnapshot(grip = GripSpec(), hasSignal = true,
@@ -41,25 +45,28 @@ class GraphGripChangeCueTests {
         compose.setContent {
             GetAGripTheme {
                 Box(Modifier.size(320.dp, 220.dp)) {
-                    GraphGripChangeCue(state, LocalGripPalette.current, Modifier.matchParentSize())
+                    GripChangeOutline(state, LocalGripPalette.current, Modifier.matchParentSize())
                 }
             }
         }
         compose.mainClock.advanceTimeBy(20_000)
-        compose.onNodeWithText("New grip", useUnmergedTree = true).assertIsDisplayed()
+        outline().assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.LiveRegion,
+                androidx.compose.ui.semantics.LiveRegionMode.Polite))
+        compose.onNodeWithContentDescription("New grip: ", substring = true, useUnmergedTree = true).assertExists()
         compose.runOnIdle {
             state = state.copy(phase = run.nuri.getagrip.engine.RunnerPhase.Paused(state.phase))
             Snapshot.sendApplyNotifications()
         }
         compose.mainClock.advanceTimeBy(20_000)
-        compose.onNodeWithText("New grip", useUnmergedTree = true).assertIsDisplayed()
+        outline().assertIsDisplayed()
         compose.runOnIdle {
             state = state.copy(gripChangesNext = false,
                 phase = run.nuri.getagrip.engine.RunnerPhase.Armed(1))
             Snapshot.sendApplyNotifications()
         }
         compose.mainClock.advanceTimeBy(400)
-        compose.onNodeWithText("New grip", useUnmergedTree = true).assertDoesNotExist()
+        outline().assertDoesNotExist()
     }
 
     @Test fun repeatedChangesRestartTheCueWithoutMovingThePlotOrMetrics() {
@@ -71,7 +78,7 @@ class GraphGripChangeCueTests {
                     Text("12.3 kg · 7 s", Modifier.testTag("metrics"))
                     Box(Modifier.fillMaxWidth().height(220.dp).testTag("plot")
                         .background(LocalGripPalette.current.card)) {
-                        GraphGripChangeCue(state, LocalGripPalette.current, Modifier.matchParentSize())
+                        GripChangeOutline(state, LocalGripPalette.current, Modifier.matchParentSize())
                     }
                 }
             }
@@ -84,7 +91,7 @@ class GraphGripChangeCueTests {
         }
         change(state.copy(newGripID = "first"))
         compose.mainClock.advanceTimeBy(240)
-        compose.onNodeWithText("New grip", useUnmergedTree = true).assertIsDisplayed()
+        outline().assertIsDisplayed()
         assertEquals(plot, compose.onNodeWithTag("plot").fetchSemanticsNode().boundsInRoot)
         assertEquals(metrics, compose.onNodeWithTag("metrics").fetchSemanticsNode().boundsInRoot)
         val preview = java.io.File("build/reports/graph-grip-change.png")
@@ -99,20 +106,20 @@ class GraphGripChangeCueTests {
         }
         val brightBorder = borderPixel()
         compose.mainClock.advanceTimeBy(260)
-        assertNotEquals(brightBorder, borderPixel(), "The outline should pulse while the banner stays readable")
-        compose.onNodeWithText("New grip", useUnmergedTree = true).assertIsDisplayed()
+        assertNotEquals(brightBorder, borderPixel(), "The outline should pulse while it stays on")
+        outline().assertIsDisplayed()
         compose.mainClock.advanceTimeBy(440)
         change(state.copy(newGripID = "second", grip = GripSpec(edgeMM = 10)))
         compose.mainClock.advanceTimeBy(1000)
         // Past the first event's expiry, the second event still has its own full beat.
-        compose.onNodeWithText("New grip", useUnmergedTree = true).assertIsDisplayed()
+        outline().assertIsDisplayed()
         assertEquals(plot, compose.onNodeWithTag("plot").fetchSemanticsNode().boundsInRoot)
         compose.mainClock.advanceTimeBy(1000)
-        compose.onNodeWithText("New grip", useUnmergedTree = true).assertDoesNotExist()
+        outline().assertDoesNotExist()
         change(state.copy(newGripID = "third"))
         compose.mainClock.advanceTimeBy(240)
         change(state.copy(hasSignal = false))
-        compose.onNodeWithText("New grip", useUnmergedTree = true).assertDoesNotExist()
+        outline().assertDoesNotExist()
         assertEquals(metrics, compose.onNodeWithTag("metrics").fetchSemanticsNode().boundsInRoot)
     }
 }
