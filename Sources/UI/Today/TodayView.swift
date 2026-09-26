@@ -129,7 +129,7 @@ struct TodayView: View {
                         }
                         .labelStyle(.iconOnly)
                         .tint(Accent.graphite)
-                        .accessibilityHint("Pull and watch the force in real time")
+                        .accessibilityHint("Opens the live gauge")
                         .accessibilityIdentifier("today.gauge")
                     }
                 }
@@ -400,7 +400,7 @@ struct TodayView: View {
                     Text("New routine")
                         .font(.system(.subheadline, weight: .semibold))
                         .foregroundStyle(Ink.primary)
-                    Text("A rest-day plan, a max day —\nwhatever this one isn't.")
+                    Text("For rest days, max days and more.")
                         .font(.system(.footnote))
                         .foregroundStyle(Ink.tertiary)
                         .multilineTextAlignment(.center)
@@ -482,12 +482,12 @@ struct TodayView: View {
                             tint: Ink.tertiary.opacity(0.55))
                     .accessibilityHidden(true)
 
-                Text("Get a Grip is built around one routine you actually commit to.")
+                Text("Build your hang routine")
                     .font(.system(.title3, weight: .semibold))
                     .foregroundStyle(Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Start with a name and one set. Make it yours, then come back and pull.")
+                Text("Name it, add your grips and timing, and set reminders.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)

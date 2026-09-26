@@ -43,7 +43,7 @@ final class SessionLedger {
                        rpe: RPE?,
                        newMaxes: [MaxRecord] = []) -> WorkoutLog? {
         guard newMaxes.allSatisfy({ $0.kg.isFinite && $0.kg > 0 }) else {
-            saveError = String(localized: "Couldn't save this workout. Please try again.")
+            saveError = String(localized: "Couldn't save this workout. Try again.")
             return nil
         }
         let log = WorkoutLog(
@@ -66,7 +66,7 @@ final class SessionLedger {
         } catch {
             // Roll back so memory matches disk: a phantom session is worse than an error.
             context.rollback()
-            saveError = String(localized: "That change couldn't be saved — \(error.localizedDescription)")
+            saveError = String(localized: "Couldn't save the change: \(error.localizedDescription)")
             return nil
         }
         return log

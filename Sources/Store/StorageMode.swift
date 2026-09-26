@@ -23,11 +23,11 @@ enum StorageMode {
     var aboutLine: String {
         switch self {
         case .cloud:
-            String(localized: "Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing.")
+            String(localized: "Stored on this device and synced to your private iCloud when available.")
         case .localOnly:
-            String(localized: "iCloud isn't available, so your routines and sessions are stored only on this device. They won't sync or restore.")
+            String(localized: "iCloud is unavailable. Data stays on this device and won't sync.")
         case .isolated:
-            String(localized: "This build can't reach its shared storage, so routines saved earlier may not appear here.")
+            String(localized: "Can't reach shared storage. Earlier routines may be missing.")
         }
     }
 }

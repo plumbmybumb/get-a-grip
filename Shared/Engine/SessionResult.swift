@@ -157,10 +157,10 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
     var explainer: String {
         switch self {
         case .hang:        String(localized: "A session on the board.")
-        case .climbVolume: String(localized: "Laps, circuits, an easy evening — real load, well short of maximal.")
-        case .climbLimit:  String(localized: "Hard bouldering or projecting — a maximal pull on your fingers.")
-        case .hangManual:  String(localized: "Weighted or max hangs you did on your own — no gauge behind it.")
-        case .benchmark:   String(localized: "A testing day — a max or a critical force test on the gauge.")
+        case .climbVolume: String(localized: "Laps, circuits or an easy session, well below your limit.")
+        case .climbLimit:  String(localized: "Hard bouldering or projecting, at your limit.")
+        case .hangManual:  String(localized: "Weighted or max hangs done without the gauge.")
+        case .benchmark:   String(localized: "A max or critical force test on the gauge.")
         }
     }
 

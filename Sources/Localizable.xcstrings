@@ -2266,12 +2266,12 @@
         }
       }
     },
-    "A rest-day plan, a max day —\nwhatever this one isn't." : {
+    "For rest days, max days and more." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un plan de jour de repos, un jour de max —\ntout ce que celle-ci n'est pas."
+            "value" : "Pour les jours de repos, de max, et plus."
           }
         }
       }
@@ -2296,12 +2296,12 @@
         }
       }
     },
-    "A whenever routine — nothing owed today" : {
+    "No daily target" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une routine libre — rien à faire aujourd'hui"
+            "value" : "Pas d'objectif quotidien"
           }
         }
       }
@@ -2477,12 +2477,12 @@
         }
       }
     },
-    "All the pulls on one hand, then all of them on the other, inside one set." : {
+    "All pulls on one hand, then the other, in each set." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toutes les tractions d’une main, puis de l’autre, dans une même série."
+            "value" : "Tous les tirages d'une main, puis de l'autre, dans chaque série."
           }
         }
       }
@@ -2777,12 +2777,12 @@
         }
       }
     },
-    "Bluetooth is off — turn it on to measure." : {
+    "Bluetooth is off. Turn it on to measure." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le Bluetooth est éteint — active-le pour mesurer."
+            "value" : "Le Bluetooth est éteint. Active-le pour mesurer."
           }
         }
       }
@@ -3238,12 +3238,12 @@
         }
       }
     },
-    "Connect your gauge to try it — you can change this any time." : {
+    "Connect your gauge to check it." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connecte ton capteur pour l'essayer — tu peux changer ça quand tu veux."
+            "value" : "Connecte ton capteur pour le vérifier."
           }
         }
       }
@@ -3429,12 +3429,12 @@
         }
       }
     },
-    "Couldn't read your routines just now — the new one wasn't saved." : {
+    "Couldn't load your routines, so the new one wasn't saved." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de lire tes routines à l'instant — la nouvelle n'a pas été enregistrée."
+            "value" : "Impossible de charger tes routines, la nouvelle n'a donc pas été enregistrée."
           }
         }
       }
@@ -3449,19 +3449,12 @@
         }
       }
     },
-    "Couldn't save this workout. Please try again." : {
-      "extractionState" : "manual",
+    "Couldn't save this workout. Try again." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn't save this workout. Please try again."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d’enregistrer cette séance. Veuillez réessayer."
+            "value" : "Impossible d’enregistrer cette séance. Réessaie."
           }
         }
       }
@@ -4469,22 +4462,22 @@
         }
       }
     },
-    "Following the routine — %@ of your max, but there is no max on file for this grip yet, so this set will show no target." : {
+    "Routine target: %@ of max. No max for this grip yet." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selon la routine — %@ de ton max, mais aucun max enregistré pour cette prise, donc cette série n'affichera aucune cible."
+            "value" : "Cible de la routine : %@ du max. Pas encore de max pour cette prise."
           }
         }
       }
     },
-    "Following the routine — %@, which is %@ on your %@" : {
+    "Routine target: %@, so %@." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selon la routine — %@, soit %@ d'après %@"
+            "value" : "Cible de la routine : %1$@, soit %2$@."
           }
         }
       }
@@ -4766,12 +4759,12 @@
         }
       }
     },
-    "Gauge battery at %lld%% — charge it soon." : {
+    "Gauge battery at %lld%%. Charge it soon." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Batterie du capteur à %lld%% — recharge-le bientôt."
+            "value" : "Batterie du capteur à %lld %%. Recharge-le bientôt."
           }
         }
       }
@@ -4908,12 +4901,12 @@
         }
       }
     },
-    "Get a Grip is built around one routine you actually commit to." : {
+    "Build your hang routine" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Get a Grip est construit autour d'une seule routine à laquelle tu t'engages vraiment."
+            "value" : "Crée ta routine de suspensions"
           }
         }
       }
@@ -5096,12 +5089,12 @@
         }
       }
     },
-    "Hard bouldering or projecting — a maximal pull on your fingers." : {
+    "Hard bouldering or projecting, at your limit." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bloc dur ou travail de projet — une sollicitation maximale des doigts."
+            "value" : "Bloc dur ou projet, à ta limite."
           }
         }
       }
@@ -5386,12 +5379,12 @@
         }
       }
     },
-    "iCloud isn't available, so your routines and sessions are stored only on this device. They won't sync or restore." : {
+    "iCloud is unavailable. Data stays on this device and won't sync." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud n'est pas disponible, tes routines et tes séances sont donc stockées uniquement sur cet appareil. Elles ne se synchroniseront ni ne se restaureront."
+            "value" : "iCloud est indisponible. Tes données restent sur cet appareil et ne se synchronisent pas."
           }
         }
       }
@@ -5675,12 +5668,12 @@
         }
       }
     },
-    "Laps, circuits, an easy evening — real load, well short of maximal." : {
+    "Laps, circuits or an easy session, well below your limit." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Longueurs, circuits, une soirée tranquille — une vraie charge, loin du maximal."
+            "value" : "Longueurs, circuits ou séance tranquille, bien sous ta limite."
           }
         }
       }
@@ -5786,12 +5779,12 @@
         }
       }
     },
-    "Left hand first, then right, within each set." : {
+    "Left hand first, then right, in each set." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La main gauche, puis la droite, dans chaque série."
+            "value" : "Main gauche d'abord, puis droite, dans chaque série."
           }
         }
       }
@@ -5826,12 +5819,22 @@
         }
       }
     },
-    "Left, right, left, right — swapping hands every pull." : {
+    "Hands swap every pull, left first." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gauche, droite, gauche, droite — on change de main à chaque tirage."
+            "value" : "Les mains alternent à chaque tirage, gauche d'abord."
+          }
+        }
+      }
+    },
+    "Hands swap every pull." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les mains alternent à chaque tirage."
           }
         }
       }
@@ -5977,12 +5980,12 @@
         }
       }
     },
-    "Log a session you did elsewhere — climbing, or hangs off the gauge" : {
+    "Log a climb or hangs without the gauge" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enregistre une séance faite ailleurs — escalade, ou suspensions sans capteur"
+            "value" : "Enregistrer une séance d'escalade ou des suspensions sans capteur"
           }
         }
       }
@@ -6087,16 +6090,6 @@
         }
       }
     },
-    "max for this grip." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ton max sur cette prise."
-          }
-        }
-      }
-    },
     "Max on this grip" : {
       "localizations" : {
         "fr" : {
@@ -6133,16 +6126,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Max"
-          }
-        }
-      }
-    },
-    "maxes for this grip." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "tes max sur cette prise."
           }
         }
       }
@@ -7310,12 +7293,12 @@
         }
       }
     },
-    "One pull with both hands on the edge. Reps per side is just the number of pulls." : {
+    "Both hands pull together." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un tirage avec les deux mains sur la réglette. Les tirages par côté sont simplement le nombre de tirages."
+            "value" : "Les deux mains tirent ensemble."
           }
         }
       }
@@ -7506,12 +7489,12 @@
         }
       }
     },
-    "Past sessions keep the routine they were done with." : {
+    "Its sessions are deleted too." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les séances passées gardent la routine avec laquelle elles ont été faites."
+            "value" : "Ses séances sont aussi supprimées."
           }
         }
       }
@@ -7628,13 +7611,12 @@
         }
       }
     },
-    "Percentage targets use your saved maxes. These may no longer reflect your current strength." : {
-      "extractionState" : "manual",
+    "Targets use your saved maxes. Retest when they're out of date." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les cibles en pourcentage utilisent vos max enregistrés, qui peuvent ne plus refléter votre force actuelle."
+            "value" : "Les cibles utilisent tes max enregistrés. Refais un test s'ils sont dépassés."
           }
         }
       }
@@ -7866,12 +7848,12 @@
         }
       }
     },
-    "Pull and watch the force in real time" : {
+    "Opens the live gauge" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tire et regarde la force en temps réel"
+            "value" : "Ouvre le capteur en direct"
           }
         }
       }
@@ -8265,18 +8247,12 @@
         }
       }
     },
-    "Right hand first, then left, within each set." : {
+    "Right hand first, then left, in each set." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Right hand first, then left, within each set."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La main droite, puis la gauche, dans chaque série."
+            "value" : "Main droite d'abord, puis gauche, dans chaque série."
           }
         }
       }
@@ -8317,18 +8293,12 @@
         }
       }
     },
-    "Right, left, right, left — swapping hands every pull." : {
+    "Hands swap every pull, right first." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Right, left, right, left — swapping hands every pull."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Droite, gauche, droite, gauche — on change de main à chaque tirage."
+            "value" : "Les mains alternent à chaque tirage, droite d'abord."
           }
         }
       }
@@ -8429,12 +8399,12 @@
         }
       }
     },
-    "Runs the timers and hand prompts only. Nothing is measured." : {
+    "Timers only. Nothing is measured." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ne lance que les chronos et les consignes de main. Rien n'est mesuré."
+            "value" : "Chronos seulement. Rien n'est mesuré."
           }
         }
       }
@@ -9273,13 +9243,12 @@
         }
       }
     },
-    "Some percentage targets have no saved max, so they will show no target." : {
-      "extractionState" : "manual",
+    "Some grips have no max yet, so their sets have no target." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Certaines cibles en pourcentage n’ont pas de max enregistré et ne seront donc pas affichées."
+            "value" : "Certaines prises n'ont pas encore de max, leurs séries n'ont donc pas de cible."
           }
         }
       }
@@ -9451,12 +9420,12 @@
         }
       }
     },
-    "Start with a name and one set. Make it yours, then come back and pull." : {
+    "Name it, add your grips and timing, and set reminders." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Commence par un nom et une série. Adapte la routine à tes envies, puis reviens tirer."
+            "value" : "Donne-lui un nom, ajoute tes prises, tes temps et tes rappels."
           }
         }
       }
@@ -9819,22 +9788,22 @@
         }
       }
     },
-    "That change couldn't be saved — %@" : {
+    "Couldn't save the change: %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce changement n'a pas pu être enregistré — %@"
+            "value" : "Impossible d'enregistrer la modification : %@"
           }
         }
       }
     },
-    "That change couldn't be saved — the routine is still here. Try again." : {
+    "Couldn't save the change. Try again." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce changement n'a pas pu être enregistré — la routine est toujours là. Réessaie."
+            "value" : "Impossible d'enregistrer la modification. Réessaie."
           }
         }
       }
@@ -9889,12 +9858,12 @@
         }
       }
     },
-    "That's over an hour. Fine if you mean it." : {
+    "This routine runs over an hour." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ça fait plus d'une heure. Pas de souci si c'est voulu."
+            "value" : "Cette routine dure plus d'une heure."
           }
         }
       }
@@ -10028,12 +9997,12 @@
         }
       }
     },
-    "This build can't reach its shared storage, so routines saved earlier may not appear here." : {
+    "Can't reach shared storage. Earlier routines may be missing." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette version n'atteint pas son stockage partagé, les routines enregistrées avant peuvent donc ne pas apparaître ici."
+            "value" : "Stockage partagé inaccessible. Des routines plus anciennes peuvent manquer."
           }
         }
       }
@@ -10054,12 +10023,12 @@
         }
       }
     },
-    "This code contains a routine with no pulls in it." : {
+    "This routine has no pulls." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce code contient une routine sans aucun tirage."
+            "value" : "Cette routine ne contient aucun tirage."
           }
         }
       }
@@ -10141,12 +10110,12 @@
         }
       }
     },
-    "This routine code couldn't be read. It may be damaged or incomplete." : {
+    "Couldn't read this routine code. It may be damaged." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce code de routine n'a pas pu être lu. Il est peut-être abîmé ou incomplet."
+            "value" : "Impossible de lire ce code de routine. Il est peut-être abîmé."
           }
         }
       }
@@ -10161,12 +10130,12 @@
         }
       }
     },
-    "This routine was shared from a newer version of Get a Grip. Update the app to import it." : {
+    "This routine needs a newer Get a Grip. Update the app to import it." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette routine a été partagée depuis une version plus récente de Get a Grip. Mets l'app à jour pour l'importer."
+            "value" : "Cette routine demande une version plus récente de Get a Grip. Mets l'app à jour pour l'importer."
           }
         }
       }
@@ -10617,12 +10586,12 @@
         }
       }
     },
-    "Weighted or max hangs you did on your own — no gauge behind it." : {
+    "Weighted or max hangs done without the gauge." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suspensions lestées ou maximales faites de ton côté — sans capteur derrière."
+            "value" : "Suspensions lestées ou max faites sans le capteur."
           }
         }
       }
@@ -10923,12 +10892,12 @@
         }
       }
     },
-    "Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing." : {
+    "Stored on this device and synced to your private iCloud when available." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vos routines et séances sont enregistrées sur cet appareil. La synchronisation iCloud privée est activée lorsque vous êtes connecté et qu’iCloud est disponible ; l’app ne peut pas confirmer que toutes les modifications ont été synchronisées."
+            "value" : "Enregistré sur cet appareil et synchronisé avec ton iCloud privé quand il est disponible."
           }
         }
       }
@@ -12074,12 +12043,12 @@
         }
       }
     },
-    "A testing day — a max or a critical force test on the gauge." : {
+    "A max or critical force test on the gauge." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un jour de test — un max ou un test de force critique au capteur."
+            "value" : "Un test de max ou de force critique au capteur."
           }
         }
       }
@@ -12134,22 +12103,22 @@
         }
       }
     },
-    "No max on file for this grip yet, so this shows no target during a session. Add one on the Benchmarks tab." : {
+    "No max for this grip yet. Measure one in Benchmarks." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun max enregistré pour cette prise, donc rien ne s'affiche comme cible pendant une séance. Ajoutes-en un dans l’onglet Tests."
+            "value" : "Pas encore de max pour cette prise. Mesures-en un dans Tests."
           }
         }
       }
     },
-    "No max for your %@ hand, so those pulls show no target. Add one on the Benchmarks tab." : {
+    "No max for your %@ hand yet. Measure one in Benchmarks." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun max pour ta main %@, donc ces tirages n'affichent aucune cible. Ajoutes-en un dans l’onglet Tests."
+            "value" : "Pas encore de max pour ta main %@. Mesures-en un dans Tests."
           }
         }
       }

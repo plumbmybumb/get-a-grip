@@ -475,7 +475,7 @@ struct RoutineCard: View, Equatable {
                     // 44 tall for the target, pulled up tight under the note: the stack gap on
                     // top was pure spend on a page that has to fit.
                     .padding(.top, -6)
-                    .accessibilityHint(String(localized: "Runs the timers and hand prompts only. Nothing is measured."))
+                    .accessibilityHint(String(localized: "Timers only. Nothing is measured."))
             }
 
             switch deviceState {
@@ -531,7 +531,7 @@ struct RoutineCard: View, Equatable {
             return Note(symbol: nil, text: String(localized: "Searching for your gauge…"), tint: Ink.tertiary)
         case .bluetoothOff:
             return Note(symbol: "exclamationmark.triangle.fill",
-                        text: String(localized: "Bluetooth is off — turn it on to measure."), tint: Accent.alarm)
+                        text: String(localized: "Bluetooth is off. Turn it on to measure."), tint: Accent.alarm)
         case .unauthorized:
             return Note(symbol: "exclamationmark.triangle.fill",
                         text: String(localized: "Bluetooth access is off for Get a Grip."), tint: Accent.alarm)
@@ -546,7 +546,7 @@ struct RoutineCard: View, Equatable {
         guard let battery, battery < 0.15 else { return nil }
         let percent = BatteryDisplay.percentage(battery)
         return Note(symbol: "bolt.badge.exclamationmark",
-                    text: String(localized: "Gauge battery at \(percent)% — charge it soon."), tint: StatusTint.armed)
+                    text: String(localized: "Gauge battery at \(percent)%. Charge it soon."), tint: StatusTint.armed)
     }
 
     private func noteRow(_ note: Note) -> some View {

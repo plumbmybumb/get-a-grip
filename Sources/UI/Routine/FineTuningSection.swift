@@ -170,7 +170,7 @@ private struct ThresholdGaugeStrip: View {
                 }
             } else {
                 // SHOWN, not a disabled button: a control you cannot use teaches nothing.
-                Text("Connect your gauge to try it — you can change this any time.")
+                Text("Connect your gauge to check it.")
                     .font(.system(.caption, weight: .medium))
                     .foregroundStyle(Ink.tertiary)
                     .fixedSize(horizontal: false, vertical: true)

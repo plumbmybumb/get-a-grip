@@ -88,9 +88,9 @@ enum HandMode: String, Codable, Hashable, Sendable, CaseIterable {
 
     var explainer: String {
         switch self {
-        case .alternateEachRep: String(localized: "Left, right, left, right — swapping hands every pull.")
-        case .alternateEachSet: String(localized: "All the pulls on one hand, then all of them on the other, inside one set.")
-        case .bothHands:        String(localized: "One pull with both hands on the edge. Reps per side is just the number of pulls.")
+        case .alternateEachRep: String(localized: "Hands swap every pull.")
+        case .alternateEachSet: String(localized: "All pulls on one hand, then the other, in each set.")
+        case .bothHands:        String(localized: "Both hands pull together.")
         }
     }
 

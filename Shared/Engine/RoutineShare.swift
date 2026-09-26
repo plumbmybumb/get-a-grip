@@ -32,11 +32,11 @@ enum RoutineShareError: Error, LocalizedError, Equatable {
         case .notARoutineLink:
             return String(localized: "This link isn't a routine from Get a Grip.")
         case .unreadable:
-            return String(localized: "This routine code couldn't be read. It may be damaged or incomplete.")
+            return String(localized: "Couldn't read this routine code. It may be damaged.")
         case .newerVersion:
-            return String(localized: "This routine was shared from a newer version of Get a Grip. Update the app to import it.")
+            return String(localized: "This routine needs a newer Get a Grip. Update the app to import it.")
         case .emptyRoutine:
-            return String(localized: "This code contains a routine with no pulls in it.")
+            return String(localized: "This routine has no pulls.")
         case .tooLarge:
             return String(localized: "This routine is too large to import.")
         }

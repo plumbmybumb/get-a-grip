@@ -231,22 +231,22 @@
         }
       }
     },
-    "A testing day — a max or a critical force test on the gauge." : {
+    "A max or critical force test on the gauge." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un jour de test — un max ou un test de force critique au capteur."
+            "value" : "Un test de max ou de force critique au capteur."
           }
         }
       }
     },
-    "A whenever routine — nothing owed today" : {
+    "No daily target" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une routine libre — rien à faire aujourd'hui"
+            "value" : "Pas d'objectif quotidien"
           }
         }
       }
@@ -281,12 +281,12 @@
         }
       }
     },
-    "All the pulls on one hand, then all of them on the other, inside one set." : {
+    "All pulls on one hand, then the other, in each set." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toutes les tractions d’une main, puis de l’autre, dans une même série."
+            "value" : "Tous les tirages d'une main, puis de l'autre, dans chaque série."
           }
         }
       }
@@ -591,18 +591,12 @@
         }
       }
     },
-    "Couldn't save this workout. Please try again." : {
+    "Couldn't save this workout. Try again." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn't save this workout. Please try again."
-          }
-        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d’enregistrer cette séance. Veuillez réessayer."
+            "value" : "Impossible d’enregistrer cette séance. Réessaie."
           }
         }
       }
@@ -1167,12 +1161,12 @@
         }
       }
     },
-    "Hard bouldering or projecting — a maximal pull on your fingers." : {
+    "Hard bouldering or projecting, at your limit." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bloc dur ou travail de projet — une sollicitation maximale des doigts."
+            "value" : "Bloc dur ou projet, à ta limite."
           }
         }
       }
@@ -1207,12 +1201,12 @@
         }
       }
     },
-    "iCloud isn't available, so your routines and sessions are stored only on this device. They won't sync or restore." : {
+    "iCloud is unavailable. Data stays on this device and won't sync." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iCloud n'est pas disponible, tes routines et tes séances sont donc stockées uniquement sur cet appareil. Elles ne se synchroniseront ni ne se restaureront."
+            "value" : "iCloud est indisponible. Tes données restent sur cet appareil et ne se synchronisent pas."
           }
         }
       }
@@ -1317,12 +1311,12 @@
         }
       }
     },
-    "Laps, circuits, an easy evening — real load, well short of maximal." : {
+    "Laps, circuits or an easy session, well below your limit." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Longueurs, circuits, une soirée tranquille — une vraie charge, loin du maximal."
+            "value" : "Longueurs, circuits ou séance tranquille, bien sous ta limite."
           }
         }
       }
@@ -1357,12 +1351,12 @@
         }
       }
     },
-    "Left, right, left, right — swapping hands every pull." : {
+    "Hands swap every pull." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gauche, droite, gauche, droite — on change de main à chaque tirage."
+            "value" : "Les mains alternent à chaque tirage."
           }
         }
       }
@@ -1687,12 +1681,12 @@
         }
       }
     },
-    "One pull with both hands on the edge. Reps per side is just the number of pulls." : {
+    "Both hands pull together." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un tirage avec les deux mains sur la réglette. Les tirages par côté sont simplement le nombre de tirages."
+            "value" : "Les deux mains tirent ensemble."
           }
         }
       }
@@ -2257,12 +2251,12 @@
         }
       }
     },
-    "That change couldn't be saved — %@" : {
+    "Couldn't save the change: %@" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce changement n'a pas pu être enregistré — %@"
+            "value" : "Impossible d'enregistrer la modification : %@"
           }
         }
       }
@@ -2283,12 +2277,12 @@
         }
       }
     },
-    "This build can't reach its shared storage, so routines saved earlier may not appear here." : {
+    "Can't reach shared storage. Earlier routines may be missing." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette version n'atteint pas son stockage partagé, les routines enregistrées avant peuvent donc ne pas apparaître ici."
+            "value" : "Stockage partagé inaccessible. Des routines plus anciennes peuvent manquer."
           }
         }
       }
@@ -2309,12 +2303,12 @@
         }
       }
     },
-    "This code contains a routine with no pulls in it." : {
+    "This routine has no pulls." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce code contient une routine sans aucun tirage."
+            "value" : "Cette routine ne contient aucun tirage."
           }
         }
       }
@@ -2345,12 +2339,12 @@
         }
       }
     },
-    "This routine code couldn't be read. It may be damaged or incomplete." : {
+    "Couldn't read this routine code. It may be damaged." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce code de routine n'a pas pu être lu. Il est peut-être abîmé ou incomplet."
+            "value" : "Impossible de lire ce code de routine. Il est peut-être abîmé."
           }
         }
       }
@@ -2365,12 +2359,12 @@
         }
       }
     },
-    "This routine was shared from a newer version of Get a Grip. Update the app to import it." : {
+    "This routine needs a newer Get a Grip. Update the app to import it." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette routine a été partagée depuis une version plus récente de Get a Grip. Mets l'app à jour pour l'importer."
+            "value" : "Cette routine demande une version plus récente de Get a Grip. Mets l'app à jour pour l'importer."
           }
         }
       }
@@ -2485,12 +2479,12 @@
         }
       }
     },
-    "Weighted or max hangs you did on your own — no gauge behind it." : {
+    "Weighted or max hangs done without the gauge." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suspensions lestées ou maximales faites de ton côté — sans capteur derrière."
+            "value" : "Suspensions lestées ou max faites sans le capteur."
           }
         }
       }
@@ -2555,12 +2549,12 @@
         }
       }
     },
-    "Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing." : {
+    "Stored on this device and synced to your private iCloud when available." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vos routines et séances sont enregistrées sur cet appareil. La synchronisation iCloud privée est activée lorsque vous êtes connecté et qu’iCloud est disponible ; l’app ne peut pas confirmer que toutes les modifications ont été synchronisées."
+            "value" : "Enregistré sur cet appareil et synchronisé avec ton iCloud privé quand il est disponible."
           }
         }
       }

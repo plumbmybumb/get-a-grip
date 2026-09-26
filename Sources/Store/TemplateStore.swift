@@ -627,7 +627,7 @@ final class TemplateStore {
         }
         if template.isOnDemand {
             switch done {
-            case 0:  return String(localized: "A whenever routine — nothing owed today")
+            case 0:  return String(localized: "No daily target")
             case 1:  return String(localized: "Done today")
             default: return String(localized: "Done \(done) times today")
             }
@@ -700,7 +700,7 @@ final class TemplateStore {
         guard let siblings = fetchRoutines() else {
             // A failed READ is not "no routines": minting sortIndex 0 here would make
             // this the primary routine and push whatever exists behind it.
-            saveError = String(localized: "Couldn't read your routines just now — the new one wasn't saved.")
+            saveError = String(localized: "Couldn't load your routines, so the new one wasn't saved.")
             return nil
         }
         let normalized = draft.normalized
@@ -1626,7 +1626,7 @@ final class TemplateStore {
             // process — while the list, the reminders and the session it started all
             // confirm it — is far worse than a visible error.
             context.rollback()
-            saveError = String(localized: "That change couldn't be saved — \(error.localizedDescription)")
+            saveError = String(localized: "Couldn't save the change: \(error.localizedDescription)")
         }
         syncDerived(refoldingMaxes: maxesChanged)
     }

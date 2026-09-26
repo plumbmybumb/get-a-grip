@@ -83,7 +83,7 @@ struct ConsistencyCard: View {
         .accessibilityIdentifier("consistency.log")
         // The sheet also logs hangs done away from the gauge, so the label must not
         // name only climbing.
-        .accessibilityLabel(String(localized: "Log a session you did elsewhere — climbing, or hangs off the gauge"))
+        .accessibilityLabel(String(localized: "Log a climb or hangs without the gauge"))
     }
 
 }

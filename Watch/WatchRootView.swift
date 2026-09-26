@@ -289,7 +289,7 @@ struct WatchRoutineScreen: View {
 
     private var tally: String {
         if template.isOnDemand {
-            return completedToday == 0 ? String(localized: "A whenever routine — nothing owed today")
+            return completedToday == 0 ? String(localized: "No daily target")
                                        : String(localized: "Done \(completedToday) times today")
         }
         return String(localized: "\(completedToday) of \(max(1, template.sessionsPerDay)) sessions done today")

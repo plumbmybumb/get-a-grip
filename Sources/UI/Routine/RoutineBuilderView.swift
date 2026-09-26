@@ -329,19 +329,19 @@ private struct BuilderDocument: View {
                     .foregroundStyle(Ink.tertiary)
             }
             if draft.plan.executable.sets.contains(where: { $0.targetBand == nil && PlanMath.targetPercent($0, in: draft.plan) != nil }) {
-                Text("Percentage targets use your saved maxes. These may no longer reflect your current strength.")
+                Text("Targets use your saved maxes. Retest when they're out of date.")
                     .font(.system(.footnote))
                     .foregroundStyle(Ink.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if PlanMath.missingBenchmarkGripCount(draft.plan, maxes: templates.maxTable) > 0 {
-                Label("Some percentage targets have no saved max, so they will show no target.", systemImage: "exclamationmark.circle")
+                Label("Some grips have no max yet, so their sets have no target.", systemImage: "exclamationmark.circle")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(StatusTint.armed)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if PlanMath.totalSeconds(draft.plan) > 3600 {
-                Label("That's over an hour. Fine if you mean it.", systemImage: "clock")
+                Label("This routine runs over an hour.", systemImage: "clock")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(StatusTint.armed)
                     .padding(.top, 4)
@@ -366,7 +366,7 @@ private struct BuilderDocument: View {
             if templates.saveError != nil {
                 // The sheet STAYS OPEN on a rollback: dismissing would destroy the routine
                 // with the form. The plain sentence reassures; `localizedDescription` would not.
-                Text("That change couldn't be saved — the routine is still here. Try again.")
+                Text("Couldn't save the change. Try again.")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Accent.alarm)
                     .fixedSize(horizontal: false, vertical: true)
@@ -392,7 +392,7 @@ private struct BuilderDocument: View {
             SecondaryGlassButton(title: String(localized: "Delete routine"), tint: Accent.alarm) {
                 deleteRoutine(id)
             }
-            Text("Past sessions keep the routine they were done with.")
+            Text("Its sessions are deleted too.")
                 .font(.system(.footnote))
                 .foregroundStyle(Ink.tertiary)
                 .fixedSize(horizontal: false, vertical: true)

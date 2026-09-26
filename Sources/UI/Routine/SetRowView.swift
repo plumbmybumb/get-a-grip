@@ -244,10 +244,9 @@ struct SetRowView: View, Equatable {
         // PER HAND, through the shared formatter, so no two screens quote different
         // loads for one routine.
         guard let load = weightUnit.targetText(set, in: defaults, maxes: maxes) else {
-            return String(localized: "Following the routine — \(range) of your max, but there is no max on file for this grip yet, so this set will show no target.")
+            return String(localized: "Routine target: \(range) of max. No max for this grip yet.")
         }
-        let perHand = PlanMath.targetDiffersByHand(set, in: defaults, maxes: maxes)
-        return String(localized: "Following the routine — \(range), which is \(load) on your \(perHand ? String(localized: "maxes for this grip.") : String(localized: "max for this grip."))")
+        return String(localized: "Routine target: \(range), so \(load).")
     }
 
     private func percentText(_ fraction: Double) -> String {
