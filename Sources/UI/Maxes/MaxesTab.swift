@@ -50,8 +50,7 @@ struct MaxesTab: View {
                        gridsOnWideScreens: true) {
             VStack(alignment: .leading, spacing: Metrics.spacing) {
                 if gripGroups.isEmpty && untestedInvitations.isEmpty {
-                    // Anchored even when empty: a first-run tour arrives with no maxes.
-                    emptyCard.tourAnchor(.maxesCurves).staggerIn(0)
+                    emptyCard.staggerIn(0)
                 } else if sizeClass == .regular {
                     // Two per row on a wide window: one chart across a 13-inch screen is a banner.
                     CardGrid { cards(gripGroups, untestedInvitations) }
@@ -128,20 +127,10 @@ struct MaxesTab: View {
     @ViewBuilder
     private func cards(_ gripGroups: [GripGroup], _ untestedInvitations: [GripSpec]) -> some View {
         ForEach(Array(gripGroups.enumerated()), id: \.element.id) { index, group in
-            if index == 0 {
-                gripCard(group).tourAnchor(.maxesCurves).staggerIn(index)
-            } else {
-                gripCard(group).staggerIn(index)
-            }
+            gripCard(group).staggerIn(index)
         }
         ForEach(Array(untestedInvitations.enumerated()), id: \.element.key) { index, grip in
-            // First-run tours land here with routines but no maxes — the leading
-            // invitation is the spotlight's home then.
-            if gripGroups.isEmpty, index == 0 {
-                invitationCard(grip).tourAnchor(.maxesCurves).staggerIn(0)
-            } else {
-                invitationCard(grip).staggerIn(gripGroups.count)
-            }
+            invitationCard(grip).staggerIn(gripGroups.count)
         }
     }
 

@@ -46,7 +46,6 @@ struct TodayView: View {
     @State private var builder: BuilderMode?
     @State private var overview: RoutineOverviewRequest?
     @State private var pendingOverviewEditID: UUID?
-    @Environment(TourController.self) private var tour
 
     @State private var running: SessionTemplate?
     /// The live gauge as a full-screen cover. Some people use the gauge and no routine
@@ -158,7 +157,6 @@ struct TodayView: View {
                 ConsistencyCard(days: templates.consistency,
                                 onLogClimb: { loggingSession = true },
                                 onShowHistory: onShowHistory)
-                    .tourAnchor(.consistency)
                     .staggerIn(2)
             }
         }
@@ -201,14 +199,12 @@ struct TodayView: View {
         .fullScreenCover(isPresented: $showingGauge, onDismiss: { drainImportInbox() }) {
             NavigationStack { GaugeView(presentedAsCover: true) }
         }
-        // `initial: true`: both the start and the resume trigger. The routine list is a
-        // `@Query`, unknowable on the first frame, so `onAppear` would show the
-        // empty-handed act to somebody with six routines.
+        #if DEBUG
+        // `initial: true`: the routine list is a `@Query`, unknowable on the first frame,
+        // so `onAppear` would find no routine to open or start.
         .onChange(of: deck.ordered.count, initial: true) { _, _ in
-            syncTour()
-            #if DEBUG
             // Headless verification: `-previewBuilder` opens the first routine's editor
-            // (`simctl` cannot tap). Here, not `onAppear`, for the tour's reason above.
+            // (`simctl` cannot tap).
             if ProcessInfo.processInfo.arguments.contains("-previewBuilder"),
                builder == nil, let first = ordered.first {
                 builder = .edit(first.id)
@@ -219,12 +215,8 @@ struct TodayView: View {
                running == nil, let first = ordered.first {
                 start(first)
             }
-            #endif
         }
-        // ALSO when a session closes: "Save and start training" goes straight into
-        // the runner, so the resume must wait for you to come back, or Today's tour
-        // runs behind the cover over a live workout.
-        .onChange(of: running?.id) { _, _ in syncTour() }
+        #endif
         .sheet(isPresented: $loggingSession, onDismiss: { drainImportInbox() }) {
             SessionLogSheet(onClose: { loggingSession = false })
         }
@@ -503,7 +495,6 @@ struct TodayView: View {
                 PrimaryGlassButton(title: String(localized: "Build my routine"), tint: Accent.graphite) {
                     builder = .firstRun
                 }
-                .tourAnchor(.buildRoutine)
 
                 scanRoutineButton
 
@@ -621,17 +612,6 @@ struct TodayView: View {
     }
 
     // MARK: - Starting
-
-    /// Start or resume the tour, but never over a session. Called on first appearance, on
-    /// the routine list changing, and on the runner closing.
-    private func syncTour() {
-        guard running == nil else { return }
-        if tour.awaitingRoutine, !ordered.isEmpty {
-            tour.routineCreated()
-        } else {
-            tour.beginIfUnseen(.intro, hasRoutine: !ordered.isEmpty)
-        }
-    }
 
     private func start(_ routine: SessionTemplate, timerOnly: Bool = false) {
         // Prepare the destination. The agreement gate records the start only when

@@ -7,7 +7,6 @@ import XCTest
 final class LegalAgreementUITests: XCTestCase {
     func testMaxesCreationLivesInMaxesTab() {
         let app = launchApp(arguments: ["-seedRoutine", "-mockDevice", "-tab", "2"])
-        dismissTour(in: app)
         XCTAssertFalse(app.buttons["Manage maxes"].exists)
         let add = app.buttons["maxes.add"]
         for _ in 0..<12 where !add.isHittable { app.swipeUp() }
@@ -109,7 +108,6 @@ final class LegalAgreementUITests: XCTestCase {
         app.launchArguments = ["-seedRoutine", "-mockDevice"]
         for _ in 0..<2 {
             app.launch()
-            dismissTour(in: app, timeout: 3)
             let start = app.buttons["Connect and start"]
             XCTAssertTrue(start.waitForExistence(timeout: 10))
             start.tap()
@@ -124,7 +122,6 @@ final class LegalAgreementUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-seedRoutine", "-mockDevice"]
         app.launch()
-        dismissTour(in: app)
         let overview = app.buttons["routine.overview.open"].firstMatch
         XCTAssertTrue(overview.waitForExistence(timeout: 5))
         overview.tap()
@@ -171,7 +168,6 @@ final class LegalAgreementUITests: XCTestCase {
         app.launchArguments = ["-seedRoutine", "-mockDevice",
                                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
         app.launch()
-        dismissTour(in: app)
         app.tabBars.buttons["Benchmarks"].tap()
         let measureGrip = app.buttons["maxes.measure.20|IMRL|halfCrimp"]
         XCTAssertTrue(measureGrip.waitForExistence(timeout: 5))

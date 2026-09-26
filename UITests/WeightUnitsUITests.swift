@@ -7,7 +7,6 @@ import XCTest
 final class WeightUnitsUITests: XCTestCase {
     func testSettingsPoundsChoicePersistsAndManualMaxUsesPounds() {
         let app = launchApp(arguments: ["-seedRoutine", "-mockDevice", "-tab", "3"])
-        dismissTour(in: app)
         let pounds = app.buttons["Pounds (lb)"]
         reveal(pounds, in: app)
         XCTAssertTrue(pounds.isHittable)

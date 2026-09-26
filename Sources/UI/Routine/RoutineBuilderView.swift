@@ -45,7 +45,7 @@ struct RoutineBuilderView: View {
         // retired 2026-08-10 (Nuri): it modelled "many grips, one intensity" and
         // fought every protocol shaped like "one grip, many intensities". The
         // document states the skeleton first and the sets inherit it, which is how
-        // protocols are written. First-run guidance is the coach cards plus the tour.
+        // protocols are written. First-run guidance is the coach cards.
         BuilderDocument(mode: mode, seed: seed, onClose: onClose, onFinish: onFinish)
     }
 
@@ -81,7 +81,6 @@ private struct BuilderDocument: View {
 
     @Environment(TemplateStore.self) private var templates
     @Environment(SettingsStore.self) private var settings
-    @Environment(TourController.self) private var tour
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Changes only when the window does, so unlike `dismiss` it costs the document nothing.
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -209,10 +208,7 @@ private struct BuilderDocument: View {
         // owns the top of the screen, so the panel can hang off the island from
         // inside it.
         .overlay { gripPanel }
-        // The builder act of the first-run tour draws over THIS screen.
-        .tourHost(tour, act: .builder)
         .onAppear {
-            if mode.isCreating { tour.builderOpened() }
             #if DEBUG
             // Headless verification: `-previewGripPanel` opens the first set's grip
             // panel, which a screenshot cannot otherwise reach.
@@ -303,7 +299,6 @@ private struct BuilderDocument: View {
                           defaults: draft.plan.routineLevel,
                           firstSetReps: draft.plan.executable.sets.first?.repsPerSide ?? 6)
                 .equatable()
-                .tourAnchor(.builderRhythm)
         }
         .id(BuilderAnchor.rhythm)
     }
@@ -345,7 +340,6 @@ private struct BuilderDocument: View {
             }
             addSetRow(proxy)
         }
-        .tourAnchor(.builderSets)
         .id(BuilderAnchor.sets)
     }
 
@@ -426,7 +420,6 @@ private struct BuilderDocument: View {
                     save(andStart: false)
                 }
                 .disabled(draft.validationIssue != nil)
-                .tourAnchor(.builderFinish)
             }
         }
         .id(BuilderAnchor.finish)

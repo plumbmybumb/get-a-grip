@@ -22,10 +22,6 @@ struct RootTabView: View {
         return 0
     }()
 
-    /// The first-run tour, hosted HERE so the scrim covers the tab bar too — a live tab bar
-    /// invites the one tap that walks you out of the tutorial.
-    @State private var tour = TourController()
-
     var body: some View {
         TabView(selection: $selection) {
             Tab("Today", systemImage: "figure.climbing", value: 0) {
@@ -43,7 +39,11 @@ struct RootTabView: View {
                     .symbolEffect(.pulse, options: .repeat(.continuous),
                                   isActive: templates.benchmarkNudge && !reduceMotion)
             }
-            Tab("Settings", systemImage: "gearshape.fill", value: 3) { SettingsView() }
+            Tab("Settings", systemImage: "gearshape.fill", value: 3) {
+                SettingsView(onShowToday: {
+                    withAnimation(Motion.state(reduceMotion)) { selection = 0 }
+                })
+            }
         }
         // The bar collapses to a pill on scroll-down and returns on scroll-up.
         .tabBarMinimizeBehavior(.onScrollDown)
@@ -83,21 +83,6 @@ struct RootTabView: View {
         // never re-clamp downstream.
         .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         .tint(Accent.graphite)   // chrome is ink; bleu and red carry the signals
-        .tourHost(tour, act: .intro)
-        // A step that names a tab MOVES you to it, before the spotlight looks for
-        // anchors on that tab.
-        .onChange(of: tour.requestedTab) { _, tab in
-            guard let tab else { return }
-            withAnimation(Motion.state(reduceMotion)) { selection = tab }
-            tour.requestedTab = nil
-        }
-        .onChange(of: tour.current) { _, step in
-            guard let tab = step?.tab, tab != selection else { return }
-            withAnimation(Motion.state(reduceMotion)) { selection = tab }
-        }
-        // Started from Today: which act runs depends on the routine `@Query` only
-        // Today holds.
-        .environment(tour)
         // A session that finished but was neither saved nor discarded before the app
         // died is offered back once, at launch — see `UnsavedSessionDraft`.
         .unsavedSessionRecovery { draft in

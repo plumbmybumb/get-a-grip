@@ -23,7 +23,6 @@ struct RunnerView: View {
     #endif
 
     @Environment(DeviceStore.self) private var device
-    @Environment(TourController.self) private var tour
     @Environment(TemplateStore.self) private var templates
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
@@ -191,11 +190,6 @@ struct RunnerView: View {
             new.weightUnit = weightUnit
             session = new
             new.begin()
-            // AFTER the session exists, in the same block: as its own `.onAppear` this ran
-            // first, found `session` nil, and taught over a workout still counting down.
-            guard !timerOnly else { return }
-            tour.beginIfUnseen(.session)
-            if tour.isRunning { new.send(.pause) }
         }
         .onDisappear { session?.end() }
         .onChange(of: weightUnit) { _, unit in session?.weightUnit = unit }
@@ -237,14 +231,6 @@ struct RunnerView: View {
         }
         .onChange(of: device.state.isConnected) { _, connected in
             session?.connectionChanged(isConnected: connected)
-        }
-        // Its own host: a full-screen cover draws over the root overlay.
-        .tourHost(tour, act: .session)
-        // **The session PAUSES while the tour talks**, and resumes when it is done:
-        // a scrim that blocks Pause and Skip while a hold counts down is worse than no
-        // tutorial. Measured sessions only — gauge-free has no lane to point at.
-        .onChange(of: tour.isRunning) { was, now in
-            if was, !now { session?.send(.resume) }
         }
         .sensoryFeedback(.impact(weight: .heavy, intensity: 0.8), trigger: session?.repTick ?? 0)
         .sensoryFeedback(.selection, trigger: session?.phaseTick ?? 0)
@@ -454,8 +440,8 @@ struct RunnerView: View {
     /// **The open graph** — the stretch of screen between the panel and the controls
     /// where the curve runs in the clear. It draws nothing itself: the trace is the
     /// screen's background (`backgroundTrace`), and this is the frame that PLACES the
-    /// plot inside it, plus what still belongs on the graph — the no-signal notice, the
-    /// tour anchor, and the `runner.graph` element the UI tests measure the layout by.
+    /// plot inside it, plus what still belongs on the graph — the no-signal notice
+    /// and the `runner.graph` element the UI tests measure the layout by.
     ///
     /// NOT the grip-change chip: on an open graph it floated loose over the trace,
     /// repeating what the panel's amber rim, NEW GRIP badge and the hand already say.
@@ -490,7 +476,6 @@ struct RunnerView: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("runner.graph")
-            .tourAnchor(.runnerTrace)
     }
 
     /// On the phone the trace is this region's background, stretched to the screen's
@@ -912,7 +897,6 @@ struct RunnerView: View {
             Text("REST").hidden().accessibilityHidden(true)
             Text(measuredPromptText(session))
         }
-            .tourAnchor(.runnerHand)
             .font(.system(size: promptSize * scale, weight: .heavy))
             .foregroundStyle(tint(session))
             .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
@@ -987,7 +971,6 @@ struct RunnerView: View {
                         rolls: clockRolls,
                         caption: nil,
                         scale: scale)
-                    .tourAnchor(.runnerClock)
             }
         }
         .frame(maxWidth: .infinity)
@@ -1179,7 +1162,6 @@ struct RunnerView: View {
         // of the CONTENT) landing on the grip line.
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(Motion.state(reduceMotion), value: session.snapshot.phase)
-        .tourAnchor(.runnerClock)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenDialState(session))
     }

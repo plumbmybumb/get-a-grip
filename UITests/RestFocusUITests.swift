@@ -181,7 +181,6 @@ final class RestFocusUITests: XCTestCase {
     func testSettingsDoesNotOfferTheRemovedPreviewSwitch() {
         let app = launchApp(arguments: ["-seedRoutine", "-mockDevice", "-tab", "3"])
         defer { app.terminate() }
-        dismissTour(in: app)
         for _ in 0..<8 {
             XCTAssertFalse(app.switches["settings.restFocusPreview"].exists)
             app.swipeUp()

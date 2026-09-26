@@ -130,13 +130,11 @@ final class RoutineOverviewUITests: XCTestCase {
 
     private func launchSeededApp(language: String = "en",
                                  category: String? = nil) -> XCUIApplication {
-        var arguments = ["-seedTwoRoutines", "-seedHistory", "-mockDevice",
-                         "-tour.seen.intro", "1", "-tour.seen.builder", "1"]
+        var arguments = ["-seedTwoRoutines", "-seedHistory", "-mockDevice"]
         if let category {
             arguments += ["-UIPreferredContentSizeCategoryName", category]
         }
         let app = launchApp(arguments: arguments, language: language)
-        dismissTour(in: app)
         XCTAssertTrue(app.buttons["routine.overview.open"].firstMatch.waitForExistence(timeout: 5))
         return app
     }

@@ -34,7 +34,6 @@ struct DebugRunnerPreview: View {
                    previewSession: preview.session)
             .environment(preview.device)
             .environment(preview.store)
-            .environment(preview.tour)
             .environment(preview.settings)
             .modelContainer(preview.container)
             .dynamicTypeSize(...DynamicTypeSize.accessibility3)
@@ -49,7 +48,6 @@ private final class RunnerCuePreviewState {
     let store: TemplateStore
     let device: DeviceStore
     let session: RunnerSession
-    let tour = TourController()
     let settings = SettingsStore()
     private let client = RunnerCuePreviewClient()
     private var pump: Task<Void, Never>?

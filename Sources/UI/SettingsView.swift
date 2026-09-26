@@ -35,16 +35,14 @@ enum DiagnosticReport {
 struct SettingsView: View {
     @Environment(DeviceStore.self) private var device
     @Environment(TemplateStore.self) private var templates
-    @Environment(TourController.self) private var tour
-    /// Whether routines exist decides if replaying the tour opens with the build-one act.
-    @Query private var routines: [SessionTemplate]
     @Environment(SettingsStore.self) private var settings
     @Environment(\.weightUnit) private var weightUnit
 
     /// Confirmation for the tap that just happened — not persisted, so reopening Settings
     /// offers the reset again.
     @State private var guideReset = false
-    @State private var tourReset = false
+    /// Back to Today after a reset, or it happens two tabs away and reads as dead.
+    var onShowToday: () -> Void = {}
 
     var body: some View {
         ScreenScaffold(title: String(localized: "Settings")) {
@@ -202,8 +200,6 @@ struct SettingsView: View {
         String(localized: "Tap to choose yours — Get a Grip works with \(GaugeKind.selectable.count) different gauges.")
     }
 
-    private var hasRoutine: Bool { !routines.isEmpty }
-
     /// Every maker the app speaks to, in picker order, de-duplicated so the sentence stays
     /// right the day two devices share one.
     private var makersSentence: String {
@@ -351,56 +347,28 @@ struct SettingsView: View {
                     }
                 }
 
-                SettingsDisclosure("Guides and tours") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        // TWO DIFFERENT THINGS: this is the step-by-step hints INSIDE the builder;
-                        // the row below is the spotlight walkthrough of the whole app. Their old
-                        // labels read as one feature listed twice.
-                        Button {
-                            settings.builderGuideDone = false
-                            guideReset = true
-                            // Back to Today, or the reset happens two tabs away and reads as dead.
-                            tour.requestedTab = 0
-                        } label: {
-                            Label(guideReset ? "Hints reset — open a routine to see them"
-                                             : "Show the builder's hints again",
-                                  systemImage: guideReset ? "checkmark" : "arrow.counterclockwise")
-                                .font(.system(.footnote, weight: .semibold))
-                                .foregroundStyle(guideReset ? Ink.secondary : Accent.graphite)
-                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                // Holds a Label and draws full-width, so the shape must be declared.
-                                .contentShape(Rectangle())
-                        }
-                        // `scales: false`, like every bare row on a shared `MaterialCard`: scaling
-                        // shrinks the content while the card's backdrop stays put.
-                        .buttonStyle(PressFeedbackButtonStyle(scales: false))
-                        .disabled(guideReset)
-                        .accessibilityLabel(guideReset ? "Builder hints reset"
-                                                       : "Show the builder's hints again")
-
-                        // The spotlight tour, not the builder's inline guide above.
-                        Button {
-                            tour.replay(hasRoutine: hasRoutine)
-                            tourReset = true
-                        } label: {
-                            Label(tourReset ? "Tour restarted — it is running on Today"
-                                            : "Take the spotlight tour again",
-                                  systemImage: tourReset ? "checkmark" : "sparkles")
-                                .font(.system(.footnote, weight: .semibold))
-                                .foregroundStyle(tourReset ? Ink.secondary : Accent.graphite)
-                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                .contentShape(Rectangle())
-                        }
-                        // Same reasoning as `guideReset` above.
-                        .buttonStyle(PressFeedbackButtonStyle(scales: false))
-                        .disabled(tourReset)
-                        .accessibilityLabel(tourReset ? "Tour restarted" : "Take the spotlight tour again")
-
-                        Text("The hints are written into the routine builder. The tour dims the screen and walks you through Today, the builder and a session.")
-                            .font(.system(.caption, weight: .medium))
-                            .foregroundStyle(Ink.tertiary)
-                            .fixedSize(horizontal: false, vertical: true)
+                SettingsDisclosure("Builder hints") {
+                    // The step-by-step hints INSIDE the routine builder.
+                    Button {
+                        settings.builderGuideDone = false
+                        guideReset = true
+                        onShowToday()
+                    } label: {
+                        Label(guideReset ? "Hints reset — open a routine to see them"
+                                         : "Show the builder's hints again",
+                              systemImage: guideReset ? "checkmark" : "arrow.counterclockwise")
+                            .font(.system(.footnote, weight: .semibold))
+                            .foregroundStyle(guideReset ? Ink.secondary : Accent.graphite)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            // Holds a Label and draws full-width, so the shape must be declared.
+                            .contentShape(Rectangle())
                     }
+                    // `scales: false`, like every bare row on a shared `MaterialCard`: scaling
+                    // shrinks the content while the card's backdrop stays put.
+                    .buttonStyle(PressFeedbackButtonStyle(scales: false))
+                    .disabled(guideReset)
+                    .accessibilityLabel(guideReset ? "Builder hints reset"
+                                                   : "Show the builder's hints again")
                 }
             }
             .fixedSize(horizontal: false, vertical: true)

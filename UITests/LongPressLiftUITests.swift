@@ -23,9 +23,7 @@ final class LongPressLiftUITests: XCTestCase {
 
     func testLongPressLiftsTheRoutineCard() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-mockDevice", "-seedTwoRoutines", "-dumpInteractions",
-                               "-tour.seen.intro", "1", "-tour.seen.builder", "1",
-                               "-tour.seen.session", "1"]
+        app.launchArguments = ["-mockDevice", "-seedTwoRoutines", "-dumpInteractions"]
         app.launch()
 
         let start = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'start'")).firstMatch

@@ -90,7 +90,6 @@ struct RoutineCard: View, Equatable {
                     .accessibilityHidden(true)
             }
         }
-        .tourAnchor(.routineCard)
         // The same items as the `⋯` menu: free discoverability, since nothing else on
         // this screen wants a long press.
         //
@@ -118,10 +117,7 @@ struct RoutineCard: View, Equatable {
                 titleRow
                 completionRow
             }
-            // Still `.gripLadder` to the tour: a stable `TourTarget` identifier, and
-            // this row took the ladder's place. That step's copy wants rewording.
             planRow
-                .tourAnchor(.gripLadder)
             startBlock
         }
     }
@@ -164,7 +160,6 @@ struct RoutineCard: View, Equatable {
             .padding(.trailing, -10)
             .accessibilityLabel(String(localized: "Routine options"))
             // The timer-only option lives here while a connected gauge hides its shortcut.
-            .tourAnchor(.startWithoutGauge)
         }
     }
 
@@ -453,7 +448,6 @@ struct RoutineCard: View, Equatable {
                 SolidSecondaryButton(title: String(localized: "Start another"), systemImage: "play.fill", action: onStart)
                     .frame(maxWidth: .infinity)
                     .accessibilityHint(hint)
-                    .tourAnchor(.startButton)
             } else {
                 // Graphite, not bleu (bleu is spent once the runner opens). ALWAYS enabled:
                 // the runner's first phase is connect-and-tare, so tapping while
@@ -461,7 +455,6 @@ struct RoutineCard: View, Equatable {
                 SolidPrimaryButton(title: startTitle, systemImage: "play.fill",
                                    tint: Accent.graphite, action: onStart)
                     .accessibilityHint(hint)
-                    .tourAnchor(.startButton)
             }
 
             if let note = connectionNote { noteRow(note) }
@@ -483,7 +476,6 @@ struct RoutineCard: View, Equatable {
                     // top was pure spend on a page that has to fit.
                     .padding(.top, -6)
                     .accessibilityHint(String(localized: "Runs the timers and hand prompts only. Nothing is measured."))
-                    .tourAnchor(.startWithoutGauge)
             }
 
             switch deviceState {

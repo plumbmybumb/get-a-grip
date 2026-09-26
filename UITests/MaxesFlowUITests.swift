@@ -303,7 +303,6 @@ final class MaxesFlowUITests: XCTestCase {
                           "UICTContentSizeCategoryAccessibilityXXXL"]
         }
         let app = launchApp(arguments: arguments, language: language)
-        dismissTour(in: app)
         XCTAssertTrue(app.buttons["maxes.measure.\(splitGrip)"].waitForExistence(timeout: 5))
         return app
     }

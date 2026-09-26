@@ -25,31 +25,6 @@ final class ActivityAndGripInteractionTests: XCTestCase {
         XCTAssertEqual(FingerSelection.toggling(.middle, in: pinch), [.index, .middle, .thumb])
     }
 
-    @MainActor
-    func testBackFromHistoryRestoresTheTodaySpotlight() {
-        let tour = TourController()
-        tour.begin(.intro, hasRoutine: true)
-        let historyIndex = TourStep.today.firstIndex { $0.target == .historyMonth }!
-        for _ in 0..<historyIndex { tour.advance() }
-        XCTAssertEqual(tour.current?.tab, 1)
-        tour.back()
-        XCTAssertEqual(tour.current?.target, .consistency)
-        XCTAssertEqual(tour.current?.tab, 0)
-        tour.advance()
-        XCTAssertEqual(tour.current?.tab, 1)
-    }
-
-    @MainActor
-    func testPresentedToursDoNotRequestATab() {
-        for act in [TourAct.builder, .session] {
-            let tour = TourController()
-            tour.begin(act)
-            XCTAssertNil(tour.current?.tab)
-            tour.advance()
-            XCTAssertNil(tour.current?.tab)
-        }
-    }
-
     func testReleaseWaitsWithoutAClockAndRestIsADistinctCountdownPhase() {
         XCTAssertFalse(SessionActivity.Phase.releasing.runsCountdown)
         XCTAssertFalse(SessionActivity.Phase.armed.runsCountdown)

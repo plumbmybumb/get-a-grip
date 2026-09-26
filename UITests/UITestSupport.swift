@@ -5,10 +5,9 @@ import XCTest
 
 /// The scaffolding every UI test file needs, in one place.
 ///
-/// Launching, dismissing the tour, finding an element by identifier, scrolling something
-/// into reach, attaching a screenshot and waiting on a predicate were written out again
-/// in each file — seven screenshot helpers under three names, five `reveal`s, nine inline
-/// tour dismissals. The copies drifted, and a drifting copy is not free: one of them
+/// Launching, finding an element by identifier, scrolling something into reach,
+/// attaching a screenshot and waiting on a predicate were written out again in each
+/// file — seven screenshot helpers under three names, five `reveal`s. The copies drifted, and a drifting copy is not free: one of them
 /// passed `-AppleLocale "fr"`, which is not a locale, so the French screenshots it took
 /// were formatting numbers and dates for the POSIX default the whole time.
 
@@ -45,17 +44,6 @@ extension XCTestCase {
                                            "-AppleLocale", UITestLanguage.locale(for: language)]
         app.launch()
         return app
-    }
-
-    /// Dismiss the first-run tour if it is up.
-    ///
-    /// Its Skip button carries no accessibility identifier and IS localized, so both
-    /// spellings the suite launches in are matched here rather than at nine call sites —
-    /// where one of them would eventually be missed in the language it was added for.
-    func dismissTour(in app: XCUIApplication, timeout: TimeInterval = 2) {
-        let skip = app.buttons.matching(NSPredicate(format: "label IN %@", ["Skip", "Passer"]))
-            .firstMatch
-        if skip.waitForExistence(timeout: timeout) { skip.tap() }
     }
 
     /// The element carrying `identifier`, whatever kind of element it turned out to be.

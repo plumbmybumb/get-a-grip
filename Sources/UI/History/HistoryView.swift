@@ -245,7 +245,6 @@ struct HistoryView: View {
                 monthCard(0, ledger).padding(.horizontal, Metrics.hPadding)
             }
         }
-        .tourAnchor(.historyMonth)
         // Stagger stops at the cards, the only rows guaranteed on screen at load. A
         // `List` is lazy, so a staggered session row would replay its entrance
         // mid-scroll and read as a glitch.

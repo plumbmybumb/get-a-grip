@@ -2974,12 +2974,12 @@
         }
       }
     },
-    "Build one now" : {
+    "Builder hints" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En créer une maintenant"
+            "value" : "Conseils du créateur"
           }
         }
       }
@@ -4058,16 +4058,6 @@
         }
       }
     },
-    "Each set carries its own grip, pulls, hold, rest and target — drag the band to set a range; during a session the clock only runs inside it. Add a set copies the last one." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chaque série a sa prise, ses tirages, sa tenue, son repos et sa cible — fais glisser la bande pour définir une plage ; pendant une séance le chrono ne tourne qu'à l'intérieur. Ajouter une série copie la dernière."
-          }
-        }
-      }
-    },
     "Each set says how many pulls you do per side. The line underneath adds up your total time under tension per side." : {
       "localizations" : {
         "fr" : {
@@ -4367,16 +4357,6 @@
         }
       }
     },
-    "Every session you have done, and five weeks of them at a glance. A fuller square is a day you did more of." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Toutes tes séances, et cinq semaines d'un coup d'œil. Un carré plus rempli est un jour où tu en as fait plus."
-          }
-        }
-      }
-    },
     "Everything you have logged, as one Markdown document written to be pasted into an AI assistant: your sessions pull by pull, your maxes, and a legend that explains the notation so nothing has to be guessed at." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4552,16 +4532,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "premier max sur cette prise"
-          }
-        }
-      }
-    },
-    "Flat battery, or you left it at home. The same routine runs on the clock and the day still counts. Nothing is measured." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Batterie à plat, ou tu l'as laissé à la maison. La même routine tourne au chrono et la journée compte quand même. Rien n'est mesuré."
           }
         }
       }
@@ -5041,16 +5011,6 @@
         }
       }
     },
-    "Get a Grip runs your hangboard sessions" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Get a Grip mène tes séances de poutre"
-          }
-        }
-      }
-    },
     "Get a Grip works with force gauges from %@. It is not made by, affiliated with, or endorsed by any of them." : {
       "localizations" : {
         "fr" : {
@@ -5149,16 +5109,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Griptonite Motherboard"
-          }
-        }
-      }
-    },
-    "Guides and tours" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Guides et visites guidées"
           }
         }
       }
@@ -5665,26 +5615,6 @@
         }
       }
     },
-    "It counts you in, times every pull, and reads your force gauge so you know what you actually held. Start by making a routine — a name and one set is enough." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Il te compte à rebours, chronomètre chaque tirage et lit ton capteur de force pour que tu saches ce que tu as vraiment tenu. Commence par créer une routine — un nom et une série suffisent."
-          }
-        }
-      }
-    },
-    "It counts your hold down and stops if you come off the edge. Coming off never ends a pull, however long you take." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Il décompte ta tenue et s'arrête si tu quittes la réglette. Quitter la réglette ne termine jamais un tirage, quel que soit le temps que tu prends."
-          }
-        }
-      }
-    },
     "It is the number your training loads come from. The light sets in your routine sit at roughly a fifth to a third of it, so without a max a set can only tell you kilograms — not what those kilograms mean for your fingers." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5754,17 +5684,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Continue de tirer pour le battre, ou relâche pour terminer."
-          }
-        }
-      }
-    },
-    "Keep the gauge unloaded while Get a Grip connects and tares it. If the gauge is asleep, the app waits." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Laissez le capteur déchargé pendant la connexion et la tare. Si le capteur est en veille, l’application attend."
           }
         }
       }
@@ -7297,16 +7216,6 @@
         }
       }
     },
-    "Nothing is written until you tap this — and saving never starts a session. Today is where you start." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rien n'est écrit tant que tu ne touches pas ceci — et enregistrer ne lance jamais une séance. C'est depuis Aujourd'hui que tu commences."
-          }
-        }
-      }
-    },
     "Nothing to export in this range." : {
       "localizations" : {
         "fr" : {
@@ -7487,16 +7396,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Une fois par jour · %@"
-          }
-        }
-      }
-    },
-    "One card, one ritual. The dots are today's sessions, and a filled dot is one you have done." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Une carte, un rituel. Les points sont les séances du jour, et un point plein est une séance faite."
           }
         }
       }
@@ -8849,16 +8748,6 @@
         }
       }
     },
-    "Save when you are happy" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enregistre quand ça te convient"
-          }
-        }
-      }
-    },
     "Saved" : {
       "localizations" : {
         "fr" : {
@@ -9691,16 +9580,6 @@
         }
       }
     },
-    "Start here" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Commence ici"
-          }
-        }
-      }
-    },
     "Start in half crimp and build force by trying to curl your fingers into the edge." : {
       "localizations" : {
         "fr" : {
@@ -9951,16 +9830,6 @@
         }
       }
     },
-    "Take the spotlight tour again" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Refaire la visite guidée"
-          }
-        }
-      }
-    },
     "Tap a set for its grip, its pulls, its own hold and rest, and its target. Add a set copies the last one, so a uniform routine is quick." : {
       "localizations" : {
         "fr" : {
@@ -9987,36 +9856,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Touche Connecter pour commencer à écouter ton %@."
-          }
-        }
-      }
-    },
-    "Tap it and set the edge, which fingers, how many pulls and how long. Nothing is saved until you tap Save, and the tour carries on when you are back." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touche-la et règle la réglette, les doigts, le nombre de tirages et la durée. Rien n'est enregistré tant que tu ne touches pas Enregistrer, et la visite reprend à ton retour."
-          }
-        }
-      }
-    },
-    "Tap the days to open History. Use Log a session to add climbing or hangs done away from the gauge." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touche les jours pour ouvrir l’historique. Utilise Ajouter une séance pour noter de l’escalade ou des suspensions sans capteur."
-          }
-        }
-      }
-    },
-    "Tap the plan to see your grips, timing and hand order. You can edit the routine from its overview." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touche le programme pour voir les prises, les durées et l’ordre des mains. Tu peux modifier la routine depuis son aperçu."
           }
         }
       }
@@ -10269,16 +10108,6 @@
         }
       }
     },
-    "That is the tour" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "C'est la fin de la visite"
-          }
-        }
-      }
-    },
     "That routine couldn't be saved just now — nothing was added. Try again." : {
       "localizations" : {
         "fr" : {
@@ -10305,26 +10134,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Voilà toute la routine."
-          }
-        }
-      }
-    },
-    "The big word is the hand that goes on the edge. Your fingers hang off the Dynamic Island, so the grip reads without a word." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le grand mot est la main qui va sur la réglette. Tes doigts pendent sous la Dynamic Island, la prise se lit donc sans un mot."
-          }
-        }
-      }
-    },
-    "The break between sets, how the hands split the work, and whether a rest waits for you to let go. Everything else lives on each set." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La pause entre séries, la répartition du travail entre les mains, et si un repos attend que tu relâches. Tout le reste vit sur chaque série."
           }
         }
       }
@@ -10417,42 +10226,12 @@
         }
       }
     },
-    "The hints are written into the routine builder. The tour dims the screen and walks you through Today, the builder and a session." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les conseils sont intégrés au créateur de routine. La visite assombrit l'écran et te fait parcourir Aujourd'hui, le créateur et une séance."
-          }
-        }
-      }
-    },
     "The hold ends on time; the rest waits until you are off the edge." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "La tenue se termine à l'heure ; le repos attend que tu aies quitté la réglette."
-          }
-        }
-      }
-    },
-    "The lane" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le couloir"
-          }
-        }
-      }
-    },
-    "The last fortnight" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les deux dernières semaines"
           }
         }
       }
@@ -10474,36 +10253,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Le repos démarre dès la fin de la tenue, que tu aies relâché ou non."
-          }
-        }
-      }
-    },
-    "The routine on screen is a starting point rather than a prescription. Open it and change anything; nothing is saved until you tap Save." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La routine à l'écran est un point de départ, pas une prescription. Ouvre-la et change ce que tu veux ; rien n'est enregistré tant que tu ne touches pas Enregistrer."
-          }
-        }
-      }
-    },
-    "The sets" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les séries"
-          }
-        }
-      }
-    },
-    "The shaded band is the load you were asked for. Keep the line inside it and the clock runs; below says RE-GRIP and above says EASE OFF." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La bande ombrée est la charge demandée. Garde la ligne dedans et le chrono tourne ; en dessous ça dit REPRISE et au-dessus MOINS FORT."
           }
         }
       }
@@ -10666,16 +10415,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "C'est ainsi qu'Aujourd'hui l'appelle. Tout le reste se construit en dessous, et rien n'est enregistré tant que tu ne touches pas Enregistrer."
-          }
-        }
-      }
-    },
-    "This is your routine" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voici ta routine"
           }
         }
       }
@@ -10847,26 +10586,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aujourd'hui : %lld sur %lld %@"
-          }
-        }
-      }
-    },
-    "Tour restarted" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visite relancée"
-          }
-        }
-      }
-    },
-    "Tour restarted — it is running on Today" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visite relancée — elle tourne sur Aujourd'hui"
           }
         }
       }
@@ -11277,16 +10996,6 @@
         }
       }
     },
-    "What you are pulling" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ce que tu tires"
-          }
-        }
-      }
-    },
     "What you can pull on each grip" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11314,16 +11023,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "QUAND"
-          }
-        }
-      }
-    },
-    "When you have no gauge" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quand tu n'as pas de capteur"
           }
         }
       }
