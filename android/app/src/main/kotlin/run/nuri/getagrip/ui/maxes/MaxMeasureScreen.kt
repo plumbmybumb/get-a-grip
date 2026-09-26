@@ -91,7 +91,6 @@ import run.nuri.getagrip.ui.components.AdaptiveActionRow
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.ForceTraceView
 import run.nuri.getagrip.ui.components.PrimaryButton
-import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.InstrumentSurface

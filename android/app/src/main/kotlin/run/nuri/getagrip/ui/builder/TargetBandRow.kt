@@ -465,10 +465,6 @@ private fun kgScaleTop(
 private fun percentText(band: ClosedFloatingPointRange<Double>): String =
     L10n.tr("%d–%d %%", (band.start * 100).roundToInt(), (band.endInclusive * 100).roundToInt())
 
-/// Named, because a lambda passed to a composable is not composable, and `L10n.tr` works
-/// from either.
-private fun kgUnit(value: Double): String = WeightUnits.tr("%s kg", kgText(value))
-
 private fun percentUnit(fraction: Double): String =
     L10n.tr("%d %%", (fraction * 100).roundToInt())
 

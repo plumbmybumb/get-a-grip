@@ -9,7 +9,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -68,7 +67,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -99,15 +97,11 @@ import run.nuri.getagrip.engine.BackgroundPausePolicy
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
-import run.nuri.getagrip.engine.MaxTable
 import run.nuri.getagrip.engine.RunnerEvent
 import run.nuri.getagrip.engine.RunnerPhase
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
-import run.nuri.getagrip.runner.AndroidActivityPublisher
-import run.nuri.getagrip.runner.AndroidSessionServiceController
-import run.nuri.getagrip.runner.CuePlayer
 import run.nuri.getagrip.runner.KeepScreenOn
 import run.nuri.getagrip.runner.RunnerSession
 import run.nuri.getagrip.runner.RunnerSnapshot
@@ -120,7 +114,6 @@ import run.nuri.getagrip.store.TarePolicy
 import run.nuri.getagrip.store.TareTapDecision
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.AdaptiveActionRow
-import run.nuri.getagrip.ui.components.FingerGlyph
 import run.nuri.getagrip.ui.components.ForceTraceView
 import run.nuri.getagrip.ui.components.HoldToEndButton
 import run.nuri.getagrip.ui.components.cameraHandOffset

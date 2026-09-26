@@ -126,10 +126,6 @@ object CriticalForceRules {
 
     /// A window with less data than this fraction has no mean.
     const val minCoverage: Double = 0.5
-
-    /// When Today starts suggesting a retest. The literature retests every four to eight
-    /// weeks, and a maximal test is not something to repeat weekly.
-    const val retestAfterDays = 42
 }
 
 // MARK: - Readings and results

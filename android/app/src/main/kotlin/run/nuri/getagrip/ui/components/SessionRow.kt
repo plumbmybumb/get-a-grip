@@ -34,11 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import java.time.format.FormatStyle
 import java.util.Locale
 import run.nuri.getagrip.data.WorkoutLogEntity
 import run.nuri.getagrip.engine.DayStamp
-import run.nuri.getagrip.engine.Fmt
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.PlanMath

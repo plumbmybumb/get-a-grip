@@ -5,7 +5,6 @@ package run.nuri.getagrip.ui.maxes
 
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.AlertDialog
 import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.units.WeightUnits
 
@@ -57,7 +56,6 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import run.nuri.getagrip.data.MaxRecordEntity
-import run.nuri.getagrip.engine.Fmt
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.Side

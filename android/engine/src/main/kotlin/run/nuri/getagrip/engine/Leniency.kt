@@ -87,8 +87,6 @@ fun JsonObject.doubleOr(key: String, fallback: Double): Double = JsonRead.double
 fun JsonObject.optionalDouble(key: String): Double? = JsonRead.double(this[key])
 fun JsonObject.boolOr(key: String, fallback: Boolean): Boolean = JsonRead.bool(this[key]) ?: fallback
 fun JsonObject.stringOr(key: String, fallback: String): String = JsonRead.string(this[key]) ?: fallback
-fun JsonObject.optionalString(key: String): String? = JsonRead.string(this[key])
-fun JsonObject.optionalObject(key: String): JsonObject? = JsonRead.obj(this[key])
 fun JsonObject.optionalArray(key: String): JsonArray? = JsonRead.array(this[key])
 
 /// For nested values with their own (total) decoder: the reader returns null, or throws,

@@ -40,7 +40,6 @@ import run.nuri.getagrip.ui.components.ClimbingIcon
 import androidx.compose.material.icons.outlined.Scale
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -66,7 +65,6 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import run.nuri.getagrip.ui.theme.InstrumentSurface
 import run.nuri.getagrip.ui.theme.screenArrival
 import androidx.compose.ui.graphics.vector.ImageVector
-import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.MaxSource

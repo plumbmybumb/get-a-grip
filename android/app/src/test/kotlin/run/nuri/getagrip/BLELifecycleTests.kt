@@ -4,8 +4,6 @@
 package run.nuri.getagrip
 
 import run.nuri.getagrip.ble.ControlPointQueue
-import run.nuri.getagrip.ble.ControlPointTransport
-import run.nuri.getagrip.ble.ControlWriteType
 import run.nuri.getagrip.ble.ProgressorClientDiagnostic
 import run.nuri.getagrip.ble.ProgressorConnectionState
 import run.nuri.getagrip.ble.StreamStartCause

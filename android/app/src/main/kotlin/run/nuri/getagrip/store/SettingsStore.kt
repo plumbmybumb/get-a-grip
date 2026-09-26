@@ -134,7 +134,6 @@ class SettingsStore(
         val lastStartedRoutineIDKey = stringPreferencesKey("lastStartedRoutineID")
         val lastStartedDayRawKey = intPreferencesKey("lastStartedDayRaw")
         val draftStashKey = stringPreferencesKey("draftStash")
-        val shareCardStyleKey = stringPreferencesKey("shareCardStyle")
         val frezIntroSeenKey = booleanPreferencesKey("frezIntroSeen")
         val scheduledRemindersKey = stringPreferencesKey("reminders.scheduled")
         val trainingDayRepairKey = intPreferencesKey("repair.trainingDays.version")
@@ -169,7 +168,6 @@ class SettingsStore(
     )
     private var dayRaw: Int by mutableStateOf(loaded[lastStartedDayRawKey] ?: 0)
     private var stash: String? by mutableStateOf(loaded[draftStashKey])
-    private var cardStyle: String by mutableStateOf(loaded[shareCardStyleKey] ?: "white")
     private var frezIntro: Boolean by mutableStateOf(loaded[frezIntroSeenKey] ?: false)
     private var scheduled: Set<String> by mutableStateOf(
         loaded[scheduledRemindersKey]?.split('\n')?.filter { it.isNotEmpty() }?.toSet()
@@ -206,9 +204,6 @@ class SettingsStore(
     /// TRANSLATION NOTE: `Data?` on iOS; a String here because `BlobCodec` produces JSON
     /// TEXT and DataStore has no byte-array type.
     override val draftStash: String? get() = stash
-
-    /// Which card the calendar share sheet draws — white, dark or frosted.
-    val shareCardStyle: String get() = cardStyle
 
     /// One-shot: the note Frez asks to show the first time the Dyno is selected has been
     /// read on this device. Never shown for any other gauge.
@@ -270,11 +265,6 @@ class SettingsStore(
     fun setFrezIntroSeen(value: Boolean) {
         frezIntro = value
         write { it[frezIntroSeenKey] = value }
-    }
-
-    fun setShareCardStyle(value: String) {
-        cardStyle = value
-        write { it[shareCardStyleKey] = value }
     }
 
     override fun setScheduledReminderIdentifiers(value: Set<String>) {

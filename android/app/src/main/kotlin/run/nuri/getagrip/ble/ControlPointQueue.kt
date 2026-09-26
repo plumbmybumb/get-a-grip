@@ -290,11 +290,6 @@ class ControlPointQueue(private val transport: ControlPointTransport) {
         drain()
     }
 
-    /// The buffer drained, or Nordic's queue came free.
-    fun readyForWriteWithoutResponse() {
-        drain()
-    }
-
     fun writeDeadlineFired(id: ULong) {
         if (inFlightWrite?.id != id) return
         // Completion is unknown, and a retry could let a late ACK authorize the wrong

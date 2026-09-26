@@ -40,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import run.nuri.getagrip.engine.Fmt
 import run.nuri.getagrip.engine.GripPosition
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n

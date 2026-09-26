@@ -68,9 +68,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -96,13 +94,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
-import run.nuri.getagrip.ble.MockForceProfile
-import run.nuri.getagrip.ble.StreamStartCause
-import run.nuri.getagrip.ble.StreamStopCause
 import run.nuri.getagrip.data.CriticalForceRecordEntity
 import run.nuri.getagrip.engine.BackgroundPausePolicy
-import run.nuri.getagrip.engine.CriticalForceFailure
-import run.nuri.getagrip.engine.CriticalForceOutcome
 import run.nuri.getagrip.engine.CriticalForceResult
 import run.nuri.getagrip.engine.CriticalForceRules
 import run.nuri.getagrip.engine.CriticalForceTest
@@ -128,7 +121,6 @@ import run.nuri.getagrip.ui.components.IntValueRow
 import run.nuri.getagrip.ui.components.PositionChipRow
 import run.nuri.getagrip.ui.components.PrimaryButton
 import run.nuri.getagrip.ui.components.SecondaryButton
-import run.nuri.getagrip.ui.components.ValueRow
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.maxes.GaugeZeroButton
 import run.nuri.getagrip.ui.maxes.relative

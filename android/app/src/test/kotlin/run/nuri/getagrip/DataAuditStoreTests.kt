@@ -14,7 +14,6 @@ import run.nuri.getagrip.store.MaxGripGroup
 import run.nuri.getagrip.ui.maxes.presentSides
 import run.nuri.getagrip.ui.maxes.progressLine
 import java.time.Instant
-import java.util.UUID
 import kotlin.test.*
 
 @RunWith(RobolectricTestRunner::class)

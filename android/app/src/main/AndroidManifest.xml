@@ -47,6 +47,11 @@
          a save does, so there is one plan and one place that writes it. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- The session's haptic cues (`CuePlayer`). An install-time permission, never asked
+         for; without it `Vibrator.vibrate` throws, the cue player swallows the throw, and
+         every haptic in a session is silently missing. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- **The Frez Dyno's one-off calibration lookup, and nothing else.** That gauge
          streams raw sensor counts, so the first time a unit connects the app asks Frez's
          coefficient API for that unit's slope, by serial number, once — the answer is

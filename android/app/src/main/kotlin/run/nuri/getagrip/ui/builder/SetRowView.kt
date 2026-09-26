@@ -57,9 +57,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.util.UUID
 import kotlin.math.roundToInt
-import run.nuri.getagrip.engine.FingerSet
-import run.nuri.getagrip.engine.GripPosition
-import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.MaxTable
 import run.nuri.getagrip.engine.PlanMath

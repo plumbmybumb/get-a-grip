@@ -13,7 +13,6 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import run.nuri.getagrip.MainActivity
 import run.nuri.getagrip.R
-import run.nuri.getagrip.engine.Fmt
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.Side
 

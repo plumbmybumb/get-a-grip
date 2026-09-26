@@ -70,7 +70,6 @@ import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.IntValueRow
 import run.nuri.getagrip.ui.components.SecondaryButton
-import run.nuri.getagrip.ui.components.ValueControl
 import run.nuri.getagrip.ui.components.ValueRow
 import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.l10n.tr

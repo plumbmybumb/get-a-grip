@@ -4,7 +4,6 @@
 package run.nuri.getagrip.ui.settings
 
 import run.nuri.getagrip.store.diagnosticTimeline
-import run.nuri.getagrip.ui.units.WeightUnits
 import run.nuri.getagrip.ui.units.WeightUnit
 import run.nuri.getagrip.ui.components.Chip
 

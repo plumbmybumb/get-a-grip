@@ -37,8 +37,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import java.text.NumberFormat
-import java.util.Locale
 import kotlinx.coroutines.launch
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.L10n

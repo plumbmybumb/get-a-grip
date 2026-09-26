@@ -101,19 +101,6 @@ data class WorkoutLogEntity(
             return if (minutes > 0) minutes else null
         }
 
-    val wasCompleted: Boolean get() = plannedReps > 0 && completedReps >= plannedReps
-
-    /// What this session asked of each grip, by CANONICAL key (the join between March and
-    /// December). Folded from the frozen plan, not the reps, so the per-grip line matches
-    /// the builder's formatter. First key wins on a collision: a malformed blob must not
-    /// take History down.
-    fun totalsByGripKey(): Map<String, PlanMath.GripTotals> {
-        val frozen = plan ?: return emptyMap()
-        val out = LinkedHashMap<String, PlanMath.GripTotals>()
-        for (totals in PlanMath.gripTotals(frozen)) out.putIfAbsent(totals.grip.key, totals)
-        return out
-    }
-
     companion object {
         /// The twin of `WorkoutLog.init(plan:…)` and the only place the denormalized
         /// columns are derived — see `undoDeleteSession`.

@@ -394,10 +394,6 @@ class ReminderTime(minutesFromMidnight: Int) : Comparable<ReminderTime>, JsonEnc
         DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
             .format(LocalTime.of(hour, minute))
 
-    /// Hour and minute only — a repeating daily trigger, never a dated one. (Swift's
-    /// `dateComponents`; scheduling itself is an `:app` concern on both platforms.)
-    fun localTime(): LocalTime = LocalTime.of(hour, minute)
-
     // Codable is SINGLE-VALUE over `minutesFromMidnight`, and decodes through the
     // clamping initializer so a bad number cannot become a notification at hour 47.
     override fun toJson(): JsonElement = JsonPrimitive(minutesFromMidnight)

@@ -16,6 +16,7 @@ import run.nuri.getagrip.engine.RunnerPhase
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.store.DeviceStore
+import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -115,15 +116,15 @@ class RunnerSnapshotTests {
         harness.session.send(RunnerEvent.Start)
         var micros: UInt = 0u
         var buckets = 0
-        var lastBucket = harness.session.repProgressBucket
+        var lastBucket = (harness.session.repProgress * 100).roundToInt()
         repeat(80) { i ->
             micros += sampleMicros
             harness.clock.uptime += sampleSeconds
             harness.session.send(RunnerEvent.Sample(ForceSample(10.0, micros)))
             if (i % 8 == 7) harness.session.tickNow()
-            if (harness.session.repProgressBucket != lastBucket) {
+            if ((harness.session.repProgress * 100).roundToInt() != lastBucket) {
                 buckets += 1
-                lastBucket = harness.session.repProgressBucket
+                lastBucket = (harness.session.repProgress * 100).roundToInt()
             }
         }
         // A 10 s hold advances 10 % in one second, so ten 1 % buckets.

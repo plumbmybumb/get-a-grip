@@ -52,7 +52,6 @@ import java.util.UUID
 import run.nuri.getagrip.ble.ProgressorConnectionState
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.engine.FingerSet
-import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.RoutineSummary
 import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.ui.components.CapsLabel

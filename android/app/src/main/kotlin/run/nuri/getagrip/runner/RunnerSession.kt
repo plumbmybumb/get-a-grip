@@ -36,7 +36,6 @@ import run.nuri.getagrip.store.TarePolicy
 import java.time.Instant
 import java.util.UUID
 import kotlin.math.ceil
-import kotlin.math.roundToInt
 
 /// Owns a running session: the state machine, the clock driving its countdowns, the gauge
 /// subscription and cue playback.
@@ -121,7 +120,6 @@ class RunnerSession(
     /// samples. The view settles toward it and never extrapolates.
     var repProgress: Float by mutableFloatStateOf(0f)
         private set
-    val repProgressBucket: Int get() = (repProgress * 100).roundToInt()
 
     /// The running countdown's fraction left: the timer-only ring, and the runner's time bar
     /// draining through a rest. Keep this 10 Hz fraction off the screen snapshot too; only
