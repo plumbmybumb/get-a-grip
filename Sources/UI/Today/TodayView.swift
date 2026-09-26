@@ -209,6 +209,10 @@ struct TodayView: View {
                builder == nil, let first = ordered.first {
                 builder = .edit(first.id)
             }
+            // `-previewBuilderNew`: the create door, for the paged-builder prototype.
+            if ProcessInfo.processInfo.arguments.contains("-previewBuilderNew"), builder == nil {
+                builder = ordered.isEmpty ? .firstRun : .addAnother
+            }
             // `-startFirstRoutine`: the "Connect and start" tap for a headless run; with
             // `-mockDevice`, a whole measured session through the real store and runner.
             if ProcessInfo.processInfo.arguments.contains("-startFirstRoutine"),

@@ -56,6 +56,16 @@ struct RoutineBuilderView: View {
             // seeding, tests and Duplicate mint from them), but no screen proposes one.
             // "Pick somebody's plan" is the wrong opening move for an app whose pitch is
             // that the plan is yours.
+            #if DEBUG
+            // Headless: a routine part-way built, `-builderSeedSets N` of the starter's sets.
+            if let n = BuilderPagesPrototype.debugInt("-builderSeedSets") {
+                var draft = RoutineDraft.starter
+                draft.plan.sets = Array(draft.plan.sets.prefix(max(0, n)))
+                draft.plan.targetLoPercent = 0.20
+                draft.plan.targetHiPercent = 0.30
+                return draft
+            }
+            #endif
             return .blank()
         case .edit(let id):
             // Missing means a CloudKit merge deleted it while Today still showed it. A
@@ -106,15 +116,35 @@ private struct BuilderDocument: View {
     @State private var undoTask: Task<Void, Never>?
     @FocusState private var nameFocused: Bool
 
+    /// The paged prototype (`-builderPages`, DEBUG). Off, this is the single document.
+    private let pages = BuilderPagesPrototype.current
+    @State private var page: BuilderPage = .rhythm
+    /// Which way the last page turn went, so the incoming page slides from the right side.
+    @State private var pageForward = true
+
     init(mode: BuilderMode, seed: RoutineDraft,
          onClose: @escaping () -> Void,
          onFinish: @escaping (UUID, Bool) -> Void) {
         self.mode = mode
         self.onClose = onClose
         self.onFinish = onFinish
-        let editable = BuilderDraftPreparation.editable(seed)
+        var editable = BuilderDraftPreparation.editable(seed)
+        if BuilderPagesPrototype.current.isOn, BuilderPagesPrototype.current.targetOnRhythm {
+            editable = BuilderDraftPreparation.promotingUniformBand(editable)
+        }
         _draft = State(initialValue: editable)
         _initialDraft = State(initialValue: editable)
+        #if DEBUG
+        // Headless states: `-builderPage N` (1-based), `-builderExpandSet N` (1-based).
+        if let n = BuilderPagesPrototype.debugInt("-builderPage"),
+           let start = BuilderPage(rawValue: n - 1) {
+            _page = State(initialValue: start)
+        }
+        if let n = BuilderPagesPrototype.debugInt("-builderExpandSet"),
+           editable.plan.sets.indices.contains(n - 1) {
+            _expanded = State(initialValue: editable.plan.sets[n - 1].id)
+        }
+        #endif
     }
 
     // MARK: Body
@@ -122,40 +152,12 @@ private struct BuilderDocument: View {
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
-                // ScrollView + eager VStack, not a `List`: `List` + zero min row height +
-                // accordion rows + a bottom `safeAreaInset` in a sheet was the riskiest
-                // combination here. It costs swipe-to-delete and `.onMove`, both with
-                // guaranteed equivalents (expanded-row chevrons, context menu, undo bar).
-                //
-                // NOT `LazyVStack`: adding a set's `scrollTo` must find a row below the
-                // fold. A routine is a dozen rows, so eager layout is free.
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        // The NAME first, in every mode (Nuri, 2026-08-19), so creating and
-                        // editing open on the same first screenful.
-                        nameBlock
-                        rhythmBlock
-                        setsBlock(proxy)
-                        totalsBlock
-                        everyDayBlock
-                        FineTuningSection(access: access, defaults: draft.plan.routineLevel)
-                            .equatable()
-                        finishBlock
-                    }
-                    .padding(.horizontal, Metrics.hPadding)
-                    .padding(.top, 12)
-                    .padding(.bottom, 28)
-                    // The regular-width column on an iPad: a 440 pt set list centred in a
-                    // full-screen cover is a phone in a frame.
-                    .frame(maxWidth: sizeClass == .regular ? Metrics.maxContentWidthRegular
-                                                           : Metrics.maxContentWidth)
-                    .frame(maxWidth: .infinity)
+                Group {
+                    if pages.isOn { pagedScroll(proxy) } else { documentScroll(proxy) }
                 }
-                .scrollDismissesKeyboard(.interactively)
                 // ALWAYS via `.background {}`, never a ZStack sibling, which disturbs the
                 // ScrollView's safe-area layout.
                 .background { AppBackground() }
-                .scrollEdgeEffectStyle(.soft, for: .bottom)
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)
                 // The price of every edit, always visible, for zero document space. If this
@@ -191,6 +193,14 @@ private struct BuilderDocument: View {
                     }
                 }
                 .safeAreaInset(edge: .bottom) { bottomBar }
+                // BARS, not insets: content scrolling under them gets the system's scroll
+                // edge treatment, where a plain inset leaves text colliding with buttons.
+                .safeAreaBar(edge: .top, spacing: 0) {
+                    if showsPageSwitcher { pageSwitcher }
+                }
+                .safeAreaBar(edge: .bottom) {
+                    if pages.isOn, mode.isCreating { createNavigation }
+                }
             }
         }
         // An OVERLAY, not another presentation: as a full-screen cover the builder
@@ -234,6 +244,48 @@ private struct BuilderDocument: View {
             stashTask = nil
             undoTask?.cancel()
         }
+    }
+
+    // MARK: The single document
+
+    private func documentScroll(_ proxy: ScrollViewProxy) -> some View {
+                // ScrollView + eager VStack, not a `List`: `List` + zero min row height +
+                // accordion rows + a bottom `safeAreaInset` in a sheet was the riskiest
+                // combination here. It costs swipe-to-delete and `.onMove`, both with
+                // guaranteed equivalents (expanded-row chevrons, context menu, undo bar).
+                //
+                // NOT `LazyVStack`: adding a set's `scrollTo` must find a row below the
+                // fold. A routine is a dozen rows, so eager layout is free.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        // The NAME first, in every mode (Nuri, 2026-08-19), so creating and
+                        // editing open on the same first screenful.
+                        nameBlock
+                        rhythmBlock
+                        setsBlock(proxy)
+                            .id("anchor.sets")
+                        totalsBlock
+                        everyDayBlock
+                            .id("anchor.schedule")
+                        FineTuningSection(access: access, defaults: draft.plan.routineLevel)
+                            .equatable()
+                        finishBlock
+                    }
+                    .padding(.horizontal, Metrics.hPadding)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
+                    .debugMeasure("document")
+                    // The regular-width column on an iPad: a 440 pt set list centred in a
+                    // full-screen cover is a phone in a frame.
+                    .frame(maxWidth: sizeClass == .regular ? Metrics.maxContentWidthRegular
+                                                           : Metrics.maxContentWidth)
+                    .frame(maxWidth: .infinity)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .scrollEdgeEffectStyle(.soft, for: .bottom)
+                #if DEBUG
+                .onAppear { debugScroll(proxy) }
+                #endif
     }
 
     @ViewBuilder
@@ -460,7 +512,12 @@ private struct BuilderDocument: View {
     /// nav-bar subtitle and its bottom-bar fallback quote this line, so a disabled Save
     /// always has its explanation beside it.
     private var subtitleText: String {
-        draft.validationIssue ?? PlanMath.subtitleLine(draft.plan)
+        // Paged, creating, on page 1 with nothing built yet: no line rather than a
+        // complaint about sets the person has not reached.
+        if pages.isOn, mode.isCreating, page == .rhythm, draft.plan.executable.sets.isEmpty {
+            return ""
+        }
+        return draft.validationIssue ?? PlanMath.subtitleLine(draft.plan)
     }
 
     // MARK: Lifecycle
@@ -483,7 +540,9 @@ private struct BuilderDocument: View {
     }
 
     private func addSet(_ proxy: ScrollViewProxy) {
-        var new = draft.plan.sets.last ?? SetPlan()
+        // Paged: "Add a set" is a FRESH set that follows the Rhythm page, because
+        // "Duplicate last set" now sits beside it.
+        var new = pages.isOn ? SetPlan() : (draft.plan.sets.last ?? SetPlan())
         new.id = UUID()          // a duplicate must never share row identity with its source
         withAnimation(Motion.state(reduceMotion)) {
             draft.plan.sets.append(new)
@@ -613,7 +672,10 @@ private struct BuilderDocument: View {
     private var isDirty: Bool { draft != initialDraft }
 
     private var title: String {
-        mode.editingID == nil ? String(localized: "Your routine") : String(localized: "Edit routine")
+        if mode.editingID != nil { return String(localized: "Edit routine") }
+        // Paged with dots: the page names itself, the dots say how far along.
+        if pages.isOn, pages.indicator == .dots { return page.title }
+        return String(localized: "Your routine")
     }
 
     /// PROBE 1. `true` ships the live total as the navigation subtitle; `false` moves the
@@ -627,4 +689,354 @@ private struct BuilderDocument: View {
 private struct RemovedSet: Equatable {
     var index: Int
     var set: SetPlan
+}
+
+// MARK: - The paged prototype (`-builderPages`)
+
+extension BuilderDocument {
+    /// Edit mode always; creating only in the "steps" indicator variant.
+    fileprivate var showsPageSwitcher: Bool {
+        pages.isOn && (!mode.isCreating || pages.indicator == .steps)
+    }
+
+    fileprivate func pagedScroll(_ proxy: ScrollViewProxy) -> some View {
+        ZStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    switch page {
+                    case .rhythm:   rhythmPage
+                    case .sets:     setsPage(proxy)
+                    case .schedule: schedulePage
+                    }
+                    Color.clear.frame(height: 0).id("anchor.end")
+                }
+                .padding(.horizontal, Metrics.hPadding)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
+                .debugMeasure("page\(page.rawValue + 1)")
+                .frame(maxWidth: sizeClass == .regular ? Metrics.maxContentWidthRegular
+                                                       : Metrics.maxContentWidth)
+                .frame(maxWidth: .infinity)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .scrollEdgeEffectStyle(.soft, for: .bottom)
+            // A fresh scroll view per page, so every page opens at its top.
+            .id(page)
+            .transition(pageTransition)
+            #if DEBUG
+            .onAppear { debugScroll(proxy) }
+            #endif
+        }
+    }
+
+    private var pageTransition: AnyTransition {
+        if reduceMotion { return .opacity }
+        return .asymmetric(
+            insertion: .move(edge: pageForward ? .trailing : .leading).combined(with: .opacity),
+            removal: .move(edge: pageForward ? .leading : .trailing).combined(with: .opacity))
+    }
+
+    fileprivate func go(to target: BuilderPage) {
+        guard target != page else { return }
+        nameFocused = false
+        // Direction first, page on the next turn: the outgoing page must be re-rendered with
+        // the new direction before it is removed, or it leaves the wrong way.
+        pageForward = target.rawValue > page.rawValue
+        Task { @MainActor in
+            withAnimation(Motion.state(reduceMotion)) { page = target }
+        }
+    }
+
+    // MARK: Chrome
+
+    fileprivate var pageSwitcher: some View {
+        Picker(String(localized: "Page"),
+               selection: Binding(get: { page }, set: { go(to: $0) })) {
+            ForEach(BuilderPage.allCases) { page in
+                Text(page.title).tag(page)
+            }
+        }
+        .pickerStyle(.segmented)
+        .controlSize(.large)
+        .padding(.horizontal, Metrics.hPadding)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
+        .frame(maxWidth: Metrics.maxContentWidth)
+        .frame(maxWidth: .infinity)
+        .sensoryFeedback(.selection, trigger: page)
+    }
+
+    /// Back · Next while creating; Save routine in Next's place on the last page.
+    fileprivate var createNavigation: some View {
+        VStack(spacing: 12) {
+            if pages.indicator == .dots { BuilderPageDots(current: page) }
+            // Side by side while Back keeps its one line; stacked, forward action first,
+            // at the sizes where it would wrap to "Bac / k".
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    backButton
+                    forwardButton
+                }
+                VStack(spacing: 10) {
+                    forwardButton
+                    backButton
+                }
+            }
+        }
+        .padding(.horizontal, Metrics.hPadding)
+        .padding(.top, 4)
+        .frame(maxWidth: Metrics.maxContentWidth)
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var backButton: some View {
+        if let previous = page.previous {
+            SecondaryGlassButton(title: String(localized: "Back"), systemImage: "chevron.left") {
+                go(to: previous)
+            }
+            .fixedSize()
+        }
+    }
+
+    @ViewBuilder
+    private var forwardButton: some View {
+        if let next = page.next {
+            PrimaryGlassButton(title: String(localized: "Next")) { go(to: next) }
+        } else {
+            PrimaryGlassButton(title: String(localized: "Save routine"), systemImage: "checkmark") {
+                save(andStart: false)
+            }
+            .disabled(draft.validationIssue != nil)
+        }
+    }
+
+    // MARK: Page 1 — Rhythm
+
+    @ViewBuilder
+    fileprivate var rhythmPage: some View {
+        nameBlock
+        RhythmSection(access: access,
+                      defaults: draft.plan.routineLevel,
+                      firstSetReps: draft.plan.executable.sets.first?.repsPerSide ?? 6,
+                      includesPullTiming: true)
+            .equatable()
+        if pages.targetOnRhythm { routineLoadBlock }
+    }
+
+    private var routineLoadBlock: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            CapsLabel(String(localized: "LOAD"))
+            MaterialCard(surface: .flat) {
+                RoutineTargetRow(
+                    band: draft.plan.targetPercentBand,
+                    setsVary: draft.plan.sets.contains { $0.hasTarget || $0.hasPercentTarget },
+                    onChange: { band in
+                        access.mutate { draft in
+                            draft.plan.targetLoPercent = band?.lowerBound
+                            draft.plan.targetHiPercent = band?.upperBound
+                            // One band for every set: their own targets give way.
+                            for i in draft.plan.sets.indices {
+                                draft.plan.sets[i].targetLoPercent = nil
+                                draft.plan.sets[i].targetHiPercent = nil
+                                draft.plan.sets[i].targetLoKg = nil
+                                draft.plan.sets[i].targetHiKg = nil
+                            }
+                        }
+                    })
+                    .equatable()
+            }
+            if draft.plan.targetPercentBand != nil,
+               PlanMath.missingBenchmarkGripCount(draft.plan, maxes: templates.maxTable) > 0 {
+                Label("Some grips have no max yet, so their sets have no target.",
+                      systemImage: "exclamationmark.circle")
+                    .font(.system(.footnote, weight: .medium))
+                    .foregroundStyle(StatusTint.armed)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    // MARK: Page 2 — Sets
+
+    @ViewBuilder
+    fileprivate func setsPage(_ proxy: ScrollViewProxy) -> some View {
+        let percentBandsVary = Set(draft.plan.executable.sets.map(\.targetPercentBand)).count > 1
+        let defaults = draft.plan.routineLevel
+        let last = draft.plan.sets.count - 1
+        if pages.rowFace == .table, !draft.plan.sets.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(Array(draft.plan.sets.enumerated()), id: \.element.id) { index, set in
+                    if index > 0 {
+                        Divider().overlay(Ink.tertiary.opacity(0.22)).padding(.leading, 16)
+                    }
+                    pagedRow(set, index: index, last: last, defaults: defaults,
+                             percentBandsVary: percentBandsVary)
+                }
+            }
+            .cardSurface(.flat, in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        } else {
+            VStack(spacing: 8) {
+                ForEach(Array(draft.plan.sets.enumerated()), id: \.element.id) { index, set in
+                    pagedRow(set, index: index, last: last, defaults: defaults,
+                             percentBandsVary: percentBandsVary)
+                }
+            }
+        }
+        setButtons(proxy)
+        setAdvisories
+    }
+
+    private func pagedRow(_ set: SetPlan, index: Int, last: Int, defaults: SessionPlan,
+                          percentBandsVary: Bool) -> some View {
+        SetRowView(set: set,
+                   defaults: defaults,
+                   isExpanded: expanded == set.id,
+                   canMoveUp: index > 0,
+                   canMoveDown: index < last,
+                   maxes: templates.maxTable,
+                   percentBandsVary: percentBandsVary,
+                   live: setAccess(for: set),
+                   onTap: { toggle(set.id) },
+                   onEditGrip: { editingGrip = set.id },
+                   onMoveUp: { move(set.id, by: -1) },
+                   onMoveDown: { move(set.id, by: 1) },
+                   onDuplicate: { duplicate(set.id) },
+                   onRemove: { remove(set.id) },
+                   face: pages.rowFace)
+            .equatable()
+            .id(set.id)
+    }
+
+    /// "Add a set" and, once one exists, "Duplicate last set" — side by side while they
+    /// fit, stacked at large text.
+    private func setButtons(_ proxy: ScrollViewProxy) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) { setButtonPair(proxy) }
+            VStack(spacing: 10) { setButtonPair(proxy) }
+        }
+    }
+
+    @ViewBuilder
+    private func setButtonPair(_ proxy: ScrollViewProxy) -> some View {
+        dashedButton(String(localized: "Add a set"), systemImage: "plus") { addSet(proxy) }
+        if !draft.plan.sets.isEmpty {
+            dashedButton(String(localized: "Duplicate last set"), systemImage: "plus.square.on.square") {
+                duplicateLast(proxy)
+            }
+        }
+    }
+
+    private func dashedButton(_ title: String, systemImage: String,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                // NOT `.fixedSize()`: at AX3 a fixed line is wider than the phone, and a
+                // child's ideal width widens the whole column. `ViewThatFits` already
+                // measures the single-line width to choose side by side or stacked.
+                Text(title)
+            }
+            .font(.system(.subheadline, weight: .semibold))
+            .foregroundStyle(Accent.graphite)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background {
+                RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous)
+                    .strokeBorder(Ink.tertiary.opacity(0.45),
+                                  style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+    }
+
+    private func duplicateLast(_ proxy: ScrollViewProxy) {
+        guard var copy = draft.plan.sets.last else { return }
+        copy.id = UUID()
+        withAnimation(Motion.state(reduceMotion)) {
+            draft.plan.sets.append(copy)
+            expanded = copy.id
+        }
+        Task { @MainActor in
+            withAnimation(Motion.state(reduceMotion)) {
+                proxy.scrollTo(copy.id, anchor: .top)
+            }
+        }
+    }
+
+    /// The document's advisories that are about the sets — never the totals, which the
+    /// subtitle already states.
+    @ViewBuilder
+    private var setAdvisories: some View {
+        if !pages.targetOnRhythm,
+           PlanMath.missingBenchmarkGripCount(draft.plan, maxes: templates.maxTable) > 0 {
+            Label("Some grips have no max yet, so their sets have no target.", systemImage: "exclamationmark.circle")
+                .font(.system(.footnote, weight: .medium))
+                .foregroundStyle(StatusTint.armed)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if PlanMath.totalSeconds(draft.plan) > 3600 {
+            Label("This routine runs over an hour.", systemImage: "clock")
+                .font(.system(.footnote, weight: .medium))
+                .foregroundStyle(StatusTint.armed)
+        }
+    }
+
+    // MARK: Page 3 — Schedule
+
+    @ViewBuilder
+    fileprivate var schedulePage: some View {
+        everyDayBlock
+        FineTuningSection(access: access, defaults: draft.plan.routineLevel)
+            .equatable()
+        if templates.saveError != nil {
+            Text("Couldn't save the change. Try again.")
+                .font(.system(.footnote, weight: .medium))
+                .foregroundStyle(Accent.alarm)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if let id = mode.editingID {
+            deleteRow(id)
+                .padding(.top, 8)
+        }
+    }
+
+    // MARK: Headless hooks
+
+    #if DEBUG
+    /// `-builderScrollTo sets|schedule|expanded` — the single document's equivalents of the
+    /// three pages, for side-by-side screenshots.
+    fileprivate func debugScroll(_ proxy: ScrollViewProxy) {
+        guard let target = BuilderPagesPrototype.debugString("-builderScrollTo") else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            switch target {
+            case "sets": proxy.scrollTo("anchor.sets", anchor: .top)
+            case "schedule": proxy.scrollTo("anchor.schedule", anchor: .top)
+            case "expanded": if let id = expanded { proxy.scrollTo(id, anchor: .top) }
+            case "end": proxy.scrollTo("anchor.end", anchor: .bottom)
+            default: break
+            }
+        }
+    }
+    #endif
+}
+
+private extension View {
+    /// `-builderMeasure` (DEBUG): logs the content height, for the page-height table.
+    @ViewBuilder
+    func debugMeasure(_ label: String) -> some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-builderMeasure") {
+            onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                print("BUILDER_MEASURE \(label) \(Int(height.rounded()))")
+            }
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
 }

@@ -19,12 +19,81 @@ struct RhythmSection: View, Equatable {
     /// The strip previews the first set's pulls — the one set-level number read, so the one
     /// compared.
     let firstSetReps: Int
+    /// The PAGED builder's Rhythm page (DEBUG prototype, `-builderPages`): the routine's own
+    /// hold and rest lead the card, and the hands get a card of their own. Sets still
+    /// override per row; a new set follows these.
+    var includesPullTiming = false
 
     nonisolated static func == (a: Self, b: Self) -> Bool {
         a.defaults.rhythmKey == b.defaults.rhythmKey && a.firstSetReps == b.firstSetReps
+            && a.includesPullTiming == b.includesPullTiming
+            && (!a.includesPullTiming
+                || (a.defaults.holdSeconds == b.defaults.holdSeconds
+                    && a.defaults.restSeconds == b.defaults.restSeconds))
     }
 
     var body: some View {
+        if includesPullTiming { pagedBody } else { documentBody }
+    }
+
+    /// Two cards: TIMING (hold, rest, break, when the rest starts) and HANDS.
+    private var pagedBody: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 10) {
+                CapsLabel(String(localized: "TIMING"))
+                MaterialCard(surface: .flat) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        IntValueRow(title: String(localized: "Hold"), unit: String(localized: "s"),
+                                    value: access.binding(\.plan.holdSeconds, current: defaults.holdSeconds),
+                                    range: 1...60, limit: SetPlan.holdRange,
+                                    control: .dial([1] + SetRowView.secondsLadder))
+                        IntValueRow(title: String(localized: "Rest between pulls"), unit: String(localized: "s"),
+                                    value: access.binding(\.plan.restSeconds, current: defaults.restSeconds),
+                                    range: 0...60, limit: SetPlan.restRange,
+                                    control: .dial([0] + SetRowView.secondsLadder))
+                        breakRow
+                        releaseToggle
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                CapsLabel(String(localized: "HANDS"))
+                MaterialCard(surface: .flat) {
+                    VStack(alignment: .leading, spacing: 12) { handsBlock }
+                }
+            }
+        }
+    }
+
+    private var breakRow: some View {
+        IntValueRow(title: String(localized: "Break between sets"),
+                    unit: String(localized: "s"),
+                    value: access.binding(\.plan.setBreakSeconds, current: defaults.setBreakSeconds),
+                    range: 0...240, limit: SessionPlan.setBreakRange,
+                    control: .dial([0, 30, 60, 90, 120, 180]))
+    }
+
+    @ViewBuilder
+    private var handsBlock: some View {
+        HandModeChipRow(selection: access.binding(\.plan.handMode, current: defaults.handMode))
+        HandOrderStrip(mode: defaults.handMode,
+                       startingHand: defaults.startingHand,
+                       repsPerSide: firstSetReps)
+        if defaults.handMode.sideCount > 1 {
+            HStack(alignment: .center, spacing: 12) {
+                Text(defaults.startingHand == .right
+                     ? "Starts on the right hand"
+                     : "Starts on the left hand")
+                    .font(.system(.footnote, weight: .medium))
+                    .foregroundStyle(Ink.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                swapHandsButton
+            }
+        }
+    }
+
+    private var documentBody: some View {
         VStack(alignment: .leading, spacing: 10) {
             CapsLabel(String(localized: "REST & HANDS"))
 

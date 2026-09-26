@@ -41,6 +41,9 @@ struct SetRowView: View, Equatable {
     var onMoveDown: () -> Void
     var onDuplicate: () -> Void
     var onRemove: () -> Void
+    /// How the CLOSED row reads. `.sentence` is the single-document builder's; the paged
+    /// prototype (`-builderPages`) uses one of the two compact faces.
+    var face: SetRowFace = .sentence
 
     /// Everything the row draws, and nothing it only writes — `SessionPlan.setRowKey`
     /// lists the plan-level fields.
@@ -52,18 +55,30 @@ struct SetRowView: View, Equatable {
             && a.percentBandsVary == b.percentBandsVary
             && a.maxes == b.maxes
             && a.defaults.setRowKey == b.defaults.setRowKey
+            && a.face == b.face
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// The shared interior of the Hold and Rest dials — every detent the shipping protocols
     /// use (3 s C4 holds, 5/7/10/12 s repeaters, 15–60 s rests), defined once so the ladders
     /// cannot drift. Each dial prepends only its floor.
-    private static let secondsLadder: [Double] = [3, 5, 7, 10, 12, 15, 20, 30, 45, 60]
+    static let secondsLadder: [Double] = [3, 5, 7, 10, 12, 15, 20, 30, 45, 60]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button(action: onTap) { collapsedFace }
+            Button(action: onTap) {
+                switch face {
+                case .sentence: collapsedFace
+                case .compact, .table:
+                    // Accessibility sizes: both compact faces STACK — a column of numbers
+                    // beside a two-line grip name crushed every word at AX3.
+                    if typeSize.isAccessibilitySize { stackedFace }
+                    else if face == .compact { compactFace }
+                    else { tableFace }
+                }
+            }
                 // A row-sized card that scaled on press would drag its backdrop out from
                 // under the editor it shares a card with.
                 .buttonStyle(PressFeedbackButtonStyle(scales: false))
@@ -90,9 +105,8 @@ struct SetRowView: View, Equatable {
         .frame(maxWidth: .infinity, alignment: .leading)
         // Flat, not material: the row animates open and shut above five siblings,
         // and a blur per row per frame is what a 13 mini could not afford.
-        // See `CardSurface`.
-        .cardSurface(.flat,
-                     in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        // See `CardSurface`. The TABLE face sits inside one shared card instead.
+        .modifier(SetRowSurface(drawsCard: face != .table))
         .animation(Motion.state(reduceMotion),
                    value: isExpanded)
     }
@@ -141,6 +155,137 @@ struct SetRowView: View, Equatable {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenRow)
         .accessibilityHint(isExpanded ? String(localized: "Closes this set") : String(localized: "Opens this set for editing"))
+    }
+
+    // MARK: - Compact faces (paged prototype)
+
+    /// Two lines: the grip, then pulls · load · any timing override.
+    private var compactFace: some View {
+        HStack(alignment: .center, spacing: 12) {
+            FingerGlyph(fingers: set.grip.fingers, position: set.grip.position,
+                        dot: 6, gap: 3)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(set.grip.line)
+                    .font(.system(.subheadline, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Ink.primary)
+                    .lineLimit(2)
+                compactDetail
+                    .font(.system(.footnote))
+                    .monospacedDigit()
+            }
+            Spacer(minLength: 8)
+            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                .font(.system(.footnote, weight: .semibold))
+                .foregroundStyle(Ink.tertiary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenRow)
+        .accessibilityHint(isExpanded ? String(localized: "Closes this set") : String(localized: "Opens this set for editing"))
+    }
+
+    /// Pulls, then the load — in TERTIARY when it is only the routine's band repeated, so
+    /// six rows of the same percentage do not shout — then any timing override in primary.
+    /// The compact faces at accessibility sizes: glyph and chevron, then the words, each
+    /// on its own line and free to wrap.
+    private var stackedFace: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                FingerGlyph(fingers: set.grip.fingers, position: set.grip.position,
+                            dot: 6, gap: 3)
+                Spacer(minLength: 8)
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(Ink.tertiary)
+            }
+            Text(set.grip.line)
+                .font(.system(.subheadline, weight: .semibold))
+                .foregroundStyle(Ink.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            compactDetail
+                .font(.system(.footnote))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenRow)
+        .accessibilityHint(isExpanded ? String(localized: "Closes this set") : String(localized: "Opens this set for editing"))
+    }
+
+    private var compactDetail: Text {
+        var text = Text(repsText).foregroundStyle(Ink.secondary)
+        if let load = loadText {
+            let inherited = !set.hasTarget && !set.hasPercentTarget
+            text = Text("\(text)\(Text(" · " + load).foregroundStyle(inherited ? Ink.tertiary : Ink.secondary))")
+        }
+        let timing = timingOverrideText
+        guard !timing.isEmpty else { return text }
+        return Text("\(text)\(Text(" · " + timing).foregroundStyle(Ink.primary))")
+    }
+
+    /// One line, three columns: grip · pulls · load. Rows share one card.
+    private var tableFace: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            FingerGlyph(fingers: set.grip.fingers, position: set.grip.position,
+                        dot: 5, gap: 2.5)
+                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
+            Text(set.grip.line)
+                .font(.system(.subheadline, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(Ink.primary)
+                .lineLimit(2)
+            Spacer(minLength: 6)
+            Text(tablePulls)
+                .font(.system(.subheadline, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(Ink.secondary)
+            Text(loadText ?? "–")
+                .font(.system(.subheadline, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(loadText == nil || (!set.hasTarget && !set.hasPercentTarget)
+                                 ? Ink.tertiary : Ink.secondary)
+                .frame(minWidth: 64, alignment: .trailing)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenRow)
+        .accessibilityHint(isExpanded ? String(localized: "Closes this set") : String(localized: "Opens this set for editing"))
+    }
+
+    /// "6 × 2" for two hands, "6 ×" for one. Short enough for a column.
+    private var tablePulls: String {
+        defaults.handMode.sideCount > 1
+            ? String(localized: "\(set.repsPerSide) × 2")
+            : String(localized: "\(set.repsPerSide) ×")
+    }
+
+    /// The set's load as it will run: its own kilograms, its own percentage, or the
+    /// routine's percentage it follows. nil = no target.
+    private var loadText: String? {
+        if let band = set.targetBand {
+            return String(localized: "\(weightUnit.number(band.lowerBound))–\(weightUnit.number(band.upperBound)) \(weightUnit.symbol)")
+        }
+        if let percent = set.targetPercentBand ?? defaults.targetPercentBand {
+            return "\(percentText(percent.lowerBound))–\(percentText(percent.upperBound)) %"
+        }
+        return nil
+    }
+
+    /// Timing overrides only; the compact faces state load on their own.
+    private var timingOverrideText: String {
+        var parts: [String] = []
+        if let hold = set.holdSeconds, hold != defaults.holdSeconds { parts.append(String(localized: "\(hold) s hold")) }
+        if let rest = set.restSeconds, rest != defaults.restSeconds { parts.append(String(localized: "\(rest) s rest")) }
+        return parts.joined(separator: " · ")
     }
 
     /// "6 per side · 1:00 under tension per side", plus any timing override.
@@ -370,6 +515,28 @@ struct SetRowView: View, Equatable {
         return String(localized: "\(set.grip.spoken). \(repsText), \(tensionText)\(spokenOverride). \(duration).")
     }
 
+}
+
+/// How a closed set row reads — see `SetRowView.face`.
+enum SetRowFace: Equatable {
+    /// The single-document builder: grip, "6 per side · 1:00 under tension", duration.
+    case sentence
+    /// Paged prototype A: its own card, grip over "6 per side · 20–30 %".
+    case compact
+    /// Paged prototype B: one line in a shared card, grip | pulls | load columns.
+    case table
+}
+
+private struct SetRowSurface: ViewModifier {
+    let drawsCard: Bool
+    func body(content: Content) -> some View {
+        if drawsCard {
+            content.cardSurface(.flat,
+                                in: RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
+        } else {
+            content
+        }
+    }
 }
 
 // MARK: - Context-menu preview
