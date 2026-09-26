@@ -235,10 +235,11 @@ enum MockForceProfile: String, CaseIterable, Sendable {
     /// included) sees a real-looking plateau rather than the routine's 10-on/20-off shape.
     case allOut
 
-    /// Work + rest cycle, chosen to match the default no-hang shape (10 s on,
-    /// 20 s off) so a mock run lines up with a real routine.
-    static let workSeconds: Double = 10
-    static let restSeconds: Double = 20
+    /// The default no-hang shape (10 s on, 20 s off), with the pull held a second and a
+    /// half longer: the ramps and the engage debounce eat into a bare 10 s, so a demo rep
+    /// ended on RE-GRIP with a second to go and waited out a whole rest to finish.
+    static let workSeconds: Double = 11.5
+    static let restSeconds: Double = 18.5
 
     static func force(at seconds: Double, profile: MockForceProfile) -> Double {
         let jitter = sin(seconds * 37.7) * 0.18 + sin(seconds * 13.1) * 0.1
