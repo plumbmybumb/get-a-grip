@@ -2419,6 +2419,39 @@ extension TemplateStoreTests {
                      "two results for one hand in one visit is a bug, not a save")
     }
 
+    /// Two maxes for one grip and hand in one save would compete to be the current one:
+    /// the whole save is refused, as `recordMaxes` and Android's store refuse it.
+    func testACriticalForceSaveWithTwoMaxesForOneHandIsRefused() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        XCTAssertNil(w.store.recordCriticalForces(
+            [.init(side: .left, result: cfResult(), trace: Data())], grip: grip, bodyMassKg: nil,
+            alsoMaxes: [.init(grip: grip, side: .left, kg: 40, source: .measured),
+                        .init(grip: grip, side: .left, kg: 41, source: .measured)]))
+        XCTAssertTrue(try w.context.fetch(FetchDescriptor<CriticalForceRecord>()).isEmpty)
+        XCTAssertNil(w.store.maxTable.exact(grip: grip.key, side: .left))
+    }
+
+    /// A max saved with a test lands strictly AFTER the one it supersedes, even when that
+    /// one's timestamp is not behind the clock (the same instant, or another device's clock
+    /// running ahead): "current" is the newest, and a tie would leave it to fetch order.
+    func testAMaxSavedWithATestSupersedesOneStampedAtTheSameInstant() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        let ahead = Date.now.addingTimeInterval(60)
+        w.context.insert(MaxRecord(grip: grip, kg: 38, source: .measured, side: .left, recordedAt: ahead))
+        try w.context.save()
+        w.store.syncDerived()
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .left), 38)
+
+        XCTAssertNotNil(w.store.recordCriticalForces(
+            [.init(side: .left, result: cfResult(peak: 41), trace: Data())], grip: grip, bodyMassKg: nil,
+            alsoMaxes: [.init(grip: grip, side: .left, kg: 41, source: .measured)]))
+        XCTAssertEqual(w.store.maxTable.exact(grip: grip.key, side: .left), 41, "the new max is current")
+        let newest = try XCTUnwrap(w.store.currentMaxes[MaxTable.key(grip: grip.key, side: .left)])
+        XCTAssertGreaterThan(newest.recordedAt, ahead)
+    }
+
     /// Undo puts the test back EXACTLY: same id, date, blobs and frozen values.
     func testDeletingATestUndoesExactly() throws {
         let w = try makeWorld()

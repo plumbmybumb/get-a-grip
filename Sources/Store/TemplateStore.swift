@@ -1171,6 +1171,10 @@ final class TemplateStore {
               tests.allSatisfy({ $0.result.criticalForceKg.isFinite && $0.result.criticalForceKg > 0 }),
               Set(tests.map(\.side)).count == tests.count,
               alsoMaxes.allSatisfy({ $0.kg.isFinite && $0.kg > 0 }) else { return nil }
+        // Two maxes competing to be the current one for the same grip and hand: refuse the
+        // batch, as `recordMaxes` does (and Android's `recordCriticalForces`).
+        let maxKeys = alsoMaxes.map { MaxTable.key(grip: $0.grip.key, side: $0.side) }
+        guard Set(maxKeys).count == maxKeys.count else { return nil }
         let now = Date.now
         let records = tests.map { test in
             CriticalForceRecord(grip: grip, side: test.side, result: test.result, trace: test.trace,
@@ -1180,7 +1184,13 @@ final class TemplateStore {
         }
         records.forEach(context.insert)
         for max in alsoMaxes {
-            context.insert(MaxRecord(grip: max.grip, kg: max.kg, source: max.source, side: max.side))
+            // Strictly after the max it supersedes: "current" is the newest by
+            // `recordedAt`, and a tie with one saved in the same instant would leave which
+            // one wins to the fetch order. Android bumps by the same millisecond.
+            let last = currentMaxes[MaxTable.key(grip: max.grip.key, side: max.side)]?.recordedAt
+            let recordedAt = last.map { now > $0 ? now : $0.addingTimeInterval(0.001) } ?? now
+            context.insert(MaxRecord(grip: max.grip, kg: max.kg, source: max.source, side: max.side,
+                                     recordedAt: recordedAt))
         }
         stampBenchmarkDay()
         persistAndSync(maxesChanged: !alsoMaxes.isEmpty)
