@@ -563,6 +563,21 @@
     {
       "en": "%@ hand done. Set up your %@ hand with the gauge unloaded, then start: it zeroes first.",
       "fr": "%@ : terminé. Mets en place ta main %@ sans charger le capteur, puis démarre : il se remet d’abord à zéro."
+    },
+    {
+      "en": "Rate on Google Play",
+      "fr": "Noter sur Google Play",
+      "//": "Settings › Support and the one-time prompt's button. iOS says 'Rate on the App Store', which Android must never say — the generator skips that pair."
+    },
+    {
+      "en": "Rate on Google Play. Opens Google Play.",
+      "fr": "Noter sur Google Play. Ouvre Google Play.",
+      "//": "TalkBack's label for the row: iOS's label plus where it goes."
+    },
+    {
+      "en": "Rate Get a Grip",
+      "fr": "Noter Get a Grip",
+      "//": "The title of the one-time rating ask after the fifth session. iOS shows the system prompt, whose words are Apple's; Android asks in its own dialog (see ReviewRequestPolicy)."
     }
   ]
 }

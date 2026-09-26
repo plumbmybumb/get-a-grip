@@ -14,7 +14,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1264) {
+val STRING_KEYS: Map<String, Int> = buildMap(1265) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -907,8 +907,9 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["RHYTHM"] = R.string.s_rhythm
     into["RIGHT"] = R.string.s_right_952532
     into["RIGHT HAND NEXT"] = R.string.s_right_hand_next_0ba39f
-    into["Rate on the App Store"] = R.string.s_rate_on_the_app_store
-    into["Rate on the App Store. Opens the App Store."] = R.string.s_rate_on_the_app_store_opens_the_app_store
+    into["Rate Get a Grip"] = R.string.a_rate_get_a_grip
+    into["Rate on Google Play"] = R.string.a_rate_on_google_play
+    into["Rate on Google Play. Opens Google Play."] = R.string.a_rate_on_google_play_opens_google_play
     into["Recent connection and signal breadcrumbs, kept on this device in memory only — they are lost if the app is force-quit."] = R.string.s_recent_connection_and_signal_breadcrumbs_kept_on_this_de
     into["Recent connection and signal details will be added to your email. You can review them before sending."] = R.string.a_recent_connection_and_signal_details_will_be_added_to_yo
     into["Record another test"] = R.string.s_record_another_test
@@ -941,10 +942,10 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Routine overview"] = R.string.s_routine_overview
     into["Runs the timers and hand prompts only. Nothing is measured."] = R.string.s_runs_the_timers_and_hand_prompts_only_nothing_is_measure
     into["SAVED"] = R.string.s_saved_24f3f7
-    into["SESSION %d"] = R.string.s_session_lld
 }
 
 private fun string_keysChunk6(into: MutableMap<String, Int>) {
+    into["SESSION %d"] = R.string.s_session_lld
     into["SET BREAK"] = R.string.s_set_break
     into["SETS"] = R.string.s_sets_cba9e4
     into["START FROM"] = R.string.s_start_from
@@ -1094,10 +1095,10 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["That couldn't be saved — nothing was logged. Try again."] = R.string.s_that_couldn_t_be_saved_nothing_was_logged_try_again
     into["That couldn't be saved — nothing was recorded. Try again."] = R.string.s_that_couldn_t_be_saved_nothing_was_recorded_try_again
     into["That counts as one session for %s, but it does not settle the day. You can still do another session if you want one."] = R.string.s_that_counts_as_one_session_for_but_it_does_not_settle_th
-    into["That routine couldn't be saved just now — nothing was added. Try again."] = R.string.s_that_routine_couldn_t_be_saved_just_now_nothing_was_adde
 }
 
 private fun string_keysChunk7(into: MutableMap<String, Int>) {
+    into["That routine couldn't be saved just now — nothing was added. Try again."] = R.string.s_that_routine_couldn_t_be_saved_just_now_nothing_was_adde
     into["That's over an hour. Fine if you mean it."] = R.string.s_that_s_over_an_hour_fine_if_you_mean_it
     into["The calibration lookup needs an internet connection the first time a Dyno is used."] = R.string.s_the_calibration_lookup_needs_an_internet_connection_the
     into["The camera scanner isn't available right now. Try again when the camera is available, or open the routine link directly."] = R.string.s_the_camera_scanner_isn_t_available_right_now_try_again_w
@@ -1247,10 +1248,10 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["for %s"] = R.string.s_for_c3348c
     into["gauge"] = R.string.s_gauge_7e0e01
     into["grip has"] = R.string.s_grip_has
-    into["grips have"] = R.string.s_grips_have
 }
 
 private fun string_keysChunk8(into: MutableMap<String, Int>) {
+    into["grips have"] = R.string.s_grips_have
     into["held since %s"] = R.string.s_held_since
     into["hour"] = R.string.s_hour
     into["hours"] = R.string.s_hours

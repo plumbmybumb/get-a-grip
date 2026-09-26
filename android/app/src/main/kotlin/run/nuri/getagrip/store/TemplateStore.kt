@@ -166,6 +166,12 @@ class TemplateStore(
     var lastDeletedSession: WorkoutLogEntity? by mutableStateOf(null)
         private set
 
+    /// How many sessions `recordSession` has saved since launch. The root compares it across
+    /// the runner to know the runner just SAVED a session, as opposed to discarding one — the
+    /// moment the review prompt is allowed to consider itself (`ReviewRequestPolicy`).
+    var sessionsSavedThisLaunch: Int by mutableStateOf(0)
+        private set
+
     /// Every critical force test, oldest first. Published here because Android has no
     /// `@Query`: Today's line, the Maxes cards and the test's own setup all read this one
     /// list, so a saved test redraws all three at once.
@@ -944,7 +950,20 @@ class TemplateStore(
             writer.putLog(log)
             newMaxes.forEach { writer.putMax(it) }
         }
-        return if (saved) log else null
+        if (!saved) return null
+        sessionsSavedThisLaunch += 1
+        return log
+    }
+
+    /// Every runner-driven session ever saved — the engagement the review prompt gates on
+    /// (`ReviewRequestPolicy`). Climbs and hand-logged hangs are not sessions the app ran.
+    /// Columns only (`dayStamps`), never a blob, and it runs once per finished session. A
+    /// failed read counts as none: not asking is the safe direction.
+    suspend fun hangSessionCount(): Int {
+        val hang = SessionKind.hang.rawValue
+        // Not `Instant.MAX`: the column converter stores epoch MILLIS, and MAX overflows them.
+        val rows = gateway.dayStamps(before = Instant.ofEpochMilli(Long.MAX_VALUE)) ?: return 0
+        return rows.count { it.kindRaw == hang }
     }
 
     /// Remove a session from history — the one destructive act on this data. `dayKey` and

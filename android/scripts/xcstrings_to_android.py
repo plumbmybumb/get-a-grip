@@ -97,7 +97,12 @@ EXTRA = os.path.join(HERE, "android_extra.json")
 
 # Bundle metadata and a language-independent dash. The dash is literal UI punctuation;
 # Xcode may mark it untranslatable in one bundle and localize it unchanged in another.
-SKIP_KEYS = {"CFBundleDisplayName", "CFBundleName", "—"}
+# The App Store rating row is iOS's; Android rates on Google Play (`android_extra.json`), and
+# a store name that is wrong on this platform must not even be available to a `tr()` call.
+SKIP_KEYS = {
+    "CFBundleDisplayName", "CFBundleName", "—",
+    "Rate on the App Store", "Rate on the App Store. Opens the App Store.",
+}
 
 REGENERATE = "python3 android/scripts/xcstrings_to_android.py"
 

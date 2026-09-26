@@ -11,12 +11,16 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import run.nuri.getagrip.store.PlayStoreListing
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.InstrumentSurface
@@ -44,6 +48,7 @@ internal fun SupportCard(gauge: String, diagnostics: () -> String?) {
                 if (report == null) compose(bug = true) else pendingDiagnostics = report
             }
             SupportRow(tr("Request a feature"), Icons.Outlined.Lightbulb) { compose(bug = false) }
+            RateRow()
         }
     }
 
@@ -78,9 +83,30 @@ internal fun SupportCard(gauge: String, diagnostics: () -> String?) {
     }
 }
 
+/// The permanent link to the Play listing, and the one place the ask can say WHY — the
+/// one-time prompt after the fifth session says it once (see `ReviewRequestPolicy`); this
+/// row says it for as long as anyone looks.
 @Composable
-private fun SupportRow(title: String, icon: ImageVector, onClick: () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+private fun RateRow() {
+    val context = LocalContext.current
+    val spoken = tr("Rate on Google Play. Opens Google Play.")
+    Column {
+        SupportRow(
+            tr("Rate on Google Play"),
+            Icons.Outlined.StarOutline,
+            Modifier.semantics { contentDescription = spoken },
+        ) { PlayStoreListing.open(context) }
+        Text(
+            tr("Get a Grip is free and open source. A rating helps other climbers find it."),
+            style = MaterialTheme.typography.bodySmall,
+            color = LocalGripPalette.current.inkTertiary,
+        )
+    }
+}
+
+@Composable
+private fun SupportRow(title: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = modifier.fillMaxWidth().heightIn(min = 48.dp),
         contentPadding = PaddingValues(vertical = 8.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = LocalGripPalette.current.graphite)) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp))
