@@ -1,0 +1,2590 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ + thumb" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ + pouce"
+          }
+        }
+      }
+    },
+    "%@ kilograms" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ kilogrammes"
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        }
+      }
+    },
+    "%@ · %@ under tension" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@ sous tension"
+          }
+        }
+      }
+    },
+    "%@ · %@ · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@ · %@"
+          }
+        }
+      }
+    },
+    "%@ · %@ · %@ in total" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@ · %@ au total"
+          }
+        }
+      }
+    },
+    "%@ · %lld of %lld pulls. The app closed before it was saved." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %lld sur %lld tirages. L’app s’est fermée avant l’enregistrement."
+          }
+        }
+      }
+    },
+    "%@ — PULL" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — TIRE"
+          }
+        }
+      }
+    },
+    "%@–%@ kg" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@–%@ kg"
+          }
+        }
+      }
+    },
+    "%lld %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %@"
+          }
+        }
+      }
+    },
+    "%lld min" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        }
+      }
+    },
+    "%lld min %lld s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min %lld s"
+          }
+        }
+      }
+    },
+    "%lld mm edge, %@, %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "réglette de %lld mm, %@, %@"
+          }
+        }
+      }
+    },
+    "%lld mm · %@ · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld mm · %@ · %@"
+          }
+        }
+      }
+    },
+    "%lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sur %lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld sessions done today" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sur %lld séances faites aujourd'hui"
+          }
+        }
+      }
+    },
+    "%lld of %lld today" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sur %lld aujourd'hui"
+          }
+        }
+      }
+    },
+    "%lld per side · %@ under tension per side" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld par côté · %@ sous tension par côté"
+          }
+        }
+      }
+    },
+    "%lld pulls per side · %@ under tension per side" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tirages par côté · %@ sous tension par côté"
+          }
+        }
+      }
+    },
+    "%lld s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld s"
+          }
+        }
+      }
+    },
+    "%lldmm %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldmm %@ %@"
+          }
+        }
+      }
+    },
+    "4 fingers" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "4 doigts"
+          }
+        }
+      }
+    },
+    "A session on the board." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une séance sur la poutre."
+          }
+        }
+      }
+    },
+    "A testing day — a max or a critical force test on the gauge." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un jour de test — un max ou un test de force critique au capteur."
+          }
+        }
+      }
+    },
+    "A whenever routine — nothing owed today" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une routine libre — rien à faire aujourd'hui"
+          }
+        }
+      }
+    },
+    "Add a reminder time, or turn reminders off." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoute une heure de rappel, ou désactive les rappels."
+          }
+        }
+      }
+    },
+    "Add at least one set with a pull in it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoute au moins une série avec un tirage."
+          }
+        }
+      }
+    },
+    "All I had" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À fond"
+          }
+        }
+      }
+    },
+    "All the pulls on one hand, then all of them on the other, inside one set." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toutes les tractions d’une main, puis de l’autre, dans une même série."
+          }
+        }
+      }
+    },
+    "Alternate each pull" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alterner à chaque tirage"
+          }
+        }
+      }
+    },
+    "B" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G+D"
+          }
+        }
+      }
+    },
+    "Back 2" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrière 2"
+          }
+        }
+      }
+    },
+    "Back 3" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrière 3"
+          }
+        }
+      }
+    },
+    "battery" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "batterie"
+          }
+        }
+      }
+    },
+    "battery query" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "requête batterie"
+          }
+        }
+      }
+    },
+    "Benchmark" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test de référence"
+          }
+        }
+      }
+    },
+    "Bluetooth denied" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth refusé"
+          }
+        }
+      }
+    },
+    "Bluetooth off" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth éteint"
+          }
+        }
+      }
+    },
+    "Both" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les deux"
+          }
+        }
+      }
+    },
+    "BOTH" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LES DEUX"
+          }
+        }
+      }
+    },
+    "Both hands" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les deux mains"
+          }
+        }
+      }
+    },
+    "BOTH HANDS NEXT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DEUX MAINS ENSUITE"
+          }
+        }
+      }
+    },
+    "Build one on your iPhone. It syncs here on its own." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crées-en une sur ton iPhone. Elle arrivera ici toute seule."
+          }
+        }
+      }
+    },
+    "calibration point" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "point d'étalonnage"
+          }
+        }
+      }
+    },
+    "calibration save" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sauvegarde d'étalonnage"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
+          }
+        }
+      }
+    },
+    "Characteristic discovery failed: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec de la découverte des caractéristiques : %@"
+          }
+        }
+      }
+    },
+    "Choose a different time for each daily reminder." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez une heure différente pour chaque rappel quotidien."
+          }
+        }
+      }
+    },
+    "Climbro" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Climbro"
+          }
+        }
+      }
+    },
+    "Comfortable" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confortable"
+          }
+        }
+      }
+    },
+    "Connect" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecter"
+          }
+        }
+      }
+    },
+    "Connected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecté"
+          }
+        }
+      }
+    },
+    "CONNECTING" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CONNEXION"
+          }
+        }
+      }
+    },
+    "Connecting…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion…"
+          }
+        }
+      }
+    },
+    "Connection attempts exhausted" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tentatives de connexion épuisées"
+          }
+        }
+      }
+    },
+    "Connection timed out" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Délai de connexion dépassé"
+          }
+        }
+      }
+    },
+    "Copy of %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copie de %@"
+          }
+        }
+      }
+    },
+    "Couldn't connect" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion impossible"
+          }
+        }
+      }
+    },
+    "Couldn't save this workout." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’enregistrer cette séance."
+          }
+        }
+      }
+    },
+    "Couldn't save this workout. Please try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't save this workout. Please try again."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d’enregistrer cette séance. Veuillez réessayer."
+          }
+        }
+      }
+    },
+    "CURL" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FLEX"
+          }
+        }
+      }
+    },
+    "Daily no-hangs" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No-hangs quotidiens"
+          }
+        }
+      }
+    },
+    "Data characteristic does not notify" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La caractéristique de données ne notifie pas"
+          }
+        }
+      }
+    },
+    "Demo gauge" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capteur de démo"
+          }
+        }
+      }
+    },
+    "Device asleep" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appareil en veille"
+          }
+        }
+      }
+    },
+    "Discard" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abandonner"
+          }
+        }
+      }
+    },
+    "Discard this session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abandonner cette séance"
+          }
+        }
+      }
+    },
+    "Disconnected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déconnecté"
+          }
+        }
+      }
+    },
+    "DONE" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FAIT"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé"
+          }
+        }
+      }
+    },
+    "Done %lld times today" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fait %lld fois aujourd'hui"
+          }
+        }
+      }
+    },
+    "done %lld today" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld fois aujourd'hui"
+          }
+        }
+      }
+    },
+    "Done for today" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fait pour aujourd'hui"
+          }
+        }
+      }
+    },
+    "DR" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AP"
+          }
+        }
+      }
+    },
+    "Drag" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À plat"
+          }
+        }
+      }
+    },
+    "EASE OFF" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MOINS FORT"
+          }
+        }
+      }
+    },
+    "Easy" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Facile"
+          }
+        }
+      }
+    },
+    "End session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminer la séance"
+          }
+        }
+      }
+    },
+    "Entralpi" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entralpi"
+          }
+        }
+      }
+    },
+    "Entralpi force plate" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plaque de force Entralpi"
+          }
+        }
+      }
+    },
+    "error clear" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "effacement d'erreur"
+          }
+        }
+      }
+    },
+    "error query" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "requête d'erreur"
+          }
+        }
+      }
+    },
+    "FC" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AR"
+          }
+        }
+      }
+    },
+    "Finger curl" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flexion"
+          }
+        }
+      }
+    },
+    "Flip for the watch hand" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retourner selon le poignet"
+          }
+        }
+      }
+    },
+    "Frez" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez"
+          }
+        }
+      }
+    },
+    "Frez could not produce a calibration for this Dyno." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez could not produce a calibration for this Dyno."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez n'a pas pu produire d'étalonnage pour ce Dyno."
+          }
+        }
+      }
+    },
+    "Frez did not accept this app's access key." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez did not accept this app's access key."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez n'a pas accepté la clé d'accès de cette app."
+          }
+        }
+      }
+    },
+    "Frez Dyno" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez Dyno"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez Dyno"
+          }
+        }
+      }
+    },
+    "Frez has no calibration on file for this Dyno." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez has no calibration on file for this Dyno."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez n'a aucun étalonnage enregistré pour ce Dyno."
+          }
+        }
+      }
+    },
+    "Frez has reached the number of Dynos this app may register." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez has reached the number of Dynos this app may register."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez a atteint le nombre de Dynos que cette app peut enregistrer."
+          }
+        }
+      }
+    },
+    "Frez is busy. Try again in a minute." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez is busy. Try again in a minute."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez est occupé. Réessaie dans une minute."
+          }
+        }
+      }
+    },
+    "Frez is reviewing this Dyno's ownership before it can be registered." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez is reviewing this Dyno's ownership before it can be registered."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez vérifie la propriété de ce Dyno avant de pouvoir l'enregistrer."
+          }
+        }
+      }
+    },
+    "Frez rejected the calibration request." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez rejected the calibration request."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez a refusé la demande d'étalonnage."
+          }
+        }
+      }
+    },
+    "Frez sent an answer this app could not read." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez sent an answer this app could not read."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frez a envoyé une réponse que cette app n'a pas pu lire."
+          }
+        }
+      }
+    },
+    "Front 2" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avant 2"
+          }
+        }
+      }
+    },
+    "Front 3" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avant 3"
+          }
+        }
+      }
+    },
+    "Full crimp" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arquée"
+          }
+        }
+      }
+    },
+    "Gauge" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capteur"
+          }
+        }
+      }
+    },
+    "Gauge control point cannot acknowledge tare writes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le point de contrôle du capteur ne peut pas accuser réception des tares"
+          }
+        }
+      }
+    },
+    "Gauge did not acknowledge the command. Reconnect and try again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La jauge n’a pas confirmé la commande. Reconnectez-la et réessayez."
+          }
+        }
+      }
+    },
+    "Get a Grip" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get a Grip"
+          }
+        }
+      }
+    },
+    "GET READY" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PRÊT"
+          }
+        }
+      }
+    },
+    "Get ready" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prépare-toi"
+          }
+        }
+      }
+    },
+    "Griptonite" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Griptonite"
+          }
+        }
+      }
+    },
+    "Griptonite Motherboard" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Griptonite Motherboard"
+          }
+        }
+      }
+    },
+    "Half crimp" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Semi-arquée"
+          }
+        }
+      }
+    },
+    "Hangboard" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poutre"
+          }
+        }
+      }
+    },
+    "Hangs" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suspensions"
+          }
+        }
+      }
+    },
+    "Hard" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dur"
+          }
+        }
+      }
+    },
+    "Hard bouldering or projecting — a maximal pull on your fingers." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloc dur ou travail de projet — une sollicitation maximale des doigts."
+          }
+        }
+      }
+    },
+    "HC" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SA"
+          }
+        }
+      }
+    },
+    "Hold to discard" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenir pour abandonner"
+          }
+        }
+      }
+    },
+    "Holding" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En tenue"
+          }
+        }
+      }
+    },
+    "iCloud isn't available, so your routines and sessions are stored only on this device. They won't sync or restore." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud n'est pas disponible, tes routines et tes séances sont donc stockées uniquement sur cet appareil. Elles ne se synchroniseront ni ne se restaureront."
+          }
+        }
+      }
+    },
+    "Index" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Index"
+          }
+        }
+      }
+    },
+    "Jlyscales" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jlyscales"
+          }
+        }
+      }
+    },
+    "Jlyscales CTS500" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jlyscales CTS500"
+          }
+        }
+      }
+    },
+    "Keep holding…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintiens…"
+          }
+        }
+      }
+    },
+    "Keep the screen on — Health didn't allow a workout." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Garde l'écran allumé — Santé n'a pas autorisé l'entraînement."
+          }
+        }
+      }
+    },
+    "Kilograms" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kilogrammes"
+          }
+        }
+      }
+    },
+    "kilograms" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kilogrammes"
+          }
+        }
+      }
+    },
+    "L" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G"
+          }
+        }
+      }
+    },
+    "L %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G %@"
+          }
+        }
+      }
+    },
+    "L %@ · R %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G %@ · D %@"
+          }
+        }
+      }
+    },
+    "Laps, circuits, an easy evening — real load, well short of maximal." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Longueurs, circuits, une soirée tranquille — une vraie charge, loin du maximal."
+          }
+        }
+      }
+    },
+    "Left" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gauche"
+          }
+        }
+      }
+    },
+    "LEFT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GAUCHE"
+          }
+        }
+      }
+    },
+    "LEFT HAND NEXT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MAIN GAUCHE ENSUITE"
+          }
+        }
+      }
+    },
+    "Left, right, left, right — swapping hands every pull." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gauche, droite, gauche, droite — on change de main à chaque tirage."
+          }
+        }
+      }
+    },
+    "LET GO" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RELÂCHE"
+          }
+        }
+      }
+    },
+    "Let go" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relâche"
+          }
+        }
+      }
+    },
+    "Light" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Léger"
+          }
+        }
+      }
+    },
+    "Limit" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limite"
+          }
+        }
+      }
+    },
+    "Limit climbing" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escalade à la limite"
+          }
+        }
+      }
+    },
+    "Little" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auriculaire"
+          }
+        }
+      }
+    },
+    "Max day" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jour de max"
+          }
+        }
+      }
+    },
+    "Middle" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Majeur"
+          }
+        }
+      }
+    },
+    "Middle 2" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Milieu 2"
+          }
+        }
+      }
+    },
+    "Missing control characteristic" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caractéristique de contrôle manquante"
+          }
+        }
+      }
+    },
+    "Missing control point" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Point de contrôle manquant"
+          }
+        }
+      }
+    },
+    "Missing data characteristic" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caractéristique de données manquante"
+          }
+        }
+      }
+    },
+    "My routine" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ma routine"
+          }
+        }
+      }
+    },
+    "No %@ found" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun %@ trouvé"
+          }
+        }
+      }
+    },
+    "No Bluetooth" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de Bluetooth"
+          }
+        }
+      }
+    },
+    "No fingers" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun doigt"
+          }
+        }
+      }
+    },
+    "No gauge found" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun capteur trouvé"
+          }
+        }
+      }
+    },
+    "No routines yet" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune routine pour l’instant"
+          }
+        }
+      }
+    },
+    "No scale found" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune balance trouvée"
+          }
+        }
+      }
+    },
+    "Not a %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce n'est pas un %@"
+          }
+        }
+      }
+    },
+    "Not a Progressor" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce n'est pas un Progressor"
+          }
+        }
+      }
+    },
+    "Not connected" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non connecté"
+          }
+        }
+      }
+    },
+    "Not syncing with iCloud on this watch. Routines and sessions stay here." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de synchronisation iCloud sur cette montre. Les routines et les séances restent ici."
+          }
+        }
+      }
+    },
+    "Nothing" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien"
+          }
+        }
+      }
+    },
+    "Nothing recorded" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien d’enregistré"
+          }
+        }
+      }
+    },
+    "Notification subscription failed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec de l'abonnement aux notifications"
+          }
+        }
+      }
+    },
+    "Notification subscription failed: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec de l'abonnement aux notifications : %@"
+          }
+        }
+      }
+    },
+    "NSD" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NSD"
+          }
+        }
+      }
+    },
+    "NSD PB-700BT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NSD PB-700BT"
+          }
+        }
+      }
+    },
+    "OH" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TE"
+          }
+        }
+      }
+    },
+    "on the edge" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sur la réglette"
+          }
+        }
+      }
+    },
+    "One hand at a time" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une main à la fois"
+          }
+        }
+      }
+    },
+    "One pull with both hands on the edge. Reps per side is just the number of pulls." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un tirage avec les deux mains sur la réglette. Les tirages par côté sont simplement le nombre de tirages."
+          }
+        }
+      }
+    },
+    "Open" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tendue"
+          }
+        }
+      }
+    },
+    "Pause" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        }
+      }
+    },
+    "Pause is unavailable while connecting." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La pause est indisponible pendant la connexion."
+          }
+        }
+      }
+    },
+    "PAUSED" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EN PAUSE"
+          }
+        }
+      }
+    },
+    "Paused" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En pause"
+          }
+        }
+      }
+    },
+    "peak" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pic"
+          }
+        }
+      }
+    },
+    "peak RFD measurement" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mesure du pic RFD"
+          }
+        }
+      }
+    },
+    "Pinch" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pince"
+          }
+        }
+      }
+    },
+    "PitchSix" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PitchSix"
+          }
+        }
+      }
+    },
+    "PitchSix Force Board" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PitchSix Force Board"
+          }
+        }
+      }
+    },
+    "PN" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PI"
+          }
+        }
+      }
+    },
+    "Pounds" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Livres"
+          }
+        }
+      }
+    },
+    "pounds" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "livres"
+          }
+        }
+      }
+    },
+    "Press and hold. Nothing is saved." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appuie et maintiens. Rien n'est enregistré."
+          }
+        }
+      }
+    },
+    "pull" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tirage"
+          }
+        }
+      }
+    },
+    "Pull %lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tirage %lld sur %lld"
+          }
+        }
+      }
+    },
+    "Pull now" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tire maintenant"
+          }
+        }
+      }
+    },
+    "Pulling" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tirage"
+          }
+        }
+      }
+    },
+    "pulls" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tirages"
+          }
+        }
+      }
+    },
+    "R" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "D"
+          }
+        }
+      }
+    },
+    "R %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "D %@"
+          }
+        }
+      }
+    },
+    "RE-GRIP" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "REPRISE"
+          }
+        }
+      }
+    },
+    "REST" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "REPOS"
+          }
+        }
+      }
+    },
+    "Rest" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repos"
+          }
+        }
+      }
+    },
+    "Resume" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprendre"
+          }
+        }
+      }
+    },
+    "RFD series measurement" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mesure de série RFD"
+          }
+        }
+      }
+    },
+    "Right" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Droite"
+          }
+        }
+      }
+    },
+    "RIGHT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DROITE"
+          }
+        }
+      }
+    },
+    "RIGHT HAND NEXT" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MAIN DROITE ENSUITE"
+          }
+        }
+      }
+    },
+    "Ring" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annulaire"
+          }
+        }
+      }
+    },
+    "s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "s"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer"
+          }
+        }
+      }
+    },
+    "Scale stopped broadcasting" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La balance a cessé d'émettre"
+          }
+        }
+      }
+    },
+    "Searching…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche…"
+          }
+        }
+      }
+    },
+    "Service discovery failed: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec de la découverte des services : %@"
+          }
+        }
+      }
+    },
+    "Session done" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Séance faite"
+          }
+        }
+      }
+    },
+    "set" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "série"
+          }
+        }
+      }
+    },
+    "Set %lld of %lld · Pull %lld of %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Série %lld sur %lld · Tirage %lld sur %lld"
+          }
+        }
+      }
+    },
+    "SET BREAK" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PAUSE"
+          }
+        }
+      }
+    },
+    "sets" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "séries"
+          }
+        }
+      }
+    },
+    "Skip is unavailable while connecting." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer est indisponible pendant la connexion."
+          }
+        }
+      }
+    },
+    "Skip is unavailable while paused." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer est indisponible en pause."
+          }
+        }
+      }
+    },
+    "Skip pull" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer le tirage"
+          }
+        }
+      }
+    },
+    "Skip set" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer la série"
+          }
+        }
+      }
+    },
+    "sleep" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "veille"
+          }
+        }
+      }
+    },
+    "Solid" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solide"
+          }
+        }
+      }
+    },
+    "Start" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commencer"
+          }
+        }
+      }
+    },
+    "Start another" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En commencer une autre"
+          }
+        }
+      }
+    },
+    "start measurement" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "démarrage de la mesure"
+          }
+        }
+      }
+    },
+    "Stop" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter"
+          }
+        }
+      }
+    },
+    "stop measurement" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "arrêt de la mesure"
+          }
+        }
+      }
+    },
+    "tare" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tare"
+          }
+        }
+      }
+    },
+    "Tare" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarer"
+          }
+        }
+      }
+    },
+    "Tare is unavailable during the pull." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarer est indisponible pendant le tirage."
+          }
+        }
+      }
+    },
+    "Tare is unavailable while waiting for you to let go." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarer est indisponible tant que tu n'as pas relâché."
+          }
+        }
+      }
+    },
+    "Taxed" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Éprouvé"
+          }
+        }
+      }
+    },
+    "That change couldn't be saved — %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce changement n'a pas pu être enregistré — %@"
+          }
+        }
+      }
+    },
+    "The calibration lookup needs an internet connection the first time a Dyno is used." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The calibration lookup needs an internet connection the first time a Dyno is used."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La recherche de l'étalonnage a besoin d'une connexion internet la première fois qu'un Dyno est utilisé."
+          }
+        }
+      }
+    },
+    "This build can't reach its shared storage, so routines saved earlier may not appear here." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette version n'atteint pas son stockage partagé, les routines enregistrées avant peuvent donc ne pas apparaître ici."
+          }
+        }
+      }
+    },
+    "This build has no Frez access key, so the Dyno's calibration cannot be fetched." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This build has no Frez access key, so the Dyno's calibration cannot be fetched."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette version de l'app n'a pas de clé d'accès Frez, l'étalonnage du Dyno ne peut donc pas être récupéré."
+          }
+        }
+      }
+    },
+    "This code contains a routine with no pulls in it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce code contient une routine sans aucun tirage."
+          }
+        }
+      }
+    },
+    "This Dyno did not report a serial number, so its calibration cannot be looked up." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Dyno did not report a serial number, so its calibration cannot be looked up."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce Dyno n'a pas indiqué de numéro de série, son étalonnage ne peut donc pas être recherché."
+          }
+        }
+      }
+    },
+    "This link isn't a routine from Get a Grip." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce lien n'est pas une routine Get a Grip."
+          }
+        }
+      }
+    },
+    "This routine code couldn't be read. It may be damaged or incomplete." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce code de routine n'a pas pu être lu. Il est peut-être abîmé ou incomplet."
+          }
+        }
+      }
+    },
+    "This routine is too large to import." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette routine est trop grande pour être importée."
+          }
+        }
+      }
+    },
+    "This routine was shared from a newer version of Get a Grip. Update the app to import it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette routine a été partagée depuis une version plus récente de Get a Grip. Mets l'app à jour pour l'importer."
+          }
+        }
+      }
+    },
+    "Thumb" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pouce"
+          }
+        }
+      }
+    },
+    "Timer only" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chrono seul"
+          }
+        }
+      }
+    },
+    "Tindeq" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tindeq"
+          }
+        }
+      }
+    },
+    "Tindeq Progressor" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tindeq Progressor"
+          }
+        }
+      }
+    },
+    "Try demo mode" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Essayer le mode démo"
+          }
+        }
+      }
+    },
+    "Unsaved session from %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Séance non enregistrée de %@"
+          }
+        }
+      }
+    },
+    "version query" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "requête de version"
+          }
+        }
+      }
+    },
+    "Volume" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volume"
+          }
+        }
+      }
+    },
+    "Volume climbing" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escalade en volume"
+          }
+        }
+      }
+    },
+    "waiting for the gauge" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "en attente du capteur"
+          }
+        }
+      }
+    },
+    "Weighted hangs" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suspensions lestées"
+          }
+        }
+      }
+    },
+    "Weighted or max hangs you did on your own — no gauge behind it." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suspensions lestées ou maximales faites de ton côté — sans capteur derrière."
+          }
+        }
+      }
+    },
+    "Weiheng" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiheng"
+          }
+        }
+      }
+    },
+    "WH-C06 crane scale" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peson WH-C06"
+          }
+        }
+      }
+    },
+    "whenever" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "libre"
+          }
+        }
+      }
+    },
+    "Worked" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sollicité"
+          }
+        }
+      }
+    },
+    "Wrecked" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explosé"
+          }
+        }
+      }
+    },
+    "Write failed twice for %@: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Échec d'écriture à deux reprises pour %@ : %@"
+          }
+        }
+      }
+    },
+    "Your routines and sessions are stored on this device. Private iCloud sync is enabled when you are signed in and iCloud is available; this app cannot confirm that every change has finished syncing." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos routines et séances sont enregistrées sur cet appareil. La synchronisation iCloud privée est activée lorsque vous êtes connecté et qu’iCloud est disponible ; l’app ne peut pas confirmer que toutes les modifications ont été synchronisées."
+          }
+        }
+      }
+    },
+    "≈%lld min" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "≈%lld min"
+          }
+        }
+      }
+    },
+    "≈%lld min · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "≈%lld min · %@"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.1"
+}
