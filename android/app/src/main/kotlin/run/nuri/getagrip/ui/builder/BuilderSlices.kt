@@ -6,8 +6,6 @@ package run.nuri.getagrip.ui.builder
 import androidx.compose.runtime.Immutable
 import java.util.UUID
 import run.nuri.getagrip.engine.HandMode
-import run.nuri.getagrip.engine.MaxTable
-import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.ReminderTime
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SessionPlan
@@ -33,15 +31,19 @@ typealias DraftUpdate = ((RoutineDraft) -> RoutineDraft) -> Unit
 // They are `@Immutable` data classes, so Compose compares them by value: typing the routine's
 // name leaves every slice below it equal, and every section below it skipped.
 
-/// The plan-level fields a set row resolves its numbers against — the inherited hold and
-/// rest, the ×2 of two hands, and the lead-in inside a set's clock. Nothing else about the
-/// routine reaches a row, which is what lets five rows sit still while a sixth is edited.
+/// The plan-level fields a set row resolves its numbers against — the inherited hold, rest
+/// and target band, the ×2 of two hands, and the lead-in inside a set's clock. Nothing else
+/// about the routine reaches a row, which is what lets five rows sit still while a sixth is
+/// edited.
 @Immutable
 data class SetRowContext(
     val handMode: HandMode = HandMode.alternateEachRep,
     val holdSeconds: Int = 10,
     val restSeconds: Int = 20,
     val leadInSeconds: Int = 5,
+    /// The Rhythm page's band, which every set without its own follows.
+    val targetLoPercent: Double? = null,
+    val targetHiPercent: Double? = null,
 ) {
     /// A plan carrying ONLY those fields, so every `PlanMath` call a row makes goes through
     /// the one resolver the runner uses rather than a second copy of its arithmetic. Built
@@ -53,17 +55,23 @@ data class SetRowContext(
         holdSeconds = holdSeconds,
         restSeconds = restSeconds,
         leadInSeconds = leadInSeconds,
+        targetLoPercent = targetLoPercent,
+        targetHiPercent = targetHiPercent,
     )
 
     companion object {
-        fun of(plan: SessionPlan): SetRowContext =
-            SetRowContext(plan.handMode, plan.holdSeconds, plan.restSeconds, plan.leadInSeconds)
+        fun of(plan: SessionPlan): SetRowContext = SetRowContext(
+            plan.handMode, plan.holdSeconds, plan.restSeconds, plan.leadInSeconds,
+            plan.targetLoPercent, plan.targetHiPercent,
+        )
     }
 }
 
-/// REST & HANDS.
+/// The Rhythm page's timing and hands.
 @Immutable
 data class RhythmValues(
+    val holdSeconds: Int,
+    val restSeconds: Int,
     val setBreakSeconds: Int,
     val waitForReleaseBeforeRest: Boolean,
     val handMode: HandMode,
@@ -74,6 +82,8 @@ data class RhythmValues(
 ) {
     companion object {
         fun of(plan: SessionPlan): RhythmValues = RhythmValues(
+            holdSeconds = plan.holdSeconds,
+            restSeconds = plan.restSeconds,
             setBreakSeconds = plan.setBreakSeconds,
             waitForReleaseBeforeRest = plan.waitForReleaseBeforeRest,
             handMode = plan.handMode,
@@ -107,34 +117,6 @@ data class FineTuningValues(
     companion object {
         fun of(plan: SessionPlan): FineTuningValues =
             FineTuningValues(plan.thresholdKg, plan.pausesOutsideTargetBand, plan.leadInSeconds)
-    }
-}
-
-/// The totals under the set list — the arithmetic done once and handed down as its answers,
-/// so a keystroke in the name field recomputes two sentences and redraws none of them.
-@Immutable
-data class TotalsValues(
-    val totalsLine: String,
-    val perSideLine: String?,
-    val usesSavedMaxes: Boolean,
-    val missingMaxes: Boolean,
-    val isVeryLong: Boolean,
-) {
-    companion object {
-        fun of(draft: RoutineDraft, maxes: MaxTable): TotalsValues {
-            val plan = draft.plan
-            return TotalsValues(
-                totalsLine = PlanMath.totalsLine(plan),
-                // null when the mode has one side, so the copy drops "per side" instead of
-                // dividing by a hand that isn't there.
-                perSideLine = PlanMath.perSideLine(plan),
-                usesSavedMaxes = plan.executable.sets.any {
-                    it.targetBand == null && PlanMath.targetPercent(it, plan) != null
-                },
-                missingMaxes = PlanMath.missingBenchmarkGripCount(plan, maxes) > 0,
-                isVeryLong = BuilderDraft.isVeryLong(draft),
-            )
-        }
     }
 }
 

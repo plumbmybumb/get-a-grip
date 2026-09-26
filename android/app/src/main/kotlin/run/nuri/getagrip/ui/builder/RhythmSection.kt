@@ -3,173 +3,181 @@
 
 package run.nuri.getagrip.ui.builder
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.SwapHoriz
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import run.nuri.getagrip.ui.theme.InstrumentSurface as Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import run.nuri.getagrip.engine.HandMode
+import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SessionPlan
+import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
-import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.HandModeChipRow
 import run.nuri.getagrip.ui.components.HandOrderStrip
+import run.nuri.getagrip.ui.components.HandsHeader
+import run.nuri.getagrip.ui.components.HouseSegmentedRow
 import run.nuri.getagrip.ui.components.IntValueRow
 import run.nuri.getagrip.ui.components.ValueControl
-import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
 
-/// REST & HANDS — the parts of a session every set genuinely shares.
+/// PAGE 1 — the Rhythm every set follows: hold, rest, set break and when a rest starts, then
+/// the hands, as the critical force setup draws them.
 ///
-/// **ABOVE the set list: constants above variables** — see `RoutineBuilderScreen`.
-///
-/// Hold and rest moved onto each set when the Max day protocol exposed the flaw (Nuri,
-/// 2026-08-10: "what if for one pull you want 10 seconds and for the other 20?"). What is left
-/// cannot vary per set: the set break, how hands share the work, when a rest starts counting.
+/// **One screen while creating** (a 360 × 740 dp phone at default text): three `− value +`
+/// rows on the dial's own ladder instead of three dials, which cost a screen and a half.
+/// Sets still override hold and rest per row, behind "Custom timing".
 @Composable
 fun RhythmSection(
-    /// Only what this card draws — see `RhythmValues`; the whole draft redrew it per name keystroke.
+    /// Only what this page draws — see `RhythmValues`; the whole draft redrew it per name keystroke.
     rhythm: RhythmValues,
     modifier: Modifier = Modifier,
     update: DraftUpdate,
 ) {
     val palette = LocalGripPalette.current
-    fun edit(transform: (SessionPlan) -> SessionPlan) = update { it.copy(plan = transform(it.plan)) }
+    val largeText = LocalDensity.current.fontScale >= 1.5f
 
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // A plain row: a pinned header leaves content scrolling illegibly behind it.
-        CapsLabel(tr("REST & HANDS"))
-
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card) {
-            Column(
-                Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                IntValueRow(
-                    title = tr("Break between sets"),
-                    value = rhythm.setBreakSeconds,
-                    range = 0..240,
-                    unit = tr("s"),
-                    limit = SessionPlan.setBreakRange,
-                    control = ValueControl.Dial(listOf(0.0, 30.0, 60.0, 90.0, 120.0, 180.0)),
-                ) { seconds -> edit { it.copy(setBreakSeconds = seconds) } }
-
-                // Under the break, not in Fine tuning: it decides when every rest STARTS, and a rest number
-                // whose meaning is set two cards away cannot be trusted.
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                // Each row takes only its own number, so a step on one leaves the other two skipped.
+                TimingStepper(TimingKind.Hold, rhythm.holdSeconds) { v ->
+                    update { it.copy(plan = it.plan.copy(holdSeconds = v)) }
+                }
+                RowDivider()
+                TimingStepper(TimingKind.Rest, rhythm.restSeconds) { v ->
+                    update { it.copy(plan = it.plan.copy(restSeconds = v)) }
+                }
+                RowDivider()
+                TimingStepper(TimingKind.SetBreak, rhythm.setBreakSeconds) { v ->
+                    update { it.copy(plan = it.plan.copy(setBreakSeconds = v)) }
+                }
+                RowDivider()
+                // Here, not in Fine tuning: it decides when every rest STARTS. ON by default: otherwise
+                // the seconds of standing down off a 20 mm edge come out of every rest.
                 ToggleRow(
                     title = tr("Start the rest when I let go"),
                     checked = rhythm.waitForReleaseBeforeRest,
-                    // ON by default: otherwise the two or three seconds of standing down off a 20 mm edge come
-                    // out of every rest. Off is a real choice — a fixed cadence you pace yourself to.
-                ) { waits -> edit { it.copy(waitForReleaseBeforeRest = waits) } }
-
-                HorizontalDivider(color = palette.inkTertiary.copy(alpha = 0.22f))
-
-                // Categorical, so chips — ALWAYS expanded: the strip below is the only place the app shows
-                // what "alternate each pull" does.
-                CapsLabel(tr("HANDS"), Modifier.padding(top = 2.dp))
-                HandModeChipRow(rhythm.handMode) { mode -> edit { it.copy(handMode = mode) } }
-                // The FIRST set's sequence, the one about to be done; `executable` so an emptied row cannot decide it.
-                HandOrderStrip(
-                    mode = rhythm.handMode,
-                    repsPerSide = rhythm.firstRepsPerSide,
-                    startingHand = rhythm.startingHand,
-                )
-                if (rhythm.handMode.sideCount > 1) {
-                    // The strip has no legend, so it cannot say which hand starts (Nuri, 2026-09-18). The
-                    // sentence says it; the button swaps it.
-                    val startsRight = rhythm.startingHand == Side.right
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            if (startsRight) tr("Starts on the right hand") else tr("Starts on the left hand"),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            color = palette.inkSecondary,
-                            modifier = Modifier.weight(1f),
-                        )
-                        SwapHandsAction(startsRight = startsRight) { hand -> edit { it.copy(startingHand = hand) } }
-                    }
-                }
+                    minHeight = 46.dp,
+                ) { waits -> update { it.copy(plan = it.plan.copy(waitForReleaseBeforeRest = waits)) } }
             }
+        }
+
+        // The critical force setup's hands, exactly: the label row carries which hand goes first,
+        // one segmented control underneath, no card.
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val alternates = rhythm.handMode.sideCount > 1
+            HandsHeader(
+                menuTitle = if (alternates) sideTitle(rhythm.startingHand) else null,
+                side = rhythm.startingHand,
+                sideTitle = ::sideTitle,
+                hiddenReason = tr("Both hands pull together, so neither goes first."),
+                reservesMenuHeight = true,
+                modifier = Modifier.padding(start = 4.dp),
+            ) { side -> update { it.copy(plan = it.plan.copy(startingHand = side)) } }
+            if (largeText) {
+                // Three segments would truncate: the wrapping chips, in full words, come back here.
+                HandModeChipRow(rhythm.handMode) { mode -> update { it.copy(plan = it.plan.copy(handMode = mode)) } }
+            } else {
+                HouseSegmentedRow(
+                    labels = HandMode.entries.map { it.segmentName },
+                    selectedIndex = rhythm.handMode.ordinal,
+                ) { index -> update { it.copy(plan = it.plan.copy(handMode = HandMode.entries[index])) } }
+            }
+            // The FIRST set's sequence, the one about to be done — centred under the control.
+            HandOrderStrip(
+                mode = rhythm.handMode,
+                repsPerSide = rhythm.firstRepsPerSide,
+                startingHand = rhythm.startingHand,
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp).wrapContentWidth(Alignment.CenterHorizontally),
+            )
         }
     }
 }
 
-/// The one writer of `startingHand` (Nuri, 2026-09-18), beside the sentence naming the start:
-/// tap and both flip. Hidden under Both hands. The spoken description names the tap's OUTCOME.
+private fun sideTitle(side: Side): String =
+    if (side == Side.right) L10n.tr("Right first") else L10n.tr("Left first")
+
 @Composable
-private fun SwapHandsAction(startsRight: Boolean, onSwap: (Side) -> Unit) {
-    val palette = LocalGripPalette.current
-    val haptics = LocalHapticFeedback.current
-    val interaction = remember { MutableInteractionSource() }
-    val outcome = if (startsRight) tr("Start with the left hand") else tr("Start with the right hand")
-    TextButton(
-        onClick = {
-            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-            onSwap(if (startsRight) Side.left else Side.right)
-        },
-        interactionSource = interaction,
-        shape = CircleShape,
-        border = BorderStroke(1.dp, palette.inkTertiary.copy(alpha = 0.35f)),
-        colors = ButtonDefaults.textButtonColors(contentColor = palette.inkSecondary),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        modifier = Modifier
-            .heightIn(min = 44.dp)
-            .pressFeedback(interaction, scales = false)
-            .semantics { contentDescription = outcome },
-    ) {
-        Icon(Icons.Outlined.SwapHoriz, contentDescription = null, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.size(6.dp))
-        Text(tr("Swap"), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+private fun RowDivider() {
+    HorizontalDivider(color = LocalGripPalette.current.inkTertiary.copy(alpha = 0.22f))
+}
+
+/// Which routine clock a `TimingStepper` edits.
+enum class TimingKind { Hold, Rest, SetBreak }
+
+/// Hold, rest or set break as a ladder stepper — ONE definition, used by the Rhythm page and
+/// a set's Custom timing, so the two cannot drift. Every parameter is a value, so an unchanged
+/// row is skipped.
+@Composable
+fun TimingStepper(kind: TimingKind, value: Int, modifier: Modifier = Modifier, onValueChange: (Int) -> Unit) {
+    val seconds = tr("s")
+    val spoken = tr("seconds")
+    when (kind) {
+        TimingKind.Hold -> IntValueRow(
+            title = tr("Hold"), value = value, range = 1..60, unit = seconds, modifier = modifier,
+            limit = SetPlan.holdRange, control = HOLD_LADDER, spokenUnit = spoken, onValueChange = onValueChange,
+        )
+        TimingKind.Rest -> IntValueRow(
+            title = tr("Rest between pulls"), value = value, range = 0..60, unit = seconds, modifier = modifier,
+            limit = SetPlan.restRange, control = REST_LADDER, spokenUnit = spoken, onValueChange = onValueChange,
+        )
+        TimingKind.SetBreak -> IntValueRow(
+            title = tr("Break between sets"), value = value, range = 0..240, unit = seconds, modifier = modifier,
+            limit = SessionPlan.setBreakRange, control = BREAK_LADDER, spokenUnit = spoken, onValueChange = onValueChange,
+        )
     }
 }
 
-/// A switch with its consequence said underneath either way: a silent off-state makes you flip
-/// it to learn what it does.
+/// Every detent the shipping protocols use (3 s C4 holds, 5/7/10/12 s repeaters, 15–60 s
+/// rests). Hold and rest differ only at the floor: a 0 s rest is a cadence, a 0 s hold is not
+/// a hold.
+private val SECONDS_LADDER = listOf(3.0, 5.0, 7.0, 10.0, 12.0, 15.0, 20.0, 30.0, 45.0, 60.0)
+private val HOLD_LADDER = ValueControl.LadderStepper(listOf(1.0) + SECONDS_LADDER)
+private val REST_LADDER = ValueControl.LadderStepper(listOf(0.0) + SECONDS_LADDER)
+private val BREAK_LADDER = ValueControl.LadderStepper(listOf(0.0, 15.0, 30.0, 45.0, 60.0, 90.0, 120.0, 180.0, 240.0))
+
+/// The segmented control's short form: the row is labelled HANDS, so the noun goes.
+val HandMode.segmentName: String
+    get() = when (this) {
+        HandMode.alternateEachRep -> L10n.tr("Alternate")
+        HandMode.alternateEachSet -> L10n.tr("One at a time")
+        HandMode.bothHands -> L10n.tr("Both")
+    }
+
+/// A switch whose whole row is the target.
 @Composable
 internal fun ToggleRow(
     title: String,
     checked: Boolean,
     modifier: Modifier = Modifier,
+    minHeight: androidx.compose.ui.unit.Dp = 44.dp,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val palette = LocalGripPalette.current
@@ -181,7 +189,7 @@ internal fun ToggleRow(
         Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 44.dp)
+                .heightIn(min = minHeight)
                 .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -209,7 +217,8 @@ internal fun ToggleRow(
 private fun RhythmSectionPreview() {
     GetAGripTheme {
         Column(Modifier.padding(16.dp)) {
-            RhythmSection(RhythmValues.of(RoutineDraft.starter.plan)) {}
+            var draft by remember { mutableStateOf(RoutineDraft.starter) }
+            RhythmSection(RhythmValues.of(draft.plan)) { draft = it(draft) }
         }
     }
 }

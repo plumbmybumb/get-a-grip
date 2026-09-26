@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -36,7 +39,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -68,6 +75,10 @@ sealed interface ValueControl {
     /// quantities drawn from a handful of real numbers: nearly every quantity in a routine.
     data class Dial(val ladder: List<Double>) : ValueControl
 
+    /// `− value +` stepping through the same ladder a `Dial` would draw, one row high. Tap the
+    /// number to type anything else; a typed off-ladder value steps to its nearest neighbour.
+    data class LadderStepper(val ladder: List<Double>) : ValueControl
+
     /// When the presets genuinely are the vocabulary.
     data object None : ValueControl
 }
@@ -93,10 +104,27 @@ fun ValueRow(
     /// Shown under the row when the value deserves a consequence ("Measured: 42.0 kg").
     caption: String? = null,
     control: ValueControl = ValueControl.Slider,
+    /// The unit as SPOKEN ("seconds" for "s"); the ladder row's state description.
+    spokenUnit: String? = null,
     onValueChange: (Double) -> Unit,
 ) {
     val palette = LocalGripPalette.current
     val bounds = limit ?: range
+
+    if (control is ValueControl.LadderStepper) {
+        LadderStepperRow(
+            title = title,
+            value = value,
+            bounds = bounds,
+            ladder = control.ladder,
+            unit = unit,
+            spokenUnit = spokenUnit ?: unit,
+            decimals = decimals,
+            modifier = modifier,
+            onValueChange = onValueChange,
+        )
+        return
+    }
 
     /// Whether the number is a field. It changes twice per edit, so it lives here; the per-key
     /// DRAFT STRING does not — see `ValueField`.
@@ -244,7 +272,7 @@ fun ValueRow(
                     onValueChange = onValueChange,
                 )
             }
-            ValueControl.Stepper, ValueControl.None -> Unit
+            ValueControl.Stepper, ValueControl.None, is ValueControl.LadderStepper -> Unit
         }
 
         if (presets.isNotEmpty() && !hidesPresets) {
@@ -288,6 +316,7 @@ fun IntValueRow(
     /// The stepper's increment when it differs from the slider's: a stepper moving in fives
     /// could never reach 12.
     stepBy: Int? = null,
+    spokenUnit: String? = null,
     onValueChange: (Int) -> Unit,
 ) {
     ValueRow(
@@ -302,7 +331,144 @@ fun IntValueRow(
         decimals = 0,
         caption = caption,
         control = control,
+        spokenUnit = spokenUnit,
     ) { onValueChange(it.roundToInt()) }
+}
+
+/// The ladder's step rule, lifted out so it is asserted in a JVM test.
+///
+/// **Steps walk the LADDER, not ±1**, and search from the CURRENT value, which may sit
+/// between stops after typing: a typed 22 steps to 20 or 30. null = no stop that way, which
+/// is what disables the button (0 is the floor for a rest, 1 for a hold).
+object LadderMath {
+    fun neighbour(stops: List<Double>, value: Double, up: Boolean): Double? =
+        if (up) stops.firstOrNull { it > value + 0.0001 } else stops.lastOrNull { it < value - 0.0001 }
+}
+
+/// `[Title] ……… [−] [value unit] [+]` on the dial's own ladder — see `ValueControl.LadderStepper`.
+///
+/// **ONE TalkBack element while not typing**: "Hold, 10 seconds", with Increase / Decrease /
+/// Type a value as its actions. The two glyph buttons are not separate stops.
+///
+/// **No haptic on a value change**, and at large text the title STACKS above the stepper:
+/// side by side, three 44 dp controls crushed "Rest between pulls" to a syllable a line.
+@Composable
+private fun LadderStepperRow(
+    title: String,
+    value: Double,
+    bounds: ClosedFloatingPointRange<Double>,
+    ladder: List<Double>,
+    unit: String,
+    spokenUnit: String,
+    decimals: Int,
+    modifier: Modifier,
+    onValueChange: (Double) -> Unit,
+) {
+    val palette = LocalGripPalette.current
+    var isTyping by remember { mutableStateOf(false) }
+    val stacked = LocalDensity.current.fontScale >= 1.5f
+    val locale = LocalConfiguration.current.locales[0]
+    val formatter = remember(locale, decimals) {
+        NumberFormat.getNumberInstance(locale).apply {
+            minimumFractionDigits = decimals
+            maximumFractionDigits = decimals
+            isGroupingUsed = false
+        }
+    }
+    val text = formatter.format(value)
+    val stops = remember(ladder, bounds) { ladder.filter { it in bounds } }
+    val down = LadderMath.neighbour(stops, value, up = false)
+    val up = LadderMath.neighbour(stops, value, up = true)
+
+    fun step(towardsUp: Boolean): Boolean {
+        val next = LadderMath.neighbour(stops, value, towardsUp) ?: return false
+        onValueChange(next)
+        return true
+    }
+
+    val stateText = L10n.tr("%s %s", text, spokenUnit)
+    val increase = L10n.tr("Increase")
+    val decrease = L10n.tr("Decrease")
+    val typeAValue = L10n.tr("Type a value")
+    val semantics = if (isTyping) Modifier else Modifier.clearAndSetSemantics {
+        contentDescription = title
+        stateDescription = stateText
+        customActions = listOf(
+            CustomAccessibilityAction(increase) { step(true) },
+            CustomAccessibilityAction(decrease) { step(false) },
+            CustomAccessibilityAction(typeAValue) { isTyping = true; true },
+        )
+    }
+
+    val titleText: @Composable (Modifier) -> Unit = { m ->
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = palette.inkPrimary,
+            modifier = m,
+        )
+    }
+    val controls: @Composable RowScope.() -> Unit = {
+        if (isTyping) {
+            ValueField(
+                placeholder = text,
+                unit = unit,
+                decimals = decimals,
+                modifier = Modifier.weight(1f, fill = false).widthIn(min = 120.dp),
+            ) { typed ->
+                // Clamped to the TYPED limit and NOT snapped to the ladder: typing is the escape hatch.
+                if (typed != null) {
+                    val next = typed.coerceIn(bounds.start, bounds.endInclusive)
+                    if (next != value) onValueChange(next)
+                }
+                isTyping = false
+            }
+        } else {
+            RepeatingStep(StepGlyph.Minus, enabled = down != null, contentDescription = decrease) { step(false) }
+            Row(
+                Modifier
+                    .widthIn(min = 64.dp)
+                    .heightIn(min = 44.dp)
+                    .clickable(role = Role.Button) { isTyping = true }
+                    .padding(horizontal = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text,
+                    style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.SemiBold,
+                    color = palette.inkPrimary,
+                    maxLines = 1,
+                )
+                if (unit.isNotEmpty()) {
+                    Text(unit, style = MaterialTheme.typography.bodyMedium, color = palette.inkTertiary, maxLines = 1)
+                }
+            }
+            RepeatingStep(StepGlyph.Plus, enabled = up != null, contentDescription = increase) { step(true) }
+        }
+    }
+
+    if (stacked) {
+        Column(modifier.fillMaxWidth().then(semantics), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            titleText(Modifier)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+                content = controls,
+            )
+        }
+    } else {
+        Row(
+            modifier.fillMaxWidth().heightIn(min = 46.dp).then(semantics),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            titleText(Modifier.weight(1f).padding(end = 8.dp))
+            controls()
+        }
+    }
 }
 
 /// The typed number, and NOTHING else — the one thing on the row that changes per keypress.

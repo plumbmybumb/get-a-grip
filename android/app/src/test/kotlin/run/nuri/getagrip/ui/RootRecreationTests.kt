@@ -94,7 +94,7 @@ class RootRecreationTests {
         // Immediately: the stash is still half a second away, so only the saved draft can
         // carry the name across, and the re-opened document must not sweep the stash over it.
         recreate()
-        compose.onNodeWithText("Your routine").assertIsDisplayed()
+        compose.onNodeWithText("Rhythm").assertIsDisplayed()
         compose.onNodeWithContentDescription("Routine name").assertTextContains("Pinches", substring = true)
     }
 

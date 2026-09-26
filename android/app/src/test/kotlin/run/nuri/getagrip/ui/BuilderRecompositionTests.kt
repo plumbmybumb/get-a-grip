@@ -41,7 +41,7 @@ import kotlin.test.assertTrue
 /// **It keys on composable FUNCTION NAMES** as they appear in those trace events. Renaming a
 /// section or row composable breaks these tests — a count of zero for a name that no longer
 /// exists — so rename the string here with it.
-@OptIn(InternalComposeTracingApi::class)
+@OptIn(InternalComposeTracingApi::class, ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w400dp-h2000dp-mdpi")
 class BuilderRecompositionTests {
@@ -110,20 +110,34 @@ class BuilderRecompositionTests {
             compose.onNodeWithContentDescription("Routine name").performTextInput("x")
         }
         assertTrue(counted["NameSection"] >= 1, "the name field itself must redraw: $counted")
-        for (section in listOf("SetRowView", "RhythmSection", "EveryDaySection", "FineTuningSection", "TotalsBar")) {
+        for (section in listOf("RhythmSection", "TimingStepper", "RoutineTargetRow", "HandsHeader")) {
             assertEquals(0, counted[section], "$section redrew for a letter typed into the name: $counted")
         }
     }
 
+    /// The Rhythm page's three ladder rows share a card: stepping one must leave the other two,
+    /// the hands and the target row sitting still.
+    @Test fun steppingTheHoldRedrawsOnlyItsOwnRow() {
+        showSixSetRoutine()
+        val counted = measure {
+            compose.onNode(hasContentDescription("Hold") and hasStateDescription("10 seconds"))
+                .performCustomAccessibilityActionWithLabel("Increase")
+        }
+        assertEquals(1, counted["TimingStepper"], "one ladder row changed, so one redraws: $counted")
+        assertEquals(0, counted["NameSection"], counted.toString())
+        assertEquals(0, counted["RoutineTargetRow"], counted.toString())
+        assertEquals(0, counted["HandsHeader"], counted.toString())
+    }
+
     @Test fun editingOneSetRedrawsOnlyThatRow() {
         showSixSetRoutine()
+        compose.onNodeWithText("Sets").performClick()
+        compose.waitForIdle()
         compose.onAllNodes(hasStateDescription("Collapsed") and hasClickAction())[0].performClick()
         compose.waitForIdle()
         val counted = measure {
             compose.onNodeWithContentDescription("Increase Pulls per side").performScrollTo().performClick()
         }
         assertEquals(1, counted["SetRowView"], "one set changed, so one row redraws: $counted")
-        assertEquals(0, counted["EveryDaySection"], counted.toString())
-        assertEquals(0, counted["FineTuningSection"], counted.toString())
     }
 }

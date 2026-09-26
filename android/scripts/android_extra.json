@@ -85,11 +85,6 @@
       "fr": "Augmenter"
     },
     {
-      "en": "seconds",
-      "fr": "secondes",
-      "//": "Spoken units for the dial. \"kilograms\" and \"percent of max\" are in the catalog; these two are not."
-    },
-    {
       "en": "millimetres",
       "fr": "millimètres"
     },

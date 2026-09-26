@@ -11,6 +11,8 @@ import kotlinx.coroutines.launch
 import run.nuri.getagrip.engine.BlobCodec
 import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.RoutineDraft
+import run.nuri.getagrip.engine.SessionPlan
+import run.nuri.getagrip.engine.SetPlan
 
 /// The builder's non-drawing decisions, lifted out so each is JVM-testable. Each rule was paid
 /// for once on iOS and is easy to break: a stash outliving a Cancel returns as a ghost; a
@@ -29,6 +31,43 @@ object BuilderDraft {
             targetLoPercent = null, targetHiPercent = null,
         ))
     }
+
+    /// **The Rhythm page edits ONE routine-wide percentage.** `editable` spreads a routine band
+    /// onto the sets; when every set carries the same percentage and no kilograms, fold it
+    /// back up so page 1 shows it. Resolution-preserving, and `RoutineDraft.normalized`
+    /// demotes it again on Save.
+    fun promotingUniformBand(draft: RoutineDraft): RoutineDraft {
+        val sets = draft.plan.sets
+        if (draft.plan.targetPercentBand != null) return draft
+        val band = sets.firstOrNull()?.targetPercentBand ?: return draft
+        if (!sets.all { !it.hasTarget && it.targetPercentBand == band }) return draft
+        return draft.copy(plan = draft.plan.copy(
+            targetLoPercent = band.start,
+            targetHiPercent = band.endInclusive,
+            sets = sets.map { it.copy(targetLoPercent = null, targetHiPercent = null) },
+        ))
+    }
+
+    /// What the builder opens on: legacy inheritance materialized, then a band every set
+    /// shares folded up to the Rhythm page.
+    fun opening(draft: RoutineDraft): RoutineDraft = promotingUniformBand(editable(draft))
+
+    /// The Rhythm page's band, written: the routine takes it and every set's own target gives
+    /// way — one band for all sets.
+    fun withRoutineBand(draft: RoutineDraft, band: ClosedFloatingPointRange<Double>?): RoutineDraft =
+        draft.copy(plan = draft.plan.copy(
+            targetLoPercent = band?.start,
+            targetHiPercent = band?.endInclusive,
+            sets = draft.plan.sets.map {
+                it.copy(targetLoPercent = null, targetHiPercent = null, targetLoKg = null, targetHiKg = null)
+            },
+        ))
+
+    /// **Custom timing** on one set. ON seeds both overrides with the routine's current values,
+    /// so the steppers start where the set already was; OFF returns it to the routine.
+    fun withCustomTiming(set: SetPlan, plan: SessionPlan, on: Boolean): SetPlan =
+        if (on) set.copy(holdSeconds = PlanMath.hold(set, plan), restSeconds = PlanMath.rest(set, plan))
+        else set.copy(holdSeconds = null, restSeconds = null)
 
     /// **The rescue copy COALESCES; it does not cancel-and-restart.** Restarting allocated a task
     /// per slider frame, each with a 500 ms sleep discarded a frame later. One pending write
@@ -51,8 +90,13 @@ object BuilderDraft {
 
     /// **The live totals — or the validation reason the moment Save would refuse**, quoted under the
     /// title so a disabled Save's explanation sits right beside it.
-    fun subtitle(draft: RoutineDraft): String =
-        draft.validationIssue ?: PlanMath.subtitleLine(draft.plan)
+    ///
+    /// Creating, on the Rhythm page, with nothing built yet: no line rather than a complaint
+    /// about sets the person has not reached.
+    fun subtitle(draft: RoutineDraft, creating: Boolean = false, page: BuilderPage = BuilderPage.Sets): String {
+        if (creating && page == BuilderPage.Rhythm && draft.plan.executable.sets.isEmpty()) return ""
+        return draft.validationIssue ?: PlanMath.subtitleLine(draft.plan)
+    }
 
     /// An hour of no-hangs is a CHOICE, not an error — this flags and never blocks.
     fun isVeryLong(draft: RoutineDraft): Boolean = PlanMath.totalSeconds(draft.plan) > 3600

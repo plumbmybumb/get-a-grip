@@ -66,6 +66,17 @@ android {
         versionCode = (project.findProperty("getagrip.versionCode") as String?)?.toInt() ?: 1
         versionName = project.findProperty("getagrip.versionName") as String? ?: "1.0"
 
+        // **A TEST BUILD beside the Play install**, only when asked for. Both absent by default,
+        // so a normal build is the frozen identity above, byte for byte:
+        //   -Pgetagrip.applicationIdSuffix=.ultimate   appended to the application id
+        //   -Pgetagrip.appLabel="Get a Grip Test"      the launcher label
+        // A suffixed id is a separate app with its own data, never an upgrade of the real one.
+        providers.gradleProperty("getagrip.applicationIdSuffix").orNull
+            ?.takeIf { it.isNotBlank() }
+            ?.let { applicationIdSuffix = it }
+        manifestPlaceholders["appLabel"] =
+            providers.gradleProperty("getagrip.appLabel").orNull?.takeIf { it.isNotBlank() } ?: "@string/app_name"
+
         // Read by `FrezCoefficientResolver`. Escaped into a Kotlin string literal, because
         // that is literally what `buildConfigField` pastes into the generated source.
         buildConfigField(

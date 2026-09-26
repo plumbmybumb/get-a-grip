@@ -86,12 +86,14 @@ class DoubleSaveTests {
                 GetAGripTheme { RoutineBuilderHost(mode = BuilderMode.AddAnother, onDone = { closed++ }) }
             }
         }
+        compose.onNodeWithText("Next").performClick()
         compose.onNodeWithText("Add a set").performScrollTo().performClick()
         val save = compose.onNodeWithText("Save")
         save.performClick()
         save.assertIsNotEnabled()
         save.performClick()
-        compose.onNodeWithText("Save routine").performScrollTo().performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Save routine").performClick()
         releaseAndSettle()
         compose.waitUntil(5_000) { closed > 0 }
         assertEquals(1, routineCount())

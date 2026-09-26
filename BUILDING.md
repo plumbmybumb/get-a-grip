@@ -150,6 +150,18 @@ Use `./android/build.sh :app:bundleRelease` for an app bundle after configuring 
 own upload key. A fork must also choose its own `applicationId` before distribution.
 Do not change the official application's ID or signing key for existing users.
 
+A test build can install beside the Play version. Two optional properties, both absent
+by default, append to the application id and override the launcher label:
+
+```sh
+./android/gradlew -p android :app:assembleDebug \
+  -Pgetagrip.applicationIdSuffix=.ultimate \
+  -Pgetagrip.appLabel="Get a Grip Test" \
+  -Pgetagrip.versionCode=15 -Pgetagrip.versionName=1.2.0-ultimate
+```
+
+The suffixed app is a separate install with its own data; it never upgrades the real one.
+
 ## Tests
 
 ```sh

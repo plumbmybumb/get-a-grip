@@ -77,6 +77,7 @@
         <item quantity="other">%1$s, %2$d seconds. %3$s</item>
     </plurals>
     <string name="s_critical_force_f69c90">%1$s, critical force %2$s %3$s</string>
+    <string name="s_page_lld_of_3">%1$s, page %2$d of 3</string>
     <string name="s_target_to_df4f9b">%1$s, target %2$s to %3$s %4$s</string>
     <string name="s_target_to_kilograms_26ddd5">%1$s, target %2$s to %3$s kilograms</string>
     <string name="s_x_ee0136">%1$s. %2$s</string>
@@ -259,6 +260,7 @@
     <string name="s_allow_camera_access_in_settings_to_scan_a_shared_routine">Allow camera access in Settings to scan a shared routine.</string>
     <string name="s_already_the_first_set">Already the first set</string>
     <string name="s_already_the_last_set">Already the last set</string>
+    <string name="s_alternate">Alternate</string>
     <string name="s_alternate_each_pull">Alternate each pull</string>
     <string name="s_apply">Apply</string>
     <string name="s_at_the_climbing_gym_d41f29">At the climbing gym</string>
@@ -291,6 +293,7 @@
     <string name="s_both_hands_are_ready_to_save">Both hands are ready to save.</string>
     <string name="s_both_hands_next_d612dc">Both hands next</string>
     <string name="s_both_hands_pull_together_through_the_gauge_one_result">Both hands pull together through the gauge. One result.</string>
+    <string name="s_both_hands_pull_together_so_neither_goes_first">Both hands pull together, so neither goes first.</string>
     <string name="s_both_hands_pull_together">Both hands pull together.</string>
     <string name="s_both_hands_together">Both hands together</string>
     <string name="s_both_open_an_email_your_app_version_ios_version_device_a">Both open an email. Your app version, iOS version, device and selected gauge are added at the end of the message, so a report arrives with the context to act on it.</string>
@@ -377,6 +380,7 @@
     <string name="s_current_peak">Current %1$s %2$s, peak %3$s %4$s%5$s</string>
     <string name="s_current_kilograms_peak_kilograms">Current %1$s kilograms, peak %2$s kilograms%3$s</string>
     <string name="s_custom">Custom</string>
+    <string name="s_custom_timing">Custom timing</string>
     <string name="s_doigt">DOIGT</string>
     <string name="s_done_e782e7">DONE</string>
     <string name="s_dr">DR</string>
@@ -416,6 +420,7 @@
     <string name="s_down_kg_across_lld_sessions">Down %1$s kg across %2$d sessions.</string>
     <string name="s_drag">Drag</string>
     <string name="s_duplicate">Duplicate</string>
+    <string name="s_duplicate_last_set">Duplicate last set</string>
     <string name="s_ease_off">EASE OFF</string>
     <string name="s_every_day">EVERY DAY</string>
     <string name="s_each_bar_is_one_pull_s_average_critical_force_is_the_mea">Each bar is one pull\'s average. Critical force is the mean of pulls %1$d–%2$d.</string>
@@ -473,6 +478,7 @@
     <string name="s_frez_is_reviewing_this_dyno_s_ownership_before_it_can_be">Frez is reviewing this Dyno\'s ownership before it can be registered.</string>
     <string name="s_frez_rejected_the_calibration_request">Frez rejected the calibration request.</string>
     <string name="s_frez_sent_an_answer_this_app_could_not_read">Frez sent an answer this app could not read.</string>
+    <string name="s_from">From</string>
     <string name="s_from_on_the_first_pull_to_on_the_last">From %1$s on the first pull to %2$s on the last</string>
     <string name="s_front_2">Front 2</string>
     <string name="s_front_3">Front 3</string>
@@ -750,11 +756,13 @@
     <string name="s_position">POSITION</string>
     <string name="s_pull_639ef3">PULL</string>
     <string name="s_pull_to_start">PULL TO START</string>
+    <string name="s_page">Page</string>
     <string name="s_pause">Pause</string>
     <string name="s_pause_is_unavailable_while_connecting">Pause is unavailable while connecting.</string>
     <string name="s_pause_when_i_m_out_of_range">Pause when I\'m out of range</string>
     <string name="s_paused_c7dfb6">Paused</string>
     <string name="s_peak_c83dbb">Peak</string>
+    <string name="s_per_set">Per set</string>
     <string name="s_photos_access_is_off_allow_it_in_settings_privacy_photos">Photos access is off. Allow it in Settings &gt; Privacy &gt; Photos.</string>
     <string name="s_pick_the_peaks_to_save_as_maxes">Pick the peaks to save as maxes.</string>
     <string name="s_pinch">Pinch</string>
@@ -796,7 +804,7 @@
     <string name="s_rest_cbaaa1">REST</string>
     <string name="s_rest_hands">REST &amp; HANDS</string>
     <string name="s_rfd_series_measurement">RFD series measurement</string>
-    <string name="s_rhythm">RHYTHM</string>
+    <string name="s_rhythm_4665ba">RHYTHM</string>
     <string name="s_right_952532">RIGHT</string>
     <string name="s_right_hand_next_0ba39f">RIGHT HAND NEXT</string>
     <string name="s_recent_connection_events_kept_in_memory_only_and_cleared">Recent connection events. Kept in memory only and cleared when the app quits.</string>
@@ -819,6 +827,7 @@
         <item quantity="other">Review %d pulls</item>
     </plurals>
     <string name="s_review_pulls">Review pulls</string>
+    <string name="s_rhythm_c715bb">Rhythm</string>
     <string name="s_right_954daa">Right</string>
     <string name="s_right_first">Right first</string>
     <string name="s_right_hand">Right hand</string>
@@ -862,6 +871,7 @@
     <string name="s_scale_with_the_new_max">Scale with the new max</string>
     <string name="s_scan_a_routine">Scan a routine</string>
     <string name="s_scanner_unavailable">Scanner unavailable</string>
+    <string name="s_schedule">Schedule</string>
     <string name="s_searching_for_your_gauge">Searching for your gauge…</string>
     <string name="s_searching">Searching…</string>
     <string name="s_selected">Selected</string>
@@ -1010,6 +1020,7 @@
     <string name="s_timing_only_7aea1c">Timing only</string>
     <string name="s_tindeq">Tindeq</string>
     <string name="s_tindeq_progressor">Tindeq Progressor</string>
+    <string name="s_to">To</string>
     <string name="s_to_add_scan_with_the_iphone_camera_on_android_use_scan_a">To add %s, scan with the iPhone Camera. On Android, use Scan a routine in the Today menu.</string>
     <string name="s_today_24345a">Today</string>
     <string name="s_today_so_far_lld_of_lld">Today so far: %1$d of %2$d %3$s</string>
@@ -1019,6 +1030,7 @@
     <string name="s_try_demo_mode">Try demo mode</string>
     <string name="s_twice_a_day">Twice a day</string>
     <string name="s_twice_a_day_each">Twice a day · %s each</string>
+    <string name="s_type_a_value">Type a value</string>
     <string name="s_under_tension_430597">Under tension</string>
     <string name="s_undo_39fc72">Undo</string>
     <string name="s_undo_e86500">Undo. %s</string>
@@ -1137,6 +1149,7 @@
     <string name="s_recorded">"recorded "</string>
     <string name="s_runner_rest_badge_next">Next</string>
     <string name="s_s">s</string>
+    <string name="s_seconds">seconds</string>
     <string name="s_session_fcbdc4">session</string>
     <string name="s_sessions_781791">sessions</string>
     <string name="s_set_65c10d">set</string>

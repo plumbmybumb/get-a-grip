@@ -43,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -60,7 +61,9 @@ import kotlin.math.roundToInt
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.MaxTable
 import run.nuri.getagrip.engine.PlanMath
+import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
+import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.l10n.trQuantity
 import run.nuri.getagrip.ui.components.FingerGlyph
 import run.nuri.getagrip.ui.components.IntValueRow
@@ -73,7 +76,8 @@ import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.Motion
 import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
-/// One row of the routine — collapsed it is a SENTENCE, expanded it is the whole set.
+/// One set on the Sets page — closed it is TWO LINES (the grip, then pulls · load · any
+/// custom timing), open it is the whole set.
 ///
 /// At most one row is open (the builder owns that), so one dense control cluster exists at a
 /// time. **Two levels of disclosure, never three**: the set row, then the target row inside
@@ -83,8 +87,8 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 fun SetRowView(
     /// This row's set, as a value. It writes its edits back through one callback.
     set: SetPlan,
-    /// **Only the routine-level fields the row resolves against** (inherited hold, ×2, lead-in).
-    /// Given the WHOLE plan, every row redrew for a letter typed into the name. See `SetRowContext`.
+    /// **Only the routine-level fields the row resolves against** (inherited hold, rest and band,
+    /// ×2, lead-in). Given the WHOLE plan, every row redrew for a letter typed into the name.
     context: SetRowContext,
     isExpanded: Boolean,
     /// Every max on file, by grip and hand, as a VALUE so the row never touches a store.
@@ -104,8 +108,10 @@ fun SetRowView(
     onSetChange: (SetPlan) -> Unit,
 ) {
     val palette = LocalGripPalette.current
+    val reduceMotion = rememberReduceMotion()
     val sessionPlan = context.plan
     var menuOpen by remember { mutableStateOf(false) }
+    val stacked = LocalDensity.current.fontScale >= 1.5f
 
     val repsText = if (sessionPlan.handMode.sideCount > 1) {
         L10n.tr("%d per side", set.repsPerSide)
@@ -119,18 +125,25 @@ fun SetRowView(
         val reps = PlanMath.repCount(set, sessionPlan.handMode)
         L10n.tr("%s under tension", PlanMath.clockText(reps * PlanMath.hold(set, sessionPlan)))
     }
-    val overrideText = overrideText(set, percentBandsVary)
-    // Read outside the (non-composable) semantics lambda. Visual and spoken lines are the same
-    // sentence, written once as prose.
+    // The visual line is terse; the spoken one stays the full sentence, written once as prose.
     val spoken = tr(
         "%s. %s, %s%s. %s.",
         set.grip.spoken,
         repsText,
         tensionText,
-        spokenOverride(set, percentBandsVary),
+        spokenOverride(set, context, percentBandsVary),
         PlanMath.durationText(PlanMath.setSeconds(set, sessionPlan)),
     )
     val disclosure = tr(if (isExpanded) "Expanded" else "Collapsed")
+    val detail = compactDetail(
+        repsText = repsText,
+        load = loadText(set, context),
+        inheritsLoad = !set.hasTarget && !set.hasPercentTarget,
+        timing = timingOverrideText(set, context),
+        secondary = palette.inkSecondary,
+        tertiary = palette.inkTertiary,
+        primary = palette.inkPrimary,
+    )
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -140,61 +153,72 @@ fun SetRowView(
         Column(Modifier.fillMaxWidth()) {
             val interactionSource = remember { MutableInteractionSource() }
             Box {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        // The long-press menu lives ON THE HEADER: on the whole row, a hold anywhere in the
-                        // EXPANDED editor would grab touches from the controls being dragged.
-                        .combinedClickable(
-                            interactionSource = interactionSource,
-                            indication = null,
-                            onClick = onTap,
-                            onLongClick = { menuOpen = true },
-                        )
-                        .pressFeedback(interactionSource, scales = false)
-                        .padding(16.dp)
-                        // The visual line and the spoken line are the same sentence.
-                        .semantics(mergeDescendants = true) {
-                            contentDescription = spoken
-                            // NOT the catalog's "Open": that is the open-hand GRIP POSITION ("Tendue"). Disclosure
-                            // state has its own words in android_extra.json.
-                            stateDescription = disclosure
-                            role = Role.Button
-                        },
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    FingerGlyph(
-                        fingers = set.grip.fingers,
-                        position = set.grip.position,
-                        dot = 6.dp,
-                        gap = 3.dp,
-                        modifier = Modifier.padding(top = 4.dp),
+                val headerModifier = Modifier
+                    .fillMaxWidth()
+                    // The long-press menu lives ON THE HEADER: on the whole row, a hold anywhere in the
+                    // EXPANDED editor would grab touches from the controls being dragged.
+                    .combinedClickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = onTap,
+                        onLongClick = { menuOpen = true },
                     )
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(
-                            set.grip.line,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = palette.inkPrimary,
-                            maxLines = 2,
-                        )
-                        Text(
-                            detailLine(repsText, tensionText, overrideText, palette.inkSecondary, palette.inkPrimary),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                    .pressFeedback(interactionSource, scales = false)
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = spoken
+                        // NOT the catalog's "Open": that is the open-hand GRIP POSITION ("Tendue").
+                        stateDescription = disclosure
+                        role = Role.Button
                     }
-                    Text(
-                        PlanMath.clockText(PlanMath.setSeconds(set, sessionPlan)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = palette.inkTertiary,
-                    )
+                val chevron: @Composable () -> Unit = {
                     Icon(
                         if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                         contentDescription = null,
                         tint = palette.inkTertiary,
                         modifier = Modifier.size(20.dp),
                     )
+                }
+                val glyph: @Composable () -> Unit = {
+                    FingerGlyph(fingers = set.grip.fingers, position = set.grip.position, dot = 6.dp, gap = 3.dp)
+                }
+                val gripLine: @Composable () -> Unit = {
+                    Text(
+                        set.grip.line,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = palette.inkPrimary,
+                        maxLines = if (stacked) Int.MAX_VALUE else 2,
+                    )
+                }
+                val detailLine: @Composable () -> Unit = {
+                    Text(detail, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"))
+                }
+                if (stacked) {
+                    // Large text: glyph and chevron, then the words, each free to wrap.
+                    Column(headerModifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            glyph()
+                            Box(Modifier.weight(1f))
+                            chevron()
+                        }
+                        gripLine()
+                        detailLine()
+                    }
+                } else {
+                    Row(
+                        headerModifier
+                            .heightIn(min = 56.dp)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        glyph()
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            gripLine()
+                            detailLine()
+                        }
+                        chevron()
+                    }
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
@@ -223,13 +247,11 @@ fun SetRowView(
             }
 
             // `Motion.state`, not Compose's unguarded 400 ms default — see `TargetBandRow`.
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = expandVertically(Motion.state(rememberReduceMotion())) +
-                fadeIn(Motion.state(rememberReduceMotion())),
-            exit = shrinkVertically(Motion.state(rememberReduceMotion())) +
-                fadeOut(Motion.state(rememberReduceMotion())),
-        ) {
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically(Motion.state(reduceMotion)) + fadeIn(Motion.state(reduceMotion)),
+                exit = shrinkVertically(Motion.state(reduceMotion)) + fadeOut(Motion.state(reduceMotion)),
+            ) {
                 Column(
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -249,31 +271,17 @@ fun SetRowView(
                         control = ValueControl.Stepper,
                     ) { onSetChange(set.copy(repsPerSide = it)) }
 
-                    // **ONE ladder for both dials, differing only at the floor.** They sit stacked over the same
-                    // sixty seconds and detents are spaced by INDEX, so different ladders read as two
-                    // instruments (Nuri, 2026-08-18). The floor is the honest difference: a zero-second rest
-                    // is a cadence, a zero-second hold is not a hold.
-                    //
-                    // `null` on a set means "follow the routine": each row READS the resolved value and WRITES
-                    // this set's override.
-                    IntValueRow(
-                        title = tr("Hold"),
-                        value = PlanMath.hold(set, sessionPlan),
-                        range = 1..60,
-                        unit = tr("s"),
-                        limit = SetPlan.holdRange,
-                        control = ValueControl.Dial(listOf(1.0) + SECONDS_LADDER),
-                    ) { onSetChange(set.copy(holdSeconds = it)) }
-                    IntValueRow(
-                        title = tr("Rest between pulls"),
-                        value = PlanMath.rest(set, sessionPlan),
-                        range = 0..60,
-                        unit = tr("s"),
-                        limit = SetPlan.restRange,
-                        control = ValueControl.Dial(listOf(0.0) + SECONDS_LADDER),
-                    ) { onSetChange(set.copy(restSeconds = it)) }
+                    CustomTiming(set, sessionPlan, onSetChange)
 
-                    TargetBandRow(set, maxes, sessionPlan.handMode, onChange = onSetChange)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TargetBandRow(set, maxes, sessionPlan.handMode, onChange = onSetChange)
+                        // With no band of its own the set follows the routine's, said under the row that
+                        // could override it.
+                        val inherited = inheritedTargetText(set, sessionPlan, maxes)
+                        if (inherited != null) {
+                            Text(inherited, style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
+                        }
+                    }
 
                     // Chevrons cover reordering, so the long-press menu is a convenience, never the only way in.
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -300,6 +308,35 @@ fun SetRowView(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/// CUSTOM TIMING — off, the set follows the Rhythm page's hold and rest; on, it has its own, on
+/// the same ladder steppers (Nuri, 2026-09-26).
+///
+/// Per-set timing is real (a max ramp, a repeater block), but two dials in every set was the
+/// rule for a routine whose sets almost never differ. A switch states the exception; the closed
+/// row still shows it in primary ink. Save clears overrides equal to the routine, so an ON
+/// switch left untouched comes back OFF — intended.
+@Composable
+private fun CustomTiming(set: SetPlan, plan: SessionPlan, onSetChange: (SetPlan) -> Unit) {
+    val reduceMotion = rememberReduceMotion()
+    Column {
+        ToggleRow(title = tr("Custom timing"), checked = set.overridesTiming, minHeight = 46.dp) { on ->
+            onSetChange(BuilderDraft.withCustomTiming(set, plan, on))
+        }
+        AnimatedVisibility(
+            visible = set.overridesTiming,
+            enter = expandVertically(Motion.state(reduceMotion)) + fadeIn(Motion.state(reduceMotion)),
+            exit = shrinkVertically(Motion.state(reduceMotion)) + fadeOut(Motion.state(reduceMotion)),
+        ) {
+            Column(Modifier.padding(start = 12.dp)) {
+                // `null` on a set means "follow the routine": each row READS the resolved value and
+                // WRITES this set's override.
+                TimingStepper(TimingKind.Hold, PlanMath.hold(set, plan)) { onSetChange(set.copy(holdSeconds = it)) }
+                TimingStepper(TimingKind.Rest, PlanMath.rest(set, plan)) { onSetChange(set.copy(restSeconds = it)) }
             }
         }
     }
@@ -338,57 +375,84 @@ private fun MoveButton(
     }
 }
 
-/// The shared interior of the Hold and Rest dials — every detent the shipping protocols use —
-/// defined once so the ladders cannot drift. Each dial prepends only its floor.
-private val SECONDS_LADDER = listOf(3.0, 5.0, 7.0, 10.0, 12.0, 15.0, 20.0, 30.0, 45.0, 60.0)
-
-/// "6 per side · 1:00 under tension per side", plus any timing override.
+/// Pulls, then the load — in TERTIARY when it is only the routine's band repeated, so six rows
+/// of the same percentage do not shout — then any custom timing in PRIMARY.
 ///
-/// **HARD RULE: a per-set override MUST render on the COLLAPSED row, in PRIMARY ink.** An
+/// **HARD RULE: a per-set timing override MUST render on the CLOSED row, in primary ink.** An
 /// override hidden until the row opens produces a session nobody can explain.
-private fun detailLine(
+private fun compactDetail(
     repsText: String,
-    tensionText: String,
-    overrideText: String,
+    load: String?,
+    inheritsLoad: Boolean,
+    timing: String,
     secondary: androidx.compose.ui.graphics.Color,
+    tertiary: androidx.compose.ui.graphics.Color,
     primary: androidx.compose.ui.graphics.Color,
 ): AnnotatedString = buildAnnotatedString {
-    withStyle(SpanStyle(color = secondary)) { append(L10n.tr("%s · %s", repsText, tensionText)) }
-    if (overrideText.isNotEmpty()) {
-        withStyle(SpanStyle(color = primary, fontWeight = FontWeight.Medium)) { append(overrideText) }
+    withStyle(SpanStyle(color = secondary)) { append(repsText) }
+    if (load != null) {
+        withStyle(SpanStyle(color = if (inheritsLoad) tertiary else secondary)) { append(" · $load") }
+    }
+    if (timing.isNotEmpty()) {
+        withStyle(SpanStyle(color = primary, fontWeight = FontWeight.Medium)) { append(" · $timing") }
     }
 }
 
-/// Every override this set carries, in editor order — the rule is VISIBILITY, so both timings.
-///
-/// **A PERCENTAGE shows only where the sets DISAGREE**: a max protocol's ramp (50–60, 65–75,
-/// 80–90) must read down the list, but six identical 18–22 % is the card talking to itself.
-internal fun overrideText(set: SetPlan, percentBandsVary: Boolean): String {
+/// The set's load as it will run: its own kilograms, its own percentage, or the routine's
+/// percentage it follows. null = no target.
+internal fun loadText(set: SetPlan, context: SetRowContext): String? {
+    set.targetBand?.let { return WeightUnits.band(it) }
+    val percent = set.targetPercentBand ?: context.plan.targetPercentBand ?: return null
+    return L10n.tr(
+        "%d–%d %%",
+        (percent.start * 100).roundToInt(),
+        (percent.endInclusive * 100).roundToInt(),
+    )
+}
+
+/// Custom timing, only where it DIFFERS from the routine's.
+internal fun timingOverrideText(set: SetPlan, context: SetRowContext): String {
     val parts = mutableListOf<String>()
-    set.holdSeconds?.let { parts.add(L10n.tr("%d s hold", it)) }
-    set.restSeconds?.let { parts.add(L10n.tr("%d s rest", it)) }
-    val kg = set.targetBand
-    val percent = set.targetPercentBand
-    if (kg != null) {
-        parts.add(WeightUnits.tr("%s–%s kg", kgText(kg.start), kgText(kg.endInclusive)))
-    } else if (percentBandsVary && percent != null) {
-        parts.add(
-            L10n.tr(
-                "%d–%d %%",
-                (percent.start * 100).roundToInt(),
-                (percent.endInclusive * 100).roundToInt(),
-            )
-        )
+    set.holdSeconds?.takeIf { it != context.holdSeconds }?.let { parts.add(L10n.tr("%d s hold", it)) }
+    set.restSeconds?.takeIf { it != context.restSeconds }?.let { parts.add(L10n.tr("%d s rest", it)) }
+    return parts.joinToString(" · ")
+}
+
+/// What the routine's percentage means for THIS grip, per hand — or null when the set has a
+/// target of its own or the routine has none. Without a max it says so rather than showing a
+/// percentage that resolves to nothing at session time.
+internal fun inheritedTargetText(set: SetPlan, plan: SessionPlan, maxes: MaxTable): String? {
+    if (set.hasTarget || set.hasPercentTarget) return null
+    val percent = plan.targetPercentBand ?: return null
+    val range = "${(percent.start * 100).roundToInt()}–${(percent.endInclusive * 100).roundToInt()} %"
+    val load = perHandLoadText(set, plan, maxes)
+        ?: return L10n.tr("Routine target: %s of max. No max for this grip yet.", range)
+    return L10n.tr("Routine target: %s, so %s.", range, load)
+}
+
+/// "L 4.0–6.0 · R 4.5–6.5 kg", or one band when the hands agree or share the edge.
+internal fun perHandLoadText(set: SetPlan, plan: SessionPlan, maxes: MaxTable): String? {
+    if (plan.handMode.sideCount <= 1) {
+        return PlanMath.targetBand(set, plan, Side.both, maxes)?.let { WeightUnits.band(it) }
     }
-    return if (parts.isEmpty()) "" else " · " + parts.joinToString(" · ")
+    val left = PlanMath.targetBand(set, plan, Side.left, maxes)
+    val right = PlanMath.targetBand(set, plan, Side.right, maxes)
+    return when {
+        left == null && right == null -> null
+        left != null && right != null && left == right -> WeightUnits.band(left)
+        left != null && right != null -> L10n.tr("L %s · R %s", WeightUnits.band(left, withUnit = false), WeightUnits.band(right))
+        left != null -> L10n.tr("L %s", WeightUnits.band(left))
+        else -> L10n.tr("R %s", WeightUnits.band(right!!))
+    }
 }
 
 /// The spoken form of the same overrides, from the optionals and in whole words: "12 s hold"
 /// reads aloud as "twelve ess hold".
-internal fun spokenOverride(set: SetPlan, percentBandsVary: Boolean): String {
+internal fun spokenOverride(set: SetPlan, context: SetRowContext, percentBandsVary: Boolean): String {
     val parts = mutableListOf<String>()
-    set.holdSeconds?.let { parts.add(trQuantity("%d second hold", it)) }
-    set.restSeconds?.let { parts.add(trQuantity("%d second rest", it)) }
+    // Only timing that DIFFERS from the routine, as the closed row shows it.
+    set.holdSeconds?.takeIf { it != context.holdSeconds }?.let { parts.add(trQuantity("%d second hold", it)) }
+    set.restSeconds?.takeIf { it != context.restSeconds }?.let { parts.add(trQuantity("%d second rest", it)) }
     val kg = set.targetBand
     val percent = set.targetPercentBand
     if (kg != null) {

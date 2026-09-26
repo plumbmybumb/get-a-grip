@@ -77,6 +77,7 @@
         <item quantity="other">%1$s, %2$d secondes. %3$s</item>
     </plurals>
     <string name="s_critical_force_f69c90">%1$s, force critique %2$s %3$s</string>
+    <string name="s_page_lld_of_3">%1$s, page %2$d sur 3</string>
     <string name="s_target_to_df4f9b">%1$s, cible de %2$s à %3$s %4$s</string>
     <string name="s_target_to_kilograms_26ddd5">%1$s, cible de %2$s à %3$s kilogrammes</string>
     <string name="s_x_ee0136">%1$s. %2$s</string>
@@ -258,6 +259,7 @@
     <string name="s_allow_camera_access_in_settings_to_scan_a_shared_routine">Autorise l’accès à l’appareil photo dans Réglages pour scanner une routine partagée.</string>
     <string name="s_already_the_first_set">Déjà la première série</string>
     <string name="s_already_the_last_set">Déjà la dernière série</string>
+    <string name="s_alternate">Alterner</string>
     <string name="s_alternate_each_pull">Alterner à chaque tirage</string>
     <string name="s_apply">Appliquer</string>
     <string name="s_at_the_climbing_gym_d41f29">À la salle d\'escalade</string>
@@ -290,6 +292,7 @@
     <string name="s_both_hands_are_ready_to_save">Les deux max sont prêts à être enregistrés.</string>
     <string name="s_both_hands_next_d612dc">Deux mains ensuite</string>
     <string name="s_both_hands_pull_together_through_the_gauge_one_result">Les deux mains tirent ensemble sur le capteur. Un seul résultat.</string>
+    <string name="s_both_hands_pull_together_so_neither_goes_first">Les deux mains tirent ensemble, aucune ne commence.</string>
     <string name="s_both_hands_pull_together">Les deux mains tirent ensemble.</string>
     <string name="s_both_hands_together">Les deux mains ensemble</string>
     <string name="s_both_open_an_email_your_app_version_ios_version_device_a">Les deux ouvrent un e-mail. Ta version de l\'app, ta version d\'iOS, ton appareil et le capteur sélectionné sont ajoutés à la fin du message, pour qu\'un signalement arrive avec le contexte nécessaire.</string>
@@ -376,6 +379,7 @@
     <string name="s_current_peak">Actuel %1$s %2$s, pic %3$s %4$s%5$s</string>
     <string name="s_current_kilograms_peak_kilograms">Actuel %1$s kilogrammes, pic %2$s kilogrammes%3$s</string>
     <string name="s_custom">Personnalisé</string>
+    <string name="s_custom_timing">Durées personnalisées</string>
     <string name="s_doigt">DOIGT</string>
     <string name="s_done_e782e7">FAIT</string>
     <string name="s_dr">AP</string>
@@ -415,6 +419,7 @@
     <string name="s_down_kg_across_lld_sessions">En baisse de %1$s kg sur %2$d séances.</string>
     <string name="s_drag">À plat</string>
     <string name="s_duplicate">Dupliquer</string>
+    <string name="s_duplicate_last_set">Dupliquer la dernière série</string>
     <string name="s_ease_off">MOINS FORT</string>
     <string name="s_every_day">CHAQUE JOUR</string>
     <string name="s_each_bar_is_one_pull_s_average_critical_force_is_the_mea">Chaque barre est la moyenne d\'un tirage. La force critique est la moyenne des tirages %1$d à %2$d.</string>
@@ -472,6 +477,7 @@
     <string name="s_frez_is_reviewing_this_dyno_s_ownership_before_it_can_be">Frez vérifie la propriété de ce Dyno avant de pouvoir l\'enregistrer.</string>
     <string name="s_frez_rejected_the_calibration_request">Frez a refusé la demande d\'étalonnage.</string>
     <string name="s_frez_sent_an_answer_this_app_could_not_read">Frez a envoyé une réponse que cette app n\'a pas pu lire.</string>
+    <string name="s_from">De</string>
     <string name="s_from_on_the_first_pull_to_on_the_last">De %1$s au premier tirage à %2$s au dernier</string>
     <string name="s_front_2">Avant 2</string>
     <string name="s_front_3">Avant 3</string>
@@ -748,11 +754,13 @@
     <string name="s_position">PRÉHENSION</string>
     <string name="s_pull_639ef3">TIRE</string>
     <string name="s_pull_to_start">TIRE POUR COMMENCER</string>
+    <string name="s_page">Page</string>
     <string name="s_pause">Pause</string>
     <string name="s_pause_is_unavailable_while_connecting">La pause est indisponible pendant la connexion.</string>
     <string name="s_pause_when_i_m_out_of_range">Mettre en pause hors de la plage</string>
     <string name="s_paused_c7dfb6">En pause</string>
     <string name="s_peak_c83dbb">Pic</string>
+    <string name="s_per_set">Par série</string>
     <string name="s_photos_access_is_off_allow_it_in_settings_privacy_photos">L\'accès aux Photos est désactivé. Autorise-le dans Réglages &gt; Confidentialité &gt; Photos.</string>
     <string name="s_pick_the_peaks_to_save_as_maxes">Choisis les pics à enregistrer comme max.</string>
     <string name="s_pinch">Pince</string>
@@ -794,7 +802,7 @@
     <string name="s_rest_cbaaa1">REPOS</string>
     <string name="s_rest_hands">REPOS ET MAINS</string>
     <string name="s_rfd_series_measurement">mesure de série RFD</string>
-    <string name="s_rhythm">RYTHME</string>
+    <string name="s_rhythm_4665ba">RYTHME</string>
     <string name="s_right_952532">DROITE</string>
     <string name="s_right_hand_next_0ba39f">MAIN DROITE ENSUITE</string>
     <string name="s_recent_connection_events_kept_in_memory_only_and_cleared">Événements de connexion récents. Gardés en mémoire seulement et effacés quand l\'app se ferme.</string>
@@ -817,6 +825,7 @@
         <item quantity="other">Revoir %d tirages</item>
     </plurals>
     <string name="s_review_pulls">Revoir les tirages</string>
+    <string name="s_rhythm_c715bb">Rythme</string>
     <string name="s_right_954daa">Droite</string>
     <string name="s_right_first">Droite d’abord</string>
     <string name="s_right_hand">Main droite</string>
@@ -860,6 +869,7 @@
     <string name="s_scale_with_the_new_max">Recalculer avec le nouveau max</string>
     <string name="s_scan_a_routine">Scanner une routine</string>
     <string name="s_scanner_unavailable">Scanner indisponible</string>
+    <string name="s_schedule">Planning</string>
     <string name="s_searching_for_your_gauge">Recherche de ton capteur…</string>
     <string name="s_searching">Recherche…</string>
     <string name="s_selected">Sélectionné</string>
@@ -1008,6 +1018,7 @@
     <string name="s_timing_only_7aea1c">Chrono seulement</string>
     <string name="s_tindeq">Tindeq</string>
     <string name="s_tindeq_progressor">Tindeq Progressor</string>
+    <string name="s_to">À</string>
     <string name="s_to_add_scan_with_the_iphone_camera_on_android_use_scan_a">Pour ajouter %s, scanne avec l\'appareil photo de l\'iPhone. Sur Android, utilise Scanner une routine dans le menu Aujourd\'hui.</string>
     <string name="s_today_24345a">Aujourd\'hui</string>
     <string name="s_today_so_far_lld_of_lld">Aujourd\'hui : %1$d sur %2$d %3$s</string>
@@ -1017,6 +1028,7 @@
     <string name="s_try_demo_mode">Essayer le mode démo</string>
     <string name="s_twice_a_day">Deux fois par jour</string>
     <string name="s_twice_a_day_each">Deux fois par jour · %s chacune</string>
+    <string name="s_type_a_value">Saisir une valeur</string>
     <string name="s_under_tension_430597">Sous tension</string>
     <string name="s_undo_39fc72">Annuler</string>
     <string name="s_undo_e86500">Annuler. %s</string>
@@ -1135,6 +1147,7 @@
     <string name="s_recorded">"enregistré "</string>
     <string name="s_runner_rest_badge_next">Suite</string>
     <string name="s_s">s</string>
+    <string name="s_seconds">secondes</string>
     <string name="s_session_fcbdc4">séance</string>
     <string name="s_sessions_781791">séances</string>
     <string name="s_set_65c10d">série</string>

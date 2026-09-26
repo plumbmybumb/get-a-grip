@@ -41,6 +41,10 @@ distribution checksum; `gradle/libs.versions.toml` pins the libraries.
 `gradle.properties` owns the shipped version — `getagrip.versionCode` is the only line
 to bump for a release.
 
+A test build installs beside the Play version with
+`-Pgetagrip.applicationIdSuffix=.ultimate -Pgetagrip.appLabel="Get a Grip Test"`; both
+are absent by default. See [BUILDING.md](../BUILDING.md).
+
 ## More
 
 [BUILDING.md](../BUILDING.md) covers signing, the Frez access key, the store release

@@ -111,6 +111,8 @@ import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.ui.components.AdaptiveActionRow
 import run.nuri.getagrip.ui.components.CapsLabel
+import run.nuri.getagrip.ui.components.HandsHeader
+import run.nuri.getagrip.ui.components.HouseSegmentedRow
 import run.nuri.getagrip.ui.components.FingerGlyph
 import run.nuri.getagrip.ui.components.FingerPips
 import run.nuri.getagrip.ui.components.DockButton
@@ -484,7 +486,6 @@ private fun Setup(request: CriticalForceTestRequest) {
 /// second segmented control; the explainer rides the picker's accessibility description.
 @Composable
 private fun HandPicker(request: CriticalForceTestRequest) {
-    val palette = LocalGripPalette.current
     val choice = request.handChoice
     val explainer = when (choice) {
         CriticalForceHandChoice.oneAtATime ->
@@ -498,59 +499,22 @@ private fun HandPicker(request: CriticalForceTestRequest) {
     } else side.displayName
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            CapsLabel(tr("HANDS"), Modifier.weight(1f))
-            if (choice != CriticalForceHandChoice.bothHands) {
-                var open by remember { mutableStateOf(false) }
-                Box {
-                    TextButton(onClick = { open = true }, modifier = Modifier.heightIn(min = 44.dp).testTag("cf.side")) {
-                        Text(sideTitle(request.pickedSide), color = palette.graphite, fontWeight = FontWeight.SemiBold)
-                        Icon(Icons.Filled.UnfoldMore, contentDescription = null, tint = palette.graphite,
-                            modifier = Modifier.padding(start = 4.dp).size(16.dp))
-                    }
-                    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                        listOf(Side.left, Side.right).forEach { side ->
-                            DropdownMenuItem(
-                                text = { Text(sideTitle(side)) },
-                                onClick = {
-                                    request.pickedSide = side
-                                    open = false
-                                },
-                                trailingIcon = if (request.pickedSide == side) {
-                                    { Icon(Icons.Filled.Check, contentDescription = null) }
-                                } else null,
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        HandsHeader(
+            menuTitle = if (choice != CriticalForceHandChoice.bothHands) sideTitle(request.pickedSide) else null,
+            side = request.pickedSide,
+            sideTitle = ::sideTitle,
+            menuModifier = Modifier.testTag("cf.side"),
+        ) { side -> request.pickedSide = side }
         val options = listOf(
             CriticalForceHandChoice.oneAtATime to tr("One at a time"),
             CriticalForceHandChoice.bothHands to tr("Both hands"),
             CriticalForceHandChoice.single to tr("One hand"),
         )
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("cf.hands")
-            .semantics { contentDescription = explainer }) {
-            options.forEachIndexed { index, (option, label) ->
-                SegmentedButton(
-                    selected = choice == option,
-                    onClick = { request.handChoice = option },
-                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                    // Graphite selection, as the tab bar: Material's lavender is a hue the
-                    // palette does not have.
-                    colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = palette.graphite.copy(alpha = 0.12f),
-                        activeContentColor = palette.inkPrimary,
-                        activeBorderColor = palette.inkTertiary.copy(alpha = 0.5f),
-                        inactiveContainerColor = Color.Transparent,
-                        inactiveContentColor = palette.inkSecondary,
-                        inactiveBorderColor = palette.inkTertiary.copy(alpha = 0.5f),
-                    ),
-                    icon = {},
-                ) { Text(label, maxLines = 1) }
-            }
-        }
+        HouseSegmentedRow(
+            labels = options.map { it.second },
+            selectedIndex = options.indexOfFirst { it.first == choice },
+            modifier = Modifier.testTag("cf.hands").semantics { contentDescription = explainer },
+        ) { index -> request.handChoice = options[index].first }
     }
 }
 
