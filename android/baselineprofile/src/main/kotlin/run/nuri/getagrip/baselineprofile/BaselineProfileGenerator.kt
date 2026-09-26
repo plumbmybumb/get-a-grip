@@ -14,8 +14,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/// **The journeys the shipped profile is recorded from** — the three that are slowest on a
-/// cold process: launching onto Today, switching tabs, and opening the builder.
+/// **The journeys the shipped profile is recorded from** — the ones that are slowest on a
+/// cold process: launching onto Today, switching tabs, opening the builder, and opening the
+/// critical force test's setup.
 ///
 /// **Screens are found by their ENGLISH text** ("Today", "Build my routine"), so run
 /// the generator on a device or emulator whose language is English — on any other locale
@@ -62,6 +63,7 @@ class BaselineProfileGenerator {
         for (tab in listOf("History", "Benchmarks", "Settings")) {
             tabBar(tab)?.click()
             device.waitForIdle()
+            if (tab == "Benchmarks") openCriticalForceSetup()
         }
         // Settings' one push, and back.
         find(By.textContains("Tap to choose yours"))?.let {
@@ -86,6 +88,23 @@ class BaselineProfileGenerator {
     /// The LAST match: the bar is drawn after the page, and "Today" is also the page's title.
     private fun MacrobenchmarkScope.tabBar(label: String) =
         find(By.text(label))?.let { device.findObjects(By.text(label)).lastOrNull() }
+
+    /// The critical force test's setup, from Benchmarks' one door, and straight back out:
+    /// its first frame is a cold screen nothing else in the journeys reaches. Setup only —
+    /// the test itself needs a gauge.
+    private fun MacrobenchmarkScope.openCriticalForceSetup() {
+        find(By.desc("Add a benchmark"))?.click() ?: return
+        val item = find(By.text("Test critical force"))
+        if (item == null) {
+            device.pressBack()
+            return
+        }
+        item.click()
+        if (device.wait(Until.hasObject(By.text("Critical force")), TIMEOUT)) {
+            device.pressBack()
+            device.waitForIdle()
+        }
+    }
 
     /// True when the builder's document is on screen.
     private fun MacrobenchmarkScope.openBuilder(): Boolean {
