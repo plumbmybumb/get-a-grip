@@ -25,7 +25,7 @@ import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.store.TareConfirmationDecision
 import run.nuri.getagrip.store.TarePolicy
 import run.nuri.getagrip.store.TareTapDecision
-import run.nuri.getagrip.ui.components.SecondaryButton
+import run.nuri.getagrip.ui.components.DockButton
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.units.WeightUnits
@@ -54,7 +54,8 @@ fun GaugeZeroButton(
     var promptedKg by remember { mutableStateOf<Double?>(null) }
     var promptedEpoch by remember { mutableStateOf(0uL) }
 
-    SecondaryButton(
+    // A dock action: both screens that zero the gauge before a measurement carry it in their dock.
+    DockButton(
         title = if (device.isReadingLive) liveTitle else tr("Wake"),
         icon = Icons.Outlined.Refresh,
         enabled = canTare,
@@ -62,7 +63,7 @@ fun GaugeZeroButton(
             modifier.semantics { stateDescription = disabledReason }
         } else modifier,
     ) {
-        if (!allowed || !device.state.isConnected) return@SecondaryButton
+        if (!allowed || !device.state.isConnected) return@DockButton
         when (TarePolicy.tapDecision(phase = RunnerPhase.Idle,
             isReadingLive = device.isReadingLive, isLoadedForTare = device.isLoadedForTare)) {
             TareTapDecision.wakeStream -> device.startStreaming(StreamStartCause.manualWake)

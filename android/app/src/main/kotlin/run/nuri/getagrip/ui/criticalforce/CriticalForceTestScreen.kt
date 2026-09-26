@@ -74,7 +74,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
@@ -115,12 +114,20 @@ import run.nuri.getagrip.ui.components.AdaptiveActionRow
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.FingerGlyph
 import run.nuri.getagrip.ui.components.FingerPips
+import run.nuri.getagrip.ui.components.DockButton
+import run.nuri.getagrip.ui.components.DockNote
+import run.nuri.getagrip.ui.components.DockTint
+import run.nuri.getagrip.ui.components.DockTintedButton
 import run.nuri.getagrip.ui.components.ForceTraceView
+import run.nuri.getagrip.ui.components.InstrumentDock
+import run.nuri.getagrip.ui.components.InstrumentPanel
+import run.nuri.getagrip.ui.components.InstrumentStage
+import run.nuri.getagrip.ui.components.OpenGraphRegion
+import run.nuri.getagrip.ui.components.phaseWash
+import run.nuri.getagrip.ui.components.rememberStageGeometry
 import run.nuri.getagrip.ui.components.HoldToStopTestButton
 import run.nuri.getagrip.ui.components.IntValueRow
 import run.nuri.getagrip.ui.components.PositionChipRow
-import run.nuri.getagrip.ui.components.PrimaryButton
-import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.maxes.GaugeZeroButton
 import run.nuri.getagrip.ui.maxes.relative
@@ -325,16 +332,15 @@ private fun FormScreen(request: CriticalForceTestRequest, ended: String?, onClos
         bottomBar = {
             Box(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                 .readablePageWidth().padding(horizontal = Metrics.hPadding).padding(bottom = 8.dp)) {
-                Dock {
+                InstrumentDock {
                     if (ended != null) {
-                        PrimaryButton(tr("Close"), modifier = Modifier.fillMaxWidth().testTag("cf.close")) { onClose() }
+                        DockTintedButton(tr("Close"), tint = DockTint.graphite,
+                            modifier = Modifier.fillMaxWidth().testTag("cf.close")) { onClose() }
                     } else if (!device.state.isConnected) {
-                        Text(tr("Connect your gauge to test."), style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium, color = palette.inkSecondary,
-                            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
-                        PrimaryButton(
+                        DockNote(tr("Connect your gauge to test."))
+                        DockTintedButton(
                             title = if (device.state.isBusy) device.state.label else tr("Connect"),
-                            icon = Icons.Outlined.SettingsInputAntenna, tint = palette.bleu,
+                            icon = Icons.Outlined.SettingsInputAntenna, tint = DockTint.bleu,
                             enabled = !device.state.isBusy,
                             modifier = Modifier.fillMaxWidth().testTag("cf.connect"),
                         ) { device.connect() }
@@ -569,11 +575,10 @@ internal fun TestingScreen(request: CriticalForceTestRequest) {
     val session = request.session
     val tint = criticalForceTint(session.phase, palette)
     val scrollsForLargeText = LocalDensity.current.fontScale >= 1.5f
-    Box(Modifier.fillMaxSize()) {
-        // The phase wash, hanging from the top: the screen's colour says the phase before any
-        // word is read. Static per phase, so nothing animates behind a live graph.
-        Box(Modifier.fillMaxWidth().height(260.dp)
-            .background(Brush.verticalGradient(listOf(tint.copy(alpha = 0.14f), Color.Transparent))))
+    val stage = rememberStageGeometry()
+    // The phase wash, hanging from the top of the screen to the open graph: the screen's colour
+    // says the phase before any word is read.
+    Box(Modifier.fillMaxSize().phaseWash(tint, stage)) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -586,48 +591,43 @@ internal fun TestingScreen(request: CriticalForceTestRequest) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Panel(request, tint)
-            Surface(
-                shape = RoundedCornerShape(Metrics.radiusCard),
-                color = palette.card,
+            OpenGraphRegion(
+                geometry = stage,
                 modifier = Modifier
                     .widthIn(max = Metrics.maxContentWidth)
                     .fillMaxWidth()
                     .then(if (scrollsForLargeText) Modifier.height(220.dp) else Modifier.weight(1f))
+                    .testTag("cf.graph")
                     .clearAndSetSemantics {},
-            ) {
-                ForceTraceView(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
-                    thresholdKg = if (session.phase == CriticalForceTest.Phase.Armed) CriticalForceRules.startKg else null,
-                    tint = tint,
-                    lit = true,
-                )
-            }
+                trace = {
+                    ForceTraceView(
+                        modifier = Modifier.fillMaxSize(),
+                        thresholdKg = if (session.phase == CriticalForceTest.Phase.Armed) CriticalForceRules.startKg else null,
+                        tint = tint,
+                        lit = true,
+                    )
+                },
+            )
             // A LEAF that reads the session itself: the live bar moves several times a second,
             // and read here it recomposed the whole screen with it. Between hands the pill is
             // the NEXT hand's: empty.
             LivePlateau(request)
-            Dock(Modifier.testTag("cf.dock")) {
+            InstrumentDock(Modifier.testTag("cf.dock")) {
                 if (request.awaitingNextHand) {
                     val first = request.hands.sides.first()
-                    Text(tr("%s hand done. Set up your %s hand with the gauge unloaded, then start: it zeroes first.",
-                            first.displayName, request.side.displayName.lowercase()),
-                        style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
-                        color = palette.inkSecondary, textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                    DockNote(tr("%s hand done. Set up your %s hand with the gauge unloaded, then start: it zeroes first.",
+                            first.displayName, request.side.displayName.lowercase()))
                     LoadWarning(request)
                     TareAndStart(tr("Start %s hand", request.side.displayName.lowercase()), "cf.startNextHand") {
                         request.startNextHand(device)
                     }
-                    SecondaryButton(tr("Finish with %s hand only", first.displayName.lowercase()),
+                    DockButton(tr("Finish with %s hand only", first.displayName.lowercase()),
                         modifier = Modifier.fillMaxWidth().testTag("cf.finishFirstHand")) {
                         request.finishEarlyBetweenHands()
                     }
                 } else if (session.phase == CriticalForceTest.Phase.Armed) {
-                    Text(tr("The test starts the moment you pull. Pull as hard as you can."),
-                        style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
-                        color = palette.inkSecondary, textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
-                    SecondaryButton(tr("Back"), icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    DockNote(tr("The test starts the moment you pull. Pull as hard as you can."))
+                    DockButton(tr("Back"), icon = Icons.AutoMirrored.Filled.ArrowBack,
                         modifier = Modifier.fillMaxWidth().testTag("cf.back")) { request.backToSetup() }
                 } else {
                     HoldToStopTestButton(canKeep = session.canFinishEarly, modifier = Modifier.testTag("cf.stop")) {
@@ -686,14 +686,13 @@ private fun Panel(request: CriticalForceTestRequest, tint: Color) {
     val spoken = if (seconds != null) L10n.tr("%s, %d seconds. %s", word, seconds, countLine)
     else L10n.tr("%s. %s", word, countLine)
 
-    InstrumentSurface(
-        modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth()
-            .testTag("cf.panel")
+    InstrumentPanel(
+        tint = tint,
+        modifier = Modifier.testTag("cf.panel")
             .semantics(mergeDescendants = true) { contentDescription = spoken },
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 14.dp, bottom = 12.dp)
-                .clearAndSetSemantics {},
+            Modifier.fillMaxWidth().clearAndSetSemantics {},
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -770,11 +769,12 @@ private fun LoadWarning(request: CriticalForceTestRequest) {
 private fun TareAndStart(title: String, tag: String, onStart: () -> Unit) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
-    AdaptiveActionRow(listOf(listOf(tr("Zero the gauge"), tr("Wake")), listOf(title))) { index, cell ->
+    AdaptiveActionRow(listOf(listOf(tr("Zero the gauge"), tr("Wake")), listOf(title)),
+        spacing = InstrumentStage.dockSpacing) { index, cell ->
         if (index == 0) {
             GaugeZeroButton(canTare = true, modifier = cell.testTag("cf.tare"))
         } else {
-            PrimaryButton(title, icon = Icons.Filled.PlayArrow, tint = palette.bleu,
+            DockTintedButton(title, tint = DockTint.bleu, icon = Icons.Filled.PlayArrow,
                 enabled = device.state.isConnected, modifier = cell.testTag(tag)) { onStart() }
         }
     }
@@ -833,8 +833,8 @@ private fun ResultScreen(request: CriticalForceTestRequest, onDiscard: () -> Uni
     val shown = summaries.firstOrNull { it.first == request.shownSide } ?: summaries.firstOrNull()
     val offers = maxOffers(request, templates.maxTable)
     Box(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxWidth().height(260.dp)
-            .background(Brush.verticalGradient(listOf(palette.bleu.copy(alpha = 0.14f), Color.Transparent))))
+        // The result has no open graph to end at: the wash takes its first-frame reach.
+        Box(Modifier.fillMaxSize().phaseWash(palette.bleu, rememberStageGeometry()))
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).readablePageWidth()) {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
@@ -867,7 +867,7 @@ private fun ResultScreen(request: CriticalForceTestRequest, onDiscard: () -> Uni
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                Dock {
+                InstrumentDock {
                     if (offers.isNotEmpty()) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).testTag("cf.alsoMax")
@@ -902,13 +902,14 @@ private fun ResultScreen(request: CriticalForceTestRequest, onDiscard: () -> Uni
                     }
                     val discard = tr("Don’t save")
                     val save = tr("Save")
-                    AdaptiveActionRow(listOf(listOf(discard), listOf(save))) { index, cell ->
+                    AdaptiveActionRow(listOf(listOf(discard), listOf(save)),
+                        spacing = InstrumentStage.dockSpacing) { index, cell ->
                         if (index == 0) {
-                            SecondaryButton(discard, modifier = cell.testTag("cf.discard"),
+                            DockButton(discard, modifier = cell.testTag("cf.discard"),
                                 enabled = !request.isSaving) { onDiscard() }
                         } else {
-                            PrimaryButton(save, icon = Icons.Filled.Check, enabled = !request.isSaving,
-                                modifier = cell.testTag("cf.save")) { onSave() }
+                            DockTintedButton(save, tint = DockTint.graphite, icon = Icons.Filled.Check,
+                                enabled = !request.isSaving, modifier = cell.testTag("cf.save")) { onSave() }
                         }
                     }
                 }
@@ -927,10 +928,3 @@ private fun offerLine(offer: TemplateStore.MaxSave, table: MaxTable): String {
     }
 }
 
-/// The dock at the foot of every stage: one surface holding the stage's one decision.
-@Composable
-private fun Dock(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    InstrumentSurface(modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth()) {
-        Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
-    }
-}

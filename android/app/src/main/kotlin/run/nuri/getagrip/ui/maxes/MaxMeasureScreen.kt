@@ -7,13 +7,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -33,7 +33,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -49,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
@@ -89,11 +87,20 @@ import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.store.TemplateStore
 import run.nuri.getagrip.ui.components.AdaptiveActionRow
 import run.nuri.getagrip.ui.components.CapsLabel
+import run.nuri.getagrip.ui.components.DockButton
+import run.nuri.getagrip.ui.components.DockTint
+import run.nuri.getagrip.ui.components.DockTintedButton
 import run.nuri.getagrip.ui.components.ForceTraceView
-import run.nuri.getagrip.ui.components.PrimaryButton
+import run.nuri.getagrip.ui.components.InstrumentDock
+import run.nuri.getagrip.ui.components.InstrumentPanel
+import run.nuri.getagrip.ui.components.InstrumentStage
+import run.nuri.getagrip.ui.components.OpenGraphRegion
+import run.nuri.getagrip.ui.components.StageGeometry
+import run.nuri.getagrip.ui.components.phaseWash
+import run.nuri.getagrip.ui.components.rememberStageGeometry
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
-import run.nuri.getagrip.ui.theme.InstrumentSurface
+import run.nuri.getagrip.ui.theme.GripPalette
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.theme.readablePageWidth
@@ -108,10 +115,10 @@ import run.nuri.getagrip.ui.units.WeightUnits
 /// the slack, every action in one dock. The dashed rule is the number to beat: this visit's
 /// best on the selected hand, else its saved max.
 ///
-/// TRANSLATION NOTE (from Sources/UI/Maxes/MaxMeasureView.swift): iOS draws the trace as the
-/// screen under Liquid Glass. This port has no glass, so the stack is laid out the way the
-/// Android runner and the critical force test translate it: the panel and the dock are
-/// `InstrumentSurface`s, and the trace sits in a card between them that takes the slack.
+/// TRANSLATION NOTE (from Sources/UI/Maxes/MaxMeasureView.swift): iOS draws the panel and
+/// the dock as Liquid Glass. This port has no runtime blur, so they are the session stage's
+/// shared instrument surfaces (`InstrumentStage.kt`), the same ones the runner, the gauge and
+/// the critical force test use; the trace runs in the clear between them, edge to edge.
 /// The review is a full-screen layer over the visit rather than a sheet; the visit's effects
 /// keep running under it, exactly as the iOS sheet leaves the live screen reading.
 @OptIn(ExperimentalMaterial3Api::class)
@@ -238,8 +245,9 @@ fun MaxMeasureScreen(
     }
 
     val scrollsForLargeText = LocalDensity.current.fontScale >= 1.5f
+    val stage = rememberStageGeometry()
     Box(modifier.fillMaxSize()) {
-        MaxWash(session)
+        MaxWash(session, stage)
         // Hosted at the ROOT, so nothing above pads the system bars: keep the Material defaults.
         Scaffold(
             containerColor = Color.Transparent,
@@ -278,19 +286,16 @@ fun MaxMeasureScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 InfoPanel(session, maxOn)
-                Surface(
-                    shape = RoundedCornerShape(Metrics.radiusCard),
-                    color = palette.card,
+                OpenGraphRegion(
+                    geometry = stage,
                     modifier = Modifier
                         .widthIn(max = Metrics.maxContentWidth)
                         .fillMaxWidth()
                         .then(if (scrollsForLargeText) Modifier.height(220.dp) else Modifier.weight(1f))
                         .testTag("max.measure.graph"),
+                    trace = { MaxLiveTrace(session, maxOn) },
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        MaxLiveTrace(session, maxOn)
-                        GraphNotice()
-                    }
+                    GraphNotice()
                 }
                 Dock(session, onReview = {
                     session.close()
@@ -303,32 +308,31 @@ fun MaxMeasureScreen(
 }
 
 /// Bleu while a pull is under way, steel between pulls — so the top of the phone says
-/// "that one is counting" before a number is read. A leaf: `isPulling` flips twice a pull.
+/// "that one is counting" before a number is read.
+private fun maxTint(session: LiveMaxSession, palette: GripPalette) =
+    if (session.isPulling) palette.bleu else palette.calm
+
+/// The wash, hanging from the top of the screen to the open graph. A leaf: `isPulling` flips
+/// twice a pull, and read from the screen it would recompose everything with it.
 @Composable
-private fun MaxWash(session: LiveMaxSession) {
-    val palette = LocalGripPalette.current
-    val tint = if (session.isPulling) palette.bleu else palette.calm
-    Box(Modifier.fillMaxWidth().height(260.dp)
-        .background(Brush.verticalGradient(listOf(tint.copy(alpha = 0.14f), Color.Transparent))))
+private fun MaxWash(session: LiveMaxSession, stage: StageGeometry) {
+    Box(Modifier.fillMaxSize().phaseWash(maxTint(session, LocalGripPalette.current), stage))
 }
 
 @Composable
 private fun InfoPanel(session: LiveMaxSession, savedMax: (Side) -> Double?) {
-    InstrumentSurface(
-        modifier = Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().testTag("max.measure.panel"),
+    InstrumentPanel(
+        tint = maxTint(session, LocalGripPalette.current),
+        modifier = Modifier.testTag("max.measure.panel"),
+        contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 12.dp, bottom = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            if (session.bothTogether) {
-                CapsLabel(tr("Both hands together"))
-            } else {
-                MaxHandSwitch(session, savedMax)
-            }
-            MaxLiveHero(session)
+        if (session.bothTogether) {
+            CapsLabel(tr("Both hands together"))
+        } else {
+            MaxHandSwitch(session, savedMax)
         }
+        MaxLiveHero(session)
     }
 }
 
@@ -504,7 +508,7 @@ private fun MaxLiveTrace(session: LiveMaxSession, savedMax: (Side) -> Double?) {
     val palette = LocalGripPalette.current
     val toBeat = maxToBeat(session.snapshot, savedMax)
     ForceTraceView(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp).clearAndSetSemantics {},
+        modifier = Modifier.fillMaxSize().clearAndSetSemantics {},
         thresholdKg = toBeat,
         tint = if (device.isStreaming) palette.bleu else palette.inkTertiary,
         lit = true,
@@ -548,53 +552,47 @@ private fun Dock(session: LiveMaxSession, onReview: () -> Unit) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
     val attempts = session.snapshot.log.attempts.size
-    InstrumentSurface(
-        Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().testTag("max.measure.dock"),
-    ) {
-        Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (device.state.isConnected) {
-                val review = reviewTitle(attempts)
-                AdaptiveActionRow(listOf(listOf(tr("Tare"), tr("Wake")), listOf(review))) { index, cell ->
-                    if (index == 0) {
-                        GaugeZeroButton(
-                            canTare = !session.isPulling && !session.committed,
-                            modifier = cell.testTag("max.measure.tare"),
-                            liveTitle = tr("Tare"),
-                            disabledReason = tr("Let go of the edge first."),
-                        )
-                    } else {
-                        ReviewButton(attempts, session, cell, onReview)
-                    }
-                }
-            } else {
-                // A broadcast scan can stay Searching while the scale is silent; always leave a
-                // manual way back, or restarting the app is the only escape.
-                val canCancelScan = device.gaugeCapabilities.isBroadcast &&
-                    device.state == ProgressorConnectionState.Scanning
-                PrimaryButton(
-                    title = when {
-                        canCancelScan -> tr("Cancel")
-                        device.state.isBusy -> device.state.label
-                        else -> tr("Connect gauge")
-                    },
-                    icon = if (canCancelScan) Icons.Filled.Close else Icons.Outlined.SettingsInputAntenna,
-                    tint = palette.bleu,
-                    enabled = canCancelScan || !device.state.isBusy,
-                    modifier = Modifier.fillMaxWidth().testTag("max.measure.connect"),
-                ) { if (canCancelScan) device.disconnect() else device.connect() }
-                if (attempts > 0) {
-                    // Logged pulls are local data: a lost link cannot hide their save.
-                    ReviewButton(attempts, session, Modifier.fillMaxWidth(), onReview)
+    InstrumentDock(Modifier.testTag("max.measure.dock")) {
+        if (device.state.isConnected) {
+            val review = reviewTitle(attempts)
+            AdaptiveActionRow(listOf(listOf(tr("Tare"), tr("Wake")), listOf(review)),
+                spacing = InstrumentStage.dockSpacing) { index, cell ->
+                if (index == 0) {
+                    GaugeZeroButton(
+                        canTare = !session.isPulling && !session.committed,
+                        modifier = cell.testTag("max.measure.tare"),
+                        liveTitle = tr("Tare"),
+                        disabledReason = tr("Let go of the edge first."),
+                    )
                 } else {
-                    TextButton(
-                        onClick = { device.useMockDevice(!device.isMock) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = Metrics.controlMinHeight),
-                    ) {
-                        Text(if (device.isMock) tr("Leave demo mode") else tr("Try demo mode"),
-                            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                            color = palette.inkSecondary)
-                    }
+                    ReviewButton(attempts, session, cell, onReview)
                 }
+            }
+        } else {
+            // A broadcast scan can stay Searching while the scale is silent; always leave a
+            // manual way back, or restarting the app is the only escape.
+            val canCancelScan = device.gaugeCapabilities.isBroadcast &&
+                device.state == ProgressorConnectionState.Scanning
+            DockTintedButton(
+                title = when {
+                    canCancelScan -> tr("Cancel")
+                    device.state.isBusy -> device.state.label
+                    else -> tr("Connect gauge")
+                },
+                icon = if (canCancelScan) Icons.Filled.Close else Icons.Outlined.SettingsInputAntenna,
+                tint = DockTint.bleu,
+                enabled = canCancelScan || !device.state.isBusy,
+                modifier = Modifier.fillMaxWidth().testTag("max.measure.connect"),
+            ) { if (canCancelScan) device.disconnect() else device.connect() }
+            if (attempts > 0) {
+                // Logged pulls are local data: a lost link cannot hide their save.
+                ReviewButton(attempts, session, Modifier.fillMaxWidth(), onReview)
+            } else {
+                DockButton(
+                    title = if (device.isMock) tr("Leave demo mode") else tr("Try demo mode"),
+                    tint = palette.inkSecondary,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { device.useMockDevice(!device.isMock) }
             }
         }
     }
@@ -606,11 +604,10 @@ private fun reviewTitle(attempts: Int): String =
 
 @Composable
 private fun ReviewButton(attempts: Int, session: LiveMaxSession, modifier: Modifier, onReview: () -> Unit) {
-    val palette = LocalGripPalette.current
-    PrimaryButton(
+    DockTintedButton(
         title = reviewTitle(attempts),
         icon = Icons.Filled.Check,
-        tint = palette.bleu,
+        tint = DockTint.bleu,
         enabled = attempts > 0 && !session.committed,
         modifier = modifier.testTag("max.measure.save"),
         onClick = onReview,
