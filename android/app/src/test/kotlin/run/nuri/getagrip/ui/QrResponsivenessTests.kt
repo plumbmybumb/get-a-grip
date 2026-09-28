@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import com.google.zxing.BinaryBitmap
+import com.google.zxing.DecodeHintType
 import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.qrcode.QRCodeReader
@@ -93,7 +94,14 @@ class QrResponsivenessTests {
             val pixels = IntArray(bitmap.width * bitmap.height)
             bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
             val luminance = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
-            val decoded = QRCodeReader().decode(BinaryBitmap(HybridBinarizer(luminance)))
+            // PURE_BARCODE: this is a rendered code on an exact module grid, not a photo. The
+            // generic finder-pattern search failed ~1 run in 30 (measured 2/60, 2026-09-28) —
+            // `RoutineDraft.starter` mints fresh ids, so the payload differs every run and some
+            // encodings trip it. Pure mode decoded all 60; what this pins is the bytes.
+            val decoded = QRCodeReader().decode(
+                BinaryBitmap(HybridBinarizer(luminance)),
+                mapOf(DecodeHintType.PURE_BARCODE to true),
+            )
             assertEquals(payload, decoded.text)
         }
     }
