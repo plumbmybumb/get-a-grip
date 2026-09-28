@@ -759,6 +759,7 @@
     <string name="s_page">Page</string>
     <string name="s_pause">Pause</string>
     <string name="s_pause_is_unavailable_while_connecting">Pause is unavailable while connecting.</string>
+    <string name="s_pause_timer">Pause timer</string>
     <string name="s_pause_when_i_m_out_of_range">Pause when I\'m out of range</string>
     <string name="s_paused_c7dfb6">Paused</string>
     <string name="s_peak_c83dbb">Peak</string>
@@ -818,6 +819,7 @@
     <string name="s_remove_this_set">Remove this set</string>
     <string name="s_report_a_bug">Report a bug</string>
     <string name="s_request_a_feature">Request a feature</string>
+    <string name="s_reset">Reset</string>
     <string name="s_rest_b79e5f">Rest</string>
     <string name="s_rest_between_pulls">Rest between pulls</string>
     <string name="s_restarts_a_stalled_reading">Restarts a stalled reading.</string>
@@ -942,6 +944,7 @@
     <string name="s_start_session_lld">Start session %d</string>
     <string name="s_start_the_rest_when_i_let_go">Start the rest when I let go</string>
     <string name="s_start_third_session">Start third session</string>
+    <string name="s_start_timer">Start timer</string>
     <string name="s_start_with_the_left_hand">Start with the left hand</string>
     <string name="s_start_with_the_right_hand">Start with the right hand</string>
     <string name="s_start_without_a_gauge">Start without a gauge</string>
@@ -1016,6 +1019,8 @@
     <string name="s_thumb_557518">Thumb</string>
     <string name="s_thumb_2ce0ce">Thumb, %s</string>
     <string name="s_time_for_a_session">Time for a session.</string>
+    <string name="s_timer">Timer</string>
+    <string name="s_timer_pulls_counted_lld">Timer %1$s. Pulls counted: %2$d</string>
     <string name="s_timers_only_nothing_is_measured">Timers only. Nothing is measured.</string>
     <string name="s_timing_only_7aea1c">Timing only</string>
     <string name="s_tindeq">Tindeq</string>

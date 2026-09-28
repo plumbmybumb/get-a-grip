@@ -14,7 +14,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1293) {
+val STRING_KEYS: Map<String, Int> = buildMap(1299) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -880,6 +880,7 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Page"] = R.string.s_page
     into["Pause"] = R.string.s_pause
     into["Pause is unavailable while connecting."] = R.string.s_pause_is_unavailable_while_connecting
+    into["Pause timer"] = R.string.s_pause_timer
     into["Pause when I'm out of range"] = R.string.s_pause_when_i_m_out_of_range
     into["Paused"] = R.string.s_paused_c7dfb6
     into["Peak"] = R.string.s_peak_c83dbb
@@ -941,10 +942,10 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Record another test"] = R.string.s_record_another_test
     into["Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not."] = R.string.s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d
     into["Refresh battery"] = R.string.s_refresh_battery
-    into["Remind me"] = R.string.s_remind_me
 }
 
 private fun string_keysChunk6(into: MutableMap<String, Int>) {
+    into["Remind me"] = R.string.s_remind_me
     into["Remind on this iPad"] = R.string.s_remind_on_this_ipad
     into["Remind on this iPhone"] = R.string.s_remind_on_this_iphone
     into["Reminder time"] = R.string.a_reminder_time
@@ -952,6 +953,7 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Remove this set"] = R.string.s_remove_this_set
     into["Report a bug"] = R.string.s_report_a_bug
     into["Request a feature"] = R.string.s_request_a_feature
+    into["Reset"] = R.string.s_reset
     into["Rest"] = R.string.s_rest_b79e5f
     into["Rest between pulls"] = R.string.s_rest_between_pulls
     into["Restarts a stalled reading."] = R.string.s_restarts_a_stalled_reading
@@ -1079,6 +1081,7 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Start session %d"] = R.string.s_start_session_lld
     into["Start the rest when I let go"] = R.string.s_start_the_rest_when_i_let_go
     into["Start third session"] = R.string.s_start_third_session
+    into["Start timer"] = R.string.s_start_timer
     into["Start with the left hand"] = R.string.s_start_with_the_left_hand
     into["Start with the right hand"] = R.string.s_start_with_the_right_hand
     into["Start without a gauge"] = R.string.s_start_without_a_gauge
@@ -1092,12 +1095,12 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Stopped"] = R.string.s_stopped_51e911
     into["Stopped before pull 16, so there's no result."] = R.string.s_stopped_before_pull_16_so_there_s_no_result
     into["Stopped before pull 16, so there's no result. Rest at least 30 minutes before retesting."] = R.string.s_stopped_before_pull_16_so_there_s_no_result_rest_at_leas
-    into["Stored on this device and synced to your private iCloud when available."] = R.string.s_stored_on_this_device_and_synced_to_your_private_icloud
-    into["Stored on this device only. Nothing syncs between devices."] = R.string.a_stored_on_this_device_only_nothing_syncs_between_devices
-    into["Summary"] = R.string.s_summary
 }
 
 private fun string_keysChunk7(into: MutableMap<String, Int>) {
+    into["Stored on this device and synced to your private iCloud when available."] = R.string.s_stored_on_this_device_and_synced_to_your_private_icloud
+    into["Stored on this device only. Nothing syncs between devices."] = R.string.a_stored_on_this_device_only_nothing_syncs_between_devices
+    into["Summary"] = R.string.s_summary
     into["Support"] = R.string.s_support
     into["Swap"] = R.string.s_swap
     into["TARGETS THAT FOLLOWED"] = R.string.s_targets_that_followed
@@ -1164,6 +1167,9 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["Thumb"] = R.string.s_thumb_557518
     into["Thumb, %s"] = R.string.s_thumb_2ce0ce
     into["Time for a session."] = R.string.s_time_for_a_session
+    into["Timer"] = R.string.s_timer
+    into["Timer %1\$s. Pulls counted: %2\$d"] = R.string.s_timer_pulls_counted_lld
+    into["Timer %s. Pulls counted: %d"] = R.string.s_timer_pulls_counted_lld
     into["Timers only. Nothing is measured."] = R.string.s_timers_only_nothing_is_measured
     into["Timing only"] = R.string.s_timing_only_7aea1c
     into["Tindeq"] = R.string.s_tindeq
@@ -1242,15 +1248,15 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["Your ceiling, per grip"] = R.string.s_your_ceiling_per_grip
     into["Your current max on this grip%1\$s is %2\$s %3\$s, recorded %4\$s. The old one stays in history."] = R.string.s_your_current_max_on_this_grip_is_recorded_the_old_one_st
     into["Your current max on this grip%1\$s is %2\$s kg, recorded %3\$s. Saving adds a new one and keeps the old as history."] = R.string.s_your_current_max_on_this_grip_is_kg_recorded_saving_adds
+}
+
+private fun string_keysChunk8(into: MutableMap<String, Int>) {
     into["Your current max on this grip%s is %s %s, recorded %s. The old one stays in history."] = R.string.s_your_current_max_on_this_grip_is_recorded_the_old_one_st
     into["Your current max on this grip%s is %s kg, recorded %s. Saving adds a new one and keeps the old as history."] = R.string.s_your_current_max_on_this_grip_is_kg_recorded_saving_adds
     into["Your finished sessions and trends show up here."] = R.string.s_your_finished_sessions_and_trends_show_up_here
     into["Your hardest pull on this grip, measured on the gauge."] = R.string.a_your_hardest_pull_on_this_grip_measured_on_the_gauge
     into["Your max on each grip"] = R.string.s_your_max_on_each_grip
     into["Your numbers"] = R.string.s_your_numbers
-}
-
-private fun string_keysChunk8(into: MutableMap<String, Int>) {
     into["Your percent targets follow whatever you save here."] = R.string.s_your_percent_targets_follow_whatever_you_save_here
     into["Your routine"] = R.string.s_your_routine_5e7844
     into["Your routines and sessions stay on this device and in your private iCloud. Nobody else can read them — not even us."] = R.string.s_your_routines_and_sessions_stay_on_this_device_and_in_yo

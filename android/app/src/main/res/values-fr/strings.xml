@@ -757,6 +757,7 @@
     <string name="s_page">Page</string>
     <string name="s_pause">Pause</string>
     <string name="s_pause_is_unavailable_while_connecting">La pause est indisponible pendant la connexion.</string>
+    <string name="s_pause_timer">Pause chrono</string>
     <string name="s_pause_when_i_m_out_of_range">Mettre en pause hors de la plage</string>
     <string name="s_paused_c7dfb6">En pause</string>
     <string name="s_peak_c83dbb">Pic</string>
@@ -816,6 +817,7 @@
     <string name="s_remove_this_set">Retirer cette série</string>
     <string name="s_report_a_bug">Signaler un bug</string>
     <string name="s_request_a_feature">Demander une fonctionnalité</string>
+    <string name="s_reset">Remise à zéro</string>
     <string name="s_rest_b79e5f">Repos</string>
     <string name="s_rest_between_pulls">Repos entre les tirages</string>
     <string name="s_restarts_a_stalled_reading">Relance une mesure bloquée.</string>
@@ -940,6 +942,7 @@
     <string name="s_start_session_lld">Commencer la séance %d</string>
     <string name="s_start_the_rest_when_i_let_go">Démarrer le repos quand je relâche</string>
     <string name="s_start_third_session">Commencer la troisième séance</string>
+    <string name="s_start_timer">Lancer le chrono</string>
     <string name="s_start_with_the_left_hand">Commencer par la main gauche</string>
     <string name="s_start_with_the_right_hand">Commencer par la main droite</string>
     <string name="s_start_without_a_gauge">Commencer sans capteur</string>
@@ -1014,6 +1017,8 @@
     <string name="s_thumb_557518">Pouce</string>
     <string name="s_thumb_2ce0ce">Pouce, %s</string>
     <string name="s_time_for_a_session">C\'est l\'heure d\'une séance.</string>
+    <string name="s_timer">Chrono</string>
+    <string name="s_timer_pulls_counted_lld">Chrono %1$s. Tirages comptés : %2$d</string>
     <string name="s_timers_only_nothing_is_measured">Chronos seulement. Rien n\'est mesuré.</string>
     <string name="s_timing_only_7aea1c">Chrono seulement</string>
     <string name="s_tindeq">Tindeq</string>

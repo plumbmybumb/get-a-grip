@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Refresh
@@ -41,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -71,7 +73,9 @@ import run.nuri.getagrip.ble.ProgressorConnectionState
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
 import run.nuri.getagrip.engine.L10n
+import run.nuri.getagrip.engine.RepEstimator
 import run.nuri.getagrip.engine.RunnerPhase
+import run.nuri.getagrip.engine.Stopwatch
 import run.nuri.getagrip.runner.KeepScreenOn
 import run.nuri.getagrip.store.DeviceStore
 import run.nuri.getagrip.store.LocalDeviceStore
@@ -116,6 +120,11 @@ internal fun gaugeTint(isStreaming: Boolean, palette: run.nuri.getagrip.ui.theme
 /// over the state wash, the actions (Tare or Wake, Disconnect, Start or Stop) on one dock. It
 /// still shows the raw truth, not a prettified summary: this screen retires every hardware risk.
 ///
+/// A stopwatch and an ESTIMATED pull count ride on the same panel (2026-09-28): the numbers
+/// on the panel, Start/Pause/Reset on the dock. The count keeps going whenever the gauge
+/// reads; Reset zeroes both. **A connected gauge reads at once** — a separate Start after
+/// Connect was a step with no decision in it; Stop and Start measuring remain for pausing.
+///
 /// **No threshold rule and no target lane**: both belong to a rep asking for a load, and
 /// this screen asks for nothing.
 ///
@@ -132,18 +141,37 @@ fun GaugeScreen(modifier: Modifier = Modifier, stage: StageGeometry = rememberSt
     /// `TarePolicy.confirmationDecision` revalidates against it.
     var promptedKg by remember { mutableStateOf<Double?>(null) }
     var promptedEpoch by remember { mutableStateOf(0uL) }
+    /// The stopwatch and the estimated pull count, fed by `onTracePoint` while the screen is open.
+    val tally = remember { GaugeTally() }
 
     // Awake while readings arrive: the phone timing out mid-pull is the app going blind.
     KeepScreenOn(device.isStreaming)
 
     DisposableEffect(device) {
+        device.onTracePoint = { point -> tally.receive(point) }
         onDispose {
+            device.onTracePoint = null
             // Never leave the device streaming behind us: it drains its battery and keeps the radio busy.
             if (device.isStreaming) device.stopStreaming(StreamStopCause.screenClosed)
         }
     }
 
+    // Reads as soon as a gauge is connected — on opening, and on connecting. After Stop it
+    // stays stopped: only a new connection restarts it.
+    LaunchedEffect(device, device.state.isConnected) {
+        if (device.state.isConnected && !device.isStreaming) {
+            device.startStreaming(StreamStartCause.manualMeasurement)
+        }
+    }
+
+    // How a pull cut off by Stop would have ended is unknowable.
+    LaunchedEffect(device.isStreaming) {
+        if (!device.isStreaming) tally.cancelPull()
+    }
+
     fun tareNow() {
+        // A new zero under a pull in progress would read as the pull ending.
+        tally.cancelPull()
         device.tare()
         // **The haptic names its cause**: fire only when the tare did something. On every gauge but
         // the Progressor the zero is app-side and no-ops with no reading yet.
@@ -205,6 +233,7 @@ fun GaugeScreen(modifier: Modifier = Modifier, stage: StageGeometry = rememberSt
             // invalidate the whole screen 80×/second.
             GaugeHero()
             GaugeReadouts()
+            GaugeTimerRow(tally)
             // A remotely calibrated gauge can be connected with no force to show; say why rather than
             // display a guess (Frez's rule), only for the gauge that has a why.
             if (device.state.isConnected) {
@@ -249,6 +278,7 @@ fun GaugeScreen(modifier: Modifier = Modifier, stage: StageGeometry = rememberSt
                         }
                     }
                 }
+                GaugeTimerDockRow(tally)
                 DockTintedButton(
                     title = if (device.isStreaming) tr("Stop") else tr("Start measuring"),
                     icon = if (device.isStreaming) Icons.Filled.Stop else Icons.Filled.PlayArrow,
@@ -286,6 +316,7 @@ fun GaugeScreen(modifier: Modifier = Modifier, stage: StageGeometry = rememberSt
                     tint = palette.inkSecondary,
                     modifier = Modifier.fillMaxWidth(),
                 ) { device.useMockDevice(!device.isMock) }
+                GaugeTimerDockRow(tally)
 
                 if (device.state is ProgressorConnectionState.Unsupported) {
                     DockNote(
@@ -571,6 +602,158 @@ private fun GaugeGraphNotice() {
             )
         }
     }
+}
+
+// MARK: - Stopwatch and pull count
+
+/// The gauge screen's stopwatch and ESTIMATED pull count (iOS `GaugeTally`). Only what is
+/// drawn is state, and `pulls` is written only when it CHANGES — `receive` runs ~80×/second.
+internal class GaugeTally {
+    var stopwatch by mutableStateOf(Stopwatch())
+        private set
+    var pulls by mutableIntStateOf(0)
+        private set
+    private val estimator = RepEstimator()
+
+    val canReset: Boolean get() = stopwatch.isRunning || stopwatch.accumulated > 0 || pulls > 0
+
+    fun receive(point: DeviceStore.TracePoint) {
+        if (estimator.add(point.kg, point.t)) pulls = estimator.count
+    }
+
+    fun cancelPull() = estimator.cancelPull()
+
+    fun startTimer() { stopwatch = stopwatch.started(now()) }
+
+    fun pauseTimer() { stopwatch = stopwatch.paused(now()) }
+
+    /// Zeroes both: a new set starts from nothing.
+    fun reset() {
+        stopwatch = Stopwatch()
+        estimator.reset()
+        pulls = 0
+    }
+
+    companion object {
+        /// Seconds on a clock that keeps running while the phone sleeps, so a locked screen
+        /// cannot lose stopwatch time.
+        fun now(): Double = android.os.SystemClock.elapsedRealtimeNanos() / 1e9
+    }
+}
+
+/// Start/Pause and Reset for the stopwatch. Start also starts reading a connected gauge — a
+/// timer running beside a dead graph is not what anyone pressed play for.
+@Composable
+private fun GaugeTimerDockRow(tally: GaugeTally) {
+    val device = LocalDeviceStore.current
+    val haptics = LocalHapticFeedback.current
+    val running = tally.stopwatch.isRunning
+    val startPause = if (running) tr("Pause timer") else tr("Start timer")
+    val reset = tr("Reset")
+    AdaptiveActionRow(listOf(listOf(tr("Start timer"), tr("Pause timer")), listOf(reset)),
+        spacing = InstrumentStage.dockSpacing) { index, cell ->
+        if (index == 0) {
+            DockButton(
+                title = startPause,
+                icon = if (running) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                modifier = cell.testTag("gauge.timer"),
+            ) {
+                if (running) {
+                    tally.pauseTimer()
+                } else {
+                    tally.startTimer()
+                    if (device.state.isConnected && !device.isStreaming) {
+                        device.startStreaming(StreamStartCause.manualMeasurement)
+                    }
+                }
+                // The haptic names its cause: the tap.
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            }
+        } else {
+            DockButton(
+                title = reset,
+                icon = Icons.Outlined.Refresh,
+                enabled = tally.canReset,
+                modifier = cell.testTag("gauge.timerReset"),
+            ) {
+                tally.reset()
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            }
+        }
+    }
+}
+
+/// The stopwatch and the pull count, on the panel under the readouts. A LEAF: the running
+/// clock ticks ten times a second and must recompose nothing else.
+@Composable
+private fun GaugeTimerRow(tally: GaugeTally) {
+    val palette = LocalGripPalette.current
+    val watch = tally.stopwatch
+    var elapsed by remember { mutableStateOf(watch.elapsed(GaugeTally.now())) }
+    LaunchedEffect(watch) {
+        elapsed = watch.elapsed(GaugeTally.now())
+        while (watch.isRunning) {
+            delay(100)
+            elapsed = watch.elapsed(GaugeTally.now())
+        }
+    }
+    val spoken = tr("Timer %s. Pulls counted: %d", spokenDuration(elapsed), tally.pulls)
+    Row(
+        Modifier.fillMaxWidth().padding(top = 2.dp).testTag("gauge.tally")
+            .clearAndSetSemantics { contentDescription = spoken },
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            CapsLabel(tr("Timer"))
+            val label = Stopwatch.label(elapsed)
+            val split = label.lastIndexOf('.').let { if (it < 0) label.length else it }
+            val ink = if (watch.isRunning) palette.inkPrimary else palette.inkSecondary
+            Row(verticalAlignment = Alignment.Bottom) {
+                // A stopwatch at ten ticks a second would blur if it rolled: it snaps.
+                Text(
+                    label.substring(0, split),
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontFeatureSettings = "tnum", fontWeight = FontWeight.Medium),
+                    color = ink,
+                    maxLines = 1,
+                )
+                // Tenths smaller: they would otherwise pull the eye off the seconds.
+                Text(
+                    label.substring(split),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFeatureSettings = "tnum", fontWeight = FontWeight.Medium),
+                    color = palette.inkSecondary,
+                    maxLines = 1,
+                    modifier = Modifier.padding(bottom = 3.dp),
+                )
+            }
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            CapsLabel(tr("Pulls"))
+            Text(
+                "${tally.pulls}",
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontFeatureSettings = "tnum", fontWeight = FontWeight.Medium),
+                color = palette.inkPrimary,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/// "1 minute, 5 seconds" for TalkBack, through the platform's own unit formatter.
+private fun spokenDuration(seconds: Double): String {
+    val whole = seconds.toLong().coerceAtLeast(0)
+    val measures = buildList {
+        val h = whole / 3600
+        val m = whole / 60 % 60
+        val s = whole % 60
+        if (h > 0) add(android.icu.util.Measure(h, android.icu.util.MeasureUnit.HOUR))
+        if (m > 0) add(android.icu.util.Measure(m, android.icu.util.MeasureUnit.MINUTE))
+        if (s > 0 || (h == 0L && m == 0L)) add(android.icu.util.Measure(s, android.icu.util.MeasureUnit.SECOND))
+    }
+    return android.icu.text.MeasureFormat.getInstance(java.util.Locale.getDefault(),
+        android.icu.text.MeasureFormat.FormatWidth.WIDE).formatMeasures(*measures.toTypedArray())
 }
 
 // MARK: - Keeping the screen awake

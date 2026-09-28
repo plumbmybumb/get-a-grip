@@ -72,7 +72,9 @@ class GaugeScanRecoveryTests {
         compose.onNodeWithText("Connect gauge").assertIsDisplayed().assertIsEnabled().performClick()
         compose.runOnIdle { assertEquals(ProgressorConnectionState.Connected, client.state) }
         compose.onNodeWithText("Disconnect").assertIsDisplayed()
-        compose.onNodeWithText("Start measuring").assertIsDisplayed()
+        // A gauge that connects on this screen starts reading by itself (2026-09-28).
+        compose.onNodeWithText("Stop").assertIsDisplayed()
+        compose.onNodeWithText("Start measuring").assertDoesNotExist()
     }
 
     @Test fun progressorSearchRetainsItsExistingDisabledSearchingAction() {

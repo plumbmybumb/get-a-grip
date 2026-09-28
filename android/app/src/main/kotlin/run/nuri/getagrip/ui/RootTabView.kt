@@ -211,7 +211,10 @@ fun RootTabView() {
     // THE BUILDER IS A FULL-SCREEN COVER, never a sheet or push: nothing touches the store until
     // Save, Cancel IS undo, and a back chevron would promise save-as-you-go.
     // The live gauge replaces the root like the runner: the graph wants the whole screen.
-    var liveGauge by rememberSaveable { mutableStateOf(false) }
+    // DEBUG `--ez previewGauge true`: the gauge opened directly, for headless screenshots.
+    val gaugeRequested = BuildConfig.DEBUG &&
+        LocalActivity.current?.intent?.getBooleanExtra("previewGauge", false) == true
+    var liveGauge by rememberSaveable { mutableStateOf(gaugeRequested) }
     if (liveGauge) {
         LiveGaugeHost(onClose = { liveGauge = false })
         return

@@ -364,7 +364,7 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                 GripNameRow(snapshot, palette, timerOnly = true)
                 GripChangeNotice(snapshot, palette)
                 TimerDial(session, snapshot, tint, palette)
-                Counters(snapshot)
+                TimerProgress(session, snapshot)
             } else {
                 // The hand owns the top band, so only the grip's NAME goes on the panel (the glyph
                 // would be the same picture twice).
@@ -885,9 +885,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.TimerDial(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 CountdownNumeral(snapshot.secondsShown, palette.inkPrimary, palette)
-                if (!isResting(snapshot) || snapshot.phase.isPaused) {
-                    CapsLabel(phasePromptText(snapshot, timerOnly = true, isConnected = false), color = tint)
-                }
+                // In every phase, REST included: the counters row that used to carry the rest word
+                // became the SET / PULL figures, so the dial says it, as on iOS.
+                CapsLabel(phasePromptText(snapshot, timerOnly = true, isConnected = false), color = tint)
                 nextHandText(snapshot)?.let { nextHand ->
                     BasicText(
                         nextHand,
@@ -948,6 +948,70 @@ private fun LiveTimerRing(
                     style = Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
                 )
             }
+        }
+    }
+}
+
+/// **Where you are, sized for the room the missing graph left** (iOS `timerProgress`, Nuri
+/// 2026-09-28): the measured runner's own vocabulary — the whole routine as pills, then SET
+/// and PULL — scaled up, thicker pills and figures readable from the floor. No time bar: the
+/// dial above already is one.
+@Composable
+private fun TimerProgress(session: RunnerSession, snapshot: RunnerSnapshot) {
+    val model = remember(snapshot.completedRepCount, session) {
+        SessionProgressModel.of(session.runner.slots, session.runner.results)
+    }
+    val planned = snapshot.plannedRepCount
+    val spoken = setLine(snapshot) + ", " + pullLine(snapshot) +
+        routineLeftSpoken(planned, snapshot.completedRepCount)
+    Column(
+        Modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth()
+            .testTag("runner-counters")
+            .clearAndSetSemantics { contentDescription = spoken },
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        RoutinePills(model, isLive = isHoldLive(snapshot.phase), thickness = TIMER_PILL_THICKNESS)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            PositionFigure(tr("Set"), snapshot.setNumber ?: snapshot.setCount, snapshot.setCount,
+                Alignment.Start, Modifier.weight(1f))
+            PositionFigure(tr("Pull"), minOf(snapshot.completedRepCount + 1, planned), planned,
+                Alignment.End, Modifier.weight(1f))
+        }
+    }
+}
+
+private val TIMER_PILL_THICKNESS = 8.dp
+/// `sp`, so the figures grow with the text setting like the numerals around them.
+private val FIGURE_SIZE = 44.sp
+
+/// "SET" over "2 / 4": the count you are on, large, and the total beside it, quieter.
+@Composable
+private fun PositionFigure(
+    title: String,
+    value: Int,
+    total: Int,
+    alignment: Alignment.Horizontal,
+    modifier: Modifier = Modifier,
+) {
+    val palette = LocalGripPalette.current
+    Column(modifier, horizontalAlignment = alignment, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        CapsLabel(title, color = palette.inkSecondary)
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "$value",
+                style = TextStyle(fontSize = FIGURE_SIZE, fontWeight = FontWeight.SemiBold,
+                    fontFeatureSettings = "tnum", letterSpacing = (-0.02).em),
+                color = palette.inkPrimary,
+                maxLines = 1,
+            )
+            Text(
+                "/ $total",
+                style = TextStyle(fontSize = FIGURE_SIZE * 0.5f, fontWeight = FontWeight.Medium,
+                    fontFeatureSettings = "tnum"),
+                color = palette.inkSecondary,
+                maxLines = 1,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
         }
     }
 }
@@ -1278,7 +1342,12 @@ internal fun DebugRunnerPreview(onDone: () -> Unit) {
                 targetLoKg = 15.0, targetHiKg = 25.0),
                 SetPlan(grip = GripSpec(edgeMM = 15), repsPerSide = 3)))
     }
-    val session = remember(device, plan) { RunnerSession(plan, plan.name, device, scope = scope) }
+    // `--ez previewRunnerTimer true`: the same plan with no gauge.
+    val timerOnly = androidx.activity.compose.LocalActivity.current?.intent
+        ?.getBooleanExtra("previewRunnerTimer", false) == true
+    val session = remember(device, plan) {
+        RunnerSession(plan, plan.name, device, scope = scope, timerOnly = timerOnly)
+    }
     DisposableEffect(session) {
         session.begin()
         device.connect()
@@ -1291,7 +1360,7 @@ internal fun DebugRunnerPreview(onDone: () -> Unit) {
     RunnerWindowChrome(hideStatusBar = true)
     CompositionLocalProvider(LocalDeviceStore provides device) {
         Box(Modifier.fillMaxSize()) {
-            RunnerLive(session, timerOnly = false)
+            RunnerLive(session, timerOnly = timerOnly)
             val snapshot = session.snapshot
             snapshot.grip?.let { grip ->
                 PalmHand(grip = grip, side = snapshot.side ?: Side.both,
@@ -1299,7 +1368,7 @@ internal fun DebugRunnerPreview(onDone: () -> Unit) {
                     restFocus = snapshot.showsRestFocus,
                     isActive = !isResting(snapshot), modifier = Modifier.align(Alignment.TopCenter))
             }
-            RunnerScreenBorder(runnerBorderCue(snapshot, false,
+            RunnerScreenBorder(runnerBorderCue(snapshot, timerOnly,
                 device.state.isConnected && device.isStreaming && device.isSignalFresh), Modifier.matchParentSize())
         }
     }

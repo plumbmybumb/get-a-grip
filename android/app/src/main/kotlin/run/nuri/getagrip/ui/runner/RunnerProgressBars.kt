@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import run.nuri.getagrip.runner.RunnerSession
 import run.nuri.getagrip.ui.theme.DarkPalette
@@ -98,27 +99,52 @@ internal val PILL_HEIGHT = 3.dp
 /// mostly antialiased edge).
 ///
 /// Coarse: it reads only its model, which changes when a pull is recorded or the phase moves.
+///
+/// `thickness` is the PREFERRED height: the timer-only runner, with no trace to share the
+/// screen with, draws the pills thicker (iOS `RoutinePills.thickness`). A dense plan still
+/// thins them so every pill stays at least 1.5× as long as it is tall — see `drawnThickness`.
 @Composable
-internal fun RoutinePills(model: SessionProgressModel, isLive: Boolean, modifier: Modifier = Modifier) {
+internal fun RoutinePills(
+    model: SessionProgressModel,
+    isLive: Boolean,
+    modifier: Modifier = Modifier,
+    thickness: Dp = PILL_HEIGHT,
+) {
     val palette = LocalGripPalette.current
     val track = palette.pillTrack()
     val done = palette.inkPrimary.copy(alpha = 0.6f)
     val skipped = palette.inkPrimary.copy(alpha = 0.2f)
     val next = if (isLive) palette.inkPrimary.copy(alpha = 0.85f) else palette.bleu.copy(alpha = 0.72f)
-    Canvas(modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().height(PILL_HEIGHT)
+    Canvas(modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().height(thickness)
         .testTag("runner.routinePills").clearAndSetSemantics {}) {
         val cells = RoutinePillLayout.cells(model.setSizes, size.width, unit = density)
-        drawSlots(cells, cells.indices, track)
-        drawSlots(cells, model.finished.indices.filter { model.finished[it] }, done)
-        drawSlots(cells, model.finished.indices.filter { !model.finished[it] }, skipped)
-        model.current?.let { drawSlots(cells, listOf(it), next) }
+        val drawn = drawnThickness(size.height, PILL_HEIGHT.toPx(), cells)
+        val top = (size.height - drawn) / 2
+        drawSlots(cells, cells.indices, track, top, drawn)
+        drawSlots(cells, model.finished.indices.filter { model.finished[it] }, done, top, drawn)
+        drawSlots(cells, model.finished.indices.filter { !model.finished[it] }, skipped, top, drawn)
+        model.current?.let { drawSlots(cells, listOf(it), next, top, drawn) }
     }
+}
+
+/// Never thinner than the measured runner's pills, never so thick that a pill's length falls
+/// under 1.5× its height — a circle is a session in this app.
+internal fun drawnThickness(preferred: Float, minimum: Float, cells: List<ClosedFloatingPointRange<Float>>): Float {
+    val first = cells.firstOrNull() ?: return minimum
+    if (preferred <= minimum) return preferred
+    return minOf(preferred, maxOf(minimum, (first.endInclusive - first.start) / 1.5f))
 }
 
 /// Round-ended at the line's own height, so a slot is a short piece of the same capsule.
 /// Slots that TOUCH meet square: rounding them would notch a continuous line at every pull.
-private fun DrawScope.drawSlots(cells: List<ClosedFloatingPointRange<Float>>, include: Iterable<Int>, color: Color) {
-    val radius = size.height / 2
+private fun DrawScope.drawSlots(
+    cells: List<ClosedFloatingPointRange<Float>>,
+    include: Iterable<Int>,
+    color: Color,
+    top: Float,
+    height: Float,
+) {
+    val radius = height / 2
     for (index in include) {
         if (index !in cells.indices) continue
         val cell = cells[index]
@@ -127,6 +153,6 @@ private fun DrawScope.drawSlots(cells: List<ClosedFloatingPointRange<Float>>, in
         val touches = (index > 0 && cell.start - cells[index - 1].endInclusive < 0.5f) ||
             (index + 1 < cells.size && cells[index + 1].start - cell.endInclusive < 0.5f)
         val r = if (touches) 0f else minOf(radius, width / 2)
-        drawRoundRect(color, Offset(cell.start, 0f), Size(width, size.height), CornerRadius(r))
+        drawRoundRect(color, Offset(cell.start, top), Size(width, height), CornerRadius(r))
     }
 }
