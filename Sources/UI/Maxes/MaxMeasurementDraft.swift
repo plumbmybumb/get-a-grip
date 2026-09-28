@@ -143,7 +143,25 @@ final class LiveMaxSession {
 
     var side: Side { snapshot.log.side }
 
+    /// **The review is a still picture.** While it is open the gauge keeps streaming, and a
+    /// pull logged behind the sheet cleared the hand's correction — the sheet said "Saves
+    /// 24.5 kg, adjusted by hand" and Save stored the measured peak (2026-09-28, caught by
+    /// `MaxesFlowUITests` against the demo gauge's ten-second pulls). So opening the review
+    /// closes the pull in progress and stops logging; leaving it without saving resumes.
+    private var isFrozen = false
+
+    func freezeForReview() {
+        close()
+        isFrozen = true
+        publishPull()
+    }
+
+    func resumeAfterReview() {
+        isFrozen = false
+    }
+
     func receive(_ point: DeviceStore.TracePoint) {
+        guard !isFrozen else { return }
         let previousBest = draft.log.best(for: draft.log.side)?.peakKg
         let logged = draft.add(point.kg, at: point.t)
         publishPull()
@@ -151,6 +169,7 @@ final class LiveMaxSession {
     }
 
     func close() {
+        guard !isFrozen else { return }
         let previousBest = draft.log.best(for: draft.log.side)?.peakKg
         let logged = draft.close()
         publishPull()

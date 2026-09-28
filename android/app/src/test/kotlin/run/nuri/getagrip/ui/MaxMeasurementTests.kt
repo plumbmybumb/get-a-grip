@@ -131,4 +131,28 @@ class MaxMeasurementTests {
         assertNull(session.lastAttempt)
         assertTrue(session.snapshot.log.attempts.isEmpty())
     }
+
+    /// A pull logged behind the review cleared the typed correction, so Save stored the
+    /// measured peak. The review freezes the visit (iOS `LiveMaxSessionReviewTests`).
+    @Test
+    fun aPullDuringTheReviewKeepsTheCorrection() {
+        val session = LiveMaxSession(bothTogether = false, side = Side.left)
+        fun pull(kg: Double, from: Double): Double {
+            var t = from
+            while (t < from + 1) { session.receive(point(kg, t)); t += 1.0 / 80 }
+            while (t < from + 1 + MaxAttemptLog.releaseSeconds + 0.1) { session.receive(point(0.2, t)); t += 1.0 / 80 }
+            return t
+        }
+        var t = pull(22.3, 0.0)
+        session.close()
+        session.reviewing = true
+        assertTrue(session.correct(listOf(run.nuri.getagrip.engine.MaxMeasurementResult(Side.left, 24.5))))
+        t = pull(21.0, t)
+        session.close()
+        assertEquals(listOf(24.5), session.snapshot.results.map { it.kg })
+        assertEquals(1, session.snapshot.log.attempts.size, "Nothing logs behind the review")
+        session.reviewing = false
+        pull(23.0, t)
+        assertEquals(2, session.snapshot.log.attempts.size, "Leaving the review resumes the visit")
+    }
 }

@@ -115,3 +115,31 @@ final class MaxMeasurementDraftTests: XCTestCase {
         XCTAssertEqual(draft.results, [.init(side: .both, kg: 78, source: .manual)])
     }
 }
+
+/// The review freezes the visit: a pull behind the sheet must not undo a correction.
+@MainActor
+final class LiveMaxSessionReviewTests: XCTestCase {
+    private func pull(_ session: LiveMaxSession, kg: Double, from t: TimeInterval) -> TimeInterval {
+        var time = t
+        while time < t + 1 { session.receive(.init(kg: kg, t: time, arrival: time)); time += 1.0 / 80 }
+        while time < t + 1 + MaxAttemptLog.releaseSeconds + 0.1 {
+            session.receive(.init(kg: 0.2, t: time, arrival: time)); time += 1.0 / 80
+        }
+        return time
+    }
+
+    func testAPullDuringTheReviewKeepsTheCorrection() {
+        let session = LiveMaxSession(bothTogether: false, side: .left)
+        var t = pull(session, kg: 22.3, from: 0)
+        session.freezeForReview()
+        XCTAssertTrue(session.correct([MaxMeasurementResult(side: .left, kg: 24.5)]))
+        t = pull(session, kg: 21, from: t)
+        session.close()
+        XCTAssertEqual(session.snapshot.results.map(\.kg), [24.5])
+        XCTAssertEqual(session.snapshot.log.attempts.count, 1, "Nothing logs behind the review")
+
+        session.resumeAfterReview()
+        _ = pull(session, kg: 23, from: t)
+        XCTAssertEqual(session.snapshot.log.attempts.count, 2, "Leaving the review resumes the visit")
+    }
+}

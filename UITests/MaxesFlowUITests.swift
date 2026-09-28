@@ -231,10 +231,10 @@ final class MaxesFlowUITests: XCTestCase {
             format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
             "max.receipt.percent.", "Daily no-hangs")).firstMatch
         XCTAssertTrue(dailyChange.waitForExistence(timeout: 3))
-        XCTAssertTrue(dailyChange.label.contains("Left"))
-        XCTAssertTrue(dailyChange.label.contains("18–22 %"))
-        XCTAssertTrue(dailyChange.label.contains("now 4.5–5.5 kg"))
-        XCTAssertTrue(dailyChange.label.contains("was 5.5–6.5"))
+        XCTAssertTrue(dailyChange.label.contains("Left"), dailyChange.label)
+        XCTAssertTrue(dailyChange.label.contains("18–22 %"), dailyChange.label)
+        XCTAssertTrue(dailyChange.label.contains("now 4.5–5.5 kg"), dailyChange.label)
+        XCTAssertTrue(dailyChange.label.contains("was 5.5–6.5"), dailyChange.label)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@",
                                                         "max.receipt.scale.")).count, 0,
                        "One-hand correction cannot offer to scale a shared typed kg band")

@@ -100,6 +100,8 @@ struct MaxMeasureView: View {
         .sheet(isPresented: $reviewing, onDismiss: {
             if let pendingReceipt { receipt = pendingReceipt; self.pendingReceipt = nil }
             else if committed { dismiss() }
+            // Back to the visit: pulls log again.
+            else { session.resumeAfterReview() }
         }) {
             MaxAttemptReviewSheet(session: session, saveFailed: saveFailed,
                                   onSave: save, onClose: { reviewing = false })
@@ -239,7 +241,7 @@ struct MaxMeasureView: View {
         DockTintedButton(attempts == 0 ? String(localized: "Save")
                          : String(localized: "Review \(attempts) pulls"),
                          systemImage: "checkmark", tint: .bleu, enabled: attempts > 0) {
-            session.close()
+            session.freezeForReview()
             saveFailed = false
             reviewing = true
         }

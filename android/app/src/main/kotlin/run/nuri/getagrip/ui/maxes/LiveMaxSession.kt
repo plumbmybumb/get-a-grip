@@ -71,7 +71,11 @@ class LiveMaxSession(bothTogether: Boolean, side: Side) {
     val side: Side get() = snapshot.log.side
     val bothTogether: Boolean get() = draft.bothTogether
 
+    /// **The review is a still picture** (iOS `freezeForReview`). The gauge keeps streaming
+    /// behind it, and a pull logged there cleared the hand's typed correction, so Save stored
+    /// the measured peak the review had just said it would not. Nothing logs while reviewing.
     fun receive(point: DeviceStore.TracePoint) {
+        if (reviewing) return
         val previousBest = draft.log.best(draft.log.side)?.peakKg
         val logged = draft.add(point.kg, point.t)
         publishPull()
@@ -79,6 +83,7 @@ class LiveMaxSession(bothTogether: Boolean, side: Side) {
     }
 
     fun close() {
+        if (reviewing) return
         val previousBest = draft.log.best(draft.log.side)?.peakKg
         val logged = draft.close()
         publishPull()
