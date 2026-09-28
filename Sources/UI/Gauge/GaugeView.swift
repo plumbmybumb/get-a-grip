@@ -8,8 +8,13 @@ import SwiftUI
 /// Some people use nothing else (2026-09-20), so it is one tap from Today and looks like
 /// the app's working screen. Same anatomy as `RunnerView`'s stacked layout: the trace IS
 /// the screen, numbers on one Liquid Glass panel over a state-coloured wash (bleu while
-/// reading, steel otherwise), actions in one glass dock. It still shows the raw truth
+/// reading, steel otherwise), actions in one glass dock. A connected gauge reads at once;
+/// Stop and Start measuring remain for pausing the stream. It still shows the raw truth
 /// (current, peak, one-second mean, battery): this screen retires every hardware risk.
+///
+/// A stopwatch and an ESTIMATED pull count ride on the same panel (2026-09-28): the
+/// numbers in the glass, Start/Pause/Reset in the dock. The count keeps going whenever
+/// the gauge reads; Reset zeroes both.
 ///
 /// A full-screen cover from Today's bar; `presentedAsCover` adds Done. The DEBUG
 /// `-previewGauge` launch pushes it bare for screenshots.
@@ -35,6 +40,11 @@ struct GaugeView: View {
     /// Armed a beat after Start, or "Waiting for the gauge" flashes on every tap before the
     /// first packet.
     @State private var waitingForSignal = false
+    /// The stopwatch and the estimated pull count — fed by `onTracePoint` for as long as
+    /// the screen is open.
+    @State private var tally = GaugeTally()
+    /// Bumped per timer action, so the haptic names its cause (the tap), not a value.
+    @State private var timerTick = 0
 
     private static let dockSpacing: CGFloat = 8
 
@@ -63,6 +73,7 @@ struct GaugeView: View {
             }
         }
         .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: tareTick)
+        .sensoryFeedback(.selection, trigger: timerTick)
         .alert("Tare under load?", isPresented: $showingTareConfirmation) {
             Button("Tare", role: .destructive) { confirmTare() }
             Button("Cancel", role: .cancel) {}
@@ -77,7 +88,21 @@ struct GaugeView: View {
             waitingForSignal = true
         }
         .keepsScreenAwake()
+        .onAppear {
+            // Capture the tally object, never a changing lookup through `self`.
+            let tally = tally
+            device.onTracePoint = { point in tally.receive(point) }
+            startReadingIfConnected()
+        }
+        .onChange(of: device.state.isConnected) { _, connected in
+            if connected { startReadingIfConnected() }
+        }
+        .onChange(of: device.isStreaming) { _, streaming in
+            // How a pull cut off by Stop would have ended is unknowable.
+            if !streaming { tally.cancelPull() }
+        }
         .onDisappear {
+            device.onTracePoint = nil
             // Never leave the device streaming: it drains its battery and the radio.
             if device.isStreaming { device.stopStreaming(cause: .screenClosed) }
         }
@@ -130,6 +155,7 @@ struct GaugeView: View {
             // THIS body would invalidate the whole screen 80×/second.
             GaugeHero(heroSize: heroSize, unitSize: unitSize)
             GaugeReadouts()
+            GaugeTimerRow(tally: tally)
             // A remotely calibrated gauge can be connected with no force to show.
             // Frez's rule is to say why rather than guess.
             if let calibrationNote {
@@ -204,6 +230,7 @@ struct GaugeView: View {
                     DockButton(String(localized: "Disconnect"), fillsRowHeight: true) { device.disconnect() }
                         .accessibilityIdentifier("gauge.disconnect")
                 }
+                timerRow
                 DockTintedButton(device.isStreaming ? String(localized: "Stop") : String(localized: "Start measuring"),
                                  systemImage: device.isStreaming ? "stop.fill" : "play.fill",
                                  tint: device.isStreaming ? .alarm : .bleu) {
@@ -236,6 +263,8 @@ struct GaugeView: View {
                     device.useMockDevice(!device.isMock)
                 }
 
+                timerRow
+
                 if case .unsupported = device.state {
                     Text("No Bluetooth on this device. Try demo mode.")
                         .font(.system(.footnote))
@@ -254,6 +283,43 @@ struct GaugeView: View {
         // children into one element.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("gauge.dock")
+    }
+
+    /// **A gauge that connects here starts reading** (Nuri, 2026-09-28): this screen
+    /// exists to show the force, so a separate Start after Connect was a step with no
+    /// decision in it. Only on opening and on connecting — after Stop it stays stopped.
+    private func startReadingIfConnected() {
+        guard device.state.isConnected, !device.isStreaming else { return }
+        device.startStreaming(cause: .manualMeasurement)
+    }
+
+    /// Start/Pause and Reset for the stopwatch. Start also starts reading a connected
+    /// gauge — pressing play on a gauge screen that shows nothing would be a timer
+    /// running beside a dead graph.
+    private var timerRow: some View {
+        let running = tally.stopwatch.isRunning
+        return AdaptiveActionRow(spacing: Self.dockSpacing) {
+            DockButton(running ? String(localized: "Pause timer") : String(localized: "Start timer"),
+                       systemImage: running ? "pause.fill" : "play.fill",
+                       fillsRowHeight: true) {
+                if running {
+                    tally.pauseTimer()
+                } else {
+                    tally.startTimer()
+                    if device.state.isConnected, !device.isStreaming {
+                        device.startStreaming(cause: .manualMeasurement)
+                    }
+                }
+                timerTick += 1
+            }
+            .accessibilityIdentifier("gauge.timer")
+            DockButton(String(localized: "Reset"), systemImage: "arrow.counterclockwise",
+                       enabled: tally.canReset, fillsRowHeight: true) {
+                tally.reset()
+                timerTick += 1
+            }
+            .accessibilityIdentifier("gauge.timerReset")
+        }
     }
 
     private var connectTitle: String {
@@ -284,7 +350,15 @@ struct GaugeView: View {
             return
         }
         if TarePolicy.shouldConfirm(readingKg: device.currentKg) { promptTare() }
-        else { device.tare(); tareTick += 1 }
+        else { tare() }
+    }
+
+    /// A new zero under a pull in progress would read as the pull ending, so the pull
+    /// is dropped rather than counted.
+    private func tare() {
+        tally.cancelPull()
+        device.tare()
+        tareTick += 1
     }
 
     private func promptTare() {
@@ -301,7 +375,7 @@ struct GaugeView: View {
             phase: .idle, maxAgeSeconds: device.tareReadingMaxAge
         ) {
         case .reject: return
-        case .tare: device.tare(); tareTick += 1
+        case .tare: tare()
         case .reask:
             Task { @MainActor in
                 await Task.yield()
@@ -424,5 +498,116 @@ private struct GaugeReadouts: View {
             .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Stopwatch and pull count
+
+/// The gauge screen's stopwatch and ESTIMATED pull count.
+///
+/// Only what is drawn is observable, and it is written only when it CHANGES —
+/// Observation fires on every set, and `receive` runs ~80×/second.
+@Observable @MainActor
+final class GaugeTally {
+    private(set) var stopwatch = Stopwatch()
+    private(set) var pulls = 0
+    @ObservationIgnored private var estimator = RepEstimator()
+
+    /// Seconds on a clock that keeps running while the phone sleeps, so a locked screen
+    /// cannot lose stopwatch time.
+    static func now() -> TimeInterval {
+        let elapsed = ContinuousClock.now - origin
+        return Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) * 1e-18
+    }
+    private static let origin = ContinuousClock.now
+
+    var canReset: Bool {
+        stopwatch.isRunning || stopwatch.accumulated > 0 || pulls > 0
+    }
+
+    func receive(_ point: DeviceStore.TracePoint) {
+        guard estimator.add(point.kg, at: point.t) else { return }
+        pulls = estimator.count
+    }
+
+    func cancelPull() {
+        estimator.cancelPull()
+    }
+
+    func startTimer() {
+        stopwatch.start(at: Self.now())
+    }
+
+    func pauseTimer() {
+        stopwatch.pause(at: Self.now())
+    }
+
+    /// Zeroes both: a new set starts from nothing.
+    func reset() {
+        stopwatch.reset()
+        estimator.reset()
+        if pulls != 0 { pulls = 0 }
+    }
+}
+
+/// The stopwatch and the pull count, in the panel under the readouts. A LEAF: the
+/// running clock ticks ten times a second and must redraw nothing else.
+private struct GaugeTimerRow: View {
+    var tally: GaugeTally
+
+    var body: some View {
+        HStack(alignment: .lastTextBaseline, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                CapsLabel(String(localized: "Timer"))
+                if tally.stopwatch.isRunning {
+                    TimelineView(.periodic(from: .now, by: 0.1)) { _ in
+                        clock(tally.stopwatch.elapsed(at: GaugeTally.now()))
+                    }
+                } else {
+                    clock(tally.stopwatch.accumulated)
+                }
+            }
+            Spacer(minLength: 0)
+            VStack(alignment: .trailing, spacing: 4) {
+                CapsLabel(String(localized: "Pulls"))
+                Text(verbatim: "\(tally.pulls)")
+                    .font(.system(.largeTitle, weight: .medium))
+                    .monospacedDigit()
+                    // A count counts, so it rolls — unlike the snapping measurements.
+                    .contentTransition(.numericText())
+                    .animation(Motion.live, value: tally.pulls)
+                    .foregroundStyle(Ink.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+        }
+        .padding(.top, 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Timer \(spoken(tally.stopwatch.elapsed(at: GaugeTally.now()))). Pulls counted: \(tally.pulls)"))
+        .accessibilityIdentifier("gauge.tally")
+    }
+
+    /// Tenths drawn smaller: they change ten times a second and would otherwise pull
+    /// the eye off the seconds.
+    private func clock(_ seconds: TimeInterval) -> some View {
+        let label = Stopwatch.label(seconds)
+        let split = label.lastIndex(of: ".") ?? label.endIndex
+        return HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text(label[..<split])
+                .font(.system(.largeTitle, weight: .medium))
+            Text(label[split...])
+                .font(.system(.title2, weight: .medium))
+                .foregroundStyle(Ink.secondary)
+        }
+        .monospacedDigit()
+        // A stopwatch at ten ticks a second would blur if it rolled.
+        .contentTransition(.identity)
+        .foregroundStyle(tally.stopwatch.isRunning ? Ink.primary : Ink.secondary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+    }
+
+    private func spoken(_ seconds: TimeInterval) -> String {
+        Duration.seconds(Int(seconds)).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .wide))
     }
 }

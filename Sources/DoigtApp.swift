@@ -56,13 +56,9 @@ struct DoigtApp: App {
                 } else if ProcessInfo.processInfo.arguments.contains("-previewGauge") {
                     // The live gauge (Today's gauge button), opened directly and already
                     // reading — screenshots (simctl can't tap, and a gauge at 0.0 kg says
-                    // nothing).
+                    // nothing). Connecting is enough: the screen starts reading itself.
                     NavigationStack { GaugeView() }
-                        .task {
-                            device.connect()
-                            try? await Task.sleep(for: .seconds(1.5))
-                            device.startStreaming(cause: .manualMeasurement)
-                        }
+                        .task { device.connect() }
                 } else if ProcessInfo.processInfo.arguments.contains("-previewMaxMeasure") {
                     // The max visit, opened bare. It connects and reads on its own — which
                     // is the thing being shown.

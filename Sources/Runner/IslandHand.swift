@@ -14,13 +14,37 @@ import SwiftUI
 /// in the same place. Drawing black capsules just below it with a matched corner radius
 /// makes one object out of two, and the phone finishes the drawing.
 ///
-/// **The geometry is hardcoded, and has to be.** There is no public API for the island's
-/// frame. It is 126 × 37.33 pt, centred, 11 pt from the top on every device that has one,
-/// and the only reliable signal that a device HAS one is a top safe-area inset of 59 pt
-/// (a notch is 47–48, everything else ≤ 24). So this draws on island devices and quietly
+/// **The geometry is measured, and placed from the safe area.** There is no public API
+/// for the island's frame. It is 126 × 37.33 pt and centred on every device that has one,
+/// but its TOP moves with the phone — see `IslandGeometry` — and the only reliable signal
+/// that a device HAS one is a top safe-area inset of 59 pt or more (a notch is 47–48,
+/// everything else ≤ 24). So this draws on island devices and quietly
 /// draws nothing anywhere else — a hand hanging off a notch is a smear, and off a flat
 /// top edge it is four bars stuck to the ceiling. The app is portrait-locked
 /// (`UISupportedInterfaceOrientations`), which is what lets a fixed rect be correct.
+/// Where the Dynamic Island sits, from the one thing the system does report: the top
+/// safe-area inset.
+///
+/// **The island's top is 48 pt above the inset on every island phone measured**
+/// (2026-09-28, simulator pixels at 3×): 14/15 Pro inset 59 → top 11, 16/17 Pro 62 → 14,
+/// iPhone Air 68 → 20. It used to be a constant 11, which left the 17 Pro 4 pt of the
+/// 6 pt clearance and hung the hand UNDER the Air's island. Width and height held on all
+/// three.
+enum IslandGeometry {
+    static let width: CGFloat = 126
+    static let height: CGFloat = 37.33
+    static let insetBelowTop: CGFloat = 48
+    /// The first island phones, and the answer before there is a window to ask.
+    static let fallbackTop: CGFloat = 11
+
+    static func top(forTopInset inset: CGFloat) -> CGFloat {
+        inset >= IslandHand.islandInset ? inset - insetBelowTop : fallbackTop
+    }
+
+    @MainActor
+    static var top: CGFloat { top(forTopInset: IslandHand.windowTopInset) }
+}
+
 struct IslandHand: View {
     let grip: GripSpec
     /// Which hand is pulling. **The whole hand mirrors with it** — see `mirrored`.
@@ -39,13 +63,11 @@ struct IslandHand: View {
     /// 0 = thumb fully out, 1 = fully drawn into the palm.
     @State private var retract: CGFloat = 0
 
-    // The island, as Apple builds it. Not discoverable at runtime; measured.
-    private static let islandWidth: CGFloat = 126
-    private static let islandTop: CGFloat = 11
-    private static let islandHeight: CGFloat = 37.33
-    private static var islandBottom: CGFloat { islandTop + islandHeight }
-    /// Only a Dynamic Island reports 59. A notch reports 47–48.
-    private static let islandInset: CGFloat = 55
+    // The island, as Apple builds it — see `IslandGeometry`.
+    private static let islandWidth = IslandGeometry.width
+    private static var islandBottom: CGFloat { IslandGeometry.top + IslandGeometry.height }
+    /// A Dynamic Island reports 59 or more. A notch reports 47–48.
+    static let islandInset: CGFloat = 55
 
     /// Four bars inside the island's own width, so they hang from within its footprint
     /// rather than splaying past its edges.
@@ -68,10 +90,10 @@ struct IslandHand: View {
     /// thumb leaving higher up runs into them, and a steeper one read as a stray pill.
     private static let thumbAngle: Double = 26
 
-    /// The hand's frame and the point it grows about — kept below the physical island,
-    /// so only the drawing grows and the roots stay put.
-    private static let frameHeight: CGFloat = 100
-    private static let growthAnchorY: CGFloat = 0.5433
+    /// The hand's frame and the point it grows about — the finger ROOTS, just below the
+    /// physical island, so only the drawing grows and the roots stay put.
+    private static var frameHeight: CGFloat { islandBottom + gap + baseLength + 8 }
+    private static var growthAnchorY: CGFloat { (islandBottom + gap) / frameHeight }
     /// A changed grip draws the hand a quarter larger; a long rest, a fifth.
     static let emphasisScale: CGFloat = 1.25
     static let restFocusScale: CGFloat = 1.2
@@ -95,7 +117,7 @@ struct IslandHand: View {
     static var isSupported: Bool { windowTopInset >= islandInset }
 
     @MainActor
-    private static var windowTopInset: CGFloat {
+    static var windowTopInset: CGFloat {
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows)

@@ -116,6 +116,10 @@ struct RoutinePills: View {
     var model: SessionProgressModel
     /// Working, releasing, or paused inside either.
     var isLive: Bool
+    /// The pills' preferred thickness. The timer-only runner, with no trace to share the
+    /// screen with, draws them thicker; a dense plan still thins them so every pill stays
+    /// at least 1.5× as long as it is tall — see `drawnThickness`.
+    var thickness: CGFloat = RoutinePills.height
 
     /// SECONDARY to the time bar above: slimmer, and quieter.
     static let height: CGFloat = 3
@@ -146,11 +150,20 @@ struct RoutinePills: View {
         }
     }
 
+    /// Never thinner than the connected runner's pills, never so thick that a pill's
+    /// length falls under 1.5× its height — a circle is a session in this app.
+    static func drawnThickness(preferred: CGFloat, cells: [ClosedRange<CGFloat>]) -> CGFloat {
+        guard preferred > height, let first = cells.first else { return height }
+        let length = first.upperBound - first.lowerBound
+        return min(preferred, max(height, length / 1.5))
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let cells = RoutinePillLayout.cells(sizes: model.setSizes, width: proxy.size.width)
             let completed = model.finished.indices.filter { model.finished[$0] }
             let skipped = model.finished.indices.filter { !model.finished[$0] }
+            let drawn = Self.drawnThickness(preferred: thickness, cells: cells)
             ZStack(alignment: .leading) {
                 RoutinePillsShape(cells: cells, include: Array(cells.indices))
                     .fill(Self.track)
@@ -163,9 +176,11 @@ struct RoutinePills: View {
                         .fill(next)
                 }
             }
+            .frame(height: drawn)
             .clipShape(Capsule(style: .continuous))
+            .frame(maxHeight: .infinity)
         }
-        .frame(height: Self.height)
+        .frame(height: thickness)
     }
 }
 

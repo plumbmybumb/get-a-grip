@@ -148,8 +148,8 @@ struct GripIslandPanel: View {
 
 /// The island as the palm, with tappable fingers hanging off it.
 ///
-/// The geometry MIRRORS `IslandHand`: the island is 126 × 37.33 pt, 11 pt from the top,
-/// on every device that has one, with no public API for its frame. What differs is the
+/// The geometry MIRRORS `IslandHand`: the island is 126 × 37.33 pt, its top placed from
+/// the safe area by `IslandGeometry`, with no public API for its frame. What differs is the
 /// finger PITCH: the runner's 30 pt pitch is right for a drawing and an illegal tap
 /// target, so these sit at 44 pt centres. Capsule radius and length ratios are the same.
 private struct IslandHandPicker: View {
@@ -159,10 +159,9 @@ private struct IslandHandPicker: View {
 
     @State private var tapTick = 0
 
-    // The island, measured (not discoverable at runtime). `IslandHand` must agree.
-    private static let islandWidth: CGFloat = 126
-    private static let islandTop: CGFloat = 11
-    private static let islandHeight: CGFloat = 37.33
+    // The island, measured (not discoverable at runtime) — shared with `IslandHand`.
+    private static var islandTop: CGFloat { IslandGeometry.top }
+    private static let islandHeight = IslandGeometry.height
 
     /// **The island IS the palm.** The black panel runs to the top, so cutout and panel are
     /// one object with the fingers hanging off it, as in `IslandHand`. A white lozenge palm

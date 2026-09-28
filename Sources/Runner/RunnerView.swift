@@ -65,6 +65,8 @@ struct RunnerView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 76
     @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 22
     @ScaledMetric(relativeTo: .largeTitle) private var dialDiameter: CGFloat = 240
+    /// The timer-only SET / PULL figures — read from the floor, between pulls.
+    @ScaledMetric(relativeTo: .largeTitle) private var figureSize: CGFloat = 44
     /// The prompt's and the grip name's base sizes — scaled up with the rest of the
     /// identity block in the wide layout, where the room is real.
     @ScaledMetric(relativeTo: .largeTitle) private var promptSize: CGFloat = 34
@@ -314,7 +316,7 @@ struct RunnerView: View {
                 if timerOnly {
                     timerOnlyIdentity(session)
                     timerDial(session)
-                    timerPositionLine(session)
+                    timerProgress(session)
                 } else {
                     infoPanel(session)
                     graphRegion(session)
@@ -338,7 +340,7 @@ struct RunnerView: View {
                     if timerOnly {
                         VStack(spacing: 14) {
                             timerOnlyIdentity(session, scale: Self.wideScale)
-                            timerPositionLine(session)
+                            timerProgress(session)
                         }
                     } else {
                         infoPanel(session, scale: Self.wideScale)
@@ -752,24 +754,27 @@ struct RunnerView: View {
         if let grip = session.snapshot.grip {
             if timerOnly {
                 VStack(spacing: 6) {
-                    // The SAME badge as the measured layout (see `restBadge`). RESERVED,
-                    // not conditional: a badge that exists only during rest changes this
-                    // line's height at every REST→WORK boundary and shifts the dial under
-                    // the climber's eye, so the widest form is laid out hidden throughout.
-                    HStack(spacing: 8) {
-                        ZStack {
-                            badgeCapsule(String(localized: "New grip"), changing: true).hidden()
+                    // The SAME badge as the measured layout (see `restBadge`). Its HEIGHT
+                    // is reserved, not conditional: a badge that exists only during rest
+                    // changes this line's height at every REST→WORK boundary and shifts
+                    // the dial under the climber's eye. Only the height — reserving its
+                    // WIDTH too pushed the grip name off centre whenever no badge showed
+                    // (Nuri, 2026-09-28), so the measured layout's ZStack is used here.
+                    ZStack {
+                        badgeCapsule(String(localized: "New grip"), changing: true)
+                            .hidden().accessibilityHidden(true)
+                        HStack(spacing: 8) {
                             if session.snapshot.newGripID != nil {
                                 badgeCapsule(String(localized: "New grip"), changing: true)
                             } else if isResting(session) {
                                 restBadge(session)
                             }
+                            Text(gripDisplayName(session, grip: grip))
+                                .font(.system(size: nameSize * scale, weight: .medium))
+                                .foregroundStyle(Ink.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
-                        Text(gripDisplayName(session, grip: grip))
-                            .font(.system(size: nameSize * scale, weight: .medium))
-                            .foregroundStyle(Ink.secondary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
                     }
                     // `ViewThatFits`, not a plain `HStack`: at accessibility sizes an
                     // HStack squeezes the TEXT INSIDE each capsule rather than wrapping
@@ -1112,16 +1117,51 @@ struct RunnerView: View {
         }
     }
 
-    /// One centred position line keeps whole-session progress in words; a second ring
-    /// would bring back the duplication this mode is designed to remove.
-    private func timerPositionLine(_ session: RunnerSession) -> some View {
-        CapsLabel(String(localized: "\(setLine(session)) · \(pullLine(session))"))
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity)
+    /// **Where you are, sized for the room the missing graph left** (Nuri, 2026-09-28).
+    /// The connected runner's own vocabulary — the whole routine as pills, then SET and
+    /// PULL — scaled up: thicker pills and figures you can read from the floor. No time
+    /// bar: the dial above already is one.
+    private func timerProgress(_ session: RunnerSession) -> some View {
+        let snapshot = session.snapshot
+        return VStack(spacing: 14) {
+            RoutinePills(model: routineModel(session), isLive: RoutinePills.isLive(snapshot.phase),
+                         thickness: Self.timerPillThickness)
+            HStack(alignment: .lastTextBaseline, spacing: 12) {
+                positionFigure(String(localized: "Set"), value: snapshot.setNumber ?? snapshot.setCount,
+                               of: snapshot.setCount, alignment: .leading)
+                Spacer(minLength: 0)
+                positionFigure(String(localized: "Pull"), value: snapshot.pullPosition,
+                               of: snapshot.plannedRepCount, alignment: .trailing)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(setLine(session)), \(pullLine(session))\(routineLeftSpoken(session))")
+        .accessibilityIdentifier("runner.counters")
+    }
+
+    static let timerPillThickness: CGFloat = 8
+
+    /// "SET" over "2 / 4": the count you are on, large, and the total beside it, quieter.
+    private func positionFigure(_ title: String, value: Int, of total: Int,
+                                alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            CapsLabel(title, size: 14, tint: Ink.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(verbatim: "\(value)")
+                    .font(.system(size: figureSize, weight: .semibold))
+                    .displayTracking(figureSize)
+                    .foregroundStyle(Ink.primary)
+                    // A position counts, so it rolls.
+                    .contentTransition(.numericText())
+                Text(verbatim: "/ \(total)")
+                    .font(.system(size: figureSize * 0.5, weight: .medium))
+                    .foregroundStyle(Ink.secondary)
+            }
             .monospacedDigit()
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(setLine(session)), \(pullLine(session))")
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .animation(Motion.state(reduceMotion), value: value)
+        }
     }
 
     /// The gauge-free hero: the countdown numeral and the phase's remaining time are one

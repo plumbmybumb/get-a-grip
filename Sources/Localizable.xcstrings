@@ -381,6 +381,16 @@
         }
       }
     },
+    "Pause timer" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause chrono"
+          }
+        }
+      }
+    },
     "Pull %lld" : {
       "localizations" : {
         "fr" : {
@@ -417,6 +427,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En tirage, %1$@ %2$@ pour l’instant"
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remise à zéro"
           }
         }
       }
@@ -491,6 +511,16 @@
         }
       }
     },
+    "Start timer" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer le chrono"
+          }
+        }
+      }
+    },
     "Tap to choose from %lld supported gauges." : {
       "localizations" : {
         "fr" : {
@@ -507,6 +537,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ce tirage"
+          }
+        }
+      }
+    },
+    "Timer" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chrono"
+          }
+        }
+      }
+    },
+    "Timer %@. Pulls counted: %lld" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chrono %@. Tirages comptés : %lld"
           }
         }
       }

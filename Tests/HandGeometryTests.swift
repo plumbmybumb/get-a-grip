@@ -49,4 +49,13 @@ final class HandGeometryTests: XCTestCase {
         XCTAssertGreaterThan(HandGeometry.barAspect, 1.5)
         XCTAssertEqual(HandGeometry.barAspect, 1.75)
     }
+
+    /// The island's top follows the safe area: measured on 14/15 Pro, 16/17 Pro and Air.
+    func testIslandTopIsPlacedFromTheSafeAreaInset() {
+        XCTAssertEqual(IslandGeometry.top(forTopInset: 59), 11)
+        XCTAssertEqual(IslandGeometry.top(forTopInset: 62), 14)
+        XCTAssertEqual(IslandGeometry.top(forTopInset: 68), 20)
+        XCTAssertEqual(IslandGeometry.top(forTopInset: 0), IslandGeometry.fallbackTop,
+                       "No window yet: the first island phones' answer, never a negative top")
+    }
 }
