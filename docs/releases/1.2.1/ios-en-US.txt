@@ -1,0 +1,4 @@
+• The live gauge has a stopwatch and a pull counter. Start the timer, and every pull you let go of counts one.
+• The live gauge starts measuring as soon as it connects.
+• Sessions without a gauge show your set and pull in large type, with the whole routine under the timer.
+• The hand under the Dynamic Island sits in the right place on every iPhone, including iPhone Air.

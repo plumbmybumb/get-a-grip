@@ -1,0 +1,1 @@
+The live gauge has a stopwatch and a pull counter, and starts measuring as soon as it connects. Sessions without a gauge show your set and pull in large type, with the whole routine under the timer.

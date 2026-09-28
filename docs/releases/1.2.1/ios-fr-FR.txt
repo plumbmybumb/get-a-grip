@@ -1,0 +1,4 @@
+• La jauge en direct a un chrono et un compteur de tirages. Lancez le chrono : chaque tirage relâché compte pour un.
+• La jauge en direct mesure dès qu’elle est connectée.
+• Les séances sans jauge affichent la série et le tirage en grand, avec toute la routine sous le chrono.
+• La main sous la Dynamic Island est bien placée sur chaque iPhone, iPhone Air compris.
