@@ -81,8 +81,8 @@ class RestFocusUiTests {
             assertFalse(grip.contains("new grip"), "A hand swap is not a different grip")
             assertText("countdown", "10")
             assertTrue(text("target").contains("8.8–17.6 lb"), text("target"))
-            assertText("setCount", "set 1 of 2", ignoreCase = true)
-            assertText("pullCount", "pull 2 of 8", ignoreCase = true)
+            assertText("setCount", "1/2 set", ignoreCase = true)
+            assertText("pullCount", "pull 2/8", ignoreCase = true)
             compose.onNodeWithTag("runner.hero").assertDoesNotExist()
             assertAboveGraph()
             assertEquals(baseline, geometry())
@@ -132,8 +132,8 @@ class RestFocusUiTests {
             assertText("hand", "Left hand next")
             assertTrue(text("grip").contains("15 mm"))
             assertText("phase", "SET BREAK")
-            assertText("setCount", "set 2 of 2", ignoreCase = true)
-            assertText("pullCount", "pull 3 of 4", ignoreCase = true)
+            assertText("setCount", "2/2 set", ignoreCase = true)
+            assertText("pullCount", "pull 3/4", ignoreCase = true)
             val baseline = geometry()
             compose.runOnIdle { h.advanceToRestElapsed(8.0) }
             assertText("countdown", "2")
@@ -294,7 +294,7 @@ class RestFocusUiTests {
             assertEquals(10_000, h.session.snapshot.plannedRepCount)
             showRunner(h, fontScale = 1.3f)
             assertText("countdown", "900")
-            assertText("pullCount", "Pull 2 of 10000", ignoreCase = true)
+            assertText("pullCount", "pull 2/10000", ignoreCase = true)
             assertAboveGraph()
             capture("android-rest-focus-10000-pulls.png")
             for (id in listOf("setCount", "pullCount", "countdown")) assertTextFits(id)
@@ -322,8 +322,16 @@ class RestFocusUiTests {
     private fun bounds(suffix: String) = node(suffix).fetchSemanticsNode().boundsInRoot
     private fun text(suffix: String): String {
         val config = node(suffix).fetchSemanticsNode().config
-        return config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }
-            ?: config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ").orEmpty()
+        config.getOrNull(SemanticsProperties.Text)?.let { texts -> return texts.joinToString(" ") { it.text } }
+        config.getOrNull(SemanticsProperties.ContentDescription)?.let { return it.joinToString(" ") }
+        // A counter is a numeral and a label side by side ("1/2 SET", "PULL 2/8"): read its
+        // texts in layout order.
+        return compose.onAllNodes(
+            hasAnyAncestor(hasTestTag(tagFor(suffix))) and SemanticsMatcher.keyIsDefined(SemanticsProperties.Text),
+            useUnmergedTree = true,
+        ).fetchSemanticsNodes().joinToString(" ") { node ->
+            node.config[SemanticsProperties.Text].joinToString(" ") { it.text }
+        }
     }
     private fun assertText(suffix: String, expected: String, ignoreCase: Boolean = false) {
         node(suffix).assertIsDisplayed()

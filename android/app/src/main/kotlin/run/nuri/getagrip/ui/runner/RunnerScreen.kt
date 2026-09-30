@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui.runner
 
+import androidx.compose.foundation.layout.width
 import android.content.pm.ActivityInfo
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
@@ -759,7 +760,12 @@ private fun RunnerPanelHeader(
     }
 }
 
-/// At the screen edges and a size up: the two numbers you check from a metre away between pulls.
+/// Set and pull as NUMERALS readable with the phone on the floor (tester, 2026-09-30: "very
+/// hard to see and keep track of set progress"), as on iOS: "1/4 SET" on the leading edge and
+/// "PULL 5/24" on the trailing, each label on its numeral's baseline and facing the centre, so
+/// both numbers sit flush under the ends of the progress bar. The band stays 40 dp: it was
+/// already sized for a two-line French rest label, a 28 sp numeral fits it, and growing it
+/// pushed the tightest layout's graph under its floor (unlike iOS, the graph gives up nothing).
 @Composable
 internal fun Counters(snapshot: RunnerSnapshot, showsPhaseWord: Boolean = true, routineLeft: Boolean = false) {
     val palette = LocalGripPalette.current
@@ -782,7 +788,8 @@ internal fun Counters(snapshot: RunnerSnapshot, showsPhaseWord: Boolean = true, 
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CapsLabel(setLine(snapshot), Modifier.weight(1f).testTag("runner-set-count"))
+        CountFigure(tr("Set"), setValue(snapshot), labelAfter = true,
+            Modifier.weight(1f).testTag("runner-set-count"), Alignment.Start)
         Box(Modifier.weight(1.1f), contentAlignment = Alignment.Center) {
             if (annotation != null) BasicText(
                 annotation,
@@ -795,7 +802,45 @@ internal fun Counters(snapshot: RunnerSnapshot, showsPhaseWord: Boolean = true, 
                 modifier = Modifier.fillMaxWidth().testTag("runner-rest-label"),
             )
         }
-        CapsLabel(pullLine(snapshot), Modifier.weight(1f).testTag("runner-pull-count"), textAlign = TextAlign.End)
+        CountFigure(tr("Pull"), pullValue(snapshot), labelAfter = false,
+            Modifier.weight(1f).testTag("runner-pull-count"), Alignment.End)
+    }
+}
+
+/// A small caps label beside a numeral, on its baseline. The numeral steps down to fit
+/// (28 → 9 sp), in width AND height: a 10 000-pull total beside a 900 s countdown, or a
+/// 360 dp French screen at 1.3× text, where the panel above the graph leaves this row only
+/// 16 dp — exactly the old caps label's line. On an ordinary phone it never shrinks.
+@Composable
+private fun CountFigure(
+    label: String,
+    value: String,
+    labelAfter: Boolean,
+    modifier: Modifier,
+    alignment: Alignment.Horizontal,
+) {
+    val palette = LocalGripPalette.current
+    Row(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp, alignment),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        // INTRINSIC width, which rounds up: measured to the row's leftover, the label's trailing
+        // letter spacing overflowed its box by a fraction of a pixel ("SÉRIE", 1.3× text).
+        if (!labelAfter) CapsLabel(label, Modifier.alignByBaseline().width(IntrinsicSize.Max))
+        BasicText(
+            value,
+            // Natural line height: the headline's fixed 36 sp stayed put while the numeral stepped
+            // down for a 10 000-pull total, and the line spilled out of its box.
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum", color = palette.inkPrimary,
+                lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified,
+            ),
+            autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 28.sp),
+            maxLines = 1,
+            modifier = Modifier.weight(1f, fill = false).alignByBaseline(),
+        )
+        if (labelAfter) CapsLabel(label, Modifier.alignByBaseline().width(IntrinsicSize.Max))
     }
 }
 
@@ -1246,6 +1291,16 @@ private fun phasePromptText(snapshot: RunnerSnapshot, timerOnly: Boolean, isConn
         is RunnerPhase.Paused -> L10n.tr("PAUSED")
         is RunnerPhase.Finished -> L10n.tr("DONE")
     }
+
+private fun setValue(snapshot: RunnerSnapshot): String {
+    val set = snapshot.setNumber ?: return "–"
+    return "$set/${snapshot.setCount}"
+}
+
+private fun pullValue(snapshot: RunnerSnapshot): String {
+    val planned = snapshot.plannedRepCount
+    return "${minOf(snapshot.completedRepCount + 1, planned)}/$planned"
+}
 
 private fun setLine(snapshot: RunnerSnapshot): String {
     val set = snapshot.setNumber ?: return L10n.tr("Session")
