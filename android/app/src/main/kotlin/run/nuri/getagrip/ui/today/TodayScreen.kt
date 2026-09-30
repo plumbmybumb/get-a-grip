@@ -3,6 +3,9 @@
 
 package run.nuri.getagrip.ui.today
 
+import run.nuri.getagrip.R
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.graphics.vector.ImageVector
 import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -388,7 +390,7 @@ private fun Header(
             // The bar's one action (History's export, Maxes' add): the live gauge.
             IconButton(onClick = onOpenGauge) {
                 Icon(
-                    Icons.Outlined.Speed,
+                    ImageVector.vectorResource(R.drawable.ic_glyph_gauge),
                     contentDescription = tr("Live gauge"),
                     tint = palette.graphite,
                 )

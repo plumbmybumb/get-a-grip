@@ -3,6 +3,9 @@
 
 package run.nuri.getagrip.ui
 
+import run.nuri.getagrip.R
+import androidx.compose.ui.res.vectorResource
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -34,11 +37,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ShowChart
-import run.nuri.getagrip.ui.components.ClimbingIcon
-import androidx.compose.material.icons.outlined.Scale
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -94,27 +92,20 @@ import run.nuri.getagrip.ui.today.TodayScreen
 /// Three tabs on iOS became four when Maxes earned its own; the anti-Frez tab count is still
 /// "the fewest that can carry the ritual".
 ///
-/// Material Symbols translate the iOS SF Symbols rather than match them:
-///
-/// - `figure.climbing` → our original `ClimbingIcon`, a climber on a rope (Hiking depicted the
-///   wrong activity).
-/// - `chart.xyaxis.line` → `AutoMirrored.Outlined.ShowChart`; AutoMirrored because a chart
-///   reads the other way in RTL.
-/// - `scalemass.fill` → `Outlined.Scale`, not `FitnessCenter`: this app MEASURES a load, and
-///   the dumbbell is the gym metaphor Frez leans on.
-/// - `gearshape.fill` → `Outlined.Settings`.
-///
-/// Outlined throughout, even for iOS `.fill`: Material's rest state is outlined, and the
-/// graphite pill carries selection better than a weight change at 24 dp.
+/// **The icons are the iOS custom symbols**, generated as vector drawables by
+/// `scripts/make_symbols.swift --android` from the same drawings (docs/CUSTOM_SYMBOLS.md):
+/// fingertips on the edge, a calendar of session circles, a max pull under its record
+/// line, a gear. Material's convention holds: OUTLINED at rest, FILLED when selected.
+/// Today has one form — a hollow finger is a loop, and a loop reads as a session.
 ///
 /// **The label is a `get()`, not a constructor argument.** Enum entries are built once per
 /// process, so a translated string baked in would keep the old language after the phone's
 /// changes. Every enum carrying a display name resolves it on read for this reason.
-enum class Tab(private val key: String, val icon: ImageVector) {
-    Today("Today", ClimbingIcon),
-    History("History", Icons.AutoMirrored.Outlined.ShowChart),
-    Maxes("Benchmarks", Icons.Outlined.Scale),
-    Settings("Settings", Icons.Outlined.Settings);
+enum class Tab(private val key: String, @DrawableRes val icon: Int, @DrawableRes val selectedIcon: Int) {
+    Today("Today", R.drawable.ic_tab_today, R.drawable.ic_tab_today),
+    History("History", R.drawable.ic_tab_history, R.drawable.ic_tab_history_fill),
+    Maxes("Benchmarks", R.drawable.ic_tab_benchmarks, R.drawable.ic_tab_benchmarks_fill),
+    Settings("Settings", R.drawable.ic_tab_settings, R.drawable.ic_tab_settings_fill);
 
     val label: String get() = L10n.tr(key)
 }
@@ -361,7 +352,7 @@ fun RootTabView() {
                         onClick = { current = tab },
                         icon = {
                             Icon(
-                                tab.icon,
+                                ImageVector.vectorResource(if (current == tab) tab.selectedIcon else tab.icon),
                                 // The LABEL already says "Maxes"; a description would be read twice.
                                 contentDescription = null,
                                 modifier = Modifier.benchmarkPulse(tab == Tab.Maxes && nudge),

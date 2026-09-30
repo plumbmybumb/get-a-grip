@@ -3,6 +3,9 @@
 
 package run.nuri.getagrip.ui.history
 
+import run.nuri.getagrip.R
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.graphics.vector.ImageVector
 import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
 import androidx.compose.foundation.background
@@ -33,7 +36,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -175,7 +177,7 @@ fun HistoryScreen(
                             criticalForce = templates.criticalForceRecords)
                     }) {
                         Icon(
-                            Icons.Outlined.Description,
+                            ImageVector.vectorResource(R.drawable.ic_glyph_export),
                             contentDescription = tr("Export for analysis"),
                             tint = palette.graphite,
                         )

@@ -3,6 +3,9 @@
 
 package run.nuri.getagrip.ui.today
 
+import run.nuri.getagrip.R
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.graphics.vector.ImageVector
 import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -21,8 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Terrain
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import run.nuri.getagrip.ui.theme.InstrumentSurface as Surface
@@ -154,7 +155,7 @@ private fun LogSessionButton(onLogSession: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.Terrain, contentDescription = null, tint = palette.graphite, modifier = Modifier.size(16.dp))
+        Icon(ImageVector.vectorResource(R.drawable.ic_glyph_log), contentDescription = null, tint = palette.graphite, modifier = Modifier.size(16.dp))
         Text(
             tr("Log a session"),
             style = MaterialTheme.typography.bodyMedium,

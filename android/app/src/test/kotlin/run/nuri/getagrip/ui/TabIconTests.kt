@@ -3,16 +3,14 @@
 
 package run.nuri.getagrip.ui
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ShowChart
-import run.nuri.getagrip.ui.components.ClimbingIcon
-import androidx.compose.material.icons.outlined.Scale
-import androidx.compose.material.icons.outlined.Settings
+import run.nuri.getagrip.R
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
-/// The four tabs, decided for good in Phase 8b.
+/// The four tabs, decided for good in Phase 8b; their icons redrawn 2026-09-30.
 ///
 /// There is not much pure logic in a tab bar, which is exactly why this is worth pinning: the
 /// icons and their ORDER are an identity decision that a stray import can change silently, and
@@ -30,40 +28,51 @@ class TabIconTests {
         assertEquals(3, Tab.entries.indexOf(Tab.Settings))
     }
 
-    /// The four chosen icons, by identity. `Scale` is the one that changed: it replaced
-    /// `FitnessCenter`, a dumbbell, because this app MEASURES a load rather than lifting
-    /// weights — and the gym-equipment metaphor is the one Frez leans on.
+    /// The icons are the iOS custom symbols, generated into `res/drawable` by
+    /// `scripts/make_symbols.swift --android` (docs/CUSTOM_SYMBOLS.md). Pinned by identity:
+    /// a stray edit to the enum should fail here, not ship.
     @Test
-    fun theTabsCarryTheIconsThatWereChosen() {
-        assertEquals(ClimbingIcon, Tab.Today.icon)
-        assertEquals(Icons.AutoMirrored.Outlined.ShowChart, Tab.History.icon)
-        assertEquals(Icons.Outlined.Scale, Tab.Maxes.icon)
-        assertEquals(Icons.Outlined.Settings, Tab.Settings.icon)
+    fun theTabsCarryTheGeneratedIcons() {
+        assertEquals(R.drawable.ic_tab_today, Tab.Today.icon)
+        assertEquals(R.drawable.ic_tab_history, Tab.History.icon)
+        assertEquals(R.drawable.ic_tab_benchmarks, Tab.Maxes.icon)
+        assertEquals(R.drawable.ic_tab_settings, Tab.Settings.icon)
     }
 
-    /// Four tabs, four different glyphs. A repeated icon reads as a broken build long before
-    /// anyone reads the labels.
+    /// **Outlined at rest, filled when selected** — Material's rule — except Today, which has
+    /// ONE form on both platforms: a hollow finger is a loop, and a loop reads as a session.
+    @Test
+    fun selectionSwapsToTheFilledTwinExceptToday() {
+        assertEquals(Tab.Today.icon, Tab.Today.selectedIcon)
+        assertEquals(R.drawable.ic_tab_history_fill, Tab.History.selectedIcon)
+        assertEquals(R.drawable.ic_tab_benchmarks_fill, Tab.Maxes.selectedIcon)
+        assertEquals(R.drawable.ic_tab_settings_fill, Tab.Settings.selectedIcon)
+        for (tab in listOf(Tab.History, Tab.Maxes, Tab.Settings)) {
+            assertNotEquals(tab.icon, tab.selectedIcon, "${tab.name} should fill when selected")
+        }
+    }
+
+    /// Four tabs, four different glyphs, in both states. A repeated icon reads as a broken
+    /// build long before anyone reads the labels.
     @Test
     fun noTwoTabsShareAGlyph() {
-        assertEquals(Tab.entries.size, Tab.entries.map { it.icon.name }.toSet().size)
+        assertEquals(Tab.entries.size, Tab.entries.map { it.icon }.toSet().size)
+        assertEquals(Tab.entries.size, Tab.entries.map { it.selectedIcon }.toSet().size)
     }
 
-    /// **History's chart comes from the AUTO-MIRRORED set**, and it is the only one that
-    /// should: a line climbing left to right means the opposite in an RTL layout, where a
-    /// scale, a gear and a climbing figure all mean exactly what they meant. The vector's own
-    /// name carries the package it was built in, which is the only handle a JVM test has on
-    /// the distinction.
+    /// **The drawables are generated, never hand-edited.** Each carries the generator's
+    /// header; a file without it has been redrawn by hand and will be lost on the next run.
+    /// None mirror in RTL: a calendar, a force peak, a gear and a hand on an edge all mean
+    /// what they meant.
     @Test
-    fun onlyTheChartComesFromTheAutoMirroredSet() {
-        assertTrue(
-            Tab.History.icon.name.contains("AutoMirrored"),
-            "a chart has a reading direction; got ${Tab.History.icon.name}",
-        )
-        for (tab in listOf(Tab.Today, Tab.Maxes, Tab.Settings)) {
-            assertTrue(
-                !tab.icon.name.contains("AutoMirrored"),
-                "${tab.name} should not mirror; got ${tab.icon.name}",
-            )
+    fun everyTabDrawableIsGeneratedAndUnmirrored() {
+        val names = listOf("ic_tab_today", "ic_tab_history", "ic_tab_history_fill", "ic_tab_benchmarks",
+            "ic_tab_benchmarks_fill", "ic_tab_settings", "ic_tab_settings_fill",
+            "ic_glyph_gauge", "ic_glyph_export", "ic_glyph_log")
+        for (name in names) {
+            val xml = File("src/main/res/drawable/$name.xml").readText()
+            assertTrue(xml.contains("GENERATED by scripts/make_symbols.swift"), "$name was edited by hand")
+            assertTrue(!xml.contains("autoMirrored"), "$name should not mirror")
         }
     }
 

@@ -9,7 +9,13 @@ on trial on Nuri's phone.
 swift scripts/make_symbols.swift Sources/Assets.xcassets
 ```
 
-Never edit the SVGs by hand.
+Android gets the same drawings as Material vector drawables from the same script:
+
+```bash
+swift scripts/make_symbols.swift --android android/app/src/main/res/drawable
+```
+
+Never edit the SVGs or the drawables by hand.
 
 | Symbol | Drawing | Used by |
 |---|---|---|
@@ -35,6 +41,17 @@ Never edit the SVGs by hand.
 - **Today has no hollow twin.** A hollow finger is a loop, and a loop reads as a session.
   The iOS tab bar shows the `.fill` twin for every tab anyway; hollow forms appear only
   in the iPad sidebar.
+
+## Android
+
+- **Same shapes, Material conventions.** `ic_tab_*` and `ic_glyph_*` in `res/drawable`, on a
+  24 dp viewport. The nav bar shows the OUTLINED form at rest and the FILLED twin when
+  selected, which is Material's rule; Today has one form on both platforms.
+- **One scale for every icon**, the widest spanning 20 dp (Material's live area), so the
+  relative sizes match iOS. The stroke is 1.75 dp rather than SF Regular scaled down
+  (about 1.3 dp), which read lighter than the Material icons elsewhere in the app.
+- **No motion yet.** The tap effects are iOS symbol effects; Android would need animated
+  vector drawables.
 
 ## Motion
 
