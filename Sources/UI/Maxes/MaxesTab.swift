@@ -39,6 +39,10 @@ struct MaxesTab: View {
     @State private var adding = false
     @State private var criticalForceTest: CriticalForceTestRequest?
     @State private var criticalForceHistory: MeasureTarget?
+    /// Grip keys whose cards are open. EMPTY by default: a card is a summary until asked
+    /// (Nuri, 2026-09-30 — one open card filled the whole screen).
+    @State private var expanded: Set<String> = []
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Size CLASS, never the idiom — see `CardGrid`.
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -104,6 +108,8 @@ struct MaxesTab: View {
             let args = ProcessInfo.processInfo.arguments
             if args.contains("-previewCriticalForce") || args.contains("-previewCriticalForceResult"),
                criticalForceTest == nil { startCriticalForce() }
+            // `-expandBenchmarks` opens every card, for screenshots of the open state.
+            if args.contains("-expandBenchmarks") { expanded = Set(groups.map(\.key)) }
         }
         #endif
         .sheet(isPresented: $adding) {
@@ -190,97 +196,138 @@ struct MaxesTab: View {
 
     // MARK: - Cards
 
+    /// COLLAPSED BY DEFAULT (Nuri, 2026-09-30). Shut, a card is the grip and its current
+    /// maxes — what your percentage targets run on, and what you came to read. Open, it
+    /// adds critical force, the chart and the actions. One open card used to fill the
+    /// screen, so a second grip was a scroll away and the tab read as one grip's report.
+    ///
+    /// The header row is the button (grip, name, chevron). The readout below is NOT inside
+    /// it — a Button merges its children into one accessibility element and would swallow
+    /// each hand's labelled value — but a tap there opens the card too.
     private func gripCard(_ group: GripGroup) -> some View {
         let sides = presentSides(in: group)
+        let isOpen = expanded.contains(group.key)
         return MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    glyphTile(group.grip)
-                    Text(group.grip.displayName)
-                        .font(.system(.title3, weight: .semibold))
-                        .foregroundStyle(Ink.primary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                        .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.8)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                }
+                cardHeader(group, isOpen: isOpen)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    if !group.tests.isEmpty { CapsLabel(String(localized: "Max")) }
+                Group {
                     if group.records.isEmpty {
-                        Text("No max yet. Measure one to compare with critical force.")
-                            .font(.system(.footnote))
-                            .foregroundStyle(Ink.tertiary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        if group.tests.isEmpty || isOpen {
+                            Text("No max yet. Measure one to compare with critical force.")
+                                .font(.system(.footnote))
+                                .foregroundStyle(Ink.tertiary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            // Shut, a critical-force-only grip still states its number.
+                            criticalForceReadout(group)
+                        }
                     } else {
-                        currentReadout(group, sides: sides)
-                    }
-                }
-
-                if !group.tests.isEmpty {
-                    criticalForceReadout(group)
-                }
-
-                if group.records.count + group.tests.count >= 2 {
-                    chart(group, sides: sides)
-                }
-
-                if !group.records.isEmpty {
-                    Text(progressLine(group))
-                        .font(.system(.footnote))
-                        .monospacedDigit()
-                        .foregroundStyle(Ink.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let line = criticalForceProgressLine(group) {
-                    Text(line)
-                        .font(.system(.footnote))
-                        .monospacedDigit()
-                        .foregroundStyle(Ink.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                HStack(spacing: 12) {
-                    if !group.records.isEmpty {
-                        Button {
-                            editing = MeasureTarget(grip: group.grip)
-                        } label: {
-                            Label("Edit", systemImage: "slider.horizontal.3")
-                                .font(.system(.subheadline, weight: .semibold))
-                                .foregroundStyle(Accent.graphite)
-                                .actionLabelLayout(minHeight: 44)
-                                .contentShape(.capsule)
+                        VStack(alignment: .leading, spacing: 6) {
+                            if isOpen && !group.tests.isEmpty { CapsLabel(String(localized: "Max")) }
+                            currentReadout(group, sides: sides, showBest: isOpen)
                         }
-                        .buttonStyle(PressFeedbackButtonStyle())
-                        .accessibilityLabel("Edit maxes for \(group.grip.spoken)")
-                        .accessibilityIdentifier("maxes.edit.\(group.grip.key)")
                     }
-                    Spacer(minLength: 0)
-                    measureButton(group.grip, label: group.records.isEmpty ? String(localized: "Measure max")
-                                                                           : String(localized: "Measure again"))
                 }
-                // Only on a grip that has been tested: a CF door on every card was an
-                // orphan row, and the test's own setup reaches any grip.
-                if !group.tests.isEmpty {
-                    HStack(spacing: 12) {
-                        Button {
-                            criticalForceHistory = MeasureTarget(grip: group.grip)
-                        } label: {
-                            // Standing alone now that Measure asks max or critical force.
-                            Label("Critical force history", systemImage: "list.bullet")
-                                .font(.system(.subheadline, weight: .semibold))
-                                .foregroundStyle(Accent.graphite)
-                                .actionLabelLayout(minHeight: 44)
-                                .contentShape(.capsule)
-                        }
-                        .buttonStyle(PressFeedbackButtonStyle())
-                        .accessibilityLabel("All critical force tests on \(group.grip.spoken)")
-                        .accessibilityIdentifier("maxes.cf.history.\(group.grip.key)")
-                    }
+                .contentShape(.rect)
+                .onTapGesture { toggle(group.key) }
+
+                if isOpen {
+                    details(group, sides: sides)
+                        .transition(.opacity)
                 }
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private func toggle(_ key: String) {
+        withAnimation(Motion.state(reduceMotion)) {
+            if expanded.contains(key) { expanded.remove(key) } else { expanded.insert(key) }
+        }
+    }
+
+    private func cardHeader(_ group: GripGroup, isOpen: Bool) -> some View {
+        Button { toggle(group.key) } label: {
+            HStack(spacing: 12) {
+                glyphTile(group.grip)
+                Text(group.grip.displayName)
+                    .font(.system(.title3, weight: .semibold))
+                    .foregroundStyle(Ink.primary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.8)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                    .font(.system(.footnote, weight: .semibold))
+                    .foregroundStyle(Ink.tertiary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
+            // MANDATORY: a full-width label with a Spacer hit-tests only its glyphs.
+            .contentShape(.rect)
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityLabel(group.grip.spoken)
+        .accessibilityValue(isOpen ? String(localized: "Expanded") : String(localized: "Collapsed"))
+        .accessibilityHint(isOpen ? String(localized: "Hides the chart and actions")
+                                  : String(localized: "Shows critical force, the chart and Measure again"))
+        .accessibilityIdentifier("maxes.card.\(group.key)")
+    }
+
+    /// Everything an open card adds. The prose that used to sit under the chart — a
+    /// sentence of legend, a "Best … · up … since …" line and a "tested … ago" line —
+    /// is gone from the screen: the legend is DRAWN, each best sits under its own number,
+    /// and the trend and date are what the chart and the page subtitle already show.
+    /// VoiceOver still hears the full sentences on the chart.
+    @ViewBuilder
+    private func details(_ group: GripGroup, sides: [Side]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !group.tests.isEmpty, !group.records.isEmpty {
+                criticalForceReadout(group)
+            }
+
+            if group.records.count + group.tests.count >= 2 {
+                chart(group, sides: sides)
+            }
+
+            HStack(spacing: 12) {
+                if !group.records.isEmpty {
+                    Button {
+                        editing = MeasureTarget(grip: group.grip)
+                    } label: {
+                        Label("Edit", systemImage: "slider.horizontal.3")
+                            .font(.system(.subheadline, weight: .semibold))
+                            .foregroundStyle(Accent.graphite)
+                            .actionLabelLayout(minHeight: 44)
+                            .contentShape(.capsule)
+                    }
+                    .buttonStyle(PressFeedbackButtonStyle())
+                    .accessibilityLabel("Edit maxes for \(group.grip.spoken)")
+                    .accessibilityIdentifier("maxes.edit.\(group.grip.key)")
+                }
+                Spacer(minLength: 0)
+                measureButton(group.grip, label: group.records.isEmpty ? String(localized: "Measure max")
+                                                                       : String(localized: "Measure again"))
+            }
+            // Only on a grip that has been tested: a CF door on every card was an
+            // orphan row, and the test's own setup reaches any grip.
+            if !group.tests.isEmpty {
+                Button {
+                    criticalForceHistory = MeasureTarget(grip: group.grip)
+                } label: {
+                    // Standing alone now that Measure asks max or critical force.
+                    Label("Critical force history", systemImage: "list.bullet")
+                        .font(.system(.subheadline, weight: .semibold))
+                        .foregroundStyle(Accent.graphite)
+                        .actionLabelLayout(minHeight: 44)
+                        .contentShape(.capsule)
+                }
+                .buttonStyle(PressFeedbackButtonStyle())
+                .accessibilityLabel("All critical force tests on \(group.grip.spoken)")
+                .accessibilityIdentifier("maxes.cf.history.\(group.grip.key)")
+            }
+        }
     }
 
     private func invitationCard(_ grip: GripSpec) -> some View {
@@ -401,7 +448,7 @@ struct MaxesTab: View {
     /// The current working numbers, trailing the title. One value for a both-hands
     /// grip; a compact L/R pair once the hands have their own records.
     @ViewBuilder
-    private func currentReadout(_ group: GripGroup, sides: [Side]) -> some View {
+    private func currentReadout(_ group: GripGroup, sides: [Side], showBest: Bool) -> some View {
         let layout = dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
             : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 20))
@@ -413,6 +460,14 @@ struct MaxesTab: View {
                             .font(.system(.caption, weight: .medium))
                             .foregroundStyle(Ink.secondary)
                         weightText(record.kg, style: .title2)
+                        // The PR, under the number it is the best OF — only when the
+                        // working max is below it, so a card at its best says nothing extra.
+                        if showBest, let best = best(in: group, side: side), best > record.kg + 0.05 {
+                            Text("best \(weightUnit.number(best))")
+                                .font(.system(.caption))
+                                .monospacedDigit()
+                                .foregroundStyle(Ink.tertiary)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .ignore)
@@ -471,6 +526,10 @@ struct MaxesTab: View {
             sides.append(side)
         }
         return sides
+    }
+
+    private func best(in group: GripGroup, side: Side) -> Double? {
+        group.records.filter { $0.side == side }.map(\.kg).max()
     }
 
     private func newest(in group: GripGroup, side: Side) -> MaxRecord? {
@@ -544,27 +603,65 @@ struct MaxesTab: View {
             }
             .frame(height: chartHeight)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(group.grip.spoken): \(progressLine(group))")
+            .accessibilityLabel(chartSummary(group))
 
-            if let legend = chartLegend(group, sides: sides) {
-                Text(legend)
-                    .font(.system(.caption2))
-                    .foregroundStyle(Ink.tertiary)
-                    .accessibilityHidden(true)
+            chartLegend(group, sides: sides)
+                .accessibilityHidden(true)
+        }
+    }
+
+    /// What VoiceOver hears for the chart: the sentences the card no longer prints.
+    private func chartSummary(_ group: GripGroup) -> String {
+        var parts = [group.grip.spoken]
+        if !group.records.isEmpty { parts.append(progressLine(group)) }
+        if let line = criticalForceProgressLine(group) { parts.append(line) }
+        return parts.joined(separator: ". ")
+    }
+
+    /// A DRAWN key — each entry is a sample of the very stroke it names — instead of the
+    /// sentence "blue max · grey critical force · dashed left · dotted right", which asked
+    /// you to translate words back into lines. Colour entries only when both series are
+    /// on the chart; hand entries only when a hand has its own line.
+    @ViewBuilder
+    private func chartLegend(_ group: GripGroup, sides: [Side]) -> some View {
+        let series = !group.tests.isEmpty && !group.records.isEmpty
+        let allSides = Set(sides).union(criticalForceSides(group))
+        let hands = allSides.contains(.left) || allSides.contains(.right)
+        let colours = HStack(spacing: 14) {
+            legendItem(String(localized: "Max"), color: Accent.bleu, style: dash(for: .both))
+            legendItem(String(localized: "Critical force"), color: StatusTint.calm, style: dash(for: .both))
+        }
+        let handKey = HStack(spacing: 14) {
+            legendItem(Side.left.name, color: Ink.secondary, style: dash(for: .left))
+            legendItem(Side.right.name, color: Ink.secondary, style: dash(for: .right))
+        }
+        if series || hands {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) {
+                    if series { colours }
+                    if hands { handKey }
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    if series { colours }
+                    if hands { handKey }
+                }
             }
         }
     }
 
-    private func chartLegend(_ group: GripGroup, sides: [Side]) -> String? {
-        var parts: [String] = []
-        if !group.tests.isEmpty, !group.records.isEmpty {
-            parts.append(String(localized: "blue max · grey critical force"))
+    private func legendItem(_ title: String, color: Color, style: StrokeStyle) -> some View {
+        HStack(spacing: 6) {
+            Path { path in
+                path.move(to: CGPoint(x: 1, y: 4))
+                path.addLine(to: CGPoint(x: 19, y: 4))
+            }
+            .stroke(color, style: style)
+            .frame(width: 20, height: 8)
+            Text(title)
+                .font(.system(.caption))
+                .foregroundStyle(Ink.secondary)
+                .fixedSize()
         }
-        let allSides = Set(sides).union(criticalForceSides(group))
-        if allSides.contains(.left) || allSides.contains(.right) {
-            parts.append(String(localized: "dashed left · dotted right"))
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func dash(for side: Side) -> StrokeStyle {

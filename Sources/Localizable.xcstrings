@@ -221,6 +221,23 @@
         }
       }
     },
+    "best %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "best %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "record %@"
+          }
+        }
+      }
+    },
     "C4 max" : {
       "localizations" : {
         "fr" : {
@@ -287,6 +304,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tirage le plus lourd"
+          }
+        }
+      }
+    },
+    "Hides the chart and actions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hides the chart and actions"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Masque le graphique et les actions"
           }
         }
       }
@@ -507,6 +541,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enregistre %@."
+          }
+        }
+      }
+    },
+    "Shows critical force, the chart and Measure again" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows critical force, the chart and Measure again"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affiche la force critique, le graphique et Mesurer à nouveau"
           }
         }
       }
@@ -3630,16 +3681,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Encre sombre"
-          }
-        }
-      }
-    },
-    "dashed left · dotted right" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "tirets à gauche · pointillés à droite"
           }
         }
       }
@@ -11888,16 +11929,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Force critique, %@"
-          }
-        }
-      }
-    },
-    "blue max · grey critical force" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "max en bleu · force critique en gris"
           }
         }
       }

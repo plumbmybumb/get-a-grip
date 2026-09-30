@@ -303,11 +303,20 @@ final class MaxesFlowUITests: XCTestCase {
                           "UICTContentSizeCategoryAccessibilityXXXL"]
         }
         let app = launchApp(arguments: arguments, language: language)
-        XCTAssertTrue(app.buttons["maxes.measure.\(splitGrip)"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["maxes.card.\(splitGrip)"].waitForExistence(timeout: 5))
         return app
     }
 
+    /// Cards open shut (2026-09-30): Measure and Edit live inside. Idempotent, because a
+    /// card stays open across the sheets and covers a test passes through.
+    private func openCard(_ grip: String, in app: XCUIApplication) {
+        guard !app.buttons["maxes.measure.\(grip)"].exists else { return }
+        tap(app.buttons["maxes.card.\(grip)"], in: app)
+        XCTAssertTrue(app.buttons["maxes.measure.\(grip)"].waitForExistence(timeout: 3))
+    }
+
     private func openMeasurement(for grip: String, in app: XCUIApplication) {
+        openCard(grip, in: app)
         tap(app.buttons["maxes.measure.\(grip)"], in: app)
         // The one question before a visit. Matched by title: a dialog action does not
         // reliably carry its identifier, and the French run asks in French.
@@ -325,6 +334,7 @@ final class MaxesFlowUITests: XCTestCase {
     }
 
     private func openEdit(for grip: String, in app: XCUIApplication) {
+        openCard(grip, in: app)
         tap(app.buttons["maxes.edit.\(grip)"], in: app)
         XCTAssertTrue(app.buttons["maxEdit.save"].waitForExistence(timeout: 5))
     }
