@@ -124,13 +124,7 @@ struct TodayView: View {
                 .staggerIn(0)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Live gauge", systemImage: "gauge.with.dots.needle.bottom.50percent") {
-                            showingGauge = true
-                        }
-                        .labelStyle(.iconOnly)
-                        .tint(Accent.graphite)
-                        .accessibilityHint("Opens the live gauge")
-                        .accessibilityIdentifier("today.gauge")
+                        GaugeToolbarButton { showingGauge = true }
                     }
                 }
 
@@ -653,5 +647,32 @@ struct TodayView: View {
             signatureFingers: summary.signatureFingers,
             peakIntensity: summary.peakIntensity,
             url: url)
+    }
+}
+
+// MARK: - Gauge button
+
+/// A LEAF, so a connection change re-renders this button and nothing around it.
+/// The trace glyph wears `Accent.bleu` while a gauge is connected — the one place the
+/// live-force colour appears at rest, because there is live force to show. Graphite
+/// otherwise, like every other control.
+private struct GaugeToolbarButton: View {
+    @Environment(DeviceStore.self) private var device
+    let action: () -> Void
+
+    // No tap effect: the live gauge covers the screen the instant this is tapped, so a
+    // symbol effect here would play underneath it (recorded 2026-09-30), and a toolbar
+    // item ignores SwiftUI's `.symbolEffect` anyway — see `TabBarSymbolEffects`.
+    var body: some View {
+        Button(action: action) {
+            Label("Live gauge", image: "glyph.gauge")
+        }
+        .labelStyle(.iconOnly)
+        .tint(device.state.isConnected ? Accent.bleu : Accent.graphite)
+        // Colour is never the sole carrier: the state is spoken too.
+        .accessibilityValue(device.state.isConnected ? String(localized: "Connected")
+                                                     : String(localized: "Not connected"))
+        .accessibilityHint("Opens the live gauge")
+        .accessibilityIdentifier("today.gauge")
     }
 }

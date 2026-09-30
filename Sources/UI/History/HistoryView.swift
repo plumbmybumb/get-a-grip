@@ -320,7 +320,7 @@ struct HistoryView: View {
         Button {
             analysisExport = makeExportRequest()
         } label: {
-            Image(systemName: "doc.text")
+            Image("glyph.export")
                 .font(.system(.body, weight: .semibold))
                 .foregroundStyle(Accent.graphite)
                 // A toolbar item sizes its own hit area, but the shape has to be declared
@@ -423,7 +423,7 @@ struct HistoryView: View {
         MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "Nothing here yet"))
-                Image(systemName: "chart.xyaxis.line")
+                Image("tab.history")
                     .font(.system(.largeTitle, weight: .light))
                     .foregroundStyle(Ink.tertiary.opacity(0.55))
                     .accessibilityHidden(true)

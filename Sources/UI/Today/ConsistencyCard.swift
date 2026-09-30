@@ -70,7 +70,7 @@ struct ConsistencyCard: View {
     private var logClimbButton: some View {
         Button(action: onLogClimb) {
             HStack(spacing: 5) {
-                Image(systemName: "figure.climbing")
+                Image("glyph.log")
                 Text("Log a session")
             }
             .font(.system(.footnote, weight: .semibold))

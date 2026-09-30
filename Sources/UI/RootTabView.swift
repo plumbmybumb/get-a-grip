@@ -22,12 +22,17 @@ struct RootTabView: View {
         return 0
     }()
 
+    // THE TAB GLYPHS ARE CUSTOM SYMBOLS (`scripts/make_symbols.swift`, docs/CUSTOM_SYMBOLS.md).
+    // Their motion is layer-by-layer — each finger of Today is its own motion group, so a
+    // bounce walks the hand like a wave — and it plays on ARRIVAL only, once, never at
+    // rest. It goes through `TabBarSymbolEffects`, because the tab bar ignores SwiftUI's
+    // `.symbolEffect` on a Tab label outright.
     var body: some View {
         TabView(selection: $selection) {
-            Tab("Today", systemImage: "figure.climbing", value: 0) {
+            Tab("Today", image: "tab.today", value: 0) {
                 TodayView(onShowHistory: { selection = 1 })
             }
-            Tab("History", systemImage: "chart.xyaxis.line", value: 1) { HistoryView() }
+            Tab("History", image: "tab.history", value: 1) { HistoryView() }
             // The SOFT NUDGE: once the newest measured max is four weeks stale the icon
             // pulses (Nuri, 2026-08-10). No badge, no notification, never for someone
             // who has not measured. Still under Reduce Motion; the tab's subtitle
@@ -35,11 +40,21 @@ struct RootTabView: View {
             Tab(value: 2) {
                 MaxesTab()
             } label: {
-                Label("Benchmarks", systemImage: "scalemass.fill")
+                Label("Benchmarks", image: "tab.benchmarks")
                     .symbolEffect(.pulse, options: .repeat(.continuous),
                                   isActive: templates.benchmarkNudge && !reduceMotion)
             }
-            Tab("Settings", systemImage: "gearshape.fill", value: 3) { SettingsView() }
+            Tab("Settings", image: "tab.settings", value: 3) { SettingsView() }
+        }
+        .onChange(of: selection) { _, tab in
+            guard !reduceMotion else { return }
+            switch tab {
+            case 0: TabBarSymbolEffects.play(.bounce.up.byLayer, onSymbol: "tab.today")
+            case 1: TabBarSymbolEffects.play(.bounce.down.byLayer, onSymbol: "tab.history")
+            case 2: TabBarSymbolEffects.play(.bounce.up.byLayer, onSymbol: "tab.benchmarks")
+            case 3: TabBarSymbolEffects.play(.rotate.clockwise.wholeSymbol, onSymbol: "tab.settings")
+            default: break
+            }
         }
         // The bar collapses to a pill on scroll-down and returns on scroll-up.
         .tabBarMinimizeBehavior(.onScrollDown)
