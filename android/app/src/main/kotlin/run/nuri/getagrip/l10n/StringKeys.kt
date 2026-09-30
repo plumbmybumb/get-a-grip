@@ -14,7 +14,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1299) {
+val STRING_KEYS: Map<String, Int> = buildMap(1300) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -630,15 +630,16 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Harder than your max"] = R.string.s_harder_than_your_max
     into["Heaviest pull"] = R.string.s_heaviest_pull_ce2bb6
     into["Hello,"] = R.string.s_hello
+    into["Hides the chart and actions"] = R.string.s_hides_the_chart_and_actions
     into["History"] = R.string.s_history
     into["Hold"] = R.string.s_hold_3bd328
     into["Hold to discard"] = R.string.s_hold_to_discard
     into["Hold to end"] = R.string.s_hold_to_end
     into["Hold to finish now"] = R.string.s_hold_to_finish_now
-    into["Hold to stop"] = R.string.s_hold_to_stop
 }
 
 private fun string_keysChunk4(into: MutableMap<String, Int>) {
+    into["Hold to stop"] = R.string.s_hold_to_stop
     into["Holding"] = R.string.s_holding
     into["Holding steady around %1\$s %2\$s."] = R.string.s_holding_steady_around
     into["Holding steady around %s %s."] = R.string.s_holding_steady_around
@@ -788,10 +789,10 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Next reminder at %s"] = R.string.s_next_reminder_at
     into["Next target: %1\$s–%2\$s %3\$s"] = R.string.s_next_target
     into["Next target: %s–%s %s"] = R.string.s_next_target
-    into["Next: %1\$s, target %2\$s to %3\$s %4\$s"] = R.string.s_next_target_to
 }
 
 private fun string_keysChunk5(into: MutableMap<String, Int>) {
+    into["Next: %1\$s, target %2\$s to %3\$s %4\$s"] = R.string.s_next_target_to
     into["Next: %1\$s, target %2\$s to %3\$s kilograms"] = R.string.s_next_target_to_kilograms
     into["Next: %s"] = R.string.s_next_37caf7
     into["Next: %s, target %s to %s %s"] = R.string.s_next_target_to
@@ -941,10 +942,10 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Recent connection events. Kept in memory only and cleared when the app quits."] = R.string.s_recent_connection_events_kept_in_memory_only_and_cleared
     into["Record another test"] = R.string.s_record_another_test
     into["Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not."] = R.string.s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d
-    into["Refresh battery"] = R.string.s_refresh_battery
 }
 
 private fun string_keysChunk6(into: MutableMap<String, Int>) {
+    into["Refresh battery"] = R.string.s_refresh_battery
     into["Remind me"] = R.string.s_remind_me
     into["Remind on this iPad"] = R.string.s_remind_on_this_ipad
     into["Remind on this iPhone"] = R.string.s_remind_on_this_iphone
@@ -1053,6 +1054,7 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Sharing an image isn't available on this build."] = R.string.a_sharing_an_image_isn_t_available_on_this_build
     into["Shown once, the first time you pick the Dyno."] = R.string.s_shown_once_the_first_time_you_pick_the_dyno
     into["Shows critical force as a share of body weight. Past tests keep their weight."] = R.string.s_shows_critical_force_as_a_share_of_body_weight_past_test
+    into["Shows critical force, the chart and Measure again"] = R.string.s_shows_critical_force_the_chart_and_measure_again
     into["Shows the earlier maxes for this grip"] = R.string.s_shows_the_earlier_maxes_for_this_grip
     into["Shows this hand's pulls"] = R.string.s_shows_this_hand_s_pulls
     into["Skip"] = R.string.s_skip
@@ -1093,11 +1095,11 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Stop"] = R.string.s_stop
     into["Stop test"] = R.string.s_stop_test
     into["Stopped"] = R.string.s_stopped_51e911
-    into["Stopped before pull 16, so there's no result."] = R.string.s_stopped_before_pull_16_so_there_s_no_result
-    into["Stopped before pull 16, so there's no result. Rest at least 30 minutes before retesting."] = R.string.s_stopped_before_pull_16_so_there_s_no_result_rest_at_leas
 }
 
 private fun string_keysChunk7(into: MutableMap<String, Int>) {
+    into["Stopped before pull 16, so there's no result."] = R.string.s_stopped_before_pull_16_so_there_s_no_result
+    into["Stopped before pull 16, so there's no result. Rest at least 30 minutes before retesting."] = R.string.s_stopped_before_pull_16_so_there_s_no_result_rest_at_leas
     into["Stored on this device and synced to your private iCloud when available."] = R.string.s_stored_on_this_device_and_synced_to_your_private_icloud
     into["Stored on this device only. Nothing syncs between devices."] = R.string.a_stored_on_this_device_only_nothing_syncs_between_devices
     into["Summary"] = R.string.s_summary
@@ -1246,11 +1248,11 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["You left the app before pull 16, so there's no result. Rest at least 30 minutes before retesting."] = R.string.s_you_left_the_app_before_pull_16_so_there_s_no_result_res
     into["Your all-time totals appear after your first session."] = R.string.s_your_all_time_totals_appear_after_your_first_session
     into["Your ceiling, per grip"] = R.string.s_your_ceiling_per_grip
-    into["Your current max on this grip%1\$s is %2\$s %3\$s, recorded %4\$s. The old one stays in history."] = R.string.s_your_current_max_on_this_grip_is_recorded_the_old_one_st
-    into["Your current max on this grip%1\$s is %2\$s kg, recorded %3\$s. Saving adds a new one and keeps the old as history."] = R.string.s_your_current_max_on_this_grip_is_kg_recorded_saving_adds
 }
 
 private fun string_keysChunk8(into: MutableMap<String, Int>) {
+    into["Your current max on this grip%1\$s is %2\$s %3\$s, recorded %4\$s. The old one stays in history."] = R.string.s_your_current_max_on_this_grip_is_recorded_the_old_one_st
+    into["Your current max on this grip%1\$s is %2\$s kg, recorded %3\$s. Saving adds a new one and keeps the old as history."] = R.string.s_your_current_max_on_this_grip_is_kg_recorded_saving_adds
     into["Your current max on this grip%s is %s %s, recorded %s. The old one stays in history."] = R.string.s_your_current_max_on_this_grip_is_recorded_the_old_one_st
     into["Your current max on this grip%s is %s kg, recorded %s. Saving adds a new one and keeps the old as history."] = R.string.s_your_current_max_on_this_grip_is_kg_recorded_saving_adds
     into["Your finished sessions and trends show up here."] = R.string.s_your_finished_sessions_and_trends_show_up_here
@@ -1269,11 +1271,10 @@ private fun string_keysChunk8(into: MutableMap<String, Int>) {
     into["away from the gauge"] = R.string.s_away_from_the_gauge_c017f2
     into["battery query"] = R.string.s_battery_query
     into["beats your %s kg"] = R.string.s_beats_your_kg
-    into["blue max · grey critical force"] = R.string.s_blue_max_grey_critical_force
+    into["best %s"] = R.string.s_best_58f320
     into["both hands"] = R.string.s_both_hands_a98298
     into["calibration point"] = R.string.s_calibration_point
     into["calibration save"] = R.string.s_calibration_save
-    into["dashed left · dotted right"] = R.string.s_dashed_left_dotted_right
     into["day"] = R.string.s_day
     into["days"] = R.string.s_days
     into["down"] = R.string.s_down

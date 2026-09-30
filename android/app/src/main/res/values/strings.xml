@@ -528,6 +528,7 @@
     <string name="s_harder_than_your_max">Harder than your max</string>
     <string name="s_heaviest_pull_ce2bb6">Heaviest pull</string>
     <string name="s_hello">Hello,</string>
+    <string name="s_hides_the_chart_and_actions">Hides the chart and actions</string>
     <string name="s_history">History</string>
     <string name="s_hold_3bd328">Hold</string>
     <string name="s_hold_to_discard">Hold to discard</string>
@@ -917,6 +918,7 @@
     </plurals>
     <string name="s_shown_once_the_first_time_you_pick_the_dyno">Shown once, the first time you pick the Dyno.</string>
     <string name="s_shows_critical_force_as_a_share_of_body_weight_past_test">Shows critical force as a share of body weight. Past tests keep their weight.</string>
+    <string name="s_shows_critical_force_the_chart_and_measure_again">Shows critical force, the chart and Measure again</string>
     <string name="s_shows_the_earlier_maxes_for_this_grip">Shows the earlier maxes for this grip</string>
     <string name="s_shows_this_hand_s_pulls">Shows this hand\'s pulls</string>
     <string name="s_skip">Skip</string>
@@ -1104,11 +1106,10 @@
     <string name="s_away_from_the_gauge_c017f2">away from the gauge</string>
     <string name="s_battery_query">battery query</string>
     <string name="s_beats_your_kg">beats your %s kg</string>
-    <string name="s_blue_max_grey_critical_force">blue max · grey critical force</string>
+    <string name="s_best_58f320">best %s</string>
     <string name="s_both_hands_a98298">both hands</string>
     <string name="s_calibration_point">calibration point</string>
     <string name="s_calibration_save">calibration save</string>
-    <string name="s_dashed_left_dotted_right">dashed left · dotted right</string>
     <string name="s_day">day</string>
     <string name="s_days">days</string>
     <string name="s_down">down</string>

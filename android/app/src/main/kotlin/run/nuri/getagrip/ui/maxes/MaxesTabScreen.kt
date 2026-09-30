@@ -3,6 +3,26 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
+import run.nuri.getagrip.ui.components.pressFeedback
+import run.nuri.getagrip.ui.theme.Motion
+import run.nuri.getagrip.ui.theme.rememberReduceMotion
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 import run.nuri.getagrip.ui.l10n.LocalizedPattern
@@ -140,6 +160,10 @@ private fun MaxesOverview(
     val tested = remember(groups) { groups.mapTo(HashSet()) { it.key } }
     /// The grip whose critical force history is open.
     var historyGrip by remember { mutableStateOf<GripSpec?>(null) }
+    /// Grip keys whose cards are open. EMPTY by default: a card is a summary until asked
+    /// (Nuri, 2026-09-30 — one open card filled the whole screen). Saveable, so rotation and
+    /// a trip to the measure screen come back to the same cards open.
+    var expanded by rememberSaveable { mutableStateOf(emptySet<String>()) }
     var addMenu by remember { mutableStateOf(false) }
     /// The grip whose Measure asked "What are you measuring?".
     var choosing by remember { mutableStateOf<GripSpec?>(null) }
@@ -217,7 +241,9 @@ private fun MaxesOverview(
             } else {
                 items(groups, key = { it.key }) { group ->
                     GripCard(group, onMeasure = { choosing = group.grip }, onEdit,
-                        onHistory = { historyGrip = group.grip })
+                        onHistory = { historyGrip = group.grip },
+                        isOpen = group.key in expanded,
+                        onToggle = { expanded = if (group.key in expanded) expanded - group.key else expanded + group.key })
                 }
                 items(invitations, key = { "invite-${it.key}" }) { grip ->
                     InvitationCard(grip) { choosing = grip }
@@ -358,14 +384,25 @@ internal fun relative(instant: Instant, now: Instant = Instant.now()): String {
 
 // MARK: - Cards
 
+/// **COLLAPSED BY DEFAULT** (Nuri, 2026-09-30), as on iOS. Shut, a card is the grip and its
+/// current maxes — what the percentage targets run on, and what you came to read. Open, it adds
+/// critical force, the chart and the actions.
+///
+/// The prose that used to sit under the chart — "Best … · up … since …" and "Critical force
+/// tested … ago" — left the screen: each best sits under its own number, the legend is drawn,
+/// and the trend and date are what the chart and the page subtitle already show. TalkBack still
+/// hears both sentences on the chart.
 @Composable
 private fun GripCard(
     benchmark: BenchmarkGroup,
     onMeasure: () -> Unit,
     onEdit: (GripSpec) -> Unit,
     onHistory: () -> Unit,
+    isOpen: Boolean,
+    onToggle: () -> Unit,
 ) {
     val palette = LocalGripPalette.current
+    val reduceMotion = rememberReduceMotion()
     val group = benchmark.maxes
     val tests = benchmark.tests
     val hasMax = group.records.isNotEmpty()
@@ -373,10 +410,24 @@ private fun GripCard(
     val cfSides = remember(benchmark) { criticalForceSides(benchmark) }
     val line = remember(group, WeightUnits.current) { if (hasMax) progressLine(group) else null }
     val cfLine = remember(tests, WeightUnits.current) { criticalForceProgressLine(tests) }
+    val disclosure = if (isOpen) tr("Expanded") else tr("Collapsed")
+    val hint = if (isOpen) tr("Hides the chart and actions") else tr("Shows critical force, the chart and Measure again")
+    val interaction = remember { MutableInteractionSource() }
 
     Card {
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clickable(interactionSource = interaction, indication = null, onClick = onToggle)
+                .pressFeedback(interaction, scales = false)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = group.grip.spoken
+                    stateDescription = disclosure
+                    role = Role.Button
+                    onClick(label = hint) { onToggle(); true }
+                }
+                .testTag("maxes.card.${group.key}"),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -390,11 +441,26 @@ private fun GripCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
+            Icon(
+                if (isOpen) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                tint = palette.inkTertiary,
+                modifier = Modifier.size(20.dp),
+            )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (tests.isNotEmpty()) CapsLabel(tr("Max"))
+        // Not inside the header's merged node — each hand keeps its own spoken value — but a
+        // tap here opens the card too. A bare tap GESTURE, not `clickable`: clickable merges
+        // its children into one button and would read both hands as a single node.
+        Column(
+            Modifier.pointerInput(onToggle) { detectTapGestures { onToggle() } },
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             if (hasMax) {
-                CurrentReadout(group, sides)
+                if (isOpen && tests.isNotEmpty()) CapsLabel(tr("Max"))
+                CurrentReadout(group, sides, showBest = isOpen)
+            } else if (tests.isNotEmpty() && !isOpen) {
+                // Shut, a critical-force-only grip still states its number.
+                CriticalForceReadout(benchmark, cfSides)
             } else {
                 Text(
                     tr("No max yet. Measure one to compare with critical force."),
@@ -403,66 +469,71 @@ private fun GripCard(
                 )
             }
         }
-        if (tests.isNotEmpty()) CriticalForceReadout(benchmark, cfSides)
 
-        // A chart needs two points to have a direction; one record is a fact, not a trend.
-        if (group.records.size + tests.size >= 2) {
-            MaxChart(
-                sides.map { side ->
-                    MaxSeries(
-                        side = side,
-                        points = group.records.filter { it.side == side }
-                            .map { MaxPoint(it.recordedAt.toEpochMilli().toDouble(), it.kg) },
-                    )
-                },
-                Modifier.fillMaxWidth(),
-                criticalForce = cfSides.map { side ->
-                    MaxSeries(
-                        side = side,
-                        points = tests.filter { it.side == side }
-                            .map { MaxPoint(it.recordedAt.toEpochMilli().toDouble(), it.criticalForceKg) },
-                    )
-                },
-            )
-        }
+        // `Motion.state`, not Compose's unguarded 400 ms default — see `TargetBandRow`.
+        AnimatedVisibility(
+            visible = isOpen,
+            enter = expandVertically(Motion.state(reduceMotion)) + fadeIn(Motion.state(reduceMotion)),
+            exit = shrinkVertically(Motion.state(reduceMotion)) + fadeOut(Motion.state(reduceMotion)),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (tests.isNotEmpty() && hasMax) CriticalForceReadout(benchmark, cfSides)
 
-        line?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                color = palette.inkTertiary)
-        }
-        cfLine?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                color = palette.inkTertiary)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            if (hasMax) {
-                TextButton(onClick = { onEdit(group.grip) }, modifier = Modifier.weight(1f)
-                    .testTag("maxes.edit.${group.key}")) {
-                    Text(tr("Edit"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold)
+                // A chart needs two points to have a direction; one record is a fact, not a trend.
+                if (group.records.size + tests.size >= 2) {
+                    val summary = listOfNotNull(group.grip.spoken, line, cfLine).joinToString(". ")
+                    Box(Modifier.semantics { contentDescription = summary }) {
+                        MaxChart(
+                            sides.map { side ->
+                                MaxSeries(
+                                    side = side,
+                                    points = group.records.filter { it.side == side }
+                                        .map { MaxPoint(it.recordedAt.toEpochMilli().toDouble(), it.kg) },
+                                )
+                            },
+                            Modifier.fillMaxWidth(),
+                            criticalForce = cfSides.map { side ->
+                                MaxSeries(
+                                    side = side,
+                                    points = tests.filter { it.side == side }
+                                        .map { MaxPoint(it.recordedAt.toEpochMilli().toDouble(), it.criticalForceKg) },
+                                )
+                            },
+                        )
+                    }
                 }
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
-            SecondaryButton(title = if (hasMax) tr("Measure again") else tr("Measure max"),
-                modifier = Modifier.weight(1f).testTag("maxes.measure.${group.key}")) {
-                onMeasure()
-            }
-        }
-        // Only on a grip that has been tested: a critical force door on every card was an
-        // orphan row, and the test's own setup reaches any grip.
-        if (tests.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                val historyLabel = L10n.tr("All critical force tests on %s", group.grip.spoken)
-                TextButton(onClick = onHistory, modifier = Modifier.weight(1f)
-                    .semantics { contentDescription = historyLabel }
-                    .testTag("maxes.cf.history.${group.key}")) {
-                    Icon(Icons.AutoMirrored.Outlined.List, contentDescription = null, tint = palette.inkPrimary,
-                        modifier = Modifier.size(18.dp))
-                    // Standing alone now that Measure asks max or critical force.
-                    Text(tr("Critical force history"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 6.dp))
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    if (hasMax) {
+                        TextButton(onClick = { onEdit(group.grip) }, modifier = Modifier.weight(1f)
+                            .testTag("maxes.edit.${group.key}")) {
+                            Text(tr("Edit"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold)
+                        }
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    SecondaryButton(title = if (hasMax) tr("Measure again") else tr("Measure max"),
+                        modifier = Modifier.weight(1f).testTag("maxes.measure.${group.key}")) {
+                        onMeasure()
+                    }
+                }
+                // Only on a grip that has been tested: a critical force door on every card was an
+                // orphan row, and the test's own setup reaches any grip.
+                if (tests.isNotEmpty()) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        val historyLabel = L10n.tr("All critical force tests on %s", group.grip.spoken)
+                        TextButton(onClick = onHistory, modifier = Modifier.weight(1f)
+                            .semantics { contentDescription = historyLabel }
+                            .testTag("maxes.cf.history.${group.key}")) {
+                            Icon(Icons.AutoMirrored.Outlined.List, contentDescription = null, tint = palette.inkPrimary,
+                                modifier = Modifier.size(18.dp))
+                            // Standing alone now that Measure asks max or critical force.
+                            Text(tr("Critical force history"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(start = 6.dp))
+                        }
+                    }
                 }
             }
         }
@@ -548,17 +619,28 @@ private fun EmptyCard() {
 /// compact L/R pair once the hands have their own records — because 25 % of the left max and
 /// 25 % of the right max are simply different kilograms, and this is where you see that.
 @Composable
-private fun CurrentReadout(group: MaxGripGroup, sides: List<Side>) {
+private fun CurrentReadout(group: MaxGripGroup, sides: List<Side>, showBest: Boolean = false) {
     val palette = LocalGripPalette.current
     val largeText = LocalDensity.current.fontScale >= 1.5f
     @Composable fun Readout(side: Side, modifier: Modifier = Modifier) {
         newest(group, side)?.let { record ->
             val label = if (side == Side.both) tr("Shared max") else side.displayName
+            // The PR, under the number it is the best OF — only when the working max is below
+            // it, so a card at its best says nothing extra. Spoken too: the node clears its
+            // children, so a best that is only drawn would be invisible to TalkBack.
+            val best = group.records.filter { it.side == side }.maxOfOrNull { it.kg }
+                ?.takeIf { showBest && it > record.kg + 0.05 }
+            val bestText = best?.let { tr("best %s", WeightUnits.number(it, 1)) }
+            val spoken = listOfNotNull("$label, ${WeightUnits.text(record.kg)}", bestText).joinToString(", ")
             Column(modifier.testTag("maxes.current.${group.key}.${side.rawValue}")
-                .clearAndSetSemantics { contentDescription = "$label, ${WeightUnits.text(record.kg)}" },
+                .clearAndSetSemantics { contentDescription = spoken },
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(label, style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary)
                 KgText(record.kg, prominent = true)
+                bestText?.let {
+                    Text(it, style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                        color = palette.inkTertiary)
+                }
             }
         }
     }

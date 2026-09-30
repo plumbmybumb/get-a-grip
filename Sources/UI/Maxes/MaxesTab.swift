@@ -462,7 +462,7 @@ struct MaxesTab: View {
                         weightText(record.kg, style: .title2)
                         // The PR, under the number it is the best OF — only when the
                         // working max is below it, so a card at its best says nothing extra.
-                        if showBest, let best = best(in: group, side: side), best > record.kg + 0.05 {
+                        if let best = bestShown(group, side: side, current: record.kg, showBest: showBest) {
                             Text("best \(weightUnit.number(best))")
                                 .font(.system(.caption))
                                 .monospacedDigit()
@@ -472,7 +472,10 @@ struct MaxesTab: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(side == .both ? String(localized: "Shared max") : side.name)
-                    .accessibilityValue(weightUnit.text(record.kg))
+                    // The best is spoken too: `.ignore` drops the drawn caption.
+                    .accessibilityValue(bestShown(group, side: side, current: record.kg, showBest: showBest)
+                        .map { "\(weightUnit.text(record.kg)), \(String(localized: "best \(weightUnit.number($0))"))" }
+                        ?? weightUnit.text(record.kg))
                     .accessibilityIdentifier("maxes.current.\(group.grip.key).\(side.rawValue)")
                 }
             }
@@ -528,8 +531,11 @@ struct MaxesTab: View {
         return sides
     }
 
-    private func best(in group: GripGroup, side: Side) -> Double? {
-        group.records.filter { $0.side == side }.map(\.kg).max()
+    /// The hand's best, when the card is open and the working max sits below it.
+    private func bestShown(_ group: GripGroup, side: Side, current: Double, showBest: Bool) -> Double? {
+        guard showBest, let best = group.records.filter({ $0.side == side }).map(\.kg).max(),
+              best > current + 0.05 else { return nil }
+        return best
     }
 
     private func newest(in group: GripGroup, side: Side) -> MaxRecord? {

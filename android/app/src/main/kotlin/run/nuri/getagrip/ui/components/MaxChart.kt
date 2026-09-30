@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -126,21 +127,53 @@ fun MaxChart(
         ) {
             drawMaxChart(drawable, tint, tests, criticalForceTint, axes, measurer)
         }
-        // The key, in words, for the cases where it is ambiguous. Hidden from TalkBack: the
-        // card's own spoken summary already carries the numbers per hand, and a screen
-        // reader has no use for which line is dotted.
-        val legend = buildList {
-            if (drawable.isNotEmpty() && tests.isNotEmpty()) add(tr("blue max · grey critical force"))
-            if ((drawable + tests).any { it.side != Side.both }) add(tr("dashed left · dotted right"))
+        // A DRAWN key — each entry a sample of the very stroke it names — instead of the
+        // sentence "blue max · grey critical force · dashed left · dotted right", which asked
+        // the reader to translate words back into lines (Nuri, 2026-09-30). Colour entries only
+        // when both series are on the chart; hand entries only when a hand has its own line.
+        // Hidden from TalkBack: the card speaks the numbers, and nobody needs which is dotted.
+        val series = drawable.isNotEmpty() && tests.isNotEmpty()
+        val hands = (drawable + tests).any { it.side != Side.both }
+        if (series || hands) {
+            androidx.compose.foundation.layout.FlowRow(
+                Modifier.fillMaxWidth().clearAndSetSemantics {},
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (series) {
+                    LegendItem(tr("Max"), tint, Side.both)
+                    LegendItem(tr("Critical force"), criticalForceTint, Side.both)
+                }
+                if (hands) {
+                    LegendItem(Side.left.displayName, palette.inkSecondary, Side.left)
+                    LegendItem(Side.right.displayName, palette.inkSecondary, Side.right)
+                }
+            }
         }
-        if (legend.isNotEmpty()) {
-            Text(
-                legend.joinToString(" · "),
-                style = MaterialTheme.typography.labelSmall,
-                color = palette.inkTertiary,
-                modifier = Modifier.clearAndSetSemantics {},
+    }
+}
+
+/// One key entry: a 20 dp sample of the chart's own stroke for that series, then its name.
+@Composable
+private fun LegendItem(title: String, colour: Color, side: Side) {
+    val palette = LocalGripPalette.current
+    androidx.compose.foundation.layout.Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        Canvas(Modifier.size(width = 20.dp, height = 8.dp)) {
+            drawLine(
+                colour,
+                start = Offset(1.dp.toPx(), size.height / 2),
+                end = Offset(size.width - 1.dp.toPx(), size.height / 2),
+                strokeWidth = strokeWidth(side).toPx(),
+                cap = StrokeCap.Round,
+                pathEffect = dash(side)?.let {
+                    PathEffect.dashPathEffect(floatArrayOf(it.first.dp.toPx(), it.second.dp.toPx()))
+                },
             )
         }
+        Text(title, style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary, maxLines = 1)
     }
 }
 

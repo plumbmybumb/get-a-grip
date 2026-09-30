@@ -527,6 +527,7 @@
     <string name="s_harder_than_your_max">Plus dur que ton max</string>
     <string name="s_heaviest_pull_ce2bb6">Tirage le plus lourd</string>
     <string name="s_hello">Hello,</string>
+    <string name="s_hides_the_chart_and_actions">Masque le graphique et les actions</string>
     <string name="s_history">Historique</string>
     <string name="s_hold_3bd328">Tenue</string>
     <string name="s_hold_to_discard">Maintenir pour abandonner</string>
@@ -915,6 +916,7 @@
     </plurals>
     <string name="s_shown_once_the_first_time_you_pick_the_dyno">Affiché une seule fois, la première fois que vous choisissez le Dyno.</string>
     <string name="s_shows_critical_force_as_a_share_of_body_weight_past_test">Affiche la force critique en part du poids du corps. Les tests passés gardent leur poids.</string>
+    <string name="s_shows_critical_force_the_chart_and_measure_again">Affiche la force critique, le graphique et Mesurer à nouveau</string>
     <string name="s_shows_the_earlier_maxes_for_this_grip">Affiche les max antérieurs pour cette prise</string>
     <string name="s_shows_this_hand_s_pulls">Affiche les tirages de cette main</string>
     <string name="s_skip">Passer</string>
@@ -1102,11 +1104,10 @@
     <string name="s_away_from_the_gauge_c017f2">loin du capteur</string>
     <string name="s_battery_query">requête batterie</string>
     <string name="s_beats_your_kg">bat tes %s kg</string>
-    <string name="s_blue_max_grey_critical_force">max en bleu · force critique en gris</string>
+    <string name="s_best_58f320">record %s</string>
     <string name="s_both_hands_a98298">les deux mains</string>
     <string name="s_calibration_point">point d\'étalonnage</string>
     <string name="s_calibration_save">sauvegarde d\'étalonnage</string>
-    <string name="s_dashed_left_dotted_right">tirets à gauche · pointillés à droite</string>
     <string name="s_day">jour</string>
     <string name="s_days">jours</string>
     <string name="s_down">en baisse</string>
