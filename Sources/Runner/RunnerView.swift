@@ -656,30 +656,80 @@ struct RunnerView: View {
         }
     }
 
-    /// Set and pull, sized to be checked from a metre away between pulls.
+    /// Set and pull as NUMERALS you can read with the phone on the floor (tester,
+    /// 2026-09-30: "very hard to see and keep track of set progress"). The 14 pt small-caps
+    /// sentences became a small label beside a `.title` number — the row grows by about 16 pt,
+    /// taken from the trace's headroom, which is mostly empty above the line.
+    ///
+    /// The middle slot is the rest countdown during a rest, as before. PULL keeps its
+    /// session-wide meaning ("Pull 17 of 36").
     private func counters(_ session: RunnerSession, showsPhaseWord: Bool = true) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                CapsLabel(setLine(session), size: 14).fixedSize()
+        let middle = counterMiddle(session, showsPhaseWord: showsPhaseWord)
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .bottom, spacing: 8) {
+                countBlock(label: String(localized: "Set"), value: setValue(session), alignment: .leading, labelAfter: true)
                 Spacer(minLength: 0)
-                restPhaseLabel(session).opacity(showsPhaseWord ? 1 : 0)
+                middle
                 Spacer(minLength: 0)
-                CapsLabel(pullLine(session), size: 14).fixedSize()
+                countBlock(label: String(localized: "Pull"), value: pullValue(session), alignment: .trailing)
             }
-            VStack(spacing: 4) {
-                restPhaseLabel(session).opacity(showsPhaseWord ? 1 : 0)
-                HStack(alignment: .top, spacing: 8) {
-                    CapsLabel(setLine(session), size: 14)
+            VStack(spacing: 6) {
+                middle
+                HStack(alignment: .bottom, spacing: 8) {
+                    countBlock(label: String(localized: "Set"), value: setValue(session), alignment: .leading, labelAfter: true)
                     Spacer(minLength: 0)
-                    CapsLabel(pullLine(session), size: 14).multilineTextAlignment(.trailing)
+                    countBlock(label: String(localized: "Pull"), value: pullValue(session), alignment: .trailing)
                 }
             }
         }
-        .monospacedDigit()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(spokenState(session))\(routineLeftSpoken(session)), \(countdownCaption(session) ?? "")")
         .accessibilityIdentifier("runner.counters")
     }
+
+    /// A small caps label BESIDE a numeral, on its baseline. Beside, not above: stacked, the
+    /// labels cost a line of their own and the graph lost 28 pt; side by side it is the
+    /// numeral's height alone (Nuri, 2026-09-30). The numeral is `.title` — a semantic style,
+    /// so it follows Dynamic Type — with the monospaced digits every changing number uses.
+    ///
+    /// `labelAfter` mirrors SET: its label follows the numeral, so both edge numerals sit
+    /// flush against the panel, under the ends of the progress bar, with the labels facing
+    /// the centre (Nuri, 2026-09-30). From the floor the eye finds them in the same place.
+    private func countBlock(label: String, value: String, alignment: HorizontalAlignment,
+                            labelAfter: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            if !labelAfter { CapsLabel(label, size: 12) }
+            Text(value)
+                .font(.system(.title, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(Ink.primary)
+                .contentTransition(.numericText())
+            if labelAfter { CapsLabel(label, size: 12) }
+        }
+        .fixedSize()
+    }
+
+    /// The rest countdown while resting; otherwise the same slot, reserved and hidden, so
+    /// nothing moves the graph when a rest begins. (A per-hand "RIGHT HAND 2/3" count lived
+    /// here for one build and was cut, 2026-09-30: it made the row busy for one hand mode.)
+    @ViewBuilder
+    private func counterMiddle(_ session: RunnerSession, showsPhaseWord: Bool) -> some View {
+        if case .resting = session.snapshot.phase {
+            restPhaseLabel(session).opacity(showsPhaseWord ? 1 : 0)
+        } else {
+            restPhaseLabel(session).opacity(0)
+        }
+    }
+
+    private func setValue(_ session: RunnerSession) -> String {
+        guard let set = session.snapshot.setNumber else { return "–" }
+        return "\(set)/\(session.snapshot.setCount)"
+    }
+
+    private func pullValue(_ session: RunnerSession) -> String {
+        "\(session.snapshot.pullPosition)/\(session.snapshot.plannedRepCount)"
+    }
+
 
     /// Reserve the widest rest word in every phase, so rest-to-pull cannot move the
     /// graph. Compact widths and translated labels can use the two-row fallback.
