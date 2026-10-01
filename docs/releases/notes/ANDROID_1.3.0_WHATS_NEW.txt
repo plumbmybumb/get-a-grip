@@ -1,0 +1,1 @@
+Timed maxes: measure the most you can hold for 5, 10, 15 s or any length, and set targets as a percentage of it. Measure max asks first: peak, timed or critical force. Benchmarks cards start closed. Bigger set and pull counters. New "Pause the clock" setting. Critical force works with the WH-C06. Correcting a measured max now sticks. New icons, faster editor.

@@ -1,0 +1,7 @@
+• Timed maxes: measure the most you can hold for 5, 10 or 15 seconds, or any length you choose, and set a routine's target as a percentage of it.
+• Measure max asks first what you're testing: your peak, a timed max, or critical force.
+• Benchmarks cards start closed, so every grip fits on one screen. Tap one to see its chart and history.
+• During a session, the set and pull counters are large enough to read with the phone on the floor.
+• New "Pause the clock" setting in Fine tuning: pause when you're out of range, only when you're below it, or never.
+• Critical force works with the WH-C06 scale, and pulls on it start counting sooner.
+• New tab and toolbar icons, and a faster routine editor.

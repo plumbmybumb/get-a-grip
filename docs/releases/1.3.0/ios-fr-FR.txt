@@ -1,0 +1,7 @@
+• Max chronométrés : mesurez le maximum que vous tenez 5, 10 ou 15 secondes, ou la durée de votre choix, et fixez la cible d'une routine en pourcentage de ce max.
+• Mesurer le max vous demande d'abord ce que vous testez : votre max pic, un max chronométré ou la force critique.
+• Les cartes de l'onglet Tests sont fermées au départ : toutes vos prises tiennent sur un écran. Touchez-en une pour voir sa courbe et son historique.
+• Pendant la séance, les compteurs de série et de tirage sont assez grands pour se lire téléphone posé au sol.
+• Nouveau réglage « Pause du chrono » dans les réglages fins : en pause hors de la plage, seulement sous la plage, ou jamais.
+• La force critique fonctionne avec la balance WH-C06, et les tirages y démarrent plus vite.
+• Nouvelles icônes d'onglets et de barre d'outils, et un éditeur de routine plus rapide.
