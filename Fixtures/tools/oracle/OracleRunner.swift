@@ -95,7 +95,8 @@ private func replay(_ file: URL) throws -> Int {
         maxes: maxes,
         timerOnly: scenario["timerOnly"] as? Bool ?? false,
         maxCreditedSampleGapSeconds:
-            (scenario["maxCreditedSampleGapSeconds"] as? NSNumber)?.doubleValue)
+            (scenario["maxCreditedSampleGapSeconds"] as? NSNumber)?.doubleValue,
+        engagesOnFirstReading: scenario["engagesOnFirstReading"] as? Bool ?? false)
 
     let steps = scenario["steps"] as? [[String: Any]] ?? []
     for (index, step) in steps.enumerated() {

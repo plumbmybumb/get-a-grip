@@ -76,6 +76,9 @@ fun RoutineOverviewSheet(
 
     fun dismiss(edit: Boolean) {
         if (leaving) return
+        // Edit acts at once: the builder replaces the root and takes this sheet with it, so
+        // waiting for the hide animation was only dead time (audit, 2026-10-01).
+        if (edit) { leaving = true; onEdit(); return }
         leaving = true
         scope.launch {
             try {
@@ -286,7 +289,13 @@ internal fun overviewTarget(set: SetPlan, plan: SessionPlan): String? {
     }
     val lower = formatter.format(band.start * 100)
     val upper = formatter.format(band.endInclusive * 100)
-    val amount = if (lower == upper) L10n.tr("%s %% of max", lower)
-    else L10n.tr("%s–%s %% of max", lower, upper)
+    // Which max, when it is not the peak: the same percentage of a 10 s max is a different load.
+    val seconds = PlanMath.maxSeconds(set, plan)
+    val amount = when {
+        seconds != null && lower == upper -> L10n.tr("%s %% of %d s max", lower, seconds)
+        seconds != null -> L10n.tr("%s–%s %% of %d s max", lower, upper, seconds)
+        lower == upper -> L10n.tr("%s %% of max", lower)
+        else -> L10n.tr("%s–%s %% of max", lower, upper)
+    }
     return L10n.tr("Target: %s", amount)
 }

@@ -12,12 +12,24 @@ package run.nuri.getagrip.engine
 /// moment the screen opens, crossing `MaxAttempt.releaseKg` begins an attempt, and coming
 /// off the edge for `releaseSeconds` logs it.
 ///
+/// A visit measures ONE kind of max, fixed at creation: the peak, or a timed window
+/// (`windowSeconds`), so every attempt in it is comparable with every other.
+///
 /// Pure — no clock, device or store — so the rules are testable.
 ///
 /// TRANSLATION NOTE (from Shared/Engine/MaxAttemptLog.swift): Swift's value-type struct is a
 /// mutable class here; its one owner (`MaxMeasurementDraft`) never shares it.
-class MaxAttemptLog(side: Side) {
-    data class Attempt(val id: Int, val side: Side, val peakKg: Double)
+class MaxAttemptLog(side: Side, windowSeconds: Int = 0) {
+    /// `kg` is what the pull records: its peak, or its window's average on a timed visit.
+    data class Attempt(val id: Int, val side: Side, val kg: Double)
+
+    /// 0 is a PEAK visit; otherwise every pull is averaged over this many seconds.
+    val windowSeconds: Int = maxOf(0, windowSeconds)
+
+    /// How long the last timed pull held before it was let go SHORT of its window — it
+    /// logged nothing, and the screen says so rather than going quiet. Cleared by the next pull.
+    var lastShortSeconds: Double? = null
+        private set
 
     /// Every logged pull, oldest first.
     var attempts: List<Attempt> = emptyList()
@@ -33,8 +45,16 @@ class MaxAttemptLog(side: Side) {
     /// A pull is under way: over the threshold, or under it for less than `releaseSeconds`.
     val isPulling: Boolean get() = current != null
 
-    /// The pull in progress's highest reading so far.
-    val pullPeakKg: Double? get() = current?.peakKg
+    /// The pull in progress's live figure: its highest reading so far, or on a timed visit
+    /// its average so far.
+    val pullKg: Double?
+        get() {
+            val current = current ?: return null
+            return if (windowSeconds > 0) current.averageKg else current.peakKg
+        }
+
+    /// Seconds still to hold on a timed pull in progress.
+    val pullRemainingSeconds: Double? get() = current?.remainingSeconds
 
     /// Feed one sample. Returns the attempt this sample completed, if any.
     fun add(kg: Double, at: Double): Attempt? {
@@ -42,7 +62,9 @@ class MaxAttemptLog(side: Side) {
         if (current == null) {
             // Drift below the threshold is not a pull, so it opens nothing.
             if (kg < MaxAttempt.releaseKg) return null
-            current = MaxAttempt(endsAfter = releaseSeconds)
+            current = MaxAttempt(endsAfter = releaseSeconds,
+                                 window = if (windowSeconds > 0) windowSeconds.toDouble() else null)
+            lastShortSeconds = null
         }
         current?.add(kg, at)
         return if (current?.isComplete == true) close() else null
@@ -52,8 +74,12 @@ class MaxAttemptLog(side: Side) {
     fun close(): Attempt? {
         val attempt = current ?: return null
         current = null
-        if (!attempt.hasResult || !attempt.peakKg.isFinite()) return null
-        val logged = Attempt(nextID, side, attempt.peakKg)
+        val kg = attempt.resultKg
+        if (kg == null || !kg.isFinite()) {
+            if (windowSeconds > 0 && attempt.heldSeconds > 0) lastShortSeconds = attempt.heldSeconds
+            return null
+        }
+        val logged = Attempt(nextID, side, kg)
         nextID += 1
         attempts = attempts + logged
         return logged
@@ -70,11 +96,11 @@ class MaxAttemptLog(side: Side) {
 
     fun attempts(side: Side): List<Attempt> = attempts.filter { it.side == side }
 
-    /// The hardest pull on a hand. A tie keeps the EARLIER one, so a repeat of the same
+    /// The strongest pull on a hand. A tie keeps the EARLIER one, so a repeat of the same
     /// number never moves the choice.
     fun best(side: Side): Attempt? =
         attempts(side).fold(null as Attempt?) { best, next ->
-            if (best == null || next.peakKg > best.peakKg) next else best
+            if (best == null || next.kg > best.kg) next else best
         }
 
     /// Pulled with the wrong hand selected — the commonest slip in a two-hand visit.

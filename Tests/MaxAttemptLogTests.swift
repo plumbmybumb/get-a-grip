@@ -32,8 +32,8 @@ final class MaxAttemptLogTests: XCTestCase {
         XCTAssertTrue(log.attempts.isEmpty, "Drift under the threshold is not a pull")
         XCTAssertFalse(log.isPulling)
         for kg in [30.0, 34, 32] { t = pull(&log, kg: kg, from: t) }
-        XCTAssertEqual(log.attempts.map(\.peakKg), [30, 34, 32])
-        XCTAssertEqual(log.best(for: .left)?.peakKg, 34)
+        XCTAssertEqual(log.attempts.map(\.kg), [30, 34, 32])
+        XCTAssertEqual(log.best(for: .left)?.kg, 34)
         XCTAssertFalse(log.isPulling)
     }
 
@@ -41,12 +41,12 @@ final class MaxAttemptLogTests: XCTestCase {
         var log = MaxAttemptLog(side: .left)
         var t = hold(&log, kg: 30, seconds: 1, from: 0)
         XCTAssertTrue(log.isPulling)
-        XCTAssertEqual(log.pullPeakKg, 30)
+        XCTAssertEqual(log.pullKg, 30)
         t = hold(&log, kg: 0.2, seconds: MaxAttemptLog.releaseSeconds - 0.3, from: t)
         XCTAssertTrue(log.isPulling, "A quick re-grip is still the same pull")
         t = hold(&log, kg: 33, seconds: 0.5, from: t)
         hold(&log, kg: 0.2, seconds: MaxAttemptLog.releaseSeconds + 0.1, from: t)
-        XCTAssertEqual(log.attempts.map(\.peakKg), [33])
+        XCTAssertEqual(log.attempts.map(\.kg), [33])
     }
 
     func testSwitchingHandsMidPullLogsItAgainstTheHandThatPulled() {
@@ -54,10 +54,10 @@ final class MaxAttemptLogTests: XCTestCase {
         let t = hold(&log, kg: 28, seconds: 1, from: 0)
         let closed = log.select(.right)
         XCTAssertEqual(closed?.side, .left)
-        XCTAssertEqual(closed?.peakKg, 28)
+        XCTAssertEqual(closed?.kg, 28)
         pull(&log, kg: 31, from: t)
-        XCTAssertEqual(log.attempts(for: .left).map(\.peakKg), [28])
-        XCTAssertEqual(log.attempts(for: .right).map(\.peakKg), [31])
+        XCTAssertEqual(log.attempts(for: .left).map(\.kg), [28])
+        XCTAssertEqual(log.attempts(for: .right).map(\.kg), [31])
     }
 
     func testTiesKeepTheEarlierAttempt() {
@@ -73,8 +73,8 @@ final class MaxAttemptLogTests: XCTestCase {
         t = pull(&log, kg: 35, from: t)
         let wrongHand = log.attempts[1].id
         log.move(wrongHand, to: .right)
-        XCTAssertEqual(log.best(for: .left)?.peakKg, 30)
-        XCTAssertEqual(log.best(for: .right)?.peakKg, 35)
+        XCTAssertEqual(log.best(for: .left)?.kg, 30)
+        XCTAssertEqual(log.best(for: .right)?.kg, 35)
         log.remove(log.attempts[0].id)
         XCTAssertNil(log.best(for: .left))
         XCTAssertEqual(log.side, .left, "Editing the log never changes the selected hand")

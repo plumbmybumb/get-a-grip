@@ -57,7 +57,7 @@ struct MaxSaveReceiptView: View {
     }
 
     private var savedValues: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "SAVED"))
                 ForEach(receipt.values, id: \.self) { value in
@@ -69,7 +69,8 @@ struct MaxSaveReceiptView: View {
                             Text(value.side == .both ? String(localized: "Shared max") : value.side.name)
                                 .font(.system(.headline, weight: .semibold))
                                 .foregroundStyle(Ink.primary)
-                            Text(value.grip.displayName)
+                            Text(value.seconds > 0 ? String(localized: "\(value.grip.displayName) · \(value.seconds) s max")
+                                                   : value.grip.displayName)
                                 .font(.footnote)
                                 .foregroundStyle(Ink.secondary)
                         }
@@ -87,7 +88,7 @@ struct MaxSaveReceiptView: View {
     }
 
     private var percentageChanges: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "TARGETS THAT FOLLOWED"))
                 ForEach(receipt.percentMoves) { item in
@@ -115,7 +116,7 @@ struct MaxSaveReceiptView: View {
     }
 
     private func weightOffer(_ offer: TemplateStore.MaxSaveReceipt.RescaleOffer) -> some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "Weight targets").uppercased())
                 ForEach(offer.routines) { routine in

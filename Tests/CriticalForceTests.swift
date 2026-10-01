@@ -342,4 +342,27 @@ final class CriticalForceTests: XCTestCase {
         XCTAssertEqual(CriticalForceRepsCodec.decode(CriticalForceRepsCodec.encode(reps)), reps)
         XCTAssertEqual(CriticalForceRepsCodec.decode(Data("nope".utf8)), [])
     }
+
+    // MARK: - A broadcast scale (GitHub issue, 2026-10-01)
+
+    /// A WH-C06 delivers a reading every half second or so. At the Progressor's 0.25 s gap
+    /// rule every pull is a hole and the test fails; at the broadcast gap it keeps a result
+    /// close to the plateau.
+    func testASparseBroadcastScaleStillGivesAResult() {
+        let sparse: (Double) -> Bool = { rel in Int((rel * 80).rounded()) % 48 != 0 }   // 0.6 s
+        var strict = CriticalForceTest()
+        run(&strict, until: proto.totalSeconds + 1, dropping: sparse)
+        guard case .failure(.tooLittleData)? = strict.result() else {
+            return XCTFail("expected tooLittleData, got \(String(describing: strict.result()))")
+        }
+
+        var broadcast = CriticalForceTest(gapSeconds: CriticalForceRules.gapSeconds(for: GaugeKind.whc06.capabilities))
+        run(&broadcast, until: proto.totalSeconds + 1, dropping: sparse)
+        guard case .success(let result)? = broadcast.result() else {
+            return XCTFail("expected a result, got \(String(describing: broadcast.result()))")
+        }
+        XCTAssertEqual(result.criticalForceKg, level(21), accuracy: 2)
+        XCTAssertEqual(CriticalForceRules.gapSeconds(for: GaugeKind.progressor.capabilities),
+                       CriticalForceRules.gapSeconds, "the Progressor keeps the strict rule")
+    }
 }

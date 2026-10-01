@@ -43,12 +43,15 @@ struct MaxMeasureView: View {
 
     private static let dockSpacing: CGFloat = 8
 
-    init(grip: GripSpec, initialSide: Side = .left,
+    /// `initialSeconds`: what this visit measures — 0 is the peak, otherwise a timed max.
+    /// Chosen BEFORE the screen opens (`MaxMeasureChooser`) and fixed for the visit.
+    init(grip: GripSpec, initialSide: Side = .left, initialSeconds: Int = 0,
          onUse: @escaping ([MaxMeasurementResult]) -> TemplateStore.MaxSaveReceipt?) {
         self.grip = grip
         self.onUse = onUse
         _session = State(initialValue: LiveMaxSession(bothTogether: initialSide == .both,
-                                                      side: initialSide))
+                                                      side: initialSide,
+                                                      windowSeconds: initialSeconds))
     }
 
     var body: some View {
@@ -143,6 +146,7 @@ struct MaxMeasureView: View {
 
     private var infoPanel: some View {
         VStack(spacing: 14) {
+            MaxLengthLabel(seconds: session.snapshot.windowSeconds)
             if session.snapshot.bothTogether {
                 CapsLabel(String(localized: "Both hands together"))
             } else {
@@ -397,7 +401,8 @@ private struct MaxHandSwitch: View {
 
     private func caption(_ side: Side, pulls: Int) -> String {
         if pulls > 0 { return String(localized: "\(pulls) pulls") }
-        if let saved = templates.currentMax(for: grip, side: side) {
+        let seconds = session.snapshot.windowSeconds
+        if let saved = templates.maxTable.max(grip: grip.key, side: side, seconds: seconds) {
             return String(localized: "Max \(weightUnit.number(saved))")
         }
         return String(localized: "Not measured")
@@ -417,10 +422,10 @@ private struct MaxLiveHero: View {
     @Environment(\.weightUnit) private var weightUnit
 
     var body: some View {
-        let pulling = session.pullPeakKg
-        let shown = pulling ?? session.lastAttempt?.peakKg
+        let pulling = session.pullKg
+        let shown = pulling ?? session.lastAttempt?.kg
         VStack(spacing: 4) {
-            CapsLabel(label(pulling: pulling != nil))
+            CapsLabel(label(pulling: session.isPulling))
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(shown.map { weightUnit.number($0) } ?? "—")
                     .font(.system(size: heroSize, weight: .thin))
@@ -444,8 +449,23 @@ private struct MaxLiveHero: View {
     }
 
     private func label(pulling: Bool) -> String {
-        if pulling { return String(localized: "This pull") }
-        return session.lastAttempt == nil ? String(localized: "Pull when ready") : String(localized: "Last pull")
+        let window = session.snapshot.windowSeconds
+        guard window > 0 else {
+            if pulling { return String(localized: "This pull") }
+            return session.lastAttempt == nil ? String(localized: "Pull when ready") : String(localized: "Last pull")
+        }
+        // A TIMED pull counts DOWN — "how much longer", like the runner's hold — and the
+        // figure is the average so far, which is what will be saved.
+        if pulling {
+            guard let left = session.pullSecondsLeft, left > 0 else { return String(localized: "Done — let go") }
+            return String(localized: "Average · \(left) s left")
+        }
+        if let held = session.shortPullSeconds {
+            // A pull let go early logs nothing; say so rather than going quiet.
+            return String(localized: "Too short · held \(held.formatted(.number.precision(.fractionLength(1)))) of \(window) s")
+        }
+        return session.lastAttempt == nil ? String(localized: "Pull and hold \(window) s")
+                                          : String(localized: "Last \(window) s average")
     }
 
     private func spoken(_ kg: Double?, pulling: Bool) -> String {
@@ -493,7 +513,8 @@ private struct MaxLiveTrace: View {
     var body: some View {
         let draft = session.snapshot
         let side = draft.log.side
-        let toBeat = draft.log.best(for: side)?.peakKg ?? templates.currentMax(for: grip, side: side)
+        let toBeat = draft.log.best(for: side)?.kg
+            ?? templates.maxTable.max(grip: grip.key, side: side, seconds: draft.windowSeconds)
         ForceTraceView(samples: device.trace,
                        thresholdKg: toBeat,
                        tint: device.isStreaming ? StatusTint.engaged : Ink.tertiary,
@@ -501,5 +522,24 @@ private struct MaxLiveTrace: View {
                        bridgesSparseDelivery: device.gaugeCapabilities.isBroadcast,
                        diagnostics: device.pipelineDiagnostics,
                        plot: plot, lit: true)
+    }
+}
+
+/// What this visit measures, stated — chosen before the screen opened (`MaxMeasureChooser`)
+/// and fixed for the visit, so every pull in it is the same kind of number.
+private struct MaxLengthLabel: View {
+    let seconds: Int
+
+    var body: some View {
+        Text(seconds == 0 ? String(localized: "Peak max") : String(localized: "\(seconds) s max"))
+            .font(.system(.subheadline, weight: .semibold))
+            .monospacedDigit()
+            .foregroundStyle(Ink.secondary)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 30)
+            .background(Capsule().fill(Ink.primary.opacity(0.05)))
+            .accessibilityLabel(String(localized: "Measuring"))
+            .accessibilityValue(seconds == 0 ? String(localized: "Peak max") : String(localized: "\(seconds) second max"))
+            .accessibilityIdentifier("max.measure.length")
     }
 }

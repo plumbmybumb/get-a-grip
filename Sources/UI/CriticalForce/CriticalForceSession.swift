@@ -39,9 +39,10 @@ final class CriticalForceSession {
 
     var proto: CriticalForceProtocol { test.proto }
 
-    /// Arm: from now on the first pull over `startKg` starts rep 1.
-    func arm() {
-        test = CriticalForceTest()
+    /// Arm: from now on the first pull over `startKg` starts rep 1. `gapSeconds` is the
+    /// gauge's — see `CriticalForceRules.gapSeconds(for:)`.
+    func arm(gapSeconds: Double = CriticalForceRules.gapSeconds) {
+        test = CriticalForceTest(gapSeconds: gapSeconds)
         publish()
         // A runloop turn later, like the runner: `AVAudioEngine.start()` and the haptic
         // engine's start put tens of milliseconds between the Start tap and the screen.

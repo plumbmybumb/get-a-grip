@@ -9,6 +9,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +26,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -42,6 +47,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 import kotlin.math.floor
@@ -194,21 +200,54 @@ fun DialTrack(
         }
 
         // The ladder, STATED: every value it can produce is readable without touching it.
-        Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
-            values.forEachIndexed { index, ladderValue ->
-                val isCurrent = mark == DialLadder.RenderingMark.Detent(index)
-                Text(
-                    format(ladderValue),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (isCurrent) palette.inkPrimary else palette.inkTertiary,
-                    maxLines = 1,
-                    textAlign = TextAlign.Center,
-                )
+        // **A DENSE ladder labels its round numbers instead** (the max chooser's one-second
+        // dial over 3…60): one label per detent smears into nothing. Below
+        // `DialLadder.minLabelSlot` per detent, only `anchorIndices` are drawn, each under
+        // its own tick; the row above states the exact value either way.
+        BoxWithConstraints(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
+            val width = constraints.maxWidth.toFloat()
+            val slot = DialLadder.slotWidth(width, values.size)
+            val density = LocalDensity.current
+            if (with(density) { slot.toDp() } >= DialLadder.minLabelSlot) {
+                Row(Modifier.fillMaxWidth()) {
+                    values.forEachIndexed { index, ladderValue ->
+                        DialLabel(format(ladderValue), mark == DialLadder.RenderingMark.Detent(index),
+                            Modifier.weight(1f))
+                    }
+                }
+            } else {
+                val anchors = DialLadder.anchorIndices(values, with(density) { slot.toDp() })
+                Box(Modifier.fillMaxWidth()) {
+                    // A hidden label holds the row's height, as iOS's template Text does.
+                    DialLabel("0", false, Modifier.alpha(0f))
+                    anchors.forEach { index ->
+                        val centre = DialLadder.x(index, width, values.size)
+                        DialLabel(format(values[index]), mark == DialLadder.RenderingMark.Detent(index),
+                            Modifier.layout { measurable, constraints ->
+                                val placeable = measurable.measure(constraints.copy(minWidth = 0))
+                                layout(constraints.maxWidth, placeable.height) {
+                                    placeable.place((centre - placeable.width / 2f).toInt(), 0)
+                                }
+                            })
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun DialLabel(text: String, isCurrent: Boolean, modifier: Modifier = Modifier) {
+    val palette = LocalGripPalette.current
+    Text(
+        text,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+        color = if (isCurrent) palette.inkPrimary else palette.inkTertiary,
+        maxLines = 1,
+        textAlign = TextAlign.Center,
+    )
 }
 
 /// What the ticks draw into.
@@ -221,6 +260,23 @@ private val HIT_HEIGHT = 44.dp
 /// detent highlight, the bold label and the off-ladder mark all read one decision (as iOS's
 /// `renderingMark`), so the test covers the real rendering path.
 object DialLadder {
+
+    /// Narrower than this per detent, a label per detent stops being readable.
+    val minLabelSlot = 20.dp
+
+    /// The detents a dense ladder labels: multiples of the smallest round step whose labels
+    /// sit at least `minGap` apart. Twin of iOS `DialTrack.anchorIndices`.
+    fun anchorIndices(values: List<Double>, slot: Dp, minGap: Dp = 32.dp): List<Int> {
+        for (step in listOf(2.0, 5.0, 10.0, 20.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0)) {
+            val anchors = values.indices.filter {
+                val ratio = values[it] / step
+                abs(ratio - Math.round(ratio)) < 0.001
+            }
+            val gaps = anchors.zipWithNext { a, b -> slot * (b - a) }
+            if (anchors.isNotEmpty() && gaps.all { it >= minGap }) return anchors
+        }
+        return listOf(0, values.lastIndex)
+    }
 
     sealed interface RenderingMark {
         data class Detent(val index: Int) : RenderingMark

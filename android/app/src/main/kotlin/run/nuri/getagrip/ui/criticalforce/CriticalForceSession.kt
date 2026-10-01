@@ -18,6 +18,7 @@ import run.nuri.getagrip.ble.HostClock
 import run.nuri.getagrip.ble.SystemHostClock
 import run.nuri.getagrip.engine.CriticalForceOutcome
 import run.nuri.getagrip.engine.CriticalForceProtocol
+import run.nuri.getagrip.engine.CriticalForceRules
 import run.nuri.getagrip.engine.CriticalForceTest
 import run.nuri.getagrip.engine.CriticalForceTrace
 import run.nuri.getagrip.engine.RunnerCue
@@ -75,9 +76,10 @@ class CriticalForceSession(
 
     val proto: CriticalForceProtocol get() = test.proto
 
-    /// Arm: from now on the first pull over `startKg` starts rep 1.
-    fun arm() {
-        test = CriticalForceTest()
+    /// Arm: from now on the first pull over `startKg` starts rep 1. `gapSeconds` is the
+    /// gauge's — see `CriticalForceRules.gapSeconds(capabilities)`.
+    fun arm(gapSeconds: Double = CriticalForceRules.gapSeconds) {
+        test = CriticalForceTest(gapSeconds = gapSeconds)
         publish()
         // A frame later, like the runner: starting the audio track and the haptics put tens
         // of milliseconds between the Start tap and the screen. Nothing sounds until the

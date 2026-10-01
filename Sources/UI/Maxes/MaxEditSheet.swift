@@ -85,7 +85,7 @@ struct MaxEditSheet: View {
     }
 
     private var handValues: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 16) {
                 handValue(.left, kilograms: $draft.leftKg)
                 Divider()
@@ -151,7 +151,7 @@ struct MaxEditSheet: View {
     }
 
     private func sharedValue(_ kg: Double) -> some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text("Shared max")

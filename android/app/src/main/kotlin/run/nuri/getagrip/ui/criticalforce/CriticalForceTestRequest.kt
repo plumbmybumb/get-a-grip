@@ -19,6 +19,7 @@ import run.nuri.getagrip.engine.CriticalForceFailure
 import run.nuri.getagrip.engine.CriticalForceHands
 import run.nuri.getagrip.engine.CriticalForceOutcome
 import run.nuri.getagrip.engine.CriticalForceResult
+import run.nuri.getagrip.engine.CriticalForceRules
 import run.nuri.getagrip.engine.CriticalForceTest
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
@@ -180,7 +181,10 @@ class CriticalForceTestRequest(
     private fun arm(next: CriticalForceSession) {
         session.end()
         session = next
-        next.arm()
+        next.arm(
+            streamingDevice?.let { CriticalForceRules.gapSeconds(it.gaugeCapabilities) }
+                ?: CriticalForceRules.gapSeconds,
+        )
         armedEpoch = streamingDevice?.link?.value?.epoch
         streamingDevice?.onTracePoint = { point -> next.receive(point.kg, point.t) }
     }

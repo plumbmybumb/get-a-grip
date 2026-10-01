@@ -197,7 +197,11 @@ card. Options are in section 6.
   - `CriticalForceTest` is the fixed metronome, armed by the first pull over 4 kg.
   - `CriticalForceAnalysis` computes the numbers: trapezoid integrals clipped to each
     7 s window, holes over 0.25 s never interpolated, and CF as the mean of the last six
-    windows (at least four with data).
+    windows (at least four with data). A broadcast scale (the WH-C06) gets 1.5 s instead,
+    for the pull windows only (`CriticalForceRules.gapSeconds(for:)`, 2026-10-01): its
+    readings arrive half a second to a second apart, and at 0.25 s whole tests ended in
+    "too many gaps" after four minutes of pulling. The rest-load check keeps 0.25 s, so a
+    line drawn across a hole can never mark a rest as not kept.
   - `CriticalForceTrace` and `CriticalForceRepsCodec` are the blobs.
 - **Stopping and interruptions:**
   - Stopping by hand before pull 16 voids the test; after it, the test keeps the pulls

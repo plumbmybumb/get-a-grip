@@ -1726,4 +1726,65 @@ final class SessionRunnerTests: XCTestCase {
             XCTAssertNil(runner.upcomingGrip)
         }
     }
+
+    // MARK: - "Below range" and the broadcast engage (GitHub issue, 2026-10-01)
+
+    /// "Below range" drops the ceiling: a pull far over the band starts and banks.
+    func testBelowRangeLetsAnOvershootBank() {
+        var plan = bandedPlan(hold: 5)
+        plan.targetBandGate = .below
+        var runner = SessionRunner(plan: plan)
+        var feeder = Feeder()
+        runner.handle(.start, at: 0)
+
+        let cues = feeder.hold(&runner, kg: 60, seconds: 5.6)
+        XCTAssertTrue(cues.contains(.repStarted))
+        XCTAssertTrue(cues.contains(.repEnded(completed: true)))
+        XCTAssertFalse(runner.isOverTarget, "no EASE OFF: the ceiling is not a rule here")
+    }
+
+    /// And keeps the floor: under the band still stops the clock and says RE-GRIP.
+    func testBelowRangeStillStopsUnderTheFloor() {
+        var plan = bandedPlan(hold: 10)
+        plan.targetBandGate = .below
+        var runner = SessionRunner(plan: plan)
+        var feeder = Feeder()
+        runner.handle(.start, at: 0)
+
+        _ = feeder.hold(&runner, kg: 25, seconds: 3)
+        let cues = feeder.hold(&runner, kg: 10, seconds: 2)
+        XCTAssertTrue(cues.contains(.dropoutWarning))
+        XCTAssertTrue(runner.isDropped)
+        XCTAssertEqual(runner.heldSeconds, 3, accuracy: 0.2, "10 kg banked nothing")
+    }
+
+    /// Three choices over two stored flags, round-tripped through the blob; a blob from
+    /// before the second flag reads as both edges.
+    func testTheBandGateRoundTripsAndOldBlobsKeepBothEdges() throws {
+        for gate in TargetBandGate.allCases {
+            var plan = SessionPlan()
+            plan.targetBandGate = gate
+            XCTAssertEqual(plan.targetBandGate, gate)
+            let decoded = try JSONDecoder().decode(SessionPlan.self, from: JSONEncoder().encode(plan))
+            XCTAssertEqual(decoded.targetBandGate, gate)
+        }
+        let legacy = try JSONDecoder().decode(SessionPlan.self,
+                                              from: Data(#"{"pausesOutsideTargetBand":true}"#.utf8))
+        XCTAssertEqual(legacy.targetBandGate, .outside)
+        XCTAssertEqual(SessionPlan().targetBandGate, .outside)
+    }
+
+    /// A broadcast scale's first reading inside the gate starts the rep; the same single
+    /// reading waits out the debounce on any other gauge.
+    func testABroadcastScaleEngagesOnItsFirstReading() {
+        var broadcast = SessionRunner(plan: plan(hold: 3), engagesOnFirstReading: true)
+        broadcast.handle(.start, at: 0)
+        let first = broadcast.handle(.sample(ForceSample(kg: 20, deviceMicros: 500_000)), at: 0.5)
+        XCTAssertTrue(first.contains(.repStarted))
+
+        var connected = SessionRunner(plan: plan(hold: 3))
+        connected.handle(.start, at: 0)
+        let waits = connected.handle(.sample(ForceSample(kg: 20, deviceMicros: 500_000)), at: 0.5)
+        XCTAssertFalse(waits.contains(.repStarted))
+    }
 }

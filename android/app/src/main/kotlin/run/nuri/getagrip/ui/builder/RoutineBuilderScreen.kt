@@ -386,6 +386,11 @@ fun RoutineBuilderHost(
                                     RoutineLoadBlock(
                                         lo = draft.plan.targetLoPercent,
                                         hi = draft.plan.targetHiPercent,
+                                        basis = draft.plan.targetMaxSeconds,
+                                        // Lengths measured on any grip this routine trains,
+                                        // plus the selection. Empty hides the choice.
+                                        basisOptions = (draft.plan.sets.flatMap { templates.maxTable.timedLengths(it.grip.key) } +
+                                            listOfNotNull(draft.plan.targetMaxSeconds)).toSortedSet().toList(),
                                         setsVary = draft.plan.sets.any { it.hasTarget || it.hasPercentTarget },
                                         missingMaxes = draft.plan.targetPercentBand != null &&
                                             PlanMath.missingBenchmarkGripCount(draft.plan, templates.maxTable) > 0,
@@ -536,6 +541,8 @@ fun RoutineBuilderHost(
 private fun RoutineLoadBlock(
     lo: Double?,
     hi: Double?,
+    basis: Int?,
+    basisOptions: List<Int>,
     setsVary: Boolean,
     missingMaxes: Boolean,
     update: DraftUpdate,
@@ -548,10 +555,17 @@ private fun RoutineLoadBlock(
                 hi = hi,
                 setsVary = setsVary,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                basis = basis,
+                basisOptions = basisOptions,
+                onBasisChange = { seconds -> update { BuilderDraft.withRoutineBasis(it, seconds) } },
             ) { band -> update { BuilderDraft.withRoutineBand(it, band) } }
         }
         if (missingMaxes) {
-            Advisory(tr("Some grips have no max yet, so their sets have no target."), Icons.Outlined.WarningAmber)
+            Advisory(
+                if (basis != null) tr("Some grips have no %d s max yet, so their sets have no target.", basis)
+                else tr("Some grips have no max yet, so their sets have no target."),
+                Icons.Outlined.WarningAmber,
+            )
         }
     }
 }

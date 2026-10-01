@@ -83,7 +83,8 @@ enum AnalysisExportAssembler {
         let maxes = fetchedMaxes.map { record in
             AnalysisExport.MaxEntry(grip: record.grip, side: record.side, kg: record.kg,
                 day: DayStamp(date: record.recordedAt, calendar: calendar),
-                recordedAt: record.recordedAt, source: record.source)
+                recordedAt: record.recordedAt, source: record.source,
+                seconds: record.durationSeconds)
         }
         // A single workout's export carries no tests; skip the fetch rather than filter.
         let tests = source.workoutID != nil ? [] : try context.fetch(

@@ -41,4 +41,15 @@ final class DialTrackTests: XCTestCase {
         XCTAssertNil(dial(0, isUnset: true).renderingMark)
         XCTAssertNil(dial(2.5, isUnset: true).renderingMark)
     }
+
+    /// A one-second dial over 3…60 on a phone labels its tens, not fifty-eight numbers.
+    func testADenseLadderLabelsOnlyRoundNumbersSpacedApart() {
+        let values = (3...60).map(Double.init)
+        let slot: CGFloat = 340 / CGFloat(values.count)
+        let anchors = DialTrack.anchorIndices(values, slot: slot)
+        XCTAssertEqual(anchors.map { values[$0] }, [10, 20, 30, 40, 50, 60])
+        let short = [3.0, 5, 7, 10, 12, 15, 20, 30]
+        XCTAssertGreaterThanOrEqual(340 / CGFloat(short.count), DialTrack.minLabelSlot,
+                                    "The builder's short ladders keep a label on every detent")
+    }
 }

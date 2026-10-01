@@ -8,6 +8,7 @@ import java.util.UUID
 import run.nuri.getagrip.engine.HandMode
 import run.nuri.getagrip.engine.ReminderTime
 import run.nuri.getagrip.engine.RoutineDraft
+import run.nuri.getagrip.engine.TargetBandGate
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
@@ -44,6 +45,8 @@ data class SetRowContext(
     /// The Rhythm page's band, which every set without its own follows.
     val targetLoPercent: Double? = null,
     val targetHiPercent: Double? = null,
+    /// Which max that band is of — null is the peak.
+    val targetMaxSeconds: Int? = null,
 ) {
     /// A plan carrying ONLY those fields, so every `PlanMath` call a row makes goes through
     /// the one resolver the runner uses rather than a second copy of its arithmetic. Built
@@ -57,12 +60,13 @@ data class SetRowContext(
         leadInSeconds = leadInSeconds,
         targetLoPercent = targetLoPercent,
         targetHiPercent = targetHiPercent,
+        targetMaxSeconds = targetMaxSeconds,
     )
 
     companion object {
         fun of(plan: SessionPlan): SetRowContext = SetRowContext(
             plan.handMode, plan.holdSeconds, plan.restSeconds, plan.leadInSeconds,
-            plan.targetLoPercent, plan.targetHiPercent,
+            plan.targetLoPercent, plan.targetHiPercent, plan.targetMaxSeconds,
         )
     }
 }
@@ -111,12 +115,12 @@ data class EveryDayValues(
 @Immutable
 data class FineTuningValues(
     val thresholdKg: Double,
-    val pausesOutsideTargetBand: Boolean,
+    val targetBandGate: TargetBandGate,
     val leadInSeconds: Int,
 ) {
     companion object {
         fun of(plan: SessionPlan): FineTuningValues =
-            FineTuningValues(plan.thresholdKg, plan.pausesOutsideTargetBand, plan.leadInSeconds)
+            FineTuningValues(plan.thresholdKg, plan.targetBandGate, plan.leadInSeconds)
     }
 }
 

@@ -403,11 +403,14 @@ private fun compactDetail(
 internal fun loadText(set: SetPlan, context: SetRowContext): String? {
     set.targetBand?.let { return WeightUnits.band(it) }
     val percent = set.targetPercentBand ?: context.plan.targetPercentBand ?: return null
-    return L10n.tr(
+    val range = L10n.tr(
         "%d–%d %%",
         (percent.start * 100).roundToInt(),
         (percent.endInclusive * 100).roundToInt(),
     )
+    // Named on the shut row too: 90 % of a 10 s max is not 90 % of the peak.
+    val seconds = PlanMath.maxSeconds(set, context.plan) ?: return range
+    return L10n.tr("%s of %d s max", range, seconds)
 }
 
 /// Custom timing, only where it DIFFERS from the routine's.
@@ -425,8 +428,11 @@ internal fun inheritedTargetText(set: SetPlan, plan: SessionPlan, maxes: MaxTabl
     if (set.hasTarget || set.hasPercentTarget) return null
     val percent = plan.targetPercentBand ?: return null
     val range = "${(percent.start * 100).roundToInt()}–${(percent.endInclusive * 100).roundToInt()} %"
+    val seconds = plan.targetMaxSeconds
     val load = perHandLoadText(set, plan, maxes)
-        ?: return L10n.tr("Routine target: %s of max. No max for this grip yet.", range)
+        ?: return if (seconds != null) {
+            L10n.tr("Routine target: %s of your %d s max. No %d s max for this grip yet.", range, seconds, seconds)
+        } else L10n.tr("Routine target: %s of max. No max for this grip yet.", range)
     return L10n.tr("Routine target: %s, so %s.", range, load)
 }
 

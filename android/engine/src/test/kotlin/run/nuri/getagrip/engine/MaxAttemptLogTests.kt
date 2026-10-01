@@ -35,8 +35,8 @@ class MaxAttemptLogTests {
         assertTrue(log.attempts.isEmpty(), "Drift under the threshold is not a pull")
         assertFalse(log.isPulling)
         for (kg in listOf(30.0, 34.0, 32.0)) t = pull(log, kg, t)
-        assertEquals(listOf(30.0, 34.0, 32.0), log.attempts.map { it.peakKg })
-        assertEquals(34.0, log.best(Side.left)?.peakKg)
+        assertEquals(listOf(30.0, 34.0, 32.0), log.attempts.map { it.kg })
+        assertEquals(34.0, log.best(Side.left)?.kg)
         assertFalse(log.isPulling)
     }
 
@@ -44,12 +44,12 @@ class MaxAttemptLogTests {
         val log = MaxAttemptLog(Side.left)
         var t = hold(log, 30.0, 1.0, 0.0)
         assertTrue(log.isPulling)
-        assertEquals(30.0, log.pullPeakKg)
+        assertEquals(30.0, log.pullKg)
         t = hold(log, 0.2, MaxAttemptLog.releaseSeconds - 0.3, t)
         assertTrue(log.isPulling, "A quick re-grip is still the same pull")
         t = hold(log, 33.0, 0.5, t)
         hold(log, 0.2, MaxAttemptLog.releaseSeconds + 0.1, t)
-        assertEquals(listOf(33.0), log.attempts.map { it.peakKg })
+        assertEquals(listOf(33.0), log.attempts.map { it.kg })
     }
 
     @Test fun switchingHandsMidPullLogsItAgainstTheHandThatPulled() {
@@ -57,10 +57,10 @@ class MaxAttemptLogTests {
         val t = hold(log, 28.0, 1.0, 0.0)
         val closed = log.select(Side.right)
         assertEquals(Side.left, closed?.side)
-        assertEquals(28.0, closed?.peakKg)
+        assertEquals(28.0, closed?.kg)
         pull(log, 31.0, t)
-        assertEquals(listOf(28.0), log.attempts(Side.left).map { it.peakKg })
-        assertEquals(listOf(31.0), log.attempts(Side.right).map { it.peakKg })
+        assertEquals(listOf(28.0), log.attempts(Side.left).map { it.kg })
+        assertEquals(listOf(31.0), log.attempts(Side.right).map { it.kg })
     }
 
     @Test fun tiesKeepTheEarlierAttempt() {
@@ -76,8 +76,8 @@ class MaxAttemptLogTests {
         t = pull(log, 35.0, t)
         val wrongHand = log.attempts[1].id
         log.move(wrongHand, Side.right)
-        assertEquals(30.0, log.best(Side.left)?.peakKg)
-        assertEquals(35.0, log.best(Side.right)?.peakKg)
+        assertEquals(30.0, log.best(Side.left)?.kg)
+        assertEquals(35.0, log.best(Side.right)?.kg)
         log.remove(log.attempts[0].id)
         assertNull(log.best(Side.left))
         assertEquals(Side.left, log.side, "Editing the log never changes the selected hand")

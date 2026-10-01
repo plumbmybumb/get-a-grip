@@ -3,12 +3,19 @@
 
 package run.nuri.getagrip.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,43 +56,58 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 /// material backdrop out from under it, so those rows get the opacity dip alone.
 ///
 /// TRANSLATION NOTE: SwiftUI expresses this as a `ButtonStyle` receiving
-/// `configuration.isPressed`; Compose has no such hook, so the same asymmetry rides a
-/// Modifier fed by the button's own `InteractionSource`. The release curve is
-/// `Motion.state`: a tap releases without drag momentum, so the return has no overshoot.
+/// `configuration.isPressed`. Compose's `InteractionSource` press arrives ~100 ms LATE inside
+/// a scrolling container (the clickable waits to rule out a scroll), so a tap in the builder
+/// acknowledged after the finger was already lifting (responsiveness audit, 2026-10-01).
+/// The pointer is watched directly instead: touch-down snaps, release or a scroll taking
+/// the gesture springs back. Nothing is consumed, so scrolling and clicking are untouched.
+/// The `InteractionSource` still drives presses that arrive without a pointer (keyboard).
 /// Animated values are read in the graphics layer, never during composition.
 @Composable
 fun Modifier.pressFeedback(
     interactionSource: InteractionSource,
     scales: Boolean = true,
 ): Modifier {
-    val pressed by interactionSource.collectIsPressedAsState()
     val reduceMotion = rememberReduceMotion()
-    val scale = animateFloatAsState(
-        targetValue = if (pressed && scales && !reduceMotion) PRESS_SCALE else 1f,
-        animationSpec = if (pressed) {
-            // Acknowledge the press without spending several frames ramping into it.
-            snap()
-        } else {
-            Motion.state(reduceMotion)
-        },
-        label = "pressScale",
-    )
-    // The dip in opacity is NOT conditional on reduce motion: it is the acknowledgement
-    // itself, and someone who asked for less movement still has to see the tap register.
-    val dim = animateFloatAsState(
-        targetValue = if (pressed) PRESS_ALPHA else 1f,
-        animationSpec = if (pressed) {
-            snap()
-        } else {
-            Motion.state(reduceMotion)
-        },
-        label = "pressAlpha",
-    )
-    return this.graphicsLayer {
-        scaleX = scale.value
-        scaleY = scale.value
-        alpha = dim.value
+    /// 0 at rest, 1 pressed.
+    val press = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val release = rememberUpdatedState(Motion.state<Float>(reduceMotion))
+    /// A pointer owns the current gesture, so the interaction stream must not replay it late.
+    val pointerDown = remember { booleanArrayOf(false) }
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collect { interaction ->
+            if (pointerDown[0]) return@collect
+            when (interaction) {
+                is PressInteraction.Press -> press.snapTo(1f)
+                is PressInteraction.Release, is PressInteraction.Cancel -> press.animateTo(0f, release.value)
+            }
+        }
     }
+    return this
+        .pointerInput(Unit) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                pointerDown[0] = true
+                scope.launch { press.snapTo(1f) }
+                // Null when a scroll consumed the gesture: the press is withdrawn either way.
+                waitForUpOrCancellation()
+                scope.launch {
+                    press.animateTo(0f, release.value)
+                    pointerDown[0] = false
+                }
+            }
+        }
+        .graphicsLayer {
+            val p = press.value
+            // The dip in opacity is NOT conditional on reduce motion: it is the
+            // acknowledgement itself, and someone who asked for less movement still has to
+            // see the tap register.
+            val scale = if (scales && !reduceMotion) 1f - p * (1f - PRESS_SCALE) else 1f
+            scaleX = scale
+            scaleY = scale
+            alpha = 1f - p * (1f - PRESS_ALPHA)
+        }
 }
 
 private const val PRESS_SCALE = 0.975f

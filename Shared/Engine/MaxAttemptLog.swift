@@ -12,12 +12,17 @@ import Foundation
 /// moment the screen opens, crossing `MaxAttempt.releaseKg` begins an attempt, and coming
 /// off the edge for `releaseSeconds` logs it.
 ///
+/// A visit measures ONE kind of max, fixed at creation: the peak, or a timed window
+/// (`windowSeconds`), so every attempt in it is comparable with every other — a 10 s
+/// average beside a peak would make "best" meaningless.
+///
 /// Pure — no clock, device or store — so the rules are testable.
 struct MaxAttemptLog: Sendable {
     struct Attempt: Identifiable, Equatable, Sendable {
         let id: Int
         var side: Side
-        let peakKg: Double
+        /// What the pull records: its peak, or its window's average on a timed visit.
+        let kg: Double
     }
 
     /// Off the edge this long ends a pull. Shorter than a single test's two seconds:
@@ -30,15 +35,28 @@ struct MaxAttemptLog: Sendable {
     private(set) var side: Side
     private var current: MaxAttempt?
     private var nextID = 1
+    /// 0 is a PEAK visit; otherwise every pull is averaged over this many seconds.
+    let windowSeconds: Int
+    /// How long the last timed pull held before it was let go SHORT of its window — it
+    /// logged nothing, and the screen says so rather than going quiet. Cleared by the
+    /// next pull.
+    private(set) var lastShortSeconds: TimeInterval?
 
-    init(side: Side) {
+    init(side: Side, windowSeconds: Int = 0) {
         self.side = side
+        self.windowSeconds = Swift.max(0, windowSeconds)
     }
 
     /// A pull is under way: over the threshold, or under it for less than `releaseSeconds`.
     var isPulling: Bool { current != nil }
-    /// The pull in progress's highest reading so far.
-    var pullPeakKg: Double? { current?.peakKg }
+    /// The pull in progress's live figure: its highest reading so far, or on a timed visit
+    /// its average so far.
+    var pullKg: Double? {
+        guard let current else { return nil }
+        return windowSeconds > 0 ? current.averageKg : current.peakKg
+    }
+    /// Seconds still to hold on a timed pull in progress.
+    var pullRemainingSeconds: TimeInterval? { current?.remainingSeconds }
 
     /// Feed one sample. Returns the attempt this sample completed, if any.
     @discardableResult
@@ -47,7 +65,9 @@ struct MaxAttemptLog: Sendable {
         if current == nil {
             // Drift below the threshold is not a pull, so it opens nothing.
             guard kg >= MaxAttempt.releaseKg else { return nil }
-            current = MaxAttempt(endsAfter: Self.releaseSeconds)
+            current = MaxAttempt(endsAfter: Self.releaseSeconds,
+                                 window: windowSeconds > 0 ? TimeInterval(windowSeconds) : nil)
+            lastShortSeconds = nil
         }
         current?.add(kg, at: t)
         return current?.isComplete == true ? close() : nil
@@ -58,8 +78,11 @@ struct MaxAttemptLog: Sendable {
     mutating func close() -> Attempt? {
         guard let attempt = current else { return nil }
         current = nil
-        guard attempt.hasResult, attempt.peakKg.isFinite else { return nil }
-        let logged = Attempt(id: nextID, side: side, peakKg: attempt.peakKg)
+        guard let kg = attempt.resultKg, kg.isFinite else {
+            if windowSeconds > 0, attempt.heldSeconds > 0 { lastShortSeconds = attempt.heldSeconds }
+            return nil
+        }
+        let logged = Attempt(id: nextID, side: side, kg: kg)
         nextID += 1
         attempts.append(logged)
         return logged
@@ -79,12 +102,12 @@ struct MaxAttemptLog: Sendable {
         attempts.filter { $0.side == side }
     }
 
-    /// The hardest pull on a hand. A tie keeps the EARLIER one, so a repeat of the same
+    /// The strongest pull on a hand. A tie keeps the EARLIER one, so a repeat of the same
     /// number never moves the choice.
     func best(for side: Side) -> Attempt? {
         attempts(for: side).reduce(nil) { best, next in
             guard let best else { return next }
-            return next.peakKg > best.peakKg ? next : best
+            return next.kg > best.kg ? next : best
         }
     }
 

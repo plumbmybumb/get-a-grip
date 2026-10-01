@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -114,6 +115,11 @@ fun TargetBandRow(
     /// either clears the other, so the row never shows one and runs the other.
     val kgBand = set.targetBand
     val hasTarget = kgBand != null || percentBand != null
+    /// Which max the percentage is of — null is the peak. See `SetPlan.targetMaxSeconds`.
+    val basis = set.targetMaxSeconds
+    /// Timed lengths worth a chip: what you have MEASURED on this grip, plus whatever is
+    /// selected. Empty hides the row entirely — see `MaxBasisChips`.
+    val basisOptions = (maxes.timedLengths(set.grip.key) + listOfNotNull(basis)).toSortedSet().toList()
 
     /// The hands this routine asks about, in the order the runner alternates them.
     val sides = if (handMode.sideCount > 1) listOf(Side.left, Side.right) else listOf(Side.both)
@@ -124,7 +130,7 @@ fun TargetBandRow(
         // An explicit band is already the answer, the same for both hands.
         if (kgBand != null) return kgBand
         val band = percentBand ?: return null
-        val maxKg = maxes.max(set.grip.key, side) ?: return null
+        val maxKg = maxes.max(set.grip.key, side, basis) ?: return null
         if (maxKg <= 0) return null
         return PlanMath.roundedToHalfKg(maxKg * band.start)..
             PlanMath.roundedToHalfKg(maxKg * band.endInclusive)
@@ -133,7 +139,7 @@ fun TargetBandRow(
     val differsByHand = sides.size > 1 && resolved(Side.left) != resolved(Side.right)
     /// A percentage is set, and at least one hand has no max to resolve it against.
     val unresolved = percentBand != null && sides.any { resolved(it) == null }
-    val hasResolvableMax = sides.any { (maxes.max(set.grip.key, it) ?: 0.0) > 0 }
+    val hasResolvableMax = sides.any { (maxes.max(set.grip.key, it, basis) ?: 0.0) > 0 }
 
     fun applyPercent(lo: Double, hi: Double) {
         // `PlanMath.targetBand` ranks kg first, so a percentage beside kilograms would silently
@@ -150,7 +156,7 @@ fun TargetBandRow(
         onChange(
             set.copy(
                 targetLoKg = lo, targetHiKg = hi,
-                targetLoPercent = null, targetHiPercent = null,
+                targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null,
             ),
         )
     }
@@ -159,7 +165,7 @@ fun TargetBandRow(
         onChange(
             set.copy(
                 targetLoKg = null, targetHiKg = null,
-                targetLoPercent = null, targetHiPercent = null,
+                targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null,
             ),
         )
         showsCustomFields = false
@@ -194,8 +200,16 @@ fun TargetBandRow(
             val resolvedSides = sides.filter { resolved(it) != null }
             when {
                 // Named, not hinted: a percentage with no max resolves to no target at run time.
+                // A timed basis never falls back to the peak, so it says which max is missing.
+                resolvedSides.isEmpty() && basis != null ->
+                    tr("No %d s max for this grip yet. Measure one in Benchmarks.", basis)
                 resolvedSides.isEmpty() ->
                     tr("No max for this grip yet. Measure one in Benchmarks.")
+                resolvedSides.size < sides.size && basis != null -> {
+                    val missing = sides.first { resolved(it) == null }
+                    tr("No %d s max for your %s hand yet. Measure one in Benchmarks.",
+                        basis, missing.displayName.lowercase())
+                }
                 // One hand has a max, the other not (a left- or right-only max). Say WHICH, because the row
                 // above shows a confident band for the other.
                 resolvedSides.size < sides.size -> {
@@ -235,7 +249,8 @@ fun TargetBandRow(
                 .semantics(mergeDescendants = true) {
                     role = Role.Button
                     contentDescription = L10n.tr("Target load")
-                    stateDescription = valueText
+                    stateDescription = if (basis != null && percentBand != null && kgBand == null)
+                        L10n.tr("%s, of your %d second max", valueText, basis) else valueText
                 }
                 .clickable(
                     interactionSource = interactionSource,
@@ -245,13 +260,20 @@ fun TargetBandRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                tr("Target load"),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = palette.inkPrimary,
-                modifier = Modifier.weight(1f),
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    tr("Target load"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = palette.inkPrimary,
+                )
+                // Which max the percentage is OF, said even when shut: 90 % of a 10 s max and
+                // 90 % of a peak are different sessions.
+                if (basis != null && percentBand != null && kgBand == null) {
+                    Text(tr("of your %d s max", basis), style = MaterialTheme.typography.bodySmall,
+                        color = palette.inkSecondary)
+                }
+            }
             Text(
                 valueText,
                 style = MaterialTheme.typography.titleMedium,
@@ -409,6 +431,12 @@ fun TargetBandRow(
                     }
                 }
 
+                // Only once this grip HAS a timed max (or the set already uses one): someone who
+                // never measures one never meets the idea, and nobody can pick a max they lack.
+                if (percentBand != null && kgBand == null && basisOptions.isNotEmpty()) {
+                    MaxBasisChips(basis, basisOptions) { seconds -> onChange(set.copy(targetMaxSeconds = seconds)) }
+                }
+
                 if (caption != null) {
                     Text(
                         caption,
@@ -420,6 +448,29 @@ fun TargetBandRow(
                 }
             }
         }
+    }
+}
+
+/// **Which max a percentage is OF** (2026-10-01): "Peak max" — every routine's meaning
+/// before timed maxes, and the default — or a timed max, "90 % of your 10 s max". The
+/// lengths are DERIVED (only what you have measured on the grip) and with none the row is
+/// not drawn at all: the idea must not reach someone who never measures a timed max.
+/// Twin of iOS `MaxBasisChips`.
+@Composable
+internal fun MaxBasisChips(selection: Int?, options: List<Int>, onSelect: (Int?) -> Unit) {
+    val palette = LocalGripPalette.current
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(tr("Percentage of your"), style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium, color = palette.inkSecondary)
+        ChipGrid(base = 3, content = buildList {
+            add { m -> Chip(tr("Peak max"), isSelected = selection == null, modifier = m.testTag("target.basis.peak")) { onSelect(null) } }
+            options.forEach { seconds ->
+                add { m ->
+                    Chip(tr("%d s max", seconds), isSelected = selection == seconds,
+                        modifier = m.testTag("target.basis.$seconds")) { onSelect(seconds) }
+                }
+            }
+        })
     }
 }
 
@@ -457,7 +508,7 @@ private fun kgScaleTop(
     sides: List<Side>,
 ): Double {
     val top = bandTop ?: DEFAULT_KG_HI
-    val maxTop = sides.mapNotNull { maxes.max(set.grip.key, it) }.maxOrNull() ?: 0.0
+    val maxTop = sides.mapNotNull { maxes.max(set.grip.key, it, set.targetMaxSeconds) }.maxOrNull() ?: 0.0
     return ceil(maxOf(40.0, top * 1.3, maxTop * 1.2) / 5.0) * 5.0
 }
 

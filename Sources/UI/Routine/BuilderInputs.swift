@@ -41,7 +41,8 @@ extension SessionPlan {
     var setRowKey: SetRowKey {
         SetRowKey(holdSeconds: holdSeconds, restSeconds: restSeconds,
                   leadInSeconds: leadInSeconds, handMode: handMode,
-                  targetLoPercent: targetLoPercent, targetHiPercent: targetHiPercent)
+                  targetLoPercent: targetLoPercent, targetHiPercent: targetHiPercent,
+                  targetMaxSeconds: targetMaxSeconds)
     }
 
     /// What the Rhythm page draws.
@@ -55,7 +56,7 @@ extension SessionPlan {
     /// What the fine-tuning card draws — the one card that shows the pull threshold.
     var fineTuningKey: FineTuningKey {
         FineTuningKey(thresholdKg: thresholdKg,
-                      pausesOutsideTargetBand: pausesOutsideTargetBand,
+                      targetBandGate: targetBandGate,
                       leadInSeconds: leadInSeconds)
     }
 }
@@ -67,6 +68,7 @@ struct SetRowKey: Equatable {
     let handMode: HandMode
     let targetLoPercent: Double?
     let targetHiPercent: Double?
+    let targetMaxSeconds: Int?
 }
 
 struct RhythmKey: Equatable {
@@ -80,7 +82,7 @@ struct RhythmKey: Equatable {
 
 struct FineTuningKey: Equatable {
     let thresholdKg: Double
-    let pausesOutsideTargetBand: Bool
+    let targetBandGate: TargetBandGate
     let leadInSeconds: Int
 }
 

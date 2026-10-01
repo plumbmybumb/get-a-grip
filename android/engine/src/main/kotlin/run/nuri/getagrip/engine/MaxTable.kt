@@ -16,6 +16,10 @@ package run.nuri.getagrip.engine
 /// - a `both` rep uses ONLY a both-hands max. Summing the hands would be a silent,
 ///   doubled guess pointed at someone's fingers: *no max means no target, never a guess.*
 ///
+/// **A max has a LENGTH too** (2026-10-01): the peak (`seconds` null or 0) or a timed max —
+/// the average held over N seconds. Separate slots, and a timed lookup NEVER falls back to
+/// the peak: 90 % of a 10 s max and 90 % of a peak are very different loads.
+///
 /// TRANSLATION NOTE (from Shared/Engine/MaxTable.swift): Swift's value-type `struct` is
 /// a class here, so `var table2 = table1` becomes `val table2 = table1.copy()` —
 /// forgetting the copy is the one behaviour change the translation can produce.
@@ -36,22 +40,32 @@ class MaxTable {
     }
 
     /// Zero and negative are dropped, so `PlanMath` never divides by them.
-    fun record(kg: Double, grip: String, side: Side) {
+    fun record(kg: Double, grip: String, side: Side, seconds: Int? = null) {
         if (!kg.isFinite() || kg <= 0) return
-        byKey[key(grip, side)] = kg
+        byKey[key(grip, side, seconds)] = kg
     }
 
     /// The max to use for a rep on `side`. See the type's note for the fallback rule.
-    fun max(grip: String, side: Side): Double? {
-        byKey[key(grip, side)]?.let { return it }
+    fun max(grip: String, side: Side, seconds: Int? = null): Double? {
+        byKey[key(grip, side, seconds)]?.let { return it }
         if (side == Side.both) return null
-        return byKey[key(grip, Side.both)]
+        return byKey[key(grip, Side.both, seconds)]
     }
 
     /// What is on file for exactly this hand, with NO fallback. The builder and
     /// max-change receipts must distinguish an actual hand record from a shared
     /// fallback before explaining targets or offering a proportional rescale.
-    fun exact(grip: String, side: Side): Double? = byKey[key(grip, side)]
+    fun exact(grip: String, side: Side, seconds: Int? = null): Double? = byKey[key(grip, side, seconds)]
+
+    /// Every timed length on file for a grip, shortest first — what the builder offers
+    /// beside "Peak". Derived from what you have measured, never a fixed menu.
+    fun timedLengths(grip: String): List<Int> {
+        val prefix = "$grip|"
+        return byKey.keys.filter { it.startsWith(prefix) }.mapNotNull(::lengthOf).toSortedSet().toList()
+    }
+
+    /// Every timed length on file for ANY grip, shortest first.
+    val timedLengths: List<Int> get() = byKey.keys.mapNotNull(::lengthOf).toSortedSet().toList()
 
     /// True when a grip resolves to DIFFERENT loads for the two hands — the one question
     /// every per-hand display asks before deciding whether to draw one figure or two.
@@ -73,6 +87,15 @@ class MaxTable {
 
     companion object {
         /// The wire format for a (grip, hand) pair. `Side.rawValue`, never a localized name.
-        fun key(grip: String, side: Side): String = "$grip|${side.rawValue}"
+        /// A timed max appends `|10s`, so a PEAK key is byte-identical to every key written
+        /// before timed maxes existed.
+        fun key(grip: String, side: Side, seconds: Int? = null): String =
+            if (seconds != null && seconds > 0) "$grip|${side.rawValue}|${seconds}s" else "$grip|${side.rawValue}"
+
+        /// Only a timed key ends in "<n>s"; a peak key ends in the hand's raw name.
+        private fun lengthOf(key: String): Int? {
+            val last = key.substringAfterLast('|')
+            return if (last.endsWith("s")) last.dropLast(1).toIntOrNull() else null
+        }
     }
 }

@@ -54,6 +54,7 @@ class RunnerFixtureTests {
                 timerOnly = scenario.getValue("timerOnly").jsonPrimitive.boolean,
                 maxCreditedSampleGapSeconds = scenario["maxCreditedSampleGapSeconds"]
                     ?.jsonPrimitive?.content?.toDouble(),
+                engagesOnFirstReading = scenario["engagesOnFirstReading"]?.jsonPrimitive?.boolean ?: false,
             )
 
             for ((index, step) in scenario.getValue("steps").jsonArray.withIndex()) {

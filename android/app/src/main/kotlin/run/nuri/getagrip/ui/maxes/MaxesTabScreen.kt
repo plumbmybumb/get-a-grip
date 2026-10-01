@@ -122,7 +122,7 @@ import run.nuri.getagrip.ui.theme.Metrics
 @Composable
 fun MaxesTabScreen(
     onAddMax: (GripSpec?) -> Unit,
-    onMeasure: (GripSpec, Side) -> Unit,
+    onMeasure: (GripSpec, Side, Int) -> Unit,
     onEdit: (GripSpec) -> Unit,
     modifier: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
@@ -138,7 +138,7 @@ fun MaxesTabScreen(
 @Composable
 private fun MaxesOverview(
     onAddMax: (GripSpec?) -> Unit,
-    onMeasure: (GripSpec, Side) -> Unit,
+    onMeasure: (GripSpec, Side, Int) -> Unit,
     onEdit: (GripSpec) -> Unit,
     modifier: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
@@ -260,9 +260,14 @@ private fun MaxesOverview(
         CriticalForceHistorySheet(gripKey = grip.key, title = grip.displayName, onClose = { historyGrip = null })
     }
     choosing?.let { grip ->
-        // Both max choices open the max VISIT; see `MaxMeasureModeDialog`.
-        MaxMeasureModeDialog(
-            onMax = { side -> choosing = null; onMeasure(grip, side) },
+        // The kind of max is settled here, before the gauge screen opens.
+        MaxMeasureChooser(
+            grip = grip,
+            initialSeconds = templates.missingTimedLength(grip) ?: 0,
+            onMax = { side, seconds ->
+                choosing = null
+                onMeasure(grip, if (side == Side.both) side else templates.firstHandToMeasure(grip, seconds), seconds)
+            },
             onCriticalForce = {
                 choosing = null
                 onCriticalForce(grip, criticalForceHandsFor(grip, tests))
@@ -294,7 +299,8 @@ internal class BenchmarkGroup(val maxes: MaxGripGroup, val tests: List<CriticalF
     val key: String get() = maxes.key
     val grip: GripSpec get() = maxes.grip
     val lastActivity: Instant =
-        listOfNotNull(maxes.records.lastOrNull()?.recordedAt, tests.lastOrNull()?.recordedAt).maxOrNull() ?: Instant.MIN
+        listOfNotNull(maxes.records.lastOrNull()?.recordedAt, maxes.timed.lastOrNull()?.recordedAt,
+            tests.lastOrNull()?.recordedAt).maxOrNull() ?: Instant.MIN
 }
 
 /// Every grip with a max OR a critical force test — a grip with only a test still gets its
@@ -456,8 +462,13 @@ private fun GripCard(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (hasMax) {
-                if (isOpen && tests.isNotEmpty()) CapsLabel(tr("Max"))
+                // Named once a second kind of max shares the card.
+                if (group.timed.isNotEmpty()) CapsLabel(tr("Peak max"))
+                else if (isOpen && tests.isNotEmpty()) CapsLabel(tr("Max"))
                 CurrentReadout(group, sides, showBest = isOpen)
+                if (group.timed.isNotEmpty()) TimedReadout(group)
+            } else if (group.timed.isNotEmpty()) {
+                TimedReadout(group)
             } else if (tests.isNotEmpty() && !isOpen) {
                 // Shut, a critical-force-only grip still states its number.
                 CriticalForceReadout(benchmark, cfSides)
@@ -513,7 +524,7 @@ private fun GripCard(
                     } else {
                         Spacer(Modifier.weight(1f))
                     }
-                    SecondaryButton(title = if (hasMax) tr("Measure again") else tr("Measure max"),
+                    SecondaryButton(title = if (hasMax || group.timed.isNotEmpty()) tr("Measure again") else tr("Measure max"),
                         modifier = Modifier.weight(1f).testTag("maxes.measure.${group.key}")) {
                         onMeasure()
                     }
@@ -653,6 +664,42 @@ private fun CurrentReadout(group: MaxGripGroup, sides: List<Side>, showBest: Boo
     }
 }
 
+/// Each timed length on its own line, newest value per hand — what a routine set to "90 % of
+/// your 10 s max" runs on. Shown shut as well as open: like the peak, targets are made of it.
+@Composable
+private fun TimedReadout(group: MaxGripGroup) {
+    val palette = LocalGripPalette.current
+    val largeText = LocalDensity.current.fontScale >= 1.5f
+    val lengths = group.timed.map { it.durationSeconds }.toSortedSet()
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 6.dp)) {
+        lengths.forEach { seconds ->
+            val series = group.timed.filter { it.durationSeconds == seconds }
+            val sides = listOf(Side.both, Side.left, Side.right).filter { side -> series.any { it.side == side } }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                CapsLabel(tr("%d s max", seconds))
+                @Composable fun Readout(side: Side, modifier: Modifier = Modifier) {
+                    val record = series.lastOrNull { it.side == side } ?: return
+                    val label = if (side == Side.both) tr("Shared max") else side.displayName
+                    val spoken = "${tr("%d second max", seconds)}, $label, ${WeightUnits.text(record.kg)}"
+                    Column(modifier.testTag("maxes.timed.${group.key}.$seconds.${side.rawValue}")
+                        .clearAndSetSemantics { contentDescription = spoken },
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(label, style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary)
+                        KgText(record.kg, prominent = false)
+                    }
+                }
+                if (largeText) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { sides.forEach { Readout(it) } }
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        sides.forEach { Readout(it, Modifier.weight(1f)) }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 internal fun KgText(kg: Double, prominent: Boolean) {
     val palette = LocalGripPalette.current
@@ -703,6 +750,6 @@ private fun Card(
 @Composable
 private fun MaxesTabPreview() {
     PreviewWorld { feed ->
-        MaxesTabScreen(onAddMax = {}, onMeasure = { _, _ -> }, onEdit = {}, feed = feed)
+        MaxesTabScreen(onAddMax = {}, onMeasure = { _, _, _ -> }, onEdit = {}, feed = feed)
     }
 }

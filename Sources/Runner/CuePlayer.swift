@@ -79,7 +79,10 @@ final class CuePlayer {
         installObservers()
         startAudio()
         prepareHaptics()
-        startHapticEngine()
+        // ASYNC here: the synchronous `start()` blocks the main thread on the haptic
+        // server. A lazy restart from `haptic(_:)` stays synchronous, because the cue
+        // that needed it is about to play.
+        startHapticEngineAsync()
     }
 
     /// Deactivate the audio session and stop the haptic engine. Also the ONE place
@@ -374,6 +377,16 @@ final class CuePlayer {
             hapticEngineRunning = true
         } catch {
             hapticEngineRunning = false
+        }
+    }
+
+    private func startHapticEngineAsync() {
+        guard hapticsSupported, let hapticEngine else { return }
+        hapticEngine.start { [weak self] error in
+            Task { @MainActor in
+                guard let self, self.isRunning else { return }
+                self.hapticEngineRunning = error == nil
+            }
         }
     }
 

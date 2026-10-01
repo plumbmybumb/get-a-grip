@@ -6,6 +6,7 @@ package run.nuri.getagrip.ui.maxes
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
@@ -138,7 +139,10 @@ fun MaxMeasureScreen(
     savedMax: ((Side) -> Double?)? = null,
 ) {
     val templates = if (savedMax == null) LocalTemplateStore.current else null
-    val maxOn: (Side) -> Double? = savedMax ?: { side -> templates?.currentMax(grip, side) }
+    // The saved max OF THIS KIND: a 10 s visit compares against your 10 s max, never the peak.
+    val window = session.snapshot.windowSeconds
+    val maxOn: (Side) -> Double? = savedMax
+        ?: { side -> templates?.maxTable?.max(grip.key, side, window.takeIf { it > 0 }) }
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
@@ -327,6 +331,7 @@ private fun InfoPanel(session: LiveMaxSession, savedMax: (Side) -> Double?) {
         contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 14.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        MaxLengthLabel(session.snapshot.windowSeconds)
         if (session.bothTogether) {
             CapsLabel(tr("Both hands together"))
         } else {
@@ -334,6 +339,24 @@ private fun InfoPanel(session: LiveMaxSession, savedMax: (Side) -> Double?) {
         }
         MaxLiveHero(session)
     }
+}
+
+/// What this visit measures, stated — chosen before the screen opened (`MaxMeasureChooser`)
+/// and fixed for the visit, so every pull in it is the same kind of number.
+@Composable
+private fun MaxLengthLabel(seconds: Int) {
+    val palette = LocalGripPalette.current
+    val text = if (seconds == 0) tr("Peak max") else tr("%d s max", seconds)
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = palette.inkSecondary,
+        modifier = Modifier
+            .background(palette.inkPrimary.copy(alpha = 0.05f), CircleShape)
+            .padding(horizontal = 14.dp, vertical = 5.dp)
+            .testTag("max.measure.length"),
+    )
 }
 
 // MARK: - Hands
@@ -432,13 +455,29 @@ private val HERO_UNIT_SIZE = 22.sp
 @Composable
 private fun MaxLiveHero(session: LiveMaxSession) {
     val palette = LocalGripPalette.current
-    val pulling = session.pullPeakKg
+    val pulling = session.pullKg
     val last = session.lastAttempt
-    val shown = pulling ?: last?.peakKg
-    val label = when {
-        pulling != null -> tr("This pull")
-        last == null -> tr("Pull when ready")
-        else -> tr("Last pull")
+    val shown = pulling ?: last?.kg
+    val window = session.snapshot.windowSeconds
+    val label = if (window <= 0) {
+        when {
+            pulling != null -> tr("This pull")
+            last == null -> tr("Pull when ready")
+            else -> tr("Last pull")
+        }
+    } else {
+        // A TIMED pull counts DOWN — "how much longer", like the runner's hold — and the
+        // figure is the average so far, which is what will be saved.
+        val left = session.pullSecondsLeft
+        val short = session.shortPullSeconds
+        when {
+            session.isPulling && (left == null || left <= 0) -> tr("Done — let go")
+            session.isPulling -> tr("Average · %d s left", left!!)
+            // A pull let go early logs nothing; say so rather than going quiet.
+            short != null -> tr("Too short · held %s of %d s", String.format(java.util.Locale.getDefault(), "%.1f", short), window)
+            last == null -> tr("Pull and hold %d s", window)
+            else -> tr("Last %d s average", window)
+        }
     }
     val spoken = when {
         shown == null -> tr("No pull yet")
@@ -542,7 +581,7 @@ private fun GraphNotice() {
 /// The number to beat on the selected hand: this visit's best, else that hand's saved max.
 internal fun maxToBeat(draft: MaxMeasurementDraft, savedMax: (Side) -> Double?): Double? {
     val side = draft.log.side
-    return draft.log.best(side)?.peakKg ?: savedMax(side)
+    return draft.log.best(side)?.kg ?: savedMax(side)
 }
 
 // MARK: - Dock

@@ -4,7 +4,6 @@
 package run.nuri.getagrip.ui.builder
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -128,6 +127,11 @@ internal fun RoutineTargetRow(
     /// Some set carries a target of its own, so "None" here is not the whole story.
     setsVary: Boolean,
     modifier: Modifier = Modifier,
+    /// Which max the band is of — null is the peak. See `SetPlan.targetMaxSeconds`.
+    basis: Int? = null,
+    /// Timed lengths to offer beside "Peak max" — empty hides the choice (`MaxBasisChips`).
+    basisOptions: List<Int> = emptyList(),
+    onBasisChange: (Int?) -> Unit = {},
     /// Writes the routine band and clears every set's own target: one band for all.
     onChange: (ClosedFloatingPointRange<Double>?) -> Unit,
 ) {
@@ -147,7 +151,10 @@ internal fun RoutineTargetRow(
     val label = tr("Target load")
     val disclosure = tr(if (expanded) "Expanded" else "Collapsed")
 
-    Column(modifier.fillMaxWidth().animateContentSize(Motion.state(reduceMotion))) {
+    // No animateContentSize here: the disclosure below already animates its height, and the
+    // two together animated every open and close twice (responsiveness audit, 2026-10-01).
+    // The two conditional blocks inside get their own AnimatedVisibility instead.
+    Column(modifier.fillMaxWidth()) {
         val header: @Composable () -> Unit = {
             Text(
                 valueText,
@@ -179,13 +186,18 @@ internal fun RoutineTargetRow(
             }
         } else {
             Row(headerModifier, verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = palette.inkPrimary,
-                    modifier = Modifier.weight(1f),
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = palette.inkPrimary,
+                    )
+                    if (basis != null && band != null) {
+                        Text(tr("of your %d s max", basis), style = MaterialTheme.typography.bodySmall,
+                            color = palette.inkSecondary)
+                    }
+                }
                 header()
             }
         }
@@ -219,7 +231,11 @@ internal fun RoutineTargetRow(
                     }
                 }
                 ChipGrid(base = 3, content = cells)
-                if (custom) {
+                AnimatedVisibility(
+                    visible = custom,
+                    enter = expandVertically(Motion.state(reduceMotion)) + fadeIn(Motion.state(reduceMotion)),
+                    exit = shrinkVertically(Motion.state(reduceMotion)) + fadeOut(Motion.state(reduceMotion)),
+                ) { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     val current = band ?: 0.20..0.30
                     IntValueRow(
                         title = tr("From"),
@@ -235,7 +251,12 @@ internal fun RoutineTargetRow(
                         unit = "%",
                         control = ValueControl.Stepper,
                     ) { new -> onChange(ordered(current.start, new / 100.0)) }
-                }
+                } }
+                AnimatedVisibility(
+                    visible = band != null && basisOptions.isNotEmpty(),
+                    enter = expandVertically(Motion.state(reduceMotion)) + fadeIn(Motion.state(reduceMotion)),
+                    exit = shrinkVertically(Motion.state(reduceMotion)) + fadeOut(Motion.state(reduceMotion)),
+                ) { MaxBasisChips(basis, basisOptions, onBasisChange) }
             }
         }
     }

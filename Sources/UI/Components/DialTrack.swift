@@ -109,20 +109,62 @@ struct DialTrack: View {
     }
 
     /// The ladder, stated: every value the control can produce, readable without touching it.
+    ///
+    /// **A DENSE ladder labels its round numbers instead** (2026-10-01, the max chooser's
+    /// one-second dial over 3…60): fifty-eight labels in a phone's width collapse into one
+    /// unreadable smear. Below `minLabelSlot` per detent, only multiples of the smallest
+    /// round step that keeps labels apart are drawn, each under its own tick; the row
+    /// above states the exact value either way.
     private var scale: some View {
-        HStack(spacing: 0) {
-            ForEach(values.indices, id: \.self) { index in
-                let isCurrent = renderingMark == .detent(index)
-                Text(format(values[index]))
-                    .font(.system(.caption2, weight: isCurrent ? .semibold : .regular))
-                    .monospacedDigit()
-                    .foregroundStyle(isCurrent ? Ink.primary : Ink.tertiary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity)
+        Text(verbatim: "0")
+            .font(.system(.caption2))
+            .hidden()
+            .frame(maxWidth: .infinity)
+            .overlay {
+                GeometryReader { geo in
+                    let width = geo.size.width
+                    if slotWidth(width) >= Self.minLabelSlot {
+                        HStack(spacing: 0) {
+                            ForEach(values.indices, id: \.self) { index in label(index) }
+                        }
+                    } else {
+                        ForEach(Self.anchorIndices(values, slot: slotWidth(width)), id: \.self) { index in
+                            label(index)
+                                .fixedSize()
+                                .position(x: x(of: index, in: width), y: geo.size.height / 2)
+                        }
+                    }
+                }
             }
+            .accessibilityHidden(true)
+    }
+
+    private func label(_ index: Int) -> some View {
+        let isCurrent = renderingMark == .detent(index)
+        return Text(format(values[index]))
+            .font(.system(.caption2, weight: isCurrent ? .semibold : .regular))
+            .monospacedDigit()
+            .foregroundStyle(isCurrent ? Ink.primary : Ink.tertiary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .frame(maxWidth: .infinity)
+    }
+
+    /// Narrower than this per detent, a label per detent stops being readable.
+    static let minLabelSlot: CGFloat = 20
+
+    /// The detents a dense ladder labels: multiples of the smallest round step whose labels
+    /// sit at least `minGap` apart.
+    static func anchorIndices(_ values: [Double], slot: CGFloat, minGap: CGFloat = 32) -> [Int] {
+        for step in [2.0, 5, 10, 20, 25, 50, 100, 250, 500, 1000] {
+            let anchors = values.indices.filter {
+                let ratio = values[$0] / step
+                return abs(ratio - ratio.rounded()) < 0.001
+            }
+            let gaps = zip(anchors, anchors.dropFirst()).map { CGFloat($1 - $0) * slot }
+            if !anchors.isEmpty, gaps.allSatisfy({ $0 >= minGap }) { return anchors }
         }
-        .accessibilityHidden(true)
+        return [values.startIndex, values.index(before: values.endIndex)]
     }
 
     // MARK: - Geometry

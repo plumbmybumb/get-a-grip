@@ -7,6 +7,8 @@ struct MaxMeasurementResult: Equatable, Sendable {
     let side: Side
     let kg: Double
     var source: MaxSource = .measured
+    /// 0 for a peak max; otherwise the timed window the value is an average over.
+    var seconds: Int = 0
 }
 
 /// One visit's unsaved state: the pulls, which one each hand keeps, and any correction
@@ -21,14 +23,16 @@ struct MaxMeasurementDraft {
     private var picked: [Side: Int] = [:]
     private var corrections: [Side: Double] = [:]
 
-    init(bothTogether: Bool = false, side: Side = .left) {
+    init(bothTogether: Bool = false, side: Side = .left, windowSeconds: Int = 0) {
         self.bothTogether = bothTogether
-        log = MaxAttemptLog(side: bothTogether ? .both : side)
+        log = MaxAttemptLog(side: bothTogether ? .both : side, windowSeconds: windowSeconds)
     }
 
     /// The hands this visit can save — never a combined value from two separate hands.
     var sides: [Side] { bothTogether ? [.both] : [.left, .right] }
     var hasAttempts: Bool { !log.attempts.isEmpty }
+    /// 0 for a peak visit; see `MaxAttemptLog.windowSeconds`.
+    var windowSeconds: Int { log.windowSeconds }
 
     /// The pull a hand saves: the one picked, while it is still on that hand; else its best.
     func kept(for side: Side) -> MaxAttemptLog.Attempt? {
@@ -38,20 +42,22 @@ struct MaxMeasurementDraft {
         return log.best(for: side)
     }
 
-    func peak(for side: Side) -> Double? { corrections[side] ?? kept(for: side)?.peakKg }
-    func measuredPeak(for side: Side) -> Double? { kept(for: side)?.peakKg }
+    func peak(for side: Side) -> Double? { corrections[side] ?? kept(for: side)?.kg }
+    func measuredPeak(for side: Side) -> Double? { kept(for: side)?.kg }
     func isCorrected(_ side: Side) -> Bool { corrections[side] != nil }
 
     var results: [MaxMeasurementResult] {
         sides.compactMap { side in
             kept(for: side).map {
-                MaxMeasurementResult(side: side, kg: corrections[side] ?? $0.peakKg,
-                                     source: corrections[side] == nil ? .measured : .manual)
+                MaxMeasurementResult(side: side, kg: corrections[side] ?? $0.kg,
+                                     source: corrections[side] == nil ? .measured : .manual,
+                                     seconds: log.windowSeconds)
             }
         }
     }
 
     // MARK: - Pulling
+
 
     @discardableResult
     mutating func add(_ kg: Double, at t: TimeInterval) -> MaxAttemptLog.Attempt? {
@@ -108,7 +114,7 @@ struct MaxMeasurementDraft {
               Set(values.map(\.side)).count == values.count,
               values.allSatisfy({ kept(for: $0.side) != nil && $0.kg.isFinite && $0.kg > 0 }) else { return false }
         for value in values {
-            corrections[value.side] = value.kg == kept(for: value.side)?.peakKg ? nil : value.kg
+            corrections[value.side] = value.kg == kept(for: value.side)?.kg ? nil : value.kg
         }
         return true
     }
@@ -126,14 +132,20 @@ final class LiveMaxSession {
     @ObservationIgnored private var draft: MaxMeasurementDraft
     private var revision = 0
     private(set) var isPulling = false
-    private(set) var pullPeakKg: Double?
+    /// The pull in progress's live figure — its peak, or its running average when timed.
+    private(set) var pullKg: Double?
+    /// Whole seconds still to hold on a timed pull, rounded UP so "1" is on screen until
+    /// the window actually closes. Published per second, never per sample.
+    private(set) var pullSecondsLeft: Int?
+    /// The last timed pull let go short of its window, in seconds held.
+    private(set) var shortPullSeconds: TimeInterval?
     /// The most recent pull on the selected hand, for the hero between pulls.
     private(set) var lastAttempt: MaxAttemptLog.Attempt?
     /// Bumped when a pull beats its hand's previous best — the success haptic's trigger.
     private(set) var newBestTick = 0
 
-    init(bothTogether: Bool, side: Side) {
-        draft = MaxMeasurementDraft(bothTogether: bothTogether, side: side)
+    init(bothTogether: Bool, side: Side, windowSeconds: Int = 0) {
+        draft = MaxMeasurementDraft(bothTogether: bothTogether, side: side, windowSeconds: windowSeconds)
     }
 
     var snapshot: MaxMeasurementDraft {
@@ -162,7 +174,7 @@ final class LiveMaxSession {
 
     func receive(_ point: DeviceStore.TracePoint) {
         guard !isFrozen else { return }
-        let previousBest = draft.log.best(for: draft.log.side)?.peakKg
+        let previousBest = draft.log.best(for: draft.log.side)?.kg
         let logged = draft.add(point.kg, at: point.t)
         publishPull()
         if let logged { didLog(logged, previousBest: previousBest) }
@@ -170,7 +182,7 @@ final class LiveMaxSession {
 
     func close() {
         guard !isFrozen else { return }
-        let previousBest = draft.log.best(for: draft.log.side)?.peakKg
+        let previousBest = draft.log.best(for: draft.log.side)?.kg
         let logged = draft.close()
         publishPull()
         if let logged { didLog(logged, previousBest: previousBest) }
@@ -196,7 +208,7 @@ final class LiveMaxSession {
 
     private func didLog(_ attempt: MaxAttemptLog.Attempt, previousBest: Double?) {
         if attempt.side == draft.log.side { lastAttempt = attempt }
-        if attempt.peakKg > (previousBest ?? 0) { newBestTick += 1 }
+        if attempt.kg > (previousBest ?? 0) { newBestTick += 1 }
         revision += 1
     }
 
@@ -210,7 +222,11 @@ final class LiveMaxSession {
     /// Equality-guarded: Observation fires on every SET, not every change.
     private func publishPull() {
         if isPulling != draft.log.isPulling { isPulling = draft.log.isPulling }
-        let peak = draft.log.pullPeakKg
-        if pullPeakKg != peak { pullPeakKg = peak }
+        let live = draft.log.pullKg
+        if pullKg != live { pullKg = live }
+        let left = draft.log.pullRemainingSeconds.map { Int($0.rounded(.up)) }
+        if pullSecondsLeft != left { pullSecondsLeft = left }
+        let short = draft.log.lastShortSeconds
+        if shortPullSeconds != short { shortPullSeconds = short }
     }
 }

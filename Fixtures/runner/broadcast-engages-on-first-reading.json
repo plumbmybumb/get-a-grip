@@ -1,0 +1,31 @@
+{
+  "engagesOnFirstReading": true,
+  "final": {
+    "completedRepCount": 1,
+    "phase": "finished",
+    "results": [
+      "{\"avgKg\":20,\"endedElapsedSeconds\":3.5,\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"heldSeconds\":3,\"outcome\":\"completed\",\"peakKg\":20,\"repIndex\":0,\"setIndex\":0,\"side\":\"both\",\"startedElapsedSeconds\":0.5,\"targetSeconds\":3}"
+    ]
+  },
+  "maxCreditedSampleGapSeconds": 1,
+  "maxes": [],
+  "name": "broadcast-engages-on-first-reading",
+  "plan": "{\"handMode\":\"bothHands\",\"holdSeconds\":3,\"leadInSeconds\":0,\"name\":\"Test\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"5E7C0000-0000-4000-8000-000000000000\",\"note\":\"\",\"repsPerSide\":1}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+  "steps": [
+    {"cues":[{"side":"both","type":"armed"}],"event":{"type":"start"},"t":0},
+    {"cues":[{"type":"repStarted"}],"event":{"batchStart":true,"kg":20,"micros":500000,"type":"sample"},"t":0.5},
+    {"cues":[],"event":{"batchStart":true,"kg":20,"micros":1000000,"type":"sample"},"t":1},
+    {"cues":[],"event":{"batchStart":true,"kg":20,"micros":1500000,"type":"sample"},"t":1.5},
+    {"cues":[{"type":"repHalfway"}],"event":{"batchStart":true,"kg":20,"micros":2000000,"type":"sample"},"t":2},
+    {"cues":[],"event":{"batchStart":true,"kg":20,"micros":2500000,"type":"sample"},"t":2.5},
+    {"cues":[],"event":{"batchStart":true,"kg":20,"micros":3000000,"type":"sample"},"t":3},
+    {
+      "cues": [{"completed":true,"type":"repEnded"},{"setIndex":0,"type":"setCompleted"},{"type":"sessionCompleted"}],
+      "event": {"batchStart":true,"kg":20,"micros":3500000,"type":"sample"},
+      "t": 3.5
+    },
+    {"cues":[],"event":{"batchStart":true,"kg":20,"micros":4000000,"type":"sample"},"t":4},
+    {"cues":[],"event":{"batchStart":true,"kg":20,"micros":4500000,"type":"sample"},"t":4.5}
+  ],
+  "timerOnly": false
+}

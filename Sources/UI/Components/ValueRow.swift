@@ -75,7 +75,10 @@ struct ValueRow: View {
     /// Whether the number has become a field. Two changes per edit, so it lives here; the
     /// DRAFT STRING changes per keypress and does not (see `ValueField`).
     @State private var isTyping = false
-    @FocusState private var fieldFocused: Bool
+    // NO @FocusState here: a row holding one is re-run whenever focus moves ANYWHERE on the
+    // screen, so every keystroke in the routine's name re-ran all three Rhythm rows and their
+    // six step buttons (measured 2026-10-01: 10 bodies per keystroke). The field that exists
+    // only while typing owns its focus — see `ValueField`.
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Only when there is a slider to fall back on — see the preset row's comment.
@@ -219,7 +222,6 @@ struct ValueRow: View {
                 }
                 .accessibilityAction(named: Text("Type a value")) {
                     isTyping = true
-                    fieldFocused = true
                 }
         }
     }
@@ -271,7 +273,6 @@ struct ValueRow: View {
     private var tappableValue: some View {
         Button {
             isTyping = true
-            fieldFocused = true
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(text)
@@ -297,8 +298,7 @@ struct ValueRow: View {
         ValueField(title: title,
                    placeholder: text,
                    unit: unit,
-                   decimals: decimals,
-                   focus: $fieldFocused) { typed in
+                   decimals: decimals) { typed in
             // `nil` means the field was left as found; changing your mind must not zero it.
             if let typed {
                 let bounds = limit ?? range
@@ -306,7 +306,6 @@ struct ValueRow: View {
                 if next != value { value = next }
             }
             isTyping = false
-            fieldFocused = false
         }
     }
 
@@ -374,8 +373,6 @@ struct ValueField: View {
     let placeholder: String
     let unit: String
     let decimals: Int
-    /// Owned by the row, whose tap opens the field and whose commit closes it.
-    var focus: FocusState<Bool>.Binding
     /// The parsed value, rounded to what the row can display — `nil` when nothing was
     /// typed. The caller clamps and closes the field.
     var onCommit: (Double?) -> Void
@@ -383,6 +380,9 @@ struct ValueField: View {
     @State private var draft = ""
     @State private var committed = false
     @State private var commitIdentity = UUID()
+    /// Owned HERE, by the view that exists only while typing: it takes focus as it appears
+    /// (the row's tap opened it), and losing focus commits. See `ValueRow.isTyping`.
+    @FocusState private var focused: Bool
 
     var body: some View {
         HStack(spacing: 6) {
@@ -391,7 +391,7 @@ struct ValueField: View {
                 .monospacedDigit()
                 .multilineTextAlignment(.trailing)
                 .keyboardType(decimals > 0 ? .decimalPad : .numberPad)
-                .focused(focus)
+                .focused($focused)
                 .focusedValue(\.commitValueField,
                               ValueFieldCommitAction(id: commitIdentity, action: commit))
                 .frame(minWidth: 64)
@@ -411,7 +411,8 @@ struct ValueField: View {
             }
             .buttonStyle(PressFeedbackButtonStyle())
         }
-        .onChange(of: focus.wrappedValue) { _, focused in
+        .onAppear { focused = true }
+        .onChange(of: focused) { _, focused in
             // Tapping elsewhere commits: a typed number that silently vanishes is worse
             // than one clamped into range.
             if !focused { commit() }

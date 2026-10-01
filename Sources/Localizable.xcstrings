@@ -101,6 +101,16 @@
         }
       }
     },
+    "%@ %% of %lld s max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %% de ton max sur %2$lld s"
+          }
+        }
+      }
+    },
     "%@ %@, best of %lld pulls" : {
       "localizations" : {
         "en" : {
@@ -141,12 +151,62 @@
         }
       }
     },
+    "%@ of %lld s max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ du max sur %2$lld s"
+          }
+        }
+      }
+    },
     "%@ t" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ t"
+          }
+        }
+      }
+    },
+    "%@ · %lld s max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · max %2$lld s"
+          }
+        }
+      }
+    },
+    "%@%@%@. Max %@ %@, %@%@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@%2$@%3$@. Max %4$@ %5$@, %6$@%7$@."
+          }
+        }
+      }
+    },
+    "%@, of your %lld second max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, de ton max sur %2$lld secondes"
+          }
+        }
+      }
+    },
+    "%@–%@ %% of %lld s max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@–%2$@ %% de ton max sur %3$lld s"
           }
         }
       }
@@ -191,6 +251,56 @@
         }
       }
     },
+    "%lld s averages" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moyennes sur %lld s"
+          }
+        }
+      }
+    },
+    "%lld s max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max %lld s"
+          }
+        }
+      }
+    },
+    "%lld second max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max sur %lld secondes"
+          }
+        }
+      }
+    },
+    "%lld second max, %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max sur %1$lld secondes, %2$@"
+          }
+        }
+      }
+    },
+    ", %lld second max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", max sur %lld secondes"
+          }
+        }
+      }
+    },
     "All time" : {
       "localizations" : {
         "fr" : {
@@ -217,6 +327,236 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Depuis le début. Les totaux apparaissent après ta première séance."
+          }
+        }
+      }
+    },
+    "Average · %lld s left" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moyenne · encore %lld s"
+          }
+        }
+      }
+    },
+    "Below range" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sous la plage"
+          }
+        }
+      }
+    },
+    "Done — let go" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fini — relâche"
+          }
+        }
+      }
+    },
+    "Hold for" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tenir"
+          }
+        }
+      }
+    },
+    "Last %lld s average" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernière moyenne sur %lld s"
+          }
+        }
+      }
+    },
+    "Measuring" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesure"
+          }
+        }
+      }
+    },
+    "Never" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamais"
+          }
+        }
+      }
+    },
+    "No %lld s max for this grip yet. Measure one in Benchmarks." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore de max sur %lld s pour cette prise. Mesures-en un dans Tests."
+          }
+        }
+      }
+    },
+    "No %lld s max for your %@ hand yet. Measure one in Benchmarks." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore de max sur %1$lld s pour ta main %2$@. Mesures-en un dans Tests."
+          }
+        }
+      }
+    },
+    "Other" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autre"
+          }
+        }
+      }
+    },
+    "Out of range" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hors plage"
+          }
+        }
+      }
+    },
+    "Pause the clock" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause du chrono"
+          }
+        }
+      }
+    },
+    "Peak max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max pic"
+          }
+        }
+      }
+    },
+    "Percentage of which max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pourcentage de quel max"
+          }
+        }
+      }
+    },
+    "Percentage of your" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pourcentage de ton"
+          }
+        }
+      }
+    },
+    "Pull and hold %lld s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tire et tiens %lld s"
+          }
+        }
+      }
+    },
+    "Routine target: %@ of your %lld s max. No %lld s max for this grip yet." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cible de la routine : %1$@ de ton max sur %2$lld s. Pas encore de max sur %3$lld s pour cette prise."
+          }
+        }
+      }
+    },
+    "Some grips have no %lld s max yet, so their sets have no target." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certaines prises n'ont pas encore de max sur %lld s, leurs séries n'ont donc pas de cible."
+          }
+        }
+      }
+    },
+    "Start the test" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer le test"
+          }
+        }
+      }
+    },
+    "The four-minute endurance test: all-out pulls until your force levels off." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le test d'endurance de quatre minutes : des tirages à fond jusqu'à ce que ta force se stabilise."
+          }
+        }
+      }
+    },
+    "Too short · held %@ of %lld s" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trop court · tenu %1$@ s sur %2$lld"
+          }
+        }
+      }
+    },
+    "Your average over %lld s. Letting go early doesn't count." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta moyenne sur %lld s. Lâcher avant ne compte pas."
+          }
+        }
+      }
+    },
+    "Your hardest single reading." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta lecture la plus haute."
           }
         }
       }
@@ -638,6 +978,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tes totaux apparaissent après ta première séance."
+          }
+        }
+      }
+    },
+    "of your %lld s max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "de ton max sur %lld s"
+          }
+        }
+      }
+    },
+    "target %@ to %@ percent of your %lld second max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cible de %1$@ à %2$@ pour cent de ton max sur %3$lld secondes"
           }
         }
       }
@@ -1403,16 +1763,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@%@"
-          }
-        }
-      }
-    },
-    "%@%@. Max %@ %@, %@%@." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@%2$@. Max %3$@ %4$@, %5$@%6$@."
           }
         }
       }

@@ -91,7 +91,17 @@ internal fun MaxAttemptReviewScreen(session: LiveMaxSession, onSave: () -> Unit,
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text(tr("Review pulls"), style = MaterialTheme.typography.titleMedium) },
+                title = {
+                    Column {
+                        Text(tr("Review pulls"), style = MaterialTheme.typography.titleMedium)
+                        // A timed visit's figures are averages, not peaks — say so once, up top.
+                        val window = session.snapshot.windowSeconds
+                        if (window > 0) {
+                            Text(tr("%d s averages", window), style = MaterialTheme.typography.bodySmall,
+                                color = palette.inkSecondary)
+                        }
+                    }
+                },
                 navigationIcon = {
                     TextButton(onClick = onClose, enabled = !session.isSaving,
                         modifier = Modifier.testTag("max.review.back")) {
@@ -206,7 +216,7 @@ private fun PullRow(
                 Text(tr("Pull %d", number), style = MaterialTheme.typography.bodyLarge, color = palette.inkPrimary)
                 if (best) CapsLabel(tr("Best"))
                 Spacer(Modifier.weight(1f).width(8.dp))
-                Text(WeightUnits.text(attempt.peakKg),
+                Text(WeightUnits.text(attempt.kg),
                     style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"),
                     fontWeight = if (kept) FontWeight.SemiBold else FontWeight.Normal, color = palette.inkPrimary)
             }

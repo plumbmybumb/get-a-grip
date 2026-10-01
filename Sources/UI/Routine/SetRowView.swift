@@ -181,7 +181,12 @@ struct SetRowView: View, Equatable {
             return String(localized: "\(weightUnit.number(band.lowerBound))–\(weightUnit.number(band.upperBound)) \(weightUnit.symbol)")
         }
         if let percent = set.targetPercentBand ?? defaults.targetPercentBand {
-            return "\(percentText(percent.lowerBound))–\(percentText(percent.upperBound)) %"
+            let range = "\(percentText(percent.lowerBound))–\(percentText(percent.upperBound)) %"
+            // Named on the shut row too: 90 % of a 10 s max is not 90 % of the peak.
+            if let seconds = PlanMath.maxSeconds(set, in: defaults) {
+                return String(localized: "\(range) of \(seconds) s max")
+            }
+            return range
         }
         return nil
     }
@@ -242,8 +247,12 @@ struct SetRowView: View, Equatable {
                 .frame(minHeight: 46)
             if set.overridesTiming {
                 VStack(alignment: .leading, spacing: 0) {
-                    TimingStepper(kind: .hold, value: holdBinding)
-                    TimingStepper(kind: .rest, value: restBinding)
+                    TimingStepper(kind: .hold, value: holdBinding.wrappedValue,
+                                  onChange: { holdBinding.wrappedValue = $0 })
+                        .equatable()
+                    TimingStepper(kind: .rest, value: restBinding.wrappedValue,
+                                  onChange: { restBinding.wrappedValue = $0 })
+                        .equatable()
                 }
                 .padding(.leading, 12)
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -285,6 +294,9 @@ struct SetRowView: View, Equatable {
         // PER HAND, through the shared formatter, so no two screens quote different
         // loads for one routine.
         guard let load = weightUnit.targetText(set, in: defaults, maxes: maxes) else {
+            if let seconds = defaults.targetMaxSeconds {
+                return String(localized: "Routine target: \(range) of your \(seconds) s max. No \(seconds) s max for this grip yet.")
+            }
             return String(localized: "Routine target: \(range) of max. No max for this grip yet.")
         }
         return String(localized: "Routine target: \(range), so \(load).")
@@ -399,6 +411,10 @@ struct SetRowView: View, Equatable {
         if let rest = set.restSeconds, rest != defaults.restSeconds { parts.append(String(localized: "\(rest) second rest")) }
         if let band = set.targetBand {
             parts.append(String(localized: "target \(weightUnit.number(band.lowerBound)) to \(weightUnit.number(band.upperBound)) \(weightUnit.spokenName)"))
+        } else if let percent = set.targetPercentBand ?? defaults.targetPercentBand,
+                  let seconds = PlanMath.maxSeconds(set, in: defaults) {
+            // A timed basis is always spoken: it changes what the percentage means.
+            parts.append(String(localized: "target \(percentText(percent.lowerBound)) to \(percentText(percent.upperBound)) percent of your \(seconds) second max"))
         } else if percentBandsVary, let percent = set.targetPercentBand {
             parts.append(String(localized: "target \(percentText(percent.lowerBound)) to \(percentText(percent.upperBound)) percent of your max"))
         }

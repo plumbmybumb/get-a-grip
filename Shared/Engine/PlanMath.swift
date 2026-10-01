@@ -72,6 +72,20 @@ enum PlanMath {
         return Swift.min(lo, hi)...Swift.max(lo, hi)
     }
 
+    /// WHICH max a set's percentage is of: nil is the peak, otherwise a timed max of that
+    /// many seconds. It travels WITH the percentage — the set's own when the set has its
+    /// own band, the routine's when it inherits — so a band and its basis can never come
+    /// from two different levels.
+    static func maxSeconds(_ set: SetPlan, in plan: SessionPlan) -> Int? {
+        set.targetPercentBand != nil ? set.targetMaxSeconds : plan.targetMaxSeconds
+    }
+
+    /// The max a set's percentage resolves against for one hand — peak or timed, per
+    /// `maxSeconds`. A timed basis with no timed max on file is nil, NEVER the peak.
+    static func maxKg(_ set: SetPlan, in plan: SessionPlan, side: Side, maxes: MaxTable) -> Double? {
+        maxes.max(grip: set.grip.key, side: side, seconds: maxSeconds(set, in: plan))
+    }
+
     /// The percentage band a set will USE, ignoring any kg override — what the builder
     /// shows as "following the routine". nil when neither level sets one.
     static func targetPercent(_ set: SetPlan, in plan: SessionPlan) -> ClosedRange<Double>? {
@@ -84,7 +98,7 @@ enum PlanMath {
     /// second-guess a number a person typed. Per-hand loads come from percentages.
     static func targetBand(_ set: SetPlan, in plan: SessionPlan,
                            side: Side, maxes: MaxTable) -> ClosedRange<Double>? {
-        targetBand(set, in: plan, maxKg: maxes.max(grip: set.grip.key, side: side))
+        targetBand(set, in: plan, maxKg: maxKg(set, in: plan, side: side, maxes: maxes))
     }
 
     /// Bake every percentage target down to today's kilograms, keyed by each set's grip.
@@ -467,7 +481,19 @@ enum PlanMath {
             } else if let percent = targetPercent(set, in: live) {
                 // A kg set never falls back to a percentage it also carries: a typed
                 // number is never second-guessed by arithmetic.
-                consider(percent.upperBound)
+                if let seconds = maxSeconds(set, in: live) {
+                    // 90 % of a 10 s max is NOT 90 % of a peak — the card would cry wolf.
+                    // Restate it against the peak where both are on file; with no peak to
+                    // compare, the set contributes nothing rather than a guess.
+                    for side in Set(handSequence(set, in: live)) {
+                        guard let timed = maxes.max(grip: set.grip.key, side: side, seconds: seconds),
+                              let peakKg = maxes.max(grip: set.grip.key, side: side),
+                              peakKg > 0 else { continue }
+                        consider(percent.upperBound * timed / peakKg)
+                    }
+                } else {
+                    consider(percent.upperBound)
+                }
             }
         }
         return peak

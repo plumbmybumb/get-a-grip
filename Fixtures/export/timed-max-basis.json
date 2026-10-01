@@ -1,0 +1,110 @@
+{
+  "generatedOn" : 20693,
+  "maxes" : [
+    {
+      "day" : 20673,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 40,
+      "recordedAt" : "2026-08-08T08:00:00Z",
+      "side" : "both",
+      "source" : "measured"
+    },
+    {
+      "day" : 20688,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMRL",
+        "position" : "halfCrimp"
+      },
+      "kg" : 30,
+      "recordedAt" : "2026-08-23T08:00:00Z",
+      "seconds" : 10,
+      "side" : "left",
+      "source" : "measured"
+    }
+  ],
+  "sessions" : [
+    {
+      "avgKg" : 27.900000000000002,
+      "completedReps" : 2,
+      "day" : 20692,
+      "id" : "00000000-0000-0000-0000-000000000176",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 31,
+      "plan" : {
+        "handMode" : "alternateEachRep",
+        "holdSeconds" : 10,
+        "leadInSeconds" : 5,
+        "name" : "Repeaters",
+        "pausesOutsideTargetBand" : true,
+        "restSeconds" : 20,
+        "setBreakSeconds" : 60,
+        "sets" : [
+          {
+            "grip" : {
+              "edgeMM" : 20,
+              "fingers" : "IMRL",
+              "position" : "halfCrimp"
+            },
+            "id" : "2CB5351B-68BA-4A50-9DB3-169D23D69788",
+            "note" : "",
+            "repsPerSide" : 1,
+            "targetHiPercent" : 0.9,
+            "targetLoPercent" : 0.9,
+            "targetMaxSeconds" : 10
+          }
+        ],
+        "startingHand" : "left",
+        "thresholdKg" : 2,
+        "waitForReleaseBeforeRest" : true
+      },
+      "plannedReps" : 2,
+      "reps" : [
+        {
+          "avgKg" : 27.900000000000002,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 31,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetHiKg" : 27,
+          "targetLoKg" : 27,
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 25.2,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMRL",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 28,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Repeaters",
+      "startedAt" : "2026-08-27T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 20
+    }
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

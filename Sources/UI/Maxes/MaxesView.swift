@@ -263,6 +263,10 @@ struct MaxesView: View {
     /// labelling "both hands" and "typed" would add words that distinguish nothing.
     private func detailLine(_ history: GripHistory) -> String {
         var parts = [when(history.current)]
+        // A timed max shares this list with the peak; it must never read as one.
+        if !history.current.isPeak {
+            parts.insert(String(localized: "\(history.current.durationSeconds) s max"), at: 0)
+        }
         if history.current.side != .both {
             parts.append(String(localized: "\(history.current.side.name.lowercased()) hand"))
         }
@@ -276,7 +280,9 @@ struct MaxesView: View {
             ? "" : String(localized: ", \(history.current.side.name.lowercased()) hand")
         let provenance = history.current.source == .measured
             ? String(localized: "measured ") : String(localized: "recorded ")
-        var sentence = String(localized: "\(history.grip.spoken)\(hand). Max \(weightUnit.number(history.current.kg)) \(weightUnit.spokenName), \(provenance)\(when(history.current)).")
+        let length = history.current.isPeak
+            ? "" : String(localized: ", \(history.current.durationSeconds) second max")
+        var sentence = String(localized: "\(history.grip.spoken)\(hand)\(length). Max \(weightUnit.number(history.current.kg)) \(weightUnit.spokenName), \(provenance)\(when(history.current)).")
         if !history.earlier.isEmpty {
             let count = history.earlier.count
             sentence += String(localized: " \(count) earlier \(count == 1 ? String(localized: "max") : String(localized: "maxes")).")

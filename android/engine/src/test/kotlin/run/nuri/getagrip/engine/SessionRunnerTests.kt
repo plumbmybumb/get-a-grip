@@ -1968,4 +1968,59 @@ class SessionRunnerTests {
             assertEquals(null, runner.upcomingGrip)
         }
     }
+
+    // MARK: - "Below range" and the broadcast engage (GitHub issue, 2026-10-01)
+
+    /// "Below range" drops the ceiling: a pull far over the band starts and banks.
+    @Test
+    fun belowRangeLetsAnOvershootBank() {
+        val runner = SessionRunner(plan = bandedPlan(hold = 5).withTargetBandGate(TargetBandGate.below))
+        runner.handle(RunnerEvent.Start, 0.0)
+        val cues = Feeder().hold(runner, 60.0, 5.6)
+        assertTrue(cues.contains(RunnerCue.RepStarted))
+        assertTrue(cues.contains(RunnerCue.RepEnded(true)))
+        assertFalse(runner.isOverTarget, "no EASE OFF: the ceiling is not a rule here")
+    }
+
+    /// And keeps the floor: under the band still stops the clock and says RE-GRIP.
+    @Test
+    fun belowRangeStillStopsUnderTheFloor() {
+        val runner = SessionRunner(plan = bandedPlan(hold = 10).withTargetBandGate(TargetBandGate.below))
+        runner.handle(RunnerEvent.Start, 0.0)
+        val feeder = Feeder()
+        feeder.hold(runner, 25.0, 3.0)
+        val cues = feeder.hold(runner, 10.0, 2.0)
+        assertTrue(cues.contains(RunnerCue.DropoutWarning))
+        assertTrue(runner.isDropped)
+        assertEquals(3.0, runner.heldSeconds, 0.2, "10 kg banked nothing")
+    }
+
+    /// Three choices over two stored flags, round-tripped through the blob; a blob from
+    /// before the second flag reads as both edges.
+    @Test
+    fun theBandGateRoundTripsAndOldBlobsKeepBothEdges() {
+        for (gate in TargetBandGate.entries) {
+            val plan = SessionPlan().withTargetBandGate(gate)
+            assertEquals(gate, plan.targetBandGate)
+            assertEquals(gate, SessionPlan.fromJson(plan.toJson())!!.targetBandGate)
+        }
+        val legacy = SessionPlan.fromJson(
+            kotlinx.serialization.json.Json.parseToJsonElement("""{"pausesOutsideTargetBand":true}"""),
+        )!!
+        assertEquals(TargetBandGate.outside, legacy.targetBandGate)
+        assertEquals(TargetBandGate.outside, SessionPlan().targetBandGate)
+    }
+
+    /// A broadcast scale's first reading inside the gate starts the rep; the same single
+    /// reading waits out the debounce on any other gauge.
+    @Test
+    fun aBroadcastScaleEngagesOnItsFirstReading() {
+        val broadcast = SessionRunner(plan = plan(hold = 3), engagesOnFirstReading = true)
+        broadcast.handle(RunnerEvent.Start, 0.0)
+        assertTrue(broadcast.handle(RunnerEvent.Sample(ForceSample(20.0, 500_000u)), 0.5).contains(RunnerCue.RepStarted))
+
+        val connected = SessionRunner(plan = plan(hold = 3))
+        connected.handle(RunnerEvent.Start, 0.0)
+        assertFalse(connected.handle(RunnerEvent.Sample(ForceSample(20.0, 500_000u)), 0.5).contains(RunnerCue.RepStarted))
+    }
 }

@@ -125,6 +125,16 @@ object CriticalForceRules {
 
     /// Readings further apart than this leave a hole. Nothing is interpolated across it.
     const val gapSeconds: Double = 0.25
+    /// The same rule for a BROADCAST scale (the WH-C06). It advertises ~8 times a second
+    /// at best and phones catch a share of those, so ordinary delivery has holes of half a
+    /// second to a second; at 0.25 s most of a pull was a hole and whole tests ended in
+    /// "too many gaps" (GitHub issue, 2026-10-01). A 7 s pull is close to flat, so a line
+    /// across 1.5 s barely moves its mean.
+    const val broadcastGapSeconds: Double = 1.5
+
+    /// The gap a gauge's readings may span and still count, for the pull windows.
+    fun gapSeconds(capabilities: GaugeCapabilities): Double =
+        if (capabilities.isBroadcast) broadcastGapSeconds else gapSeconds
 
     /// A window with less data than this fraction has no mean.
     const val minCoverage: Double = 0.5
@@ -240,6 +250,7 @@ object CriticalForceAnalysis {
         points: List<CriticalForcePoint>,
         repsRun: Int,
         protocol: CriticalForceProtocol = CriticalForceProtocol.standard,
+        gapSeconds: Double = CriticalForceRules.gapSeconds,
     ): CriticalForceOutcome {
         val proto = protocol
         val run = min(max(repsRun, 0), proto.reps)
@@ -247,7 +258,7 @@ object CriticalForceAnalysis {
             return CriticalForceOutcome.Failure(CriticalForceFailure.TooFewReps(run))
         }
 
-        val reps = (0 until run).map { summarize(it, points, proto, isFinal = it == run - 1) }
+        val reps = (0 until run).map { summarize(it, points, proto, isFinal = it == run - 1, gapSeconds = gapSeconds) }
 
         val finalRange = (run - CriticalForceRules.criticalForceReps) until run
         val finalMeans = finalRange.mapNotNull { reps[it].meanKg }
@@ -262,7 +273,7 @@ object CriticalForceAnalysis {
 
         var wPrime = 0.0
         for (rep in 0 until run) {
-            wPrime += integrate(points, proto.workStart(rep), proto.workEnd(rep), above = cf).area
+            wPrime += integrate(points, proto.workStart(rep), proto.workEnd(rep), above = cf, gapSeconds = gapSeconds).area
         }
 
         return CriticalForceOutcome.Success(
@@ -280,16 +291,22 @@ object CriticalForceAnalysis {
 
     /// One window's numbers. Also what the live screen draws as each pull closes, so the
     /// bar you watch and the number you save come from the same arithmetic.
+    ///
+    /// `gapSeconds` loosens the PULL windows only. The rest check keeps the strict rule:
+    /// a line drawn across a long hole from the end of a pull would invent load in the
+    /// rest, and a rest wrongly marked "not kept" accuses somebody of something they did
+    /// not do.
     fun summarize(
         rep: Int,
         points: List<CriticalForcePoint>,
         protocol: CriticalForceProtocol,
         isFinal: Boolean,
+        gapSeconds: Double = CriticalForceRules.gapSeconds,
     ): CriticalForceRep {
         val start = protocol.workStart(rep)
         val end = protocol.workEnd(rep)
-        val window = integrate(points, start, end)
-        val tail = integrate(points, end - CriticalForceRules.endWindowSeconds, end)
+        val window = integrate(points, start, end, gapSeconds = gapSeconds)
+        val tail = integrate(points, end - CriticalForceRules.endWindowSeconds, end, gapSeconds = gapSeconds)
         val coverage = window.covered / protocol.workSeconds
         val mean = if (coverage >= CriticalForceRules.minCoverage) window.area / window.covered else null
         val tailEnough = tail.covered >= CriticalForceRules.endWindowSeconds * CriticalForceRules.minCoverage
@@ -313,7 +330,13 @@ object CriticalForceAnalysis {
     /// Trapezoids between neighbouring readings, clipped to [from, to). With `above`, the
     /// area of the part over that line only, crossings included. A pair of readings
     /// further apart than `gapSeconds` is a hole: no area and no coverage.
-    fun integrate(points: List<CriticalForcePoint>, from: Double, to: Double, above: Double = 0.0): Integral {
+    fun integrate(
+        points: List<CriticalForcePoint>,
+        from: Double,
+        to: Double,
+        above: Double = 0.0,
+        gapSeconds: Double = CriticalForceRules.gapSeconds,
+    ): Integral {
         if (!(to > from) || points.size < 2) return Integral()
         var area = 0.0
         var covered = 0.0
@@ -324,7 +347,7 @@ object CriticalForceAnalysis {
             val b = points[i + 1]
             i += 1
             val dt = b.t - a.t
-            if (!(dt > 0 && dt <= CriticalForceRules.gapSeconds)) continue
+            if (!(dt > 0 && dt <= gapSeconds)) continue
             val s = max(a.t, from)
             val e = min(b.t, to)
             if (!(e > s)) continue
@@ -408,7 +431,12 @@ object CriticalForceAnalysis {
 /// climber's hand is the authority and the clock waits for it. In this test the clock IS
 /// the protocol: coming off the edge mid-pull is simply recorded as low force, which is
 /// the truthful value of an all-out effort.
-class CriticalForceTest(val proto: CriticalForceProtocol = CriticalForceProtocol.standard) {
+class CriticalForceTest(
+    val proto: CriticalForceProtocol = CriticalForceProtocol.standard,
+    /// See `CriticalForceRules.gapSeconds(capabilities)`. Fixed for the test, so the live
+    /// bars and the saved result read the same trace the same way.
+    val gapSeconds: Double = CriticalForceRules.gapSeconds,
+) {
 
     sealed interface Phase {
         /// Waiting for the first pull over `startKg`.
@@ -494,7 +522,7 @@ class CriticalForceTest(val proto: CriticalForceProtocol = CriticalForceProtocol
         for (rep in means.size until started) {
             val from = proto.workStart(rep)
             val to = min(proto.workEnd(rep), last.t)
-            val window = CriticalForceAnalysis.integrate(_points, from, to)
+            val window = CriticalForceAnalysis.integrate(_points, from, to, gapSeconds = gapSeconds)
             // A live bar needs a moment of data before it means anything.
             means.add(if (window.covered >= 0.2) window.area / window.covered else null)
         }
@@ -608,7 +636,7 @@ class CriticalForceTest(val proto: CriticalForceProtocol = CriticalForceProtocol
     /// The outcome, once `finished`.
     fun result(): CriticalForceOutcome? {
         if (phase != Phase.Finished) return null
-        return CriticalForceAnalysis.analyze(_points, repsRun, proto)
+        return CriticalForceAnalysis.analyze(_points, repsRun, proto, gapSeconds)
     }
 
     // MARK: Internals
@@ -639,7 +667,9 @@ class CriticalForceTest(val proto: CriticalForceProtocol = CriticalForceProtocol
         while (_closedReps.size < until) {
             val index = _closedReps.size
             _closedReps.add(
-                CriticalForceAnalysis.summarize(index, _points, proto, isFinal = final && index == repsRun - 1)
+                CriticalForceAnalysis.summarize(
+                    index, _points, proto, isFinal = final && index == repsRun - 1, gapSeconds = gapSeconds,
+                )
             )
         }
         if (final) phase = Phase.Finished

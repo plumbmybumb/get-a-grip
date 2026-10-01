@@ -24,6 +24,7 @@ struct FineTuningSection: View, Equatable {
     /// Unpersisted BY CONSTRUCTION: the sheet builds a fresh section each open.
     @State private var isOpen = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         MaterialCard(surface: .flat) {
@@ -101,17 +102,33 @@ struct FineTuningSection: View, Equatable {
 
     // MARK: - Does the band stop the clock
 
-    /// Whether leaving the target range pauses the rep.
+    /// Which edges of the target range pause the rep.
     ///
     /// Between the threshold and the lead-in: all three answer "what counts as a pull", and
-    /// this is the range's half where the threshold is the floor's. Phrased as the thing
-    /// you'd turn ON.
+    /// this is the range's half where the threshold is the floor's. Three choices, not a
+    /// switch (GitHub issue, 2026-10-01): "below" lets an overshoot count without giving up
+    /// the floor. One native segmented control; the wrapping-label menu at accessibility
+    /// sizes, where three segments would truncate.
     private var bandGateBlock: some View {
-        Toggle("Pause when I'm out of range",
-               isOn: access.binding(\.plan.pausesOutsideTargetBand, current: defaults.pausesOutsideTargetBand))
-            .font(.system(.subheadline, weight: .medium))
-            .foregroundStyle(Ink.primary)
-            .tint(Accent.graphite)
+        let selection = access.binding(\.plan.targetBandGate, current: defaults.targetBandGate)
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Pause the clock")
+                .font(.system(.subheadline, weight: .semibold))
+                .foregroundStyle(Ink.primary)
+            if typeSize.isAccessibilitySize {
+                Picker(String(localized: "Pause the clock"), selection: selection) {
+                    ForEach(TargetBandGate.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.menu)
+                .tint(Accent.graphite)
+            } else {
+                Picker(String(localized: "Pause the clock"), selection: selection) {
+                    ForEach(TargetBandGate.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        .sensoryFeedback(.selection, trigger: defaults.targetBandGate)
     }
 
     // MARK: - Lead-in
@@ -301,5 +318,16 @@ private struct ThresholdBar: View {
         }
         .frame(height: barHeight)
         .accessibilityHidden(true)
+    }
+}
+
+extension TargetBandGate {
+    /// The segment's words, under the "Pause the clock" label.
+    var title: String {
+        switch self {
+        case .outside: String(localized: "Out of range")
+        case .below:   String(localized: "Below range")
+        case .off:     String(localized: "Never")
+        }
     }
 }

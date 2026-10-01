@@ -107,7 +107,7 @@ class MaxesDashboardFlowTests {
     /// under its own number, and only once the card is open and the max is below it.
     @Test fun cardsOpenShutAndTheHeaderOpensThem() {
         show(listOf(row(primary, Side.both, 70.0), row(primary, Side.both, 74.5, 60))) { feed ->
-            MaxesTabScreen(onAddMax = {}, onMeasure = { _, _ -> }, onEdit = {}, feed = feed)
+            MaxesTabScreen(onAddMax = {}, onMeasure = { _, _, _ -> }, onEdit = {}, feed = feed)
         }
         compose.onNodeWithTag("maxes.current.${primary.key}.both").assertIsDisplayed()
         compose.onAllNodesWithTag("maxes.measure.${primary.key}").assertCountEquals(0)
@@ -125,7 +125,7 @@ class MaxesDashboardFlowTests {
         val measures = mutableListOf<Pair<GripSpec, Side>>()
         val edits = mutableListOf<GripSpec>()
         val w = show(listOf(row(primary, Side.both, 70.0), row(other, Side.right, 24.0, 60))) { feed ->
-            MaxesTabScreen(onAddMax = { adds += it }, onMeasure = { grip, side -> measures += grip to side },
+            MaxesTabScreen(onAddMax = { adds += it }, onMeasure = { grip, side, _ -> measures += grip to side },
                 onEdit = { edits += it }, feed = feed)
         }
         compose.onNodeWithTag("maxes.add").assertIsDisplayed().performClick()
@@ -172,14 +172,14 @@ class MaxesDashboardFlowTests {
         var measured: Pair<GripSpec, Side>? = null
         var edited: GripSpec? = null
         show(listOf(row(primary, Side.right, 24.0)), fontScale = 2f) { feed ->
-            MaxesTabScreen(onAddMax = { additions += 1 }, onMeasure = { grip, side -> measured = grip to side },
+            MaxesTabScreen(onAddMax = { additions += 1 }, onMeasure = { grip, side, _ -> measured = grip to side },
                 onEdit = { edited = it }, feed = feed)
         }
         compose.onNodeWithContentDescription(context.tr("Add a benchmark")).assertIsDisplayed().performClick()
         compose.onNodeWithText(context.tr("Measure a max")).assertIsDisplayed().performClick()
         capture("android-maxes-dashboard-french-large.png")
         action("maxes.measure.${primary.key}")
-        compose.onNodeWithText(context.tr("Max, one hand at a time")).assertIsDisplayed().performClick()
+        compose.onNodeWithText(context.tr("One hand at a time")).performScrollTo().assertIsDisplayed().performClick()
         action("maxes.edit.${primary.key}")
         capture("android-maxes-dashboard-french-large-actions.png")
         compose.runOnIdle {
@@ -195,13 +195,16 @@ class MaxesDashboardFlowTests {
         val tests = mutableListOf<Pair<GripSpec, CriticalForceHands>>()
         var adds = 0
         val w = show(listOf(row(primary, Side.both, 70.0), row(other, Side.right, 24.0, 60))) { feed ->
-            MaxesTabScreen(onAddMax = { adds += 1 }, onMeasure = { grip, side -> measures += grip to side },
+            MaxesTabScreen(onAddMax = { adds += 1 }, onMeasure = { grip, side, _ -> measures += grip to side },
                 onEdit = {}, feed = feed, onCriticalForce = { grip, hands -> tests += grip to hands })
         }
         action("maxes.measure.${primary.key}")
         compose.onNodeWithText("What are you measuring?").assertIsDisplayed()
         compose.onNodeWithTag("max.mode.both").performClick()
         action("maxes.measure.${other.key}")
+        // Critical force is the chooser's other tab; its start button appears there.
+        compose.onNodeWithTag("max.mode.criticalForce").assertDoesNotExist()
+        compose.onNodeWithTag("max.chooser.criticalForce").performClick()
         compose.onNodeWithTag("max.mode.criticalForce").performClick()
         // With no test on file, the "+" opens the routines' first grip, one hand at a time.
         compose.onNodeWithTag("maxes.add").performClick()
@@ -222,6 +225,31 @@ class MaxesDashboardFlowTests {
         file.outputStream().use {
             compose.onRoot().captureToImage().asAndroidBitmap()
                 .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+        }
+    }
+
+    /// Timed maxes (2026-10-01): the chooser settles the length BEFORE the gauge screen —
+    /// Peak by default, 10 s from a chip, any length from Other's dial — and the length is
+    /// what the measurement carries.
+    @Test fun chooserCarriesTheChosenLengthToTheMeasurement() {
+        val measures = mutableListOf<Triple<GripSpec, Side, Int>>()
+        show(listOf(row(primary, Side.both, 70.0))) { feed ->
+            MaxesTabScreen(onAddMax = {}, onMeasure = { grip, side, seconds -> measures += Triple(grip, side, seconds) },
+                onEdit = {}, feed = feed)
+        }
+        action("maxes.measure.${primary.key}")
+        compose.onNodeWithTag("max.chooser.peak").assertIsSelected()
+        compose.onNodeWithTag("max.chooser.dial").assertDoesNotExist()
+        capture("android-max-chooser.png")
+        compose.onNodeWithTag("max.chooser.10").performClick().assertIsSelected()
+        compose.onNodeWithTag("max.mode.hands").performScrollTo().performClick()
+        action("maxes.measure.${primary.key}")
+        compose.onNodeWithTag("max.chooser.other").performClick()
+        compose.onNodeWithTag("max.chooser.dial").assertIsDisplayed()
+        capture("android-max-chooser-other.png")
+        compose.onNodeWithTag("max.mode.both").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(listOf(Triple(primary, Side.left, 10), Triple(primary, Side.both, 20)), measures)
         }
     }
 }

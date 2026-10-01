@@ -114,7 +114,17 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val nav = rememberNavController()
-    NavHost(nav, startDestination = ROUTE_SETTINGS, modifier = modifier.fillMaxSize()) {
+    // Explicit, from the Motion ladder: Navigation Compose's default is a 700 ms cross-fade
+    // with both screens composed, which made opening the gauge picker feel sluggish
+    // (responsiveness audit, 2026-10-01).
+    val reduceMotion = rememberReduceMotion()
+    NavHost(
+        nav, startDestination = ROUTE_SETTINGS, modifier = modifier.fillMaxSize(),
+        enterTransition = { fadeIn(Motion.state(reduceMotion)) },
+        exitTransition = { fadeOut(Motion.state(reduceMotion)) },
+        popEnterTransition = { fadeIn(Motion.state(reduceMotion)) },
+        popExitTransition = { fadeOut(Motion.state(reduceMotion)) },
+    ) {
         composable(ROUTE_SETTINGS) {
             SettingsRoot(
                 onOpenGaugePicker = dropUnlessResumed {

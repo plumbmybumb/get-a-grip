@@ -84,9 +84,18 @@ struct TargetBandRow: View {
             withAnimation(Motion.state(reduceMotion)) { expanded.toggle() }
         } label: {
             HStack(spacing: 8) {
-                Text("Target load")
-                    .font(.system(.subheadline, weight: .medium))
-                    .foregroundStyle(Ink.primary)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Target load")
+                        .font(.system(.subheadline, weight: .medium))
+                        .foregroundStyle(Ink.primary)
+                    // Which max the percentage is OF, said even when shut: 90 % of a 10 s
+                    // max and 90 % of a peak are different sessions.
+                    if let basis, band != nil, kgBand == nil {
+                        Text("of your \(basis) s max")
+                            .font(.system(.caption))
+                            .foregroundStyle(Ink.secondary)
+                    }
+                }
                 Spacer(minLength: 8)
                 Text(valueText)
                     .font(.system(.title3, weight: .semibold))
@@ -105,7 +114,7 @@ struct TargetBandRow: View {
         }
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityLabel(String(localized: "Target load"))
-        .accessibilityValue(valueText)
+        .accessibilityValue(spokenValue)
         .accessibilityHint(expanded ? String(localized: "Closes the target editor") : String(localized: "Opens the target editor"))
     }
 
@@ -163,6 +172,14 @@ struct TargetBandRow: View {
                 exactBounds
             }
 
+            // Only once this grip HAS a timed max (or the set already uses one): someone who
+            // never measures one never meets the idea, and nobody can pick a max they lack.
+            if band != nil, kgBand == nil, !basisOptions.isEmpty {
+                MaxBasisChips(selection: basis, options: basisOptions) { seconds in
+                    self.set.targetMaxSeconds = seconds
+                }
+            }
+
             if let caption {
                 Text(caption)
                     .font(.system(.caption, weight: .medium))
@@ -213,11 +230,26 @@ struct TargetBandRow: View {
     /// Setting either clears the other, so the row never shows one and runs the other.
     private var kgBand: ClosedRange<Double>? { self.set.targetBand }
     private var hasTarget: Bool { kgBand != nil || band != nil }
+    /// Which max the percentage is of — nil is the peak. See `SetPlan.targetMaxSeconds`.
+    private var basis: Int? { self.set.targetMaxSeconds }
+
+    /// Timed lengths worth a chip: what you have MEASURED on this grip, plus whatever is
+    /// selected (so a saved choice never vanishes). Empty hides the row — see `MaxBasisChips`.
+    private var basisOptions: [Int] {
+        var lengths = Set(maxes.timedLengths(grip: self.set.grip.key))
+        if let basis { lengths.insert(basis) }
+        return lengths.sorted()
+    }
+
+    private var spokenValue: String {
+        guard let basis, band != nil, kgBand == nil else { return valueText }
+        return String(localized: "\(valueText), of your \(basis) second max")
+    }
 
     /// Whether a percentage could resolve to anything for this grip. When it cannot,
     /// kilograms are the only honest way to prescribe a load.
     private var hasResolvableMax: Bool {
-        sides.contains { maxes.max(grip: self.set.grip.key, side: $0).map { $0 > 0 } ?? false }
+        sides.contains { maxes.max(grip: self.set.grip.key, side: $0, seconds: basis).map { $0 > 0 } ?? false }
     }
 
     /// Where a kilogram band starts with nothing to seed it: the low-intensity no-hang load
@@ -235,7 +267,7 @@ struct TargetBandRow: View {
         // An explicit band needs no max and is the same for both hands.
         if let kgBand { return kgBand }
         guard let band,
-              let maxKg = maxes.max(grip: self.set.grip.key, side: side), maxKg > 0
+              let maxKg = maxes.max(grip: self.set.grip.key, side: side, seconds: basis), maxKg > 0
         else { return nil }
         return PlanMath.roundedToHalfKg(maxKg * band.lowerBound)
              ... PlanMath.roundedToHalfKg(maxKg * band.upperBound)
@@ -265,12 +297,19 @@ struct TargetBandRow: View {
         let resolvedSides = sides.filter { resolved($0) != nil }
 
         if resolvedSides.isEmpty {
-            // Named: a percentage with no max resolves to no target at run time.
+            // Named: a percentage with no max resolves to no target at run time. A timed
+            // basis never falls back to the peak, so it says which max is missing.
+            if let basis {
+                return String(localized: "No \(basis) s max for this grip yet. Measure one in Benchmarks.")
+            }
             return String(localized: "No max for this grip yet. Measure one in Benchmarks.")
         }
         // One hand has a max and the other not (a left- or right-only max). Say
         // WHICH is unloaded, since the row shows a confident band for the other.
         if resolvedSides.count < sides.count, let missing = sides.first(where: { resolved($0) == nil }) {
+            if let basis {
+                return String(localized: "No \(basis) s max for your \(missing.name.lowercased()) hand yet. Measure one in Benchmarks.")
+            }
             return String(localized: "No max for your \(missing.name.lowercased()) hand yet. Measure one in Benchmarks.")
         }
         guard differsByHand else { return nil }
@@ -357,7 +396,7 @@ struct TargetBandRow: View {
     /// strong pullers fit without making 10–15 kg a sliver.
     private var kgScaleTop: Double {
         let bandTop = kgBand?.upperBound ?? Self.defaultKgBand.upperBound
-        let maxTop = sides.compactMap { maxes.max(grip: self.set.grip.key, side: $0) }.max() ?? 0
+        let maxTop = sides.compactMap { maxes.max(grip: self.set.grip.key, side: $0, seconds: basis) }.max() ?? 0
         return (Swift.max(40, bandTop * 1.3, maxTop * 1.2) / 5).rounded(.up) * 5
     }
 
@@ -372,6 +411,7 @@ struct TargetBandRow: View {
     private func clearPercent() {
         set.targetLoPercent = nil
         set.targetHiPercent = nil
+        set.targetMaxSeconds = nil
     }
 
     private func apply(_ range: ClosedRange<Double>) {
@@ -386,6 +426,7 @@ struct TargetBandRow: View {
     private func clear() {
         set.targetLoPercent = nil
         set.targetHiPercent = nil
+        set.targetMaxSeconds = nil
         set.targetLoKg = nil
         set.targetHiKg = nil
         showsCustomFields = false
@@ -395,4 +436,38 @@ struct TargetBandRow: View {
         "\(Int((band.lowerBound * 100).rounded()))–\(Int((band.upperBound * 100).rounded())) %"
     }
 
+}
+
+/// **Which max a percentage is OF** (2026-10-01): "Peak" — every routine's meaning before
+/// timed maxes, and the default — or a timed max, "90 % of your 10 s max".
+///
+/// Chips, because the choice is categorical. The lengths are DERIVED — only what you have
+/// measured on the grip, never a fixed menu (the grip picker's rule) — and with none the
+/// row is not drawn at all (Nuri, 2026-10-01: the idea must not reach someone who never
+/// measures a timed max). A timed max you lack can't be picked; if one is deleted later,
+/// the row says plainly that it is missing rather than falling back to the peak.
+struct MaxBasisChips: View {
+    /// nil is the peak.
+    let selection: Int?
+    /// Timed lengths to offer, shortest first.
+    let options: [Int]
+    var onSelect: (Int?) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Percentage of your")
+                .font(.system(.caption, weight: .medium))
+                .foregroundStyle(Ink.secondary)
+            ChipGrid(base: 3) {
+                Chip(title: String(localized: "Peak max"), isSelected: selection == nil) { onSelect(nil) }
+                ForEach(options, id: \.self) { seconds in
+                    Chip(title: String(localized: "\(seconds) s max"), isSelected: selection == seconds) {
+                        onSelect(seconds)
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(String(localized: "Percentage of which max"))
+    }
 }

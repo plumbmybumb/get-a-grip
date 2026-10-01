@@ -231,7 +231,8 @@ final class RunnerSession {
         self.runner = SessionRunner(
             plan: template.plan, maxes: maxes, timerOnly: timerOnly,
             maxCreditedSampleGapSeconds: device.gaugeCapabilities.hasDeviceClock
-                ? nil : Self.syntheticClockGapCapSeconds)
+                ? nil : Self.syntheticClockGapCapSeconds,
+            engagesOnFirstReading: device.gaugeCapabilities.isBroadcast)
     }
 
     /// The platform's Live Activity, or none — a default argument, so every caller
@@ -299,10 +300,13 @@ final class RunnerSession {
         IdleTimerLock.acquire()
         startedAt = .now
         runner.beginRecording(at: ProcessInfo.processInfo.systemUptime)
-        // DEFERRED off the presenting frame: starting the audio and haptic engines is
-        // tens of milliseconds of synchronous work between tapping Start and the runner
-        // appearing. Nothing audible is due for five seconds.
+        // DEFERRED past the cover's presentation, not just off its first frame: building
+        // the tones and the audio graph is main-thread work, and one runloop hop landed it
+        // in the middle of the slide-in (responsiveness audit, 2026-10-01). The earliest
+        // cue is a lead-in tick two seconds out; a zero lead-in's "go" lost the race even
+        // before, which `CuePlayer.sound`'s retry already covers.
         Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.cueStartDelay)
             guard let self, !self.hasEnded, !self.isQuiesced else { return }
             self.cues.begin()
         }
@@ -356,7 +360,10 @@ final class RunnerSession {
 
     /// How long the Live Activity waits after `begin()` — long enough to clear the
     /// cover's presentation, short enough that nobody who swipes home ever sees no card.
-    static let liveActivityStartDelay: Duration = .milliseconds(300)
+    static let liveActivityStartDelay: Duration = .milliseconds(600)
+
+    /// How long the cue engines wait after `begin()` — past the cover's slide-in. See `begin`.
+    static let cueStartDelay: Duration = .milliseconds(450)
 
     #if DEBUG
     /// Screenshot fixtures only: move the session's wall clock forward and tick, so a

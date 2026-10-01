@@ -75,11 +75,17 @@ struct RoutineTargetRow: View, Equatable {
     let band: ClosedRange<Double>?
     /// Some set carries a target of its own, so "None" here is not the whole story.
     let setsVary: Bool
+    /// Which max the band is of — nil is the peak. See `SetPlan.targetMaxSeconds`.
+    let basis: Int?
+    /// Timed lengths to offer beside "Peak max" — see `MaxBasisChips`.
+    let basisOptions: [Int]
     /// Writes the routine band and clears every set's own target: one band for all.
     let onChange: (ClosedRange<Double>?) -> Void
+    let onBasisChange: (Int?) -> Void
 
     nonisolated static func == (a: Self, b: Self) -> Bool {
         a.band == b.band && a.setsVary == b.setsVary
+            && a.basis == b.basis && a.basisOptions == b.basisOptions
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -123,6 +129,9 @@ struct RoutineTargetRow: View, Equatable {
                                 value: percentBinding(\.upperBound), range: 1...100,
                                 limit: 1...100, control: .stepper)
                 }
+                if band != nil, !basisOptions.isEmpty {
+                    MaxBasisChips(selection: basis, options: basisOptions, onSelect: onBasisChange)
+                }
             }
         }
         .onAppear {
@@ -139,10 +148,17 @@ struct RoutineTargetRow: View, Equatable {
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
                 : AnyLayout(HStackLayout(spacing: 8))
             layout {
-                Text("Target load")
-                    .font(.system(.subheadline, weight: .medium))
-                    .foregroundStyle(Ink.primary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Target load")
+                        .font(.system(.subheadline, weight: .medium))
+                        .foregroundStyle(Ink.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let basis, band != nil {
+                        Text("of your \(basis) s max")
+                            .font(.system(.caption))
+                            .foregroundStyle(Ink.secondary)
+                    }
+                }
                 HStack(spacing: 8) {
                     Spacer(minLength: 8)
                     Text(valueText)
@@ -161,7 +177,8 @@ struct RoutineTargetRow: View, Equatable {
         }
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityLabel(String(localized: "Target load"))
-        .accessibilityValue(valueText)
+        .accessibilityValue(basis.map { band != nil ? String(localized: "\(valueText), of your \($0) second max") : valueText }
+                            ?? valueText)
     }
 
     private var valueText: String {

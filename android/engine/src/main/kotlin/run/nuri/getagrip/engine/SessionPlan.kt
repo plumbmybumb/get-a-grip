@@ -140,6 +140,11 @@ data class SetPlan(
     val targetLoPercent: Double? = null,
     val targetHiPercent: Double? = null,
     val note: String = "",
+    /// WHICH max this set's own percentage is of: null is the PEAK (every routine written
+    /// before timed maxes), otherwise a timed max of this many seconds — "90 % of your
+    /// 10 s max". Read only alongside this set's own band; an inheriting set uses the
+    /// routine's. Chosen explicitly, never derived from the hold.
+    val targetMaxSeconds: Int? = null,
 ) : JsonEncodable {
 
     val overridesTiming: Boolean get() = holdSeconds != null || restSeconds != null
@@ -170,6 +175,7 @@ data class SetPlan(
         targetLoPercent?.let { fields["targetLoPercent"] = JsonPrimitive(it) }
         targetHiPercent?.let { fields["targetHiPercent"] = JsonPrimitive(it) }
         fields["note"] = JsonPrimitive(note)
+        targetMaxSeconds?.let { fields["targetMaxSeconds"] = JsonPrimitive(it) }
         return JsonObject(fields)
     }
 
@@ -187,6 +193,10 @@ data class SetPlan(
         /// 1 %…100 %: a max-effort routine is legitimate to author, and a 0 % target is a
         /// target of nothing.
         val percentRange = 0.01..1.0
+
+        /// A timed-max length as stored: positive and within the hold range, else null (the
+        /// peak) — the meaning every routine had before the field existed.
+        fun maxSeconds(raw: Int?): Int? = raw?.takeIf { it > 0 }?.let { holdRange.clamping(it) }
 
         /// The one place two optional endpoints become a range, shared with `SessionPlan` so
         /// kg bands and percentage bands cannot normalize differently.
@@ -226,6 +236,7 @@ data class SetPlan(
             targetLoPercent = o.optionalDouble("targetLoPercent")?.let { percentRange.clamping(it) },
             targetHiPercent = o.optionalDouble("targetHiPercent")?.let { percentRange.clamping(it) },
             note = o.stringOr("note", ""),
+            targetMaxSeconds = maxSeconds(o.optionalInt("targetMaxSeconds")),
         )
     }
 }
@@ -267,6 +278,12 @@ data class SessionPlan(
     /// still draws as a lane and the clock runs whenever you are ENGAGED. It never
     /// loosens the engagement threshold — letting go still stops the rep.
     val pausesOutsideTargetBand: Boolean = true,
+    /// Whether the band's CEILING referees too, when it referees at all. Default ON. Off
+    /// is "pause only below the range" (GitHub issue, 2026-10-01): an overshoot counts.
+    /// Its own key rather than a rewrite of the one above, so an older build reading a
+    /// routine set to "below" keeps BOTH edges — stricter, never looser. Read through
+    /// `targetBandGate`, never on its own.
+    val pausesAboveTargetBand: Boolean = true,
 
     /// TARGET LOAD as a fraction of your max on whichever grip a set uses, inherited like
     /// `holdSeconds`. A percentage because the prescription IS a fraction, so ONE band is
@@ -274,6 +291,10 @@ data class SessionPlan(
     /// and go stale the next time a max is recorded.
     val targetLoPercent: Double? = null,
     val targetHiPercent: Double? = null,
+    /// Which max the routine's percentage is of — see `SetPlan.targetMaxSeconds`. NOT a
+    /// stored column: `RoutineDraft.normalized` demotes the routine band onto the sets
+    /// (this with it) before every save, so it lives only in a draft and a share code.
+    val targetMaxSeconds: Int? = null,
 ) : JsonEncodable {
 
     /// null when no band is set. Normalized the same way `SetPlan.targetBand` is — one
@@ -284,6 +305,20 @@ data class SessionPlan(
     /// Sets that will actually run. Everything in `PlanMath` operates on this, and the
     /// runner freezes THIS, so `RepSummary.setIndex` is unambiguous forever after.
     val executable: SessionPlan get() = copy(sets = sets.filter { it.repsPerSide > 0 })
+
+    /// Which edges of the target band stop the rep clock — the two stored flags as the one
+    /// three-way choice the builder offers.
+    val targetBandGate: TargetBandGate
+        get() = when {
+            !pausesOutsideTargetBand -> TargetBandGate.off
+            pausesAboveTargetBand -> TargetBandGate.outside
+            else -> TargetBandGate.below
+        }
+
+    fun withTargetBandGate(gate: TargetBandGate): SessionPlan = copy(
+        pausesOutsideTargetBand = gate != TargetBandGate.off,
+        pausesAboveTargetBand = gate != TargetBandGate.below,
+    )
 
     /// FROZEN — names already in every routine blob ever written. ADDITIVE only: a new
     /// key is fine (older blobs simply lack it and take the decoder's default), a
@@ -301,9 +336,11 @@ data class SessionPlan(
             "thresholdKg" to JsonPrimitive(thresholdKg),
             "waitForReleaseBeforeRest" to JsonPrimitive(waitForReleaseBeforeRest),
             "pausesOutsideTargetBand" to JsonPrimitive(pausesOutsideTargetBand),
+            "pausesAboveTargetBand" to JsonPrimitive(pausesAboveTargetBand),
         )
         targetLoPercent?.let { fields["targetLoPercent"] = JsonPrimitive(it) }
         targetHiPercent?.let { fields["targetHiPercent"] = JsonPrimitive(it) }
+        targetMaxSeconds?.let { fields["targetMaxSeconds"] = JsonPrimitive(it) }
         return JsonObject(fields)
     }
 
@@ -352,12 +389,26 @@ data class SessionPlan(
             waitForReleaseBeforeRest = o.boolOr("waitForReleaseBeforeRest", true),
             // Absent key → true: older routines keep the behaviour they were authored under.
             pausesOutsideTargetBand = o.boolOr("pausesOutsideTargetBand", true),
+            pausesAboveTargetBand = o.boolOr("pausesAboveTargetBand", true),
             targetLoPercent = o.optionalDouble("targetLoPercent")
                 ?.let { SetPlan.percentRange.clamping(it) },
             targetHiPercent = o.optionalDouble("targetHiPercent")
                 ?.let { SetPlan.percentRange.clamping(it) },
+            targetMaxSeconds = SetPlan.maxSeconds(o.optionalInt("targetMaxSeconds")),
         )
     }
+}
+
+/// Which edges of a rep's target band stop its clock. Letting go stops it in every case:
+/// that is about whether you pull, not in which range.
+enum class TargetBandGate {
+    /// Below reads RE-GRIP, above reads EASE OFF. The default, and the rule the band
+    /// exists to enforce.
+    outside,
+    /// The floor only: an overshoot banks.
+    below,
+    /// The band is drawn and never referees.
+    off,
 }
 
 // MARK: - Reminders
@@ -483,6 +534,8 @@ data class RoutineDraft(
                         if (loPercent != null && hiPercent != null && loPercent > hiPercent) {
                             s = s.copy(targetLoPercent = hiPercent, targetHiPercent = loPercent)
                         }
+                        // A length with no percentage of its own says nothing; keep blobs honest.
+                        if (!s.hasPercentTarget || s.hasTarget) s = s.copy(targetMaxSeconds = null)
                         s.copy(note = s.note.trim())
                     }
             )
@@ -504,12 +557,14 @@ data class RoutineDraft(
                         else set.copy(
                             targetLoPercent = band.start,
                             targetHiPercent = band.endInclusive,
+                            targetMaxSeconds = outPlan.targetMaxSeconds,
                         )
                     },
                     targetLoPercent = null,
                     targetHiPercent = null,
                 )
             }
+            outPlan = outPlan.copy(targetMaxSeconds = null)
             var out = copy(
                 plan = outPlan,
                 sessionsPerDay = sessionsRange.clamping(sessionsPerDay),

@@ -451,6 +451,8 @@ private fun EmptyCard() {
 /// "typed" would distinguish nothing.
 internal fun detailLine(history: GripHistory): String {
     val parts = mutableListOf(relative(history.current.recordedAt))
+    // A timed max shares this list with the peak; it must never read as one.
+    if (!history.current.isPeak) parts.add(0, L10n.tr("%d s max", history.current.durationSeconds))
     if (history.current.side != Side.both) {
         parts += L10n.tr("%s hand", history.current.side.displayName.lowercase(Locale.getDefault()))
     }
@@ -460,8 +462,9 @@ internal fun detailLine(history: GripHistory): String {
 }
 
 internal fun spokenGrip(history: GripHistory): String {
-    val hand = if (history.current.side == Side.both) ""
-    else L10n.tr(", %s hand", history.current.side.displayName.lowercase(Locale.getDefault()))
+    val hand = (if (history.current.side == Side.both) ""
+    else L10n.tr(", %s hand", history.current.side.displayName.lowercase(Locale.getDefault()))) +
+        (if (history.current.isPeak) "" else L10n.tr(", %d second max", history.current.durationSeconds))
     // The trailing space is INSIDE the key, as on iOS, so each language decides its spacing.
     val provenance =
         if (history.current.source == MaxSource.measured) L10n.tr("measured ") else L10n.tr("recorded ")

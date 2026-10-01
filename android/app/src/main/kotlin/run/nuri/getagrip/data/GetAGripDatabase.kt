@@ -160,6 +160,8 @@ interface CriticalForceRecordDao {
 /// Version 2 (2026-09-18): `SessionTemplate.startingHandRaw`, defaulted `left`.
 /// Version 3 (2026-09-25): the `CriticalForceRecord` table. A new table is additive, so the
 /// auto-migration creates it and touches nothing else.
+/// Version 4 (2026-10-01): `MaxRecord.durationSeconds`, defaulted 0 (a peak max).
+/// Version 5 (2026-10-01): `SessionTemplate.pausesAboveTargetBand`, defaulted true.
 @Database(
     entities = [
         SessionTemplateEntity::class,
@@ -167,9 +169,14 @@ interface CriticalForceRecordDao {
         MaxRecordEntity::class,
         CriticalForceRecordEntity::class,
     ],
-    version = 3,
+    version = 5,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3),
+        AutoMigration(from = 3, to = 4),
+        AutoMigration(from = 4, to = 5),
+    ],
 )
 @TypeConverters(Converters::class)
 abstract class GetAGripDatabase : RoomDatabase() {

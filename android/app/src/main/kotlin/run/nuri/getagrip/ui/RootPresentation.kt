@@ -42,7 +42,8 @@ internal class RootPresentation : ViewModel() {
     private var liveMax: LiveMaxSession? = null
     fun liveMaxSession(request: MeasureRequest): LiveMaxSession {
         liveMax?.let { if (liveMaxFor === request) return it }
-        return LiveMaxSession(bothTogether = request.side == Side.both, side = request.side).also {
+        return LiveMaxSession(bothTogether = request.side == Side.both, side = request.side,
+                              windowSeconds = request.seconds).also {
             liveMax = it
             liveMaxFor = request
         }
@@ -84,4 +85,6 @@ internal data class MeasureRequest(
     val grip: GripSpec,
     val side: Side,
     val fromNew: Boolean = false,
+    /// 0 is a peak max; otherwise the timed length chosen in `MaxMeasureChooser`.
+    val seconds: Int = 0,
 )

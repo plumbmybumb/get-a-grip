@@ -31,6 +31,9 @@ struct MaxAttemptReviewSheet: View {
             .background { AppBackground() }
             .safeAreaBar(edge: .bottom) { footer(draft) }
             .navigationTitle("Review pulls")
+            // A timed visit's figures are averages, not peaks — say so once, up top.
+            .navigationSubtitle(draft.windowSeconds > 0
+                                ? String(localized: "\(draft.windowSeconds) s averages") : "")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -96,7 +99,7 @@ struct MaxAttemptReviewSheet: View {
                     CapsLabel(String(localized: "Best"), size: 11, tint: Ink.secondary)
                 }
                 Spacer(minLength: 8)
-                Text(weightUnit.text(attempt.peakKg))
+                Text(weightUnit.text(attempt.kg))
                     .font(.system(.body, weight: kept ? .semibold : .regular))
                     .monospacedDigit()
                     .foregroundStyle(Ink.primary)

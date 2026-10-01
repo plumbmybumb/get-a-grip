@@ -43,6 +43,7 @@ class RunnerTrace(
     private val maxes: List<Triple<String, Side, Double>> = emptyList(),
     private val timerOnly: Boolean = false,
     private val maxCreditedSampleGapSeconds: Double? = null,
+    private val engagesOnFirstReading: Boolean = false,
 ) {
     private val authoredPlan = plan
     private val table = MaxTable().also { t ->
@@ -54,6 +55,7 @@ class RunnerTrace(
         maxes = table,
         timerOnly = timerOnly,
         maxCreditedSampleGapSeconds = maxCreditedSampleGapSeconds,
+        engagesOnFirstReading = engagesOnFirstReading,
     )
 
     private val steps = mutableListOf<JsonObject>()
@@ -161,6 +163,8 @@ class RunnerTrace(
         maxCreditedSampleGapSeconds?.let {
             fields["maxCreditedSampleGapSeconds"] = JsonPrimitive(it)
         }
+        // Same rule: only the broadcast scenarios carry it.
+        if (engagesOnFirstReading) fields["engagesOnFirstReading"] = JsonPrimitive(true)
         return JsonObject(fields)
     }
 
@@ -301,6 +305,9 @@ object RunnerScenarios {
         overTheBand(),
         bandGateOffOverload(),
         bandGateOffStillStopsOnRelease(),
+        bandGateBelowBanksOvershoot(),
+        bandGateBelowStillStopsUnder(),
+        broadcastEngagesOnFirstReading(),
         longDropNeverEndsTheRep(),
         shakyHold(),
         thresholdHoverEngagesOnce(),
@@ -423,6 +430,43 @@ object RunnerScenarios {
         start()
         hold(25.0, 2.0)
         hold(0.0, 1.5)
+    }
+
+    /// "Below range": a pull that lands OVER the band starts the clock and banks in full —
+    /// the overshoot the GitHub issue (2026-10-01) asked to count.
+    private fun bandGateBelowBanksOvershoot() = RunnerTrace(
+        "band-gate-below-banks-overshoot",
+        banded(plan(hold = 3)).withTargetBandGate(TargetBandGate.below),
+    ).apply {
+        start()
+        hold(45.0, 3.5)
+    }
+
+    /// What "below range" keeps: the floor still stops the clock.
+    private fun bandGateBelowStillStopsUnder() = RunnerTrace(
+        "band-gate-below-still-stops-under",
+        banded(plan(hold = 4)).withTargetBandGate(TargetBandGate.below),
+    ).apply {
+        start()
+        hold(25.0, 2.0)
+        hold(10.0, 2.0)
+        hold(35.0, 2.6)
+    }
+
+    /// A broadcast scale: readings half a second apart, and the FIRST one inside the gate
+    /// starts the rep instead of waiting out a debounce that costs a whole reading.
+    private fun broadcastEngagesOnFirstReading() = RunnerTrace(
+        "broadcast-engages-on-first-reading",
+        plan(hold = 3),
+        maxCreditedSampleGapSeconds = 1.0,
+        engagesOnFirstReading = true,
+    ).apply {
+        start()
+        repeat(9) {
+            micros += 500_000u
+            now += 0.5
+            send(RunnerEvent.Sample(ForceSample(pulling, micros)))
+        }
     }
 
     /// Eight seconds off the edge is still not a finished rep.

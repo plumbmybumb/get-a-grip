@@ -47,7 +47,9 @@ fun MaxSaveReceiptScreen(receipt: TemplateStore.MaxSaveReceipt, onDone: () -> Un
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         GlyphTile(value.grip)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(value.grip.displayName, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
+                            Text(if (value.seconds > 0) tr("%s · %d s max", value.grip.displayName, value.seconds)
+                                 else value.grip.displayName,
+                                style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
                             Text(tr(when (value.side) { Side.left -> "Left hand"; Side.right -> "Right hand"; Side.both -> "Shared max" }),
                                 style = MaterialTheme.typography.labelLarge, color = palette.inkSecondary)
                             Text(WeightUnits.text(value.kg), style = MaterialTheme.typography.headlineMedium,

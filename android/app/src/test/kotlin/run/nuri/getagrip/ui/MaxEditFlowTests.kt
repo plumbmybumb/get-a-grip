@@ -165,7 +165,7 @@ class MaxEditFlowTests {
         compose.setContent {
             CompositionLocalProvider(LocalTemplateStore provides w.store, LocalHistoryFeed provides w.feed) {
                 GetAGripTheme(darkTheme = false) {
-                    NewMaxSheet(draft, onMeasure = { grip, side -> measured = grip to side },
+                    NewMaxSheet(draft, onMeasure = { grip, side, _ -> measured = grip to side },
                         onEnter = { entered = it }, onShared = {}, onClose = {})
                 }
             }
@@ -175,7 +175,8 @@ class MaxEditFlowTests {
         compose.runOnIdle { assertEquals(candidate, entered) }
         // Measure asks one question first: one hand at a time, or both together.
         compose.onNodeWithTag("newMax.measure").performScrollTo().performClick()
-        compose.onNodeWithText("How are you measuring?").assertIsDisplayed()
+        // The chooser (2026-10-01): the kind of max first, then the hands start it.
+        compose.onNodeWithText("Measure a max").assertIsDisplayed()
         compose.onNodeWithTag("max.mode.criticalForce").assertDoesNotExist()
         compose.onNodeWithTag("max.mode.hands").performClick()
         compose.runOnIdle { assertEquals(candidate to Side.left, measured) }

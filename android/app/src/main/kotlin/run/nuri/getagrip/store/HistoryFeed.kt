@@ -194,7 +194,15 @@ class HistoryFeed(
 // MARK: - Grouping
 
 /// One grip's records, every hand mixed — the per-side slices are cut in the card.
-data class MaxGripGroup(val key: String, val grip: GripSpec, val records: List<MaxRecordEntity>)
+/// `records` are PEAK maxes — the chart and every "best" are about these. `timed` holds the
+/// timed maxes (every length and hand), shown as their own readouts and never charted against
+/// the peak, which is a different number.
+data class MaxGripGroup(
+    val key: String,
+    val grip: GripSpec,
+    val records: List<MaxRecordEntity>,
+    val timed: List<MaxRecordEntity> = emptyList(),
+)
 
 /// Most recently tested grip first; ties break on the key so two grips tested together
 /// don't swap between launches.
@@ -207,9 +215,13 @@ internal fun groupsOf(records: List<MaxRecordEntity>): List<MaxGripGroup> {
     // `records` arrive oldest first, so each bucket is already in chart order.
     for (record in records) byKey.getOrPut(record.gripKey) { mutableListOf() }.add(record)
     return byKey
-        .map { (key, rows) -> MaxGripGroup(key, rows.last().grip, rows) }
+        .map { (key, rows) ->
+            MaxGripGroup(key, rows.last().grip, rows.filter { it.isPeak }, rows.filterNot { it.isPeak })
+        }
         .sortedWith(
-            compareByDescending<MaxGripGroup> { it.records.last().recordedAt }.thenBy { it.key },
+            compareByDescending<MaxGripGroup> { group ->
+                listOfNotNull(group.records.lastOrNull()?.recordedAt, group.timed.lastOrNull()?.recordedAt).max()
+            }.thenBy { it.key },
         )
 }
 

@@ -294,8 +294,11 @@ class TemplateStore(
         // Which duplicate id wins is arbitrary; what matters is that it cannot crash.
         routineNames = ordered.associate { it.id to it.name }
         if (maxes != null) {
-            currentMaxes = newestPerGrip(maxes)
-            maxTable = table(currentMaxes)
+            val newest = newestPerGrip(maxes)
+            // `currentMaxes` stays PEAK maxes only — every reader of it predates timed maxes
+            // and means the peak. The table carries both, in separate slots.
+            currentMaxes = newest.filterValues { it.isPeak }
+            maxTable = table(newest)
             // `maxes` arrives sorted by `recordedAt`, so the last measured one is newest.
             lastMeasuredMaxAt = maxes.lastOrNull { it.source == MaxSource.measured }?.recordedAt
         }
@@ -426,7 +429,9 @@ class TemplateStore(
     /// Derived from `currentMaxes` in the same pass, so the two can never disagree.
     private fun table(newest: Map<String, MaxRecordEntity>): MaxTable {
         val table = MaxTable()
-        for (record in newest.values) table.record(record.kg, record.gripKey, record.side)
+        for (record in newest.values) {
+            table.record(record.kg, record.gripKey, record.side, record.durationSeconds)
+        }
         return table
     }
 
@@ -561,6 +566,33 @@ class TemplateStore(
     /// Defaulted to `both` so every existing caller keeps its meaning.
     fun currentMax(grip: GripSpec, side: Side = Side.both): Double? =
         maxTable.max(grip.key, side)
+
+    /// The timed length a routine is WAITING ON for this grip: a set asks for a percentage of
+    /// an N-second max that some hand it trains has no record of. The chooser opens on it.
+    /// The shortest when several are owed; null when nothing is (the peak, as before).
+    fun missingTimedLength(grip: GripSpec): Int? {
+        val owed = sortedSetOf<Int>()
+        for (routine in routines) {
+            val plan = routine.plan.executable
+            for (set in plan.sets) {
+                if (set.grip.key != grip.key || set.targetBand != null) continue
+                if (PlanMath.targetPercent(set, plan) == null) continue
+                val seconds = PlanMath.maxSeconds(set, plan) ?: continue
+                val hands = PlanMath.handSequence(set, plan).toSet()
+                if (hands.any { maxTable.max(grip.key, it, seconds) == null }) owed.add(seconds)
+            }
+        }
+        return owed.firstOrNull()
+    }
+
+    /// Where a one-hand-at-a-time visit starts: the LEFT, unless the left already has this
+    /// kind of max and the right does not. Exact records only.
+    fun firstHandToMeasure(grip: GripSpec, seconds: Int): Side {
+        val length = seconds.takeIf { it > 0 }
+        val left = maxTable.exact(grip.key, Side.left, length) != null
+        val right = maxTable.exact(grip.key, Side.right, length) != null
+        return if (left && !right) Side.right else Side.left
+    }
 
     /// The Maxes tab's SOFT NUDGE: true once the newest measured max is four weeks stale
     /// (finger strength moves monthly). Nobody who never measured is nudged. No setting: a
@@ -1007,7 +1039,14 @@ class TemplateStore(
 
     // MARK: - Maxes
 
-    data class MaxSave(val grip: GripSpec, val side: Side, val kg: Double, val source: MaxSource)
+    /// `seconds`: 0 for a peak max; otherwise the timed window — see `MaxRecordEntity.durationSeconds`.
+    data class MaxSave(
+        val grip: GripSpec,
+        val side: Side,
+        val kg: Double,
+        val source: MaxSource,
+        val seconds: Int = 0,
+    )
 
     private val maxSaveMutex = Mutex()
 
@@ -1033,7 +1072,7 @@ class TemplateStore(
         if (values.isEmpty()) return true
         // A zero or NaN max would make every percent-of-max caption lie.
         if (values.any { !it.kg.isFinite() || it.kg <= 0 }) return false
-        val keys = values.map { MaxTable.key(it.grip.key, it.side) }
+        val keys = values.map { MaxTable.key(it.grip.key, it.side, it.seconds) }
         if (keys.toSet().size != keys.size) return false
 
         // **A MEASURED max makes today a benchmark day** (Nuri, 2026-08-10): no ceremony,
@@ -1052,10 +1091,10 @@ class TemplateStore(
             val records = values.map { value ->
                 // Room stores milliseconds; two saves in one millisecond must still append
                 // rather than lose a correction to a tie.
-                val last = newest[MaxTable.key(value.grip.key, value.side)]?.recordedAt
+                val last = newest[MaxTable.key(value.grip.key, value.side, value.seconds)]?.recordedAt
                 val recordedAt = if (last != null && !now.isAfter(last)) last.plusMillis(1) else now
-                current.record(value.kg, value.grip.key, value.side)
-                MaxRecordEntity.from(value.grip, value.kg, value.source, value.side, recordedAt)
+                current.record(value.kg, value.grip.key, value.side, value.seconds)
+                MaxRecordEntity.from(value.grip, value.kg, value.source, value.side, recordedAt, value.seconds)
             }
             val routines = writer.allRoutines() ?: emptyList()
             val measured = marksBenchmarkDay && values.any { it.source == MaxSource.measured }
@@ -1270,6 +1309,9 @@ class TemplateStore(
                     if (!moves.contains(move)) moves.add(move)
                 } else {
                     val percent = PlanMath.targetPercent(set, plan) ?: continue
+                    // This explains a PEAK max change; a set measured against a timed max
+                    // does not move with it.
+                    if (PlanMath.maxSeconds(set, plan) != null) continue
                     if (!seenPercents.add("${percent.start}–${percent.endInclusive}")) continue
                     val newBand = PlanMath.targetBand(set, plan, newKg) ?: continue
                     for (affectedSide in affectedSides) {
@@ -1342,7 +1384,9 @@ class TemplateStore(
         val rescaleOffers = mutableListOf<MaxSaveReceipt.RescaleOffer>()
         for ((gripKey, changes) in values.groupBy { it.grip.key }.toSortedMap()) {
             val grip = changes.first().grip
-            val sharedChange = changes.firstOrNull { it.side == Side.both }
+            // Rescaling typed kilograms is a PEAK-max story: a timed max is a different number
+            // and no ratio against the old peak.
+            val sharedChange = changes.firstOrNull { it.side == Side.both && it.seconds == 0 }
             val ratio = sharedChange?.let { shared ->
                 previous.exact(gripKey, Side.both)?.let { shared.kg / it }
             }
@@ -1368,11 +1412,15 @@ class TemplateStore(
                         if (move !in kgMoves) kgMoves.add(move)
                     } else {
                         val percent = PlanMath.targetPercent(set, plan) ?: continue
-                        if (!seenPercents.add("${percent.start}–${percent.endInclusive}")) continue
+                        // Keyed with the basis too: 90 % of the peak and 90 % of a 10 s max
+                        // are different targets on the same grip.
+                        val basis = PlanMath.maxSeconds(set, plan)?.let { "${it}s" } ?: "peak"
+                        if (!seenPercents.add("${percent.start}–${percent.endInclusive}|$basis")) continue
                         for (side in sides) {
-                            val oldBand = previous.max(gripKey, side)?.let { PlanMath.targetBand(set, plan, it) }
-                            val newKg = current.max(gripKey, side) ?: continue
-                            val newBand = PlanMath.targetBand(set, plan, newKg) ?: continue
+                            // Through the tables, so each set reads the max it is a
+                            // percentage OF — a timed save moves the sets measured against it.
+                            val oldBand = PlanMath.targetBand(set, plan, side, previous)
+                            val newBand = PlanMath.targetBand(set, plan, side, current) ?: continue
                             if (oldBand == newBand) continue
                             percentMoves.add(MaxSaveReceipt.PercentMove(grip, MaxImpact.PercentMove(
                                 routine.id, routine.name, side, percent.start, percent.endInclusive, oldBand, newBand,

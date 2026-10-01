@@ -129,7 +129,7 @@ struct SessionSummaryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 8)
         .padding(.vertical, 14)
-        .background(.regularMaterial,
+        .cardSurface(.flat,
                     in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
     }
 
@@ -146,7 +146,7 @@ struct SessionSummaryView: View {
     @ViewBuilder
     private var newMaxCard: some View {
         if !maxCandidates.isEmpty {
-            MaterialCard {
+            MaterialCard(surface: .flat) {
                 VStack(alignment: .leading, spacing: 12) {
                     Button {
                         withAnimation(Motion.state(reduceMotion)) { showsMaxes.toggle() }
@@ -262,7 +262,7 @@ struct SessionSummaryView: View {
     }
 
     private var gradeCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             EffortPicker(selection: Binding(get: { grade?.rawValue },
                                              set: { grade = $0.flatMap(RPE.init(rawValue:)) }),
                          labels: RPE.allCases.map(\.name),
@@ -286,7 +286,7 @@ struct SessionSummaryView: View {
                 .foregroundStyle(Ink.secondary)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 48)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
+                .cardSurface(.flat, in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
                 .contentShape(.rect)
             }
             .buttonStyle(PressFeedbackButtonStyle())
@@ -312,7 +312,7 @@ struct SessionSummaryView: View {
                     }
                     .padding(.vertical, 10)
                     .padding(.horizontal, 14)
-                    .background(.regularMaterial,
+                    .cardSurface(.flat,
                                 in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(inSet.first?.grip.spoken ?? String(localized: "Set")): \(done) of \(inSet.count) completed")

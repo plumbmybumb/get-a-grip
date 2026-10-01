@@ -33,13 +33,19 @@ struct RhythmSection: View, Equatable {
             MaterialCard(verticalPadding: 4, surface: .flat) {
                 VStack(alignment: .leading, spacing: 0) {
                     TimingStepper(kind: .hold,
-                                  value: access.binding(\.plan.holdSeconds, current: defaults.holdSeconds))
+                                  value: defaults.holdSeconds,
+                                  onChange: { new in access.mutate { $0.plan.holdSeconds = new } })
+                        .equatable()
                     rowDivider
                     TimingStepper(kind: .rest,
-                                  value: access.binding(\.plan.restSeconds, current: defaults.restSeconds))
+                                  value: defaults.restSeconds,
+                                  onChange: { new in access.mutate { $0.plan.restSeconds = new } })
+                        .equatable()
                     rowDivider
                     TimingStepper(kind: .setBreak,
-                                  value: access.binding(\.plan.setBreakSeconds, current: defaults.setBreakSeconds))
+                                  value: defaults.setBreakSeconds,
+                                  onChange: { new in access.mutate { $0.plan.setBreakSeconds = new } })
+                        .equatable()
                     rowDivider
                     releaseToggle
                         .frame(minHeight: 46)
@@ -112,13 +118,22 @@ struct RhythmSection: View, Equatable {
 
 /// One timing number as a `− value +` row on its ladder. Shared by the Rhythm page and a
 /// set's Custom timing, so the two can never offer different stops.
-struct TimingStepper: View {
+///
+/// **A VALUE and a write closure, compared on the value** — never a `Binding`. A binding is
+/// a dynamic property, so all three Rhythm rows re-ran whenever any one changed: one step of
+/// the set break cost 29 bodies (measured 2026-10-01). Now only the row that moved re-runs.
+struct TimingStepper: View, Equatable {
     enum Kind {
         case hold, rest, setBreak
     }
 
     let kind: Kind
-    @Binding var value: Int
+    let value: Int
+    let onChange: (Int) -> Void
+
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        a.kind == b.kind && a.value == b.value
+    }
 
     /// Every detent the shipping protocols use (3 s C4 holds, 5/7/10/12 s repeaters,
     /// 15–60 s rests). Hold and rest differ only at the floor: a 0 s rest is a cadence, a
@@ -126,20 +141,23 @@ struct TimingStepper: View {
     static let secondsLadder: [Double] = [3, 5, 7, 10, 12, 15, 20, 30, 45, 60]
 
     var body: some View {
+        // Write-through, so a held repeat reads back its own last step before the next body.
+        let cache = WriteThroughValue(value)
+        let value = Binding(get: { cache.value }, set: { cache.value = $0; onChange($0) })
         switch kind {
         case .hold:
             IntValueRow(title: String(localized: "Hold"), unit: String(localized: "s"),
-                        value: $value, range: 1...60, limit: SetPlan.holdRange,
+                        value: value, range: 1...60, limit: SetPlan.holdRange,
                         control: .ladderStepper([1] + Self.secondsLadder),
                         spokenUnit: String(localized: "seconds"))
         case .rest:
             IntValueRow(title: String(localized: "Rest between pulls"), unit: String(localized: "s"),
-                        value: $value, range: 0...60, limit: SetPlan.restRange,
+                        value: value, range: 0...60, limit: SetPlan.restRange,
                         control: .ladderStepper([0] + Self.secondsLadder),
                         spokenUnit: String(localized: "seconds"))
         case .setBreak:
             IntValueRow(title: String(localized: "Break between sets"), unit: String(localized: "s"),
-                        value: $value, range: 0...240, limit: SessionPlan.setBreakRange,
+                        value: value, range: 0...240, limit: SessionPlan.setBreakRange,
                         control: .ladderStepper([0, 15, 30, 45, 60, 90, 120, 180, 240]),
                         spokenUnit: String(localized: "seconds"))
         }

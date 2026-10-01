@@ -104,6 +104,17 @@ enum CriticalForceRules {
     static let deliverySettleSeconds: Double = 0.4
     /// Readings further apart than this leave a hole. Nothing is interpolated across it.
     static let gapSeconds: Double = 0.25
+    /// The same rule for a BROADCAST scale (the WH-C06). It advertises ~8 times a second
+    /// at best and phones catch a share of those, so ordinary delivery has holes of half a
+    /// second to a second; at 0.25 s most of a pull was a hole and whole tests ended in
+    /// "too many gaps" (GitHub issue, 2026-10-01). A 7 s pull is close to flat, so a line
+    /// across 1.5 s barely moves its mean.
+    static let broadcastGapSeconds: Double = 1.5
+
+    /// The gap a gauge's readings may span and still count, for the pull windows.
+    static func gapSeconds(for capabilities: GaugeCapabilities) -> Double {
+        capabilities.isBroadcast ? broadcastGapSeconds : gapSeconds
+    }
     /// A window with less data than this fraction has no mean.
     static let minCoverage: Double = 0.5
 }
@@ -179,12 +190,15 @@ enum CriticalForceFailure: Error, Hashable, Sendable {
 enum CriticalForceAnalysis {
 
     static func analyze(_ points: [CriticalForcePoint], repsRun: Int,
-                        protocol proto: CriticalForceProtocol = .standard)
+                        protocol proto: CriticalForceProtocol = .standard,
+                        gapSeconds gap: Double = CriticalForceRules.gapSeconds)
         -> Result<CriticalForceResult, CriticalForceFailure> {
         let run = min(max(repsRun, 0), proto.reps)
         guard run >= CriticalForceRules.minRepsForResult else { return .failure(.tooFewReps(run: run)) }
 
-        let reps = (0..<run).map { summarize(rep: $0, of: points, protocol: proto, isFinal: $0 == run - 1) }
+        let reps = (0..<run).map {
+            summarize(rep: $0, of: points, protocol: proto, isFinal: $0 == run - 1, gapSeconds: gap)
+        }
 
         let finalRange = (run - CriticalForceRules.criticalForceReps)..<run
         let finalMeans = finalRange.compactMap { reps[$0].meanKg }
@@ -198,7 +212,7 @@ enum CriticalForceAnalysis {
         var wPrime = 0.0
         for rep in 0..<run {
             wPrime += integrate(points, from: proto.workStart(rep), to: proto.workEnd(rep),
-                                above: cf).area
+                                above: cf, gapSeconds: gap).area
         }
 
         return .success(CriticalForceResult(
@@ -213,11 +227,18 @@ enum CriticalForceAnalysis {
 
     /// One window's numbers. Also what the live screen draws as each pull closes, so the
     /// bar you watch and the number you save come from the same arithmetic.
+    ///
+    /// `gapSeconds` loosens the PULL windows only. The rest check keeps the strict rule:
+    /// a line drawn across a long hole from the end of a pull would invent load in the
+    /// rest, and a rest wrongly marked "not kept" accuses somebody of something they did
+    /// not do.
     static func summarize(rep: Int, of points: [CriticalForcePoint],
-                          protocol proto: CriticalForceProtocol, isFinal: Bool) -> CriticalForceRep {
+                          protocol proto: CriticalForceProtocol, isFinal: Bool,
+                          gapSeconds gap: Double = CriticalForceRules.gapSeconds) -> CriticalForceRep {
         let start = proto.workStart(rep), end = proto.workEnd(rep)
-        let window = integrate(points, from: start, to: end)
-        let tail = integrate(points, from: end - CriticalForceRules.endWindowSeconds, to: end)
+        let window = integrate(points, from: start, to: end, gapSeconds: gap)
+        let tail = integrate(points, from: end - CriticalForceRules.endWindowSeconds, to: end,
+                             gapSeconds: gap)
         let coverage = window.covered / proto.workSeconds
         let mean = coverage >= CriticalForceRules.minCoverage ? window.area / window.covered : nil
         let tailEnough = tail.covered >= CriticalForceRules.endWindowSeconds * CriticalForceRules.minCoverage
@@ -244,7 +265,8 @@ enum CriticalForceAnalysis {
     /// area of the part over that line only, crossings included. A pair of readings
     /// further apart than `gapSeconds` is a hole: no area and no coverage.
     static func integrate(_ points: [CriticalForcePoint], from: Double, to: Double,
-                          above threshold: Double = 0) -> Integral {
+                          above threshold: Double = 0,
+                          gapSeconds gap: Double = CriticalForceRules.gapSeconds) -> Integral {
         var result = Integral()
         guard to > from, points.count >= 2 else { return result }
         var i = max(0, firstIndex(in: points, notBefore: from) - 1)
@@ -252,7 +274,7 @@ enum CriticalForceAnalysis {
             let a = points[i], b = points[i + 1]
             i += 1
             let dt = b.t - a.t
-            guard dt > 0, dt <= CriticalForceRules.gapSeconds else { continue }
+            guard dt > 0, dt <= gap else { continue }
             let s = max(a.t, from), e = min(b.t, to)
             guard e > s else { continue }
             let ks = a.kg + (b.kg - a.kg) * (s - a.t) / dt
@@ -370,6 +392,9 @@ struct CriticalForceTest: Sendable {
     }
 
     let proto: CriticalForceProtocol
+    /// See `CriticalForceRules.gapSeconds(for:)`. Fixed for the test, so the live bars and
+    /// the saved result read the same trace the same way.
+    let gapSeconds: Double
     private(set) var phase: Phase = .armed
     /// Playback time of rep 1's start.
     private(set) var anchor: Double?
@@ -381,8 +406,10 @@ struct CriticalForceTest: Sendable {
     private var lastCountdown: Int?
     private var settleUntil: Double?
 
-    init(protocol proto: CriticalForceProtocol = .standard) {
+    init(protocol proto: CriticalForceProtocol = .standard,
+         gapSeconds: Double = CriticalForceRules.gapSeconds) {
         self.proto = proto
+        self.gapSeconds = gapSeconds
     }
 
     var isRunning: Bool { phase.isRunning }
@@ -417,7 +444,7 @@ struct CriticalForceTest: Sendable {
         for rep in means.count..<started {
             let from = proto.workStart(rep)
             let to = min(proto.workEnd(rep), last.t)
-            let window = CriticalForceAnalysis.integrate(points, from: from, to: to)
+            let window = CriticalForceAnalysis.integrate(points, from: from, to: to, gapSeconds: gapSeconds)
             // A live bar needs a moment of data before it means anything.
             means.append(window.covered >= 0.2 ? window.area / window.covered : nil)
         }
@@ -528,7 +555,7 @@ struct CriticalForceTest: Sendable {
     /// The outcome, once `finished`.
     func result() -> Result<CriticalForceResult, CriticalForceFailure>? {
         guard phase == .finished else { return nil }
-        return CriticalForceAnalysis.analyze(points, repsRun: repsRun, protocol: proto)
+        return CriticalForceAnalysis.analyze(points, repsRun: repsRun, protocol: proto, gapSeconds: gapSeconds)
     }
 
     // MARK: Internals
@@ -559,7 +586,8 @@ struct CriticalForceTest: Sendable {
         while closedReps.count < n {
             let index = closedReps.count
             closedReps.append(CriticalForceAnalysis.summarize(
-                rep: index, of: points, protocol: proto, isFinal: final && index == repsRun - 1))
+                rep: index, of: points, protocol: proto, isFinal: final && index == repsRun - 1,
+                gapSeconds: gapSeconds))
         }
         if final { phase = .finished }
         return []

@@ -17,16 +17,20 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun Modifier.screenArrival(destination: Any): Modifier {
     val reduced = rememberReduceMotion()
-    val arrival = remember { Animatable(1f) }
+    // Keyed on the destination and STARTED at the arrival pose, so the first frame of the
+    // new tab is already that pose. Snapping to 0 inside the effect drew one frame at full
+    // state and then dipped (responsiveness audit, 2026-10-01).
+    val arrival = remember(destination, reduced) { Animatable(if (reduced) 1f else 0f) }
     val travel = with(LocalDensity.current) { 8.dp.toPx() }
-    LaunchedEffect(destination, reduced) {
-        if (reduced) arrival.snapTo(1f) else {
-            arrival.snapTo(0f)
-            arrival.animateTo(1f, Motion.state(false))
-        }
+    LaunchedEffect(arrival) {
+        if (!reduced) arrival.animateTo(1f, Motion.state(false))
     }
     return graphicsLayer {
         alpha = .75f + arrival.value * .25f
         translationY = if (reduced) 0f else (1f - arrival.value) * travel
+        // The DEFAULT strategy on purpose: the screen fades as ONE image. ModulateAlpha
+        // (tried 2026-10-01 to skip the offscreen buffer) fades every draw separately, so a
+        // card's square backdrop showed through its own rounded fill on every fast tab
+        // switch — seen on Nuri's phone the same day.
     }
 }

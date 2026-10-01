@@ -39,6 +39,9 @@ final class SessionTemplate {
     /// each save silently resets it (this one did). Defaulted `true`, the plan's own
     /// default, so existing rows keep their behaviour. Additive, no backfill.
     var pausesOutsideTargetBand: Bool = true
+    /// See `SessionPlan.pausesAboveTargetBand`. Defaulted `true`: existing rows keep both
+    /// edges. Additive, no backfill.
+    var pausesAboveTargetBand: Bool = true
     /// TARGET LOAD as a fraction of each grip's own max — the routine-level default
     /// every set inherits. Optional because "no target" is a real, common answer, and a
     /// sentinel like 0 would be indistinguishable from a deliberate zero.
@@ -129,6 +132,7 @@ extension SessionTemplate {
                     thresholdKg: thresholdKg,
                     waitForReleaseBeforeRest: waitForReleaseBeforeRest,
                     pausesOutsideTargetBand: pausesOutsideTargetBand,
+                    pausesAboveTargetBand: pausesAboveTargetBand,
                     targetLoPercent: targetLoPercent,
                     targetHiPercent: targetHiPercent)
     }
@@ -162,6 +166,7 @@ extension SessionTemplate {
         thresholdKg = source.thresholdKg
         waitForReleaseBeforeRest = source.waitForReleaseBeforeRest
         pausesOutsideTargetBand = source.pausesOutsideTargetBand
+        pausesAboveTargetBand = source.pausesAboveTargetBand
         targetLoPercent = source.targetLoPercent
         targetHiPercent = source.targetHiPercent
         sets = source.sets

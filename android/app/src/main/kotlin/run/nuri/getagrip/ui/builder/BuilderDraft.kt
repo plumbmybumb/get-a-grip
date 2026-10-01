@@ -26,9 +26,10 @@ object BuilderDraft {
         return draft.copy(plan = draft.plan.copy(
             sets = draft.plan.sets.map { set ->
                 if (set.hasTarget || set.hasPercentTarget) set else set.copy(
-                    targetLoPercent = band.start, targetHiPercent = band.endInclusive)
+                    targetLoPercent = band.start, targetHiPercent = band.endInclusive,
+                    targetMaxSeconds = draft.plan.targetMaxSeconds)
             },
-            targetLoPercent = null, targetHiPercent = null,
+            targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null,
         ))
     }
 
@@ -39,12 +40,17 @@ object BuilderDraft {
     fun promotingUniformBand(draft: RoutineDraft): RoutineDraft {
         val sets = draft.plan.sets
         if (draft.plan.targetPercentBand != null) return draft
-        val band = sets.firstOrNull()?.targetPercentBand ?: return draft
-        if (!sets.all { !it.hasTarget && it.targetPercentBand == band }) return draft
+        val first = sets.firstOrNull() ?: return draft
+        val band = first.targetPercentBand ?: return draft
+        // The basis is part of the band: two sets at 90 % of different maxes do not share one.
+        if (!sets.all { !it.hasTarget && it.targetPercentBand == band && it.targetMaxSeconds == first.targetMaxSeconds }) {
+            return draft
+        }
         return draft.copy(plan = draft.plan.copy(
             targetLoPercent = band.start,
             targetHiPercent = band.endInclusive,
-            sets = sets.map { it.copy(targetLoPercent = null, targetHiPercent = null) },
+            targetMaxSeconds = first.targetMaxSeconds,
+            sets = sets.map { it.copy(targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null) },
         ))
     }
 
@@ -58,10 +64,16 @@ object BuilderDraft {
         draft.copy(plan = draft.plan.copy(
             targetLoPercent = band?.start,
             targetHiPercent = band?.endInclusive,
+            targetMaxSeconds = if (band == null) null else draft.plan.targetMaxSeconds,
             sets = draft.plan.sets.map {
-                it.copy(targetLoPercent = null, targetHiPercent = null, targetLoKg = null, targetHiKg = null)
+                it.copy(targetLoPercent = null, targetHiPercent = null, targetLoKg = null, targetHiKg = null,
+                    targetMaxSeconds = null)
             },
         ))
+
+    /// Which max the Rhythm page's band is of — null is the peak.
+    fun withRoutineBasis(draft: RoutineDraft, seconds: Int?): RoutineDraft =
+        draft.copy(plan = draft.plan.copy(targetMaxSeconds = seconds))
 
     /// **Custom timing** on one set. ON seeds both overrides with the routine's current values,
     /// so the steppers start where the set already was; OFF returns it to the routine.

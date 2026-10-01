@@ -57,6 +57,9 @@ data class SessionTemplateEntity(
     /// (2026-08-19): until then every save silently reset the switch to true (found by the
     /// QR share review). Defaulted `true`, the plan's own default.
     val pausesOutsideTargetBand: Boolean = true,
+    /// See `SessionPlan.pausesAboveTargetBand`. Defaulted `true` (schema 5): existing rows
+    /// keep both edges. Additive, no backfill.
+    @ColumnInfo(defaultValue = "1") val pausesAboveTargetBand: Boolean = true,
     /// TARGET LOAD as a fraction of each grip's own max, the routine-level default.
     /// Nullable: "no target" is a real answer, and 0 would be indistinguishable from a
     /// deliberate zero.
@@ -111,6 +114,7 @@ data class SessionTemplateEntity(
             thresholdKg = thresholdKg,
             waitForReleaseBeforeRest = waitForReleaseBeforeRest,
             pausesOutsideTargetBand = pausesOutsideTargetBand,
+            pausesAboveTargetBand = pausesAboveTargetBand,
             targetLoPercent = targetLoPercent,
             targetHiPercent = targetHiPercent,
         )
@@ -150,6 +154,7 @@ data class SessionTemplateEntity(
             thresholdKg = source.thresholdKg,
             waitForReleaseBeforeRest = source.waitForReleaseBeforeRest,
             pausesOutsideTargetBand = source.pausesOutsideTargetBand,
+            pausesAboveTargetBand = source.pausesAboveTargetBand,
             targetLoPercent = source.targetLoPercent,
             targetHiPercent = source.targetHiPercent,
             setsData = BlobCodec.encodeAll(source.sets) ?: setsData,

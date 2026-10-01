@@ -36,7 +36,7 @@ class MaxMeasurementTests {
         }
         assertEquals(2, session.publishes)
         assertTrue(session.isPulling)
-        assertEquals(18.0, session.pullPeakKg)
+        assertEquals(18.0, session.pullKg)
     }
 
     /// A CLIMBING pull publishes each real step: each one is a different number on screen.
@@ -45,7 +45,7 @@ class MaxMeasurementTests {
         val session = LiveMaxSession(bothTogether = false, side = Side.left)
         listOf(5.0, 10.0, 15.0, 20.0).forEachIndexed { index, kg -> session.receive(point(kg, index * 0.1)) }
         assertEquals(1 + 4, session.publishes)
-        assertEquals(20.0, session.pullPeakKg)
+        assertEquals(20.0, session.pullKg)
     }
 
     /// Easing off publishes nothing: the pull's peak is a running maximum.
@@ -58,7 +58,7 @@ class MaxMeasurementTests {
         session.receive(point(12.0, 0.2))
         session.receive(point(6.0, 0.3))
         assertEquals(before, session.publishes)
-        assertEquals(24.0, session.pullPeakKg)
+        assertEquals(24.0, session.pullKg)
     }
 
     /// Drift under the threshold is not a pull, and costs the screen nothing at all.
@@ -68,7 +68,7 @@ class MaxMeasurementTests {
         repeat(200) { session.receive(point(0.4, it / 80.0)) }
         assertEquals(0, session.publishes)
         assertFalse(session.isPulling)
-        assertNull(session.pullPeakKg)
+        assertNull(session.pullKg)
     }
 
     /// Letting go logs the pull with no tap: the hero shows it as the last pull, the pull's
@@ -81,16 +81,16 @@ class MaxMeasurementTests {
         assertTrue(session.isPulling, "A quick re-grip is still the same pull")
         session.receive(point(0.2, 0.5 + MaxAttemptLog.releaseSeconds))
         assertFalse(session.isPulling)
-        assertNull(session.pullPeakKg)
-        assertEquals(26.0, session.lastAttempt?.peakKg)
+        assertNull(session.pullKg)
+        assertEquals(26.0, session.lastAttempt?.kg)
         assertEquals(1, session.newBestTick)
         // A weaker second pull logs, but is no new best.
         session.receive(point(20.0, 3.0))
         session.receive(point(0.2, 3.1))
         session.receive(point(0.2, 3.2 + MaxAttemptLog.releaseSeconds))
-        assertEquals(20.0, session.lastAttempt?.peakKg)
+        assertEquals(20.0, session.lastAttempt?.kg)
         assertEquals(1, session.newBestTick)
-        assertEquals(listOf(26.0, 20.0), session.snapshot.log.attempts.map { it.peakKg })
+        assertEquals(listOf(26.0, 20.0), session.snapshot.log.attempts.map { it.kg })
     }
 
     /// Switching hands forgets the hero's last pull (it belonged to the other hand) and logs a

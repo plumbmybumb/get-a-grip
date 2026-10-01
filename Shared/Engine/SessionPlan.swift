@@ -123,6 +123,13 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
     /// no explicit kg band — see `PlanMath.targetBand(_:in:maxKg:)` for the precedence.
     var targetLoPercent: Double? = nil
     var targetHiPercent: Double? = nil
+    /// WHICH max this set's own percentage is of: nil is the PEAK (every routine written
+    /// before timed maxes), otherwise a timed max of this many seconds — "90 % of your
+    /// 10 s max". Belongs to the percentage, so it is read only alongside this set's own
+    /// band; an inheriting set uses the routine's. Chosen explicitly, never derived from
+    /// the hold: changing a hang from 10 s to 12 s must not silently point the set at a
+    /// different (possibly unmeasured) max.
+    var targetMaxSeconds: Int? = nil
     var note: String = ""
 
     /// Decode clamps. `repsRange` starts at 0 because a zero-rep set is representable
@@ -154,6 +161,14 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
         Self.band(lo: targetLoPercent, hi: targetHiPercent)
     }
 
+    /// A timed-max length as stored: positive and within the hold range, else nil (the
+    /// peak). An unreadable or zero value reads as the peak, the meaning every routine
+    /// had before the field existed.
+    static func maxSeconds(_ raw: Int?) -> Int? {
+        guard let raw, raw > 0 else { return nil }
+        return holdRange.clamping(raw)
+    }
+
     /// The one place two optional endpoints become a range, shared with `SessionPlan` so
     /// kg bands and percentage bands cannot normalize differently.
     static func band(lo: Double?, hi: Double?) -> ClosedRange<Double>? {
@@ -169,6 +184,7 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
     enum CodingKeys: String, CodingKey {
         case id, grip, repsPerSide, holdSeconds, restSeconds, targetLoKg, targetHiKg, note
         case targetLoPercent, targetHiPercent
+        case targetMaxSeconds
     }
 }
 
@@ -188,6 +204,7 @@ extension SetPlan {
         self.targetHiKg = c.optional(.targetHiKg)
         self.targetLoPercent = c.optional(.targetLoPercent).map { Self.percentRange.clamping($0) }
         self.targetHiPercent = c.optional(.targetHiPercent).map { Self.percentRange.clamping($0) }
+        self.targetMaxSeconds = Self.maxSeconds(c.optional(.targetMaxSeconds))
         self.note = c.value(.note, or: "")
     }
 }
@@ -224,6 +241,12 @@ struct SessionPlan: Hashable, Sendable, Codable {
     /// still draws as a lane and the clock runs whenever you are ENGAGED. It never
     /// loosens the engagement threshold — letting go still stops the rep.
     var pausesOutsideTargetBand: Bool = true
+    /// Whether the band's CEILING referees too, when it referees at all. Default ON. Off
+    /// is "pause only below the range" (GitHub issue, 2026-10-01): an overshoot counts.
+    /// Its own key rather than a rewrite of the one above, so an older build reading a
+    /// routine set to "below" keeps BOTH edges — stricter, never looser. Read through
+    /// `targetBandGate`, never on its own.
+    var pausesAboveTargetBand: Bool = true
 
     /// TARGET LOAD as a fraction of your max on whichever grip a set uses, inherited like
     /// `holdSeconds`. A percentage because the prescription IS a fraction, so ONE band is
@@ -231,6 +254,10 @@ struct SessionPlan: Hashable, Sendable, Codable {
     /// and go stale the next time a max is recorded.
     var targetLoPercent: Double? = nil
     var targetHiPercent: Double? = nil
+    /// Which max the routine's percentage is of — see `SetPlan.targetMaxSeconds`. NOT a
+    /// SwiftData column: `RoutineDraft.normalized` demotes the routine band onto the sets
+    /// (this with it) before every save, so it lives only in a draft and a share code.
+    var targetMaxSeconds: Int? = nil
 
     /// nil when no band is set. Normalized the same way `SetPlan.targetBand` is — one
     /// endpoint alone is a LINE, which is what one endpoint means.
@@ -260,7 +287,34 @@ struct SessionPlan: Hashable, Sendable, Codable {
         case targetLoPercent, targetHiPercent
         case pausesOutsideTargetBand
         case startingHand
+        case targetMaxSeconds
+        case pausesAboveTargetBand
     }
+
+    /// Which edges of the target band stop the rep clock — the two stored flags as the one
+    /// three-way choice the builder offers.
+    var targetBandGate: TargetBandGate {
+        get {
+            guard pausesOutsideTargetBand else { return .off }
+            return pausesAboveTargetBand ? .outside : .below
+        }
+        set {
+            pausesOutsideTargetBand = newValue != .off
+            pausesAboveTargetBand = newValue != .below
+        }
+    }
+}
+
+/// Which edges of a rep's target band stop its clock. Letting go stops it in every case:
+/// that is about whether you pull, not in which range.
+enum TargetBandGate: String, CaseIterable, Sendable {
+    /// Below reads RE-GRIP, above reads EASE OFF. The default, and the rule the band
+    /// exists to enforce.
+    case outside
+    /// The floor only: an overshoot banks.
+    case below
+    /// The band is drawn and never referees.
+    case off
 }
 
 extension SessionPlan {
@@ -285,8 +339,10 @@ extension SessionPlan {
         self.waitForReleaseBeforeRest = c.value(.waitForReleaseBeforeRest, or: true)
         // Absent key → true: older routines keep the behaviour they were authored under.
         self.pausesOutsideTargetBand = c.value(.pausesOutsideTargetBand, or: true)
+        self.pausesAboveTargetBand = c.value(.pausesAboveTargetBand, or: true)
         self.targetLoPercent = c.optional(.targetLoPercent).map { SetPlan.percentRange.clamping($0) }
         self.targetHiPercent = c.optional(.targetHiPercent).map { SetPlan.percentRange.clamping($0) }
+        self.targetMaxSeconds = SetPlan.maxSeconds(c.optional(.targetMaxSeconds))
     }
 }
 
@@ -427,6 +483,8 @@ struct RoutineDraft: Hashable, Sendable, Codable {
                     s.targetLoPercent = hi
                     s.targetHiPercent = lo
                 }
+                // A length with no percentage of its own says nothing; keep blobs honest.
+                if !s.hasPercentTarget || s.hasTarget { s.targetMaxSeconds = nil }
                 s.note = s.note.trimmingCharacters(in: .whitespacesAndNewlines)
                 return s
             }
@@ -445,11 +503,13 @@ struct RoutineDraft: Hashable, Sendable, Codable {
                 var s = set
                 s.targetLoPercent = band.lowerBound
                 s.targetHiPercent = band.upperBound
+                s.targetMaxSeconds = out.plan.targetMaxSeconds
                 return s
             }
             out.plan.targetLoPercent = nil
             out.plan.targetHiPercent = nil
         }
+        out.plan.targetMaxSeconds = nil
         out.sessionsPerDay = Self.sessionsRange.clamping(out.sessionsPerDay)
         out.reminders = Self.tidy(out.reminders)
         out.parkedReminders = Self.tidy(out.parkedReminders)

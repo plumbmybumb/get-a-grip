@@ -411,4 +411,26 @@ class CriticalForceTests {
         assertEquals(listOf(Side.both), CriticalForceHands.BothHands.sides)
         assertEquals(listOf(Side.left), CriticalForceHands.Single(Side.both).sides)
     }
+
+    // MARK: - A broadcast scale (GitHub issue, 2026-10-01)
+
+    /// A WH-C06 delivers a reading every half second or so. At the Progressor's 0.25 s gap
+    /// rule every pull is a hole and the test fails; at the broadcast gap it keeps a result
+    /// close to the plateau.
+    @Test
+    fun aSparseBroadcastScaleStillGivesAResult() {
+        val sparse: (Double) -> Boolean = { rel -> Math.round(rel * 80).toInt() % 48 != 0 }   // 0.6 s
+        val strict = CriticalForceTest()
+        run(strict, until = proto.totalSeconds + 1, dropping = sparse)
+        assertEquals(CriticalForceOutcome.Failure(CriticalForceFailure.TooLittleData), strict.result())
+
+        val broadcast = CriticalForceTest(gapSeconds = CriticalForceRules.gapSeconds(GaugeKind.whc06.capabilities))
+        run(broadcast, until = proto.totalSeconds + 1, dropping = sparse)
+        assertEquals(level(21), broadcast.success().criticalForceKg, 2.0)
+        assertEquals(
+            CriticalForceRules.gapSeconds,
+            CriticalForceRules.gapSeconds(GaugeKind.progressor.capabilities),
+            "the Progressor keeps the strict rule",
+        )
+    }
 }

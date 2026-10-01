@@ -121,7 +121,7 @@ struct RoutineImportSheet: View {
     // MARK: - The plan
 
     private var planCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 10) {
                 CapsLabel(String(localized: "WHAT YOU'LL PULL"))
                 ForEach(Array(sets.enumerated()), id: \.offset) { index, set in
@@ -229,7 +229,7 @@ struct RoutineImportSheet: View {
     // MARK: - Rhythm and cadence
 
     private var rhythmCard: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     CapsLabel(String(localized: "RHYTHM"))

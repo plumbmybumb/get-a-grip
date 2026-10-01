@@ -132,7 +132,8 @@ final class CriticalForceVisit {
     private func arm(_ next: CriticalForceSession) {
         session.end()
         session = next
-        next.arm()
+        next.arm(gapSeconds: streamingDevice.map { CriticalForceRules.gapSeconds(for: $0.gaugeCapabilities) }
+                 ?? CriticalForceRules.gapSeconds)
         streamingDevice?.onTracePoint = { [next] point in next.receive(kg: point.kg, at: point.t) }
         armings += 1
     }

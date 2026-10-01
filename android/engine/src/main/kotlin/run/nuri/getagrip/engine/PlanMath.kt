@@ -74,6 +74,17 @@ object PlanMath {
         return minOf(lo, hi)..maxOf(lo, hi)
     }
 
+    /// WHICH max a set's percentage is of: null is the peak, otherwise a timed max of that
+    /// many seconds. It travels WITH the percentage — the set's own when the set has its
+    /// own band, the routine's when it inherits.
+    fun maxSeconds(set: SetPlan, plan: SessionPlan): Int? =
+        if (set.targetPercentBand != null) set.targetMaxSeconds else plan.targetMaxSeconds
+
+    /// The max a set's percentage resolves against for one hand — peak or timed. A timed
+    /// basis with no timed max on file is null, NEVER the peak.
+    fun maxKg(set: SetPlan, plan: SessionPlan, side: Side, maxes: MaxTable): Double? =
+        maxes.max(set.grip.key, side, maxSeconds(set, plan))
+
     /// The percentage band a set will USE, ignoring any kg override — what the builder
     /// shows as "following the routine". null when neither level sets one.
     fun targetPercent(set: SetPlan, plan: SessionPlan): ClosedFloatingPointRange<Double>? =
@@ -89,7 +100,7 @@ object PlanMath {
         side: Side,
         maxes: MaxTable,
     ): ClosedFloatingPointRange<Double>? =
-        targetBand(set, plan, maxes.max(set.grip.key, side))
+        targetBand(set, plan, maxKg(set, plan, side, maxes))
 
     /// Bake every percentage target down to today's kilograms, keyed by each set's grip.
     ///
@@ -487,7 +498,19 @@ object PlanMath {
                 // A kg set never falls back to a percentage it also carries: a typed
                 // number is never second-guessed by arithmetic.
                 val percent = targetPercent(set, live) ?: continue
-                consider(percent.endInclusive)
+                val seconds = maxSeconds(set, live)
+                if (seconds == null) {
+                    consider(percent.endInclusive)
+                } else {
+                    // 90 % of a 10 s max is NOT 90 % of a peak — restate it against the peak
+                    // where both are on file; with no peak, the set contributes nothing.
+                    for (side in handSequence(set, live).toSet()) {
+                        val timed = maxes.max(set.grip.key, side, seconds) ?: continue
+                        val peakKg = maxes.max(set.grip.key, side) ?: continue
+                        if (peakKg <= 0) continue
+                        consider(percent.endInclusive * timed / peakKg)
+                    }
+                }
             }
         }
         return peak

@@ -1,3 +1,18 @@
+# Training export v4 — 2026-10-01
+
+v4 adds timed maxes: one column, `max_basis`, appended so every v3 column keeps its position.
+
+- **`max_basis`** is `peak` (the hardest single reading) or `Ns` — a timed max, the average
+  force held over N seconds (see `MaxAttempt`).
+- **`record=max`** rows now include timed maxes, each naming its own basis.
+- **Pull and set rows** name the max their percentage target was set against, read from the
+  plan frozen into the workout. `max_at_start_kg` and `max_reference` describe THAT max, so a
+  set at "90 % of your 10 s max" reports the 10 s max, never the peak beside it. A kg band,
+  no target, or a plan that did not survive reads as `peak`.
+- The Markdown document stays peak-only: its max lines and "% max" mean the peak.
+- Fixture: `Fixtures/export/timed-max-basis.*`. **Kotlin must emit the same column** before
+  the Android export fixtures pass again.
+
 # Training export v3 — 2026-09-25
 
 v3 adds critical force (see [CRITICAL_FORCE.md](CRITICAL_FORCE.md)).

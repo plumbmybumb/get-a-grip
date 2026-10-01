@@ -74,6 +74,9 @@ private struct ExportMaxDTO: Codable {
     var day: Int
     var recordedAt: String
     var source: String
+    /// A timed max's length. Absent for a peak, so every scenario written before timed
+    /// maxes existed decodes, and re-encodes, byte for byte.
+    var seconds: Int? = nil
 }
 
 /// A critical force test. Optional on the input as a whole, so every scenario written
@@ -135,7 +138,8 @@ private func dto(_ input: AnalysisExport.Input) -> ExportInputDTO {
                 kg: entry.kg,
                 day: entry.day.raw,
                 recordedAt: isoInstant.string(from: entry.recordedAt),
-                source: entry.source.rawValue)
+                source: entry.source.rawValue,
+                seconds: entry.seconds > 0 ? entry.seconds : nil)
         },
         criticalForceTests: input.criticalForceTests.isEmpty ? nil : input.criticalForceTests.map { t in
             ExportCriticalForceDTO(
@@ -180,7 +184,8 @@ private func input(_ dto: ExportInputDTO) -> AnalysisExport.Input {
                 kg: row.kg,
                 day: DayStamp(raw: row.day),
                 recordedAt: isoInstant.date(from: row.recordedAt) ?? Date(timeIntervalSince1970: 0),
-                source: MaxSource(rawValue: row.source) ?? .manual)
+                source: MaxSource(rawValue: row.source) ?? .manual,
+                seconds: row.seconds ?? 0)
         },
         criticalForceTests: (dto.criticalForceTests ?? []).map { row in
             AnalysisExport.CriticalForceEntry(
@@ -534,6 +539,30 @@ private func scenarios() -> [(name: String, input: AnalysisExport.Input)] {
                 reps: cfReps(24, start: 32, floor: 18.5)),
         ],
         today: exportToday, generatedOn: exportToday, sessionsPerDayTarget: 2)))
+
+    // AFTER critical force, for the same id-counter reason. A routine set to 90 % of a
+    // 10 s max: its pulls resolve against the 10 s max, never the peak beside it, and
+    // say so in max_basis; the right hand has no 10 s max, so it has none at start.
+    let timedGrip = grip(20, .four, .halfCrimp)
+    var timedPlan = SessionPlan()
+    timedPlan.name = "Repeaters"
+    timedPlan.handMode = .alternateEachRep
+    var timedSet = SetPlan(grip: timedGrip, repsPerSide: 1)
+    timedSet.targetLoPercent = 0.9
+    timedSet.targetHiPercent = 0.9
+    timedSet.targetMaxSeconds = 10
+    timedPlan.sets = [timedSet]
+    var timedSession = session(exportToday - 1, name: "Repeaters", reps: [
+        rep(0, side: .left, grip: timedGrip, peak: 31, targetLo: 27, targetHi: 27),
+        rep(1, side: .right, grip: timedGrip, peak: 28),
+    ])
+    timedSession.plan = timedPlan
+    out.append(("timed-max-basis", makeInput(
+        sessions: [timedSession],
+        maxes: [maxEntry(40, grip: timedGrip, side: .both, on: exportToday - 20),
+                AnalysisExport.MaxEntry(grip: timedGrip, side: .left, kg: 30, day: exportToday - 5,
+                                        recordedAt: at(exportToday - 5, hour: 8), source: .measured,
+                                        seconds: 10)])))
 
     return out.map { (name: $0.0, input: $0.1) }
 }

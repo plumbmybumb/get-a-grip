@@ -109,6 +109,8 @@ class RunnerSession(
         // `SessionRunner.maxCreditedSampleGapSeconds`.
         maxCreditedSampleGapSeconds =
             if (device.gaugeCapabilities.hasDeviceClock) null else SamplePacing.syntheticClockGapCapSeconds,
+        // See `SessionRunner.engagesOnFirstReading`.
+        engagesOnFirstReading = device.gaugeCapabilities.isBroadcast,
     )
 
     /// The coarse, view-shaped view of the runner, assigned only on a real change: a second

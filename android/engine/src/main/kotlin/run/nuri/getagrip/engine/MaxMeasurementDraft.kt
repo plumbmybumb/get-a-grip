@@ -7,6 +7,8 @@ data class MaxMeasurementResult(
     val side: Side,
     val kg: Double,
     val source: MaxSource = MaxSource.measured,
+    /// 0 for a peak max; otherwise the timed window the value is an average over.
+    val seconds: Int = 0,
 )
 
 /// One visit's unsaved state: the pulls, which one each hand keeps, and any correction
@@ -19,14 +21,20 @@ data class MaxMeasurementResult(
 /// TRANSLATION NOTE (from Sources/UI/Maxes/MaxMeasurementDraft.swift): pure, so it lives in
 /// `:engine` beside `MaxAttemptLog` rather than in the UI. Swift's mutating struct is a
 /// mutable class with one owner (`LiveMaxSession`).
-class MaxMeasurementDraft(val bothTogether: Boolean = false, side: Side = Side.left) {
-    val log = MaxAttemptLog(if (bothTogether) Side.both else side)
+class MaxMeasurementDraft(
+    val bothTogether: Boolean = false,
+    side: Side = Side.left,
+    windowSeconds: Int = 0,
+) {
+    val log = MaxAttemptLog(if (bothTogether) Side.both else side, windowSeconds)
     private val picked = mutableMapOf<Side, Int>()
     private val corrections = mutableMapOf<Side, Double>()
 
     /// The hands this visit can save — never a combined value from two separate hands.
     val sides: List<Side> get() = if (bothTogether) listOf(Side.both) else listOf(Side.left, Side.right)
     val hasAttempts: Boolean get() = log.attempts.isNotEmpty()
+    /// 0 for a peak visit; see `MaxAttemptLog.windowSeconds`.
+    val windowSeconds: Int get() = log.windowSeconds
 
     /// The pull a hand saves: the one picked, while it is still on that hand; else its best.
     fun kept(side: Side): MaxAttemptLog.Attempt? {
@@ -34,16 +42,17 @@ class MaxMeasurementDraft(val bothTogether: Boolean = false, side: Side = Side.l
         return log.best(side)
     }
 
-    fun peak(side: Side): Double? = corrections[side] ?: kept(side)?.peakKg
-    fun measuredPeak(side: Side): Double? = kept(side)?.peakKg
+    fun peak(side: Side): Double? = corrections[side] ?: kept(side)?.kg
+    fun measuredPeak(side: Side): Double? = kept(side)?.kg
     fun isCorrected(side: Side): Boolean = side in corrections
 
     val results: List<MaxMeasurementResult>
         get() = sides.mapNotNull { side ->
             kept(side)?.let {
                 val correction = corrections[side]
-                MaxMeasurementResult(side, correction ?: it.peakKg,
-                    if (correction == null) MaxSource.measured else MaxSource.manual)
+                MaxMeasurementResult(side, correction ?: it.kg,
+                    if (correction == null) MaxSource.measured else MaxSource.manual,
+                    log.windowSeconds)
             }
         }
 
@@ -92,7 +101,7 @@ class MaxMeasurementDraft(val bothTogether: Boolean = false, side: Side = Side.l
         if (log.isPulling || values.isEmpty() || values.map { it.side }.toSet().size != values.size ||
             !values.all { kept(it.side) != null && it.kg.isFinite() && it.kg > 0 }) return false
         values.forEach { value ->
-            if (value.kg == kept(value.side)?.peakKg) corrections.remove(value.side)
+            if (value.kg == kept(value.side)?.kg) corrections.remove(value.side)
             else corrections[value.side] = value.kg
         }
         return true

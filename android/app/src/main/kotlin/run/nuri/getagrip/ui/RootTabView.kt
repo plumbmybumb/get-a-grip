@@ -283,7 +283,7 @@ fun RootTabView() {
             session = presentation.liveMaxSession(measure),
             onSave = { values ->
                 val receipt = templates.recordMaxesWithReceipt(values.map {
-                    TemplateStore.MaxSave(measure.grip, it.side, it.kg, it.source)
+                    TemplateStore.MaxSave(measure.grip, it.side, it.kg, it.source, it.seconds)
                 })
                 if (receipt != null) {
                     measurementSaved = true
@@ -312,7 +312,7 @@ fun RootTabView() {
     }
     newMax?.let { draft ->
         NewMaxSheet(draft,
-            onMeasure = { grip, side -> measuring = MeasureRequest(grip, side, fromNew = true) },
+            onMeasure = { grip, side, seconds -> measuring = MeasureRequest(grip, side, fromNew = true, seconds = seconds) },
             onEnter = { grip -> editingMax = MaxEditRequest(grip, fromNew = true) },
             onShared = { grip -> editingSharedMax = MaxEditRequest(grip, fromNew = true) },
             onClose = { newMax = null })
@@ -413,7 +413,7 @@ fun RootTabView() {
                 Tab.Maxes -> MaxesTabScreen(
                     onAddMax = { seed -> newMax = NewMaxDraft(seed ?: templates.recentGrips.firstOrNull() ?: GripSpec()) },
                     onEdit = { grip -> editingMax = MaxEditRequest(grip) },
-                    onMeasure = { grip, side -> measuring = MeasureRequest(grip, side) },
+                    onMeasure = { grip, side, seconds -> measuring = MeasureRequest(grip, side, seconds = seconds) },
                     onCriticalForce = ::openCriticalForce,
                 )
                 Tab.Settings -> SettingsScreen()

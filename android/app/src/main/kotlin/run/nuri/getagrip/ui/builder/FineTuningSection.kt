@@ -66,8 +66,10 @@ import run.nuri.getagrip.ble.StreamStopCause
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SessionPlan
+import run.nuri.getagrip.engine.TargetBandGate
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.ui.components.CapsLabel
+import run.nuri.getagrip.ui.components.HouseSegmentedRow
 import run.nuri.getagrip.ui.components.IntValueRow
 import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.components.ValueRow
@@ -177,11 +179,21 @@ fun FineTuningSection(
                     }
 
                     // Between threshold and lead-in: all three answer "what counts as a pull", and this is the
-                    // RANGE's half where the threshold is the floor's.
-                    ToggleRow(
-                        title = tr("Pause when I'm out of range"),
-                        checked = values.pausesOutsideTargetBand,
-                    ) { pauses -> edit { it.copy(pausesOutsideTargetBand = pauses) } }
+                    // RANGE's half where the threshold is the floor's. Three choices, not a switch (GitHub
+                    // issue, 2026-10-01): "below" lets an overshoot count without giving up the floor.
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            tr("Pause the clock"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = palette.inkPrimary,
+                        )
+                        val gates = TargetBandGate.entries
+                        HouseSegmentedRow(
+                            labels = gates.map { it.title },
+                            selectedIndex = gates.indexOf(values.targetBandGate),
+                        ) { index -> edit { it.withTargetBandGate(gates[index]) } }
+                    }
 
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
@@ -365,3 +377,11 @@ private fun FineTuningSectionPreview() {
         }
     }
 }
+
+/// The segment's words, under the "Pause the clock" label.
+internal val TargetBandGate.title: String
+    get() = when (this) {
+        TargetBandGate.outside -> L10n.tr("Out of range")
+        TargetBandGate.below -> L10n.tr("Below range")
+        TargetBandGate.off -> L10n.tr("Never")
+    }

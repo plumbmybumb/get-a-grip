@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import run.nuri.getagrip.engine.FingerSet
@@ -42,6 +43,10 @@ data class MaxRecordEntity(
     /// control.
     val sideRaw: String = "both",
     val note: String = "",
+    /// **0 is a PEAK max** — every record written before timed maxes, and still the default.
+    /// Otherwise the window the value is an AVERAGE over (see `MaxAttempt`). Declared to
+    /// Room, so the 3 → 4 auto-migration needs no backfill.
+    @ColumnInfo(defaultValue = "0") val durationSeconds: Int = 0,
 ) {
 
     /// Total both ways: `FingerSet.fromToken` and `GripPosition(_)` never fail, so a record
@@ -63,7 +68,12 @@ data class MaxRecordEntity(
     /// **Identity for "the current max" is grip AND hand.** Folded on `gripKey` alone, a
     /// right-hand max would supersede the left one and that hand would silently lose its
     /// number. One property, so no fold site can spell it wrong.
-    val maxKey: String get() = MaxTable.key(gripKey, side)
+    /// A timed max is a third part of identity, so a 10 s max never supersedes the peak.
+    /// Peak keys stay byte-identical to the pre-timed format.
+    val maxKey: String get() = MaxTable.key(gripKey, side, durationSeconds)
+
+    /// A peak max — what every percentage meant before timed maxes existed.
+    val isPeak: Boolean get() = durationSeconds <= 0
 
     /// An unknown source reads as `manual`: understate provenance rather than claim a
     /// measurement.
@@ -76,6 +86,7 @@ data class MaxRecordEntity(
             source: MaxSource,
             side: Side = Side.both,
             recordedAt: Instant = storedNow(),
+            seconds: Int = 0,
         ): MaxRecordEntity = MaxRecordEntity(
             id = UUID.randomUUID(),
             edgeMM = grip.edgeMM,
@@ -86,6 +97,7 @@ data class MaxRecordEntity(
             sourceRaw = source.rawValue,
             sideRaw = side.rawValue,
             note = "",
+            durationSeconds = maxOf(0, seconds),
         )
     }
 }

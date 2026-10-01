@@ -38,7 +38,7 @@ class NewMaxDraft(seed: GripSpec = GripSpec()) {
 @Composable
 fun NewMaxSheet(
     draft: NewMaxDraft,
-    onMeasure: (GripSpec, Side) -> Unit,
+    onMeasure: (GripSpec, Side, Int) -> Unit,
     onEnter: (GripSpec) -> Unit,
     onShared: (GripSpec) -> Unit,
     onClose: () -> Unit,
@@ -122,8 +122,14 @@ fun NewMaxSheet(
         }
     }
     if (choosingMode) {
-        MaxMeasureModeDialog(
-            onMax = { side -> choosingMode = false; onMeasure(draft.grip, side) },
+        MaxMeasureChooser(
+            grip = draft.grip,
+            initialSeconds = templates.missingTimedLength(draft.grip) ?: 0,
+            onMax = { side, seconds ->
+                choosingMode = false
+                onMeasure(draft.grip,
+                    if (side == Side.both) side else templates.firstHandToMeasure(draft.grip, seconds), seconds)
+            },
             onDismiss = { choosingMode = false },
         )
     }

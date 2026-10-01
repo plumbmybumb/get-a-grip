@@ -82,15 +82,22 @@ struct MaxesTab: View {
             }
         }
         .fullScreenCover(item: $measuring) { target in
-            MaxMeasureView(grip: target.grip, initialSide: target.side) { readings in
+            MaxMeasureView(grip: target.grip, initialSide: target.side,
+                           initialSeconds: target.seconds) { readings in
                 templates.recordMaxesWithReceipt(readings.map {
-                    .init(grip: target.grip, side: $0.side, kg: $0.kg, source: $0.source)
+                    .init(grip: target.grip, side: $0.side, kg: $0.kg, source: $0.source, seconds: $0.seconds)
                 })
             }
         }
-        .maxMeasureModeDialog(for: $choosingMode, onChoose: { grip, side in
-            measuring = MeasureTarget(grip: grip, side: side)
-        }, onCriticalForce: { grip in startCriticalForce(on: grip) })
+        .maxMeasureChooser(for: $choosingMode,
+                           initialSeconds: { templates.missingTimedLength(for: $0) ?? 0 },
+                           onChoose: { grip, side, seconds in
+                               measuring = MeasureTarget(
+                                   grip: grip,
+                                   side: side == .both ? .both : templates.firstHandToMeasure(grip, seconds: seconds),
+                                   seconds: seconds)
+                           },
+                           onCriticalForce: { grip in startCriticalForce(on: grip) })
         .sheet(item: $editing) { target in
             MaxEditSheet(grip: target.grip) { editing = nil }
         }
@@ -152,19 +159,26 @@ struct MaxesTab: View {
     private struct MeasureTarget: Identifiable {
         let grip: GripSpec
         var side: Side = .left
+        /// 0 is the peak; otherwise the timed length chosen in `MaxMeasureChooser`.
+        var seconds: Int = 0
         var id: String { grip.key }
     }
 
     private struct GripGroup: Identifiable {
         let key: String
         let grip: GripSpec
-        /// Oldest first, every hand mixed — the per-side slices are cut in the card.
+        /// PEAK maxes, oldest first, every hand mixed — the per-side slices are cut in the
+        /// card. The chart and every "best" are about these.
         let records: [MaxRecord]
         /// Critical force tests on this grip, oldest first, every hand mixed.
         let tests: [CriticalForceRecord]
+        /// TIMED maxes, oldest first, every length and hand mixed. Shown as their own
+        /// readouts; never charted against the peak, which is a different number.
+        var timed: [MaxRecord] = []
         var id: String { key }
         var lastActivity: Date {
-            max(records.last?.recordedAt ?? .distantPast, tests.last?.recordedAt ?? .distantPast)
+            max(records.last?.recordedAt ?? .distantPast, tests.last?.recordedAt ?? .distantPast,
+                timed.last?.recordedAt ?? .distantPast)
         }
     }
 
@@ -172,13 +186,18 @@ struct MaxesTab: View {
     /// with only a critical force test still gets its card.
     private var groups: [GripGroup] {
         var maxes: [String: [MaxRecord]] = [:]
-        for record in records { maxes[record.gripKey, default: []].append(record) }
+        var timed: [String: [MaxRecord]] = [:]
+        for record in records {
+            if record.isPeak { maxes[record.gripKey, default: []].append(record) }
+            else { timed[record.gripKey, default: []].append(record) }
+        }
         var cf: [String: [CriticalForceRecord]] = [:]
         for test in tests { cf[test.gripKey, default: []].append(test) }
-        return Set(maxes.keys).union(cf.keys)
+        return Set(maxes.keys).union(cf.keys).union(timed.keys)
             .map { key in
-                let grip = maxes[key]?.last?.grip ?? cf[key]!.last!.grip
-                return GripGroup(key: key, grip: grip, records: maxes[key] ?? [], tests: cf[key] ?? [])
+                let grip = maxes[key]?.last?.grip ?? timed[key]?.last?.grip ?? cf[key]!.last!.grip
+                return GripGroup(key: key, grip: grip, records: maxes[key] ?? [], tests: cf[key] ?? [],
+                                 timed: timed[key] ?? [])
             }
             .sorted { a, b in
                 // Date tie (same morning): key order, so grips don't swap between launches.
@@ -212,7 +231,9 @@ struct MaxesTab: View {
                 cardHeader(group, isOpen: isOpen)
 
                 Group {
-                    if group.records.isEmpty {
+                    if group.records.isEmpty, !group.timed.isEmpty {
+                        timedReadout(group)
+                    } else if group.records.isEmpty {
                         if group.tests.isEmpty || isOpen {
                             Text("No max yet. Measure one to compare with critical force.")
                                 .font(.system(.footnote))
@@ -223,9 +244,17 @@ struct MaxesTab: View {
                             criticalForceReadout(group)
                         }
                     } else {
-                        VStack(alignment: .leading, spacing: 6) {
-                            if isOpen && !group.tests.isEmpty { CapsLabel(String(localized: "Max")) }
-                            currentReadout(group, sides: sides, showBest: isOpen)
+                        VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                // Named once a second kind of max shares the card.
+                                if !group.timed.isEmpty {
+                                    CapsLabel(String(localized: "Peak max"))
+                                } else if isOpen && !group.tests.isEmpty {
+                                    CapsLabel(String(localized: "Max"))
+                                }
+                                currentReadout(group, sides: sides, showBest: isOpen)
+                            }
+                            if !group.timed.isEmpty { timedReadout(group) }
                         }
                     }
                 }
@@ -307,7 +336,7 @@ struct MaxesTab: View {
                     .accessibilityIdentifier("maxes.edit.\(group.grip.key)")
                 }
                 Spacer(minLength: 0)
-                measureButton(group.grip, label: group.records.isEmpty ? String(localized: "Measure max")
+                measureButton(group.grip, label: group.records.isEmpty && group.timed.isEmpty ? String(localized: "Measure max")
                                                                        : String(localized: "Measure again"))
             }
             // Only on a grip that has been tested: a CF door on every card was an
@@ -477,6 +506,43 @@ struct MaxesTab: View {
                         .map { "\(weightUnit.text(record.kg)), \(String(localized: "best \(weightUnit.number($0))"))" }
                         ?? weightUnit.text(record.kg))
                     .accessibilityIdentifier("maxes.current.\(group.grip.key).\(side.rawValue)")
+                }
+            }
+        }
+    }
+
+    /// Each timed length on its own line, newest value per hand — what a routine set to
+    /// "90 % of your 10 s max" runs on. Shown shut as well as open: like the peak, it is
+    /// the number targets are made of.
+    @ViewBuilder
+    private func timedReadout(_ group: GripGroup) -> some View {
+        let lengths = Set(group.timed.map(\.durationSeconds)).sorted()
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 20))
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(lengths, id: \.self) { seconds in
+                let series = group.timed.filter { $0.durationSeconds == seconds }
+                let sides = [Side.both, .left, .right].filter { side in series.contains { $0.side == side } }
+                VStack(alignment: .leading, spacing: 6) {
+                    CapsLabel(String(localized: "\(seconds) s max"))
+                    layout {
+                        ForEach(sides, id: \.self) { side in
+                            if let record = series.last(where: { $0.side == side }) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(side == .both ? String(localized: "Shared max") : side.name)
+                                        .font(.system(.caption, weight: .medium))
+                                        .foregroundStyle(Ink.secondary)
+                                    weightText(record.kg, style: .title3)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(String(localized: "\(seconds) second max, \(side == .both ? String(localized: "both hands") : side.name)"))
+                                .accessibilityValue(weightUnit.text(record.kg))
+                                .accessibilityIdentifier("maxes.timed.\(group.grip.key).\(seconds).\(side.rawValue)")
+                            }
+                        }
+                    }
                 }
             }
         }

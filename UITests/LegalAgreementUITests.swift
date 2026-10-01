@@ -173,6 +173,11 @@ final class LegalAgreementUITests: XCTestCase {
                                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"]
         app.launch()
         app.tabBars.buttons["Benchmarks"].tap()
+        // Cards open shut (2026-09-30): Measure lives inside.
+        let card = app.buttons["maxes.card.20|IMRL|halfCrimp"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        reveal(card, in: app)
+        card.tap()
         let measureGrip = app.buttons["maxes.measure.20|IMRL|halfCrimp"]
         XCTAssertTrue(measureGrip.waitForExistence(timeout: 5))
         reveal(measureGrip, in: app)

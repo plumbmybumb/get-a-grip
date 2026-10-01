@@ -94,7 +94,7 @@ struct RoutineOverviewSheet: View {
     }
 
     private var preparation: some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 Label(plan.handMode.name, systemImage: plan.handMode == .bothHands ? "hands.clap" : "arrow.left.arrow.right")
                     .font(.headline)
@@ -148,7 +148,7 @@ struct RoutineOverviewSheet: View {
     }
 
     private func setCard(_ set: SetPlan, index: Int) -> some View {
-        MaterialCard {
+        MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 12) {
                     if !typeSize.isAccessibilitySize {
@@ -246,6 +246,12 @@ struct RoutineOverviewSheet: View {
         guard let band = PlanMath.targetPercent(set, in: plan) else { return nil }
         let lo = (band.lowerBound * 100).formatted(.number.precision(.fractionLength(0...1)))
         let hi = (band.upperBound * 100).formatted(.number.precision(.fractionLength(0...1)))
+        // Which max, when it is not the peak: the same percentage of a 10 s max is a
+        // different load, and the overview is where a shared routine is read first.
+        if let seconds = PlanMath.maxSeconds(set, in: plan) {
+            return lo == hi ? String(localized: "\(hi) % of \(seconds) s max")
+                            : String(localized: "\(lo)–\(hi) % of \(seconds) s max")
+        }
         return lo == hi ? String(localized: "\(hi) % of max") : String(localized: "\(lo)–\(hi) % of max")
     }
 }

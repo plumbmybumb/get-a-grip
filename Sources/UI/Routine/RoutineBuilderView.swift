@@ -634,6 +634,14 @@ extension BuilderDocument {
         routineLoadBlock
     }
 
+    /// Timed lengths the routine-wide band can be of: every length measured on any grip
+    /// this routine trains, and whatever is selected. Empty hides the choice.
+    private var routineBasisOptions: [Int] {
+        var lengths = Set(draft.plan.sets.flatMap { templates.maxTable.timedLengths(grip: $0.grip.key) })
+        if let selected = draft.plan.targetMaxSeconds { lengths.insert(selected) }
+        return lengths.sorted()
+    }
+
     private var routineLoadBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
             // No caps label: the row names itself, and page 1 has to fit one screen.
@@ -641,24 +649,33 @@ extension BuilderDocument {
                 RoutineTargetRow(
                     band: draft.plan.targetPercentBand,
                     setsVary: draft.plan.sets.contains { $0.hasTarget || $0.hasPercentTarget },
+                    basis: draft.plan.targetMaxSeconds,
+                    basisOptions: routineBasisOptions,
                     onChange: { band in
                         access.mutate { draft in
                             draft.plan.targetLoPercent = band?.lowerBound
                             draft.plan.targetHiPercent = band?.upperBound
+                            if band == nil { draft.plan.targetMaxSeconds = nil }
                             // One band for every set: their own targets give way.
                             for i in draft.plan.sets.indices {
                                 draft.plan.sets[i].targetLoPercent = nil
                                 draft.plan.sets[i].targetHiPercent = nil
+                                draft.plan.sets[i].targetMaxSeconds = nil
                                 draft.plan.sets[i].targetLoKg = nil
                                 draft.plan.sets[i].targetHiKg = nil
                             }
                         }
+                    },
+                    onBasisChange: { seconds in
+                        access.mutate { $0.plan.targetMaxSeconds = seconds }
                     })
                     .equatable()
             }
             if draft.plan.targetPercentBand != nil,
                PlanMath.missingBenchmarkGripCount(draft.plan, maxes: templates.maxTable) > 0 {
-                Label("Some grips have no max yet, so their sets have no target.",
+                Label(draft.plan.targetMaxSeconds.map {
+                          String(localized: "Some grips have no \($0) s max yet, so their sets have no target.")
+                      } ?? String(localized: "Some grips have no max yet, so their sets have no target."),
                       systemImage: "exclamationmark.circle")
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(StatusTint.armed)

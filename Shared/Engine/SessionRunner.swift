@@ -136,10 +136,11 @@ struct SessionRunner: Sendable {
     }
 
     private func gate(for slot: RepSlot) -> RepGate {
-        // `pausesOutsideTargetBand == false` takes the band-less gate: threshold, no
-        // ceiling. The band is still drawn, it just stops refereeing. Letting go still
-        // stops the rep — that is about whether you pull, not in which range.
-        guard plan.pausesOutsideTargetBand, let band = slot.targetBand, band.upperBound > 0 else {
+        // `.off` takes the band-less gate: threshold, no ceiling. The band is still drawn,
+        // it just stops refereeing. Letting go still stops the rep — that is about whether
+        // you pull, not in which range.
+        let referee = plan.targetBandGate
+        guard referee != .off, let band = slot.targetBand, band.upperBound > 0 else {
             return RepGate(engageLo: engageKg, engageHi: .infinity,
                            releaseLo: releaseKg, releaseHi: .infinity)
         }
@@ -147,11 +148,15 @@ struct SessionRunner: Sendable {
         // exact floating-point equality. Half the 0.5 kg display step is a small
         // engagement tolerance; ordinary bands keep their authored bounds.
         let tolerance = band.lowerBound == band.upperBound ? 0.25 : 0
+        // `.below` keeps the floor and drops the ceiling (GitHub issue, 2026-10-01): an
+        // overshoot counts, so a pull that lands at 82 % of a 70–80 % band starts the
+        // clock instead of making you ease off into an undershoot on a laggy scale.
+        let ceiling = referee == .outside
         return RepGate(
             engageLo: max(Double.leastNonzeroMagnitude, band.lowerBound - tolerance),
-            engageHi: band.upperBound + tolerance,
+            engageHi: ceiling ? band.upperBound + tolerance : .infinity,
             releaseLo: max(0, band.lowerBound - Self.releaseBand(for: band.lowerBound)),
-            releaseHi: band.upperBound + Self.releaseBand(for: band.upperBound))
+            releaseHi: ceiling ? band.upperBound + Self.releaseBand(for: band.upperBound) : .infinity)
     }
 
     // MARK: Plan
@@ -177,6 +182,14 @@ struct SessionRunner: Sendable {
     /// Progressor's setting, keeps the device-clock rule: a gap over
     /// `maxCreditableDeltaMicros` credits nothing. See `creditableDelta`.
     let maxCreditedSampleGapSeconds: Double?
+
+    /// Whether the FIRST reading inside the gate starts the rep, skipping
+    /// `engageDebounceMicros`. For a broadcast scale (the WH-C06): its readings arrive half
+    /// a second to a second apart, so a 100 ms debounce cost a whole second reading — a
+    /// second of easing off with nothing happening, which is how a pull overcorrected
+    /// below its band (GitHub issue, 2026-10-01). The scale smooths its own readings, so
+    /// the bump spike the debounce exists for does not reach us as one reading.
+    let engagesOnFirstReading: Bool
 
     private let engageKg: Double
     private let releaseKg: Double
@@ -258,7 +271,7 @@ struct SessionRunner: Sendable {
     /// become kilograms per rep, per hand, so a max recorded next month cannot rewrite
     /// what this morning prescribed. Empty by default for callers testing timing only.
     init(plan: SessionPlan, maxes: MaxTable = MaxTable(), timerOnly: Bool = false,
-         maxCreditedSampleGapSeconds: Double? = nil) {
+         maxCreditedSampleGapSeconds: Double? = nil, engagesOnFirstReading: Bool = false) {
         let executable = plan.executable
         self.plan = executable
         let slots = PlanMath.sequence(for: executable, maxes: maxes)
@@ -268,6 +281,7 @@ struct SessionRunner: Sendable {
         self.releaseKg = max(0, executable.thresholdKg - Self.releaseBand(for: executable.thresholdKg))
         self.timerOnly = timerOnly
         self.maxCreditedSampleGapSeconds = maxCreditedSampleGapSeconds
+        self.engagesOnFirstReading = engagesOnFirstReading
         // Clamped at zero rather than trusted: a negative cap would underflow the
         // unsigned accumulator this feeds, and "no credit" is the honest reading of it.
         self.creditedGapCeilingMicros = maxCreditedSampleGapSeconds
@@ -579,13 +593,15 @@ struct SessionRunner: Sendable {
             engagedSince = nil
             return []
         }
-        guard let since = engagedSince else {
-            engagedSince = sample.deviceMicros
-            return []
+        if !engagesOnFirstReading {
+            guard let since = engagedSince else {
+                engagedSince = sample.deviceMicros
+                return []
+            }
+            // Debounce measured in DEVICE time, not arrival time: a stalled UI thread
+            // must not be able to satisfy it.
+            guard UInt64(sample.deviceMicros &- since) >= Self.engageDebounceMicros else { return [] }
         }
-        // Debounce measured in DEVICE time, not arrival time: a stalled UI thread
-        // must not be able to satisfy it.
-        guard UInt64(sample.deviceMicros &- since) >= Self.engageDebounceMicros else { return [] }
         phase = .working(slot: index)
         resetRepAccumulators()
         repStartedElapsedSeconds = recordedElapsed

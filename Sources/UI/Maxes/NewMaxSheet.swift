@@ -25,6 +25,7 @@ struct NewMaxSheet: View {
     private struct Capture: Identifiable {
         let grip: GripSpec
         let side: Side
+        var seconds: Int = 0
         var id: String { MaxTable.key(grip: grip.key, side: side) }
     }
 
@@ -87,13 +88,19 @@ struct NewMaxSheet: View {
                     .accessibilityLabel("More max options")
                 }
             }
-            .maxMeasureModeDialog(for: $choosingMode) { chosen, side in
-                capture = Capture(grip: chosen, side: side)
-            }
+            .maxMeasureChooser(for: $choosingMode,
+                               initialSeconds: { templates.missingTimedLength(for: $0) ?? 0 },
+                               onChoose: { chosen, side, seconds in
+                                   capture = Capture(
+                                       grip: chosen,
+                                       side: side == .both ? .both : templates.firstHandToMeasure(chosen, seconds: seconds),
+                                       seconds: seconds)
+                               })
             .fullScreenCover(item: $capture, onDismiss: closeAfterSave) { target in
-                MaxMeasureView(grip: target.grip, initialSide: target.side) { readings in
+                MaxMeasureView(grip: target.grip, initialSide: target.side,
+                               initialSeconds: target.seconds) { readings in
                     let receipt = templates.recordMaxesWithReceipt(readings.map {
-                        .init(grip: target.grip, side: $0.side, kg: $0.kg, source: $0.source)
+                        .init(grip: target.grip, side: $0.side, kg: $0.kg, source: $0.source, seconds: $0.seconds)
                     })
                     if receipt != nil { saved = true }
                     return receipt

@@ -103,6 +103,7 @@ final class TemplateStore {
         let thresholdKg: Double
         let waitForReleaseBeforeRest: Bool
         let pausesOutsideTargetBand: Bool
+        let pausesAboveTargetBand: Bool
         let targetLoPercent: Double?
         let targetHiPercent: Double?
         let setsData: Data
@@ -331,7 +332,9 @@ final class TemplateStore {
             #endif
             foldedMaxIDs = Set(maxes.map(\.persistentModelID))
             let newest = Self.newestPerGrip(maxes)
-            publish(\.currentMaxes, newest)
+            // `currentMaxes` stays PEAK maxes only — every reader of it predates timed
+            // maxes and means the peak. The table carries both, in separate slots.
+            publish(\.currentMaxes, newest.filter { $0.value.isPeak })
             publish(\.maxTable, Self.table(from: newest))
             // `maxes` arrives sorted by `recordedAt`, so the last measured one is newest.
             publish(\.lastMeasuredMaxAt, maxes.last { $0.source == .measured }?.recordedAt)
@@ -646,6 +649,38 @@ final class TemplateStore {
         return String(localized: "\(done) of \(target) sessions done today")
     }
 
+    /// The timed length a routine is WAITING ON for this grip: a set asks for a percentage
+    /// of an N-second max that some hand it trains has no record of. The measure screen
+    /// opens on it, so the common case — "No 10 s max yet" in the builder, then Measure —
+    /// never touches the length control. The shortest when several are owed; nil when
+    /// nothing is (the peak, as before).
+    func missingTimedLength(for grip: GripSpec) -> Int? {
+        guard let routines = fetchRoutines() else { return nil }
+        var owed: Set<Int> = []
+        for routine in routines {
+            let plan = routine.plan.executable
+            for set in plan.sets where set.grip.key == grip.key && set.targetBand == nil {
+                guard PlanMath.targetPercent(set, in: plan) != nil,
+                      let seconds = PlanMath.maxSeconds(set, in: plan) else { continue }
+                let hands = Set(PlanMath.handSequence(set, in: plan))
+                if hands.contains(where: { maxTable.max(grip: grip.key, side: $0, seconds: seconds) == nil }) {
+                    owed.insert(seconds)
+                }
+            }
+        }
+        return owed.min()
+    }
+
+    /// Where a one-hand-at-a-time visit starts: the LEFT, unless the left already has this
+    /// kind of max and the right does not — then the hand that is missing it. Exact records
+    /// only: a shared both-hands max is not a measurement of either hand.
+    func firstHandToMeasure(_ grip: GripSpec, seconds: Int) -> Side {
+        let length = seconds > 0 ? seconds : nil
+        let left = maxTable.exact(grip: grip.key, side: .left, seconds: length) != nil
+        let right = maxTable.exact(grip: grip.key, side: .right, seconds: length) != nil
+        return left && !right ? .right : .left
+    }
+
     /// The max for a grip on a given hand, with the both-hands fallback — see
     /// `MaxTable`. Defaulted to `.both` so every existing caller keeps its meaning.
     func currentMax(for grip: GripSpec, side: Side = .both) -> Double? {
@@ -835,6 +870,7 @@ final class TemplateStore {
             thresholdKg: template.thresholdKg,
             waitForReleaseBeforeRest: template.waitForReleaseBeforeRest,
             pausesOutsideTargetBand: template.pausesOutsideTargetBand,
+            pausesAboveTargetBand: template.pausesAboveTargetBand,
             targetLoPercent: template.targetLoPercent,
             targetHiPercent: template.targetHiPercent,
             setsData: template.setsData,
@@ -890,6 +926,7 @@ final class TemplateStore {
         template.thresholdKg = restorable.thresholdKg
         template.waitForReleaseBeforeRest = restorable.waitForReleaseBeforeRest
         template.pausesOutsideTargetBand = restorable.pausesOutsideTargetBand
+        template.pausesAboveTargetBand = restorable.pausesAboveTargetBand
         template.targetLoPercent = restorable.targetLoPercent
         template.targetHiPercent = restorable.targetHiPercent
         template.setsData = restorable.setsData
@@ -1088,6 +1125,8 @@ final class TemplateStore {
         let side: Side
         let kg: Double
         let source: MaxSource
+        /// 0 for a peak max; otherwise the timed window — see `MaxRecord.durationSeconds`.
+        var seconds: Int = 0
     }
 
     @discardableResult
@@ -1110,11 +1149,12 @@ final class TemplateStore {
         // A zero or NaN max would make every percentage-of-max caption in the app lie,
         // and `PlanMath.percentOfMax` would have to defend against it forever.
         guard values.allSatisfy({ $0.kg.isFinite && $0.kg > 0 }) else { return false }
-        let keys = values.map { MaxTable.key(grip: $0.grip.key, side: $0.side) }
+        let keys = values.map { MaxTable.key(grip: $0.grip.key, side: $0.side, seconds: $0.seconds) }
         guard Set(keys).count == values.count else { return false }
         for value in values {
             context.insert(MaxRecord(grip: value.grip, kg: value.kg,
-                                     source: value.source, side: value.side))
+                                     source: value.source, side: value.side,
+                                     seconds: value.seconds))
         }
         // **A MEASURED max makes today a benchmark day** (Nuri, 2026-08-10): the day
         // reads as trained, the grid fills, no reminder nags after maximal pulls. One
@@ -1382,6 +1422,9 @@ final class TemplateStore {
                     // Two byte-identical sets would offer the same line twice.
                     if !moves.contains(move) { moves.append(move) }
                 } else if let percent = PlanMath.targetPercent(set, in: plan) {
+                    // This explains a PEAK max change; a set measured against a timed max
+                    // does not move with it.
+                    guard PlanMath.maxSeconds(set, in: plan) == nil else { continue }
                     let key = "\(percent.lowerBound)–\(percent.upperBound)"
                     guard seenPercents.insert(key).inserted else { continue }
                     guard let newBand = PlanMath.targetBand(set, in: plan, maxKg: newKg)
@@ -1455,7 +1498,9 @@ final class TemplateStore {
 
         for gripKey in grips.keys.sorted() {
             guard let changes = grips[gripKey], let grip = changes.first?.grip else { continue }
-            let sharedChange = changes.first { $0.side == .both }
+            // Rescaling typed kilograms is a PEAK-max story: a timed max is a different
+            // number and no ratio against the old peak.
+            let sharedChange = changes.first { $0.side == .both && $0.seconds == 0 }
             let ratio = sharedChange.flatMap { change in
                 previous.exact(grip: gripKey, side: .both).map { change.kg / $0 }
             }
@@ -1484,13 +1529,17 @@ final class TemplateStore {
                         let move = MaxImpact.KgOffer.Move(oldBand: explicit, newBand: newBand)
                         if !kgMoves.contains(move) { kgMoves.append(move) }
                     } else if let percent = PlanMath.targetPercent(set, in: plan) {
-                        let key = "\(percent.lowerBound)–\(percent.upperBound)"
+                        // Keyed with the basis too: 90 % of the peak and 90 % of a 10 s
+                        // max are different targets on the same grip.
+                        let basis = PlanMath.maxSeconds(set, in: plan).map { "\($0)s" } ?? "peak"
+                        let key = "\(percent.lowerBound)–\(percent.upperBound)|\(basis)"
                         guard seenPercents.insert(key).inserted else { continue }
                         for side in sides {
-                            let oldBand = previous.max(grip: gripKey, side: side)
-                                .flatMap { PlanMath.targetBand(set, in: plan, maxKg: $0) }
-                            guard let newKg = current.max(grip: gripKey, side: side),
-                                  let newBand = PlanMath.targetBand(set, in: plan, maxKg: newKg),
+                            // Resolved through the tables, so each set reads the max it is
+                            // a percentage OF — a peak save moves peak sets, a timed save
+                            // moves the sets measured against that length.
+                            let oldBand = PlanMath.targetBand(set, in: plan, side: side, maxes: previous)
+                            guard let newBand = PlanMath.targetBand(set, in: plan, side: side, maxes: current),
                                   oldBand != newBand else { continue }
                             let move = MaxImpact.PercentMove(
                                 routineID: routine.id, routineName: routine.name, side: side,

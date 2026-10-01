@@ -15,8 +15,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /// **The journeys the shipped profile is recorded from** — the ones that are slowest on a
-/// cold process: launching onto Today, switching tabs, opening the builder, and opening the
-/// critical force test's setup.
+/// cold process: launching onto Today, switching tabs, the builder's three pages with a set
+/// and its target editor open, the max chooser and live measure screen, and the critical
+/// force test's setup.
 ///
 /// **Screens are found by their ENGLISH text** ("Today", "Build my routine"), so run
 /// the generator on a device or emulator whose language is English — on any other locale
@@ -49,10 +50,17 @@ class BaselineProfileGenerator {
 
         // The builder, from Today's own door — the first-run card or the deck's ghost card.
         if (openBuilder()) {
-            // The whole document, eagerly built: scroll it end to end and back.
-            device.findObject(By.scrollable(true))?.let { page ->
-                page.fling(Direction.DOWN)
-                page.fling(Direction.UP)
+            // All three pages (2026-10-01): the Sets page with a set added and opened, its
+            // target editor, and Schedule. Each page scrolled end to end and back.
+            flingPage()
+            if (next()) {
+                find(By.text("Add a set"))?.click()
+                device.waitForIdle()
+                find(By.text("Target load"))?.click()
+                device.waitForIdle()
+                flingPage()
+                next()
+                flingPage()
             }
             find(By.text("Cancel"))?.click()
             // Untouched, Cancel closes outright; answer the dialog if anything changed.
@@ -63,7 +71,10 @@ class BaselineProfileGenerator {
         for (tab in listOf("History", "Benchmarks", "Settings")) {
             tabBar(tab)?.click()
             device.waitForIdle()
-            if (tab == "Benchmarks") openCriticalForceSetup()
+            if (tab == "Benchmarks") {
+                openCriticalForceSetup()
+                openMaxChooserAndMeasure()
+            }
         }
         // Settings' one push, and back.
         find(By.textContains("Tap to choose yours"))?.let {
@@ -76,8 +87,12 @@ class BaselineProfileGenerator {
         device.waitForIdle()
     }
 
+    /// From a KILLED process every time: a journey that ends inside a screen (a measure
+    /// visit, a sheet) would otherwise resume there on the next iteration, never reach Today's
+    /// doors, and the builder would drop out of the profile — which it silently did.
     private fun MacrobenchmarkScope.launchOntoToday() {
         pressHome()
+        killProcess()
         startActivityAndWait()
         device.wait(Until.hasObject(By.text("Today")), TIMEOUT)
     }
@@ -101,6 +116,56 @@ class BaselineProfileGenerator {
         }
         item.click()
         if (device.wait(Until.hasObject(By.text("Critical force")), TIMEOUT)) {
+            device.pressBack()
+            device.waitForIdle()
+        }
+    }
+
+    private fun MacrobenchmarkScope.flingPage() {
+        device.findObject(By.scrollable(true))?.let { page ->
+            page.fling(Direction.DOWN)
+            page.fling(Direction.UP)
+        }
+    }
+
+    /// The builder's Next, when the page has one. False on the last page or a missing button.
+    private fun MacrobenchmarkScope.next(): Boolean {
+        val button = device.findObject(By.text("Next")) ?: return false
+        button.click()
+        device.waitForIdle()
+        return true
+    }
+
+    /// Benchmarks' "+" → Measure a max → the chooser (10 s, so the timed hero composes) →
+    /// the live measure screen, and back out. No gauge is needed for the screen to compose.
+    private fun MacrobenchmarkScope.openMaxChooserAndMeasure() {
+        find(By.desc("Add a benchmark"))?.click() ?: return
+        val item = find(By.text("Measure a max"))
+        if (item == null) {
+            device.pressBack()
+            return
+        }
+        item.click()
+        val measure = find(By.text("Measure on the gauge"))
+        if (measure == null) {
+            device.pressBack()
+            return
+        }
+        measure.click()
+        find(By.text("10 s"))?.click()
+        val start = find(By.text("One hand at a time"))
+        if (start == null) {
+            device.pressBack()
+            device.pressBack()
+            return
+        }
+        start.click()
+        device.wait(Until.hasObject(By.text("Measure a max")), TIMEOUT)
+        device.waitForIdle()
+        device.pressBack()
+        device.waitForIdle()
+        // Back out of the new-max form if it is still up.
+        if (device.hasObject(By.text("Measure on the gauge"))) {
             device.pressBack()
             device.waitForIdle()
         }

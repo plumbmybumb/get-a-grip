@@ -69,6 +69,7 @@ object AnalysisExportAssembler {
                 day = DayStamp.of(record.recordedAt, zone),
                 recordedAt = record.recordedAt,
                 source = record.source,
+                seconds = record.durationSeconds,
             )
         }
 

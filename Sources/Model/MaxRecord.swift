@@ -31,9 +31,14 @@ final class MaxRecord {
     /// and an untouched picker mean. Additive, no backfill.
     var sideRaw: String = "both"
     var note: String = ""
+    /// **0 is a PEAK max** — every record written before timed maxes existed, and still
+    /// the default. Otherwise the window the value is an AVERAGE over (see `MaxAttempt`):
+    /// "the most you can hold for 10 s" is a different number from your peak, and a
+    /// routine asks for one or the other by name. Additive, no backfill.
+    var durationSeconds: Int = 0
 
     init(grip: GripSpec, kg: Double, source: MaxSource, side: Side = .both,
-         recordedAt: Date = .now) {
+         seconds: Int = 0, recordedAt: Date = .now) {
         self.id = UUID()
         self.edgeMM = grip.edgeMM
         self.fingersRaw = grip.fingers.token
@@ -43,6 +48,7 @@ final class MaxRecord {
         self.sourceRaw = source.rawValue
         self.sideRaw = side.rawValue
         self.note = ""
+        self.durationSeconds = Swift.max(0, seconds)
     }
 }
 
@@ -76,7 +82,13 @@ extension MaxRecord {
     /// **Identity for "the current max" is the grip AND the hand.** Folding on `gripKey`
     /// alone would let a right-hand max supersede the left-hand one, and one hand would
     /// silently lose its number.
-    var maxKey: String { MaxTable.key(grip: gripKey, side: side) }
+    ///
+    /// A timed max is a third part of that identity, so a 10 s max never supersedes the
+    /// peak (or the reverse). Peak keys stay byte-identical to the pre-timed format.
+    var maxKey: String { MaxTable.key(grip: gripKey, side: side, seconds: durationSeconds) }
+
+    /// A peak max — what every percentage meant before timed maxes existed.
+    var isPeak: Bool { durationSeconds <= 0 }
 
     /// An unknown source from a newer build reads as `.manual`, which understates the
     /// provenance rather than claiming a measurement that may not have happened.
@@ -111,7 +123,8 @@ extension MaxTable {
     static func folding(_ newest: [String: MaxRecord]) -> MaxTable {
         var table = MaxTable()
         for record in newest.values {
-            table.record(record.kg, grip: record.gripKey, side: record.side)
+            table.record(record.kg, grip: record.gripKey, side: record.side,
+                         seconds: record.durationSeconds)
         }
         return table
     }

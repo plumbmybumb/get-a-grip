@@ -140,6 +140,13 @@ class SessionRunner(
     /// Progressor's setting, keeps the device-clock rule: a gap over
     /// `maxCreditableDeltaMicros` credits nothing. See `creditableDelta`.
     val maxCreditedSampleGapSeconds: Double? = null,
+    /// Whether the FIRST reading inside the gate starts the rep, skipping
+    /// `engageDebounceMicros`. For a broadcast scale (the WH-C06): its readings arrive half
+    /// a second to a second apart, so a 100 ms debounce cost a whole second reading — a
+    /// second of easing off with nothing happening, which is how a pull overcorrected
+    /// below its band (GitHub issue, 2026-10-01). The scale smooths its own readings, so
+    /// the bump spike the debounce exists for does not reach us as one reading.
+    val engagesOnFirstReading: Boolean = false,
 ) {
 
     // MARK: Tuning
@@ -187,11 +194,12 @@ class SessionRunner(
     }
 
     private fun gate(slot: RepSlot): RepGate {
-        // `pausesOutsideTargetBand == false` takes the band-less gate: threshold, no
-        // ceiling. The band is still drawn, it just stops refereeing. Letting go still
-        // stops the rep — that is about whether you pull, not in which range.
+        // `Off` takes the band-less gate: threshold, no ceiling. The band is still drawn,
+        // it just stops refereeing. Letting go still stops the rep — that is about whether
+        // you pull, not in which range.
+        val referee = plan.targetBandGate
         val band = slot.targetBand
-        if (!plan.pausesOutsideTargetBand || band == null || band.endInclusive <= 0) {
+        if (referee == TargetBandGate.off || band == null || band.endInclusive <= 0) {
             return RepGate(
                 engageLo = engageKg, engageHi = Double.POSITIVE_INFINITY,
                 releaseLo = releaseKg, releaseHi = Double.POSITIVE_INFINITY,
@@ -200,11 +208,15 @@ class SessionRunner(
         // A target line cannot require exact floating-point equality. Ordinary
         // bands retain their authored bounds; lines tolerate half a 0.5 kg step.
         val tolerance = if (band.start == band.endInclusive) 0.25 else 0.0
+        // `below` keeps the floor and drops the ceiling (GitHub issue, 2026-10-01): an
+        // overshoot counts, so a pull that lands at 82 % of a 70–80 % band starts the
+        // clock instead of making you ease off into an undershoot on a laggy scale.
+        val ceiling = referee == TargetBandGate.outside
         return RepGate(
             engageLo = max(Double.MIN_VALUE, band.start - tolerance),
-            engageHi = band.endInclusive + tolerance,
+            engageHi = if (ceiling) band.endInclusive + tolerance else Double.POSITIVE_INFINITY,
             releaseLo = max(0.0, band.start - releaseBand(band.start)),
-            releaseHi = band.endInclusive + releaseBand(band.endInclusive),
+            releaseHi = if (ceiling) band.endInclusive + releaseBand(band.endInclusive) else Double.POSITIVE_INFINITY,
         )
     }
 
@@ -632,14 +644,16 @@ class SessionRunner(
             engagedSince = null
             return emptyList()
         }
-        val since = engagedSince
-        if (since == null) {
-            engagedSince = sample.deviceMicros
-            return emptyList()
+        if (!engagesOnFirstReading) {
+            val since = engagedSince
+            if (since == null) {
+                engagedSince = sample.deviceMicros
+                return emptyList()
+            }
+            // Debounce measured in DEVICE time, not arrival time: a stalled UI thread
+            // must not be able to satisfy it.
+            if ((sample.deviceMicros - since).toULong() < engageDebounceMicros) return emptyList()
         }
-        // Debounce measured in DEVICE time, not arrival time: a stalled UI thread
-        // must not be able to satisfy it.
-        if ((sample.deviceMicros - since).toULong() < engageDebounceMicros) return emptyList()
         phase = RunnerPhase.Working(index)
         resetRepAccumulators()
         repStartedElapsedSeconds = recordedElapsed

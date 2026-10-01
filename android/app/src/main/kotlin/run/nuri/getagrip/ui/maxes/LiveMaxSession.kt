@@ -28,13 +28,21 @@ import run.nuri.getagrip.store.TemplateStore
 /// It also holds the visit's save state (`isSaving`, `committed`, the receipt) and whether
 /// the gauge was started, because it outlives a rotation in `RootPresentation` while the
 /// screen does not: a recreation after Save must never offer the same pulls again.
-class LiveMaxSession(bothTogether: Boolean, side: Side) {
-    private val draft = MaxMeasurementDraft(bothTogether, side)
+class LiveMaxSession(bothTogether: Boolean, side: Side, windowSeconds: Int = 0) {
+    private val draft = MaxMeasurementDraft(bothTogether, side, windowSeconds)
     private var revision by mutableIntStateOf(0)
 
     var isPulling: Boolean by mutableStateOf(false)
         private set
-    var pullPeakKg: Double? by mutableStateOf(null)
+    /// The pull in progress's live figure — its peak, or its running average when timed.
+    var pullKg: Double? by mutableStateOf(null)
+        private set
+    /// Whole seconds still to hold on a timed pull, rounded UP so "1" stays on screen until
+    /// the window closes. Published per second, never per sample.
+    var pullSecondsLeft: Int? by mutableStateOf(null)
+        private set
+    /// The last timed pull let go short of its window, in seconds held.
+    var shortPullSeconds: Double? by mutableStateOf(null)
         private set
     /// The most recent pull on the selected hand, for the hero between pulls.
     var lastAttempt: MaxAttemptLog.Attempt? by mutableStateOf(null)
@@ -76,7 +84,7 @@ class LiveMaxSession(bothTogether: Boolean, side: Side) {
     /// the measured peak the review had just said it would not. Nothing logs while reviewing.
     fun receive(point: DeviceStore.TracePoint) {
         if (reviewing) return
-        val previousBest = draft.log.best(draft.log.side)?.peakKg
+        val previousBest = draft.log.best(draft.log.side)?.kg
         val logged = draft.add(point.kg, point.t)
         publishPull()
         if (logged != null) didLog(logged, previousBest)
@@ -84,7 +92,7 @@ class LiveMaxSession(bothTogether: Boolean, side: Side) {
 
     fun close() {
         if (reviewing) return
-        val previousBest = draft.log.best(draft.log.side)?.peakKg
+        val previousBest = draft.log.best(draft.log.side)?.kg
         val logged = draft.close()
         publishPull()
         if (logged != null) didLog(logged, previousBest)
@@ -109,7 +117,7 @@ class LiveMaxSession(bothTogether: Boolean, side: Side) {
 
     private fun didLog(attempt: MaxAttemptLog.Attempt, previousBest: Double?) {
         if (attempt.side == draft.log.side) lastAttempt = attempt
-        if (attempt.peakKg > (previousBest ?: 0.0)) newBestTick += 1
+        if (attempt.kg > (previousBest ?: 0.0)) newBestTick += 1
         revision += 1
         publishes += 1
     }
@@ -126,10 +134,14 @@ class LiveMaxSession(bothTogether: Boolean, side: Side) {
             isPulling = draft.log.isPulling
             publishes += 1
         }
-        val peak = draft.log.pullPeakKg
-        if (pullPeakKg != peak) {
-            pullPeakKg = peak
+        val live = draft.log.pullKg
+        if (pullKg != live) {
+            pullKg = live
             publishes += 1
         }
+        val left = draft.log.pullRemainingSeconds?.let { kotlin.math.ceil(it).toInt() }
+        if (pullSecondsLeft != left) pullSecondsLeft = left
+        val short = draft.log.lastShortSeconds
+        if (shortPullSeconds != short) shortPullSeconds = short
     }
 }
