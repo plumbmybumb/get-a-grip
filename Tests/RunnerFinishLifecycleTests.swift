@@ -34,10 +34,12 @@ final class RunnerFinishLifecycleTests: XCTestCase {
         XCTAssertEqual(IdleTimerLock.depth, lockDepth, "The summary does not keep the screen awake")
         XCTAssertEqual(cues.ends, 0, "The finish chord was just queued; the engines stay up for it")
         XCTAssertTrue(cues.played.contains(.sessionCompleted))
+        // Read BEFORE any await: with a zero tail the shutdown task can run and clear
+        // itself while this test waits on the activity push (seen on CI, 2026-10-01).
+        let tail = try XCTUnwrap(session.cueShutdown, "The cue shutdown waits out the tail")
         await session.lastActivityPush?.value
         XCTAssertEqual(activity.ends, 1)
 
-        let tail = try XCTUnwrap(session.cueShutdown, "The cue shutdown waits out the tail")
         await tail.value
         XCTAssertEqual(cues.ends, 1, "…and are let go once it has sounded")
 

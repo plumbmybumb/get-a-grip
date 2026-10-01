@@ -27,9 +27,14 @@ final class RunnerSessionDisplayTests: XCTestCase {
         draft.plan.restSeconds = rest
         draft.plan.leadInSeconds = leadIn
         let template = SessionTemplate(draft: draft, sortIndex: 0)
+        // Stand-ins for the audio engine and ActivityKit: both start on a delay after
+        // `begin()`, and on a slow CI simulator the real ones blocked the main thread inside
+        // these tests' wall-clock windows.
         return RunnerSession(template: template,
                              device: DeviceStore(client: RecordingProgressorClient()),
-                             timerOnly: true, draftStore: nil)
+                             timerOnly: true,
+                             liveActivity: RunnerActivityRecorder(), cues: RunnerCueRecorder(),
+                             draftStore: nil)
     }
 
     func testMeasuredProgressRetainsSubPercentStepsWithoutInvalidatingTheScreen() {
@@ -39,7 +44,9 @@ final class RunnerSessionDisplayTests: XCTestCase {
         draft.plan.handMode = .bothHands
         draft.plan.sets = [SetPlan(grip: GripSpec(), repsPerSide: 2)]
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
-                                    device: DeviceStore(client: RecordingProgressorClient()), draftStore: nil)
+                                    device: DeviceStore(client: RecordingProgressorClient()),
+                                    liveActivity: RunnerActivityRecorder(), cues: RunnerCueRecorder(),
+                                    draftStore: nil)
         // Drive the real measured funnel, without a wall-clock ticker or audio engine.
         session.send(.start)
         var previous = session.snapshot
@@ -98,7 +105,9 @@ final class RunnerSessionDisplayTests: XCTestCase {
         draft.plan.setBreakSeconds = 0
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
                                     device: DeviceStore(client: RecordingProgressorClient()),
-                                    timerOnly: true, draftStore: nil)
+                                    timerOnly: true,
+                                    liveActivity: RunnerActivityRecorder(), cues: RunnerCueRecorder(),
+                                    draftStore: nil)
         session.begin()
         defer { session.end() }
         session.startIfReady(cause: .initial)
@@ -123,7 +132,9 @@ final class RunnerSessionDisplayTests: XCTestCase {
         draft.plan.setBreakSeconds = 1
         let session = RunnerSession(template: SessionTemplate(draft: draft, sortIndex: 0),
                                     device: DeviceStore(client: RecordingProgressorClient()),
-                                    timerOnly: true, draftStore: nil)
+                                    timerOnly: true,
+                                    liveActivity: RunnerActivityRecorder(), cues: RunnerCueRecorder(),
+                                    draftStore: nil)
         session.begin()
         defer { session.end() }
         session.startIfReady(cause: .initial)
@@ -134,7 +145,9 @@ final class RunnerSessionDisplayTests: XCTestCase {
         XCTAssertTrue(session.snapshot.gripChangesNext)
         XCTAssertEqual(session.snapshot.newGripID, id)
         session.send(.resume)
-        let deadline = ContinuousClock.now + .seconds(3)
+        // A bounded poll, generous for a slow CI simulator: the 1 s break normally ends
+        // within about a second and the loop exits then.
+        let deadline = ContinuousClock.now + .seconds(10)
         while session.snapshot.gripChangesNext && ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(50))
         }
