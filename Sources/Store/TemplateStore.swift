@@ -781,22 +781,43 @@ final class TemplateStore {
     /// slot, latest scan wins.
     private(set) var pendingImport: RoutineDraft?
     private(set) var pendingImportError: String?
+    /// Where `pendingImport` came from. Set and cleared with it.
+    private(set) var pendingImportOrigin: ImportOrigin = .shared
 
     func receiveShareLink(_ url: URL) {
         do {
             pendingImport = try RoutineShare.draft(from: url)
+            pendingImportOrigin = .shared
             pendingImportError = nil
         } catch {
             pendingImport = nil
+            pendingImportOrigin = .shared
             pendingImportError = (error as? RoutineShareError)?.errorDescription
                 ?? String(localized: "This routine code couldn't be read.")
         }
     }
 
+    /// A routine from somebody's AI chat, already read (the paste sheet reports a reply it
+    /// cannot read itself, where the climber can paste again). Through the same inbox as a
+    /// scan, so it waits for the screen to be free the same way.
+    func receiveAgentRoutine(_ reading: AgentRoutine.Reading) {
+        pendingImport = reading.draft
+        pendingImportOrigin = .agent(notes: reading.notes)
+        pendingImportError = nil
+    }
+
     /// Consume-on-read, so a drain can never present the same scan twice.
     func claimPendingImport() -> RoutineDraft? {
-        defer { pendingImport = nil }
-        return pendingImport
+        claimPendingImportRequest()?.draft
+    }
+
+    /// The draft and where it came from, consumed together.
+    func claimPendingImportRequest() -> (draft: RoutineDraft, origin: ImportOrigin)? {
+        defer {
+            pendingImport = nil
+            pendingImportOrigin = .shared
+        }
+        return pendingImport.map { ($0, pendingImportOrigin) }
     }
 
     func claimPendingImportError() -> String? {

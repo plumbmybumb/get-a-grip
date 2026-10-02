@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.QrCode
@@ -47,6 +48,8 @@ import run.nuri.getagrip.ui.theme.LocalGripPalette
 /// scheme as to open it, so the app carries its own door. It is placed immediately after
 /// "Share routine…" because the two are one idea seen from either end — this phone showing a
 /// code, this phone reading one — and reading somebody else's plan is not "New routine…".
+/// "Create with AI" follows it: the other way a routine arrives from outside the builder, and
+/// the pair the new-routine card shows side by side.
 ///
 /// **Delete is a SUBMENU, not a flat destructive row.** A live simulator audit landed a tap
 /// meant for "Start without a gauge" one row low, on Delete, with only the divider's
@@ -73,6 +76,7 @@ fun TodayMenu(
     onStartTimerOnly: () -> Unit,
     onShare: () -> Unit,
     onScan: () -> Unit,
+    onCreateWithAI: () -> Unit = {},
     onDelete: () -> Unit,
 ) {
     val palette = LocalGripPalette.current
@@ -109,6 +113,7 @@ fun TodayMenu(
         Item(tr("Start without a gauge"), Icons.Outlined.Timer) { onDismiss(); onStartTimerOnly() }
         Item(tr("Share routine…"), Icons.Outlined.QrCode) { onDismiss(); onShare() }
         Item(tr("Scan a routine"), Icons.Outlined.QrCodeScanner) { onDismiss(); onScan() }
+        Item(tr("Create with AI"), Icons.Outlined.AutoAwesome) { onDismiss(); onCreateWithAI() }
         HorizontalDivider(Modifier.padding(vertical = 4.dp), color = palette.inkTertiary.copy(alpha = 0.22f))
         Item(tr("Delete routine…"), Icons.Outlined.Delete) { showingDelete = true }
     }

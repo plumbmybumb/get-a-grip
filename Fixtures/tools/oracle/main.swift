@@ -8,6 +8,7 @@ import Foundation
 //   OracleShare.swift   share   — RoutineShare URLs and envelopes (Fixtures/share)
 //   OracleExport.swift  export  — AnalysisExport documents (Fixtures/export)
 //   OracleRunner.swift  runner  — record / verify SessionRunner traces (Fixtures/runner)
+//   OracleAgent.swift   agent   — the Create with AI reader and instructions (Fixtures/agent)
 //
 // Every command takes the repository's Fixtures directory as its first argument, so
 // the binary never guesses where it is running from.
@@ -23,6 +24,8 @@ func usage() -> Never {
       export verify   <dir>       regenerate and diff against the .md on disk
       runner record   <dir>       record the canonical scenarios into runner/*.json
       runner verify   <dir>       replay every runner/*.json through SessionRunner
+      agent  generate <dir>       write agent/instructions.txt and agent/cases.json
+      agent  verify   <dir>       re-read every agent/inputs.json reply and compare
 
     """
     FileHandle.standardError.write(Data(text.utf8))
@@ -50,6 +53,7 @@ do {
     case "share": try shareCommand(rest)
     case "export": try exportCommand(rest)
     case "runner": try runnerCommand(rest)
+    case "agent": try agentCommand(rest)
     default: usage()
     }
 } catch {

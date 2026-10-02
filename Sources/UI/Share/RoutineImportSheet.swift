@@ -8,6 +8,15 @@ import SwiftUI
 struct ImportRequest: Identifiable {
     let id = UUID()
     let draft: RoutineDraft
+    var origin: ImportOrigin = .shared
+}
+
+/// Where a routine waiting to be imported came from. The preview words itself to match:
+/// a stranger's code is "the sender's", an AI reply is the climber's own words read back,
+/// with what the reader had to change to fit the app.
+enum ImportOrigin: Equatable {
+    case shared
+    case agent(notes: [AgentRoutine.Note])
 }
 
 /// The other side of a QR code: somebody else's routine, read out in full, before it is
@@ -24,6 +33,7 @@ struct RoutineImportSheet: View {
     @Environment(\.weightUnit) private var weightUnit
     /// NORMALIZED at init. Read as a value; the sheet observes no store beyond its one save.
     let draft: RoutineDraft
+    let origin: ImportOrigin
 
     @Environment(TemplateStore.self) private var templates
     @Environment(\.dismiss) private var dismiss
@@ -38,7 +48,8 @@ struct RoutineImportSheet: View {
     /// identity doing it.
     private let summary: RoutineSummary
 
-    init(draft: RoutineDraft) {
+    init(draft: RoutineDraft, origin: ImportOrigin = .shared) {
+        self.origin = origin
         // Normalized HERE so the preview shows what will land (default name, emptied
         // sets dropped, inheritance consolidated); previewing raw and saving
         // normalized is how a preview and its card disagree. Idempotent.
@@ -56,8 +67,10 @@ struct RoutineImportSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
+                    changedNotes
                     planCard
                     rhythmCard
+                    fineTuningCard
                     notes
                 }
                 .padding(.horizontal, Metrics.hPadding)
@@ -70,7 +83,8 @@ struct RoutineImportSheet: View {
             .background { AppBackground() }
             .scrollBounceBehavior(.basedOnSize)
             .scrollEdgeEffectStyle(.soft, for: .bottom)
-            .navigationTitle("Shared routine")
+            .navigationTitle(origin == .shared ? String(localized: "Shared routine")
+                                                : String(localized: "From your AI"))
             .navigationBarTitleDisplayMode(.inline)
             // The decision lives in the safe area: with up to fifty sets, a primary
             // action that must be scrolled to is not found.
@@ -206,7 +220,13 @@ struct RoutineImportSheet: View {
         } else if let band = set.targetPercentBand {
             let lo = Int((band.lowerBound * 100).rounded())
             let hi = Int((band.upperBound * 100).rounded())
-            parts.append(lo == hi ? String(localized: "\(hi) % of max") : String(localized: "\(lo)–\(hi) % of max"))
+            // Which max it is of: a percentage of a timed max is a different load.
+            if let seconds = set.targetMaxSeconds {
+                parts.append(lo == hi ? String(localized: "\(hi) % of \(seconds) s max")
+                                      : String(localized: "\(lo)–\(hi) % of \(seconds) s max"))
+            } else {
+                parts.append(lo == hi ? String(localized: "\(hi) % of max") : String(localized: "\(lo)–\(hi) % of max"))
+            }
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -277,6 +297,70 @@ struct RoutineImportSheet: View {
         }
     }
 
+    // MARK: - Fine tuning
+
+    /// Only the settings that differ from a new routine's: a fine-tuning card that repeats
+    /// four defaults is four lines nobody reads.
+    private var fineTuningLines: [String] {
+        let defaults = SessionPlan()
+        var lines: [String] = []
+        switch plan.targetBandGate {
+        case .outside: break
+        case .below: lines.append(String(localized: "The clock pauses only below the target range"))
+        case .off: lines.append(String(localized: "The target range never pauses the clock"))
+        }
+        if !plan.waitForReleaseBeforeRest {
+            lines.append(String(localized: "Rests start when the hold ends, not when you let go"))
+        }
+        if plan.thresholdKg != defaults.thresholdKg {
+            lines.append(String(localized: "A pull counts above \(weightUnit.number(plan.thresholdKg)) \(weightUnit.symbol)"))
+        }
+        if plan.leadInSeconds != defaults.leadInSeconds {
+            lines.append(String(localized: "\(PlanMath.durationText(plan.leadInSeconds)) lead-in before each set"))
+        }
+        return lines
+    }
+
+    @ViewBuilder private var fineTuningCard: some View {
+        let lines = fineTuningLines
+        if !lines.isEmpty {
+            MaterialCard(surface: .flat) {
+                VStack(alignment: .leading, spacing: 6) {
+                    CapsLabel(String(localized: "FINE TUNING"))
+                    ForEach(lines, id: \.self) { line in
+                        Text(line)
+                            .font(.system(.subheadline, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(Ink.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - What the reader changed
+
+    /// An AI reply the reader had to adjust says so FIRST, above the plan it changed: the
+    /// assistant meant one thing and the routine holds another, and that is the line the
+    /// climber must not scroll past.
+    @ViewBuilder private var changedNotes: some View {
+        if case .agent(let changes) = origin, !changes.isEmpty {
+            MaterialCard(surface: .flat) {
+                VStack(alignment: .leading, spacing: 6) {
+                    CapsLabel(String(localized: "CHANGED TO FIT THE APP"))
+                    ForEach(changes, id: \.self) { change in
+                        Text(change.message)
+                            .font(.system(.footnote, weight: .medium))
+                            .monospacedDigit()
+                            .foregroundStyle(Ink.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - The two honesty notes
 
     /// Each shown only when TRUE of this routine: irrelevant footnotes teach people to stop
@@ -290,7 +374,9 @@ struct RoutineImportSheet: View {
                     note(String(localized: "Targets use your saved maxes. Retest when they're out of date."))
                 }
                 if hasKilogramTargets {
-                    note(String(localized: "The sender set some fixed weight targets. Check they suit you."))
+                    note(origin == .shared
+                         ? String(localized: "The sender set some fixed weight targets. Check they suit you.")
+                         : String(localized: "Some sets have fixed weight targets. Check they suit you."))
                 }
             }
         }

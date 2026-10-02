@@ -45,6 +45,7 @@
     <string name="s_is_verified_on_real_hardware">%1$s is verified on real hardware. %2$s</string>
     <string name="s_kg_kg">"%1$s kg  →  %2$s kg"</string>
     <string name="s_kilograms_your_hardest_pull">%s kilograms, your hardest pull</string>
+    <string name="s_lead_in_before_each_set_ce038b">%s lead-in before each set</string>
     <string name="s_needs_a_one_time_calibration_lookup_from_its_maker_by_se">%s needs a one-time calibration lookup from its maker, by serial number. It\'s then kept on this phone. No other gauge uses a server.</string>
     <string name="s_of_lld_s_max_959f72">%1$s of %2$d s max</string>
     <string name="s_of_each_hand_s_max">%1$s of each hand\'s max · %2$s %3$s</string>
@@ -92,6 +93,7 @@
     <string name="s_up_next">%s. Up next.</string>
     <string name="s_x_5516fb">%1$s: %2$s</string>
     <string name="s_x_916317">%1$s: %2$s\n%3$s: %4$s\n%5$s: %6$s\n%7$s: %8$s</string>
+    <string name="s_x_07aa1c">%1$s: %2$s → %3$s</string>
     <string name="s_the_first_max_on_this_grip">%1$s: %2$s, the first max on this grip</string>
     <string name="s_up_from">%1$s: %2$s, up from %3$s</string>
     <string name="s_lld_of_lld_completed">%1$s: %2$d of %3$d completed</string>
@@ -105,6 +107,7 @@
     <string name="s_kg_target">%1$s–%2$s kg target</string>
     <string name="s_lld_16070a">%d</string>
     <string name="s_lld_80890b">%d %%</string>
+    <string name="s_lld_of_lld_s_max">%1$d %% of %2$d s max</string>
     <string name="s_lld_of_body_weight">%d %% of body weight</string>
     <string name="s_lld_of_max">%d %% of max</string>
     <string name="s_lld_of_your_max">%d %% of your max</string>
@@ -205,6 +208,7 @@
     <string name="s_lld_a_day">%d× a day</string>
     <string name="s_lld_a_day_each">%1$d× a day · %2$s each</string>
     <string name="s_lld_lld_af72da">%1$d–%2$d %%</string>
+    <string name="s_lld_lld_of_lld_s_max">%1$d–%2$d %% of %3$d s max</string>
     <string name="s_lld_lld_of_max">%1$d–%2$d %% of max</string>
     <string name="s_lld_lld_mm">%1$d–%2$d mm</string>
     <string name="s_hand_f5b987">, %s hand</string>
@@ -216,8 +220,10 @@
     <string name="s_peak_target_lld_percent_of_max">. Peak target %d percent of max.</string>
     <string name="s_0" translatable="false">0</string>
     <string name="s_1_pull_total">1 pull total</string>
+    <string name="s_1_give_the_ai_the_instructions">1 · GIVE THE AI THE INSTRUCTIONS</string>
     <string name="s_1h">1h</string>
     <string name="s_1h30">1h30</string>
+    <string name="s_2_paste_the_routine">2 · PASTE THE ROUTINE</string>
     <string name="s_20_30_of_that_is">20–30 %% of that is %1$s–%2$s %3$s</string>
     <string name="s_20_30_of_that_is_kg">20–30 %% of that is %1$s–%2$s kg</string>
     <string name="s_24_pulls_on_one_hand_then_24_on_the_other_about_8_minute">24 pulls on one hand, then 24 on the other. About 8 minutes, one result per hand.</string>
@@ -241,7 +247,8 @@
     <string name="s_a_number_you_set_yourself_measure_it_on_the_gauge_if_you">A number you set yourself. Measure it on the gauge if you\'d rather not guess.</string>
     <string name="s_a_pinch_always_includes_the_thumb_c3d051">A pinch always includes the thumb</string>
     <string name="s_a_pinch_always_includes_the_thumb_baeb2e">A pinch always includes the thumb.</string>
-    <string name="s_a_pull_counts_above">A pull counts above</string>
+    <string name="s_a_pull_counts_above_bb107c">A pull counts above</string>
+    <string name="s_a_pull_counts_above_e39e7c">A pull counts above %1$s %2$s</string>
     <string name="s_a_rating_helps_other_climbers_find_get_a_grip">A rating helps other climbers find Get a Grip.</string>
     <string name="s_a_session_on_the_board">A session on the board.</string>
     <string name="s_a_text_file_of_the_last_few_minutes_of_gauge_connection">A text file of the last few minutes of gauge connection events.</string>
@@ -315,6 +322,7 @@
     <string name="s_build_my_routine">Build my routine</string>
     <string name="s_build_your_hang_routine">Build your hang routine</string>
     <string name="s_c4_max">C4 max</string>
+    <string name="s_changed_to_fit_the_app">CHANGED TO FIT THE APP</string>
     <string name="s_connecting_48b998">CONNECTING</string>
     <string name="s_critical_force_0bb609">CRITICAL FORCE</string>
     <string name="s_csv">CSV · %s</string>
@@ -359,6 +367,7 @@
     <string name="s_control_point_is_not_writable">Control point is not writable</string>
     <string name="s_copied">Copied</string>
     <string name="s_copy">Copy</string>
+    <string name="s_copy_instructions">Copy instructions</string>
     <string name="s_copy_of">Copy of %s</string>
     <string name="s_copy_the_diagnostics_to_the_clipboard">Copy the diagnostics to the clipboard</string>
     <string name="s_copy_the_support_address_to_the_clipboard">Copy the support address to the clipboard</string>
@@ -366,10 +375,12 @@
     <string name="s_couldn_t_build_a_share_code_for_this_routine">Couldn\'t build a share code for this routine.</string>
     <string name="s_couldn_t_connect">Couldn\'t connect</string>
     <string name="s_couldn_t_delete_this_max_try_again">Couldn\'t delete this max. Try again.</string>
+    <string name="s_couldn_t_find_a_routine_in_what_you_pasted_copy_the_ai_s">Couldn\'t find a routine in what you pasted. Copy the AI\'s code block and try again.</string>
     <string name="s_couldn_t_import">Couldn\'t import</string>
     <string name="s_couldn_t_load_your_routines_so_the_new_one_wasn_t_saved">Couldn\'t load your routines, so the new one wasn\'t saved.</string>
     <string name="s_couldn_t_prepare_a_shareable_image_the_code_above_still">Couldn\'t prepare a shareable image. The code above still scans.</string>
     <string name="s_couldn_t_read_this_routine_code_it_may_be_damaged">Couldn\'t read this routine code. It may be damaged.</string>
+    <string name="s_couldn_t_read_this_routine_ask_the_ai_to_write_it_again">Couldn\'t read this routine. Ask the AI to write it again as one code block.</string>
     <string name="s_couldn_t_save">Couldn\'t save</string>
     <string name="s_couldn_t_save_the_change_try_again">Couldn\'t save the change. Try again.</string>
     <string name="s_couldn_t_save_the_change">Couldn\'t save the change: %s</string>
@@ -381,6 +392,7 @@
     <string name="s_couldn_t_save_your_measurements_are_still_here_try_again">Couldn’t save. Your measurements are still here — try again.</string>
     <string name="s_counting">Counting</string>
     <string name="s_counts_as_one_session_for">Counts as one session for %s.</string>
+    <string name="s_create_with_ai">Create with AI</string>
     <string name="s_critical_force_648670">Critical force</string>
     <string name="s_critical_force_dd9046">Critical force %1$s %2$s</string>
     <string name="s_critical_force_since">Critical force %1$s %2$s %3$s since %4$s</string>
@@ -413,6 +425,7 @@
     <string name="s_delete_this_session_on">Delete this session, %1$s on %2$s</string>
     <string name="s_deleting_a_session_also_removes_it_from_your_streak_and">Deleting a session also removes it from your streak and trends.</string>
     <string name="s_demo_device">Demo device</string>
+    <string name="s_describe_your_routine_to_chatgpt_claude_or_any_ai_chat_i">Describe your routine to ChatGPT, Claude or any AI chat in your own words. It writes the routine in a form Get a Grip can read.</string>
     <string name="s_device">Device</string>
     <string name="s_device_asleep">Device asleep</string>
     <string name="s_device_compatibility">Device compatibility</string>
@@ -468,15 +481,18 @@
     <string name="s_export_for_analysis">Export for analysis</string>
     <string name="s_export_workout">Export workout</string>
     <string name="s_fc">FC</string>
+    <string name="s_fine_tuning_5759b5">FINE TUNING</string>
     <string name="s_fingers_804c25">FINGERS</string>
-    <string name="s_fine_tuning">Fine tuning</string>
+    <string name="s_fine_tuning_091774">Fine tuning</string>
     <string name="s_finger_curl">Finger curl</string>
+    <string name="s_fingers_9cb27a">Fingers</string>
     <string name="s_fingers_c8a2d1">Fingers %s</string>
     <string name="s_fingers_on_the_edge">Fingers on the edge</string>
     <string name="s_finish">Finish</string>
     <string name="s_finish_test_now">Finish test now</string>
     <string name="s_finish_with_hand_only">Finish with %s hand only</string>
     <string name="s_firmware">Firmware</string>
+    <string name="s_first_hand">First hand</string>
     <string name="s_for_both_hands">For both hands</string>
     <string name="s_for_rest_days_max_days_and_more">For rest days, max days and more.</string>
     <string name="s_for_the_hand_only">For the %s hand only</string>
@@ -493,6 +509,7 @@
     <string name="s_frez_sent_an_answer_this_app_could_not_read">Frez sent an answer this app could not read.</string>
     <string name="s_from">From</string>
     <string name="s_from_on_the_first_pull_to_on_the_last">From %1$s on the first pull to %2$s on the last</string>
+    <string name="s_from_your_ai">From your AI</string>
     <string name="s_front_2">Front 2</string>
     <string name="s_front_3">Front 3</string>
     <string name="s_frosted">Frosted</string>
@@ -595,7 +612,8 @@
     <string name="s_last_pull_e9fb36">Last pull</string>
     <string name="s_last_pull_64f22b">Last pull %1$s %2$s</string>
     <string name="s_last">Last: %1$s · %2$s</string>
-    <string name="s_lead_in_before_each_set">Lead-in before each set</string>
+    <string name="s_lead_in">Lead-in</string>
+    <string name="s_lead_in_before_each_set_d6ca0a">Lead-in before each set</string>
     <string name="s_leave_demo_mode">Leave demo mode</string>
     <string name="s_leave_them_as_they_are">Leave them as they are</string>
     <string name="s_left_8ae1c3">Left</string>
@@ -779,6 +797,7 @@
     <string name="s_pull_639ef3">PULL</string>
     <string name="s_pull_to_start">PULL TO START</string>
     <string name="s_page">Page</string>
+    <string name="s_paste_them_into_a_new_chat_the_ai_asks_how_you_want_to_t">Paste them into a new chat. The AI asks how you want to train, then writes the routine.</string>
     <string name="s_pause">Pause</string>
     <string name="s_pause_is_unavailable_while_connecting">Pause is unavailable while connecting.</string>
     <string name="s_pause_the_clock">Pause the clock</string>
@@ -835,6 +854,7 @@
     <string name="s_rhythm_4665ba">RHYTHM</string>
     <string name="s_right_952532">RIGHT</string>
     <string name="s_right_hand_next_0ba39f">RIGHT HAND NEXT</string>
+    <string name="s_reads_the_routine_the_ai_wrote">Reads the routine the AI wrote.</string>
     <string name="s_recent_connection_events_kept_in_memory_only_and_cleared">Recent connection events. Kept in memory only and cleared when the app quits.</string>
     <string name="s_record_another_test">Record another test</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not.</string>
@@ -850,6 +870,7 @@
     <string name="s_rest_b79e5f">Rest</string>
     <string name="s_rest_between_pulls">Rest between pulls</string>
     <string name="s_restarts_a_stalled_reading">Restarts a stalled reading.</string>
+    <string name="s_rests_start_when_the_hold_ends_not_when_you_let_go">Rests start when the hold ends, not when you let go</string>
     <string name="s_resume">Resume</string>
     <plurals name="s_review_lld_pulls">
         <item quantity="one">Review %d pull</item>
@@ -920,10 +941,11 @@
     <string name="s_sessions_and_trends">Sessions and trends</string>
     <string name="s_sessions_lld_max_records_lld">Sessions: %1$d · Max records: %2$d</string>
     <string name="s_set_448ab7">Set</string>
-    <string name="s_set_lld">Set %d</string>
+    <string name="s_set_lld_beffc9">Set %d</string>
     <string name="s_set_lld_of_lld_8e1097">Set %1$d of %2$d</string>
     <string name="s_set_lld_of_lld_f52e6b">Set %1$d of %2$d · %3$s</string>
     <string name="s_set_lld_of_lld_pull_lld_of_lld_hand">Set %1$d of %2$d, pull %3$d of %4$d, %5$s hand, %6$s</string>
+    <string name="s_set_lld_a2a06d">Set %1$d · %2$s</string>
     <string name="s_set_removed">Set removed</string>
     <string name="s_sets_2ab262">Sets</string>
     <string name="s_sets_the_reading_to_zero">Sets the reading to zero.</string>
@@ -937,6 +959,7 @@
     <string name="s_share_the_code">Share the code</string>
     <string name="s_share_the_document">Share the document</string>
     <string name="s_share_this_five_week_calendar">Share this five-week calendar</string>
+    <string name="s_share_to_an_app">Share to an app</string>
     <string name="s_shared_max">Shared max</string>
     <string name="s_shared_routine">Shared routine</string>
     <plurals name="s_show_lld_earlier_sessions">
@@ -960,6 +983,7 @@
     <string name="s_some_grips_have_no_max_yet_so_their_sets_have_no_target">Some grips have no max yet, so their sets have no target.</string>
     <string name="s_some_kilogram_targets_were_set_by_the_sender_review_them">Some kilogram targets were set by the sender. Review them for your own training.</string>
     <string name="s_some_sets_carry_kilogram_targets_typed_by_whoever_shared">Some sets carry kilogram targets typed by whoever shared this.</string>
+    <string name="s_some_sets_have_fixed_weight_targets_check_they_suit_you">Some sets have fixed weight targets. Check they suit you.</string>
     <string name="s_source">Source</string>
     <string name="s_source_code">Source code</string>
     <string name="s_start">Start</string>
@@ -1002,6 +1026,7 @@
     <string name="s_tare_is_unavailable_during_the_pull">Tare is unavailable during the pull.</string>
     <string name="s_tare_is_unavailable_until_you_let_go">Tare is unavailable until you let go.</string>
     <string name="s_tare_under_load">Tare under load?</string>
+    <string name="s_target_61ad50">Target</string>
     <string name="s_target_load">Target load</string>
     <string name="s_target_load_for_this_grip">Target load for this grip</string>
     <string name="s_target_loads_are_percentages_of_your_own_maxes">Target loads are percentages of your own maxes.</string>
@@ -1024,6 +1049,7 @@
     <string name="s_the_camera_isn_t_available_try_again_later_or_open_the_r">The camera isn\'t available. Try again later, or open the routine link.</string>
     <string name="s_the_clock">The clock</string>
     <string name="s_the_clock_never_waits">The clock never waits</string>
+    <string name="s_the_clock_pauses_only_below_the_target_range">The clock pauses only below the target range</string>
     <string name="s_the_document_is_always_written_in_english_whatever_langu">The document is always written in English, whatever language the app is in, so the assistant reads one consistent schema.</string>
     <string name="s_the_force_your_fingers_can_sustain_once_their_fast_reser">The force your fingers can sustain once their fast reserve is spent: your endurance ceiling. 24 all-out pulls drain that reserve, and your force levels off at critical force.</string>
     <string name="s_the_four_minute_endurance_test_all_out_pulls_until_your">The four-minute endurance test: all-out pulls until your force levels off.</string>
@@ -1031,6 +1057,7 @@
     <string name="s_the_gauge_disconnected_before_pull_16_so_there_s_no_resu">The gauge disconnected before pull 16, so there\'s no result. Rest at least 30 minutes before retesting.</string>
     <string name="s_the_plan_in_one_line_edge_sets_pulls_and_how_long_it_run">The plan in one line: edge, sets, pulls and how long it runs. Tap it to change any of that.</string>
     <string name="s_the_sender_set_some_fixed_weight_targets_check_they_suit">The sender set some fixed weight targets. Check they suit you.</string>
+    <string name="s_the_target_range_never_pauses_the_clock">The target range never pauses the clock</string>
     <string name="s_the_test_starts_when_you_pull_pull_as_hard_as_you_can">The test starts when you pull. Pull as hard as you can.</string>
     <string name="s_there_is_nothing_to_export_yet_finish_a_session_or_recor">There is nothing to export yet. Finish a session or record a max, and it lands here.</string>
     <string name="s_there_s_on_the_gauge_taring_now_counts_it_as_zero">There\'s %1$s %2$s on the gauge. Taring now counts it as zero.</string>
@@ -1045,12 +1072,14 @@
     <string name="s_this_pull">This pull</string>
     <string name="s_this_routine_code_couldn_t_be_read">This routine code couldn\'t be read.</string>
     <string name="s_this_routine_has_no_pulls">This routine has no pulls.</string>
+    <string name="s_this_routine_has_no_sets_ask_the_ai_to_add_at_least_one">This routine has no sets. Ask the AI to add at least one.</string>
     <string name="s_this_routine_is_too_large_to_import">This routine is too large to import.</string>
     <string name="s_this_routine_needs_a_newer_get_a_grip_update_the_app_to">This routine needs a newer Get a Grip. Update the app to import it.</string>
     <string name="s_this_routine_runs_over_an_hour">This routine runs over an hour.</string>
     <string name="s_thumb_557518">Thumb</string>
     <string name="s_thumb_2ce0ce">Thumb, %s</string>
     <string name="s_time_for_a_session">Time for a session.</string>
+    <string name="s_timed_max">Timed max</string>
     <string name="s_timer">Timer</string>
     <string name="s_timer_pulls_counted_lld">Timer %1$s. Pulls counted: %2$d</string>
     <string name="s_timers_only_nothing_is_measured">Timers only. Nothing is measured.</string>
@@ -1102,6 +1131,7 @@
     <string name="s_what_are_you_measuring">What are you measuring?</string>
     <string name="s_what_it_measures">What it measures</string>
     <string name="s_what_you_can_pull_on_each_grip">What you can pull on each grip</string>
+    <string name="s_when_the_ai_has_written_the_code_block_copy_it_and_paste">When the AI has written the code block, copy it and paste it here. You\'ll see the routine before it\'s saved.</string>
     <string name="s_whenever">Whenever</string>
     <string name="s_whenever_you_re_fresh">Whenever you\'re fresh</string>
     <string name="s_which_hand">Which hand</string>

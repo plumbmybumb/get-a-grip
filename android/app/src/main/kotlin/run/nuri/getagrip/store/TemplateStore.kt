@@ -27,6 +27,7 @@ import run.nuri.getagrip.data.climb
 import run.nuri.getagrip.data.storedNow
 import run.nuri.getagrip.engine.BlobCodec
 import run.nuri.getagrip.engine.CriticalForceResult
+import run.nuri.getagrip.engine.AgentRoutine
 import run.nuri.getagrip.engine.DayRecord
 import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.FingerSet
@@ -49,6 +50,8 @@ import run.nuri.getagrip.engine.RoutineSummary
 import run.nuri.getagrip.engine.SessionKind
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.Side
+import run.nuri.getagrip.ui.share.ImportOrigin
+import run.nuri.getagrip.ui.share.ImportRequest
 import java.time.Instant
 import java.time.ZoneId
 import java.time.LocalTime
@@ -207,6 +210,10 @@ class TemplateStore(
         private set
 
     var pendingImportError: String? by mutableStateOf(null)
+        private set
+
+    /// Where `pendingImport` came from. Set and cleared with it.
+    var pendingImportOrigin: ImportOrigin by mutableStateOf(ImportOrigin.Shared)
         private set
 
     /// The day `syncDerived` last published for. Separate from `clock.today` so a failed
@@ -672,6 +679,7 @@ class TemplateStore(
     // MARK: - The share-link inbox
 
     fun receiveShareLink(url: String) {
+        pendingImportOrigin = ImportOrigin.Shared
         try {
             pendingImport = RoutineShare.draft(url)
             pendingImportError = null
@@ -684,10 +692,23 @@ class TemplateStore(
         }
     }
 
+    /// A routine from somebody's AI chat, already read (the paste sheet reports a reply it
+    /// cannot read itself, where the climber can paste again). Through the same inbox as a
+    /// scan, so it waits for the screen to be free the same way.
+    fun receiveAgentRoutine(reading: AgentRoutine.Reading) {
+        pendingImport = reading.draft
+        pendingImportOrigin = ImportOrigin.Agent(reading.notes)
+        pendingImportError = null
+    }
+
     /// Consume-on-read, so a drain can never present the same scan twice.
-    fun claimPendingImport(): RoutineDraft? {
-        val claimed = pendingImport
+    fun claimPendingImport(): RoutineDraft? = claimPendingImportRequest()?.draft
+
+    /// The draft and where it came from, consumed together.
+    fun claimPendingImportRequest(): ImportRequest? {
+        val claimed = pendingImport?.let { ImportRequest(it, pendingImportOrigin) }
         pendingImport = null
+        pendingImportOrigin = ImportOrigin.Shared
         return claimed
     }
 

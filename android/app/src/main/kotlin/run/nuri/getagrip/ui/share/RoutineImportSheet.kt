@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import run.nuri.getagrip.engine.AgentRoutine
+import run.nuri.getagrip.engine.BlobCodec
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.PlanMath
@@ -45,6 +48,7 @@ import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.RoutineSummary
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
+import run.nuri.getagrip.engine.TargetBandGate
 import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.EdgeMark
@@ -57,6 +61,51 @@ import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
 import run.nuri.getagrip.ui.today.PlanRowFit
 
+/// Where a routine waiting to be imported came from. The preview words itself to match: a
+/// stranger's code is "the sender's", an AI reply is the climber's own words read back, with
+/// what the reader had to change to fit the app.
+sealed interface ImportOrigin {
+    data object Shared : ImportOrigin
+    data class Agent(val notes: List<AgentRoutine.Note>) : ImportOrigin
+}
+
+/// A routine on its way to the preview, with where it came from — claimed from the store's
+/// inbox as one value so the two can never be paired wrongly.
+data class ImportRequest(val draft: RoutineDraft, val origin: ImportOrigin = ImportOrigin.Shared)
+
+/// Today's preview slot survives rotation like the draft alone did: claiming EMPTIED the inbox,
+/// so a lost preview is a routine gone for good. The notes ride as flat strings — a note is
+/// four plain values, and a Bundle holds an `ArrayList<String>` with no Parcelable to keep.
+val OptionalImportRequestSaver: Saver<ImportRequest?, ArrayList<String>> = Saver(
+    save = { request ->
+        val draft = request?.let { BlobCodec.encode(it.draft) }
+        val origin = request?.origin
+        if (draft == null) null else arrayListOf(draft).apply {
+            if (origin is ImportOrigin.Agent) {
+                add("agent")
+                for (note in origin.notes) {
+                    addAll(listOf(note.set?.toString().orEmpty(), note.field.rawValue, note.from, note.to))
+                }
+            }
+        }
+    },
+    restore = { saved ->
+        val draft = saved.firstOrNull()?.let { text -> BlobCodec.decode(text) { RoutineDraft.fromJson(it) } }
+        draft?.let {
+            val origin = if (saved.getOrNull(1) == "agent") {
+                ImportOrigin.Agent(saved.drop(2).chunked(4).mapNotNull { part ->
+                    if (part.size < 4) return@mapNotNull null
+                    val field = AgentRoutine.Field.fromRaw(part[1]) ?: return@mapNotNull null
+                    AgentRoutine.Note(part[0].toIntOrNull(), field, part[2], part[3])
+                })
+            } else {
+                ImportOrigin.Shared
+            }
+            ImportRequest(it, origin)
+        }
+    },
+)
+
 /// The other side of a QR code: somebody else's routine, read out in full, before it is yours.
 ///
 /// A PREVIEW, not an editor: a routine you have not accepted is not yours to correct. Once it
@@ -67,7 +116,11 @@ import run.nuri.getagrip.ui.today.PlanRowFit
 /// very different pairs of fingers. The footnotes cover where that is not the whole story.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
+fun RoutineImportSheet(
+    incoming: RoutineDraft,
+    origin: ImportOrigin = ImportOrigin.Shared,
+    onClose: () -> Unit,
+) {
     val palette = LocalGripPalette.current
     val templates = LocalTemplateStore.current
     val scope = rememberCoroutineScope()
@@ -112,15 +165,17 @@ fun RoutineImportSheet(incoming: RoutineDraft, onClose: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Text(
-                tr("Shared routine"),
+                if (origin is ImportOrigin.Agent) tr("From your AI") else tr("Shared routine"),
                 style = MaterialTheme.typography.titleLarge,
                 color = palette.inkPrimary,
             )
 
             Header(landingName, summary)
+            if (origin is ImportOrigin.Agent) ChangedNotes(origin.notes)
             PlanCard(sets, plan)
             RhythmCard(plan, draft, summary.setCount)
-            Notes(sets, plan)
+            FineTuningCard(plan)
+            Notes(sets, plan, origin)
 
             if (saveFailed) {
                 // STAYS OPEN on a rollback: dismissing loses the code too, and rescanning is somebody
@@ -324,8 +379,15 @@ private fun setDetailLine(set: SetPlan, plan: SessionPlan): String? {
     } else if (percent != null) {
         val lo = Math.round(percent.start * 100)
         val hi = Math.round(percent.endInclusive * 100)
+        // Which max it is of: a percentage of a timed max is a different load.
+        val seconds = set.targetMaxSeconds
         parts.add(
-            if (lo == hi) L10n.tr("%d %% of max", hi) else L10n.tr("%d–%d %% of max", lo, hi)
+            when {
+                seconds != null && lo == hi -> L10n.tr("%d %% of %d s max", hi, seconds)
+                seconds != null -> L10n.tr("%d–%d %% of %d s max", lo, hi, seconds)
+                lo == hi -> L10n.tr("%d %% of max", hi)
+                else -> L10n.tr("%d–%d %% of max", lo, hi)
+            }
         )
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
@@ -402,11 +464,88 @@ private fun cadenceLine(draft: RoutineDraft): String {
     }
 }
 
+// MARK: - Fine tuning
+
+/// Only the settings that differ from a new routine's: a fine-tuning card that repeats four
+/// defaults is four lines nobody reads.
+private fun fineTuningLines(plan: SessionPlan): List<String> {
+    val defaults = SessionPlan()
+    val lines = mutableListOf<String>()
+    when (plan.targetBandGate) {
+        TargetBandGate.outside -> Unit
+        TargetBandGate.below -> lines.add(L10n.tr("The clock pauses only below the target range"))
+        TargetBandGate.off -> lines.add(L10n.tr("The target range never pauses the clock"))
+    }
+    if (!plan.waitForReleaseBeforeRest) {
+        lines.add(L10n.tr("Rests start when the hold ends, not when you let go"))
+    }
+    if (plan.thresholdKg != defaults.thresholdKg) {
+        lines.add(L10n.tr("A pull counts above %s %s", WeightUnits.number(plan.thresholdKg), WeightUnits.symbol))
+    }
+    if (plan.leadInSeconds != defaults.leadInSeconds) {
+        lines.add(L10n.tr("%s lead-in before each set", PlanMath.durationText(plan.leadInSeconds)))
+    }
+    return lines
+}
+
+@Composable
+private fun FineTuningCard(plan: SessionPlan) {
+    val lines = fineTuningLines(plan)
+    // No empty card: the 18 dp spacing would still leave a gap for a routine on defaults.
+    if (lines.isEmpty()) return
+    val palette = LocalGripPalette.current
+    Surface(
+        shape = RoundedCornerShape(Metrics.radiusCard),
+        color = palette.card,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            CapsLabel(tr("FINE TUNING"))
+            lines.forEach { line ->
+                Text(
+                    line,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.Medium,
+                    color = palette.inkPrimary,
+                )
+            }
+        }
+    }
+}
+
+// MARK: - What the reader changed
+
+/// An AI reply the reader had to adjust says so FIRST, above the plan it changed: the assistant
+/// meant one thing and the routine holds another, and that is the line the climber must not
+/// scroll past.
+@Composable
+private fun ChangedNotes(changes: List<AgentRoutine.Note>) {
+    if (changes.isEmpty()) return
+    val palette = LocalGripPalette.current
+    Surface(
+        shape = RoundedCornerShape(Metrics.radiusCard),
+        color = palette.card,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            CapsLabel(tr("CHANGED TO FIT THE APP"))
+            changes.forEach { change ->
+                Text(
+                    change.message,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.Medium,
+                    color = palette.inkSecondary,
+                )
+            }
+        }
+    }
+}
+
 // MARK: - The two honesty notes
 
 /// Each shown only when TRUE of this routine: noise footnotes teach people to stop reading them.
 @Composable
-private fun Notes(sets: List<SetPlan>, plan: SessionPlan) {
+private fun Notes(sets: List<SetPlan>, plan: SessionPlan, origin: ImportOrigin) {
     val palette = LocalGripPalette.current
     /// `PlanMath.targetBand` precedence: a set with typed kilograms never reaches its percentage.
     val hasPercent = sets.any { it.targetBand == null && PlanMath.targetPercent(it, plan) != null }
@@ -425,7 +564,9 @@ private fun Notes(sets: List<SetPlan>, plan: SessionPlan) {
         }
         if (hasKilograms) {
             Text(
-                tr("The sender set some fixed weight targets. Check they suit you."),
+                // An AI routine has no sender: the climber described it themselves.
+                if (origin is ImportOrigin.Agent) tr("Some sets have fixed weight targets. Check they suit you.")
+                else tr("The sender set some fixed weight targets. Check they suit you."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )

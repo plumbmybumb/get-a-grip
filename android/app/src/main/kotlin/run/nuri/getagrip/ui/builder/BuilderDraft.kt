@@ -119,17 +119,12 @@ object BuilderDraft {
 }
 
 
-/// **A draft across a configuration change** (builder and Today's import preview), using the
-/// rescue stash's own JSON, so one serialization must stay lossless. A draft that will not
-/// encode saves nothing and the screen reopens on its seed.
+/// **A draft across a configuration change** (the builder; Today's import preview has its own
+/// `OptionalImportRequestSaver` over the same JSON), using the rescue stash's own JSON, so one
+/// serialization must stay lossless. A draft that will not encode saves nothing and the screen
+/// reopens on its seed.
 val RoutineDraftSaver: Saver<RoutineDraft, String> = Saver(
     save = { BlobCodec.encode(it) },
-    restore = { text -> BlobCodec.decode(text) { RoutineDraft.fromJson(it) } },
-)
-
-/// The same, for a slot that may hold nothing — Today's import preview.
-val OptionalRoutineDraftSaver: Saver<RoutineDraft?, String> = Saver(
-    save = { draft -> draft?.let { BlobCodec.encode(it) } },
     restore = { text -> BlobCodec.decode(text) { RoutineDraft.fromJson(it) } },
 )
 

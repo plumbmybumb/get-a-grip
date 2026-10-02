@@ -27,6 +27,7 @@ import org.robolectric.annotation.GraphicsMode
 import run.nuri.getagrip.GetAGripApplication
 import run.nuri.getagrip.MainActivity
 import run.nuri.getagrip.data.SessionTemplateEntity
+import run.nuri.getagrip.engine.AgentRoutine
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.RoutineShare
@@ -36,6 +37,7 @@ import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.ui.builder.BuilderMode
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -108,6 +110,27 @@ class RootRecreationTests {
         compose.runOnIdle { assertEquals(null, application.templates.pendingImport) }
         recreate()
         compose.onNodeWithText("Shared routine").assertIsDisplayed()
+    }
+
+    /// An AI routine's preview carries what the reader changed; rotating must keep the notes
+    /// along with the draft, since the inbox they came from is already empty.
+    @Test fun anAIRoutinePreviewSurvivesRecreationWithItsChanges() {
+        val reading = assertIs<AgentRoutine.Outcome.Success>(AgentRoutine.read(
+            """{"name": "From AI", "holdSeconds": 200, "fineTuning": {"pauseTheClock": "never"},
+               "sets": [{"edgeMm": 20, "pulls": 3, "target": {"percentOfMax": [60, 70], "max": 10}}]}"""
+        )).reading
+        compose.runOnIdle { application.templates.receiveAgentRoutine(reading) }
+        fun assertPreview() {
+            compose.onNodeWithText("From your AI").assertIsDisplayed()
+            compose.onNodeWithText("CHANGED TO FIT THE APP").assertExists()
+            compose.onNodeWithText("Hold: 200 → 120").assertExists()
+            // Inside the set row's one TalkBack stop, so it is found in the unmerged tree.
+            compose.onNodeWithText("60–70 % of 10 s max", substring = true, useUnmergedTree = true).assertExists()
+            compose.onNodeWithText("The target range never pauses the clock").assertExists()
+        }
+        assertPreview()
+        recreate()
+        assertPreview()
     }
 
     @Test fun aNewMeasurementStartsUnsaved() {

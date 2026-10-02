@@ -238,6 +238,11 @@
       "en": "Pull as hard as you can. The hardest pull is kept, or type a value below.",
       "fr": "Tire aussi fort que possible. Le tirage le plus fort est gardé, ou saisis une valeur ci-dessous.",
       "//": "Android's max entry sheet; iOS dropped this screen's twin."
+    },
+    {
+      "en": "Paste the routine",
+      "fr": "Coller la routine",
+      "//": "Create with AI, step 2. iOS uses the system PasteButton, which brings its own \"Paste\" label; Android reads the clipboard from an ordinary button that needs words."
     }
   ]
 }

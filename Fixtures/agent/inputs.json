@@ -1,0 +1,130 @@
+[
+  {
+    "name": "claude-haiku-recovery-7-3",
+    "text": "Copy this into Get a Grip (New routine › Create with AI):\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Recovery 7:3\",\n  \"hands\": \"alternate\",\n  \"startingHand\": \"left\",\n  \"holdSeconds\": 7,\n  \"restSeconds\": 3,\n  \"setBreakSeconds\": 120,\n  \"sessionsPerDay\": 1,\n  \"sets\": [\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-haiku-max-hangs-timed-max",
+    "text": "Copy this into Get a Grip (New routine › Create with AI):\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Max Hangs\",\n  \"hands\": \"alternate\",\n  \"holdSeconds\": 10,\n  \"restSeconds\": 0,\n  \"setBreakSeconds\": 180,\n  \"sessionsPerDay\": 1,\n  \"target\": {\"percentOfMax\": [90, 90], \"max\": 10},\n  \"fineTuning\": {\"pauseTheClock\": \"below-range\"},\n  \"sets\": [\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-haiku-daily-six-grips",
+    "text": "Copy this into Get a Grip (New routine › Create with AI):\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Daily no-hangs\",\n  \"hands\": \"alternate\",\n  \"startingHand\": \"left\",\n  \"holdSeconds\": 10,\n  \"restSeconds\": 20,\n  \"setBreakSeconds\": 60,\n  \"sessionsPerDay\": 2,\n  \"target\": {\"percentOfMax\": [25, 30], \"max\": \"peak\"},\n  \"fineTuning\": {\"pullCountsAboveKg\": 3, \"leadInSeconds\": 0},\n  \"sets\": [\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"front-3\", \"grip\": \"drag\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"back-3\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"front-2\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"middle-2\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"open-hand\", \"pulls\": 6}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-haiku-french-repeaters",
+    "text": "Copie ça dans Get a Grip (Nouvelle séance › Créer avec l'IA) :\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Répétitions 7:3\",\n  \"hands\": \"both\",\n  \"holdSeconds\": 7,\n  \"restSeconds\": 3,\n  \"setBreakSeconds\": 180,\n  \"sessionsPerDay\": 1,\n  \"target\": {\"percentOfMax\": [40, 50], \"max\": \"peak\"},\n  \"sets\": [\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-sonnet-recovery-7-3",
+    "text": "Copy the code block into Get a Grip (New routine, then Create with AI).\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Abrahangs recovery 7:3\",\n  \"hands\": \"both\",\n  \"holdSeconds\": 7,\n  \"restSeconds\": 3,\n  \"setBreakSeconds\": 120,\n  \"leadInSeconds\": 5,\n  \"sessionsPerDay\": 1,\n  \"sets\": [\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"open-hand\", \"pulls\": 6},\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"open-hand\", \"pulls\": 6},\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"open-hand\", \"pulls\": 6}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-sonnet-max-hangs-timed-max",
+    "text": "Copy the code block into Get a Grip (New routine, then Create with AI).\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Max hangs 90%\",\n  \"hands\": \"one-hand-at-a-time\",\n  \"startingHand\": \"left\",\n  \"holdSeconds\": 10,\n  \"restSeconds\": 0,\n  \"setBreakSeconds\": 180,\n  \"onDemand\": true,\n  \"target\": {\"percentOfMax\": [90, 90], \"max\": 10},\n  \"fineTuning\": {\"pauseTheClock\": \"below-range\"},\n  \"sets\": [\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-sonnet-daily-six-grips",
+    "text": "Copy the code block into Get a Grip (New routine, then Create with AI).\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Daily no-hangs\",\n  \"hands\": \"alternate\",\n  \"startingHand\": \"left\",\n  \"holdSeconds\": 10,\n  \"restSeconds\": 20,\n  \"setBreakSeconds\": 60,\n  \"leadInSeconds\": 0,\n  \"sessionsPerDay\": 2,\n  \"target\": {\"percentOfMax\": [25, 30], \"max\": \"peak\"},\n  \"fineTuning\": {\"pullCountsAboveKg\": 3},\n  \"sets\": [\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"front-3\", \"grip\": \"drag\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"back-3\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"front-2\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"middle-2\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"open-hand\", \"pulls\": 6}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-sonnet-french-repeaters",
+    "text": "Copie le bloc de code dans Get a Grip (New routine, puis Create with AI).\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Répétitions 7/3\",\n  \"hands\": \"both\",\n  \"holdSeconds\": 7,\n  \"restSeconds\": 3,\n  \"setBreakSeconds\": 180,\n  \"sessionsPerDay\": 1,\n  \"target\": {\"percentOfMax\": [40, 50], \"max\": \"peak\"},\n  \"sets\": [\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-opus-recovery-7-3",
+    "text": "Copy this code block into Get a Grip (New routine, then Create with AI).\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Abrahangs recovery 7:3\",\n  \"hands\": \"both\",\n  \"holdSeconds\": 7,\n  \"restSeconds\": 3,\n  \"setBreakSeconds\": 60,\n  \"leadInSeconds\": 5,\n  \"sessionsPerDay\": 1,\n  \"target\": {\"percentOfMax\": [20, 30], \"max\": \"peak\"},\n  \"fineTuning\": {\"pauseTheClock\": \"out-of-range\", \"startRestWhenILetGo\": false},\n  \"sets\": [\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-opus-max-hangs-timed-max",
+    "text": "Copy this code block into Get a Grip (New routine, then Create with AI).\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Max hangs 10s at 90%\",\n  \"hands\": \"one-hand-at-a-time\",\n  \"startingHand\": \"left\",\n  \"holdSeconds\": 10,\n  \"restSeconds\": 30,\n  \"setBreakSeconds\": 180,\n  \"leadInSeconds\": 5,\n  \"onDemand\": true,\n  \"target\": {\"percentOfMax\": [90, 90], \"max\": 10},\n  \"fineTuning\": {\"pauseTheClock\": \"below-range\", \"startRestWhenILetGo\": true},\n  \"sets\": [\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 1}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-opus-daily-six-grips",
+    "text": "Copy this code block into Get a Grip (New routine, then Create with AI).\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Daily no-hangs\",\n  \"hands\": \"alternate\",\n  \"startingHand\": \"left\",\n  \"holdSeconds\": 10,\n  \"restSeconds\": 20,\n  \"setBreakSeconds\": 60,\n  \"leadInSeconds\": 0,\n  \"sessionsPerDay\": 2,\n  \"target\": {\"percentOfMax\": [25, 30], \"max\": \"peak\"},\n  \"fineTuning\": {\"pullCountsAboveKg\": 3},\n  \"sets\": [\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"front-3\", \"grip\": \"drag\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"back-3\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"front-2\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"middle-2\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"open-hand\", \"pulls\": 6}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "claude-opus-french-repeaters",
+    "text": "Copie ce bloc de code dans Get a Grip (New routine, puis Create with AI).\n\n```json\n{\n  \"format\": \"get-a-grip-routine/1\",\n  \"name\": \"Répétitions 7/3 – 20 mm\",\n  \"hands\": \"both\",\n  \"holdSeconds\": 7,\n  \"restSeconds\": 3,\n  \"setBreakSeconds\": 180,\n  \"leadInSeconds\": 5,\n  \"sessionsPerDay\": 1,\n  \"target\": {\"percentOfMax\": [40, 50], \"max\": \"peak\"},\n  \"fineTuning\": {\"startRestWhenILetGo\": false},\n  \"sets\": [\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6},\n    {\"edgeMm\": 20, \"fingers\": \"4\", \"grip\": \"half-crimp\", \"pulls\": 6}\n  ]\n}\n```\n"
+  },
+  {
+    "name": "prose-and-typographic-quotes",
+    "text": "Here you go! Copy this into the app:\n\n“sets” won’t matter, ignore this line.\n\n```\n{ “name”: “Smart quotes”, “holdSeconds”: 8, “sets”: [ { “edgeMm”: 18, “pulls”: 5 } ] }\n```\nEnjoy your training.\n"
+  },
+  {
+    "name": "json5-comments-trailing-commas-bare-keys",
+    "text": "{\n  // a comment the model added\n  name: 'Lenient',\n  hands: 'both',\n  /* block comment */\n  sets: [\n    {edgeMm: 25, grip: 'open-hand', pulls: 4,},\n  ],\n}"
+  },
+  {
+    "name": "snake-case-aliases-and-units",
+    "text": "{\"routine_name\": \"ignored\", \"name\": \"Aliases\", \"hold\": \"7 s\", \"rest\": \"3s\", \"set_break\": \"2 min\", \"lead_in\": 0,\n\"starting_hand\": \"Right\", \"hands\": \"Alternating\",\n\"sets\": [{\"edge_mm\": \"20mm\", \"fingers\": \"Front 3\", \"grip\": \"Half Crimp\", \"reps\": \"6\"}, {\"edge\": 15, \"fingers\": 2, \"grip\": \"full\", \"pulls_per_hand\": 3}]}"
+  },
+  {
+    "name": "out-of-range-values",
+    "text": "{\"name\": \"Too much\", \"holdSeconds\": 200, \"restSeconds\": -5, \"setBreakSeconds\": 2000, \"leadInSeconds\": 90, \"sessionsPerDay\": 7,\n\"fineTuning\": {\"pullCountsAboveKg\": 50},\n\"target\": {\"percentOfMax\": [110, 120], \"max\": 90},\n\"sets\": [{\"edgeMm\": 0, \"pulls\": 0}, {\"edgeMm\": 140, \"pulls\": 250, \"holdSeconds\": 7.5}]}"
+  },
+  {
+    "name": "unknown-words",
+    "text": "{\"hands\": \"sideways\", \"startingHand\": \"middle\", \"fineTuning\": {\"pauseTheClock\": \"sometimes\"},\n\"sets\": [{\"edgeMm\": 20, \"fingers\": \"thumbs\", \"grip\": \"sloper\", \"pulls\": 5}]}"
+  },
+  {
+    "name": "targets-fractions-strings-kg",
+    "text": "{\"name\": \"Targets\", \"target\": {\"kg\": [8, 12]},\n\"sets\": [\n {\"edgeMm\": 20, \"pulls\": 6},\n {\"edgeMm\": 20, \"pulls\": 6, \"target\": {\"percentOfMax\": [0.7, 0.8]}},\n {\"edgeMm\": 20, \"pulls\": 6, \"target\": {\"percent\": \"60-70\", \"max\": \"10s\"}},\n {\"edgeMm\": 20, \"pulls\": 6, \"target\": {\"percentOfMax\": 85, \"max\": \"the big one\"}},\n {\"edgeMm\": 20, \"pulls\": 6, \"target\": {\"kg\": 300}}\n]}"
+  },
+  {
+    "name": "routine-percent-with-timed-max",
+    "text": "{\"target\": {\"percentOfMax\": [80, 90], \"max\": 7}, \"sets\": [{\"edgeMm\": 20, \"pulls\": 3}, {\"edgeMm\": 15, \"pulls\": 3, \"target\": {\"percentOfMax\": [50, 60], \"max\": \"peak\"}}]}"
+  },
+  {
+    "name": "wrapped-in-routine-key",
+    "text": "{\"routine\": {\"name\": \"Wrapped\", \"sets\": [{\"edgeMm\": 22, \"pulls\": 4}]}}"
+  },
+  {
+    "name": "pinch-gets-the-thumb",
+    "text": "{\"sets\": [{\"edgeMm\": 40, \"fingers\": \"4\", \"grip\": \"pinch\", \"pulls\": 3}, {\"edgeMm\": 20, \"fingers\": \"IM\", \"grip\": \"half-crimp\", \"pulls\": 3}, {\"edgeMm\": 20, \"fingers\": \"1\", \"grip\": \"open-hand\", \"pulls\": 2}, {\"edgeMm\": 20, \"fingers\": 3, \"grip\": \"drag\", \"pulls\": 2}]}"
+  },
+  {
+    "name": "on-demand-ignores-sessions",
+    "text": "{\"name\": \"Max day\", \"onDemand\": \"yes\", \"sessionsPerDay\": 3, \"sets\": [{\"edgeMm\": 20, \"pulls\": 1}]}"
+  },
+  {
+    "name": "set-notes-and-missing-pulls",
+    "text": "{\"sets\": [{\"edgeMm\": 20, \"note\": \"  Go easy on the left hand.  \"}, \"not a set\", {\"edgeMm\": 18, \"pulls\": 4, \"restSeconds\": 0}]}"
+  },
+  {
+    "name": "fine-tuning-flattened",
+    "text": "{\"pauseTheClock\": \"never\", \"startRestWhenILetGo\": \"no\", \"pullCountsAboveKg\": \"1.5 kg\", \"sets\": [{\"edgeMm\": 20, \"pulls\": 6}]}"
+  },
+  {
+    "name": "more-than-fifty-sets",
+    "text": "{\"sets\": [{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1},{\"edgeMm\": 20, \"pulls\": 1}]}"
+  },
+  {
+    "name": "absurdly-large-numbers",
+    "text": "{\"holdSeconds\": 1e300, \"restSeconds\": -1e300, \"target\": {\"percentOfMax\": [50, 60], \"max\": 1e300}, \"sets\": [{\"edgeMm\": 20, \"fingers\": 1e300, \"pulls\": 1e19}]}"
+  },
+  {
+    "name": "error-no-json",
+    "text": "I'd suggest 6 sets of 7:3 repeaters on a 20 mm edge at 40-50% of your max. Want me to write the routine?"
+  },
+  {
+    "name": "error-truncated",
+    "text": "```json\n{\"name\": \"Cut off\", \"sets\": [{\"edgeMm\": 20, \"pulls\": 6},\n"
+  },
+  {
+    "name": "error-empty-sets",
+    "text": "{\"name\": \"Nothing\", \"sets\": []}"
+  },
+  {
+    "name": "error-no-sets-key",
+    "text": "{\"name\": \"No sets at all\", \"holdSeconds\": 10}"
+  },
+  {
+    "name": "error-newer-format",
+    "text": "{\"format\": \"get-a-grip-routine/2\", \"sets\": [{\"edgeMm\": 20, \"pulls\": 6}]}"
+  },
+  {
+    "name": "error-sets-not-a-list",
+    "text": "{\"sets\": \"six sets of six\"}"
+  }
+]

@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: brew install xcodegen
       - run: ./build.sh test
-      - run: ./Fixtures/tools/oracle/build.sh && ./Fixtures/tools/oracle/build/oracle runner verify Fixtures
+      - run: ./Fixtures/tools/oracle/build.sh && ./Fixtures/tools/oracle/build/oracle runner verify Fixtures && ./Fixtures/tools/oracle/build/oracle agent verify Fixtures
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

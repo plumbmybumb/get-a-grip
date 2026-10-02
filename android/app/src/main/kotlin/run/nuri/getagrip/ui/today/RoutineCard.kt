@@ -118,6 +118,8 @@ fun RoutineCard(
     onShare: () -> Unit = {},
     /// Read somebody ELSE's code. Android-only; see the note on `TodayMenu`.
     onScan: () -> Unit = {},
+    /// A routine written by the climber's AI chat, read back from the clipboard.
+    onCreateWithAI: () -> Unit = {},
     onDelete: () -> Unit = {},
     onDemo: () -> Unit = {},
 ) {
@@ -177,6 +179,7 @@ fun RoutineCard(
                     onStartTimerOnly = onStartTimerOnly,
                     onShare = onShare,
                     onScan = onScan,
+                    onCreateWithAI = onCreateWithAI,
                     onDelete = onDelete,
                 )
                 CompletionRow(summary, completionText)
@@ -203,6 +206,7 @@ private fun TitleRow(
     onStartTimerOnly: () -> Unit,
     onShare: () -> Unit,
     onScan: () -> Unit,
+    onCreateWithAI: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val palette = LocalGripPalette.current
@@ -261,6 +265,7 @@ private fun TitleRow(
                 onStartTimerOnly = onStartTimerOnly,
                 onShare = onShare,
                 onScan = onScan,
+                onCreateWithAI = onCreateWithAI,
                 onDelete = onDelete,
             )
         }

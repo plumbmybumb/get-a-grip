@@ -53,17 +53,18 @@ import kotlinx.coroutines.withContext
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.L10n
-import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.RoutineShare
 import run.nuri.getagrip.store.LocalDayClock
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.store.LocalHistoryFeed
 import run.nuri.getagrip.store.LocalTemplateStore
-import run.nuri.getagrip.ui.builder.OptionalRoutineDraftSaver
 import run.nuri.getagrip.ui.components.DeviceChip
 import run.nuri.getagrip.ui.components.UndoSnackbar
 import run.nuri.getagrip.ui.components.UndoSnackbarEffect
 import run.nuri.getagrip.ui.l10n.tr
+import run.nuri.getagrip.ui.share.AgentRoutineSheet
+import run.nuri.getagrip.ui.share.ImportRequest
+import run.nuri.getagrip.ui.share.OptionalImportRequestSaver
 import run.nuri.getagrip.ui.share.RoutineImportSheet
 import run.nuri.getagrip.ui.share.RoutineShareRequest
 import run.nuri.getagrip.ui.share.RoutineShareSheet
@@ -122,11 +123,13 @@ fun TodayScreen(
     ///
     /// SAVED across rotation: claiming EMPTIED the inbox, so a lost preview was a shared routine
     /// gone for good.
-    var importPreview by rememberSaveable(stateSaver = OptionalRoutineDraftSaver) { mutableStateOf<RoutineDraft?>(null) }
+    var importPreview by rememberSaveable(stateSaver = OptionalImportRequestSaver) { mutableStateOf<ImportRequest?>(null) }
     var importError by rememberSaveable { mutableStateOf<String?>(null) }
     /// The scanner could not open at all (no Play services, module not downloaded). Separate
     /// from `importError`, which is about a code that WAS read.
     var scannerError by remember { mutableStateOf<String?>(null) }
+    /// "Create with AI" is up. Its routine reaches the inbox only once the sheet has gone.
+    var creatingWithAI by rememberSaveable { mutableStateOf(false) }
     var overviewID by rememberSaveable { mutableStateOf<String?>(null) }
     val overview = routines.firstOrNull { it.id.toString() == overviewID }
 
@@ -134,13 +137,14 @@ fun TodayScreen(
     /// presentation closes. Nothing here or in the host may be up.
     fun drainImportInbox() {
         if (!canPresentImport) return
-        if (shareRequest != null || importPreview != null || importError != null || overviewID != null) return
+        if (shareRequest != null || importPreview != null || importError != null || overviewID != null ||
+            creatingWithAI) return
         val message = templates.claimPendingImportError()
         if (message != null) {
             importError = message
             return
         }
-        templates.claimPendingImport()?.let { importPreview = it }
+        templates.claimPendingImportRequest()?.let { importPreview = it }
     }
 
     // Arrival. Every presentation below drains again on dismissal, so a scan that landed
@@ -234,8 +238,9 @@ fun TodayScreen(
                     Modifier.padding(horizontal = Metrics.hPadding),
                     showsGaugeNote = !device.state.isConnected,
                     onBuild = onBuild,
-                    // With no routine there is no card menu: this is the ONLY scanner door here.
+                    // With no routine there is no card menu: these are the ONLY doors here.
                     onScan = startScan,
+                    onCreateWithAI = { creatingWithAI = true },
                 )
             } else {
                 // FULL-BLEED, so the neighbouring card peeks at the edge; the deck's own content padding
@@ -260,6 +265,7 @@ fun TodayScreen(
                     onMakePrimary = { routine -> scope.launch { templates.makePrimary(routine) } },
                     onShare = ::share,
                     onScan = startScan,
+                    onCreateWithAI = { creatingWithAI = true },
                     onDelete = { routine ->
                         scope.launch {
                             // Leaves the deck only once the delete landed; the same guard raises the Undo.
@@ -321,8 +327,24 @@ fun TodayScreen(
         }
     }
 
-    importPreview?.let { draft ->
-        RoutineImportSheet(draft) {
+    if (creatingWithAI) {
+        AgentRoutineSheet(
+            onRoutine = { reading ->
+                // Same hand-off as a scan: into the inbox once this sheet is gone, so the
+                // preview never stacks on top of it.
+                creatingWithAI = false
+                templates.receiveAgentRoutine(reading)
+                drainImportInbox()
+            },
+            onClose = {
+                creatingWithAI = false
+                drainImportInbox()
+            },
+        )
+    }
+
+    importPreview?.let { request ->
+        RoutineImportSheet(request.draft, request.origin) {
             importPreview = null
             drainImportInbox()
         }

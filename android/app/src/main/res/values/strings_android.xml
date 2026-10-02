@@ -57,4 +57,5 @@
     <string name="a_used_for_both_hands_pick_a_hand_if_yours_differ">Used for both hands. Pick a hand if yours differ.</string>
     <string name="a_only_your_s_hand_the_other_hand_needs_its_own_max">Only your %s hand. The other hand needs its own max.</string>
     <string name="a_pull_as_hard_as_you_can_the_hardest_pull_is_kept_or_type">Pull as hard as you can. The hardest pull is kept, or type a value below.</string>
+    <string name="a_paste_the_routine">Paste the routine</string>
 </resources>

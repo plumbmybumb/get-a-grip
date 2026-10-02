@@ -68,6 +68,9 @@ struct TodayView: View {
     @State private var shareFailed = false
     @State private var scanningRoutine = false
     @State private var scannedRoutine: String?
+    /// "Create with AI": the sheet is up, and the routine it read, held until it has gone.
+    @State private var creatingWithAI = false
+    @State private var agentReading: AgentRoutine.Reading?
     /// The scanned routine ON SCREEN, claimed from the store's inbox by
     /// `drainImportInbox()`. Here, not in `RootTabView` where the link arrives, because
     /// this view owns every presentation a scan can collide with: presenting from the root
@@ -82,7 +85,7 @@ struct TodayView: View {
     private var canPresentImport: Bool {
         builder == nil && running == nil && pendingStartID == nil
             && overview == nil && pendingOverviewEditID == nil
-            && !loggingSession && shareRequest == nil && !scanningRoutine
+            && !loggingSession && shareRequest == nil && !scanningRoutine && !creatingWithAI
             && !showingGauge && importPreview == nil && importError == nil
     }
 
@@ -108,8 +111,8 @@ struct TodayView: View {
         guard canPresentImport else { return }
         if let message = templates.claimPendingImportError() {
             importError = message
-        } else if let draft = templates.claimPendingImport() {
-            importPreview = ImportRequest(draft: draft)
+        } else if let request = templates.claimPendingImportRequest() {
+            importPreview = ImportRequest(draft: request.draft, origin: request.origin)
         }
     }
 
@@ -221,6 +224,20 @@ struct TodayView: View {
         .sheet(item: $shareRequest, onDismiss: { drainImportInbox() }) { request in
             RoutineShareSheet(request: request) { shareRequest = nil }
         }
+        .sheet(isPresented: $creatingWithAI, onDismiss: {
+            // Same hand-off as a scan: into the inbox once this sheet is gone, so the
+            // preview never stacks on top of it.
+            if let reading = agentReading {
+                agentReading = nil
+                templates.receiveAgentRoutine(reading)
+            }
+            drainImportInbox()
+        }) {
+            AgentRoutineSheet(onRoutine: { reading in
+                agentReading = reading
+                creatingWithAI = false
+            }, onClose: { creatingWithAI = false })
+        }
         .sheet(isPresented: $scanningRoutine, onDismiss: {
             // Route only after the camera sheet has dismissed; the inbox owns
             // validation, errors and the preview.
@@ -250,7 +267,7 @@ struct TodayView: View {
         // The import inbox's two outlets. Every presentation above drains again on
         // dismissal, so a scan that landed mid-cover appears once the screen is free.
         .sheet(item: $importPreview, onDismiss: { drainImportInbox() }) { request in
-            RoutineImportSheet(draft: request.draft)
+            RoutineImportSheet(draft: request.draft, origin: request.origin)
         }
         // Non-constant binding, same reason as the saveError alert in RootTabView; the
         // setter drains so an import queued behind the error appears once it is read.
@@ -411,7 +428,7 @@ struct TodayView: View {
             .accessibilityLabel("New routine")
             .accessibilityHint("Opens the routine builder.")
             .matchedTransitionSource(id: BuilderMode.addAnother.zoomID, in: zoom)
-            scanRoutineButton
+            otherWaysIn
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -421,17 +438,49 @@ struct TodayView: View {
         )
     }
 
+    /// The two other ways a routine arrives, as quiet secondary actions under the one that
+    /// builds it (the scan action hierarchy rule): side by side, stacked when big text
+    /// will not fit them on one row.
+    private var otherWaysIn: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 4) {
+                scanRoutineButton
+                createWithAIButton
+            }
+            VStack(spacing: 0) {
+                scanRoutineButton
+                createWithAIButton
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     private var scanRoutineButton: some View {
-        Button { scanningRoutine = true } label: {
-            Label("Scan a routine", systemImage: "qrcode.viewfinder")
+        quietAction(String(localized: "Scan a routine"), systemImage: "qrcode.viewfinder") {
+            scanningRoutine = true
+        }
+    }
+
+    private var createWithAIButton: some View {
+        quietAction(String(localized: "Create with AI"), systemImage: "sparkles") {
+            creatingWithAI = true
+        }
+        .accessibilityIdentifier("today.createWithAI")
+    }
+
+    private func quietAction(_ title: String, systemImage: String,
+                             action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
                 .font(.system(.footnote, weight: .medium))
                 .foregroundStyle(Ink.secondary)
+                .lineLimit(1)
+                .fixedSize()
                 .padding(.horizontal, 12)
                 .frame(minHeight: 44)
                 .contentShape(.rect)
         }
         .buttonStyle(PressFeedbackButtonStyle())
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Cards
@@ -494,7 +543,7 @@ struct TodayView: View {
                     builder = .firstRun
                 }
 
-                scanRoutineButton
+                otherWaysIn
 
                 if !device.state.isConnected {
                     // Answers "do I need the hardware first?" exactly when it occurs.

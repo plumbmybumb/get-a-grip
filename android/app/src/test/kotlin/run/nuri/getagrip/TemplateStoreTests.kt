@@ -17,6 +17,7 @@ import run.nuri.getagrip.data.GetAGripDatabase
 import run.nuri.getagrip.data.MaxRecordEntity
 import run.nuri.getagrip.data.SessionTemplateEntity
 import run.nuri.getagrip.data.WorkoutLogEntity
+import run.nuri.getagrip.engine.AgentRoutine
 import run.nuri.getagrip.engine.DayRecord
 import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.FingerSet
@@ -46,12 +47,14 @@ import run.nuri.getagrip.store.RoomStoreGateway
 import run.nuri.getagrip.store.StoreGateway
 import run.nuri.getagrip.store.StoreWriter
 import run.nuri.getagrip.store.TemplateStore
+import run.nuri.getagrip.ui.share.ImportOrigin
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -457,6 +460,27 @@ class TemplateStoreTests {
             w.store.claimPendingImportError(),
         )
         assertNull(w.store.pendingImportError)
+    }
+
+    /// "Create with AI" rides the scan's inbox, so it waits for a free screen the same way;
+    /// its origin travels WITH the draft, and a later scan never inherits the AI's notes.
+    @Test
+    fun anAIRoutineArrivesThroughTheSameInboxWithItsNotes() = runTest {
+        val w = makeWorld()
+        val outcome = AgentRoutine.read("""{"holdSeconds": 200, "sets": [{"edgeMm": 20, "pulls": 6}]}""")
+        val reading = assertIs<AgentRoutine.Outcome.Success>(outcome).reading
+
+        w.store.receiveAgentRoutine(reading)
+        val claimed = assertNotNull(w.store.claimPendingImportRequest())
+        assertEquals(reading.draft, claimed.draft)
+        assertEquals(listOf("hold:200->120"), assertIs<ImportOrigin.Agent>(claimed.origin).notes.map { it.code })
+        assertNull(w.store.pendingImport, "a claim consumes the slot")
+        assertEquals(ImportOrigin.Shared, w.store.pendingImportOrigin, "and the origin with it")
+
+        w.store.receiveAgentRoutine(reading)
+        w.store.receiveShareLink(assertNotNull(RoutineShare.url(RoutineDraft.starter)))
+        assertEquals(ImportOrigin.Shared, assertNotNull(w.store.claimPendingImportRequest()).origin,
+            "latest arrival wins, and a scan is the sender's routine")
     }
 
     /// The name the preview promises must be the name the card wears — deconfliction

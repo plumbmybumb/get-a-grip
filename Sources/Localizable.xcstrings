@@ -151,6 +151,16 @@
         }
       }
     },
+    "%@ lead-in before each set" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décompte de %@ avant chaque série"
+          }
+        }
+      }
+    },
     "%@ of %lld s max" : {
       "localizations" : {
         "fr" : {
@@ -201,12 +211,32 @@
         }
       }
     },
+    "%@: %@ → %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ : %2$@ → %3$@"
+          }
+        }
+      }
+    },
     "%@–%@ %% of %lld s max" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@–%2$@ %% de ton max sur %3$lld s"
+          }
+        }
+      }
+    },
+    "%lld %% of %lld s max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld %% du max %2$lld s"
           }
         }
       }
@@ -291,12 +321,52 @@
         }
       }
     },
+    "%lld–%lld %% of %lld s max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld–%2$lld %% du max %3$lld s"
+          }
+        }
+      }
+    },
     ", %lld second max" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : ", max sur %lld secondes"
+          }
+        }
+      }
+    },
+    "1 · GIVE THE AI THE INSTRUCTIONS" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 · DONNE LES INSTRUCTIONS À L'IA"
+          }
+        }
+      }
+    },
+    "2 · PASTE THE ROUTINE" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2 · COLLE LA ROUTINE"
+          }
+        }
+      }
+    },
+    "A pull counts above %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un tirage compte au-dessus de %1$@ %2$@"
           }
         }
       }
@@ -351,12 +421,112 @@
         }
       }
     },
+    "CHANGED TO FIT THE APP" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AJUSTÉ POUR L'APP"
+          }
+        }
+      }
+    },
+    "Copy instructions" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier les instructions"
+          }
+        }
+      }
+    },
+    "Couldn't find a routine in what you pasted. Copy the AI's code block and try again." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune routine dans ce que tu as collé. Copie le bloc de code de l'IA et réessaie."
+          }
+        }
+      }
+    },
+    "Couldn't read this routine. Ask the AI to write it again as one code block." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de lire cette routine. Demande à l'IA de la réécrire en un seul bloc de code."
+          }
+        }
+      }
+    },
+    "Create with AI" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer avec l'IA"
+          }
+        }
+      }
+    },
+    "Describe your routine to ChatGPT, Claude or any AI chat in your own words. It writes the routine in a form Get a Grip can read." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décris ta routine avec tes mots à ChatGPT, Claude ou toute autre IA. Elle l'écrit dans un format que Get a Grip sait lire."
+          }
+        }
+      }
+    },
     "Done — let go" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fini — relâche"
+          }
+        }
+      }
+    },
+    "FINE TUNING" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RÉGLAGES FINS"
+          }
+        }
+      }
+    },
+    "Fingers" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Doigts"
+          }
+        }
+      }
+    },
+    "First hand" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Première main"
+          }
+        }
+      }
+    },
+    "From your AI" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De ton IA"
           }
         }
       }
@@ -377,6 +547,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dernière moyenne sur %lld s"
+          }
+        }
+      }
+    },
+    "Lead-in" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Décompte"
           }
         }
       }
@@ -441,6 +621,16 @@
         }
       }
     },
+    "Paste them into a new chat. The AI asks how you want to train, then writes the routine." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colle-les dans une nouvelle conversation. L'IA te demande comment tu veux t'entraîner, puis écrit la routine."
+          }
+        }
+      }
+    },
     "Pause the clock" : {
       "localizations" : {
         "fr" : {
@@ -491,12 +681,52 @@
         }
       }
     },
+    "Reads the routine the AI wrote." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lit la routine écrite par l'IA."
+          }
+        }
+      }
+    },
+    "Rests start when the hold ends, not when you let go" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le repos démarre à la fin de la tenue, pas quand tu relâches"
+          }
+        }
+      }
+    },
     "Routine target: %@ of your %lld s max. No %lld s max for this grip yet." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cible de la routine : %1$@ de ton max sur %2$lld s. Pas encore de max sur %3$lld s pour cette prise."
+          }
+        }
+      }
+    },
+    "Set %lld · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Série %1$lld · %2$@"
+          }
+        }
+      }
+    },
+    "Share to an app" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partager vers une app"
           }
         }
       }
@@ -511,12 +741,42 @@
         }
       }
     },
+    "Some sets have fixed weight targets. Check they suit you." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certaines séries ont des cibles de poids fixes. Vérifie qu'elles te conviennent."
+          }
+        }
+      }
+    },
     "Start the test" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lancer le test"
+          }
+        }
+      }
+    },
+    "Target" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cible"
+          }
+        }
+      }
+    },
+    "The clock pauses only below the target range" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le chrono se met en pause seulement sous la plage cible"
           }
         }
       }
@@ -531,12 +791,52 @@
         }
       }
     },
+    "The target range never pauses the clock" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La plage cible ne met jamais le chrono en pause"
+          }
+        }
+      }
+    },
+    "This routine has no sets. Ask the AI to add at least one." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette routine n'a aucune série. Demande à l'IA d'en ajouter au moins une."
+          }
+        }
+      }
+    },
+    "Timed max" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max chronométré"
+          }
+        }
+      }
+    },
     "Too short · held %@ of %lld s" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Trop court · tenu %1$@ s sur %2$lld"
+          }
+        }
+      }
+    },
+    "When the AI has written the code block, copy it and paste it here. You'll see the routine before it's saved." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quand l'IA a écrit le bloc de code, copie-le et colle-le ici. Tu verras la routine avant qu'elle soit enregistrée."
           }
         }
       }

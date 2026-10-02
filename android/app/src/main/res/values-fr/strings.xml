@@ -45,6 +45,7 @@
     <string name="s_is_verified_on_real_hardware">%1$s est vérifié sur du vrai matériel. %2$s</string>
     <string name="s_kg_kg">"%1$s kg  →  %2$s kg"</string>
     <string name="s_kilograms_your_hardest_pull">%s kilogrammes, ton tirage le plus fort</string>
+    <string name="s_lead_in_before_each_set_ce038b">Décompte de %s avant chaque série</string>
     <string name="s_needs_a_one_time_calibration_lookup_from_its_maker_by_se">%s demande une recherche unique de calibration auprès de son fabricant, par numéro de série. Elle est ensuite gardée sur ce téléphone. Aucun autre capteur n\'utilise de serveur.</string>
     <string name="s_of_lld_s_max_959f72">%1$s du max sur %2$d s</string>
     <string name="s_of_each_hand_s_max">%1$s du max de chaque main · %2$s %3$s</string>
@@ -92,6 +93,7 @@
     <string name="s_up_next">%s. À suivre.</string>
     <string name="s_x_5516fb">%1$s : %2$s</string>
     <string name="s_x_916317">%1$s : %2$s\n%3$s : %4$s\n%5$s : %6$s\n%7$s : %8$s</string>
+    <string name="s_x_07aa1c">%1$s : %2$s → %3$s</string>
     <string name="s_the_first_max_on_this_grip">%1$s : %2$s, premier max sur cette prise</string>
     <string name="s_up_from">%1$s : %2$s (avant %3$s)</string>
     <string name="s_lld_of_lld_completed">%1$s : %2$d sur %3$d effectués</string>
@@ -105,6 +107,7 @@
     <string name="s_kg_target">cible %1$s–%2$s kg</string>
     <string name="s_lld_16070a">%d</string>
     <string name="s_lld_80890b">%d %%</string>
+    <string name="s_lld_of_lld_s_max">%1$d %% du max %2$d s</string>
     <string name="s_lld_of_body_weight">%d %% du poids du corps</string>
     <string name="s_lld_of_max">%d %% du max</string>
     <string name="s_lld_of_your_max">%d %% de ton max</string>
@@ -205,6 +208,7 @@
     <string name="s_lld_a_day">%d× par jour</string>
     <string name="s_lld_a_day_each">%1$d× par jour · %2$s chacune</string>
     <string name="s_lld_lld_af72da">%1$d–%2$d %%</string>
+    <string name="s_lld_lld_of_lld_s_max">%1$d–%2$d %% du max %3$d s</string>
     <string name="s_lld_lld_of_max">%1$d–%2$d %% du max</string>
     <string name="s_lld_lld_mm">%1$d–%2$d mm</string>
     <string name="s_hand_f5b987">, main %s</string>
@@ -215,8 +219,10 @@
     <string name="s_battery_lld_percent">. Batterie %d pour cent</string>
     <string name="s_peak_target_lld_percent_of_max">. Cible maximale %d pour cent du max.</string>
     <string name="s_1_pull_total">1 tirage au total</string>
+    <string name="s_1_give_the_ai_the_instructions">1 · DONNE LES INSTRUCTIONS À L\'IA</string>
     <string name="s_1h">1 h</string>
     <string name="s_1h30">1 h 30</string>
+    <string name="s_2_paste_the_routine">2 · COLLE LA ROUTINE</string>
     <string name="s_20_30_of_that_is">20–30 %% de cela représente %1$s–%2$s %3$s</string>
     <string name="s_20_30_of_that_is_kg">20–30 %% de ça fait %1$s–%2$s kg</string>
     <string name="s_24_pulls_on_one_hand_then_24_on_the_other_about_8_minute">24 tirages d\'une main, puis 24 de l\'autre. Environ 8 minutes, un résultat par main.</string>
@@ -240,7 +246,8 @@
     <string name="s_a_number_you_set_yourself_measure_it_on_the_gauge_if_you">Un nombre que tu fixes toi-même. Mesure-le au capteur si tu préfères ne pas deviner.</string>
     <string name="s_a_pinch_always_includes_the_thumb_c3d051">Une pince inclut toujours le pouce</string>
     <string name="s_a_pinch_always_includes_the_thumb_baeb2e">Une pince inclut toujours le pouce.</string>
-    <string name="s_a_pull_counts_above">Un tirage compte au-dessus de</string>
+    <string name="s_a_pull_counts_above_bb107c">Un tirage compte au-dessus de</string>
+    <string name="s_a_pull_counts_above_e39e7c">Un tirage compte au-dessus de %1$s %2$s</string>
     <string name="s_a_rating_helps_other_climbers_find_get_a_grip">Une note aide d\'autres grimpeurs à trouver Get a Grip.</string>
     <string name="s_a_session_on_the_board">Une séance sur la poutre.</string>
     <string name="s_a_text_file_of_the_last_few_minutes_of_gauge_connection">Un fichier texte des dernières minutes d\'événements de connexion du capteur.</string>
@@ -314,6 +321,7 @@
     <string name="s_build_my_routine">Créer ma routine</string>
     <string name="s_build_your_hang_routine">Crée ta routine de suspensions</string>
     <string name="s_c4_max">Max C4</string>
+    <string name="s_changed_to_fit_the_app">AJUSTÉ POUR L\'APP</string>
     <string name="s_connecting_48b998">CONNEXION</string>
     <string name="s_critical_force_0bb609">FORCE CRITIQUE</string>
     <string name="s_csv">CSV · %s</string>
@@ -358,6 +366,7 @@
     <string name="s_control_point_is_not_writable">Le point de contrôle n\'est pas inscriptible</string>
     <string name="s_copied">Copié</string>
     <string name="s_copy">Copier</string>
+    <string name="s_copy_instructions">Copier les instructions</string>
     <string name="s_copy_of">Copie de %s</string>
     <string name="s_copy_the_diagnostics_to_the_clipboard">Copier les diagnostics dans le presse-papiers</string>
     <string name="s_copy_the_support_address_to_the_clipboard">Copier l\'adresse d\'assistance dans le presse-papiers</string>
@@ -365,10 +374,12 @@
     <string name="s_couldn_t_build_a_share_code_for_this_routine">Impossible de créer un code de partage pour cette routine.</string>
     <string name="s_couldn_t_connect">Connexion impossible</string>
     <string name="s_couldn_t_delete_this_max_try_again">Impossible de supprimer ce max. Réessaie.</string>
+    <string name="s_couldn_t_find_a_routine_in_what_you_pasted_copy_the_ai_s">Aucune routine dans ce que tu as collé. Copie le bloc de code de l\'IA et réessaie.</string>
     <string name="s_couldn_t_import">Import impossible</string>
     <string name="s_couldn_t_load_your_routines_so_the_new_one_wasn_t_saved">Impossible de charger tes routines, la nouvelle n\'a donc pas été enregistrée.</string>
     <string name="s_couldn_t_prepare_a_shareable_image_the_code_above_still">Impossible de préparer une image à partager. Le code ci-dessus se scanne toujours.</string>
     <string name="s_couldn_t_read_this_routine_code_it_may_be_damaged">Impossible de lire ce code de routine. Il est peut-être abîmé.</string>
+    <string name="s_couldn_t_read_this_routine_ask_the_ai_to_write_it_again">Impossible de lire cette routine. Demande à l\'IA de la réécrire en un seul bloc de code.</string>
     <string name="s_couldn_t_save">Enregistrement impossible</string>
     <string name="s_couldn_t_save_the_change_try_again">Impossible d\'enregistrer la modification. Réessaie.</string>
     <string name="s_couldn_t_save_the_change">Impossible d\'enregistrer la modification : %s</string>
@@ -380,6 +391,7 @@
     <string name="s_couldn_t_save_your_measurements_are_still_here_try_again">Impossible d’enregistrer. Tes mesures sont toujours là — réessaie.</string>
     <string name="s_counting">Décompte</string>
     <string name="s_counts_as_one_session_for">Compte comme une séance pour %s.</string>
+    <string name="s_create_with_ai">Créer avec l\'IA</string>
     <string name="s_critical_force_648670">Force critique</string>
     <string name="s_critical_force_dd9046">Force critique %1$s %2$s</string>
     <string name="s_critical_force_since">Force critique %1$s de %2$s %3$s depuis %4$s</string>
@@ -412,6 +424,7 @@
     <string name="s_delete_this_session_on">Supprimer cette séance, %1$s le %2$s</string>
     <string name="s_deleting_a_session_also_removes_it_from_your_streak_and">Supprimer une séance la retire aussi de ta série et de tes tendances.</string>
     <string name="s_demo_device">Appareil de démo</string>
+    <string name="s_describe_your_routine_to_chatgpt_claude_or_any_ai_chat_i">Décris ta routine avec tes mots à ChatGPT, Claude ou toute autre IA. Elle l\'écrit dans un format que Get a Grip sait lire.</string>
     <string name="s_device">Appareil</string>
     <string name="s_device_asleep">Appareil en veille</string>
     <string name="s_device_compatibility">Compatibilité des capteurs</string>
@@ -467,15 +480,18 @@
     <string name="s_export_for_analysis">Exporter pour analyse</string>
     <string name="s_export_workout">Exporter la séance</string>
     <string name="s_fc">AR</string>
+    <string name="s_fine_tuning_5759b5">RÉGLAGES FINS</string>
     <string name="s_fingers_804c25">DOIGTS</string>
-    <string name="s_fine_tuning">Réglages fins</string>
+    <string name="s_fine_tuning_091774">Réglages fins</string>
     <string name="s_finger_curl">Flexion</string>
+    <string name="s_fingers_9cb27a">Doigts</string>
     <string name="s_fingers_c8a2d1">Doigts %s</string>
     <string name="s_fingers_on_the_edge">Doigts sur la réglette</string>
     <string name="s_finish">Terminer</string>
     <string name="s_finish_test_now">Terminer le test maintenant</string>
     <string name="s_finish_with_hand_only">Terminer avec la main %s seulement</string>
     <string name="s_firmware">Micrologiciel</string>
+    <string name="s_first_hand">Première main</string>
     <string name="s_for_both_hands">Pour les deux mains</string>
     <string name="s_for_rest_days_max_days_and_more">Pour les jours de repos, de max, et plus.</string>
     <string name="s_for_the_hand_only">Uniquement pour la main %s</string>
@@ -492,6 +508,7 @@
     <string name="s_frez_sent_an_answer_this_app_could_not_read">Frez a envoyé une réponse que cette app n\'a pas pu lire.</string>
     <string name="s_from">De</string>
     <string name="s_from_on_the_first_pull_to_on_the_last">De %1$s au premier tirage à %2$s au dernier</string>
+    <string name="s_from_your_ai">De ton IA</string>
     <string name="s_front_2">Avant 2</string>
     <string name="s_front_3">Avant 3</string>
     <string name="s_frosted">Givré</string>
@@ -594,7 +611,8 @@
     <string name="s_last_pull_e9fb36">Dernier tirage</string>
     <string name="s_last_pull_64f22b">Dernier tirage %1$s %2$s</string>
     <string name="s_last">Dernier : %1$s · %2$s</string>
-    <string name="s_lead_in_before_each_set">Décompte avant chaque série</string>
+    <string name="s_lead_in">Décompte</string>
+    <string name="s_lead_in_before_each_set_d6ca0a">Décompte avant chaque série</string>
     <string name="s_leave_demo_mode">Quitter le mode démo</string>
     <string name="s_leave_them_as_they_are">Les laisser telles quelles</string>
     <string name="s_left_8ae1c3">Gauche</string>
@@ -777,6 +795,7 @@
     <string name="s_pull_639ef3">TIRE</string>
     <string name="s_pull_to_start">TIRE POUR COMMENCER</string>
     <string name="s_page">Page</string>
+    <string name="s_paste_them_into_a_new_chat_the_ai_asks_how_you_want_to_t">Colle-les dans une nouvelle conversation. L\'IA te demande comment tu veux t\'entraîner, puis écrit la routine.</string>
     <string name="s_pause">Pause</string>
     <string name="s_pause_is_unavailable_while_connecting">La pause est indisponible pendant la connexion.</string>
     <string name="s_pause_the_clock">Pause du chrono</string>
@@ -833,6 +852,7 @@
     <string name="s_rhythm_4665ba">RYTHME</string>
     <string name="s_right_952532">DROITE</string>
     <string name="s_right_hand_next_0ba39f">MAIN DROITE ENSUITE</string>
+    <string name="s_reads_the_routine_the_ai_wrote">Lit la routine écrite par l\'IA.</string>
     <string name="s_recent_connection_events_kept_in_memory_only_and_cleared">Événements de connexion récents. Gardés en mémoire seulement et effacés quand l\'app se ferme.</string>
     <string name="s_record_another_test">Enregistrer un nouveau test</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Enregistre ce que tu peux tenir sur chaque prise, par main si elles diffèrent, et mesures-en un au capteur d\'ici. Les pourcentages en ont besoin ; les kilos non.</string>
@@ -848,6 +868,7 @@
     <string name="s_rest_b79e5f">Repos</string>
     <string name="s_rest_between_pulls">Repos entre les tirages</string>
     <string name="s_restarts_a_stalled_reading">Relance une mesure bloquée.</string>
+    <string name="s_rests_start_when_the_hold_ends_not_when_you_let_go">Le repos démarre à la fin de la tenue, pas quand tu relâches</string>
     <string name="s_resume">Reprendre</string>
     <plurals name="s_review_lld_pulls">
         <item quantity="one">Revoir %d tirage</item>
@@ -918,10 +939,11 @@
     <string name="s_sessions_and_trends">Séances et tendances</string>
     <string name="s_sessions_lld_max_records_lld">Séances : %1$d · Max enregistrés : %2$d</string>
     <string name="s_set_448ab7">Série</string>
-    <string name="s_set_lld">Série %d</string>
+    <string name="s_set_lld_beffc9">Série %d</string>
     <string name="s_set_lld_of_lld_8e1097">Série %1$d sur %2$d</string>
     <string name="s_set_lld_of_lld_f52e6b">Série %1$d sur %2$d · %3$s</string>
     <string name="s_set_lld_of_lld_pull_lld_of_lld_hand">Série %1$d sur %2$d, tirage %3$d sur %4$d, main %5$s, %6$s</string>
+    <string name="s_set_lld_a2a06d">Série %1$d · %2$s</string>
     <string name="s_set_removed">Série retirée</string>
     <string name="s_sets_2ab262">Séries</string>
     <string name="s_sets_the_reading_to_zero">Remet la mesure à zéro.</string>
@@ -935,6 +957,7 @@
     <string name="s_share_the_code">Partager le code</string>
     <string name="s_share_the_document">Partager le document</string>
     <string name="s_share_this_five_week_calendar">Partager ce calendrier de cinq semaines</string>
+    <string name="s_share_to_an_app">Partager vers une app</string>
     <string name="s_shared_max">Max commun</string>
     <string name="s_shared_routine">Routine partagée</string>
     <plurals name="s_show_lld_earlier_sessions">
@@ -958,6 +981,7 @@
     <string name="s_some_grips_have_no_max_yet_so_their_sets_have_no_target">Certaines prises n\'ont pas encore de max, leurs séries n\'ont donc pas de cible.</string>
     <string name="s_some_kilogram_targets_were_set_by_the_sender_review_them">Certaines cibles en kilogrammes viennent de l’expéditeur. Vérifiez qu’elles conviennent à votre entraînement.</string>
     <string name="s_some_sets_carry_kilogram_targets_typed_by_whoever_shared">Certaines séries portent des cibles en kilos saisies par la personne qui a partagé ceci.</string>
+    <string name="s_some_sets_have_fixed_weight_targets_check_they_suit_you">Certaines séries ont des cibles de poids fixes. Vérifie qu\'elles te conviennent.</string>
     <string name="s_source">Source</string>
     <string name="s_source_code">Code source</string>
     <string name="s_start">Commencer</string>
@@ -1000,6 +1024,7 @@
     <string name="s_tare_is_unavailable_during_the_pull">Tarer est indisponible pendant le tirage.</string>
     <string name="s_tare_is_unavailable_until_you_let_go">Tarer est indisponible tant que tu n\'as pas relâché.</string>
     <string name="s_tare_under_load">Tarer sous charge ?</string>
+    <string name="s_target_61ad50">Cible</string>
     <string name="s_target_load">Charge cible</string>
     <string name="s_target_load_for_this_grip">Charge cible pour cette prise</string>
     <string name="s_target_loads_are_percentages_of_your_own_maxes">Les charges cibles sont des pourcentages de tes propres max.</string>
@@ -1022,6 +1047,7 @@
     <string name="s_the_camera_isn_t_available_try_again_later_or_open_the_r">L\'appareil photo n\'est pas disponible. Réessaie plus tard, ou ouvre le lien de la routine.</string>
     <string name="s_the_clock">Le chrono</string>
     <string name="s_the_clock_never_waits">Le chrono n’attend jamais</string>
+    <string name="s_the_clock_pauses_only_below_the_target_range">Le chrono se met en pause seulement sous la plage cible</string>
     <string name="s_the_document_is_always_written_in_english_whatever_langu">Le document est toujours rédigé en anglais, quelle que soit la langue de l\'app, pour que l\'assistant lise toujours le même schéma.</string>
     <string name="s_the_force_your_fingers_can_sustain_once_their_fast_reser">La force que tes doigts peuvent maintenir une fois leur réserve rapide épuisée : ton plafond d\'endurance. 24 tirages à fond vident cette réserve, et ta force se stabilise à la force critique.</string>
     <string name="s_the_four_minute_endurance_test_all_out_pulls_until_your">Le test d\'endurance de quatre minutes : des tirages à fond jusqu\'à ce que ta force se stabilise.</string>
@@ -1029,6 +1055,7 @@
     <string name="s_the_gauge_disconnected_before_pull_16_so_there_s_no_resu">Le capteur s\'est déconnecté avant le tirage 16, donc pas de résultat. Repose-toi au moins 30 minutes avant de refaire le test.</string>
     <string name="s_the_plan_in_one_line_edge_sets_pulls_and_how_long_it_run">Le plan en une ligne : réglette, séries, tirages et durée. Touche-le pour changer tout ça.</string>
     <string name="s_the_sender_set_some_fixed_weight_targets_check_they_suit">L\'expéditeur a fixé certaines cibles de poids. Vérifie qu\'elles te conviennent.</string>
+    <string name="s_the_target_range_never_pauses_the_clock">La plage cible ne met jamais le chrono en pause</string>
     <string name="s_the_test_starts_when_you_pull_pull_as_hard_as_you_can">Le test commence quand tu tires. Tire aussi fort que possible.</string>
     <string name="s_there_is_nothing_to_export_yet_finish_a_session_or_recor">Il n\'y a encore rien à exporter. Termine une séance ou enregistre un max, et ça atterrira ici.</string>
     <string name="s_there_s_on_the_gauge_taring_now_counts_it_as_zero">Il y a %1$s %2$s sur le capteur. Tarer maintenant le compte comme zéro.</string>
@@ -1043,12 +1070,14 @@
     <string name="s_this_pull">Ce tirage</string>
     <string name="s_this_routine_code_couldn_t_be_read">Ce code de routine n\'a pas pu être lu.</string>
     <string name="s_this_routine_has_no_pulls">Cette routine ne contient aucun tirage.</string>
+    <string name="s_this_routine_has_no_sets_ask_the_ai_to_add_at_least_one">Cette routine n\'a aucune série. Demande à l\'IA d\'en ajouter au moins une.</string>
     <string name="s_this_routine_is_too_large_to_import">Cette routine est trop grande pour être importée.</string>
     <string name="s_this_routine_needs_a_newer_get_a_grip_update_the_app_to">Cette routine demande une version plus récente de Get a Grip. Mets l\'app à jour pour l\'importer.</string>
     <string name="s_this_routine_runs_over_an_hour">Cette routine dure plus d\'une heure.</string>
     <string name="s_thumb_557518">Pouce</string>
     <string name="s_thumb_2ce0ce">Pouce, %s</string>
     <string name="s_time_for_a_session">C\'est l\'heure d\'une séance.</string>
+    <string name="s_timed_max">Max chronométré</string>
     <string name="s_timer">Chrono</string>
     <string name="s_timer_pulls_counted_lld">Chrono %1$s. Tirages comptés : %2$d</string>
     <string name="s_timers_only_nothing_is_measured">Chronos seulement. Rien n\'est mesuré.</string>
@@ -1100,6 +1129,7 @@
     <string name="s_what_are_you_measuring">Que mesures-tu ?</string>
     <string name="s_what_it_measures">Ce qu’il mesure</string>
     <string name="s_what_you_can_pull_on_each_grip">Ce que tu peux tirer sur chaque prise</string>
+    <string name="s_when_the_ai_has_written_the_code_block_copy_it_and_paste">Quand l\'IA a écrit le bloc de code, copie-le et colle-le ici. Tu verras la routine avant qu\'elle soit enregistrée.</string>
     <string name="s_whenever">Libre</string>
     <string name="s_whenever_you_re_fresh">Quand tu es frais</string>
     <string name="s_which_hand">Quelle main</string>

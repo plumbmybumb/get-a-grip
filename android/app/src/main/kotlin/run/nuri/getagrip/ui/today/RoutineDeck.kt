@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +39,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import kotlin.math.abs
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -102,6 +106,8 @@ fun RoutineDeck(
     onShare: (SessionTemplateEntity) -> Unit = {},
     /// Read somebody ELSE's code — about the app, not this routine, so it takes no argument.
     onScan: () -> Unit = {},
+    /// Paste a routine the climber's AI chat wrote — like scanning, about the app.
+    onCreateWithAI: () -> Unit = {},
     onDelete: (SessionTemplateEntity) -> Unit = {},
     onDemo: () -> Unit = {},
 ) {
@@ -168,7 +174,7 @@ fun RoutineDeck(
             scaleY = scaleX
         }
         if (routine == null) {
-            NewRoutineGhost(onNew, onScan, pageModifier.heightIn(min = newCardHeight))
+            NewRoutineGhost(onNew, onScan, onCreateWithAI, pageModifier.heightIn(min = newCardHeight))
         } else {
             RoutineCard(
                 modifier = pageModifier.onSizeChanged { cardHeights[routine.id] = it.height },
@@ -187,6 +193,7 @@ fun RoutineDeck(
                 onMakePrimary = { onMakePrimary(routine) },
                 onShare = { onShare(routine) },
                 onScan = onScan,
+                onCreateWithAI = onCreateWithAI,
                 onDelete = { onDelete(routine) },
                 onDemo = onDemo,
             )
@@ -197,7 +204,12 @@ fun RoutineDeck(
 /// NOT a filled card: a hairline outline reads "provisional", like an unselected chip — a
 /// routine that COULD exist.
 @Composable
-private fun NewRoutineGhost(onNew: () -> Unit, onScan: () -> Unit, modifier: Modifier = Modifier) {
+private fun NewRoutineGhost(
+    onNew: () -> Unit,
+    onScan: () -> Unit,
+    onCreateWithAI: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val palette = LocalGripPalette.current
     val interaction = remember { MutableInteractionSource() }
     // Read outside the semantics lambda, which is not composable.
@@ -243,27 +255,46 @@ private fun NewRoutineGhost(onNew: () -> Unit, onScan: () -> Unit, modifier: Mod
                 textAlign = TextAlign.Center,
             )
         }
-        SubtleScanAction(tr("Scan a routine"), onScan)
+        OtherWaysIn(tr("Scan a routine"), onScan, onCreateWithAI)
+    }
+}
+
+/// The two other ways a routine arrives, as quiet secondary actions under the one that builds
+/// it: side by side, wrapping to a stack when large text will not fit them on one row (iOS's
+/// `ViewThatFits`). Either may be absent, for previews.
+@Composable
+private fun OtherWaysIn(scanTitle: String, onScan: (() -> Unit)?, onCreateWithAI: (() -> Unit)?) {
+    FlowRow(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+    ) {
+        if (onScan != null) QuietAction(scanTitle, Icons.Outlined.QrCodeScanner, onScan)
+        if (onCreateWithAI != null) QuietAction(tr("Create with AI"), Icons.Outlined.AutoAwesome, onCreateWithAI)
     }
 }
 
 /** Quiet visual weight with a full-size touch target. Creating remains the primary action. */
 @Composable
-private fun SubtleScanAction(title: String, onClick: () -> Unit) {
+private fun QuietAction(title: String, icon: ImageVector, onClick: () -> Unit) {
     val palette = LocalGripPalette.current
     val interaction = remember { MutableInteractionSource() }
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        androidx.compose.material3.TextButton(
-            onClick = onClick,
-            interactionSource = interaction,
-            colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = palette.inkSecondary),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            modifier = Modifier.heightIn(min = 48.dp).pressFeedback(interaction, scales = false),
-        ) {
-            Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, modifier = Modifier.size(16.dp))
-            androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
-            Text(title, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-        }
+    androidx.compose.material3.TextButton(
+        onClick = onClick,
+        interactionSource = interaction,
+        colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = palette.inkSecondary),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier.heightIn(min = 48.dp).pressFeedback(interaction, scales = false),
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
+        // One line, so a pair that cannot share a row wraps whole rather than breaking a label.
+        Text(
+            title,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -273,8 +304,8 @@ private fun SubtleScanAction(title: String, onClick: () -> Unit) {
 /// document one tap away and push the button off screen at accessibility sizes.
 ///
 /// **"Scan a shared routine" is the exception**: its usual menu hangs off a routine card, and
-/// here there is none, so a friend's code would have no door. It stays a small text action:
-/// importing is something you do once.
+/// here there is none, so a friend's code would have no door. "Create with AI" sits beside it
+/// for the same reason. Both stay small text actions: importing is something you do once.
 @Composable
 fun EmptyRoutineCard(
     modifier: Modifier = Modifier,
@@ -283,6 +314,7 @@ fun EmptyRoutineCard(
     onBuild: () -> Unit,
     /// Null (previews) removes the row rather than drawing a dead one.
     onScan: (() -> Unit)? = null,
+    onCreateWithAI: (() -> Unit)? = null,
 ) {
     val palette = LocalGripPalette.current
     Surface(
@@ -314,8 +346,8 @@ fun EmptyRoutineCard(
 
             PrimaryButton(tr("Build my routine"), onClick = onBuild)
 
-            if (onScan != null) {
-                SubtleScanAction(tr("Scan a shared routine"), onScan)
+            if (onScan != null || onCreateWithAI != null) {
+                OtherWaysIn(tr("Scan a shared routine"), onScan, onCreateWithAI)
             }
 
             if (showsGaugeNote) {
