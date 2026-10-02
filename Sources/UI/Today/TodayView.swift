@@ -71,6 +71,8 @@ struct TodayView: View {
     /// "Create with AI": the sheet is up, and the routine it read, held until it has gone.
     @State private var creatingWithAI = false
     @State private var agentReading: AgentRoutine.Reading?
+    /// "Edit before adding": the import to open in the builder once its preview is gone.
+    @State private var importToEdit: RoutineDraft?
     /// The scanned routine ON SCREEN, claimed from the store's inbox by
     /// `drainImportInbox()`. Here, not in `RootTabView` where the link arrives, because
     /// this view owns every presentation a scan can collide with: presenting from the root
@@ -266,8 +268,19 @@ struct TodayView: View {
         }
         // The import inbox's two outlets. Every presentation above drains again on
         // dismissal, so a scan that landed mid-cover appears once the screen is free.
-        .sheet(item: $importPreview, onDismiss: { drainImportInbox() }) { request in
-            RoutineImportSheet(draft: request.draft, origin: request.origin)
+        .sheet(item: $importPreview, onDismiss: {
+            // The builder opens only once the preview has gone, never stacked on it.
+            if let draft = importToEdit {
+                importToEdit = nil
+                builder = .importing(draft)
+            } else {
+                drainImportInbox()
+            }
+        }) { request in
+            RoutineImportSheet(draft: request.draft, origin: request.origin, onEdit: { draft in
+                importToEdit = draft
+                importPreview = nil
+            })
         }
         // Non-constant binding, same reason as the saveError alert in RootTabView; the
         // setter drains so an import queued behind the error appears once it is read.

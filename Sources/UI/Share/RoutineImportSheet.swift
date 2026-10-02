@@ -34,6 +34,9 @@ struct RoutineImportSheet: View {
     /// NORMALIZED at init. Read as a value; the sheet observes no store beyond its one save.
     let draft: RoutineDraft
     let origin: ImportOrigin
+    /// "Edit before adding": the presenter closes this sheet and opens the builder on the
+    /// draft. nil hides the button.
+    var onEdit: ((RoutineDraft) -> Void)?
 
     @Environment(TemplateStore.self) private var templates
     @Environment(\.dismiss) private var dismiss
@@ -48,8 +51,10 @@ struct RoutineImportSheet: View {
     /// identity doing it.
     private let summary: RoutineSummary
 
-    init(draft: RoutineDraft, origin: ImportOrigin = .shared) {
+    init(draft: RoutineDraft, origin: ImportOrigin = .shared,
+         onEdit: ((RoutineDraft) -> Void)? = nil) {
         self.origin = origin
+        self.onEdit = onEdit
         // Normalized HERE so the preview shows what will land (default name, emptied
         // sets dropped, inheritance consolidated); previewing raw and saving
         // normalized is how a preview and its card disagree. Idempotent.
@@ -88,7 +93,10 @@ struct RoutineImportSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             // The decision lives in the safe area: with up to fifty sets, a primary
             // action that must be scrolled to is not found.
-            .safeAreaInset(edge: .bottom) { actions }
+            // A BAR, not an inset (the builder's rule): content scrolling under it gets
+            // the system's scroll edge treatment, where an inset left the last footnote
+            // showing through the buttons.
+            .safeAreaBar(edge: .bottom) { actions }
         }
     }
 
@@ -421,20 +429,33 @@ struct RoutineImportSheet: View {
                 add()
             }
 
-            // Quiet, never destructive-looking: declining costs and undoes nothing.
-            Button("Not now") { dismiss() }
-                .buttonStyle(PressFeedbackButtonStyle())
-                .font(.system(.footnote, weight: .semibold))
-                .foregroundStyle(Accent.graphite)
-                // One footnote line drawn, 44 hit; `contentShape` is mandatory since
-                // padding is not hit-tested.
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(.rect)
+            // Two quiet actions on one row, so the action area keeps its height. Edit: a
+            // small mistake, or timing you want different (Nuri, 2026-10-02) — fixed in the
+            // builder first; nothing is saved until the builder's own Save.
+            HStack(spacing: 0) {
+                if let onEdit {
+                    quietAction(String(localized: "Edit before adding")) { onEdit(draft) }
+                        .accessibilityIdentifier("import.edit")
+                }
+                // Never destructive-looking: declining costs and undoes nothing.
+                quietAction(String(localized: "Not now")) { dismiss() }
+            }
         }
         .padding(.horizontal, Metrics.hPadding)
         .padding(.bottom, 4)
         .frame(maxWidth: Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
+    }
+
+    private func quietAction(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(PressFeedbackButtonStyle())
+            .font(.system(.footnote, weight: .semibold))
+            .foregroundStyle(Accent.graphite)
+            // One footnote line drawn, 44 hit; `contentShape` is mandatory since
+            // padding is not hit-tested.
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .contentShape(.rect)
     }
 
     /// The new card appears on Today by itself (its list is a `@Query`).

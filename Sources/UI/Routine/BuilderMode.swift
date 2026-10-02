@@ -15,6 +15,9 @@ enum BuilderMode: Identifiable, Hashable {
     case addAnother
     /// An existing routine, by id.
     case edit(UUID)
+    /// A routine from a scanned code or an AI reply, opened from the import preview's
+    /// "Edit before adding" (Nuri, 2026-10-02): a NEW routine, seeded with the import.
+    case importing(RoutineDraft)
 
     /// `.sheet(item:)` identity, distinct per routine so a different one rebuilds the
     /// document rather than reusing state.
@@ -23,6 +26,7 @@ enum BuilderMode: Identifiable, Hashable {
         case .firstRun:       "builder.firstRun"
         case .addAnother:     "builder.addAnother"
         case .edit(let uuid): uuid.uuidString
+        case .importing:      "builder.importing"
         }
     }
 
@@ -33,6 +37,8 @@ enum BuilderMode: Identifiable, Hashable {
         case .firstRun:       "build-routine"
         case .addAnother:     "new-routine"
         case .edit(let uuid): uuid.uuidString
+        // No card on Today is its source: the standard presentation.
+        case .importing:      "builder.importing"
         }
     }
 
@@ -41,6 +47,20 @@ enum BuilderMode: Identifiable, Hashable {
     var isCreating: Bool {
         if case .edit = self { return false }
         return true
+    }
+
+    /// The step-by-step create flow (pages walked with Next, a fresh draft). An import is
+    /// created too, but arrives whole, so it opens like an edit: every page one tap away.
+    var walksPages: Bool {
+        switch self {
+        case .firstRun, .addAnother: true
+        case .edit, .importing: false
+        }
+    }
+
+    var isImporting: Bool {
+        if case .importing = self { return true }
+        return false
     }
 
     var editingID: UUID? {

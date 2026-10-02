@@ -491,6 +491,16 @@
         }
       }
     },
+    "Edit before adding" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier avant d'ajouter"
+          }
+        }
+      }
+    },
     "FINE TUNING" : {
       "localizations" : {
         "fr" : {

@@ -35,7 +35,7 @@ final class AgentRoutineFlowUITests: XCTestCase {
     """
 
     func testPasteAnAIReplyPreviewItAndAddIt() {
-        let app = launchApp(arguments: ["-mockDevice"])
+        let app = launchApp(arguments: ["-mockDevice", "-seedNoRoutines"])
         defer { app.terminate() }
 
         let open = app.buttons["today.createWithAI"]
@@ -74,6 +74,38 @@ final class AgentRoutineFlowUITests: XCTestCase {
         let card = app.staticTexts["Recovery 7:3"].firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 5))
         shot(app, "The routine on Today")
+    }
+
+    /// "Edit before adding": the preview hands the routine to the builder, as a new
+    /// routine, and the builder's Save is what adds it.
+    func testEditBeforeAddingOpensTheBuilderOnTheImport() {
+        let app = launchApp(arguments: ["-mockDevice", "-seedNoRoutines"])
+        defer { app.terminate() }
+        let open = app.buttons["today.createWithAI"]
+        XCTAssertTrue(open.waitForExistence(timeout: 5))
+        open.tap()
+        UIPasteboard.general.string = reply
+        let paste = app.buttons["agent.paste"]
+        XCTAssertTrue(paste.waitForExistence(timeout: 3))
+        paste.tap()
+
+        let edit = app.buttons["import.edit"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        shot(app, "Preview offers Edit before adding")
+        edit.tap()
+
+        let save = app.buttons["Save"].firstMatch
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["New routine"].exists || app.staticTexts["New routine"].exists)
+        let hold = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label == %@ AND value == %@", "Hold", "7 seconds")).firstMatch
+        XCTAssertTrue(hold.waitForExistence(timeout: 3), "the builder holds the AI's 7 s hold")
+        shot(app, "Builder on the imported routine")
+        save.tap()
+
+        let card = app.staticTexts["Recovery 7:3"].firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        shot(app, "Saved from the builder")
     }
 
     private func shot(_ app: XCUIApplication, _ name: String) {

@@ -73,6 +73,11 @@ struct RoutineBuilderView: View {
             }
             #endif
             return .blank()
+        case .importing(let draft):
+            // Under the name it would land with — an import never doubles up a name.
+            var seeded = draft
+            seeded.plan.name = templates.plannedImportName(for: draft.normalized.plan.name)
+            return seeded
         case .edit(let id):
             // Missing means a CloudKit merge deleted it while Today still showed it. A
             // blank draft is non-destructive: `store.save` creates rather than resurrects.
@@ -193,10 +198,10 @@ private struct BuilderDocument: View {
                 // BARS, not insets: content scrolling under them gets the system's scroll
                 // edge treatment, where a plain inset leaves text colliding with buttons.
                 .safeAreaBar(edge: .top, spacing: 0) {
-                    if !mode.isCreating { pageSwitcher }
+                    if !mode.walksPages { pageSwitcher }
                 }
                 .safeAreaBar(edge: .bottom) {
-                    if mode.isCreating { createNavigation }
+                    if mode.walksPages { createNavigation }
                 }
             }
         }
@@ -312,7 +317,7 @@ private struct BuilderDocument: View {
     private var subtitleText: String {
         // Paged, creating, on page 1 with nothing built yet: no line rather than a
         // complaint about sets the person has not reached.
-        if mode.isCreating, page == .rhythm, draft.plan.executable.sets.isEmpty {
+        if mode.walksPages, page == .rhythm, draft.plan.executable.sets.isEmpty {
             return ""
         }
         return draft.validationIssue ?? PlanMath.subtitleLine(draft.plan)
@@ -332,7 +337,8 @@ private struct BuilderDocument: View {
         // The rescue copy exists only if a previous session died mid-build.
         // `initialDraft` stays at the seed, so the restored document is DIRTY and
         // Cancel still asks before discarding it.
-        if mode.isCreating, let rescued = templates.restoreDraft(), rescued != draft {
+        // Never over an import: the routine on screen is the one the person chose to edit.
+        if mode.walksPages, let rescued = templates.restoreDraft(), rescued != draft {
             draft = BuilderDraftPreparation.editable(rescued)
         }
     }
@@ -474,10 +480,13 @@ private struct BuilderDocument: View {
 
     // MARK: Derived
 
-    private var isDirty: Bool { draft != initialDraft }
+    /// An import is dirty from the start: Cancel would throw away a routine nobody has
+    /// added yet, so it asks.
+    private var isDirty: Bool { mode.isImporting || draft != initialDraft }
 
     private var title: String {
         if mode.editingID != nil { return String(localized: "Edit routine") }
+        if mode.isImporting { return String(localized: "New routine") }
         // Creating: the page names itself, and the dots say how far along.
         return page.title
     }
