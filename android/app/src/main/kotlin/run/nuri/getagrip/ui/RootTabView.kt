@@ -402,6 +402,7 @@ fun RootTabView() {
                         building = if (templates.routines.isEmpty()) BuilderMode.FirstRun else BuilderMode.AddAnother
                     },
                     onEdit = { template -> building = BuilderMode.Edit(template.id) },
+                    onEditImport = { draft -> building = BuilderMode.Importing(draft) },
                     onShowHistory = { current = Tab.History },
                     onLogSession = { loggingSession = true },
                     onOpenGauge = { liveGauge = true },

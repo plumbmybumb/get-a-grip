@@ -123,7 +123,8 @@ fun RoutineBuilderHost(
     val palette = LocalGripPalette.current
     val scope = rememberCoroutineScope()
     val focus = LocalFocusManager.current
-    val creating = mode.isCreating
+    /// The step-by-step create flow; an import opens like an edit — see `BuilderMode.walksPages`.
+    val creating = mode.walksPages
     val fontScale = LocalDensity.current.fontScale
     val largeText = fontScale >= 1.3f
 
@@ -140,6 +141,7 @@ fun RoutineBuilderHost(
                 // the store CREATES rather than resurrects, and nothing typed is lost.
                 is BuilderMode.Edit ->
                     templates.routines.firstOrNull { it.id == mode.id }?.draft ?: RoutineDraft.blank()
+                is BuilderMode.Importing -> mode.draft
             }
         }
     }
@@ -182,7 +184,8 @@ fun RoutineBuilderHost(
         opened = true
         // A rescue copy exists only if a previous session died mid-build (Save and Cancel clear it).
         // `initialDraft` stays at the seed, so a restored builder is DIRTY and Cancel still asks.
-        if (BuilderDraft.stashes(mode)) {
+        // Never over an import: the routine on screen is the one the person chose to edit.
+        if (BuilderDraft.stashes(mode) && mode.walksPages) {
             val rescued = templates.restoreDraft()
             if (rescued != null && rescued != draft) draft = BuilderDraft.opening(rescued)
         }
@@ -215,7 +218,8 @@ fun RoutineBuilderHost(
         removedSet = null
     }
 
-    val isDirty = BuilderDraft.isDirty(draft, initialDraft)
+    // An import is dirty from the start: Cancel would throw away a routine nobody has added yet.
+    val isDirty = mode is BuilderMode.Importing || BuilderDraft.isDirty(draft, initialDraft)
     // Folded ONCE per draft: title, both Saves and the subtitle all ask, and each walks the sets.
     val validationIssue = draft.validationIssue
     val canSave = validationIssue == null
@@ -283,7 +287,11 @@ fun RoutineBuilderHost(
                     title = {
                         Column {
                             Text(
-                                if (creating) page.title else tr("Edit routine"),
+                                when {
+                                    creating -> page.title
+                                    mode is BuilderMode.Importing -> tr("New routine")
+                                    else -> tr("Edit routine")
+                                },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = palette.inkPrimary,

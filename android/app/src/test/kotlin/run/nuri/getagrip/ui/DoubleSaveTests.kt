@@ -100,6 +100,42 @@ class DoubleSaveTests {
         assertEquals(1, closed)
     }
 
+    /// "Edit before adding" hands the routine to the presenter and adds nothing itself.
+    @Test fun editBeforeAddingHandsTheDraftOverWithoutSaving() {
+        val shared = RoutineDraft.blank("From a friend").copy(
+            plan = SessionPlan(name = "From a friend", sets = listOf(SetPlan(repsPerSide = 5))))
+        var edited: RoutineDraft? = null
+        compose.setContent {
+            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings) {
+                GetAGripTheme { RoutineImportSheet(shared, onEdit = { edited = it }) {} }
+            }
+        }
+        compose.onNodeWithText("Edit before adding").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals("From a friend", edited?.plan?.name)
+        assertEquals(0, routineCount())
+    }
+
+    /// The builder opened on an import: a new routine that opens like an edit (no Next), and
+    /// its Save is what adds it — once.
+    @Test fun theBuilderOnAnImportSavesOneNewRoutine() {
+        val shared = RoutineDraft.blank("From a friend").copy(
+            plan = SessionPlan(name = "From a friend", sets = listOf(SetPlan(repsPerSide = 5))),
+            remindersEnabled = false)
+        var closed = 0
+        compose.setContent {
+            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings) {
+                GetAGripTheme { RoutineBuilderHost(mode = BuilderMode.Importing(shared), onDone = { closed++ }) }
+            }
+        }
+        compose.onNodeWithText("New routine").assertExists()
+        compose.onAllNodesWithText("Next").assertCountEquals(0)
+        compose.onNodeWithText("Save").performClick()
+        releaseAndSettle()
+        compose.waitUntil(5_000) { closed > 0 }
+        assertEquals(1, routineCount())
+    }
+
     @Test fun doubleTappingAddOnASharedRoutineAddsItOnce() {
         val shared = RoutineDraft.blank("From a friend").copy(
             plan = SessionPlan(name = "From a friend", sets = listOf(SetPlan(repsPerSide = 5))))

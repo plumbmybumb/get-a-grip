@@ -51,6 +51,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import run.nuri.getagrip.data.SessionTemplateEntity
+import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.DayStamp
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.RoutineShare
@@ -90,6 +91,8 @@ fun TodayScreen(
     onStart: (SessionTemplateEntity, Boolean) -> Unit = { _, _ -> },
     /// The builder, for a first routine and for a second one.
     onBuild: () -> Unit = {},
+    /// "Edit before adding" from the import preview: open the builder on this draft.
+    onEditImport: (RoutineDraft) -> Unit = {},
     onEdit: (SessionTemplateEntity) -> Unit = {},
     onShowHistory: () -> Unit = {},
     /// The log sheet, shared with History — a gym session or a hang done away from the gauge.
@@ -344,7 +347,17 @@ fun TodayScreen(
     }
 
     importPreview?.let { request ->
-        RoutineImportSheet(request.draft, request.origin) {
+        RoutineImportSheet(
+            request.draft, request.origin,
+            onEdit = { draft ->
+                importPreview = null
+                // Under the name it would land with — an import never doubles up a name.
+                scope.launch {
+                    val named = draft.copy(plan = draft.plan.copy(name = templates.plannedImportName(draft.plan.name)))
+                    onEditImport(named)
+                }
+            },
+        ) {
             importPreview = null
             drainImportInbox()
         }

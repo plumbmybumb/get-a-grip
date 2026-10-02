@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -119,6 +120,9 @@ val OptionalImportRequestSaver: Saver<ImportRequest?, ArrayList<String>> = Saver
 fun RoutineImportSheet(
     incoming: RoutineDraft,
     origin: ImportOrigin = ImportOrigin.Shared,
+    /// "Edit before adding": the presenter closes this sheet and opens the builder on the draft.
+    /// null hides the button.
+    onEdit: ((RoutineDraft) -> Unit)? = null,
     onClose: () -> Unit,
 ) {
     val palette = LocalGripPalette.current
@@ -209,8 +213,19 @@ fun RoutineImportSheet(
                 }
             }
 
-            // Quiet, never destructive-looking: declining costs nothing.
-            SecondaryButton(tr("Not now"), modifier = Modifier.fillMaxWidth(), onClick = onClose)
+            // Edit: a small mistake, or timing you want different (Nuri, 2026-10-02) — fixed in the
+            // builder first; nothing is saved until the builder's own Save. Beside Not now, which is
+            // quiet and never destructive-looking: declining costs nothing.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (onEdit != null) {
+                    SecondaryButton(
+                        tr("Edit before adding"),
+                        modifier = Modifier.weight(1f).testTag("import.edit"),
+                        onClick = { onEdit(draft) },
+                    )
+                }
+                SecondaryButton(tr("Not now"), modifier = Modifier.weight(1f), onClick = onClose)
+            }
 
             Spacer(Modifier.padding(bottom = 4.dp))
         }

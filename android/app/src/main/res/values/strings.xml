@@ -457,6 +457,7 @@
     <string name="s_easy">Easy</string>
     <string name="s_edge">Edge</string>
     <string name="s_edit">Edit</string>
+    <string name="s_edit_before_adding">Edit before adding</string>
     <string name="s_edit_maxes">Edit maxes</string>
     <string name="s_edit_maxes_for">Edit maxes for %s</string>
     <string name="s_edit_routine">Edit routine</string>

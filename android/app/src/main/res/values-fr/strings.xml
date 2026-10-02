@@ -456,6 +456,7 @@
     <string name="s_easy">Facile</string>
     <string name="s_edge">Réglette</string>
     <string name="s_edit">Modifier</string>
+    <string name="s_edit_before_adding">Modifier avant d\'ajouter</string>
     <string name="s_edit_maxes">Modifier les max</string>
     <string name="s_edit_maxes_for">Modifier les max pour %s</string>
     <string name="s_edit_routine">Modifier la routine</string>
