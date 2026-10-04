@@ -127,6 +127,16 @@ struct RoutinePills: View {
     /// SECONDARY to the time bar above: slimmer, and quieter.
     static let height: CGFloat = 3
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The current pill stands a little proud of the line (Nuri, 2026-10-04): 3 pt pills
+    /// put it at ~5, the timer-only runner's 8 at 11. Never so tall that a short pill turns
+    /// into a dot — a circle is a session in this app.
+    static func liftedThickness(_ drawn: CGFloat, cellLength: CGFloat) -> CGFloat {
+        let lifted = drawn + min(drawn * 0.6, 3)
+        return cellLength >= lifted * 1.5 ? lifted : drawn
+    }
+
     /// Quieter through a lighter TRACK and a slim pill, not a lighter ink: at 3 pt, done
     /// ink at 0.46 measured 2.5:1 against the track in light mode (thin shapes are
     /// mostly antialiased edge), so done stays at 0.6 to clear 3:1.
@@ -150,19 +160,32 @@ struct RoutinePills: View {
             let skipped = model.finished.indices.filter { !model.finished[$0] }
             let drawn = Self.drawnThickness(preferred: thickness, cells: cells)
             ZStack(alignment: .leading) {
-                RoutinePillsShape(cells: cells, include: Array(cells.indices))
-                    .fill(Self.track)
-                RoutinePillsShape(cells: cells, include: completed)
-                    .fill(Self.done)
-                RoutinePillsShape(cells: cells, include: skipped)
-                    .fill(Self.skipped)
-                if let current = model.current {
-                    RoutinePillsShape(cells: cells, include: [current])
+                ZStack(alignment: .leading) {
+                    RoutinePillsShape(cells: cells, include: Array(cells.indices))
+                        .fill(Self.track)
+                    RoutinePillsShape(cells: cells, include: completed)
+                        .fill(Self.done)
+                    RoutinePillsShape(cells: cells, include: skipped)
+                        .fill(Self.skipped)
+                }
+                .frame(height: drawn)
+                .clipShape(Capsule(style: .continuous))
+
+                // ONE pill that MOVES: it slides from the pull just finished to the next, and
+                // its colour cross-fades with the phase, rather than one pill switching off
+                // and another on. Drawn outside the row's clip so it can stand proud of it.
+                if let current = model.current, cells.indices.contains(current) {
+                    let cell = cells[current]
+                    let length = cell.upperBound - cell.lowerBound
+                    Capsule(style: .continuous)
                         .fill(currentTint)
+                        .frame(width: length,
+                               height: Self.liftedThickness(drawn, cellLength: length))
+                        .offset(x: cell.lowerBound)
+                        .animation(Motion.state(reduceMotion), value: current)
+                        .animation(Motion.state(reduceMotion), value: currentTint)
                 }
             }
-            .frame(height: drawn)
-            .clipShape(Capsule(style: .continuous))
             .frame(maxHeight: .infinity)
         }
         .frame(height: thickness)

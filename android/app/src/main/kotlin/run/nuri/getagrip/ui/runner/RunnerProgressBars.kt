@@ -4,6 +4,7 @@
 package run.nuri.getagrip.ui.runner
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
@@ -115,6 +116,11 @@ internal fun RoutinePills(
     val track = palette.pillTrack()
     val done = palette.inkPrimary.copy(alpha = 0.6f)
     val skipped = palette.inkPrimary.copy(alpha = 0.2f)
+    // ONE pill that MOVES (iOS twin): it slides from the pull just finished to the next and
+    // its colour cross-fades with the phase, rather than one pill switching off and another on.
+    val reduceMotion = rememberReduceMotion()
+    val position by animateFloatAsState((model.current ?: -1).toFloat(), Motion.state(reduceMotion), label = "currentPill")
+    val tint by animateColorAsState(currentTint, Motion.state(reduceMotion), label = "currentPillTint")
     Canvas(modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().height(thickness)
         .testTag("runner.routinePills").clearAndSetSemantics {}) {
         val cells = RoutinePillLayout.cells(model.setSizes, size.width, unit = density)
@@ -123,8 +129,25 @@ internal fun RoutinePills(
         drawSlots(cells, cells.indices, track, top, drawn)
         drawSlots(cells, model.finished.indices.filter { model.finished[it] }, done, top, drawn)
         drawSlots(cells, model.finished.indices.filter { !model.finished[it] }, skipped, top, drawn)
-        model.current?.let { drawSlots(cells, listOf(it), currentTint, top, drawn) }
+        if (model.current != null && position >= 0f && cells.isNotEmpty()) {
+            val lo = position.toInt().coerceIn(cells.indices)
+            val hi = (lo + 1).coerceAtMost(cells.lastIndex)
+            val t = position - lo
+            val start = cells[lo].start + (cells[hi].start - cells[lo].start) * t
+            val end = cells[lo].endInclusive + (cells[hi].endInclusive - cells[lo].endInclusive) * t
+            val lifted = liftedThickness(drawn, end - start, 3.dp.toPx())
+            // Outside the row's own height on purpose: the current pill stands a little proud.
+            drawRoundRect(tint, Offset(start, (size.height - lifted) / 2), Size(end - start, lifted),
+                CornerRadius(minOf(lifted, end - start) / 2))
+        }
     }
+}
+
+/// The current pill stands a little proud of the line (Nuri, 2026-10-04): 3 dp pills put it at
+/// ~5, the timer-only runner's 8 at 11. Never so tall that a short pill turns into a dot.
+internal fun liftedThickness(drawn: Float, cellLength: Float, maxGrowth: Float): Float {
+    val lifted = drawn + minOf(drawn * 0.6f, maxGrowth)
+    return if (cellLength >= lifted * 1.5f) lifted else drawn
 }
 
 /// Never thinner than the measured runner's pills, never so thick that a pill's length falls
