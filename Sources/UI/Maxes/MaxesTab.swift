@@ -216,6 +216,7 @@ struct MaxesTab: View {
             VStack(alignment: .leading, spacing: 12) {
                 cardHeader(group, isOpen: isOpen)
 
+                HStack(alignment: .bottom, spacing: 12) {
                 Group {
                     if group.records.isEmpty, !group.timed.isEmpty {
                         timedReadout(group)
@@ -246,6 +247,16 @@ struct MaxesTab: View {
                 }
                 .contentShape(.rect)
                 .onTapGesture { toggle(group.key) }
+
+                    if !isOpen, !dynamicTypeSize.isAccessibilitySize {
+                        compactMeasureButton(group.grip)
+                    }
+                }
+
+                // At accessibility sizes the readout stacks, so Measure gets its own row.
+                if !isOpen, dynamicTypeSize.isAccessibilitySize {
+                    measureButton(group.grip, label: String(localized: "Measure"))
+                }
 
                 if isOpen {
                     details(group, sides: sides)
@@ -422,6 +433,28 @@ struct MaxesTab: View {
         guard abs(delta) >= 0.05 else { return String(localized: "Critical force held since \(when)") }
         let verb = delta > 0 ? String(localized: "up") : String(localized: "down")
         return String(localized: "Critical force \(verb) \(weightUnit.number(abs(delta))) \(weightUnit.symbol) since \(when)")
+    }
+
+    /// The shut card's Measure (Nuri, 2026-10-04: measuring again should not cost opening
+    /// the card first): the same outlined capsule, drawn 32 pt tall inside the 44 pt hit
+    /// area, bottom-trailing beside the numbers. Open, it gives way to the full Measure
+    /// again beside Edit. In the title row it squeezed the grip's name onto broken lines.
+    private func compactMeasureButton(_ grip: GripSpec) -> some View {
+        Button {
+            choosingMode = grip
+        } label: {
+            Text("Measure")
+                .font(.system(.subheadline, weight: .semibold))
+                .foregroundStyle(Accent.graphite)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 32)
+                .overlay(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
+                .frame(minHeight: 44)
+                .contentShape(.rect)
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityLabel("\(String(localized: "Measure")) for \(grip.spoken)")
+        .accessibilityIdentifier("maxes.measure.\(grip.key)")
     }
 
     private func measureButton(_ grip: GripSpec, label: String) -> some View {

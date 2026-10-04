@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.Density
@@ -86,10 +87,12 @@ class MaxesDashboardFlowTests {
         return w
     }
 
-    /// Cards open shut (2026-09-30): Measure and Edit live inside. Idempotent — a card stays
-    /// open across the dialogs a test passes through.
+    /// Cards open shut (2026-09-30): Edit lives inside, Measure on both faces (2026-10-04).
+    /// Idempotent — a card stays open across the dialogs a test passes through.
     private fun openCard(key: String) {
-        if (compose.onAllNodesWithTag("maxes.measure.$key").fetchSemanticsNodes().isNotEmpty()) return
+        val open = hasTestTag("maxes.card.$key") and
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, run.nuri.getagrip.engine.L10n.tr("Expanded"))
+        if (compose.onAllNodes(open).fetchSemanticsNodes().isNotEmpty()) return
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("maxes.card.$key"))
         compose.onNodeWithTag("maxes.card.$key").assertIsDisplayed().performClick()
         compose.waitForIdle()
@@ -103,21 +106,24 @@ class MaxesDashboardFlowTests {
     }
 
     /// **Shut by default; the header opens it** (Nuri, 2026-09-30: one open card filled the
-    /// screen). Shut, the current max still shows — it is what targets run on. Each best sits
-    /// under its own number, and only once the card is open and the max is below it.
+    /// screen). Shut, the current max still shows — it is what targets run on — and so does
+    /// Measure (2026-10-04); Edit and the bests wait for the open card.
     @Test fun cardsOpenShutAndTheHeaderOpensThem() {
         show(listOf(row(primary, Side.both, 70.0), row(primary, Side.both, 74.5, 60))) { feed ->
             MaxesTabScreen(onAddMax = {}, onMeasure = { _, _, _ -> }, onEdit = {}, feed = feed)
         }
         compose.onNodeWithTag("maxes.current.${primary.key}.both").assertIsDisplayed()
-        compose.onAllNodesWithTag("maxes.measure.${primary.key}").assertCountEquals(0)
+        compose.onNodeWithTag("maxes.measure.${primary.key}").assertIsDisplayed()
+        compose.onAllNodesWithTag("maxes.edit.${primary.key}").assertCountEquals(0)
         compose.onAllNodesWithContentDescription("best 74.5", substring = true).assertCountEquals(0)
         compose.onNodeWithTag("maxes.card.${primary.key}").performClick()
-        compose.onNodeWithTag("maxes.measure.${primary.key}").assertIsDisplayed()
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("maxes.measure.${primary.key}").assertCountEquals(1)
+        compose.onNodeWithTag("maxes.edit.${primary.key}").assertIsDisplayed()
         compose.onNodeWithContentDescription("best 74.5", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("maxes.card.${primary.key}").performClick()
         compose.waitForIdle()
-        compose.onAllNodesWithTag("maxes.measure.${primary.key}").assertCountEquals(0)
+        compose.onAllNodesWithTag("maxes.edit.${primary.key}").assertCountEquals(0)
     }
 
     @Test fun toolbarPlusAndGripActionsCarryExactIdentityAndAlwaysBeginWithLeft() {

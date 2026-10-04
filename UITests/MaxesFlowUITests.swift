@@ -307,11 +307,14 @@ final class MaxesFlowUITests: XCTestCase {
         return app
     }
 
-    /// Cards open shut (2026-09-30): Measure and Edit live inside. Idempotent, because a
-    /// card stays open across the sheets and covers a test passes through.
+    /// Cards open shut (2026-09-30): Edit lives inside, Measure on both faces (2026-10-04).
+    /// Idempotent, because a card stays open across the sheets and covers a test passes
+    /// through — so it reads the header's own state, in either language the suite runs.
     private func openCard(_ grip: String, in app: XCUIApplication) {
-        guard !app.buttons["maxes.measure.\(grip)"].exists else { return }
-        tap(app.buttons["maxes.card.\(grip)"], in: app)
+        let card = app.buttons["maxes.card.\(grip)"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        guard !["Expanded", "Développé"].contains(card.value as? String ?? "") else { return }
+        tap(card, in: app)
         XCTAssertTrue(app.buttons["maxes.measure.\(grip)"].waitForExistence(timeout: 3))
     }
 

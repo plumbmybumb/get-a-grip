@@ -8,7 +8,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -448,11 +450,16 @@ private fun GripCard(
                 modifier = Modifier.size(20.dp),
             )
         }
+        // Shut, Measure sits bottom-trailing beside the numbers (Nuri, 2026-10-04: measuring
+        // again should not cost opening the card first; iOS twin). Open, it gives way to the
+        // full Measure again beside Edit. At large text the readout stacks, so it gets a row.
+        val largeText = LocalDensity.current.fontScale >= 1.5f
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // Not inside the header's merged node — each hand keeps its own spoken value — but a
         // tap here opens the card too. A bare tap GESTURE, not `clickable`: clickable merges
         // its children into one button and would read both hands as a single node.
         Column(
-            Modifier.pointerInput(onToggle) { detectTapGestures { onToggle() } },
+            Modifier.weight(1f).pointerInput(onToggle) { detectTapGestures { onToggle() } },
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (hasMax) {
@@ -473,6 +480,12 @@ private fun GripCard(
                     color = palette.inkTertiary,
                 )
             }
+        }
+            if (!isOpen && !largeText) CompactMeasureButton(group.grip, group.key, onMeasure)
+        }
+        if (!isOpen && largeText) {
+            SecondaryButton(title = tr("Measure"), modifier = Modifier.fillMaxWidth().testTag("maxes.measure.${group.key}"),
+                onClick = onMeasure)
         }
 
         // `Motion.state`, not Compose's unguarded 400 ms default — see `TargetBandRow`.
@@ -579,6 +592,36 @@ private fun CriticalForceReadout(group: BenchmarkGroup, sides: List<Side>) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 sides.forEach { Readout(it, Modifier.weight(1f)) }
             }
+        }
+    }
+}
+
+/// The shut card's Measure: an outlined capsule drawn 32 dp tall inside a 48 dp hit area, so it
+/// sits beside the numbers without making the card taller.
+@Composable
+private fun CompactMeasureButton(grip: GripSpec, key: String, onMeasure: () -> Unit) {
+    val palette = LocalGripPalette.current
+    val interaction = remember { MutableInteractionSource() }
+    val label = tr("Measure")
+    val spoken = L10n.tr("%s for %s", label, grip.spoken)
+    Box(
+        Modifier
+            .heightIn(min = 48.dp)
+            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onMeasure)
+            .pressFeedback(interaction)
+            .semantics { contentDescription = spoken }
+            .testTag("maxes.measure.$key"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .heightIn(min = 32.dp)
+                .border(1.dp, palette.inkTertiary.copy(alpha = 0.35f), CircleShape)
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                color = palette.graphite)
         }
     }
 }
