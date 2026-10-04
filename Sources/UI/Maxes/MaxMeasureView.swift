@@ -14,7 +14,7 @@ import SwiftUI
 struct MaxMeasureView: View {
     let grip: GripSpec
     /// The caller owns persistence. A failed save leaves every logged pull intact.
-    var onUse: ([MaxMeasurementResult]) -> TemplateStore.MaxSaveReceipt?
+    var onUse: ([MaxMeasurementResult]) -> MaxSaveReceipt?
 
     @Environment(DeviceStore.self) private var device
     @Environment(TemplateStore.self) private var templates
@@ -32,8 +32,8 @@ struct MaxMeasureView: View {
     @State private var hasStarted = false
     @State private var reviewing = false
     @State private var saveFailed = false
-    @State private var receipt: TemplateStore.MaxSaveReceipt?
-    @State private var pendingReceipt: TemplateStore.MaxSaveReceipt?
+    @State private var receipt: MaxSaveReceipt?
+    @State private var pendingReceipt: MaxSaveReceipt?
     @State private var committed = false
     @State private var selectionTick = 0
     @State private var tareTick = 0
@@ -46,7 +46,7 @@ struct MaxMeasureView: View {
     /// `initialSeconds`: what this visit measures — 0 is the peak, otherwise a timed max.
     /// Chosen BEFORE the screen opens (`MaxMeasureChooser`) and fixed for the visit.
     init(grip: GripSpec, initialSide: Side = .left, initialSeconds: Int = 0,
-         onUse: @escaping ([MaxMeasurementResult]) -> TemplateStore.MaxSaveReceipt?) {
+         onUse: @escaping ([MaxMeasurementResult]) -> MaxSaveReceipt?) {
         self.grip = grip
         self.onUse = onUse
         _session = State(initialValue: LiveMaxSession(bothTogether: initialSide == .both,

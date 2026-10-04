@@ -2,6 +2,10 @@
 // Original contributions Copyright 2026 Nuri Bruner.
 package run.nuri.getagrip.ui.maxes
 
+import run.nuri.getagrip.engine.MaxImpact
+
+import run.nuri.getagrip.engine.MaxSaveReceipt
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -27,7 +31,7 @@ import run.nuri.getagrip.ui.units.WeightUnits
 
 /** A receipt for an already committed save. Typed targets only change after a separate tap. */
 @Composable
-fun MaxSaveReceiptScreen(receipt: TemplateStore.MaxSaveReceipt, onDone: () -> Unit) {
+fun MaxSaveReceiptScreen(receipt: MaxSaveReceipt, onDone: () -> Unit) {
     val templates = LocalTemplateStore.current
     val palette = LocalGripPalette.current
     val scope = rememberCoroutineScope()
@@ -105,7 +109,7 @@ fun MaxSaveReceiptScreen(receipt: TemplateStore.MaxSaveReceipt, onDone: () -> Un
     }
 }
 
-private fun receiptPercentLine(move: TemplateStore.MaxImpact.PercentMove): String {
+private fun receiptPercentLine(move: MaxImpact.PercentMove): String {
     val pct = L10n.tr("%d–%d %%", Math.round(move.loPercent * 100), Math.round(move.hiPercent * 100))
     var result = WeightUnits.tr("%s · now %s kg", pct, WeightUnits.band(move.newBand, withUnit = false))
     move.oldBand?.takeIf { it != move.newBand }?.let {

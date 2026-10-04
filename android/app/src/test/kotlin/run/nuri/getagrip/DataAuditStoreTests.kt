@@ -38,7 +38,7 @@ class DataAuditStoreTests {
         val first = assertNotNull(store.create(draft))
         val second = assertNotNull(store.create(draft))
         val receipt = assertNotNull(store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(GripSpec(), Side.both, 40.0, MaxSource.manual))))
+            MaxSave(GripSpec(), Side.both, 40.0, MaxSource.manual))))
         assertEquals(2, receipt.percentMoves.size)
         assertEquals(2, receipt.percentMoves.map { it.id }.toSet().size)
         assertEquals(setOf(first.id, second.id), receipt.percentMoves.map { it.move.routineID }.toSet())

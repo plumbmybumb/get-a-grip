@@ -372,7 +372,7 @@ struct CriticalForceTestView: View {
     }
 
     /// Hands whose hardest pull beats that hand's own max on file (or has none).
-    private var maxOffers: [TemplateStore.MaxSave] {
+    private var maxOffers: [MaxSave] {
         visit.results.compactMap { hand in
             beatsMax(hand.result, side: hand.side)
                 ? .init(grip: grip, side: hand.side, kg: hand.result.peakKg, source: .measured) : nil
@@ -423,7 +423,7 @@ struct CriticalForceTestView: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func offerLine(_ offer: TemplateStore.MaxSave) -> String {
+    private func offerLine(_ offer: MaxSave) -> String {
         let hand = offer.side == .both ? String(localized: "Both hands") : offer.side.name
         if let old = templates.maxTable.exact(grip: grip.key, side: offer.side) {
             return String(localized: "\(hand): \(weightUnit.text(offer.kg)), up from \(weightUnit.text(old))")

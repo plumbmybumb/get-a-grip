@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui
 
+import run.nuri.getagrip.engine.MaxSave
+
 import run.nuri.getagrip.R
 import androidx.compose.ui.res.vectorResource
 import androidx.annotation.DrawableRes
@@ -283,7 +285,7 @@ fun RootTabView() {
             session = presentation.liveMaxSession(measure),
             onSave = { values ->
                 val receipt = templates.recordMaxesWithReceipt(values.map {
-                    TemplateStore.MaxSave(measure.grip, it.side, it.kg, it.source, it.seconds)
+                    MaxSave(measure.grip, it.side, it.kg, it.source, it.seconds)
                 })
                 if (receipt != null) {
                     measurementSaved = true

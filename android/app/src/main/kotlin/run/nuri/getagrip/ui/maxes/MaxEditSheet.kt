@@ -49,7 +49,7 @@ fun MaxEditSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit) 
     var hasInputFocus by remember { mutableStateOf(false) }
     var history by remember { mutableStateOf(false) }
     var editingShared by remember { mutableStateOf(false) }
-    var receipt by remember { mutableStateOf<TemplateStore.MaxSaveReceipt?>(null) }
+    var receipt by remember { mutableStateOf<MaxSaveReceipt?>(null) }
     val submission = remember { SubmissionState() }
     val current = templates.maxTable
     LaunchedEffect(current, grip.key) {
@@ -65,7 +65,7 @@ fun MaxEditSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit) 
             if (!draft.canSave) return@launch
             failed = false
             val saved = templates.recordMaxesWithReceipt(draft.changes.map {
-                TemplateStore.MaxSave(grip, it.side, it.kg, MaxSource.manual)
+                MaxSave(grip, it.side, it.kg, MaxSource.manual)
             })
             if (saved == null) { failed = true; return@launch }
             committed = true

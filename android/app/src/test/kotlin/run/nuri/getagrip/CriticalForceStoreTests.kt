@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip
 
+import run.nuri.getagrip.engine.MaxSave
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -99,7 +101,7 @@ class CriticalForceStoreTests {
     fun aCriticalForceTestIsABenchmarkDayAndFreezesTheMax() = runTest {
         val w = makeWorld()
         val grip = GripSpec()
-        assertTrue(w.store.recordMaxes(listOf(TemplateStore.MaxSave(grip, Side.left, 36.0, MaxSource.measured))))
+        assertTrue(w.store.recordMaxes(listOf(MaxSave(grip, Side.left, 36.0, MaxSource.measured))))
 
         val record = assertNotNull(w.store.recordCriticalForce(cfResult(), byteArrayOf(1, 20, 0, 0, 0, 0),
             grip, Side.left, bodyMassKg = 70.0))
@@ -113,7 +115,7 @@ class CriticalForceStoreTests {
         assertEquals(listOf(record), w.store.criticalForceRecords, "the store publishes the saved test")
 
         // A later max never rewrites what the test was taken against.
-        assertTrue(w.store.recordMaxes(listOf(TemplateStore.MaxSave(grip, Side.left, 40.0, MaxSource.manual))))
+        assertTrue(w.store.recordMaxes(listOf(MaxSave(grip, Side.left, 40.0, MaxSource.manual))))
         assertEquals(36.0, w.db.criticalForce().all().single().maxAtTestKg)
     }
 
@@ -135,7 +137,7 @@ class CriticalForceStoreTests {
         assertNull(w.store.maxTable.exact(grip.key, Side.right))
 
         assertNotNull(w.store.recordCriticalForce(cfResult(peak = 41.0), ByteArray(0), grip, Side.right,
-            bodyMassKg = null, alsoMax = TemplateStore.MaxSave(grip, Side.right, 41.0, MaxSource.measured)))
+            bodyMassKg = null, alsoMax = MaxSave(grip, Side.right, 41.0, MaxSource.measured)))
         assertEquals(41.0, w.store.maxTable.exact(grip.key, Side.right))
     }
 
@@ -154,7 +156,7 @@ class CriticalForceStoreTests {
         assertNull(w.store.recordCriticalForce(cfResult(cf = Double.NaN), ByteArray(0), GripSpec(), Side.left,
             bodyMassKg = null))
         assertNull(w.store.recordCriticalForce(cfResult(), ByteArray(0), GripSpec(), Side.left, bodyMassKg = null,
-            alsoMax = TemplateStore.MaxSave(GripSpec(), Side.left, 0.0, MaxSource.measured)))
+            alsoMax = MaxSave(GripSpec(), Side.left, 0.0, MaxSource.measured)))
         assertTrue(w.db.criticalForce().all().isEmpty())
     }
 
@@ -165,14 +167,14 @@ class CriticalForceStoreTests {
         val w = makeWorld()
         val grip = GripSpec()
         assertTrue(w.store.recordMaxes(listOf(
-            TemplateStore.MaxSave(grip, Side.left, 36.0, MaxSource.measured),
-            TemplateStore.MaxSave(grip, Side.right, 32.0, MaxSource.measured),
+            MaxSave(grip, Side.left, 36.0, MaxSource.measured),
+            MaxSave(grip, Side.right, 32.0, MaxSource.measured),
         )))
         val saved = assertNotNull(w.store.recordCriticalForces(
             listOf(TemplateStore.CriticalForceSave(Side.left, cfResult(cf = 18.0), ByteArray(0)),
                 TemplateStore.CriticalForceSave(Side.right, cfResult(cf = 16.0), ByteArray(0))),
             grip, bodyMassKg = 70.0,
-            alsoMaxes = listOf(TemplateStore.MaxSave(grip, Side.right, 38.0, MaxSource.measured)),
+            alsoMaxes = listOf(MaxSave(grip, Side.right, 38.0, MaxSource.measured)),
         ))
         assertEquals(listOf(Side.left, Side.right), saved.map { it.side })
         assertEquals(listOf<Double?>(36.0, 32.0), saved.map { it.maxAtTestKg },

@@ -344,7 +344,7 @@ struct MaxEntrySheet: View {
     @State private var side: Side = .both
     /// Set when Save lands with anything to report; the receipt then opens over the form,
     /// and closing it closes the sheet.
-    @State private var receipt: TemplateStore.MaxSaveReceipt?
+    @State private var receipt: MaxSaveReceipt?
 
     init(seed: GripSpec, side: Side = .both, onSaved: (() -> Void)? = nil, onClose: @escaping () -> Void) {
         self.onClose = onClose

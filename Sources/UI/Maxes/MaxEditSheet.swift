@@ -18,7 +18,7 @@ struct MaxEditSheet: View {
     @State private var failed = false
     @State private var committed = false
     @State private var editingShared = false
-    @State private var receipt: TemplateStore.MaxSaveReceipt?
+    @State private var receipt: MaxSaveReceipt?
 
     var body: some View {
         NavigationStack {
@@ -216,7 +216,7 @@ struct MaxEditSheet: View {
         commitValueField?.commit()
         guard loaded, !committed, draft.canSave else { return }
         let values = draft.changes.map {
-            TemplateStore.MaxSave(grip: grip, side: $0.side, kg: $0.kg, source: .manual)
+            MaxSave(grip: grip, side: $0.side, kg: $0.kg, source: .manual)
         }
         guard let saved = templates.recordMaxesWithReceipt(values) else {
             failed = true

@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.criticalforce
 
+import run.nuri.getagrip.engine.MaxSave
+
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.outlined.Info
@@ -266,10 +268,10 @@ fun CriticalForceTestScreen(request: CriticalForceTestRequest, onClose: () -> Un
 }
 
 /// Hands whose hardest pull beats that hand's own max on file (or that have none).
-internal fun maxOffers(request: CriticalForceTestRequest, table: MaxTable): List<TemplateStore.MaxSave> =
+internal fun maxOffers(request: CriticalForceTestRequest, table: MaxTable): List<MaxSave> =
     request.results.mapNotNull { hand ->
         if (beatsMax(hand.result, request.grip, hand.side, table)) {
-            TemplateStore.MaxSave(request.grip, hand.side, hand.result.peakKg, MaxSource.measured)
+            MaxSave(request.grip, hand.side, hand.result.peakKg, MaxSource.measured)
         } else null
     }
 
@@ -874,7 +876,7 @@ private fun ResultScreen(request: CriticalForceTestRequest, onDiscard: () -> Uni
     }
 }
 
-private fun offerLine(offer: TemplateStore.MaxSave, table: MaxTable): String {
+private fun offerLine(offer: MaxSave, table: MaxTable): String {
     val hand = CriticalForceTestRequest.handName(offer.side)
     val old = table.exact(offer.grip.key, offer.side)
     return if (old != null) {

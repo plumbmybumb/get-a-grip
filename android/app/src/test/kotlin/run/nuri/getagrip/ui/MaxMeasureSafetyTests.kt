@@ -2,6 +2,10 @@
 // Original contributions Copyright 2026 Nuri Bruner.
 package run.nuri.getagrip.ui
 
+import run.nuri.getagrip.engine.MaxSaveReceipt
+
+import run.nuri.getagrip.engine.MaxSave
+
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -77,7 +81,7 @@ class MaxMeasureSafetyTests {
         savedMax: (Side) -> Double? = { null },
         session: LiveMaxSession? = null,
         onClose: () -> Unit = {},
-        onSave: suspend (List<MaxMeasurementResult>) -> TemplateStore.MaxSaveReceipt? = { null },
+        onSave: suspend (List<MaxMeasurementResult>) -> MaxSaveReceipt? = { null },
     ) {
         WeightUnits.current = WeightUnit.kg
         compose.setContent {
@@ -99,8 +103,8 @@ class MaxMeasureSafetyTests {
         }
     }
 
-    private fun receipt(values: List<MaxMeasurementResult>) = TemplateStore.MaxSaveReceipt(
-        values = values.map { TemplateStore.MaxSave(GripSpec(), it.side, it.kg, it.source) },
+    private fun receipt(values: List<MaxMeasurementResult>) = MaxSaveReceipt(
+        values = values.map { MaxSave(GripSpec(), it.side, it.kg, it.source) },
         percentMoves = emptyList(), rescaleOffers = emptyList(),
     )
 
@@ -280,7 +284,7 @@ class MaxMeasureSafetyTests {
 
     @Test fun pendingSaveLocksActionsAndFailureKeepsThePulls() {
         val world = World()
-        val firstSave = CompletableDeferred<TemplateStore.MaxSaveReceipt?>()
+        val firstSave = CompletableDeferred<MaxSaveReceipt?>()
         val submissions = mutableListOf<List<MaxMeasurementResult>>()
         show(world, onSave = {
             submissions += it

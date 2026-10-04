@@ -3,6 +3,12 @@
 
 package run.nuri.getagrip.store
 
+import run.nuri.getagrip.engine.MaxReceiptMath
+
+import run.nuri.getagrip.engine.MaxSaveReceipt
+
+import run.nuri.getagrip.engine.MaxSave
+
 import android.content.Intent
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
@@ -1056,15 +1062,6 @@ class TemplateStore(
 
     // MARK: - Maxes
 
-    /// `seconds`: 0 for a peak max; otherwise the timed window — see `MaxRecordEntity.durationSeconds`.
-    data class MaxSave(
-        val grip: GripSpec,
-        val side: Side,
-        val kg: Double,
-        val source: MaxSource,
-        val seconds: Int = 0,
-    )
-
     private val maxSaveMutex = Mutex()
 
     suspend fun recordMax(
@@ -1250,59 +1247,6 @@ class TemplateStore(
 
     // MARK: - What a new max moves
 
-    /// The pieces a max-save receipt is made of (`MaxSaveReceipt`): the percentage targets that
-    /// followed a new max, and the typed-kilogram targets offered a rescale. A namespace since
-    /// 2026-10-04 — its own computation (`maxImpact`) served only a sheet nothing opened.
-    object MaxImpact {
-        /// A percentage band that now resolves to different kilograms. INFORMATIONAL:
-        /// percent targets follow the newest max by design.
-        data class PercentMove(
-            val routineID: UUID,
-            val routineName: String,
-            val side: Side,
-            val loPercent: Double,
-            val hiPercent: Double,
-            /// null when the grip had no max before — the band never resolved until now.
-            val oldBand: ClosedFloatingPointRange<Double>?,
-            val newBand: ClosedFloatingPointRange<Double>,
-        )
-
-        /// Explicit-kilogram sets on this grip, offered a proportional rescale. An OFFER,
-        /// never automatic: a typed number is never moved by arithmetic without a yes
-        /// (`PlanMath`'s precedence rule).
-        data class KgOffer(
-            val routineID: UUID,
-            val routineName: String,
-            val moves: List<Move>,
-        ) {
-            data class Move(
-                val oldBand: ClosedFloatingPointRange<Double>,
-                val newBand: ClosedFloatingPointRange<Double>,
-            )
-        }
-    }
-
-    data class MaxSaveReceipt(
-        val values: List<MaxSave>,
-        val percentMoves: List<PercentMove>,
-        val rescaleOffers: List<RescaleOffer>,
-        val id: UUID = UUID.randomUUID(),
-    ) {
-        data class PercentMove(val grip: GripSpec, val move: MaxImpact.PercentMove) {
-            val id: String get() = "${grip.key}|${move.routineID}|${move.side.rawValue}|${move.loPercent}|${move.hiPercent}"
-        }
-        data class RescaleOffer(
-            val grip: GripSpec,
-            val ratio: Double,
-            val newMaxKg: Double,
-            val routines: List<MaxImpact.KgOffer>,
-            val expectedPlans: Map<UUID, SessionPlan>,
-        ) {
-            val id: String get() = grip.key
-        }
-        val hasDetails: Boolean get() = percentMoves.isNotEmpty() || rescaleOffers.isNotEmpty()
-    }
-
     /** One atomic commit, with its before/after receipt captured in the same transaction. */
     suspend fun recordMaxesWithReceipt(values: List<MaxSave>): MaxSaveReceipt? = maxSaveMutex.withLock {
         if (values.isEmpty()) return@withLock null
@@ -1313,75 +1257,17 @@ class TemplateStore(
         if (saved) receipt else null
     }
 
+    /// The receipt arithmetic lives in the engine (`MaxReceiptMath`, iOS twin); the store
+    /// hands it the routines in their display order.
     private fun maxSaveReceipt(
         values: List<MaxSave>,
         previous: MaxTable,
         current: MaxTable,
         candidates: List<SessionTemplateEntity>,
-    ): MaxSaveReceipt {
-        // Room enforces unique routine IDs, but other gateways must not let a duplicate ID
-        // identify two proposals or two Compose rows.
-        val byID = candidates.groupBy { it.id }
-        val routines = candidates.filter { byID[it.id]?.size == 1 }.sortedWith(routineOrder)
-        val percentMoves = mutableListOf<MaxSaveReceipt.PercentMove>()
-        val rescaleOffers = mutableListOf<MaxSaveReceipt.RescaleOffer>()
-        for ((gripKey, changes) in values.groupBy { it.grip.key }.toSortedMap()) {
-            val grip = changes.first().grip
-            // Rescaling typed kilograms is a PEAK-max story: a timed max is a different number
-            // and no ratio against the old peak.
-            val sharedChange = changes.firstOrNull { it.side == Side.both && it.seconds == 0 }
-            val ratio = sharedChange?.let { shared ->
-                previous.exact(gripKey, Side.both)?.let { shared.kg / it }
-            }
-            val kgOffers = mutableListOf<MaxImpact.KgOffer>()
-            val expectedPlans = mutableMapOf<UUID, SessionPlan>()
-            for (routine in routines) {
-                val plan = routine.plan.executable
-                val sides = if (plan.handMode == HandMode.bothHands) listOf(Side.both)
-                    else listOf(Side.left, Side.right)
-                val canScale = sharedChange != null && (plan.handMode == HandMode.bothHands ||
-                    listOf(Side.left, Side.right).all {
-                        previous.exact(gripKey, it) == null && current.exact(gripKey, it) == null
-                    })
-                val seenPercents = mutableSetOf<String>()
-                val kgMoves = mutableListOf<MaxImpact.KgOffer.Move>()
-                for (set in plan.sets.filter { it.grip.key == gripKey }) {
-                    val explicit = set.targetBand
-                    if (explicit != null) {
-                        if (!canScale || ratio == null || !ratio.isFinite() || ratio <= 0) continue
-                        val newBand = scaled(explicit, ratio)
-                        if (explicit == newBand) continue
-                        val move = MaxImpact.KgOffer.Move(explicit, newBand)
-                        if (move !in kgMoves) kgMoves.add(move)
-                    } else {
-                        val percent = PlanMath.targetPercent(set, plan) ?: continue
-                        // Keyed with the basis too: 90 % of the peak and 90 % of a 10 s max
-                        // are different targets on the same grip.
-                        val basis = PlanMath.maxSeconds(set, plan)?.let { "${it}s" } ?: "peak"
-                        if (!seenPercents.add("${percent.start}–${percent.endInclusive}|$basis")) continue
-                        for (side in sides) {
-                            // Through the tables, so each set reads the max it is a
-                            // percentage OF — a timed save moves the sets measured against it.
-                            val oldBand = PlanMath.targetBand(set, plan, side, previous)
-                            val newBand = PlanMath.targetBand(set, plan, side, current) ?: continue
-                            if (oldBand == newBand) continue
-                            percentMoves.add(MaxSaveReceipt.PercentMove(grip, MaxImpact.PercentMove(
-                                routine.id, routine.name, side, percent.start, percent.endInclusive, oldBand, newBand,
-                            )))
-                        }
-                    }
-                }
-                if (kgMoves.isNotEmpty()) {
-                    kgOffers.add(MaxImpact.KgOffer(routine.id, routine.name, kgMoves))
-                    expectedPlans[routine.id] = routine.plan
-                }
-            }
-            if (kgOffers.isNotEmpty() && ratio != null && sharedChange != null) {
-                rescaleOffers.add(MaxSaveReceipt.RescaleOffer(grip, ratio, sharedChange.kg, kgOffers, expectedPlans))
-            }
-        }
-        return MaxSaveReceipt(values.toList(), percentMoves, rescaleOffers)
-    }
+    ): MaxSaveReceipt = MaxReceiptMath.receipt(
+        values, previous, current,
+        candidates.sortedWith(routineOrder).map { MaxReceiptMath.Routine(it.id, it.name, it.plan) },
+    )
 
     /** Validate and apply the displayed proposal inside one Room transaction. */
     suspend fun applyMaxRescale(offer: MaxSaveReceipt.RescaleOffer): Boolean = maxSaveMutex.withLock {
@@ -1401,8 +1287,8 @@ class TemplateStore(
                 val draft = routine.draft
                 val changed = draft.copy(plan = draft.plan.copy(sets = draft.plan.sets.map { set ->
                     if (set.grip.key != offer.grip.key || !set.hasTarget) set else set.copy(
-                        targetLoKg = set.targetLoKg?.let { scaledKg(it, offer.ratio) },
-                        targetHiKg = set.targetHiKg?.let { scaledKg(it, offer.ratio) },
+                        targetLoKg = set.targetLoKg?.let { MaxReceiptMath.scaledKg(it, offer.ratio) },
+                        targetHiKg = set.targetHiKg?.let { MaxReceiptMath.scaledKg(it, offer.ratio) },
                     )
                 }))
                 routine.applying(changed.normalized)
@@ -1437,8 +1323,8 @@ class TemplateStore(
                     sets = draft.plan.sets.map { set ->
                         if (set.grip.key != grip.key || !set.hasTarget) return@map set
                         set.copy(
-                            targetLoKg = set.targetLoKg?.let { scaledKg(it, ratio) },
-                            targetHiKg = set.targetHiKg?.let { scaledKg(it, ratio) },
+                            targetLoKg = set.targetLoKg?.let { MaxReceiptMath.scaledKg(it, ratio) },
+                            targetHiKg = set.targetHiKg?.let { MaxReceiptMath.scaledKg(it, ratio) },
                         )
                     }
                 )
@@ -1452,19 +1338,6 @@ class TemplateStore(
         return persistAndSync(maxesChanged = false) { writer ->
             updated.forEach { writer.putRoutine(it) }
         }
-    }
-
-    /// Half-kilogram rounding like the percent path, so a scaled typed number looks
-    /// typeable.
-    private fun scaledKg(kg: Double, ratio: Double): Double = PlanMath.roundedToHalfKg(kg * ratio)
-
-    private fun scaled(
-        band: ClosedFloatingPointRange<Double>,
-        ratio: Double,
-    ): ClosedFloatingPointRange<Double> {
-        val lo = scaledKg(band.start, ratio)
-        val hi = scaledKg(band.endInclusive, ratio)
-        return minOf(lo, hi)..maxOf(lo, hi)
     }
 
     // MARK: - Draft rescue

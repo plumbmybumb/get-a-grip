@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import run.nuri.getagrip.engine.MaxSaveReceipt
+
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +65,7 @@ class LiveMaxSession(bothTogether: Boolean, side: Side, windowSeconds: Int = 0) 
         internal set
     var committed: Boolean by mutableStateOf(false)
         internal set
-    var receipt: TemplateStore.MaxSaveReceipt? by mutableStateOf(null)
+    var receipt: MaxSaveReceipt? by mutableStateOf(null)
         internal set
     var reviewing: Boolean by mutableStateOf(false)
         internal set

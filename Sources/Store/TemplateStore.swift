@@ -1139,17 +1139,6 @@ final class TemplateStore {
         }
     }
 
-    /// Unsaved values from one editing or measurement flow. Existing records remain
-    /// untouched so a new working max preserves the history for its grip and hand.
-    struct MaxSave: Hashable, Sendable {
-        let grip: GripSpec
-        let side: Side
-        let kg: Double
-        let source: MaxSource
-        /// 0 for a peak max; otherwise the timed window — see `MaxRecord.durationSeconds`.
-        var seconds: Int = 0
-    }
-
     @discardableResult
     func recordMax(_ kg: Double, for grip: GripSpec, source: MaxSource = .manual,
                    side: Side = .both, marksBenchmarkDay: Bool = true) -> Bool {
@@ -1347,163 +1336,18 @@ final class TemplateStore {
 
     // MARK: - What a new max moves
 
-    /// The pieces a max-save receipt is made of (`MaxSaveReceipt`): the percentage targets
-    /// that followed a new max, and the typed-kilogram targets offered a rescale. A
-    /// namespace since 2026-10-04 — its own computation (`maxImpact`) served one sheet that
-    /// drew a second copy of the receipt, and both are gone.
-    enum MaxImpact {
-        /// A percentage band that now resolves to different kilograms. INFORMATIONAL:
-        /// percent targets follow the newest max by design — this is the visibility,
-        /// not a consent form.
-        struct PercentMove: Hashable, Sendable, Identifiable {
-            let routineID: UUID
-            let routineName: String
-            let side: Side
-            let loPercent: Double
-            let hiPercent: Double
-            /// nil when the grip had no max before — the band never resolved until now.
-            let oldBand: ClosedRange<Double>?
-            let newBand: ClosedRange<Double>
-            var id: String { routineID.uuidString + "·\(side.rawValue)·\(loPercent)–\(hiPercent)" }
-
-            /// **The move, in one sentence** — `25–30 % · now 8.0–12.0 kg · was 7.0–10.0`.
-            ///
-            /// Here rather than on a screen, so the wording lives beside the data it
-            /// describes. The unit is stated once, after the newer number.
-            func line(unit: WeightUnit) -> String {
-                let pct = String(localized: "\(Int((loPercent * 100).rounded()))–\(Int((hiPercent * 100).rounded())) %")
-                var line = String(localized: "\(pct) · now \(unit.bandText(newBand, withUnit: false)) \(unit.symbol)")
-                if let oldBand, oldBand != newBand {
-                    line += String(localized: " · was \(unit.bandText(oldBand, withUnit: false))")
-                }
-                return line
-            }
-        }
-
-        /// Explicit-kilogram sets on this grip, offered a proportional rescale. An
-        /// OFFER, never automatic: a number a person typed is never moved by
-        /// arithmetic without a yes — the same precedence rule `PlanMath` states.
-        struct KgOffer: Hashable, Sendable, Identifiable {
-            struct Move: Hashable, Sendable {
-                let oldBand: ClosedRange<Double>
-                let newBand: ClosedRange<Double>
-            }
-            let routineID: UUID
-            let routineName: String
-            let moves: [Move]
-            var id: UUID { routineID }
-        }
-    }
-
-    /// A receipt describes one committed save, not an intermediate left/right state.
-    /// In particular, a batch containing shared and individual values must resolve its
-    /// targets from the final table, with the individual values taking precedence.
-    struct MaxSaveReceipt: Identifiable, Sendable {
-        struct PercentMove: Identifiable, Sendable {
-            let grip: GripSpec
-            let move: MaxImpact.PercentMove
-            var id: String { grip.key + "|" + move.id }
-        }
-
-        struct RescaleOffer: Identifiable, Sendable {
-            let grip: GripSpec
-            let ratio: Double
-            let newMaxKg: Double
-            let routines: [MaxImpact.KgOffer]
-            /// Offers are reviewable snapshots. A routine edited while the receipt is
-            /// open must not be silently scaled using a now-outdated preview.
-            let expectedPlans: [UUID: SessionPlan]
-            var id: String { grip.key }
-        }
-
-        let id = UUID()
-        let values: [MaxSave]
-        let percentMoves: [PercentMove]
-        let rescaleOffers: [RescaleOffer]
-        var hasDetails: Bool { !percentMoves.isEmpty || !rescaleOffers.isEmpty }
-    }
-
     /// Take the old table before the atomic write, then explain only the targets that
-    /// actually changed. nil means no save occurred; once committed, even a failed
-    /// routine fetch still returns a receipt for the successfully saved max values.
+    /// actually changed (`MaxReceiptMath`). nil means no save occurred; once committed, even
+    /// a failed routine fetch still returns a receipt for the successfully saved values.
     func recordMaxesWithReceipt(_ values: [MaxSave]) -> MaxSaveReceipt? {
         guard !values.isEmpty else { return nil }
         let previous = maxTable
         guard recordMaxes(values) else { return nil }
-        let current = maxTable
-        let candidates = fetchRoutines() ?? []
-        // CloudKit does not guarantee unique routine UUIDs. An ambiguous ID cannot
-        // identify a reviewable target, but must not hide unrelated valid routines.
-        let routinesByID = Dictionary(grouping: candidates, by: \.id)
-        let routines = candidates.filter { routinesByID[$0.id]?.count == 1 }
-        var percentMoves: [MaxSaveReceipt.PercentMove] = []
-        var rescaleOffers: [MaxSaveReceipt.RescaleOffer] = []
-        let grips = Dictionary(grouping: values, by: { $0.grip.key })
-
-        for gripKey in grips.keys.sorted() {
-            guard let changes = grips[gripKey], let grip = changes.first?.grip else { continue }
-            // Rescaling typed kilograms is a PEAK-max story: a timed max is a different
-            // number and no ratio against the old peak.
-            let sharedChange = changes.first { $0.side == .both && $0.seconds == 0 }
-            let ratio = sharedChange.flatMap { change in
-                previous.exact(grip: gripKey, side: .both).map { change.kg / $0 }
-            }
-            var kgOffers: [MaxImpact.KgOffer] = []
-            var expectedPlans: [UUID: SessionPlan] = [:]
-
-            for routine in routines {
-                let plan = routine.plan.executable
-                let sides: [Side] = plan.handMode == .bothHands ? [.both] : [.left, .right]
-                // A shared typed band can be rescaled only if both alternating hands
-                // used, and still use, that same shared benchmark. New exact values in
-                // this very batch disqualify the offer just like older exact values do.
-                let canScale = sharedChange != nil && (plan.handMode == .bothHands ||
-                    [Side.left, .right].allSatisfy {
-                        previous.exact(grip: gripKey, side: $0) == nil &&
-                            current.exact(grip: gripKey, side: $0) == nil
-                    })
-                var seenPercents: Set<String> = []
-                var kgMoves: [MaxImpact.KgOffer.Move] = []
-
-                for set in plan.sets where set.grip.key == gripKey {
-                    if let explicit = set.targetBand {
-                        guard canScale, let ratio, ratio.isFinite, ratio > 0 else { continue }
-                        let newBand = Self.scaled(explicit, by: ratio)
-                        guard explicit != newBand else { continue }
-                        let move = MaxImpact.KgOffer.Move(oldBand: explicit, newBand: newBand)
-                        if !kgMoves.contains(move) { kgMoves.append(move) }
-                    } else if let percent = PlanMath.targetPercent(set, in: plan) {
-                        // Keyed with the basis too: 90 % of the peak and 90 % of a 10 s
-                        // max are different targets on the same grip.
-                        let basis = PlanMath.maxSeconds(set, in: plan).map { "\($0)s" } ?? "peak"
-                        let key = "\(percent.lowerBound)–\(percent.upperBound)|\(basis)"
-                        guard seenPercents.insert(key).inserted else { continue }
-                        for side in sides {
-                            // Resolved through the tables, so each set reads the max it is
-                            // a percentage OF — a peak save moves peak sets, a timed save
-                            // moves the sets measured against that length.
-                            let oldBand = PlanMath.targetBand(set, in: plan, side: side, maxes: previous)
-                            guard let newBand = PlanMath.targetBand(set, in: plan, side: side, maxes: current),
-                                  oldBand != newBand else { continue }
-                            let move = MaxImpact.PercentMove(
-                                routineID: routine.id, routineName: routine.name, side: side,
-                                loPercent: percent.lowerBound, hiPercent: percent.upperBound,
-                                oldBand: oldBand, newBand: newBand)
-                            percentMoves.append(.init(grip: grip, move: move))
-                        }
-                    }
-                }
-                if !kgMoves.isEmpty {
-                    kgOffers.append(.init(routineID: routine.id, routineName: routine.name, moves: kgMoves))
-                    expectedPlans[routine.id] = routine.plan
-                }
-            }
-            if !kgOffers.isEmpty, let ratio, let sharedChange {
-                rescaleOffers.append(.init(grip: grip, ratio: ratio, newMaxKg: sharedChange.kg,
-                                          routines: kgOffers, expectedPlans: expectedPlans))
-            }
+        let routines = (fetchRoutines() ?? []).map {
+            MaxReceiptMath.Routine(id: $0.id, name: $0.name, plan: $0.plan)
         }
-        return MaxSaveReceipt(values: values, percentMoves: percentMoves, rescaleOffers: rescaleOffers)
+        return MaxReceiptMath.receipt(for: values, previous: previous, current: maxTable,
+                                      routines: routines)
     }
 
     /// Apply only the exact proposal that was shown. Failed or outdated proposals leave
@@ -1557,8 +1401,8 @@ final class TemplateStore {
             draft.plan.sets = draft.plan.sets.map { set in
                 guard set.grip.key == grip.key, set.hasTarget else { return set }
                 var scaled = set
-                if let lo = scaled.targetLoKg { scaled.targetLoKg = Self.scaledKg(lo, by: ratio) }
-                if let hi = scaled.targetHiKg { scaled.targetHiKg = Self.scaledKg(hi, by: ratio) }
+                if let lo = scaled.targetLoKg { scaled.targetLoKg = MaxReceiptMath.scaledKg(lo, by: ratio) }
+                if let hi = scaled.targetHiKg { scaled.targetHiKg = MaxReceiptMath.scaledKg(hi, by: ratio) }
                 return scaled
             }
             template.apply(draft.normalized)
@@ -1571,18 +1415,6 @@ final class TemplateStore {
         // computed; this write moves routines only.
         persistAndSync(maxesChanged: false)
         return allApplied && saveError == nil
-    }
-
-    /// Half-kilogram rounding, same as the percent path resolves to — a scaled typed
-    /// number should look like a number someone could have typed.
-    private static func scaledKg(_ kg: Double, by ratio: Double) -> Double {
-        PlanMath.roundedToHalfKg(kg * ratio)
-    }
-
-    private static func scaled(_ band: ClosedRange<Double>, by ratio: Double) -> ClosedRange<Double> {
-        let lo = scaledKg(band.lowerBound, by: ratio)
-        let hi = scaledKg(band.upperBound, by: ratio)
-        return Swift.min(lo, hi)...Swift.max(lo, hi)
     }
 
     // MARK: - Draft rescue

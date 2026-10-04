@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip
 
+import run.nuri.getagrip.engine.MaxSave
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -1568,14 +1570,14 @@ class TemplateStoreTests {
         val grip = GripSpec()
         assertTrue(w.store.recordMax(60.0, grip))
         assertTrue(w.store.recordMaxes(listOf(
-            TemplateStore.MaxSave(grip, Side.left, 30.0, MaxSource.measured),
-            TemplateStore.MaxSave(grip, Side.right, 40.0, MaxSource.measured),
+            MaxSave(grip, Side.left, 30.0, MaxSource.measured),
+            MaxSave(grip, Side.right, 40.0, MaxSource.measured),
         )))
         assertEquals(30.0, w.store.maxTable.exact(grip.key, Side.left))
         assertEquals(40.0, w.store.maxTable.exact(grip.key, Side.right))
         assertEquals(60.0, w.store.maxTable.exact(grip.key, Side.both))
         assertEquals(1, w.db.logs().all().count { it.kind == SessionKind.benchmark })
-        assertTrue(w.store.recordMaxes(listOf(TemplateStore.MaxSave(grip, Side.left, 28.0, MaxSource.measured))))
+        assertTrue(w.store.recordMaxes(listOf(MaxSave(grip, Side.left, 28.0, MaxSource.measured))))
         assertEquals(28.0, w.store.maxTable.exact(grip.key, Side.left), "a later lower result is the working max")
         assertEquals(1, w.db.logs().all().count { it.kind == SessionKind.benchmark })
         assertEquals(4, w.db.maxes().all().size)
@@ -1584,7 +1586,7 @@ class TemplateStoreTests {
     @Test fun manualBatchRetestsAppendWithoutPretendingToBeMeasuredTraining() = runTest {
         val w = makeWorld()
         val grip = GripSpec()
-        val values = listOf(TemplateStore.MaxSave(grip, Side.left, 30.0, MaxSource.manual))
+        val values = listOf(MaxSave(grip, Side.left, 30.0, MaxSource.manual))
         assertTrue(w.store.recordMaxes(values))
         val receipt = assertNotNull(w.store.recordMaxesWithReceipt(values))
         assertFalse(receipt.hasDetails)
@@ -1597,13 +1599,13 @@ class TemplateStoreTests {
         val grip = GripSpec()
         for (invalid in listOf(0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY)) {
             assertFalse(w.store.recordMaxes(listOf(
-                TemplateStore.MaxSave(grip, Side.left, 30.0, MaxSource.measured),
-                TemplateStore.MaxSave(grip, Side.right, invalid, MaxSource.measured),
+                MaxSave(grip, Side.left, 30.0, MaxSource.measured),
+                MaxSave(grip, Side.right, invalid, MaxSource.measured),
             )))
         }
         assertNull(w.store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(grip, Side.left, 30.0, MaxSource.manual),
-            TemplateStore.MaxSave(grip, Side.left, 40.0, MaxSource.measured),
+            MaxSave(grip, Side.left, 30.0, MaxSource.manual),
+            MaxSave(grip, Side.left, 40.0, MaxSource.measured),
         )))
         assertTrue(w.db.maxes().all().isEmpty())
         assertTrue(w.db.logs().all().isEmpty())
@@ -1629,8 +1631,8 @@ class TemplateStoreTests {
             CoroutineScope(UnconfinedTestDispatcher()))
         val grip = GripSpec()
         assertNull(store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(grip, Side.left, 30.0, MaxSource.measured),
-            TemplateStore.MaxSave(grip, Side.right, 40.0, MaxSource.measured),
+            MaxSave(grip, Side.left, 30.0, MaxSource.measured),
+            MaxSave(grip, Side.right, 40.0, MaxSource.measured),
         )))
         assertTrue(w.db.maxes().all().isEmpty())
         assertTrue(w.db.logs().all().isEmpty())
@@ -1651,9 +1653,9 @@ class TemplateStoreTests {
         ))))
         assertTrue(w.store.recordMax(60.0, grip))
         val receipt = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(grip, Side.both, 66.0, MaxSource.measured),
-            TemplateStore.MaxSave(grip, Side.left, 30.0, MaxSource.manual),
-            TemplateStore.MaxSave(grip, Side.right, 40.0, MaxSource.manual),
+            MaxSave(grip, Side.both, 66.0, MaxSource.measured),
+            MaxSave(grip, Side.left, 30.0, MaxSource.manual),
+            MaxSave(grip, Side.right, 40.0, MaxSource.manual),
         )))
         assertEquals(3, receipt.percentMoves.size)
         val hands = receipt.percentMoves.filter { it.move.routineID == one.id }
@@ -1674,7 +1676,7 @@ class TemplateStoreTests {
         val routine = assertNotNull(w.store.save(draft))
         assertTrue(w.store.recordMax(60.0, grip))
         val receipt = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(grip, Side.both, 66.0, MaxSource.measured),
+            MaxSave(grip, Side.both, 66.0, MaxSource.measured),
         )))
         val offer = receipt.rescaleOffers.single()
         assertEquals(20.0..24.0, assertNotNull(w.store.routine(routine.id)).plan.sets[0].targetBand)
@@ -1695,7 +1697,7 @@ class TemplateStoreTests {
         val routine = assertNotNull(w.store.save(draft))
         assertTrue(w.store.recordMax(60.0, grip))
         val receipt = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(grip, Side.both, 66.0, MaxSource.measured),
+            MaxSave(grip, Side.both, 66.0, MaxSource.measured),
         )))
         val edited = routine.draft.let { it.copy(plan = it.plan.copy(
             sets = listOf(SetPlan(grip = grip, targetLoKg = 14.0, targetHiKg = 18.0)),
@@ -1716,7 +1718,7 @@ class TemplateStoreTests {
         val routine = assertNotNull(w.store.save(draft))
         assertTrue(w.store.recordMax(60.0, grip))
         val receipt = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(grip, Side.both, 66.0, MaxSource.measured),
+            MaxSave(grip, Side.both, 66.0, MaxSource.measured),
         )))
         assertTrue(w.store.recordMax(30.0, grip, side = Side.left))
         assertFalse(w.store.applyMaxRescale(receipt.rescaleOffers.single()))
@@ -1745,7 +1747,7 @@ class TemplateStoreTests {
         assertTrue(w.store.recordMax(kg = 60.0, grip = grip))
 
         val left = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(grip, Side.left, 30.0, MaxSource.manual))))
+            MaxSave(grip, Side.left, 30.0, MaxSource.manual))))
         assertTrue(left.rescaleOffers.isEmpty(), "both-hands fallback is not a previous left max")
         val move = assertNotNull(left.percentMoves.firstOrNull { it.move.side == Side.left }?.move)
         assertEquals(singleRoutine.id, move.routineID)
@@ -1753,7 +1755,7 @@ class TemplateStoreTests {
         assertEquals(7.5..9.0, move.newBand)
 
         val again = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(grip, Side.left, 33.0, MaxSource.manual))))
+            MaxSave(grip, Side.left, 33.0, MaxSource.manual))))
         assertTrue(again.rescaleOffers.isEmpty(), "a shared left/right kg band has no one-hand ratio")
     }
 
@@ -1770,7 +1772,7 @@ class TemplateStoreTests {
         }
         assertTrue(w.store.recordMax(kg = 60.0, grip = grip))
         val receipt = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
-            TemplateStore.MaxSave(grip, Side.both, 66.0, MaxSource.manual))))
+            MaxSave(grip, Side.both, 66.0, MaxSource.manual))))
         val offer = assertNotNull(receipt.rescaleOffers.firstOrNull())
         assertEquals(1.1, offer.ratio, 0.0001)
         assertEquals(routineIDs, offer.routines.map { it.routineID }.toSet())

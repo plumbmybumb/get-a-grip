@@ -3,6 +3,8 @@
 
 package run.nuri.getagrip.ui.maxes
 
+import run.nuri.getagrip.engine.MaxSaveReceipt
+
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
@@ -126,7 +128,7 @@ import run.nuri.getagrip.ui.units.WeightUnits
 @Composable
 fun MaxMeasureScreen(
     grip: GripSpec,
-    onSave: suspend (List<MaxMeasurementResult>) -> TemplateStore.MaxSaveReceipt?,
+    onSave: suspend (List<MaxMeasurementResult>) -> MaxSaveReceipt?,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     initialSide: Side = Side.left,

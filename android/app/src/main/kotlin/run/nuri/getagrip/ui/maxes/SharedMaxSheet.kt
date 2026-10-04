@@ -48,7 +48,7 @@ fun SharedMaxSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit
     var focused by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var committed by remember { mutableStateOf(false) }
-    var receipt by remember { mutableStateOf<TemplateStore.MaxSaveReceipt?>(null) }
+    var receipt by remember { mutableStateOf<MaxSaveReceipt?>(null) }
     fun finish() { onSaved(); onClose() }
     fun save() {
         if (committed || submission.isRunning) return
@@ -57,7 +57,7 @@ fun SharedMaxSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit
             withFrameNanos { }
             if (!kg.isFinite() || kg <= 0.0) return@launch
             failed = false
-            val saved = templates.recordMaxesWithReceipt(listOf(TemplateStore.MaxSave(grip, Side.both, kg, MaxSource.manual)))
+            val saved = templates.recordMaxesWithReceipt(listOf(MaxSave(grip, Side.both, kg, MaxSource.manual)))
             if (saved == null) { failed = true; return@launch }
             committed = true
             feed.refresh()

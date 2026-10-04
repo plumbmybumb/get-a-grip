@@ -6,7 +6,7 @@ import SwiftUI
 /// Optional detail after a successful max save. Saving the benchmark already happened;
 /// only an explicit scale action here is allowed to change typed weight targets.
 struct MaxSaveReceiptView: View {
-    let receipt: TemplateStore.MaxSaveReceipt
+    let receipt: MaxSaveReceipt
     var onDone: () -> Void
 
     @Environment(TemplateStore.self) private var templates
@@ -115,7 +115,7 @@ struct MaxSaveReceiptView: View {
         }
     }
 
-    private func weightOffer(_ offer: TemplateStore.MaxSaveReceipt.RescaleOffer) -> some View {
+    private func weightOffer(_ offer: MaxSaveReceipt.RescaleOffer) -> some View {
         MaterialCard(surface: .flat) {
             VStack(alignment: .leading, spacing: 12) {
                 CapsLabel(String(localized: "Weight targets").uppercased())
@@ -159,5 +159,18 @@ struct MaxSaveReceiptView: View {
                 }
             }
         }
+    }
+}
+
+extension MaxImpact.PercentMove {
+    /// **The move, in one sentence** — `25–30 % · now 8.0–12.0 kg · was 7.0–10.0`. The unit
+    /// is stated once, after the newer number.
+    func line(unit: WeightUnit) -> String {
+        let pct = String(localized: "\(Int((loPercent * 100).rounded()))–\(Int((hiPercent * 100).rounded())) %")
+        var line = String(localized: "\(pct) · now \(unit.bandText(newBand, withUnit: false)) \(unit.symbol)")
+        if let oldBand, oldBand != newBand {
+            line += String(localized: " · was \(unit.bandText(oldBand, withUnit: false))")
+        }
+        return line
     }
 }
