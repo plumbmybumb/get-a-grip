@@ -516,11 +516,7 @@ class TemplateStore(
         val target = maxOf(1, template.sessionsPerDay)
         // On a climbing day the climb leads; any hang rounds are the extra, said second.
         climbToday?.let { climb ->
-            val what = if (climb == SessionKind.climbLimit) {
-                L10n.tr("Limit session")
-            } else {
-                L10n.tr("Volume session")
-            }
+            val what = climb.climbSessionTitle
             return when (done) {
                 0 -> L10n.tr("%s at the gym today", what)
                 1 -> L10n.tr("%s at the gym today, plus a hang session", what)

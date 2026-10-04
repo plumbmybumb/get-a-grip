@@ -213,7 +213,7 @@ struct RoutineCard: View, Equatable {
             // checkmark contradicts itself and says "you didn't train". The tally
             // counts hang sessions; today the training was somewhere else.
             if let climb = summary.climbedToday {
-                Text(climb == .climbLimit ? "Limit session" : "Volume session")
+                Text(climb.climbSessionTitle)
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(Ink.primary)
                 Text(hangSuffix)

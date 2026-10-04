@@ -777,7 +777,7 @@ private struct GaugePickerView: View {
             .map(\.displayName)
         let ported = String(localized: "Ported protocols come from the open-source hangtime-grip-connect project and are untested here. Check your first pull against a known weight.")
         guard !verified.isEmpty else { return ported }
-        return String(localized: "\(verified.formatted(.list(type: .and))) is verified on real hardware. \(ported)")
+        return String(localized: "Tested on real hardware with this app: \(verified.formatted(.list(type: .and))). \(ported)")
     }
 
     /// Broadcast gauges are a different shape of device, not a worse one, and the two

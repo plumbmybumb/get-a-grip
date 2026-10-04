@@ -162,9 +162,21 @@ enum class SessionKind(val rawValue: String) {
     /// A testing day: a gauge-measured max or a critical force test was recorded. Logged
     /// automatically the first time either lands on a day, never by typing a number,
     /// because typing is not training. One per day; see `TemplateStore.benchmarkDayLog`.
-    benchmark("benchmark");
+    benchmark("benchmark"),
 
-    val isClimb: Boolean get() = this == climbVolume || this == climbLimit
+    /// Climbing to keep what you have — neither easy mileage nor your limit (Nuri, 2026-10-04).
+    /// A climb in every rule: it settles the day.
+    climbMaintenance("climbMaintenance");
+
+    val isClimb: Boolean get() = this == climbVolume || this == climbLimit || this == climbMaintenance
+
+    /// What a climb day is called on Today's card and in its sentence.
+    val climbSessionTitle: String
+        get() = when (this) {
+            climbLimit -> L10n.tr("Limit session")
+            climbMaintenance -> L10n.tr("Maintenance session")
+            else -> L10n.tr("Volume session")
+        }
 
     /// Counts toward the day's hang tally — the runner's own sessions and hangs logged
     /// by hand.
@@ -186,6 +198,7 @@ enum class SessionKind(val rawValue: String) {
             climbLimit -> L10n.tr("Limit climbing")
             hangManual -> L10n.tr("Weighted hangs")
             benchmark -> L10n.tr("Benchmark")
+            climbMaintenance -> L10n.tr("Maintenance climbing")
         }
 
     /// The word alone, for a chip where "climbing" is already the context.
@@ -196,6 +209,7 @@ enum class SessionKind(val rawValue: String) {
             climbLimit -> L10n.tr("Limit")
             hangManual -> L10n.tr("Hangs")
             benchmark -> L10n.tr("Benchmark")
+            climbMaintenance -> L10n.tr("Maintenance")
         }
 
     /// What each style is, in a climber's words, under the picker: "volume" and "limit"
@@ -207,6 +221,7 @@ enum class SessionKind(val rawValue: String) {
             climbLimit -> L10n.tr("Hard bouldering or projecting, at your limit.")
             hangManual -> L10n.tr("Weighted or max hangs done without the gauge.")
             benchmark -> L10n.tr("A max or critical force test on the gauge.")
+            climbMaintenance -> L10n.tr("Steady climbing to keep what you have, between easy mileage and your limit.")
         }
 
     companion object {

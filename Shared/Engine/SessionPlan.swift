@@ -225,8 +225,10 @@ struct SessionPlan: Hashable, Sendable, Codable {
     var holdSeconds: Int = 10
     var restSeconds: Int = 20
     var setBreakSeconds: Int = 60
-    /// "Get ready" before the FIRST rep of each set, not before every rep.
-    var leadInSeconds: Int = 5
+    /// "Get ready" before the FIRST rep of each set, not before every rep. A NEW routine
+    /// starts at 0 (Nuri, 2026-10-04); a stored blob missing the key still reads as the
+    /// 5 s it ran with when it was written (decoder below).
+    var leadInSeconds: Int = 0
     /// Engagement DETECTOR, not intensity: "you have taken the load". One value because
     /// ~2 kg sits below every set's working load; intensity lives in the target band.
     var thresholdKg: Double = 2.0

@@ -117,12 +117,19 @@ struct NewMaxSheet: View {
 
     /// These are the grips already present in routines, used only to seed this form.
     /// Selecting one creates no saved grip or max and leaves every field editable.
+    ///
+    /// The SUGGESTIONS for a new max (Nuri, 2026-10-04): Benchmarks no longer lists untested
+    /// routine grips as cards, so they lead here instead — the ones with no max yet first,
+    /// each group in the store's own recent order. The fields below still build any grip.
     private var recentGrips: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(String(localized: "START FROM"))
+        let tested = Set(templates.currentMaxes.values.map(\.gripKey))
+        let suggested = templates.recentGrips.filter { !tested.contains($0.key) }
+            + templates.recentGrips.filter { tested.contains($0.key) }
+        return VStack(alignment: .leading, spacing: 8) {
+            CapsLabel(String(localized: "FROM YOUR ROUTINES"))
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
-                    ForEach(templates.recentGrips, id: \.key) { candidate in
+                    ForEach(suggested, id: \.key) { candidate in
                         let selected = candidate.key == grip.key
                         Button {
                             guard !selected else { return }

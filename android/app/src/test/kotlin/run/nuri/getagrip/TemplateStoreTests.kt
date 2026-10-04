@@ -1173,6 +1173,26 @@ class TemplateStoreTests {
         assertEquals(SessionKind.climbLimit, w.store.climbToday)
     }
 
+    /// Maintenance (Nuri, 2026-10-04) settles the day like any climb — no reminder, the card
+    /// met — and ranks UNDER volume and limit when it shares a day with them.
+    @Test
+    fun aMaintenanceClimbSettlesTheDayAndRanksLast() = runTest {
+        val w = makeWorld()
+        val saved = assertNotNull(w.store.save(draft("Daily", listOf(GripSpec()))))
+        w.db.routines().upsert(saved.copy(sessionsPerDay = 2))
+        w.store.syncDerived()
+        val daily = assertNotNull(w.store.routine(saved.id))
+
+        assertNotNull(w.store.recordLoggedSession(SessionKind.climbMaintenance))
+        assertTrue(w.store.isDoneForToday(daily))
+        assertEquals(SessionKind.climbMaintenance, w.store.climbToday)
+        assertTrue(w.store.completionText(daily).startsWith("Maintenance session"))
+        assertEquals(0, w.store.completed(daily), "a climb, never a hang session")
+
+        assertNotNull(w.store.recordLoggedSession(SessionKind.climbVolume))
+        assertEquals(SessionKind.climbVolume, w.store.climbToday, "volume outranks maintenance")
+    }
+
     /// A climb must not be counted as a hang session anywhere — not in the per-routine
     /// tally, and not in the consistency record's `completed`, which is what draws the
     /// "1 of 2" fill.

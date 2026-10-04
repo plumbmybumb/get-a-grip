@@ -42,7 +42,6 @@
     <string name="s_hand_4d50dc">%s hand</string>
     <string name="s_hand_done_unload_the_gauge_then_start_your_hand">%1$s hand done. Unload the gauge, then start your %2$s hand.</string>
     <string name="s_hold_71ed74">%s hold</string>
-    <string name="s_is_verified_on_real_hardware">%1$s is verified on real hardware. %2$s</string>
     <string name="s_kg_kg">"%1$s kg  →  %2$s kg"</string>
     <string name="s_kilograms_your_hardest_pull">%s kilograms, your hardest pull</string>
     <string name="s_lead_in_before_each_set_ce038b">%s lead-in before each set</string>
@@ -484,6 +483,7 @@
     <string name="s_fc">FC</string>
     <string name="s_fine_tuning_5759b5">FINE TUNING</string>
     <string name="s_fingers_804c25">FINGERS</string>
+    <string name="s_from_your_routines">FROM YOUR ROUTINES</string>
     <string name="s_fine_tuning_091774">Fine tuning</string>
     <string name="s_finger_curl">Finger curl</string>
     <string name="s_fingers_9cb27a">Fingers</string>
@@ -527,6 +527,7 @@
     <string name="s_gauge_protocols_by_stevie_ray_hartog_2024_bsd_2_clause">Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause).</string>
     <string name="s_gauge_currently_ee3b46">Gauge. Currently %s.</string>
     <string name="s_gauge_currently_cbee3f">Gauge. Currently %1$s. %2$s</string>
+    <string name="s_gauge_45f0de">Gauge: %1$s%2$s</string>
     <string name="s_gauge_c36f16">Gauge: %1$s%2$s. %3$s</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you_so_you">Get a Grip connects and tares your gauge for you, so you can tap this before you chalk up. If the gauge is still asleep it waits.</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you">Get a Grip connects and tares your gauge for you.</string>
@@ -581,7 +582,6 @@
     <string name="s_idle">Idle</string>
     <string name="s_if_you_enjoy_using_frez_dyno_and_would_like_to_support_t">If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro.</string>
     <string name="s_in_fact_frez_dyno_was_made_possible_by_our_early_pro_sub">In fact, Frez Dyno was made possible by our early Pro subscribers.</string>
-    <string name="s_in_your_routine_not_tested_yet">In your routine, not tested yet</string>
     <string name="s_include_gauge_diagnostics_4522a0">Include gauge diagnostics</string>
     <string name="s_include_gauge_diagnostics_9ac65b">Include gauge diagnostics?</string>
     <string name="s_include_your_best_pull">Include your best pull</string>
@@ -641,6 +641,9 @@
     <string name="s_looking_up_this_dyno_s_calibration">Looking up this Dyno\'s calibration…</string>
     <string name="s_lower_bound">Lower bound</string>
     <string name="s_mpl_2_0" translatable="false">MPL 2.0</string>
+    <string name="s_maintenance">Maintenance</string>
+    <string name="s_maintenance_climbing">Maintenance climbing</string>
+    <string name="s_maintenance_session">Maintenance session</string>
     <string name="s_make_this_the_one_today_opens_on">Make this the one Today opens on</string>
     <string name="s_manage">Manage</string>
     <string name="s_manage_maxes">Manage maxes</string>
@@ -1007,6 +1010,7 @@
     <string name="s_starts_on_the_left_hand">Starts on the left hand</string>
     <string name="s_starts_on_the_right_hand">Starts on the right hand</string>
     <string name="s_status">Status</string>
+    <string name="s_steady_climbing_to_keep_what_you_have_between_easy_milea">Steady climbing to keep what you have, between easy mileage and your limit.</string>
     <string name="s_still_on_the_edge_after_the_bell_in_lld_of_lld_rests_tha">Still on the edge after the bell in %1$d of %2$d rests. That force isn\'t counted and shortens your rest.</string>
     <string name="s_stop">Stop</string>
     <string name="s_stop_test">Stop test</string>
@@ -1040,6 +1044,7 @@
     <string name="s_test_deleted">Test deleted</string>
     <string name="s_test_one_hand_only">Test one hand only.</string>
     <string name="s_tested">Tested %s</string>
+    <string name="s_tested_on_real_hardware_with_this_app">Tested on real hardware with this app: %1$s. %2$s</string>
     <string name="s_tested_your_maxes_c47639">Tested your maxes</string>
     <string name="s_testing">Testing</string>
     <string name="s_testing_day">Testing day</string>

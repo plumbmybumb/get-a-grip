@@ -195,7 +195,7 @@ enum class GaugeKind(val rawValue: String) {
                     hasDeviceClock = false, hasHardwareTare = false,
                     isBroadcast = true, hasStandardBattery = false,
                     sustainsBackgroundStreaming = false,
-                    nominalSampleRate = 8.0, hardwareVerified = false,
+                    nominalSampleRate = 8.0, hardwareVerified = true,
                 )
             entralpi ->
                 GaugeCapabilities(
@@ -256,7 +256,7 @@ enum class GaugeKind(val rawValue: String) {
                     isBroadcast = false, hasStandardBattery = true,
                     sustainsBackgroundStreaming = true,
                     nominalSampleRate = FrezDynoCodec.nominalSampleRate,
-                    hardwareVerified = false,
+                    hardwareVerified = true,
                     requiresRemoteCalibration = true,
                     protocolSource = GaugeProtocolSource.vendorDocumented,
                 )

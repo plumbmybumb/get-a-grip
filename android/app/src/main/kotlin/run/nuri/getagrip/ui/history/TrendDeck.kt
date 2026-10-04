@@ -376,12 +376,11 @@ private fun TrendChart(series: List<TrendModel.Point>, spoken: String) {
         val plotHeight = maxOf(1f, plotBottom - plotTop)
         val inset = 4.dp.toPx()
 
-        val firstMillis = series.first().date.toEpochMilli().toDouble()
-        val lastMillis = series.last().date.toEpochMilli().toDouble()
-        fun x(millis: Double): Float =
-            if (lastMillis <= firstMillis) (plotLeft + plotRight) / 2f
-            else plotLeft + inset + ((millis - firstMillis) / (lastMillis - firstMillis)).toFloat() *
-                (plotRight - plotLeft - inset * 2)
+        // Sessions, evenly spaced: a break from training is not drawn as a gap.
+        val lastIndex = series.size - 1
+        fun x(index: Int): Float =
+            if (lastIndex <= 0) (plotLeft + plotRight) / 2f
+            else plotLeft + inset + index.toFloat() / lastIndex * (plotRight - plotLeft - inset * 2)
         fun y(value: Double): Float = plotBottom - (value / top).toFloat() * plotHeight
 
         val hairline = maxOf(1f, 0.5.dp.toPx())
@@ -396,20 +395,23 @@ private fun TrendChart(series: List<TrendModel.Point>, spoken: String) {
         // The unit, over the value labels.
         drawText(unitLabel, topLeft = Offset(plotRight + gap, 0f))
 
-        // Date gridlines and labels, leading-aligned on their mark like Swift Charts' dates.
-        val marks = TrendChartGeometry.dateTicks(series.first().date, series.last().date, zone)
-        for (mark in marks) {
-            val millis = mark.atStartOfDay(zone).toInstant().toEpochMilli().toDouble()
-            val mx = x(millis.coerceIn(firstMillis, lastMillis))
+        // Date labels at a few sessions along the axis; the end labels hang inward.
+        for (index in TrendChartGeometry.sessionTicks(series.size)) {
+            val mx = x(index)
             drawLine(grid, Offset(mx, plotTop), Offset(mx, plotBottom), hairline)
-            val label = measurer.measure(dateFormat.format(mark), labelStyle)
-            val lx = mx.coerceAtMost(plotRight - label.size.width).coerceAtLeast(0f)
+            val label = measurer.measure(dateFormat.format(series[index].date.atZone(zone).toLocalDate()), labelStyle)
+            val centred = mx - label.size.width / 2f
+            val lx = when (index) {
+                0 -> mx
+                lastIndex -> mx - label.size.width
+                else -> centred
+            }.coerceAtMost(plotRight - label.size.width).coerceAtLeast(0f)
             drawText(label, topLeft = Offset(lx, plotBottom + gap))
         }
 
         // The curve: a monotone cubic, so between two sessions it never claims a load
         // neither of them pulled.
-        val xs = DoubleArray(series.size) { x(series[it].date.toEpochMilli().toDouble()).toDouble() }
+        val xs = DoubleArray(series.size) { x(it).toDouble() }
         val ys = DoubleArray(series.size) { y(values[it]).toDouble() }
         val tangents = TrendChartGeometry.monotoneTangents(xs, ys)
         val line = Path().apply {

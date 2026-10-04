@@ -20,7 +20,7 @@
     {
       "name": "every key absent takes the defaults",
       "input": "{}",
-      "canonical": "{\"isOnDemand\":false,\"parkedReminders\":[],\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"reminders\":[480,1140],\"remindersEnabled\":true,\"sessionsPerDay\":2}"
+      "canonical": "{\"isOnDemand\":false,\"parkedReminders\":[],\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":0,\"name\":\"Daily no-hangs\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"reminders\":[480,1140],\"remindersEnabled\":true,\"sessionsPerDay\":2}"
     },
     {
       "name": "not an object at all",

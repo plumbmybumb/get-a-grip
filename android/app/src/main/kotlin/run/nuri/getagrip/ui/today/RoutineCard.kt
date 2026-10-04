@@ -293,7 +293,7 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
         when {
             climb != null -> {
                 Text(
-                    if (climb == SessionKind.climbLimit) tr("Limit session") else tr("Volume session"),
+                    climb.climbSessionTitle,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = palette.inkPrimary,

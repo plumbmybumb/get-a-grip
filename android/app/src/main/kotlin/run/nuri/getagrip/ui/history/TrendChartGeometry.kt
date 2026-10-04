@@ -3,11 +3,6 @@
 
 package run.nuri.getagrip.ui.history
 
-import java.time.DayOfWeek
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.temporal.TemporalAdjusters
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -22,6 +17,20 @@ import kotlin.math.pow
 /// date marks. Compose has no chart kit in this project's dependency set, so these three
 /// decisions are made here by hand.
 object TrendChartGeometry {
+
+    /// Where the chart's date labels go, by SESSION, not by calendar (Nuri, 2026-10-04; iOS
+    /// `TrendModel.sessionTicks`): the x axis spaces sessions evenly, so two weeks off is not a
+    /// two-week hole in the line. Up to `desired` indices, always the first and the last.
+    fun sessionTicks(count: Int, desired: Int = 4): List<Int> {
+        if (count <= 0) return emptyList()
+        if (count <= desired || desired <= 1) return (0 until count).toList()
+        val ticks = mutableListOf<Int>()
+        for (step in 0 until desired) {
+            val index = Math.round(step * (count - 1).toDouble() / (desired - 1)).toInt()
+            if (ticks.lastOrNull() != index) ticks += index
+        }
+        return ticks
+    }
 
     /// Tangents for a MONOTONE cubic through `(xs, ys)` — the Steffen/`d3.curveMonotoneX`
     /// construction Swift Charts' `.monotone` draws. It never overshoots: between two
@@ -69,45 +78,4 @@ object TrendChartGeometry {
         val count = ceil(top / step - 1e-9).toInt().coerceAtLeast(1)
         return (0..count).map { it * step }
     }
-
-    /// Date marks for a span, at most `desired` of them, on calendar boundaries — days, then
-    /// Mondays, then month starts — the way Swift Charts' `.automatic(desiredCount: 4)` lands
-    /// them. Only marks INSIDE the span are returned; a span shorter than one step gets its
-    /// first day, so the axis is never unlabelled.
-    fun dateTicks(first: Instant, last: Instant, zone: ZoneId, desired: Int = 4): List<LocalDate> {
-        val start = first.atZone(zone).toLocalDate()
-        val end = last.atZone(zone).toLocalDate()
-        if (!end.isAfter(start)) return listOf(start)
-        val spanDays = end.toEpochDay() - start.toEpochDay()
-
-        fun inside(dates: Sequence<LocalDate>): List<LocalDate> =
-            dates.dropWhile { it.isBefore(start) }.takeWhile { !it.isAfter(end) }.toList()
-
-        for (step in longArrayOf(1, 2, 3)) {
-            if (spanDays / step + 1 <= desired) {
-                val firstMark = LocalDate.ofEpochDay(ceilTo(start.toEpochDay(), step))
-                return inside(generateSequence(firstMark) { it.plusDays(step) }).ifEmpty { listOf(start) }
-            }
-        }
-        for (weeks in longArrayOf(1, 2)) {
-            if (spanDays / (7 * weeks) + 1 <= desired) {
-                val monday = start.with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY))
-                return inside(generateSequence(monday) { it.plusWeeks(weeks) }).ifEmpty { listOf(start) }
-            }
-        }
-        for (months in intArrayOf(1, 2, 3, 6)) {
-            // The first 1st on or after the start whose month sits on the step's grid
-            // (January, then every `months` after it), so marks read Jan/Apr/Jul, never Feb/May.
-            var mark = start.withDayOfMonth(1)
-            if (mark.isBefore(start)) mark = mark.plusMonths(1)
-            while ((mark.monthValue - 1) % months != 0) mark = mark.plusMonths(1)
-            val marks = inside(generateSequence(mark) { it.plusMonths(months.toLong()) })
-            if (marks.size <= desired) return marks.ifEmpty { listOf(start) }
-        }
-        val years = ceil(spanDays / 365.0 / (desired - 1).coerceAtLeast(1)).toLong().coerceAtLeast(1)
-        val january = start.withDayOfYear(1).let { if (it.isBefore(start)) it.plusYears(1) else it }
-        return inside(generateSequence(january) { it.plusYears(years) }).ifEmpty { listOf(start) }
-    }
-
-    private fun ceilTo(value: Long, step: Long): Long = Math.floorDiv(value + step - 1, step) * step
 }

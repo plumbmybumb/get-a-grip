@@ -42,7 +42,6 @@
     <string name="s_hand_4d50dc">main %s</string>
     <string name="s_hand_done_unload_the_gauge_then_start_your_hand">Main %1$s terminée. Décharge le capteur, puis lance ta main %2$s.</string>
     <string name="s_hold_71ed74">tenue de %s</string>
-    <string name="s_is_verified_on_real_hardware">%1$s est vérifié sur du vrai matériel. %2$s</string>
     <string name="s_kg_kg">"%1$s kg  →  %2$s kg"</string>
     <string name="s_kilograms_your_hardest_pull">%s kilogrammes, ton tirage le plus fort</string>
     <string name="s_lead_in_before_each_set_ce038b">Décompte de %s avant chaque série</string>
@@ -483,6 +482,7 @@
     <string name="s_fc">AR</string>
     <string name="s_fine_tuning_5759b5">RÉGLAGES FINS</string>
     <string name="s_fingers_804c25">DOIGTS</string>
+    <string name="s_from_your_routines">DE TES ROUTINES</string>
     <string name="s_fine_tuning_091774">Réglages fins</string>
     <string name="s_finger_curl">Flexion</string>
     <string name="s_fingers_9cb27a">Doigts</string>
@@ -526,6 +526,7 @@
     <string name="s_gauge_protocols_by_stevie_ray_hartog_2024_bsd_2_clause">Protocoles des capteurs par Stevie-Ray Hartog (© 2024, BSD-2-Clause).</string>
     <string name="s_gauge_currently_ee3b46">Capteur. Actuellement %s.</string>
     <string name="s_gauge_currently_cbee3f">Capteur. Actuellement %1$s. %2$s</string>
+    <string name="s_gauge_45f0de">Capteur : %1$s%2$s</string>
     <string name="s_gauge_c36f16">Capteur : %1$s%2$s. %3$s</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you_so_you">Get a Grip connecte et tare ton capteur à ta place, tu peux donc toucher ceci avant de te magnésier. Si le capteur dort encore, il attend.</string>
     <string name="s_get_a_grip_connects_and_tares_your_gauge_for_you">Get a Grip connecte et tare ton capteur à ta place.</string>
@@ -580,7 +581,6 @@
     <string name="s_idle">Au repos</string>
     <string name="s_if_you_enjoy_using_frez_dyno_and_would_like_to_support_t">If you enjoy using Frez Dyno and would like to support the future of Frez, please consider trying Frez Pro.</string>
     <string name="s_in_fact_frez_dyno_was_made_possible_by_our_early_pro_sub">In fact, Frez Dyno was made possible by our early Pro subscribers.</string>
-    <string name="s_in_your_routine_not_tested_yet">Dans ta routine, pas encore testée</string>
     <string name="s_include_gauge_diagnostics_4522a0">Inclure les diagnostics du capteur</string>
     <string name="s_include_gauge_diagnostics_9ac65b">Inclure les diagnostics du capteur ?</string>
     <string name="s_include_your_best_pull">Inclure ton meilleur tirage</string>
@@ -639,6 +639,9 @@
     <string name="s_log_a_session">Enregistrer une séance</string>
     <string name="s_looking_up_this_dyno_s_calibration">Recherche de l\'étalonnage de ce Dyno…</string>
     <string name="s_lower_bound">Borne basse</string>
+    <string name="s_maintenance">Entretien</string>
+    <string name="s_maintenance_climbing">Escalade d\'entretien</string>
+    <string name="s_maintenance_session">Séance d\'entretien</string>
     <string name="s_make_this_the_one_today_opens_on">En faire celle qu\'Aujourd\'hui ouvre</string>
     <string name="s_manage">Gérer</string>
     <string name="s_manage_maxes">Gérer les max</string>
@@ -1005,6 +1008,7 @@
     <string name="s_starts_on_the_left_hand">Commence par la main gauche</string>
     <string name="s_starts_on_the_right_hand">Commence par la main droite</string>
     <string name="s_status">État</string>
+    <string name="s_steady_climbing_to_keep_what_you_have_between_easy_milea">Grimpe régulière pour garder ton niveau, entre le volume tranquille et ta limite.</string>
     <string name="s_still_on_the_edge_after_the_bell_in_lld_of_lld_rests_tha">Encore sur la réglette après le signal pendant %1$d repos sur %2$d. Cette force ne compte pas et raccourcit ton repos.</string>
     <string name="s_stop">Arrêter</string>
     <string name="s_stop_test">Arrêter le test</string>
@@ -1038,6 +1042,7 @@
     <string name="s_test_deleted">Test supprimé</string>
     <string name="s_test_one_hand_only">Teste une seule main.</string>
     <string name="s_tested">Testé %s</string>
+    <string name="s_tested_on_real_hardware_with_this_app">Testés sur du vrai matériel avec l\'app : %1$s. %2$s</string>
     <string name="s_tested_your_maxes_c47639">Max testés</string>
     <string name="s_testing">Test</string>
     <string name="s_testing_day">Jour de test</string>

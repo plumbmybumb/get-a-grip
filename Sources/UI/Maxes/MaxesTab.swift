@@ -27,9 +27,6 @@ struct MaxesTab: View {
     /// point of it, and a section of its own at the bottom left it far from that max.
     @Query(sort: [SortDescriptor(\CriticalForceRecord.recordedAt)])
     private var tests: [CriticalForceRecord]
-    /// Only to know whether routines exist: invitations come from real routines, never the
-    /// seed palette.
-    @Query private var routines: [SessionTemplate]
 
     @Environment(TemplateStore.self) private var templates
 
@@ -49,17 +46,16 @@ struct MaxesTab: View {
 
     var body: some View {
         let gripGroups = groups
-        let untestedInvitations = invitations
         ScreenScaffold(title: String(localized: "Benchmarks"), subtitle: subtitle,
                        gridsOnWideScreens: true) {
             VStack(alignment: .leading, spacing: Metrics.spacing) {
-                if gripGroups.isEmpty && untestedInvitations.isEmpty {
+                if gripGroups.isEmpty {
                     emptyCard.staggerIn(0)
                 } else if sizeClass == .regular {
                     // Two per row on a wide window: one chart across a 13-inch screen is a banner.
-                    CardGrid { cards(gripGroups, untestedInvitations) }
+                    CardGrid { cards(gripGroups) }
                 } else {
-                    cards(gripGroups, untestedInvitations)
+                    cards(gripGroups)
                 }
             }
             .toolbar {
@@ -136,15 +132,13 @@ struct MaxesTab: View {
                                                      hands: onGrip.latestHands ?? .oneAtATime(first: .left))
     }
 
-    /// One card per tested grip, then one invitation per untested one — shared by the phone
-    /// stack and the wide grid.
+    /// One card per tested grip — shared by the phone stack and the wide grid. Untested
+    /// routine grips no longer get cards of their own (Nuri, 2026-10-04: they crowded the
+    /// tab); they lead the "+" › Measure a max sheet instead, as FROM YOUR ROUTINES.
     @ViewBuilder
-    private func cards(_ gripGroups: [GripGroup], _ untestedInvitations: [GripSpec]) -> some View {
+    private func cards(_ gripGroups: [GripGroup]) -> some View {
         ForEach(Array(gripGroups.enumerated()), id: \.element.id) { index, group in
             gripCard(group).staggerIn(index)
-        }
-        ForEach(Array(untestedInvitations.enumerated()), id: \.element.key) { index, grip in
-            invitationCard(grip).staggerIn(gripGroups.count)
         }
     }
 
@@ -203,14 +197,6 @@ struct MaxesTab: View {
                 // Date tie (same morning): key order, so grips don't swap between launches.
                 a.lastActivity == b.lastActivity ? a.key < b.key : a.lastActivity > b.lastActivity
             }
-    }
-
-    /// Grips your routines train that have never seen a number — an invitation, not a
-    /// reproach, and only once routines exist.
-    private var invitations: [GripSpec] {
-        guard !routines.isEmpty else { return [] }
-        let tested = Set(records.map(\.gripKey)).union(tests.map(\.gripKey))
-        return templates.recentGrips.filter { !tested.contains($0.key) }
     }
 
     // MARK: - Cards
@@ -355,26 +341,6 @@ struct MaxesTab: View {
                 .buttonStyle(PressFeedbackButtonStyle())
                 .accessibilityLabel("All critical force tests on \(group.grip.spoken)")
                 .accessibilityIdentifier("maxes.cf.history.\(group.grip.key)")
-            }
-        }
-    }
-
-    private func invitationCard(_ grip: GripSpec) -> some View {
-        MaterialCard(surface: .flat) {
-            HStack(spacing: 12) {
-                glyphTile(grip)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(grip.displayName)
-                        .font(.system(.subheadline, weight: .semibold))
-                        .foregroundStyle(Ink.primary)
-                    // In a routine, never tested: its percentage targets are waiting
-                    // on this number.
-                    Text("In your routine, not tested yet")
-                        .font(.system(.footnote))
-                        .foregroundStyle(Ink.tertiary)
-                }
-                Spacer(minLength: 8)
-                measureButton(grip, label: String(localized: "Measure"))
             }
         }
     }

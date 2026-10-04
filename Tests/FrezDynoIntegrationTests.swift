@@ -20,7 +20,7 @@ final class FrezDynoIntegrationTests: XCTestCase {
         XCTAssertTrue(caps.hasStandardBattery)
         XCTAssertTrue(caps.sustainsBackgroundStreaming)
         XCTAssertEqual(caps.nominalSampleRate, 250)
-        XCTAssertFalse(caps.hardwareVerified, "unverified until a Dyno has pulled on this app")
+        XCTAssertTrue(caps.hardwareVerified, "verified on Nuri's Dyno, 2026-10-04")
         XCTAssertTrue(caps.requiresRemoteCalibration)
         XCTAssertEqual(caps.protocolSource, .vendorDocumented)
 

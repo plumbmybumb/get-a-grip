@@ -115,8 +115,23 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
     /// automatically the first time either lands on a day, never by typing a number,
     /// because typing is not training. One per day; see `TemplateStore.stampBenchmarkDay`.
     case benchmark
+    /// Climbing to keep what you have — neither easy mileage nor your limit (Nuri,
+    /// 2026-10-04). A climb in every rule: it settles the day.
+    case climbMaintenance
 
-    var isClimb: Bool { self == .climbVolume || self == .climbLimit }
+    var isClimb: Bool { self == .climbVolume || self == .climbLimit || self == .climbMaintenance }
+
+    /// What a climb day is called on Today's card and in its sentence.
+    var climbSessionTitle: String {
+        switch self {
+        case .climbLimit:       String(localized: "Limit session")
+        case .climbMaintenance: String(localized: "Maintenance session")
+        default:                String(localized: "Volume session")
+        }
+    }
+
+    /// The kinds the log sheet offers, in its order.
+    static let loggable: [SessionKind] = [.climbVolume, .climbLimit, .climbMaintenance, .hangManual]
 
     /// Counts toward the day's hang tally — the runner's own sessions and hangs logged
     /// by hand.
@@ -138,6 +153,7 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
         case .climbLimit:  String(localized: "Limit climbing")
         case .hangManual:  String(localized: "Weighted hangs")
         case .benchmark:   String(localized: "Benchmark")
+        case .climbMaintenance: String(localized: "Maintenance climbing")
         }
     }
 
@@ -149,6 +165,7 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
         case .climbLimit:  String(localized: "Limit")
         case .hangManual:  String(localized: "Hangs")
         case .benchmark:   String(localized: "Benchmark")
+        case .climbMaintenance: String(localized: "Maintenance")
         }
     }
 
@@ -161,6 +178,7 @@ enum SessionKind: String, Codable, Hashable, Sendable, CaseIterable {
         case .climbLimit:  String(localized: "Hard bouldering or projecting, at your limit.")
         case .hangManual:  String(localized: "Weighted or max hangs done without the gauge.")
         case .benchmark:   String(localized: "A max or critical force test on the gauge.")
+        case .climbMaintenance: String(localized: "Steady climbing to keep what you have, between easy mileage and your limit.")
         }
     }
 

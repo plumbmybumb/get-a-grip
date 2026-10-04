@@ -140,7 +140,8 @@ struct GaugeCapabilities: Sendable, Equatable {
     /// Approximate samples per second — for UI copy and debounce sanity checks,
     /// never for timing.
     var nominalSampleRate: Double
-    /// Verified against real hardware by THIS project. Settings says so whenever it is
+    /// Verified against real hardware by THIS project: the Progressor, the WH-C06 and the
+    /// Frez Dyno as of 2026-10-04 (Nuri, after months of real sessions). Settings says so whenever it is
     /// false (the same honesty rule as the inferred RFD layout); `protocolSource` says
     /// whether the unverified protocol is the maker's word or a port.
     var hardwareVerified: Bool
@@ -192,7 +193,7 @@ extension GaugeKind {
             GaugeCapabilities(hasDeviceClock: false, hasHardwareTare: false,
                               isBroadcast: true, hasStandardBattery: false,
                               sustainsBackgroundStreaming: false,
-                              nominalSampleRate: 8, hardwareVerified: false)
+                              nominalSampleRate: 8, hardwareVerified: true)
         case .entralpi:
             GaugeCapabilities(hasDeviceClock: false, hasHardwareTare: false,
                               isBroadcast: false, hasStandardBattery: true,
@@ -239,7 +240,7 @@ extension GaugeKind {
                               isBroadcast: false, hasStandardBattery: true,
                               sustainsBackgroundStreaming: true,
                               nominalSampleRate: FrezDynoCodec.nominalSampleRate,
-                              hardwareVerified: false,
+                              hardwareVerified: true,
                               requiresRemoteCalibration: true,
                               protocolSource: .vendorDocumented)
         }

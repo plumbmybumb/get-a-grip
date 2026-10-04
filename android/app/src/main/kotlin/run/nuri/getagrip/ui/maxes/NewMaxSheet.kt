@@ -72,11 +72,16 @@ fun NewMaxSheet(
                     fontWeight = FontWeight.SemiBold, color = palette.inkPrimary, textAlign = TextAlign.Center)
             }
             if (templates.recentGrips.isNotEmpty()) {
+                // The SUGGESTIONS for a new max (Nuri, 2026-10-04; iOS twin): Benchmarks no longer
+                // lists untested routine grips as cards, so they lead here — no max yet first.
+                val tested = templates.currentMaxes.values.mapTo(HashSet()) { it.gripKey }
+                val suggested = templates.recentGrips.filter { it.key !in tested } +
+                    templates.recentGrips.filter { it.key in tested }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CapsLabel(tr("START FROM"))
+                    CapsLabel(tr("FROM YOUR ROUTINES"))
                     Row(Modifier.horizontalScroll(rememberScrollState()).testTag("newMax.recentGrips"),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        templates.recentGrips.forEach { candidate ->
+                        suggested.forEach { candidate ->
                             FilterChip(selected = candidate.key == draft.grip.key,
                                 label = {
                                     Row(verticalAlignment = Alignment.CenterVertically,

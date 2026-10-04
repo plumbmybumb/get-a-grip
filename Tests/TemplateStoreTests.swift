@@ -987,6 +987,25 @@ final class TemplateStoreTests: XCTestCase {
         XCTAssertEqual(w.store.climbToday, .climbLimit)
     }
 
+    /// Maintenance (Nuri, 2026-10-04) settles the day like any climb — no reminder, the
+    /// card met — and ranks UNDER volume and limit when it shares a day with them.
+    func testAMaintenanceClimbSettlesTheDayAndRanksLast() throws {
+        let w = try makeWorld()
+        let saved = try XCTUnwrap(w.store.save(draft("Daily", grips: [GripSpec()])))
+        saved.sessionsPerDay = 2
+        try w.context.save()
+        w.store.syncDerived()
+
+        XCTAssertNotNil(w.store.recordLoggedSession(.climbMaintenance))
+        XCTAssertTrue(w.store.isDoneForToday(saved))
+        XCTAssertEqual(w.store.climbToday, .climbMaintenance)
+        XCTAssertTrue(w.store.completionText(saved).hasPrefix("Maintenance session"))
+        XCTAssertEqual(w.store.completed(saved), 0, "a climb, never a hang session")
+
+        XCTAssertNotNil(w.store.recordLoggedSession(.climbVolume))
+        XCTAssertEqual(w.store.climbToday, .climbVolume, "volume outranks maintenance")
+    }
+
     /// A climb must not be counted as a hang session anywhere — not in the per-routine
     /// tally, and not in the consistency record's `completed`, which is what draws the
     /// "1 of 2" fill.

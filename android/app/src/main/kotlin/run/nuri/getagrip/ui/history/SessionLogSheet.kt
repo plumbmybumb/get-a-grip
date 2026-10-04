@@ -89,7 +89,7 @@ data class SessionLogDraft(
                         "Counts as one session for %s.",
                         day,
                     )
-                SessionKind.climbVolume, SessionKind.climbLimit ->
+                SessionKind.climbVolume, SessionKind.climbLimit, SessionKind.climbMaintenance ->
                     L10n.tr(
                         "Marks %s as trained and stops its reminders.",
                         day,
@@ -103,7 +103,7 @@ data class SessionLogDraft(
         val durationStops: List<Double> = listOf(30.0, 45.0, 60.0, 90.0, 120.0, 150.0, 180.0, 240.0)
 
         val kinds: List<SessionKind> =
-            listOf(SessionKind.climbVolume, SessionKind.climbLimit, SessionKind.hangManual)
+            listOf(SessionKind.climbVolume, SessionKind.climbLimit, SessionKind.climbMaintenance, SessionKind.hangManual)
 
         fun durationLabel(minutes: Int): String = when (minutes) {
             30 -> L10n.tr("30m")
@@ -264,9 +264,9 @@ private fun KindBlock(selected: SessionKind?, onSelect: (SessionKind) -> Unit) {
                 Icon(Icons.Outlined.Info, tr("About session types"), tint = palette.inkSecondary)
             }
         }
-        // `ChipGrid`: a third chip tips a plain Row past legibility at accessibility sizes.
+        // `ChipGrid`, two by two since Maintenance joined (2026-10-04): four in a row truncated it.
         ChipGrid(
-            base = 3,
+            base = 2,
             content = SessionLogDraft.kinds.map { option ->
                 { cellModifier: Modifier ->
                     Chip(option.shortName, selected == option, cellModifier) { onSelect(option) }

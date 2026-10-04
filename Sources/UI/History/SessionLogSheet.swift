@@ -86,10 +86,10 @@ struct SessionLogSheet: View {
                 .accessibilityLabel("About session types")
                 .accessibilityValue(showKindHelp ? "Expanded" : "Collapsed")
             }
-            // `ChipGrid`, not an `HStack`: a third chip tips this row over at
-            // accessibility sizes, and the grid wraps where a row would squeeze.
-            ChipGrid(base: 3) {
-                ForEach([SessionKind.climbVolume, .climbLimit, .hangManual], id: \.self) { option in
+            // `ChipGrid`, not an `HStack`: two by two since Maintenance joined (2026-10-04) —
+            // four in a row truncated it — and the grid wraps where a row would squeeze.
+            ChipGrid(base: 2) {
+                ForEach(SessionKind.loggable, id: \.self) { option in
                     Chip(title: option.shortName, isSelected: kind == option) {
                         kind = option
                     }
@@ -100,7 +100,7 @@ struct SessionLogSheet: View {
             // "limit" are jargon, and a mis-picked chip mis-describes the week.
             if showKindHelp {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(kind.map { [$0] } ?? [.climbVolume, .climbLimit, .hangManual], id: \.self) { option in
+                    ForEach(kind.map { [$0] } ?? SessionKind.loggable, id: \.self) { option in
                         Text(kind == nil ? String(localized: "\(option.shortName) — \(option.explainer)") : option.explainer)
                             .font(.system(.footnote))
                             .foregroundStyle(Ink.tertiary)
@@ -195,7 +195,7 @@ struct SessionLogSheet: View {
         switch kind {
         case .hangManual:
             return String(localized: "Counts as one session for \(day).")
-        case .climbVolume, .climbLimit:
+        case .climbVolume, .climbLimit, .climbMaintenance:
             return String(localized: "Marks \(day) as trained and stops its reminders.")
         case nil, .hang, .benchmark:
             return String(localized: "Choose a session kind to see how it counts.")

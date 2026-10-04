@@ -87,14 +87,17 @@ final class WorkoutLog {
 }
 
 extension Collection where Element == WorkoutLog {
-    /// The climb logged on `day` — **hardest first**, so a limit session is what a day is
-    /// remembered by even when an easy evening followed it.
+    /// The climb logged on `day` — **hardest first** (limit, then volume, then maintenance),
+    /// so a limit session is what a day is remembered by even when an easy evening followed it.
     ///
     /// ONE implementation, shared by the store's strip and History's 5-week grid, so the
     /// two calendars cannot drift.
     func climb(on day: DayStamp) -> SessionKind? {
         let kinds = filter { $0.dayKey == day.raw && $0.kind.isClimb }.map(\.kind)
-        return kinds.contains(.climbLimit) ? .climbLimit : kinds.first
+        for hardest in [SessionKind.climbLimit, .climbVolume] where kinds.contains(hardest) {
+            return hardest
+        }
+        return kinds.first
     }
 
     /// Whether anything logged on `day` SETTLES it — a climb or a benchmark. The grid
@@ -150,7 +153,7 @@ extension Collection where Element == WorkoutLog {
                 // session ran its full length, which is what a completed pull means.
                 stats.volumeKg += log.avgKg * Double(log.completedReps)
                 stats.heaviestPullKg = Swift.max(stats.heaviestPullKg, log.peakKg)
-            case .climbVolume, .climbLimit:
+            case .climbVolume, .climbLimit, .climbMaintenance:
                 climbDays.insert(log.dayKey)
             case .benchmark:
                 break

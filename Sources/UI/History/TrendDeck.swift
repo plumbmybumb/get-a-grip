@@ -209,26 +209,36 @@ struct TrendDeck: View, Equatable {
     }
 
     private func chart(_ series: [TrendModel.Point]) -> some View {
-        Chart(series) { point in
+        // Sessions, evenly spaced: a break from training is not drawn as a gap. Dates still
+        // label the axis, at a few sessions along it.
+        let ticks = TrendModel.sessionTicks(count: series.count)
+        return Chart(Array(series.enumerated()), id: \.element.id) { index, point in
             // The runner's brush: bleu 0.28 → 0.02 under the curve (ForceTraceView),
             // since this is the same measured kilograms. A naked hairline read as a
             // second, thinner instrument.
-            AreaMark(x: .value("Date", point.date), y: .value("Load", weightUnit.fromKg(point.avgKg)))
+            AreaMark(x: .value("Session", index), y: .value("Load", weightUnit.fromKg(point.avgKg)))
                 .interpolationMethod(.monotone)
                 .foregroundStyle(LinearGradient(
                     colors: [Accent.bleu.opacity(0.28), Accent.bleu.opacity(0.02)],
                     startPoint: .top, endPoint: .bottom))
-            LineMark(x: .value("Date", point.date), y: .value("Load", weightUnit.fromKg(point.avgKg)))
+            LineMark(x: .value("Session", index), y: .value("Load", weightUnit.fromKg(point.avgKg)))
                 .interpolationMethod(.monotone)
                 .foregroundStyle(Accent.bleu)
-            PointMark(x: .value("Date", point.date), y: .value("Load", weightUnit.fromKg(point.avgKg)))
+            PointMark(x: .value("Session", index), y: .value("Load", weightUnit.fromKg(point.avgKg)))
                 .foregroundStyle(Accent.bleu)
                 .symbolSize(28)
         }
+        .chartXScale(domain: 0...max(1, series.count - 1))
         .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+            AxisMarks(values: ticks) { value in
                 AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
-                AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+                if let index = value.as(Int.self), series.indices.contains(index) {
+                    // The end labels hang INWARD, so neither runs off the plot.
+                    AxisValueLabel(anchor: index == 0 ? .topLeading
+                                   : index == series.count - 1 ? .topTrailing : .top) {
+                        Text(series[index].date, format: .dateTime.day().month(.abbreviated))
+                    }
+                }
             }
         }
         .chartYAxisLabel(weightUnit.symbol)

@@ -89,4 +89,13 @@ final class TrendModelTests: XCTestCase {
         XCTAssertEqual(routine.selectedGrip(front3.key), crimp.key)
         XCTAssertEqual(routine.selectedGrip(crimp.key), crimp.key)
     }
+
+    /// The chart spaces SESSIONS, not days (Nuri, 2026-10-04), so its date labels sit at a few
+    /// sessions along the axis: always the first and the last.
+    func testSessionTicksSpaceSessionsNotDays() {
+        XCTAssertEqual(TrendModel.sessionTicks(count: 3), [0, 1, 2])
+        XCTAssertEqual(TrendModel.sessionTicks(count: 100), [0, 33, 66, 99])
+        XCTAssertEqual(TrendModel.sessionTicks(count: 6), [0, 2, 3, 5])
+        XCTAssertEqual(TrendModel.sessionTicks(count: 0), [])
+    }
 }

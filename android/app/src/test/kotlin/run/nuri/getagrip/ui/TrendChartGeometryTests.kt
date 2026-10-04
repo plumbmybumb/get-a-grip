@@ -4,9 +4,6 @@
 package run.nuri.getagrip.ui
 
 import run.nuri.getagrip.ui.history.TrendChartGeometry
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.ZoneOffset
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.test.Test
@@ -73,30 +70,12 @@ class TrendChartGeometryTests {
         }
     }
 
-    @Test fun dateTicksAreFewAndInsideTheSpan() {
-        val zone = ZoneOffset.UTC
-        fun at(date: String) = LocalDate.parse(date).atTime(9, 0).toInstant(zone)
-
-        // Three days: one mark a day.
-        assertEquals(
-            listOf("2026-05-01", "2026-05-02", "2026-05-03").map(LocalDate::parse),
-            TrendChartGeometry.dateTicks(at("2026-05-01"), at("2026-05-03"), zone),
-        )
-        // Three weeks: Mondays.
-        val weeks = TrendChartGeometry.dateTicks(at("2026-05-01"), at("2026-05-21"), zone)
-        assertTrue(weeks.all { it.dayOfWeek == DayOfWeek.MONDAY }, "$weeks")
-        // Five months: month starts.
-        val months = TrendChartGeometry.dateTicks(at("2026-01-10"), at("2026-06-20"), zone)
-        assertTrue(months.all { it.dayOfMonth == 1 }, "$months")
-        // Same day: labelled anyway.
-        assertEquals(listOf(LocalDate.parse("2026-05-01")),
-            TrendChartGeometry.dateTicks(at("2026-05-01"), at("2026-05-01").plusSeconds(3600), zone))
-
-        for ((from, to) in listOf("2026-05-01" to "2026-05-09", "2026-02-01" to "2026-04-15",
-                "2025-01-01" to "2026-09-01", "2020-03-03" to "2026-09-01")) {
-            val ticks = TrendChartGeometry.dateTicks(at(from), at(to), zone)
-            assertTrue(ticks.size in 1..4, "$from…$to: $ticks")
-            assertTrue(ticks.all { !it.isBefore(LocalDate.parse(from)) && !it.isAfter(LocalDate.parse(to)) }, "$ticks")
-        }
+    @Test fun sessionTicksSpaceSessionsNotDays() {
+        // Few sessions: every one is labelled.
+        assertEquals(listOf(0, 1, 2), TrendChartGeometry.sessionTicks(3))
+        // Many: four, always the first and the last, evenly between.
+        assertEquals(listOf(0, 33, 66, 99), TrendChartGeometry.sessionTicks(100))
+        assertEquals(listOf(0, 2, 3, 5), TrendChartGeometry.sessionTicks(6))
+        assertTrue(TrendChartGeometry.sessionTicks(0).isEmpty())
     }
 }

@@ -20,12 +20,17 @@ import androidx.compose.material.icons.filled.Battery2Bar
 import androidx.compose.material.icons.filled.Battery4Bar
 import androidx.compose.material.icons.filled.Battery6Bar
 import androidx.compose.material.icons.filled.BatteryFull
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,8 +57,9 @@ private val DOT = 8.dp
 
 /// The gauge's status, as a single tonal pill: dot + name + battery.
 ///
-/// Tapping connects, or — once connected — refreshes the battery, which is the only fact on
-/// it that goes stale while nothing else changes.
+/// Tapping connects, or — once connected — opens a small menu: refresh the battery (the only
+/// fact on it that goes stale while nothing else changes) or disconnect (Nuri, 2026-10-04: the
+/// chip is where you look for the gauge, so it is where you let it go).
 ///
 /// TRANSLATION NOTE: iOS builds this as a Button whose glass capsule lives INSIDE the label,
 /// because glass wrapped around a container swallows the button's touches. Compose has no
@@ -75,23 +81,34 @@ fun DeviceChip(modifier: Modifier = Modifier) {
     }
     val fraction = device.batteryFraction
     val batterySuffix = fraction?.let { L10n.tr(". Battery %d percent", BatteryDisplay.percentage(it)) } ?: ""
-    val action = if (connected) tr("Refresh battery") else tr("Connect")
+    var menuOpen by remember { mutableStateOf(false) }
 
     Box(
         modifier
             .height(CHIP_HIT_HEIGHT)
             .clickable(interactionSource = interactionSource, indication = null, role = Role.Button) {
-                if (connected) device.readBattery() else device.connect()
+                if (connected) menuOpen = true else device.connect()
             }
             // ONE spoken node. The battery fact travels in the label rather than on the
             // glyph: an explicit description on the outer node replaces every synthesized
             // child label rather than merging with them, so a description left on the icon
             // would never reach TalkBack at all.
             .semantics(mergeDescendants = true) {
-                contentDescription = L10n.tr("Gauge: %s%s. %s", title, batterySuffix, action)
+                contentDescription = if (connected) L10n.tr("Gauge: %s%s", title, batterySuffix)
+                else L10n.tr("Gauge: %s%s. %s", title, batterySuffix, L10n.tr("Connect"))
             },
         contentAlignment = Alignment.Center,
     ) {
+        DropdownMenu(expanded = menuOpen && connected, onDismissRequest = { menuOpen = false }, containerColor = palette.card) {
+            DropdownMenuItem(text = { Text(tr("Refresh battery")) }, onClick = {
+                menuOpen = false
+                device.readBattery()
+            })
+            DropdownMenuItem(text = { Text(if (device.isMock) tr("Leave demo mode") else tr("Disconnect")) }, onClick = {
+                menuOpen = false
+                if (device.isMock) device.useMockDevice(false) else device.disconnect()
+            })
+        }
         Surface(
             shape = CircleShape,
             color = palette.card,

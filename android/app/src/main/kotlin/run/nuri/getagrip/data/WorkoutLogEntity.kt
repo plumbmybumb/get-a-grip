@@ -186,7 +186,8 @@ data class WorkoutLogEntity(
 /// eventually draw two calendars from the same rows.
 fun Collection<WorkoutLogEntity>.climb(on: DayStamp): SessionKind? {
     val kinds = filter { it.dayKey == on.raw && it.kind.isClimb }.map { it.kind }
-    return if (kinds.contains(SessionKind.climbLimit)) SessionKind.climbLimit else kinds.firstOrNull()
+    // Hardest first: limit, then volume, then maintenance.
+    return listOf(SessionKind.climbLimit, SessionKind.climbVolume).firstOrNull { it in kinds } ?: kinds.firstOrNull()
 }
 
 /// Whether anything on `day` SETTLES it — a climb or a benchmark. Grid and tally fill on
@@ -247,7 +248,7 @@ val Collection<WorkoutLogEntity>.lifetime: LifetimeStats
                     volume += log.avgKg * log.completedReps
                     heaviest = maxOf(heaviest, log.peakKg)
                 }
-                SessionKind.climbVolume, SessionKind.climbLimit -> climbDays.add(log.dayKey)
+                SessionKind.climbVolume, SessionKind.climbLimit, SessionKind.climbMaintenance -> climbDays.add(log.dayKey)
                 SessionKind.benchmark -> Unit
             }
         }

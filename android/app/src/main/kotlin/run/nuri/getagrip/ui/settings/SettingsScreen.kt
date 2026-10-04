@@ -385,7 +385,7 @@ private fun Footnotes() {
             if (verified.isEmpty()) {
                 ported
             } else {
-                L10n.tr("%s is verified on real hardware. %s", andList(verified), ported)
+                L10n.tr("Tested on real hardware with this app: %s. %s", andList(verified), ported)
             },
             style = MaterialTheme.typography.bodySmall,
             color = palette.inkTertiary,

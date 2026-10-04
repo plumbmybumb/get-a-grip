@@ -612,7 +612,7 @@ final class TemplateStore {
         // The climb LEADS the sentence, because on a day you climbed it is the training
         // that happened — and any hang rounds are the extra, said second.
         if let climb = climbToday {
-            let what = climb == .climbLimit ? String(localized: "Limit session") : String(localized: "Volume session")
+            let what = climb.climbSessionTitle
             switch done {
             case 0:  return String(localized: "\(what) at the gym today")
             case 1:  return String(localized: "\(what) at the gym today, plus a hang session")

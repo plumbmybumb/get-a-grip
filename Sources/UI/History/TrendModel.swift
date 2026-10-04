@@ -54,6 +54,21 @@ struct TrendModel: Equatable, Sendable {
     /// Most recently trained first: the FRONT card is the routine you are mid-way through.
     let routines: [Routine]
 
+    /// Where the chart's date labels go, by SESSION, not by calendar (Nuri, 2026-10-04): the x
+    /// axis spaces sessions evenly, so two weeks off is not a two-week hole in the line, and
+    /// every session ever logged stays in view for the long trend. Up to `desired` indices,
+    /// always the first and the last, evenly between.
+    static func sessionTicks(count: Int, desired: Int = 4) -> [Int] {
+        guard count > 0 else { return [] }
+        guard count > desired, desired > 1 else { return Array(0..<count) }
+        var ticks: [Int] = []
+        for step in 0..<desired {
+            let index = Int((Double(step * (count - 1)) / Double(desired - 1)).rounded())
+            if ticks.last != index { ticks.append(index) }
+        }
+        return ticks
+    }
+
     /// A rep the LOAD chart may count: it finished, and a gauge was watching. Gauge-free reps
     /// log 0 kg (truthfully: nothing was measured), and charting those zeros dragged a grip's
     /// line to the floor. The month grid still counts those sessions; only the KILOGRAM

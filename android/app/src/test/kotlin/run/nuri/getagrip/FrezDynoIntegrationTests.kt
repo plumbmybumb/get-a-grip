@@ -53,7 +53,7 @@ class FrezDynoIntegrationTests {
         assertTrue(caps.hasStandardBattery)
         assertTrue(caps.sustainsBackgroundStreaming)
         assertEquals(250.0, caps.nominalSampleRate)
-        assertFalse(caps.hardwareVerified, "unverified until a Dyno has pulled on this app")
+        assertTrue(caps.hardwareVerified, "verified on Nuri's Dyno, 2026-10-04")
         assertTrue(caps.requiresRemoteCalibration)
         assertEquals(GaugeProtocolSource.vendorDocumented, caps.protocolSource)
 

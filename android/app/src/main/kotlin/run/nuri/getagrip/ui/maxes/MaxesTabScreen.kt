@@ -157,7 +157,6 @@ private fun MaxesOverview(
     // the point of it, and a section of its own at the bottom left it far from that max.
     val tests = templates.criticalForceRecords
     val groups = remember(feed.maxGroups, tests) { benchmarkGroupsOf(feed.maxGroups, tests) }
-    val tested = remember(groups) { groups.mapTo(HashSet()) { it.key } }
     /// The grip whose critical force history is open.
     var historyGrip by remember { mutableStateOf<GripSpec?>(null) }
     /// Grip keys whose cards are open. EMPTY by default: a card is a summary until asked
@@ -167,10 +166,8 @@ private fun MaxesOverview(
     var addMenu by remember { mutableStateOf(false) }
     /// The grip whose Measure asked "What are you measuring?".
     var choosing by remember { mutableStateOf<GripSpec?>(null) }
-    // Grips your routines train that have never seen a number — an invitation, not a
-    // reproach, and only once routines exist at all.
-    val invitations = if (templates.routines.isEmpty()) emptyList()
-    else templates.recentGrips.filter { it.key !in tested }
+    // Untested routine grips no longer get cards of their own (Nuri, 2026-10-04: they crowded
+    // the tab); they lead the "+" › Measure a max sheet instead, as FROM YOUR ROUTINES.
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
@@ -236,7 +233,7 @@ private fun MaxesOverview(
                 }
             }
 
-            if (groups.isEmpty() && invitations.isEmpty()) {
+            if (groups.isEmpty()) {
                 item("empty") { EmptyCard() }
             } else {
                 items(groups, key = { it.key }) { group ->
@@ -244,9 +241,6 @@ private fun MaxesOverview(
                         onHistory = { historyGrip = group.grip },
                         isOpen = group.key in expanded,
                         onToggle = { expanded = if (group.key in expanded) expanded - group.key else expanded + group.key })
-                }
-                items(invitations, key = { "invite-${it.key}" }) { grip ->
-                    InvitationCard(grip) { choosing = grip }
                 }
             }
 
@@ -585,36 +579,6 @@ private fun CriticalForceReadout(group: BenchmarkGroup, sides: List<Side>) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 sides.forEach { Readout(it, Modifier.weight(1f)) }
             }
-        }
-    }
-}
-
-@Composable
-private fun InvitationCard(grip: GripSpec, onMeasure: () -> Unit) {
-    val palette = LocalGripPalette.current
-    Card {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            GlyphTile(grip)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    grip.displayName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = palette.inkPrimary,
-                )
-                // In a routine, never tested: its percentage targets are waiting on this
-                // number.
-                Text(
-                    tr("In your routine, not tested yet"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = palette.inkTertiary,
-                )
-            }
-            SecondaryButton(title = tr("Measure"), onClick = onMeasure)
         }
     }
 }

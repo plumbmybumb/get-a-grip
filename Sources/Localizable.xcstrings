@@ -511,6 +511,16 @@
         }
       }
     },
+    "FROM YOUR ROUTINES" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DE TES ROUTINES"
+          }
+        }
+      }
+    },
     "Fingers" : {
       "localizations" : {
         "fr" : {
@@ -541,6 +551,16 @@
         }
       }
     },
+    "Gauge: %@%@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capteur : %@%@"
+          }
+        }
+      }
+    },
     "Hold for" : {
       "localizations" : {
         "fr" : {
@@ -567,6 +587,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Décompte"
+          }
+        }
+      }
+    },
+    "Maintenance" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entretien"
+          }
+        }
+      }
+    },
+    "Maintenance climbing" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escalade d'entretien"
+          }
+        }
+      }
+    },
+    "Maintenance session" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Séance d'entretien"
           }
         }
       }
@@ -771,12 +821,32 @@
         }
       }
     },
+    "Steady climbing to keep what you have, between easy mileage and your limit." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grimpe régulière pour garder ton niveau, entre le volume tranquille et ta limite."
+          }
+        }
+      }
+    },
     "Target" : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cible"
+          }
+        }
+      }
+    },
+    "Tested on real hardware with this app: %@. %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testés sur du vrai matériel avec l'app : %1$@. %2$@"
           }
         }
       }
@@ -1750,16 +1820,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "tenue de %@"
-          }
-        }
-      }
-    },
-    "%@ is verified on real hardware. %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ est vérifié sur du vrai matériel. %2$@"
           }
         }
       }
@@ -6130,16 +6190,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "In fact, Frez Dyno was made possible by our early Pro subscribers."
-          }
-        }
-      }
-    },
-    "In your routine, not tested yet" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dans ta routine, pas encore testée"
           }
         }
       }
