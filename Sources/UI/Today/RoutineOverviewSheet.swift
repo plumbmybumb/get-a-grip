@@ -182,12 +182,6 @@ struct RoutineOverviewSheet: View {
                             .font(.subheadline)
                             .foregroundStyle(Ink.secondary)
                     }
-                    if !set.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text(set.note)
-                            .font(.footnote)
-                            .foregroundStyle(Ink.secondary)
-                            .padding(.top, 2)
-                    }
                 }
                 .monospacedDigit()
                 .fixedSize(horizontal: false, vertical: true)

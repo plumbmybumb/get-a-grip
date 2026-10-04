@@ -244,10 +244,6 @@ private fun OverviewSet(set: SetPlan, plan: SessionPlan, index: Int) {
                 overviewTarget(set, plan)?.let { target ->
                     Text(target, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
                 }
-                if (set.note.isNotBlank()) {
-                    Text(set.note, style = MaterialTheme.typography.bodyMedium,
-                        color = palette.inkSecondary, modifier = Modifier.padding(top = 4.dp))
-                }
             }
         }
     }

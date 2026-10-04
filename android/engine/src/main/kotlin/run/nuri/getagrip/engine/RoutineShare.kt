@@ -88,10 +88,7 @@ object RoutineShare {
     fun url(draft: RoutineDraft): String? {
         var plan = draft.plan
         if (plan.executable.sets.isEmpty() || plan.sets.size > maxSets) return null
-        plan = plan.copy(
-            name = sanitizedName(plan.name),
-            sets = plan.sets.map { it.copy(note = it.note.take(maxNoteCharacters)) },
-        )
+        plan = plan.copy(name = sanitizedName(plan.name))
         val envelope = Envelope(
             v = currentVersion,
             plan = plan,
@@ -160,7 +157,7 @@ object RoutineShare {
             sets = plan.sets.map {
                 // Fresh row identity, as in `RoutineDraft.copying`: two people's routines
                 // must never share a SetPlan id.
-                it.copy(id = UUID.randomUUID(), note = it.note.take(maxNoteCharacters))
+                it.copy(id = UUID.randomUUID())
             },
         )
         // Sets arrived intact but every one is zero-rep — the one shape that genuinely
@@ -278,7 +275,6 @@ object RoutineShare {
     const val maxDecompressedBytes = 256 * 1024
     const val maxSets = 50
     const val maxNameCharacters = 60
-    const val maxNoteCharacters = 500
 
     /// One trim + cap, applied on encode AND decode, so the sharer's screen and the
     /// recipient's can never disagree about what a too-long name became.

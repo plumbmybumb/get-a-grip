@@ -139,7 +139,6 @@ data class SetPlan(
     /// no explicit kg band — see `PlanMath.targetBand` for the precedence.
     val targetLoPercent: Double? = null,
     val targetHiPercent: Double? = null,
-    val note: String = "",
     /// WHICH max this set's own percentage is of: null is the PEAK (every routine written
     /// before timed maxes), otherwise a timed max of this many seconds — "90 % of your
     /// 10 s max". Read only alongside this set's own band; an inheriting set uses the
@@ -161,7 +160,8 @@ data class SetPlan(
     /// This set's own percentage band, ignoring the routine's.
     val targetPercentBand: ClosedFloatingPointRange<Double>? get() = band(targetLoPercent, targetHiPercent)
 
-    /// FROZEN — see `SessionPlan`'s coding keys. Additive only.
+    /// FROZEN — see `SessionPlan`'s coding keys. Additive only, with ONE deliberate removal: `note`
+    /// (2026-10-04, Nuri — a per-set note nobody could edit). Blobs still carrying it read as before.
     override fun toJson(): JsonElement {
         val fields = linkedMapOf<String, JsonElement>(
             "id" to JsonPrimitive(id.toString().uppercase(Locale.ROOT)),
@@ -174,7 +174,6 @@ data class SetPlan(
         targetHiKg?.let { fields["targetHiKg"] = JsonPrimitive(it) }
         targetLoPercent?.let { fields["targetLoPercent"] = JsonPrimitive(it) }
         targetHiPercent?.let { fields["targetHiPercent"] = JsonPrimitive(it) }
-        fields["note"] = JsonPrimitive(note)
         targetMaxSeconds?.let { fields["targetMaxSeconds"] = JsonPrimitive(it) }
         return JsonObject(fields)
     }
@@ -235,7 +234,6 @@ data class SetPlan(
             targetHiKg = o.optionalDouble("targetHiKg"),
             targetLoPercent = o.optionalDouble("targetLoPercent")?.let { percentRange.clamping(it) },
             targetHiPercent = o.optionalDouble("targetHiPercent")?.let { percentRange.clamping(it) },
-            note = o.stringOr("note", ""),
             targetMaxSeconds = maxSeconds(o.optionalInt("targetMaxSeconds")),
         )
     }
@@ -537,7 +535,7 @@ data class RoutineDraft(
                         }
                         // A length with no percentage of its own says nothing; keep blobs honest.
                         if (!s.hasPercentTarget || s.hasTarget) s = s.copy(targetMaxSeconds = null)
-                        s.copy(note = s.note.trim())
+                        s
                     }
             )
             // The routine's own band too: an inverted one would invert every inheriting set.

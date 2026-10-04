@@ -96,7 +96,6 @@ final class RoutineShareCodecTests: XCTestCase {
         heavy.restSeconds = 90
         heavy.targetLoKg = 25
         heavy.targetHiKg = 30.5
-        heavy.note = "top set — chalk up"
         var banded = SetPlan(grip: GripSpec(edgeMM: 45, fingers: .four, position: .pinch),
                              repsPerSide: 4)
         banded.targetLoPercent = 0.55
@@ -353,7 +352,8 @@ final class RoutineShareCodecTests: XCTestCase {
     }
 
     /// Free text from a stranger, capped rather than rejected: a long name is somebody's
-    /// routine with a long name.
+    /// routine with a long name. A set note from an older sharer (notes were removed
+    /// 2026-10-04) is ignored, not an error.
     func testStrangersTextIsTrimmedAndCapped() throws {
         let longName = String(repeating: "A", count: 200)
         let longNote = String(repeating: "n", count: 900)
@@ -365,7 +365,7 @@ final class RoutineShareCodecTests: XCTestCase {
 
         let imported = try RoutineShare.draft(from: link(json))
         XCTAssertEqual(imported.plan.name, String(repeating: "A", count: 60))
-        XCTAssertEqual(imported.plan.sets[0].note.count, 500)
+        XCTAssertEqual(imported.plan.sets.count, 1, "the old note key costs nothing")
 
         // A name that was only whitespace comes back empty — the trim happened — and the
         // store's own `normalized` is what names it on save.

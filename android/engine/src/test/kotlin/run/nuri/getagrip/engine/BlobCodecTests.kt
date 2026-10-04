@@ -74,7 +74,6 @@ class BlobCodecTests {
         assertNull(set.restSeconds)
         assertNull(set.targetLoKg)
         assertNull(set.targetHiKg)
-        assertEquals("", set.note)
         assertFalse(set.overridesTiming)
         assertFalse(set.hasTarget)
         assertNull(set.targetLoPercent)
@@ -152,7 +151,6 @@ class BlobCodecTests {
         assertNotNull(set)
         assertEquals(6, set.repsPerSide, "the retyped field falls back to its default")
         assertEquals("20|IM|openHand", set.grip.key, "and every other field survives intact")
-        assertEquals("middle two", set.note)
     }
 
     /// `decodeArray`'s whole reason to exist. A single mangled element must cost one

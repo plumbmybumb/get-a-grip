@@ -31,8 +31,7 @@ FORMAT
       "pulls": whole number 1-100, pulls PER HAND (with "hands": "both", just the number of pulls),
       "holdSeconds": optional, this set's own hold instead of the routine's,
       "restSeconds": optional, this set's own rest instead of the routine's,
-      "target": optional, this set's own target instead of the routine's,
-      "note": optional, a short note shown on the set
+      "target": optional, this set's own target instead of the routine's
     }
   ]
 }

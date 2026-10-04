@@ -67,8 +67,7 @@ enum AgentRoutine {
           "pulls": whole number 1-100, pulls PER HAND (with "hands": "both", just the number of pulls),
           "holdSeconds": optional, this set's own hold instead of the routine's,
           "restSeconds": optional, this set's own rest instead of the routine's,
-          "target": optional, this set's own target instead of the routine's,
-          "note": optional, a short note shown on the set
+          "target": optional, this set's own target instead of the routine's
         }
       ]
     }
@@ -205,7 +204,6 @@ enum AgentRoutine {
 
     static let maxSets = 50
     static let maxNameCharacters = 60
-    static let maxNoteCharacters = 500
     static let timedMaxRange = 3...60
     static let sessionsPerDayRange = RoutineDraft.sessionsRange
     static let kgRange = 0.0...250.0
@@ -375,9 +373,6 @@ enum AgentRoutine {
                 set.targetHiKg = hi
             case .noLoad?, nil:
                 break
-            }
-            if case .string(let note)? = Lenient.field(object, "note") {
-                set.note = String(note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxNoteCharacters))
             }
             plan.sets.append(set)
         }

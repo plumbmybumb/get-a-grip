@@ -81,8 +81,7 @@ object AgentRoutine {
               "pulls": whole number 1-100, pulls PER HAND (with "hands": "both", just the number of pulls),
               "holdSeconds": optional, this set's own hold instead of the routine's,
               "restSeconds": optional, this set's own rest instead of the routine's,
-              "target": optional, this set's own target instead of the routine's,
-              "note": optional, a short note shown on the set
+              "target": optional, this set's own target instead of the routine's
             }
           ]
         }
@@ -216,7 +215,6 @@ object AgentRoutine {
 
     const val maxSets = 50
     const val maxNameCharacters = 60
-    const val maxNoteCharacters = 500
     val timedMaxRange = 3..60
     val sessionsPerDayRange = RoutineDraft.sessionsRange
     val kgRange = 0.0..250.0
@@ -383,9 +381,6 @@ object AgentRoutine {
                 }
                 is Target.Kg -> set = set.copy(targetLoKg = resolved.lo, targetHiKg = resolved.hi)
                 Target.NoLoad, null -> Unit
-            }
-            (Lenient.field(obj, "note") as? Lenient.Value.Str)?.let { note ->
-                set = set.copy(note = Lenient.prefix(Lenient.trimmed(note.value), maxNoteCharacters))
             }
             sets.add(set)
         }

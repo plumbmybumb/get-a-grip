@@ -130,7 +130,6 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
     /// the hold: changing a hang from 10 s to 12 s must not silently point the set at a
     /// different (possibly unmeasured) max.
     var targetMaxSeconds: Int? = nil
-    var note: String = ""
 
     /// Decode clamps. `repsRange` starts at 0 because a zero-rep set is representable
     /// (and dropped by `SessionPlan.executable`); the UI floor is 1.
@@ -180,9 +179,11 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
         }
     }
 
-    /// FROZEN — see `SessionPlan.CodingKeys`. Additive only.
+    /// FROZEN — see `SessionPlan.CodingKeys`. Additive only, with ONE deliberate removal:
+    /// `note` (2026-10-04, Nuri — a per-set note nobody could edit). Blobs and share codes
+    /// that still carry it decode as before; the key is simply ignored.
     enum CodingKeys: String, CodingKey {
-        case id, grip, repsPerSide, holdSeconds, restSeconds, targetLoKg, targetHiKg, note
+        case id, grip, repsPerSide, holdSeconds, restSeconds, targetLoKg, targetHiKg
         case targetLoPercent, targetHiPercent
         case targetMaxSeconds
     }
@@ -205,7 +206,6 @@ extension SetPlan {
         self.targetLoPercent = c.optional(.targetLoPercent).map { Self.percentRange.clamping($0) }
         self.targetHiPercent = c.optional(.targetHiPercent).map { Self.percentRange.clamping($0) }
         self.targetMaxSeconds = Self.maxSeconds(c.optional(.targetMaxSeconds))
-        self.note = c.value(.note, or: "")
     }
 }
 
@@ -487,7 +487,6 @@ struct RoutineDraft: Hashable, Sendable, Codable {
                 }
                 // A length with no percentage of its own says nothing; keep blobs honest.
                 if !s.hasPercentTarget || s.hasTarget { s.targetMaxSeconds = nil }
-                s.note = s.note.trimmingCharacters(in: .whitespacesAndNewlines)
                 return s
             }
         // The routine's own band too: an inverted one would invert every inheriting set.

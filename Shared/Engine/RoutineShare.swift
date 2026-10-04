@@ -62,11 +62,6 @@ enum RoutineShare {
         var plan = draft.plan
         guard !plan.executable.sets.isEmpty, plan.sets.count <= maxSets else { return nil }
         plan.name = sanitizedName(plan.name)
-        plan.sets = plan.sets.map { set in
-            var s = set
-            s.note = String(s.note.prefix(maxNoteCharacters))
-            return s
-        }
         let envelope = Envelope(v: currentVersion,
                                 plan: plan,
                                 sessionsPerDay: draft.sessionsPerDay,
@@ -140,7 +135,6 @@ enum RoutineShare {
             // Fresh row identity, as in `RoutineDraft.copying`: two people's routines
             // must never share a SetPlan id.
             s.id = UUID()
-            s.note = String(s.note.prefix(maxNoteCharacters))
             return s
         }
         // Sets arrived intact but every one is zero-rep — the one shape that genuinely
@@ -242,7 +236,6 @@ enum RoutineShare {
     private static let maxDecompressedBytes = 256 * 1024
     private static let maxSets = 50
     private static let maxNameCharacters = 60
-    private static let maxNoteCharacters = 500
 
     /// One trim + cap, applied on encode AND decode, so the sharer's screen and the
     /// recipient's can never disagree about what a too-long name became.

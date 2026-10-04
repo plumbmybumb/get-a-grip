@@ -105,15 +105,10 @@ class ShareFixtureTests {
             val imported = RoutineShare.draft(url)
             assertEquals(RoutineShare.sanitizedName(draft.plan.name), imported.plan.name,
                 "$name: the name cap is applied at BOTH ends")
-            assertTrue(imported.plan.sets.all { it.note.length <= RoutineShare.maxNoteCharacters },
-                "$name: the note cap is applied at BOTH ends")
 
             // The envelope is the payload: what went in, capped, is what comes back.
             val capped = draft.copy(
-                plan = draft.plan.copy(
-                    name = RoutineShare.sanitizedName(draft.plan.name),
-                    sets = draft.plan.sets.map { it.copy(note = it.note.take(RoutineShare.maxNoteCharacters)) },
-                ),
+                plan = draft.plan.copy(name = RoutineShare.sanitizedName(draft.plan.name)),
                 sessionsPerDay = draft.setSessionsPerDay(draft.sessionsPerDay).sessionsPerDay,
             )
             assertEquals(envelopeText(capped), envelopeText(imported), "$name: the envelope")

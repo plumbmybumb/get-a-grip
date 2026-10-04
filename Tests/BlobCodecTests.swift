@@ -59,7 +59,6 @@ final class BlobCodecTests: XCTestCase {
         XCTAssertNil(set.restSeconds)
         XCTAssertNil(set.targetLoKg)
         XCTAssertNil(set.targetHiKg)
-        XCTAssertEqual(set.note, "")
         XCTAssertFalse(set.overridesTiming)
         XCTAssertFalse(set.hasTarget)
         XCTAssertNil(set.targetLoPercent)
@@ -141,7 +140,6 @@ final class BlobCodecTests: XCTestCase {
         let set = try XCTUnwrap(BlobCodec.decode(SetPlan.self, from: wire))
         XCTAssertEqual(set.repsPerSide, 6, "the retyped field falls back to its default")
         XCTAssertEqual(set.grip.key, "20|IM|openHand", "and every other field survives intact")
-        XCTAssertEqual(set.note, "middle two")
     }
 
     /// `decodeArray`'s whole reason to exist. A single mangled element must cost one

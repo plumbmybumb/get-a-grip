@@ -105,7 +105,6 @@ class RoutineShareCodecTests {
             restSeconds = 90,
             targetLoKg = 25.0,
             targetHiKg = 30.5,
-            note = "top set — chalk up",
         )
         val banded = SetPlan(
             grip = GripSpec(45, FingerSet.four, GripPosition.pinch),
@@ -399,7 +398,7 @@ class RoutineShareCodecTests {
 
         val imported = RoutineShare.draft(link(json))
         assertEquals("A".repeat(60), imported.plan.name)
-        assertEquals(500, imported.plan.sets[0].note.length)
+        assertEquals(1, imported.plan.sets.size, "an old sharer's note key costs nothing")
 
         // A name that was only whitespace comes back empty — the trim happened — and the
         // store's own `normalized` is what names it on save.

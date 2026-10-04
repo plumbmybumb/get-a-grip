@@ -146,7 +146,6 @@ private func everyFieldOffDefault() -> RoutineDraft {
     heavy.restSeconds = 90
     heavy.targetLoKg = 25
     heavy.targetHiKg = 30.5
-    heavy.note = "top set — chalk up"
     var banded = SetPlan(grip: GripSpec(edgeMM: 45, fingers: .four, position: .pinch),
                          repsPerSide: 4)
     banded.targetLoPercent = 0.55
@@ -157,10 +156,9 @@ private func everyFieldOffDefault() -> RoutineDraft {
     return stableIDs(source)
 }
 
-private func longNameAndNote() -> RoutineDraft {
+private func longName() -> RoutineDraft {
     var source = RoutineDraft.starter
     source.plan.name = String(repeating: "B", count: 200)
-    source.plan.sets[0].note = String(repeating: "n", count: 900)
     return stableIDs(source)
 }
 
@@ -206,7 +204,7 @@ private func encoderDrafts() -> [(name: String, draft: RoutineDraft)] {
         ("starter", stableIDs(.starter)),
         ("maxDay", stableIDs(.maxDay)),
         ("everyFieldOffDefault", everyFieldOffDefault()),
-        ("longNameAndNote", longNameAndNote()),
+        ("longName", longName()),
         ("unknownGripPositions", unknownGripPositions()),
         ("oneSet", oneSetDraft()),
         ("fingerCurl", fingerCurlDraft()),
