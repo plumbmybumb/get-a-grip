@@ -5,31 +5,19 @@ package run.nuri.getagrip.ui.builder
 
 import run.nuri.getagrip.ui.units.WeightUnits
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.MonitorHeart
-import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import run.nuri.getagrip.ui.theme.InstrumentSurface as Surface
 import androidx.compose.material3.Text
@@ -39,24 +27,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -73,19 +54,17 @@ import run.nuri.getagrip.ui.components.HouseSegmentedRow
 import run.nuri.getagrip.ui.components.IntValueRow
 import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.components.ValueRow
-import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
-import run.nuri.getagrip.ui.theme.Motion
-import run.nuri.getagrip.ui.theme.rememberReduceMotion
 
-/// FINE TUNING — settings setup does not ask about, folded behind a row that still says they
-/// exist.
+/// FINE TUNING — settings setup does not ask about, laid OPEN at the foot of the Schedule page
+/// (Nuri, 2026-10-04).
 ///
-/// Collapsed on EVERY open, never persisted: hide the WORDS, not the fact of a setting. So the
-/// row keeps a title and summary instead of a bare chevron.
+/// It was a disclosure, collapsed on every open, and the three controls it hid were the ones
+/// people went looking for. Open costs no page and no step in the create walk: it sits below
+/// everything a new routine needs.
 @Composable
 fun FineTuningSection(
     /// Only what this card draws — see `FineTuningValues`.
@@ -95,68 +74,13 @@ fun FineTuningSection(
 ) {
     val palette = LocalGripPalette.current
     fun edit(transform: (SessionPlan) -> SessionPlan) = update { it.copy(plan = transform(it.plan)) }
-    val reduceMotion = rememberReduceMotion()
-    /// Unpersisted BY CONSTRUCTION: each builder open builds a fresh section. Saved only across
-    /// rotation, which is not an open.
-    var isOpen by rememberSaveable { mutableStateOf(false) }
-    val chevron by animateFloatAsState(
-        targetValue = if (isOpen) 180f else 0f,
-        animationSpec = Motion.state(reduceMotion),
-        label = "fineTuningChevron",
-    )
 
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(Metrics.radiusCard),
-        color = palette.card,
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            val interactionSource = remember { MutableInteractionSource() }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 44.dp)
-                    .semantics(mergeDescendants = true) {
-                        role = Role.Button
-                        contentDescription = L10n.tr("Fine tuning")
-                        stateDescription = L10n.tr(if (isOpen) "Expanded" else "Collapsed")
-                    }
-                    .clickable(interactionSource = interactionSource, indication = null) {
-                        isOpen = !isOpen
-                    }
-                    .pressFeedback(interactionSource, scales = false),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Outlined.Tune,
-                    contentDescription = null,
-                    tint = palette.graphite,
-                    modifier = Modifier.size(20.dp),
-                )
-                Text(
-                    tr("Fine tuning"),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = palette.inkPrimary,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(
-                    Icons.Filled.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = palette.inkTertiary,
-                    modifier = Modifier.size(20.dp).rotate(chevron),
-                )
-            }
+    // The same plain caps row as HOW OFTEN above it.
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        CapsLabel(tr("FINE TUNING"), Modifier.padding(start = 6.dp))
 
-            // `Motion.state`, not Compose's unguarded 400 ms default — see `Motion`.
-        AnimatedVisibility(
-            visible = isOpen,
-            enter = expandVertically(Motion.state(rememberReduceMotion())) +
-                fadeIn(Motion.state(rememberReduceMotion())),
-            exit = shrinkVertically(Motion.state(rememberReduceMotion())) +
-                fadeOut(Motion.state(rememberReduceMotion())),
-        ) {
+        Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card) {
+            Column(Modifier.padding(16.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(

@@ -3,12 +3,12 @@
 
 import SwiftUI
 
-/// FINE TUNING — the settings setup does not ask about, folded behind a row that still
-/// says they exist.
+/// FINE TUNING — the settings setup does not ask about, laid OPEN at the foot of the
+/// Schedule page (Nuri, 2026-10-04).
 ///
-/// Collapsed on EVERY open and never persisted: it hides the WORDS, not the fact that
-/// there is a setting, so the row keeps a title and summary on its face rather than being
-/// a bare chevron.
+/// It was a disclosure, collapsed on every open, and the three controls it hid were the
+/// ones people went looking for. Open costs no page and no step in the create walk:
+/// it sits below everything a new routine needs, so scrolling past it is free.
 struct FineTuningSection: View, Equatable {
     @Environment(\.weightUnit) private var weightUnit
     /// The write path. Everything drawn comes from `defaults` — see `BuilderInputs`.
@@ -21,61 +21,22 @@ struct FineTuningSection: View, Equatable {
         a.defaults.fineTuningKey == b.defaults.fineTuningKey
     }
 
-    /// Unpersisted BY CONSTRUCTION: the sheet builds a fresh section each open.
-    @State private var isOpen = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        MaterialCard(surface: .flat) {
-            VStack(alignment: .leading, spacing: 18) {
-                header
+        VStack(alignment: .leading, spacing: 12) {
+            // The same plain caps row as HOW OFTEN above it.
+            CapsLabel(String(localized: "FINE TUNING"))
+                .padding(.leading, 6)
 
-                if isOpen {
+            MaterialCard(surface: .flat) {
+                VStack(alignment: .leading, spacing: 18) {
                     thresholdBlock
-                        .transition(.opacity.combined(with: .move(edge: .top)))
                     bandGateBlock
-                        .transition(.opacity.combined(with: .move(edge: .top)))
                     leadInBlock
-                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
         }
-    }
-
-    // MARK: - The disclosure row
-
-    private var header: some View {
-        Button {
-            withAnimation(Motion.state(reduceMotion)) {
-                isOpen.toggle()
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Accent.graphite)
-                    .frame(width: 20)
-
-                Text("Fine tuning")
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(Ink.primary)
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.down")
-                    .font(.system(.caption, weight: .semibold))
-                    .foregroundStyle(Ink.tertiary)
-                    .rotationEffect(.degrees(isOpen ? 180 : 0))
-            }
-            // Full-width with a Spacer, so the shape must be declared.
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressFeedbackButtonStyle(scales: false))
-        .accessibilityLabel(String(localized: "Fine tuning"))
-        .accessibilityHint(isOpen ? String(localized: "Collapse") : String(localized: "Expand"))
-        .accessibilityAddTraits(.isButton)
     }
 
     // MARK: - Threshold

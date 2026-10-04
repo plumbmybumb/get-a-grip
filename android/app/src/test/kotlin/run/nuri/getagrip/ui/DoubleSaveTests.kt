@@ -66,6 +66,11 @@ class DoubleSaveTests {
     }
     private val settings = SettingsStore(RuntimeEnvironment.getApplication(), settingsScope)
     private val store = TemplateStore(gateway, DayClock(), settings, RecordingAlarmScheduler(), scope)
+    /// The fine-tuning card reads the gauge for its threshold check; a disconnected one.
+    private val device = run.nuri.getagrip.store.DeviceStore(
+        client = run.nuri.getagrip.RecordingProgressorClient(), scope = run.nuri.getagrip.inertScope(),
+        clock = run.nuri.getagrip.FakeClock(),
+    )
 
     @After fun close() { scope.cancel(); settingsScope.cancel(); db.close() }
 
@@ -82,7 +87,8 @@ class DoubleSaveTests {
     @Test fun doubleTappingSaveInTheBuilderCreatesOneRoutine() {
         var closed = 0
         compose.setContent {
-            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings) {
+            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings,
+                LocalDeviceStore provides device) {
                 GetAGripTheme { RoutineBuilderHost(mode = BuilderMode.AddAnother, onDone = { closed++ }) }
             }
         }
@@ -106,7 +112,8 @@ class DoubleSaveTests {
             plan = SessionPlan(name = "From a friend", sets = listOf(SetPlan(repsPerSide = 5))))
         var edited: RoutineDraft? = null
         compose.setContent {
-            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings) {
+            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings,
+                LocalDeviceStore provides device) {
                 GetAGripTheme { RoutineImportSheet(shared, onEdit = { edited = it }) {} }
             }
         }
@@ -124,7 +131,8 @@ class DoubleSaveTests {
             remindersEnabled = false)
         var closed = 0
         compose.setContent {
-            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings) {
+            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings,
+                LocalDeviceStore provides device) {
                 GetAGripTheme { RoutineBuilderHost(mode = BuilderMode.Importing(shared), onDone = { closed++ }) }
             }
         }
@@ -140,7 +148,8 @@ class DoubleSaveTests {
         val shared = RoutineDraft.blank("From a friend").copy(
             plan = SessionPlan(name = "From a friend", sets = listOf(SetPlan(repsPerSide = 5))))
         compose.setContent {
-            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings) {
+            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings,
+                LocalDeviceStore provides device) {
                 GetAGripTheme { RoutineImportSheet(shared) {} }
             }
         }

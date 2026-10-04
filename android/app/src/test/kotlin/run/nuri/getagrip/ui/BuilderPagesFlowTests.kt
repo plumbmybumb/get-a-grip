@@ -36,12 +36,18 @@ class BuilderPagesFlowTests {
     private val settingsScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
     private val settings = SettingsStore(RuntimeEnvironment.getApplication(), settingsScope)
     private val store = TemplateStore(RoomStoreGateway(db), DayClock(), settings, RecordingAlarmScheduler(), scope)
+    /// The fine-tuning card reads the gauge for its threshold check; a disconnected one.
+    private val device = run.nuri.getagrip.store.DeviceStore(
+        client = run.nuri.getagrip.RecordingProgressorClient(), scope = run.nuri.getagrip.inertScope(),
+        clock = run.nuri.getagrip.FakeClock(),
+    )
 
     @After fun close() { scope.cancel(); settingsScope.cancel(); db.close() }
 
     private fun show(mode: BuilderMode, onDone: (java.util.UUID?) -> Unit = {}) {
         compose.setContent {
-            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings) {
+            CompositionLocalProvider(LocalTemplateStore provides store, LocalSettingsStore provides settings,
+                LocalDeviceStore provides device) {
                 GetAGripTheme { RoutineBuilderHost(mode = mode, onDone = onDone) }
             }
         }
