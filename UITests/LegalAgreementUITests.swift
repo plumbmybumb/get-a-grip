@@ -108,7 +108,7 @@ final class LegalAgreementUITests: XCTestCase {
         app.launchArguments = ["-seedRoutine", "-mockDevice"]
         for _ in 0..<2 {
             app.launch()
-            let start = app.buttons["Connect and start"]
+            let start = app.buttons["routine.start"].firstMatch
             XCTAssertTrue(start.waitForExistence(timeout: 10))
             start.tap()
             XCTAssertTrue(app.buttons["End session"].waitForExistence(timeout: 10))

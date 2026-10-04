@@ -448,6 +448,7 @@ struct RoutineCard: View, Equatable {
                 SolidSecondaryButton(title: String(localized: "Start another"), systemImage: "play.fill", action: onStart)
                     .frame(maxWidth: .infinity)
                     .accessibilityHint(hint)
+                    .accessibilityIdentifier("routine.start")
             } else {
                 // Graphite, not bleu (bleu is spent once the runner opens). ALWAYS enabled:
                 // the runner's first phase is connect-and-tare, so tapping while
@@ -455,6 +456,9 @@ struct RoutineCard: View, Equatable {
                 SolidPrimaryButton(title: startTitle, systemImage: "play.fill",
                                    tint: Accent.graphite, action: onStart)
                     .accessibilityHint(hint)
+                    // One identifier for every title: the title follows the gauge and
+                    // today's logs, which a UI test's seed does not reset.
+                    .accessibilityIdentifier("routine.start")
             }
 
             if let note = connectionNote { noteRow(note) }

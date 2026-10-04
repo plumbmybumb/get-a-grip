@@ -113,7 +113,7 @@ final class RunnerAppearanceUITests: XCTestCase {
         let app = launchApp(arguments: ["-seedRoutine", "-mockDevice",
                                         "-UIPreferredContentSizeCategoryName",
                                         "UICTContentSizeCategoryL"])
-        let start = app.buttons["Connect and start"]
+        let start = app.buttons["routine.start"].firstMatch
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         start.tap()
         XCTAssertTrue(app.buttons["runner.end"].waitForExistence(timeout: 10))
