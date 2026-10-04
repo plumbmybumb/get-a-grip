@@ -1,0 +1,7 @@
+• Create with AI: describe a routine to ChatGPT, Claude or any AI chat, paste its reply, and check it before it's added.
+• Edit before adding: change a scanned or AI routine before you save it.
+• The pull tracker shows where you are: blue while you pull, orange when it's waiting on you.
+• Log a Maintenance climbing session. Like volume and limit, it counts as the day's training.
+• Measure again straight from a closed Benchmarks card. Adding a max suggests your routines' grips, untested ones first.
+• The load chart spaces sessions evenly, so time off no longer leaves a gap.
+• Tap the gauge chip to disconnect. New routines start with no lead-in, and Fine tuning is always open on the Schedule page.

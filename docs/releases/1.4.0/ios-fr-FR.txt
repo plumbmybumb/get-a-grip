@@ -1,0 +1,7 @@
+• Créer avec l'IA : décrivez une routine à ChatGPT, Claude ou tout autre assistant IA, collez sa réponse et vérifiez-la avant de l'ajouter.
+• Modifier avant d'ajouter : ajustez une routine scannée ou créée par l'IA avant de l'enregistrer.
+• La barre des tirages montre où vous en êtes : bleue pendant le tirage, orange quand elle vous attend.
+• Enregistrez une séance d'escalade d'entretien. Comme le volume et la limite, elle compte comme l'entraînement du jour.
+• Mesurez à nouveau directement depuis une carte Tests fermée. Ajouter un max propose les prises de vos routines, les non testées d'abord.
+• La courbe de charge espace les séances régulièrement : une pause ne laisse plus de trou.
+• Touchez la pastille du capteur pour le déconnecter. Les nouvelles routines démarrent sans décompte, et les réglages fins sont toujours ouverts sur la page Planning.
