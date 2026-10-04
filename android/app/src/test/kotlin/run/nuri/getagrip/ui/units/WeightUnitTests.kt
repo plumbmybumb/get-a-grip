@@ -8,7 +8,6 @@ import run.nuri.getagrip.runner.SessionActivityPhase
 import run.nuri.getagrip.runner.SessionActivityState
 import run.nuri.getagrip.ui.components.ValueFieldParser
 import run.nuri.getagrip.ui.history.ShareCalendarBestPull
-import run.nuri.getagrip.ui.maxes.MaxEntryDraft
 import java.time.Instant
 import java.util.Locale
 import kotlin.test.*
@@ -31,17 +30,6 @@ class WeightUnitTests {
         assertEquals("-1.1 lb", WeightUnit.lb.text(-0.5))
         for (kg in listOf(-0.5, 0.0, 0.5, 12.345678, 250.0)) {
             assertEquals(kg, WeightUnit.lb.toKg(WeightUnit.lb.fromKg(kg)), 1e-12)
-        }
-    }
-
-    @Test fun togglingDisplaysDoesNotRequantizeAMeasuredMaxOrChangeItsProvenance() {
-        val max = MaxEntryDraft().apply { receiveMeasured(12.3456789, Side.left) }
-        repeat(100) {
-            WeightUnits.current = if (it % 2 == 0) WeightUnit.lb else WeightUnit.kg
-            WeightUnits.number(max.kg)
-            assertEquals(12.3456789, max.kg, 0.0)
-            assertEquals(MaxSource.measured, max.source)
-            assertEquals(Side.left, max.side)
         }
     }
 

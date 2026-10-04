@@ -28,8 +28,6 @@ import org.robolectric.annotation.GraphicsMode
 import run.nuri.getagrip.engine.*
 import run.nuri.getagrip.store.SettingsStore
 import run.nuri.getagrip.ui.builder.TargetBandRow
-import run.nuri.getagrip.ui.maxes.MaxEntryDraft
-import run.nuri.getagrip.ui.maxes.MaxEntrySheet
 import run.nuri.getagrip.ui.preview.PreviewWorld
 import run.nuri.getagrip.ui.settings.WeightUnitSetting
 import run.nuri.getagrip.ui.theme.GetAGripTheme
@@ -70,22 +68,6 @@ class WeightUnitSettingsTests {
         assertEquals(WeightUnit.lb, settings.weightUnit)
         finishWrites()
         assertEquals(WeightUnit.lb, SettingsStore(context, owner).weightUnit)
-    }
-
-    @Test fun actualManualMaxFieldStoresPoundsAsKgAndUntouchedEditingPreservesPrecision() {
-        WeightUnits.current = WeightUnit.lb
-        val draft = MaxEntryDraft().apply { receiveMeasured(12.3456789, Side.left) }
-        compose.setContent { PreviewWorld { MaxEntrySheet(draft, {}, {}) } }
-        val value = compose.onNodeWithContentDescription("Max on this grip, 27.2 lb. Double tap to type a value.")
-        value.performScrollTo().performClick()
-        compose.onNodeWithText("Done").performClick()
-        compose.runOnIdle { assertEquals(12.3456789, draft.kg, 0.0); assertEquals(MaxSource.measured, draft.source) }
-        value.performScrollTo().performClick()
-        compose.onNode(hasSetTextAction()).performTextInput("22.7")
-        compose.onNodeWithText("Done").performClick()
-        compose.runOnIdle { assertEquals(22.7 * 0.45359237, draft.kg, 1e-12); assertEquals(MaxSource.manual, draft.source) }
-        compose.onNodeWithContentDescription("Max on this grip, 22.7 lb. Double tap to type a value.").assertIsDisplayed()
-        capture("android-max-entry-lb.png")
     }
 
     @Test fun actualTargetFieldsConvertTypedBoundsWhilePercentMeaningStaysUnchanged() {

@@ -37,9 +37,11 @@ class DataAuditStoreTests {
             sets = listOf(SetPlan(targetLoPercent = 0.25, targetHiPercent = 0.30))))
         val first = assertNotNull(store.create(draft))
         val second = assertNotNull(store.create(draft))
-        val impact = store.maxImpact(GripSpec(), MaxTable(), 40.0)
-        assertEquals(2, impact.percentMoves.size)
-        assertEquals(setOf(first.id, second.id), impact.percentMoves.map { it.routineID }.toSet())
+        val receipt = assertNotNull(store.recordMaxesWithReceipt(listOf(
+            TemplateStore.MaxSave(GripSpec(), Side.both, 40.0, MaxSource.manual))))
+        assertEquals(2, receipt.percentMoves.size)
+        assertEquals(2, receipt.percentMoves.map { it.id }.toSet().size)
+        assertEquals(setOf(first.id, second.id), receipt.percentMoves.map { it.move.routineID }.toSet())
     }
 
     @Test fun historyTracksFromRoutineCreationEvenBeforeFirstLog() {

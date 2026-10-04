@@ -29,6 +29,12 @@ import run.nuri.getagrip.ui.theme.readablePageWidth
 import run.nuri.getagrip.ui.units.WeightUnits
 
 /** The legacy shared benchmark remains explicit, separate from two individual hand records. */
+/// **The slider spans 0–100, a TYPED value clamps to 0–250.** A slider that stopped at 60 read as
+/// a ceiling (Nuri, 2026-08-04: "there are people who can do a 20 mil edge much more than 60
+/// kg"); 100 keeps a typical 25 kg pull usably draggable.
+private val MAX_SLIDER_RANGE = 0.0..100.0
+private val MAX_TYPED_LIMIT = 0.0..250.0
+
 @Composable
 fun SharedMaxSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit) {
     val templates = LocalTemplateStore.current
@@ -76,7 +82,7 @@ fun SharedMaxSheet(grip: GripSpec, onSaved: () -> Unit = {}, onClose: () -> Unit
                 Text(tr("Used when a hand has no max of its own, and for two-handed pulls."),
                     style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
                 ValueRow(title = tr("Shared max"), value = WeightUnits.fromKg(kg), unit = WeightUnits.symbol,
-                    range = WeightUnits.sliderRange(MaxEntryDraft.sliderRange), limit = WeightUnits.fromKg(MaxEntryDraft.limit),
+                    range = WeightUnits.sliderRange(MAX_SLIDER_RANGE), limit = WeightUnits.fromKg(MAX_TYPED_LIMIT),
                     step = 0.5, decimals = 1, caption = manualBandCaption(kg),
                     modifier = Modifier.testTag("maxShared.value")) { kg = WeightUnits.toKg(it) }
                 if (failed) Text(tr("Couldn't save your maxes. Try again."),

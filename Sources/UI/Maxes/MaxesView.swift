@@ -322,11 +322,11 @@ private enum MaxEntry: Identifiable {
 // MARK: - The composer
 
 /// The legacy shared benchmark remains editable separately from individual hands.
-/// Its explicit weight-target rescale receipt is preserved; no automatic rewriting.
+/// Saving shows the same receipt every other max save does (`MaxSaveReceiptView`); it
+/// used to draw its own copy of it, from its own impact arithmetic.
 struct MaxEntrySheet: View {
     @Environment(\.weightUnit) private var weightUnit
     @Environment(TemplateStore.self) private var templates
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Closing belongs to the presenter: reading `dismiss` here rebuilt this typing-heavy
     /// sheet per keystroke — see `BuilderDocument.onClose`.
@@ -342,9 +342,9 @@ struct MaxEntrySheet: View {
     @State private var savedTick = 0
     /// Defaults to `.both`, which is what an untouched picker and every pre-hands record mean.
     @State private var side: Side = .both
-    /// Set when Save lands with anything to report; the sheet then shows the receipt instead
-    /// of dismissing. nil = still editing.
-    @State private var impact: TemplateStore.MaxImpact?
+    /// Set when Save lands with anything to report; the receipt then opens over the form,
+    /// and closing it closes the sheet.
+    @State private var receipt: TemplateStore.MaxSaveReceipt?
 
     init(seed: GripSpec, side: Side = .both, onSaved: (() -> Void)? = nil, onClose: @escaping () -> Void) {
         self.onClose = onClose
@@ -356,36 +356,28 @@ struct MaxEntrySheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if let impact {
-                    impactContent(impact)
-                } else {
-                    formContent
-                }
+                formContent
             }
             .scrollDismissesKeyboard(.interactively)
             .background { AppBackground() }
             .scrollEdgeEffectStyle(.soft, for: .bottom)
-            .navigationTitle(impact == nil ? "Shared max" : "Saved")
+            .navigationTitle("Shared max")
             .navigationBarTitleDisplayMode(.inline)
             // The grip as it currently stands, fixed on screen while you edit it.
             .navigationSubtitle(grip.displayName)
             .toolbar {
-                if impact == nil {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { onClose() }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") { save() }
-                            .bold()
-                            // `recordMax` rejects zero: every percentage caption would divide by it.
-                            .disabled(kg <= 0)
-                    }
-                } else {
-                    // Already SAVED: no cancel, and the kg offer's "Leave them" is in content.
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { onClose() }.bold()
-                    }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { onClose() }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .bold()
+                        // A zero max is refused: every percentage caption would divide by it.
+                        .disabled(kg <= 0)
+                }
+            }
+            .sheet(item: $receipt, onDismiss: onClose) { saved in
+                MaxSaveReceiptView(receipt: saved) { receipt = nil }
             }
 
         }
@@ -429,93 +421,6 @@ struct MaxEntrySheet: View {
         .padding(.bottom, 28)
         .frame(maxWidth: Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
-    }
-
-    /// **What the number you just saved moves** — shown INSTEAD of dismissing, only when
-    /// there is something to say. Percent bands already moved (they follow the newest max
-    /// by design); typed-kilogram sets are OFFERED a rescale, because a typed number is
-    /// never rewritten by arithmetic without a yes.
-    private func impactContent(_ impact: TemplateStore.MaxImpact) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            block(String(localized: "SAVED")) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(weightUnit.number(kg))
-                        .font(.system(.largeTitle, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Ink.primary)
-                    Text("\(weightUnit.symbol) · \(grip.displayName)")
-                        .font(.system(.subheadline))
-                        .foregroundStyle(Ink.secondary)
-                }
-            }
-
-            if !impact.percentMoves.isEmpty {
-                block(String(localized: "TARGETS THAT FOLLOWED")) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(impact.percentMoves) { move in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(move.side == .both ? move.routineName : "\(move.routineName) · \(move.side.name)")
-                                    .font(.system(.subheadline, weight: .semibold))
-                                    .foregroundStyle(Ink.primary)
-                                Text(move.line(unit: weightUnit))
-                                    .font(.system(.footnote))
-                                    .monospacedDigit()
-                                    .foregroundStyle(Ink.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-
-            if !impact.kgOffers.isEmpty, let ratio = impact.ratio {
-                block(String(localized: "Weight targets").uppercased()) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(impact.kgOffers) { offer in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(offer.routineName)
-                                    .font(.system(.subheadline, weight: .semibold))
-                                    .foregroundStyle(Ink.primary)
-                                ForEach(offer.moves, id: \.self) { move in
-                                    Text(String(localized: "\(weightUnit.bandText(move.oldBand, withUnit: false)) \(weightUnit.symbol)  →  \(weightUnit.bandText(move.newBand, withUnit: false)) \(weightUnit.symbol)"))
-                                        .font(.system(.footnote))
-                                        .monospacedDigit()
-                                        .foregroundStyle(Ink.secondary)
-                                }
-                            }
-                        }
-
-                        PrimaryGlassButton(title: String(localized: "Scale with the new max"),
-                                           tint: Accent.graphite) {
-                            templates.scaleKgTargets(
-                                grip: grip, ratio: ratio,
-                                routineIDs: impact.kgOffers.map(\.routineID))
-                            savedTick += 1
-                            onClose()
-                        }
-                        Button("Leave them as they are") { onClose() }
-                            .font(.system(.footnote, weight: .semibold))
-                            .foregroundStyle(Accent.graphite)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .contentShape(.rect)
-                            .buttonStyle(PressFeedbackButtonStyle())
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, Metrics.hPadding)
-        .padding(.top, 12)
-        .padding(.bottom, 28)
-        .frame(maxWidth: Metrics.maxContentWidth)
-        .frame(maxWidth: .infinity)
-    }
-
-    @ViewBuilder
-    private func block<Content: View>(_ label: String,
-                                      @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            CapsLabel(label)
-            content()
-        }
     }
 
     /// What this max BUYS you, stated while you set it: the low-intensity band is why the
@@ -565,21 +470,15 @@ struct MaxEntrySheet: View {
     private func save() {
         guard kg > 0 else { return }
         failed = false
-        // Asked BEFORE the record lands; afterwards the ratio it anchors is gone.
-        let previousMaxes = templates.maxTable
-        guard templates.recordMax(kg, for: grip, source: .manual, side: side) else {
+        guard let saved = templates.recordMaxesWithReceipt([
+            .init(grip: grip, side: side, kg: kg, source: .manual)
+        ]) else {
             failed = true
             return
         }
         savedTick += 1
         onSaved?()
-        let computed = templates.maxImpact(grip: grip, previousMaxes: previousMaxes, newKg: kg, side: side)
-        if computed.isEmpty {
-            onClose()
-        } else {
-            // The sheet becomes the receipt: what followed, and what is on offer.
-            withAnimation(Motion.state(reduceMotion)) { impact = computed }
-        }
+        if saved.hasDetails { receipt = saved } else { onClose() }
     }
 }
 

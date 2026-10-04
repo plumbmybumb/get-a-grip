@@ -17,7 +17,7 @@ import UIKit
 /// pushes onto it.
 struct RoutineBuilderView: View {
     let mode: BuilderMode
-    var onFinish: (UUID, Bool) -> Void
+    var onFinish: (UUID) -> Void
     /// Closing is the PRESENTER's job: nothing in this file may read
     /// `@Environment(\.dismiss)` — see `BuilderDocument.onClose`.
     var onClose: () -> Void
@@ -29,7 +29,7 @@ struct RoutineBuilderView: View {
 
     init(mode: BuilderMode,
          onClose: @escaping () -> Void,
-         onFinish: @escaping (UUID, Bool) -> Void) {
+         onFinish: @escaping (UUID) -> Void) {
         self.mode = mode
         self.onClose = onClose
         self.onFinish = onFinish
@@ -90,7 +90,7 @@ struct RoutineBuilderView: View {
 
 private struct BuilderDocument: View {
     let mode: BuilderMode
-    var onFinish: (UUID, Bool) -> Void
+    var onFinish: (UUID) -> Void
 
     /// **Never `@Environment(\.dismiss)` here.** Measured 2026-08-11: merely storing it made
     /// a keypress in ANY field re-run this whole body twice — six `SetRowView`s, the grip
@@ -133,7 +133,7 @@ private struct BuilderDocument: View {
 
     init(mode: BuilderMode, seed: RoutineDraft,
          onClose: @escaping () -> Void,
-         onFinish: @escaping (UUID, Bool) -> Void) {
+         onFinish: @escaping (UUID) -> Void) {
         self.mode = mode
         self.onClose = onClose
         self.onFinish = onFinish
@@ -176,7 +176,7 @@ private struct BuilderDocument: View {
                         Button("Cancel") { cancel() }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") { save(andStart: false) }
+                        Button("Save") { save() }
                             .bold()
                             .disabled(draft.validationIssue != nil)
                     }
@@ -441,7 +441,7 @@ private struct BuilderDocument: View {
 
     // MARK: Commit
 
-    private func save(andStart: Bool) {
+    private func save() {
         nameFocused = false
         guard draft.validationIssue == nil else { return }
         // A rolled-back save leaves the sheet OPEN with the error inline, and the rescue
@@ -451,7 +451,7 @@ private struct BuilderDocument: View {
         // cleared and it comes back as a ghost.
         stashTask?.cancel()
         onClose()
-        onFinish(saved.id, andStart)
+        onFinish(saved.id)
     }
 
     private func cancel() {
@@ -625,7 +625,7 @@ extension BuilderDocument {
             PrimaryGlassButton(title: String(localized: "Next")) { go(to: next) }
         } else {
             PrimaryGlassButton(title: String(localized: "Save routine"), systemImage: "checkmark") {
-                save(andStart: false)
+                save()
             }
             .disabled(draft.validationIssue != nil)
         }

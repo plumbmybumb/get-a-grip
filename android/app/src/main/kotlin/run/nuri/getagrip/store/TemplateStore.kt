@@ -1250,15 +1250,10 @@ class TemplateStore(
 
     // MARK: - What a new max moves
 
-    /// Everything a new max on one grip changes across the routines, against the max it
-    /// REPLACES — so ask BEFORE `recordMax`.
-    data class MaxImpact(
-        val percentMoves: List<PercentMove>,
-        val kgOffers: List<KgOffer>,
-        /// new ÷ old — the "scale with your new max" factor. null with no old max, which is
-        /// also why `kgOffers` is then empty.
-        val ratio: Double?,
-    ) {
+    /// The pieces a max-save receipt is made of (`MaxSaveReceipt`): the percentage targets that
+    /// followed a new max, and the typed-kilogram targets offered a rescale. A namespace since
+    /// 2026-10-04 — its own computation (`maxImpact`) served only a sheet nothing opened.
+    object MaxImpact {
         /// A percentage band that now resolves to different kilograms. INFORMATIONAL:
         /// percent targets follow the newest max by design.
         data class PercentMove(
@@ -1285,75 +1280,6 @@ class TemplateStore(
                 val newBand: ClosedFloatingPointRange<Double>,
             )
         }
-
-        val isEmpty: Boolean get() = percentMoves.isEmpty() && kgOffers.isEmpty()
-    }
-
-    suspend fun maxImpact(grip: GripSpec, previousMaxes: MaxTable, newKg: Double,
-                          side: Side = Side.both): MaxImpact {
-        val routines = gateway.allRoutines()
-            ?: return MaxImpact(emptyList(), emptyList(), null)
-        // A fallback both-hands benchmark is not an earlier measurement of one hand.
-        val ratio = previousMaxes.exact(grip.key, side)?.let { if (it > 0) newKg / it else null }
-        val percentMoves = mutableListOf<MaxImpact.PercentMove>()
-        val kgOffers = mutableListOf<MaxImpact.KgOffer>()
-
-        for (routine in routines.sortedWith(routineOrder)) {
-            val plan = routine.plan.executable
-            val affectedSides = when {
-                plan.handMode == HandMode.bothHands -> if (side == Side.both) listOf(Side.both) else emptyList()
-                side == Side.both -> listOf(Side.left, Side.right).filter {
-                    previousMaxes.exact(grip.key, it) == null
-                }
-                else -> listOf(side)
-            }
-            if (affectedSides.isEmpty()) continue
-            // A shared ratio is valid only while both alternating hands resolve through
-            // this fallback benchmark, with no exact hand overriding it.
-            val canScaleSharedBand = side == Side.both && (plan.handMode == HandMode.bothHands ||
-                listOf(Side.left, Side.right).all { previousMaxes.exact(grip.key, it) == null })
-            val seenPercents = HashSet<String>()
-            val moves = mutableListOf<MaxImpact.KgOffer.Move>()
-            for (set in plan.sets) {
-                if (set.grip.key != grip.key) continue
-                val explicit = set.targetBand
-                if (explicit != null) {
-                    // A typed band is shared across both sides of an alternating routine.
-                    if (!canScaleSharedBand) continue
-                    val r = ratio ?: continue
-                    val move = MaxImpact.KgOffer.Move(explicit, scaled(explicit, r))
-                    // Two byte-identical sets would offer the same line twice.
-                    if (!moves.contains(move)) moves.add(move)
-                } else {
-                    val percent = PlanMath.targetPercent(set, plan) ?: continue
-                    // This explains a PEAK max change; a set measured against a timed max
-                    // does not move with it.
-                    if (PlanMath.maxSeconds(set, plan) != null) continue
-                    if (!seenPercents.add("${percent.start}–${percent.endInclusive}")) continue
-                    val newBand = PlanMath.targetBand(set, plan, newKg) ?: continue
-                    for (affectedSide in affectedSides) {
-                        val oldBand = previousMaxes.max(grip.key, affectedSide)
-                            ?.let { PlanMath.targetBand(set, plan, it) }
-                        if (oldBand == newBand) continue
-                        percentMoves.add(
-                            MaxImpact.PercentMove(
-                                routineID = routine.id,
-                                routineName = routine.name,
-                                side = affectedSide,
-                                loPercent = percent.start,
-                                hiPercent = percent.endInclusive,
-                                oldBand = oldBand,
-                                newBand = newBand,
-                            )
-                        )
-                    }
-                }
-            }
-            if (moves.isNotEmpty()) {
-                kgOffers.add(MaxImpact.KgOffer(routine.id, routine.name, moves))
-            }
-        }
-        return MaxImpact(percentMoves, kgOffers, ratio)
     }
 
     data class MaxSaveReceipt(

@@ -34,10 +34,12 @@ final class DataAuditStoreTests: XCTestCase {
         draft.plan.sets = [SetPlan(targetLoPercent: 0.25, targetHiPercent: 0.30)]
         let first = try XCTUnwrap(store.create(draft))
         let second = try XCTUnwrap(store.create(draft))
-        let impact = store.maxImpact(grip: GripSpec(), previousMaxes: MaxTable(), newKg: 40)
-        XCTAssertEqual(impact.percentMoves.count, 2)
-        XCTAssertEqual(Set(impact.percentMoves.map(\.id)).count, 2)
-        XCTAssertEqual(Set(impact.percentMoves.map(\.routineID)), [first.id, second.id])
+        let receipt = try XCTUnwrap(store.recordMaxesWithReceipt([
+            .init(grip: GripSpec(), side: .both, kg: 40, source: .manual)
+        ]))
+        XCTAssertEqual(receipt.percentMoves.count, 2)
+        XCTAssertEqual(Set(receipt.percentMoves.map(\.id)).count, 2)
+        XCTAssertEqual(Set(receipt.percentMoves.map { $0.move.routineID }), [first.id, second.id])
     }
 
     func testHistoryTracksFromRoutineCreationEvenBeforeFirstLog() {

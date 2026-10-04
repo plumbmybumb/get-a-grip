@@ -1347,10 +1347,11 @@ final class TemplateStore {
 
     // MARK: - What a new max moves
 
-    /// Everything a new max on one grip changes across the routines, computed against
-    /// the max it REPLACES — so it must be asked BEFORE `recordMax` (afterwards the old
-    /// number is just history). Shown once, right after saving; see `MaxEntrySheet`.
-    struct MaxImpact: Hashable, Sendable {
+    /// The pieces a max-save receipt is made of (`MaxSaveReceipt`): the percentage targets
+    /// that followed a new max, and the typed-kilogram targets offered a rescale. A
+    /// namespace since 2026-10-04 — its own computation (`maxImpact`) served one sheet that
+    /// drew a second copy of the receipt, and both are gone.
+    enum MaxImpact {
         /// A percentage band that now resolves to different kilograms. INFORMATIONAL:
         /// percent targets follow the newest max by design — this is the visibility,
         /// not a consent form.
@@ -1367,9 +1368,8 @@ final class TemplateStore {
 
             /// **The move, in one sentence** — `25–30 % · now 8.0–12.0 kg · was 7.0–10.0`.
             ///
-            /// Here rather than on a screen because two report it — the impact block
-            /// (`MaxesView`) and the receipt (`MaxSaveReceipt`) — and two copies of the
-            /// wording would drift. The unit is stated once, after the newer number.
+            /// Here rather than on a screen, so the wording lives beside the data it
+            /// describes. The unit is stated once, after the newer number.
             func line(unit: WeightUnit) -> String {
                 let pct = String(localized: "\(Int((loPercent * 100).rounded()))–\(Int((hiPercent * 100).rounded())) %")
                 var line = String(localized: "\(pct) · now \(unit.bandText(newBand, withUnit: false)) \(unit.symbol)")
@@ -1393,83 +1393,6 @@ final class TemplateStore {
             let moves: [Move]
             var id: UUID { routineID }
         }
-
-        var percentMoves: [PercentMove]
-        var kgOffers: [KgOffer]
-        /// new ÷ old — what "scale with your new max" multiplies by. nil when there
-        /// was no old max, which is also why `kgOffers` is empty then.
-        var ratio: Double?
-        var isEmpty: Bool { percentMoves.isEmpty && kgOffers.isEmpty }
-    }
-
-    func maxImpact(grip: GripSpec, previousMaxes: MaxTable, newKg: Double,
-                   side: Side = .both) -> MaxImpact {
-        guard let routines = fetchRoutines() else {
-            return MaxImpact(percentMoves: [], kgOffers: [], ratio: nil)
-        }
-        // A fallback both-hands benchmark is not an earlier measurement of one hand.
-        let ratio = previousMaxes.exact(grip: grip.key, side: side)
-            .flatMap { $0 > 0 ? newKg / $0 : nil }
-        var percentMoves: [MaxImpact.PercentMove] = []
-        var kgOffers: [MaxImpact.KgOffer] = []
-
-        for routine in routines {
-            let plan = routine.plan.executable
-            let affectedSides: [Side]
-            if plan.handMode == .bothHands {
-                affectedSides = side == .both ? [.both] : []
-            } else if side == .both {
-                affectedSides = [.left, .right].filter {
-                    previousMaxes.exact(grip: grip.key, side: $0) == nil
-                }
-            } else {
-                affectedSides = [side]
-            }
-            guard !affectedSides.isEmpty else { continue }
-            // An alternating routine can share a ratio only while BOTH hands use
-            // this same fallback benchmark; an exact record on either side breaks it.
-            let canScaleSharedBand = side == .both && (plan.handMode == .bothHands ||
-                [Side.left, .right].allSatisfy { previousMaxes.exact(grip: grip.key, side: $0) == nil })
-            var seenPercents: Set<String> = []
-            var moves: [MaxImpact.KgOffer.Move] = []
-            for set in plan.sets where set.grip.key == grip.key {
-                if let explicit = set.targetBand {
-                    // A typed band is shared by both sides of an alternating routine.
-                    // One hand's change cannot supply a ratio for the other hand.
-                    guard canScaleSharedBand, let ratio else { continue }
-                    let move = MaxImpact.KgOffer.Move(
-                        oldBand: explicit,
-                        newBand: Self.scaled(explicit, by: ratio))
-                    // Two byte-identical sets would offer the same line twice.
-                    if !moves.contains(move) { moves.append(move) }
-                } else if let percent = PlanMath.targetPercent(set, in: plan) {
-                    // This explains a PEAK max change; a set measured against a timed max
-                    // does not move with it.
-                    guard PlanMath.maxSeconds(set, in: plan) == nil else { continue }
-                    let key = "\(percent.lowerBound)–\(percent.upperBound)"
-                    guard seenPercents.insert(key).inserted else { continue }
-                    guard let newBand = PlanMath.targetBand(set, in: plan, maxKg: newKg)
-                    else { continue }
-                    for affectedSide in affectedSides {
-                        let oldBand = previousMaxes.max(grip: grip.key, side: affectedSide)
-                            .flatMap { PlanMath.targetBand(set, in: plan, maxKg: $0) }
-                        guard oldBand != newBand else { continue }
-                        percentMoves.append(MaxImpact.PercentMove(
-                            routineID: routine.id, routineName: routine.name, side: affectedSide,
-                            loPercent: percent.lowerBound,
-                            hiPercent: percent.upperBound,
-                            oldBand: oldBand,
-                            newBand: newBand))
-                    }
-                }
-            }
-            if !moves.isEmpty {
-                kgOffers.append(MaxImpact.KgOffer(routineID: routine.id,
-                                                  routineName: routine.name,
-                                                  moves: moves))
-            }
-        }
-        return MaxImpact(percentMoves: percentMoves, kgOffers: kgOffers, ratio: ratio)
     }
 
     /// A receipt describes one committed save, not an intermediate left/right state.

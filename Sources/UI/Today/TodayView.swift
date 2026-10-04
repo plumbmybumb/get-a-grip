@@ -54,10 +54,6 @@ struct TodayView: View {
     /// Whether the presented session was started without a gauge. Not part of the
     /// routine (the same routine runs both ways), so it rides alongside `running`.
     @State private var runningTimerOnly = false
-    /// Set by "Save and start training", consumed in the sheet's `onDismiss`: a cover
-    /// presented in the same runloop turn as a sheet's dismissal is routinely dropped,
-    /// which would lose the one tap that mattered most.
-    @State private var pendingStartID: UUID?
     @State private var startTick = 0
     @State private var selectTick = 0
     @State private var undoTick = 0
@@ -82,17 +78,16 @@ struct TodayView: View {
     @State private var importError: String?
     @Namespace private var zoom
 
-    /// Nothing this view presents is up or about to be. `pendingStartID` counts as "about
-    /// to be": draining ahead of it would slide the import sheet in front of Save-and-start.
+    /// Nothing this view presents is up or about to be.
     private var canPresentImport: Bool {
-        builder == nil && running == nil && pendingStartID == nil
+        builder == nil && running == nil
             && overview == nil && pendingOverviewEditID == nil
             && !loggingSession && shareRequest == nil && !scanningRoutine && !creatingWithAI
             && !showingGauge && importPreview == nil && importError == nil
     }
 
     /// The single door from the store's inbox to the screen, called on arrival and from
-    /// every presentation's `onDismiss` — the same deferral as `startPendingRoutine()`.
+    /// every presentation's `onDismiss`.
     /// Once, on Today, after the fifth saved session has closed — see `ReviewRequestPolicy`.
     /// Decided HERE, not in the summary: the settled screen, a beat after the cover is gone,
     /// never from a tap (it may show nothing). Read off the store's save counter, so a
@@ -178,14 +173,13 @@ struct TodayView: View {
             }, onClose: { overview = nil })
         }
         .fullScreenCover(item: $builder,
-                         onDismiss: { startPendingRoutine(); drainImportInbox() }) { mode in
+                         onDismiss: { drainImportInbox() }) { mode in
             // Closing is OURS: the builder must not read `@Environment(\.dismiss)`, which
             // re-ran its whole document on every keystroke. See `BuilderDocument`.
-            RoutineBuilderView(mode: mode, onClose: { builder = nil }) { routineID, startNow in
+            RoutineBuilderView(mode: mode, onClose: { builder = nil }) { routineID in
                 // Whatever the builder just produced is what you meant to be looking at.
                 chosenRoutineID = routineID
                 chosenOnDay = clock.today
-                if startNow { pendingStartID = routineID }
             }
             .navigationTransition(.zoom(sourceID: mode.zoomID, in: zoom))
         }
@@ -681,13 +675,6 @@ struct TodayView: View {
         // arrives a frame late, a lead-in spent connecting to an unwanted gauge.
         runningTimerOnly = timerOnly
         running = routine
-    }
-
-    private func startPendingRoutine() {
-        guard let id = pendingStartID else { return }
-        pendingStartID = nil
-        guard let routine = templates.routine(id: id) else { return }
-        start(routine)
     }
 
     // MARK: - Sharing

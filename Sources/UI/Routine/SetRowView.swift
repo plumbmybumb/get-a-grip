@@ -212,7 +212,7 @@ struct SetRowView: View, Equatable {
             Divider().overlay(Ink.tertiary.opacity(0.22))
 
             // ONE 60 pt control, where edge slider + finger pad + position chips
-            // stacked to ~400. They remain behind "Something else" — see `GripToken`.
+            // stacked to ~400. The token opens the grip panel, which holds all three.
             GripToken(grip: set.grip, onEdit: onEditGrip)
 
             // BOTH readouts, always — never a "count by reps / by time" mode, which is

@@ -22,7 +22,7 @@ extension View {
 /// An ALERT, not a sheet or a cover, on purpose: it asks one yes-or-no question, it
 /// presents nothing that could fight the runner's own cover for the root's presenting
 /// controller, and there is nothing to edit. Save goes through the summary's own path
-/// with no grade — History offers the grade afterwards — and without the new-max review,
+/// with no grade (the effort rating stays unanswered) and without the new-max review,
 /// which asked a question the draft cannot answer.
 private struct UnsavedSessionRecovery: ViewModifier {
     let store: UnsavedSessionDraftStore

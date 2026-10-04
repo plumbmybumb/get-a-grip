@@ -1730,38 +1730,31 @@ class TemplateStoreTests {
         return d.copy(plan = d.plan.copy(sets = listOf(a, b)))
     }
 
+    /// The hand separation the old `maxImpact` pinned, now through the one receipt path (iOS twin):
+    /// a one-hand save never rescales a typed band, since a shared left/right kg band has no
+    /// one-hand ratio.
     @Test
-    fun maxImpactSeparatesHandsAndNeverScalesTypedBandsFromOneHandFallback() = runTest {
+    fun aOneHandMaxNeverOffersATypedBandRescale() = runTest {
         val w = makeWorld()
         val grip = GripSpec()
         val blank = RoutineDraft.blank("Alternating")
         val single = blank.copy(plan = blank.plan.copy(handMode = HandMode.alternateEachRep,
             sets = listOf(SetPlan(grip = grip, targetLoPercent = 0.25, targetHiPercent = 0.30),
                 SetPlan(grip = grip, targetLoKg = 10.0, targetHiKg = 12.0))))
-        val both = single.copy(plan = single.plan.copy(name = "Both hands", handMode = HandMode.bothHands))
         val singleRoutine = assertNotNull(w.store.create(single))
-        val bothRoutine = assertNotNull(w.store.create(both))
-        val previous = MaxTable()
-        previous.record(60.0, grip.key, Side.both)
+        assertTrue(w.store.recordMax(kg = 60.0, grip = grip))
 
-        val firstLeft = w.store.maxImpact(grip, previous, 30.0, Side.left)
-        assertNull(firstLeft.ratio, "both-hands fallback is not a previous left max")
-        assertTrue(firstLeft.kgOffers.isEmpty())
-        assertEquals(1, firstLeft.percentMoves.size)
-        val leftMove = firstLeft.percentMoves.first()
-        assertEquals(singleRoutine.name, leftMove.routineName)
-        assertEquals(Side.left, leftMove.side)
-        assertEquals(15.0..18.0, leftMove.oldBand, "the previous target really used the fallback")
-        assertEquals(7.5..9.0, leftMove.newBand)
+        val left = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
+            TemplateStore.MaxSave(grip, Side.left, 30.0, MaxSource.manual))))
+        assertTrue(left.rescaleOffers.isEmpty(), "both-hands fallback is not a previous left max")
+        val move = assertNotNull(left.percentMoves.firstOrNull { it.move.side == Side.left }?.move)
+        assertEquals(singleRoutine.id, move.routineID)
+        assertEquals(15.0..18.0, move.oldBand, "the previous target really used the fallback")
+        assertEquals(7.5..9.0, move.newBand)
 
-        previous.record(30.0, grip.key, Side.left)
-        val nextLeft = w.store.maxImpact(grip, previous, 33.0, Side.left)
-        assertEquals(1.1, assertNotNull(nextLeft.ratio), 0.0001)
-        assertTrue(nextLeft.kgOffers.isEmpty(), "a shared left/right kg band has no one-hand ratio")
-        val nextBoth = w.store.maxImpact(grip, previous, 66.0)
-        assertEquals(listOf(bothRoutine.id), nextBoth.kgOffers.map { it.routineID })
-        assertEquals(setOf(Side.right, Side.both), nextBoth.percentMoves.map { it.side }.toSet(),
-            "the explicit left max does not follow an update to both hands")
+        val again = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
+            TemplateStore.MaxSave(grip, Side.left, 33.0, MaxSource.manual))))
+        assertTrue(again.rescaleOffers.isEmpty(), "a shared left/right kg band has no one-hand ratio")
     }
 
     @Test
@@ -1775,15 +1768,16 @@ class TemplateStoreTests {
                 sets = listOf(SetPlan(grip = grip, targetLoKg = 20.0, targetHiKg = 24.0))))
             routineIDs.add(assertNotNull(w.store.create(draft)).id)
         }
-        val previous = MaxTable()
-        previous.record(60.0, grip.key, Side.both)
-        val impact = w.store.maxImpact(grip, previous, 66.0, Side.both)
-        assertEquals(1.1, assertNotNull(impact.ratio), 0.0001)
-        assertEquals(routineIDs, impact.kgOffers.map { it.routineID }.toSet())
-        for (offer in impact.kgOffers) {
-            assertEquals(1, offer.moves.size)
-            assertEquals(20.0..24.0, offer.moves.first().oldBand)
-            assertEquals(22.0..26.5, offer.moves.first().newBand)
+        assertTrue(w.store.recordMax(kg = 60.0, grip = grip))
+        val receipt = assertNotNull(w.store.recordMaxesWithReceipt(listOf(
+            TemplateStore.MaxSave(grip, Side.both, 66.0, MaxSource.manual))))
+        val offer = assertNotNull(receipt.rescaleOffers.firstOrNull())
+        assertEquals(1.1, offer.ratio, 0.0001)
+        assertEquals(routineIDs, offer.routines.map { it.routineID }.toSet())
+        for (routine in offer.routines) {
+            assertEquals(1, routine.moves.size)
+            assertEquals(20.0..24.0, routine.moves.first().oldBand)
+            assertEquals(22.0..26.5, routine.moves.first().newBand)
         }
     }
 

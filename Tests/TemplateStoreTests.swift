@@ -1503,39 +1503,32 @@ final class TemplateStoreTests: XCTestCase {
         return draft
     }
 
-    func testMaxImpactSeparatesHandsAndNeverScalesTypedBandsFromOneHandFallback() throws {
+    /// The hand separation the old `maxImpact` pinned, now through the one receipt path: a
+    /// one-hand save never rescales a typed band, since a shared left/right kg band has no
+    /// one-hand ratio.
+    func testAOneHandMaxNeverOffersATypedBandRescale() throws {
         let w = try makeWorld()
         let grip = GripSpec()
         var single = RoutineDraft.blank(named: "Alternating")
         single.plan.handMode = .alternateEachRep
         single.plan.sets = [SetPlan(grip: grip, targetLoPercent: 0.25, targetHiPercent: 0.30),
                             SetPlan(grip: grip, targetLoKg: 10, targetHiKg: 12)]
-        var both = single
-        both.plan.name = "Both hands"
-        both.plan.handMode = .bothHands
         let singleRoutine = try XCTUnwrap(w.store.create(single))
-        let bothRoutine = try XCTUnwrap(w.store.create(both))
-        var previous = MaxTable()
-        previous.record(60, grip: grip.key, side: .both)
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
 
-        let firstLeft = w.store.maxImpact(grip: grip, previousMaxes: previous, newKg: 30, side: .left)
-        XCTAssertNil(firstLeft.ratio, "a both-hands fallback cannot stand in for a previous left max")
-        XCTAssertTrue(firstLeft.kgOffers.isEmpty)
-        let leftMove = try XCTUnwrap(firstLeft.percentMoves.first)
-        XCTAssertEqual(firstLeft.percentMoves.count, 1)
-        XCTAssertEqual(leftMove.routineName, singleRoutine.name)
-        XCTAssertEqual(leftMove.side, .left)
-        XCTAssertEqual(leftMove.oldBand, 15...18, "the previous target really used the fallback")
-        XCTAssertEqual(leftMove.newBand, 7.5...9)
+        let left = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .left, kg: 30, source: .manual)
+        ]))
+        XCTAssertTrue(left.rescaleOffers.isEmpty, "a both-hands fallback cannot stand in for a previous left max")
+        let move = try XCTUnwrap(left.percentMoves.first { $0.move.side == .left }?.move)
+        XCTAssertEqual(move.routineID, singleRoutine.id)
+        XCTAssertEqual(move.oldBand, 15...18, "the previous target really used the fallback")
+        XCTAssertEqual(move.newBand, 7.5...9)
 
-        previous.record(30, grip: grip.key, side: .left)
-        let nextLeft = w.store.maxImpact(grip: grip, previousMaxes: previous, newKg: 33, side: .left)
-        XCTAssertEqual(try XCTUnwrap(nextLeft.ratio), 1.1, accuracy: 0.0001)
-        XCTAssertTrue(nextLeft.kgOffers.isEmpty, "a shared left/right kg band has no one-hand ratio")
-        let nextBoth = w.store.maxImpact(grip: grip, previousMaxes: previous, newKg: 66)
-        XCTAssertEqual(nextBoth.kgOffers.map(\.routineID), [bothRoutine.id])
-        XCTAssertEqual(Set(nextBoth.percentMoves.map(\.side)), [.right, .both],
-                       "the explicit left max does not follow an update to both hands")
+        let again = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .left, kg: 33, source: .manual)
+        ]))
+        XCTAssertTrue(again.rescaleOffers.isEmpty, "a shared left/right kg band has no one-hand ratio")
     }
 
     func testBothMaxOffersScaleForAlternatingRoutinesWhenBothHandsUseItsFallback() throws {
@@ -1548,15 +1541,17 @@ final class TemplateStoreTests: XCTestCase {
             draft.plan.sets = [SetPlan(grip: grip, targetLoKg: 20, targetHiKg: 24)]
             routineIDs.insert(try XCTUnwrap(w.store.create(draft)).id)
         }
-        var previous = MaxTable()
-        previous.record(60, grip: grip.key, side: .both)
-        let impact = w.store.maxImpact(grip: grip, previousMaxes: previous, newKg: 66, side: .both)
-        XCTAssertEqual(try XCTUnwrap(impact.ratio), 1.1, accuracy: 0.0001)
-        XCTAssertEqual(Set(impact.kgOffers.map(\.routineID)), routineIDs)
-        for offer in impact.kgOffers {
-            XCTAssertEqual(offer.moves.count, 1)
-            XCTAssertEqual(offer.moves.first?.oldBand, 20...24)
-            XCTAssertEqual(offer.moves.first?.newBand, 22...26.5)
+        XCTAssertTrue(w.store.recordMax(60, for: grip))
+        let receipt = try XCTUnwrap(w.store.recordMaxesWithReceipt([
+            .init(grip: grip, side: .both, kg: 66, source: .manual)
+        ]))
+        let offer = try XCTUnwrap(receipt.rescaleOffers.first)
+        XCTAssertEqual(offer.ratio, 1.1, accuracy: 0.0001)
+        XCTAssertEqual(Set(offer.routines.map(\.routineID)), routineIDs)
+        for routine in offer.routines {
+            XCTAssertEqual(routine.moves.count, 1)
+            XCTAssertEqual(routine.moves.first?.oldBand, 20...24)
+            XCTAssertEqual(routine.moves.first?.newBand, 22...26.5)
         }
     }
 
