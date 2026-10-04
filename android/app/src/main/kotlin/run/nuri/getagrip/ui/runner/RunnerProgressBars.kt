@@ -93,8 +93,9 @@ internal val PILL_HEIGHT = 3.dp
 /// The routine's pills (iOS `RoutinePills`): every pull of every set, done in ink, skipped lighter, and the pull
 /// this is all about marked. SECONDARY to the time bar above: slimmer, on a lighter track.
 ///
-/// While a pull runs its pill is marked in INK — the time bar is the one bleu thing on the
-/// panel. At rest the bar turns steel and the next pill takes the bleu, pointing forward.
+/// The current pill wears the runner's own phase tint (`RunnerTint`, Nuri 2026-10-04): bleu
+/// while the clock runs, amber while it waits on you (pull, re-grip, ease off, let go),
+/// steel at rest — so the line and the screen's border always say the same thing.
 /// Done stays at 0.6 ink: at 3 pt, 0.46 measured 2.5:1 against the track (thin shapes are
 /// mostly antialiased edge).
 ///
@@ -106,7 +107,7 @@ internal val PILL_HEIGHT = 3.dp
 @Composable
 internal fun RoutinePills(
     model: SessionProgressModel,
-    isLive: Boolean,
+    currentTint: Color,
     modifier: Modifier = Modifier,
     thickness: Dp = PILL_HEIGHT,
 ) {
@@ -114,7 +115,6 @@ internal fun RoutinePills(
     val track = palette.pillTrack()
     val done = palette.inkPrimary.copy(alpha = 0.6f)
     val skipped = palette.inkPrimary.copy(alpha = 0.2f)
-    val next = if (isLive) palette.inkPrimary.copy(alpha = 0.85f) else palette.bleu.copy(alpha = 0.72f)
     Canvas(modifier.widthIn(max = Metrics.maxContentWidth).fillMaxWidth().height(thickness)
         .testTag("runner.routinePills").clearAndSetSemantics {}) {
         val cells = RoutinePillLayout.cells(model.setSizes, size.width, unit = density)
@@ -123,7 +123,7 @@ internal fun RoutinePills(
         drawSlots(cells, cells.indices, track, top, drawn)
         drawSlots(cells, model.finished.indices.filter { model.finished[it] }, done, top, drawn)
         drawSlots(cells, model.finished.indices.filter { !model.finished[it] }, skipped, top, drawn)
-        model.current?.let { drawSlots(cells, listOf(it), next, top, drawn) }
+        model.current?.let { drawSlots(cells, listOf(it), currentTint, top, drawn) }
     }
 }
 

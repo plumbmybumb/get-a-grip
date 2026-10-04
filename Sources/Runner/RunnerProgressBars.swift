@@ -14,9 +14,11 @@ import SwiftUI
 //    between sets: what is done, what was skipped, and which pull is next.
 //
 // Rules both keep:
-// - **Secondary to the hero numbers.** Ink and steel; the only bleu is the hold whose
-//   clock is running (bleu IS the live-force signal) and, at rest, the pill the rest
-//   is waiting for — the single accent pointing forward.
+// - **Secondary to the hero numbers.** Ink and steel. The one pill in colour is the
+//   current one, and it wears the runner's own phase tint (Nuri, 2026-10-04): bleu while
+//   the clock runs, amber while it waits on you (pull, re-grip, ease off, let go), steel
+//   at rest. Inking the pills by hand (left dark, right grey) was tried the same day and
+//   read as noise.
 // - **A pill is never a dot.** A circle is a SESSION in this app and a capsule 22 × 38
 //   is a FINGER (`IslandHand`); the pills stay at least 1.5× as long as they are tall,
 //   and a dense plan drops its gaps rather than shrinking into dots.
@@ -114,8 +116,9 @@ struct RoutinePillsShape: Shape {
 /// The whole routine under the time bar, ALWAYS — pulling and resting alike.
 struct RoutinePills: View {
     var model: SessionProgressModel
-    /// Working, releasing, or paused inside either.
-    var isLive: Bool
+    /// The current pill's colour: the runner's phase tint (`RunnerView.tint`), so the line
+    /// and the screen's border always say the same thing.
+    var currentTint: Color
     /// The pills' preferred thickness. The timer-only runner, with no trace to share the
     /// screen with, draws them thicker; a dense plan still thins them so every pill stays
     /// at least 1.5× as long as it is tall — see `drawnThickness`.
@@ -131,24 +134,6 @@ struct RoutinePills: View {
     private static let done = Ink.primary.opacity(0.6)
     /// A skipped pull is used up but was not pulled.
     private static let skipped = Ink.primary.opacity(0.2)
-
-    /// While a pull runs, the current pill is marked in INK — the time bar is the one
-    /// bleu thing on the panel. At rest the time bar turns steel, and the next pill takes
-    /// the bleu as the single accent pointing forward. 0.55 measured 2.5:1 on the light
-    /// panel, under the 3:1 floor.
-    private var next: Color {
-        isLive ? Ink.primary.opacity(0.85) : StatusTint.engaged.opacity(0.72)
-    }
-
-    /// Whether the pull under way carries the live mark: armed has not started it.
-    static func isLive(_ phase: RunnerPhase) -> Bool {
-        let inner: RunnerPhase
-        if case .paused(let wrapped) = phase { inner = wrapped } else { inner = phase }
-        switch inner {
-        case .working, .releasing: return true
-        default: return false
-        }
-    }
 
     /// Never thinner than the connected runner's pills, never so thick that a pill's
     /// length falls under 1.5× its height — a circle is a session in this app.
@@ -173,7 +158,7 @@ struct RoutinePills: View {
                     .fill(Self.skipped)
                 if let current = model.current {
                     RoutinePillsShape(cells: cells, include: [current])
-                        .fill(next)
+                        .fill(currentTint)
                 }
             }
             .frame(height: drawn)

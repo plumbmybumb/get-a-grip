@@ -596,7 +596,7 @@ struct RunnerView: View {
         return VStack(spacing: Self.timeBarToPills) {
             RunnerTimeBar(session: session, mode: RunnerTimeBar.Mode(phase),
                           identity: phase.slotIndex ?? -1)
-            RoutinePills(model: routineModel(session), isLive: RoutinePills.isLive(phase))
+            RoutinePills(model: routineModel(session), currentTint: tint(session))
         }
         // The panel stack's 12 pt either side is replaced by the rhythm above.
         .padding(.top, Self.heroToTimeBar - 12)
@@ -606,7 +606,7 @@ struct RunnerView: View {
 
     /// The routine alone, as it reads during a rest — for the accessibility-size summary.
     private func routineAtRest(_ session: RunnerSession) -> some View {
-        RoutinePills(model: routineModel(session), isLive: false)
+        RoutinePills(model: routineModel(session), currentTint: tint(session))
             .accessibilityHidden(true)
     }
 
@@ -1174,7 +1174,7 @@ struct RunnerView: View {
     private func timerProgress(_ session: RunnerSession) -> some View {
         let snapshot = session.snapshot
         return VStack(spacing: 14) {
-            RoutinePills(model: routineModel(session), isLive: RoutinePills.isLive(snapshot.phase),
+            RoutinePills(model: routineModel(session), currentTint: tint(session),
                          thickness: Self.timerPillThickness)
             HStack(alignment: .lastTextBaseline, spacing: 12) {
                 positionFigure(String(localized: "Set"), value: snapshot.setNumber ?? snapshot.setCount,

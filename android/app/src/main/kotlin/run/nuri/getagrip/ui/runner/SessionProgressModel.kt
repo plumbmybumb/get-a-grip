@@ -96,12 +96,6 @@ fun timeBarMode(phase: RunnerPhase): TimeBarMode = when ((phase as? RunnerPhase.
     else -> TimeBarMode.none
 }
 
-/// Working or releasing (and paused inside those): the pull is under your hand.
-fun isHoldLive(phase: RunnerPhase): Boolean = when ((phase as? RunnerPhase.Paused)?.before ?: phase) {
-    is RunnerPhase.Working, is RunnerPhase.Releasing -> true
-    else -> false
-}
-
 /// The fraction the time bar draws: the hold growing while pulling, FULL once the hold is
 /// recorded under your hand, and the countdown DRAINING while resting.
 fun timeBarFraction(mode: TimeBarMode, repProgress: Float, remaining: Double?): Float = when (mode) {

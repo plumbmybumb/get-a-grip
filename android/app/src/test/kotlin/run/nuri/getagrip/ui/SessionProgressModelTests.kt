@@ -7,7 +7,6 @@ import run.nuri.getagrip.engine.*
 import run.nuri.getagrip.ui.runner.RoutinePillLayout
 import run.nuri.getagrip.ui.runner.SessionProgressModel
 import run.nuri.getagrip.ui.runner.TimeBarMode
-import run.nuri.getagrip.ui.runner.isHoldLive
 import run.nuri.getagrip.ui.runner.routineLeftSpoken
 import run.nuri.getagrip.ui.runner.timeBarFraction
 import run.nuri.getagrip.ui.runner.timeBarMode
@@ -34,9 +33,6 @@ class SessionProgressModelTests {
         assertEquals(listOf(true, false), model.finished, "A skipped pull is used up, not done")
         assertEquals(2, model.current)
         assertEquals(3, model.pullsLeft)
-        // Paused mid-pull still carries the live mark; a rest and an armed pull do not.
-        assertTrue(isHoldLive(RunnerPhase.Paused(RunnerPhase.Working(2))))
-        assertFalse(isHoldLive(RunnerPhase.Resting(1)))
         // Finished: no current pull.
         val all = List(5) { RepSummary() }
         assertNull(SessionProgressModel.of(slots, all).current)
@@ -70,8 +66,6 @@ class SessionProgressModelTests {
         assertEquals(1f, timeBarFraction(TimeBarMode.released, 0f, null), "A recorded hold stays full")
         assertEquals(0.25f, timeBarFraction(TimeBarMode.countdown, 0.9f, 0.25), "The rest is time REMAINING")
         assertEquals(0f, timeBarFraction(TimeBarMode.armed, 0.9f, 0.5))
-        assertTrue(isHoldLive(RunnerPhase.Releasing(0)))
-        assertFalse(isHoldLive(RunnerPhase.Armed(0)))
     }
 
     @Test fun theCountersSayHowMuchIsLeft() {

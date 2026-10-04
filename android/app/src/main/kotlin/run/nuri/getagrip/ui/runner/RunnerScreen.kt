@@ -365,7 +365,7 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                 GripNameRow(snapshot, palette, timerOnly = true)
                 GripChangeNotice(snapshot, palette)
                 TimerDial(session, snapshot, tint, palette)
-                TimerProgress(session, snapshot)
+                TimerProgress(session, snapshot, tint)
             } else {
                 // The hand owns the top band, so only the grip's NAME goes on the panel (the glyph
                 // would be the same picture twice).
@@ -733,7 +733,7 @@ private fun RunnerPanelHeader(
         // Accessibility sizes reflow the rest into the summary alone. The routine rides above
         // the summary's own compact counts — re-stacking the full labels row there cost 55 pt
         // at AX3 on iOS.
-        RunnerRestFocus(snapshot, routineRow = { RoutinePills(model, isLive = false) })
+        RunnerRestFocus(snapshot, routineRow = { RoutinePills(model, currentTint = tint) })
         return
     }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -753,7 +753,7 @@ private fun RunnerPanelHeader(
         // One bar, always there: the hold while pulling, the rest's countdown while resting.
         RunnerTimeBar(session, timeBarMode(snapshot.phase), identity = snapshot.phase.slotIndex ?: -1)
         Spacer(Modifier.height(11.dp))
-        RoutinePills(model, isLive = isHoldLive(snapshot.phase))
+        RoutinePills(model, currentTint = tint)
         Spacer(Modifier.height(4.dp))
         // The summary's badge already says REST; the row keeps its height.
         Counters(snapshot, showsPhaseWord = !focused, routineLeft = true)
@@ -1002,7 +1002,7 @@ private fun LiveTimerRing(
 /// and PULL — scaled up, thicker pills and figures readable from the floor. No time bar: the
 /// dial above already is one.
 @Composable
-private fun TimerProgress(session: RunnerSession, snapshot: RunnerSnapshot) {
+private fun TimerProgress(session: RunnerSession, snapshot: RunnerSnapshot, tint: Color) {
     val model = remember(snapshot.completedRepCount, session) {
         SessionProgressModel.of(session.runner.slots, session.runner.results)
     }
@@ -1015,7 +1015,7 @@ private fun TimerProgress(session: RunnerSession, snapshot: RunnerSnapshot) {
             .clearAndSetSemantics { contentDescription = spoken },
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        RoutinePills(model, isLive = isHoldLive(snapshot.phase), thickness = TIMER_PILL_THICKNESS)
+        RoutinePills(model, currentTint = tint, thickness = TIMER_PILL_THICKNESS)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
             PositionFigure(tr("Set"), snapshot.setNumber ?: snapshot.setCount, snapshot.setCount,
                 Alignment.Start, Modifier.weight(1f))
