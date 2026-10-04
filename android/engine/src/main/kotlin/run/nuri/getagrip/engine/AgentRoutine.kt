@@ -52,7 +52,7 @@ object AgentRoutine {
 
         HOW TO WORK
         1. Ask me how I want to train: the goal (for example strength, recovery, endurance or max hangs), the edges and grips, how long to hold and rest, how many pulls and sets, whether my hands alternate or pull together, and any target load. Ask only what you still need, a few short questions at a time, and suggest sensible values when I'm unsure.
-        2. Once you have enough, write one short line telling me to copy the code block and paste it into Get a Grip. Then write ONE code block of JSON in exactly the format below, and nothing after it.
+        2. Once you have enough, sum the routine up in a few plain words so I can check it before I paste (for example: 3 sets of 6 pulls on a 40 mm edge, half crimp, 7 s on and 3 s off, hands alternating). Then write one short line telling me to copy the code block and paste it into Get a Grip, and ONE code block of JSON in exactly the format below, and nothing after it.
         3. Use only the keys shown. Write the listed values in English exactly as shown, even if we talk in another language. Leave out anything optional you don't know; the app fills in defaults.
 
         FORMAT
