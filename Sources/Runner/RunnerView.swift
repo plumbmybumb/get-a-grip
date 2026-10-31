@@ -275,8 +275,14 @@ struct RunnerView: View {
             // runner of a ~440 pt tall screen behind a scroll.
             GeometryReader { geometry in
                 let insets = geometry.safeAreaInsets
-                let far = RunnerLayout.far(columnWidth: farColumnWidth(for: geometry.size.width),
-                                           columnLeading: insets.leading > insets.trailing + 1)
+                // A side that carries a system column (the Duo's bars, a Pro Max's island)
+                // already has its margin: our own 20 pt beside it was 105 pt of nothing
+                // on Nuri's Duo (2026-10-31). A bare side keeps the house margin.
+                let far = RunnerLayout.far(RunnerLayout.Far(
+                    columnWidth: farColumnWidth(for: geometry.size.width),
+                    columnLeading: insets.leading > insets.trailing + 1,
+                    leadingPadding: insets.leading > 0 ? 0 : Metrics.hPadding,
+                    trailingPadding: insets.trailing > 0 ? 0 : Metrics.hPadding))
                 liveContent(session, layout: far)
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     .background {
@@ -324,11 +330,12 @@ struct RunnerView: View {
             switch layout {
             case .wide: wideContent(session)
             case .stacked: stackedContent(session, narrowDock: narrowDock)
-            case .far(let columnWidth, let columnLeading):
-                farContent(session, columnWidth: columnWidth, columnLeading: columnLeading)
+            case .far(let far):
+                farContent(session, columnWidth: far.columnWidth, columnLeading: far.columnLeading)
             }
         }
-        .padding(.horizontal, Metrics.hPadding)
+        .padding(.leading, layout.far?.leadingPadding ?? Metrics.hPadding)
+        .padding(.trailing, layout.far?.trailingPadding ?? Metrics.hPadding)
         // The fingers reach ~92 pt down the screen and content starts at 59, so the hand
         // needs the gap bought for it — otherwise the grip name lands under the knuckles.
         .padding(.top, islandHandShown ? (typeSize.isAccessibilitySize ? 0 : 46 + handPush) : 8)
@@ -462,21 +469,20 @@ struct RunnerView: View {
             .frame(maxHeight: .infinity, alignment: .top)
     }
 
-    /// The trailing column's width: a good third of the screen, held between what the
-    /// dock's two-up rows need and what would start eating the numeral. 250 is the
-    /// floor because at 220 the Tare button's "Pulling" state wrapped to "Pullin / g"
-    /// (measured, Duo outer display) — and the Duo's 594 pt landscape safe width still
-    /// leaves the face ~300 pt for a two-digit numeral.
+    /// The column's width: 45 % of the safe width, so the glass grows into the room the
+    /// screen has instead of leaving it empty beside the system's bars (Nuri's Duo,
+    /// 2026-10-31: a fixed ~250 left 105 pt of nothing on the right). 250 is the floor
+    /// because at 220 the Tare button's "Pulling" state wrapped to "Pullin / g"
+    /// (measured, Duo outer display); the Duo's 594 pt landscape safe width still leaves
+    /// the face ~300 pt for a two-digit numeral.
     ///
     /// At accessibility sizes the column takes HALF the width: it carries every word and
     /// action at the person's own size (and scrolls), while the face's numeral is
     /// display-size whatever the setting.
     private func farColumnWidth(for width: CGFloat) -> CGFloat {
-        if typeSize.isAccessibilitySize { return max(Self.farColumnMin, width * 0.5) }
-        return min(Self.farColumnMax, max(Self.farColumnMin, width * 0.36))
+        max(Self.farColumnMin, width * (typeSize.isAccessibilitySize ? 0.5 : 0.45))
     }
     private static let farColumnMin: CGFloat = 250
-    private static let farColumnMax: CGFloat = 300
 
     /// The face: grip, word, numeral, bar — top to bottom, no glass. The numeral takes
     /// every point the others leave.
@@ -560,14 +566,10 @@ struct RunnerView: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .frame(minHeight: 0, maxHeight: .infinity)
-        // The trace runs BEHIND THE NUMERAL, as the phone's runs behind its open region
-        // (`regionTrace`) — not across the screen as the iPad's does. Full-bleed, its
-        // line crossed the phase word, its fill closed at the bottom of the SCREEN under
-        // the time bar, and its history slid under the column's glass (measured).
-        .background {
-            if !timerOnly {
-                liveTrace(session, plot: ForceTraceView.PlotInsets(top: 12, bottom: 6, trailing: 8))
-            }
+        // The numeral's band is where the trace PLOTS (`farPlot`): the curve itself is
+        // the screen's, drawn full-bleed by `backgroundTrace`.
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+            traceGeometry.region = $0
         }
         // A numeral changing every second is not a VoiceOver channel; the counters and
         // the cues are — the hero's own rule.
@@ -751,6 +753,19 @@ struct RunnerView: View {
         }
     }
 
+    /// The far view's plot inside its full-bleed canvas: the numeral's vertical band
+    /// (the clearances the numeral-sized trace used to have), its head stepped in to the
+    /// face's trailing edge. Until both are measured, the wide layout's insets.
+    private var farPlot: ForceTraceView.PlotInsets {
+        let canvas = traceGeometry.canvas, band = traceGeometry.region
+        guard canvas.width > 0, band.width > 0, band.height > 0 else {
+            return ForceTraceView.PlotInsets(top: 44, bottom: 36, trailing: 8)
+        }
+        return ForceTraceView.PlotInsets(top: max(0, band.minY - canvas.minY) + 12,
+                                         bottom: max(0, canvas.maxY - band.maxY) + 6,
+                                         trailing: max(8, canvas.maxX - band.maxX + 8))
+    }
+
     /// The graph's canvas with its phase-tint blend, placed by the caller: the open
     /// region's background on the phone, the whole screen's on the iPad.
     private func liveTrace(_ session: RunnerSession, plot: ForceTraceView.PlotInsets) -> some View {
@@ -785,15 +800,24 @@ struct RunnerView: View {
     private func backgroundTrace(_ session: RunnerSession, layout: RunnerLayout) -> some View {
         if case .far = layout {
             // THE FAR VIEW: the phase colour washes the WHOLE face — from two metres the
-            // colour is read before the word. Only the wash lives here; the trace runs
-            // behind the numeral (`farNumeral`), so the column's glass sits on a fill
-            // that changes once per phase, the phone's rule. Timer-only keeps the wash:
-            // the colour is the far view's first signal, gauge or not.
-            PhaseWash(tint: tint(session), edge: .top, length: traceGeometry.canvas.height)
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
-                    traceGeometry.canvas = $0
+            // colour is read before the word — and the trace is the SCREEN, as on the
+            // iPad (Nuri's Duo, 2026-10-31: confined to the numeral's width it left the
+            // room beside it empty). Full-bleed sideways, into the system columns and
+            // under the glass; vertically it plots in the numeral's band, so the line
+            // never crosses the phase word or the time bar, and its head stops at the
+            // face's trailing edge, newest seconds in the clear (`farPlot`). Timer-only
+            // keeps the wash: the colour is the far view's first signal, gauge or not.
+            ZStack {
+                PhaseWash(tint: tint(session), edge: .top, length: traceGeometry.canvas.height)
+                if !timerOnly {
+                    liveTrace(session, plot: farPlot)
                 }
-                .ignoresSafeArea()
+            }
+            // Measured INSIDE `ignoresSafeArea`, as below.
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+                traceGeometry.canvas = $0
+            }
+            .ignoresSafeArea()
             .allowsHitTesting(false)
         } else if !timerOnly {
             let wide = layout == .wide
@@ -1621,21 +1645,27 @@ struct RunnerView: View {
     /// "Hold to end" to "Hold…" (measured: the Duo's outer display on its side, and the
     /// 313 pt half of the inner one) — and the one destructive action is the last thing
     /// that may lose its words.
+    ///
+    /// **Every capsule label stays on ONE line** (`oneLinePerCell`, 2026-10-31): a row
+    /// whose labels would wrap or truncate drops to two columns — Hold to end then takes
+    /// its own row — and then one. At XXXL the three-up row had truncated "Hold t…"
+    /// beside a two-line "Skip / pull" (13 mini and 17 Pro). An icon steps aside before
+    /// any of that (`DockActionLabel`).
     private func controls(_ session: RunnerSession, narrow: Bool = false) -> some View {
         VStack(spacing: Self.dockSpacing) {
-            AdaptiveActionRow(spacing: Self.dockSpacing) {
+            AdaptiveActionRow(spacing: Self.dockSpacing, oneLinePerCell: true) {
                 pauseButton(session, docked: true)
                 gaugeButton(session, docked: true)
             }
             if narrow {
-                AdaptiveActionRow(spacing: Self.dockSpacing) {
+                AdaptiveActionRow(spacing: Self.dockSpacing, oneLinePerCell: true) {
                     skipButtons(session, docked: true)
                 }
-                AdaptiveActionRow(spacing: Self.dockSpacing) {
+                AdaptiveActionRow(spacing: Self.dockSpacing, oneLinePerCell: true) {
                     endButton(session)
                 }
             } else {
-                AdaptiveActionRow(spacing: Self.dockSpacing) {
+                AdaptiveActionRow(spacing: Self.dockSpacing, oneLinePerCell: true) {
                     skipButtons(session, docked: true)
                     endButton(session)
                 }
@@ -1727,10 +1757,7 @@ struct RunnerView: View {
                             docked: Bool = false,
                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                if let systemImage { Image(systemName: systemImage) }
-                Text(title)
-            }
+            DockActionLabel(title: title, systemImage: systemImage)
             .font(.system(.subheadline, weight: .semibold))
             .foregroundStyle(enabled ? tint : Ink.tertiary.opacity(0.5))
             .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
@@ -1771,5 +1798,17 @@ private enum RunnerLayout: Equatable {
     /// Compact HEIGHT — a phone on its side: the far view, the controls in a column of
     /// this width beside the system's vertical bars (`columnLeading` when they are on the
     /// leading edge).
-    case far(columnWidth: CGFloat, columnLeading: Bool)
+    case far(Far)
+
+    struct Far: Equatable {
+        var columnWidth: CGFloat
+        var columnLeading: Bool
+        /// Zero on a side the system already margins with its own column.
+        var leadingPadding: CGFloat
+        var trailingPadding: CGFloat
+    }
+
+    var far: Far? {
+        if case .far(let far) = self { far } else { nil }
+    }
 }

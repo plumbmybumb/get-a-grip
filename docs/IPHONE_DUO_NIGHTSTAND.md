@@ -46,10 +46,18 @@ answer is listed at the end. Screenshots: `docs/screenshots/duo/` (prefix `night
 - **The face** (no glass): the grip, small — `RunnerGripGlyph` at 0.7 beside `nameRow`
   (badge, name, target chip); the phase word (`prompt`, single line, 1.6×); **one numeral
   as large as the height allows**; `RunnerTimeBar` under it; the no-signal notice when
-  there is one. The trace and target lane run BEHIND THE NUMERAL (`liveTrace` as its
-  background, the phone's `regionTrace` idea). The phase colour washes the whole screen
+  there is one. **The trace is the SCREEN** (2026-10-31, Nuri on his Duo: confined to
+  the numeral's width it left the room beside it empty): `backgroundTrace` draws it
+  full-bleed, into the system columns and under the glass, as on the iPad. It still
+  PLOTS in the numeral's vertical band (`farPlot`, from the measured numeral frame), so
+  it never crosses the phase word or the time bar, and its head stops at the face's
+  trailing edge — newest seconds in the clear. The phase colour washes the whole screen
   (`PhaseWash`, full height), timer-only included — from two metres the colour is read
   before the word.
+- **The grip shows while CONNECTING too** (2026-10-31): `.idle` has no slot, so
+  `RunnerSession.publish` names the plan's first slot — grip and hand — until the
+  session goes live. Connecting, lead-in, armed, working and rest all draw the glyph
+  and name in the same place, the top of the face.
 - **The numeral**: `@ScaledMetric farHeroSize` (340, relative to largeTitle), clamped to
   `height / 0.8` — sized to the DIGITS (≈0.72 em), with the line box's empty ascender and
   descender allowed to overhang the region. Sizing by the line box left it at ~60 % of
@@ -59,7 +67,10 @@ answer is listed at the end. Screenshots: `docs/screenshots/duo/` (prefix `night
 - **The column** beside the face: one glass panel (live kg via `LiveForceReadout`,
   `RoutinePills`, `counters` — or `timerProgress` when timer-only) and the dock
   (`controls(narrow: true)`: Pause/Tare, Skip pull/Skip set, then **Hold to end on a row
-  of its own** — three-up at 250 pt wrapped "Skip pull" and truncated "Hold…"). It
+  of its own** — three-up at 250 pt wrapped "Skip pull" and truncated "Hold…"). Every
+  dock capsule keeps ONE line (`AdaptiveActionRow(oneLinePerCell:)`): an icon steps
+  aside first (`DockActionLabel` — "Con- / nect" hyphenated beside its glyph on the
+  Duo at the default size), then the row drops a column. It
   scrolls (`scrollBounceBehavior(.basedOnSize)`), so every action stays reachable at any
   text size. `GlassEffectContainer(spacing: 6)`: at the stack's 24 the panel and dock,
   12 pt apart, melted into one blob with a waist.
@@ -67,8 +78,11 @@ answer is listed at the end. Screenshots: `docs/screenshots/duo/` (prefix `night
   `safeAreaInsets`: on the Duo's outer display the bars are TRAILING in one landscape
   (insets 0 / 84) and LEADING in the other (84 / 0). Symmetric insets (a Pro Max on its
   side) keep it trailing.
-- Width: 36 % of the safe width, held to 250–300 pt; HALF the width at accessibility
-  sizes.
+- Width: 45 % of the safe width, 250 pt at the least; HALF the width at accessibility
+  sizes. **No margin of our own beside a system column** (2026-10-31): a side with a
+  safe-area inset (the Duo's bars, a Pro Max's island) gets 0 pt of our padding, since
+  the system's column already is the margin — the fixed 250 pt plus 20 pt beside the
+  bars left ~105 pt of nothing on Nuri's Duo. A side without one keeps the 20 pt.
 - **Accessibility sizes**: the face stops growing at xxxLarge (`dynamicTypeSize` on the
   face, plus `promptSize`/`nameSize` clamped by hand to their xxxLarge values 40/21 —
   a modifier only reaches the views below it, not RunnerView's own `@ScaledMetric`s).

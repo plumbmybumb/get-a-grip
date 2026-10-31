@@ -21,6 +21,7 @@ struct SessionSummaryView: View {
 
     @Environment(TemplateStore.self) private var templates
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var grade: RPE?
     @State private var saved = false
     @State private var gradeTick = 0
@@ -100,13 +101,38 @@ struct SessionSummaryView: View {
         }
     }
 
+    /// Three cards whose VALUES share a line. "Under tension" has no suffix and was the
+    /// one label that wrapped on a 13 mini, so its value sat ~25 pt below "6 of 36" and
+    /// "17.0 kg" beside it — the summary's most visibly slapped-in spot (audit
+    /// 2026-10-31). Every card now reserves the TALLEST label and a suffix line
+    /// (`StatCard`), so the three values sit on one baseline at any width. At
+    /// accessibility sizes a third of the row cannot hold a word, so the cards stack,
+    /// each full width with its unit inline after the value.
     private var stats: some View {
-        HStack(spacing: 10) {
-            stat(String(localized: "Pulls"), "\(completed.count)", of: String(localized: "of \(reps.count)"))
-            stat(String(localized: "Under tension"), PlanMath.clockText(heldSeconds), of: nil)
-            stat(String(localized: "Peak"), weightUnit.number(peakKg), of: weightUnit.symbol)
+        let cards = [
+            StatCard.Content(title: String(localized: "Pulls"), value: "\(completed.count)",
+                             suffix: String(localized: "of \(reps.count)")),
+            StatCard.Content(title: String(localized: "Under tension"),
+                             value: PlanMath.clockText(heldSeconds), suffix: nil),
+            StatCard.Content(title: String(localized: "Peak"), value: weightUnit.number(peakKg),
+                             suffix: weightUnit.symbol),
+        ]
+        return Group {
+            if typeSize.isAccessibilitySize {
+                VStack(spacing: 10) {
+                    ForEach(cards.indices, id: \.self) { StatCard(content: cards[$0], stacked: true) }
+                }
+            } else {
+                HStack(spacing: 10) {
+                    ForEach(cards.indices, id: \.self) {
+                        StatCard(content: cards[$0], stacked: false,
+                                 reservedTitles: cards.map(\.title),
+                                 reservesSuffix: cards.contains { $0.suffix != nil })
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("""
             \(completed.count) of \(reps.count) pulls completed, \
@@ -115,23 +141,6 @@ struct SessionSummaryView: View {
             """)
     }
 
-    private func stat(_ title: String, _ value: String, of suffix: String?) -> some View {
-        VStack(spacing: 4) {
-            CapsLabel(title)
-            Text(value)
-                .font(.system(.title2, weight: .medium))
-                .monospacedDigit()
-                .foregroundStyle(Ink.primary)
-            if let suffix {
-                Text(suffix).font(.system(.caption)).foregroundStyle(Ink.tertiary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 14)
-        .cardSurface(.flat,
-                    in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
-    }
 
     // MARK: - New maxes
 
@@ -347,6 +356,83 @@ struct SessionSummaryView: View {
     }
 }
 
+/// One of the summary's three stats.
+///
+/// **Side by side, the values share a line.** Each card lays out the row's TALLEST
+/// title (hidden, every title in the row reserved in one `ZStack`) and, when any card
+/// has one, a suffix line — so a title that wraps, or a card with no suffix, cannot
+/// move its value off its neighbours' baseline. The visible title sits at the bottom of
+/// that reserve, against its value. **Stacked** (accessibility sizes) it reads as a
+/// sentence instead: the title, then the value with its unit inline.
+///
+/// The suffix is SECONDARY ink: "of 36" and "kg" are part of the number, and tertiary
+/// measured 4.13:1 in dark mode, under the 4.5:1 floor for small text.
+private struct StatCard: View {
+    struct Content {
+        var title: String
+        var value: String
+        var suffix: String?
+    }
+
+    var content: Content
+    var stacked: Bool
+    var reservedTitles: [String] = []
+    var reservesSuffix = false
+
+    var body: some View {
+        Group {
+            if stacked { stackedFace } else { columnFace }
+        }
+        .padding(.horizontal, stacked ? 16 : 8)
+        .padding(.vertical, stacked ? 12 : 14)
+        .cardSurface(.flat,
+                    in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
+    }
+
+    private var columnFace: some View {
+        VStack(spacing: 4) {
+            ZStack(alignment: .bottom) {
+                ForEach(reservedTitles, id: \.self) { title($0).hidden() }
+                title(content.title)
+            }
+            value
+            if reservesSuffix {
+                // A blank line, not a missing one: the reserve is what keeps the values level.
+                suffix(content.suffix ?? " ")
+                    .opacity(content.suffix == nil ? 0 : 1)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var stackedFace: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            title(content.title)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                value
+                if let suffix = content.suffix { self.suffix(suffix) }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func title(_ text: String) -> some View {
+        CapsLabel(text)
+            .multilineTextAlignment(stacked ? .leading : .center)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var value: some View {
+        Text(content.value)
+            .font(.system(.title2, weight: .medium))
+            .monospacedDigit()
+            .foregroundStyle(Ink.primary)
+    }
+
+    private func suffix(_ text: String) -> some View {
+        Text(text).font(.system(.caption)).foregroundStyle(Ink.secondary)
+    }
+}
 
 /// Discarding a finished session takes a deliberate HOLD, exactly like ending one.
 ///
