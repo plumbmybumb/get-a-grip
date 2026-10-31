@@ -8,6 +8,7 @@ import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.RepOutcome
 import run.nuri.getagrip.engine.RepSummary
 import run.nuri.getagrip.engine.SessionKind
+import run.nuri.getagrip.engine.TrainingLoad
 import java.time.Instant
 import java.util.UUID
 import kotlin.math.abs
@@ -25,7 +26,11 @@ data class TrendModel(
 ) {
     data class GripOption(val key: String, val grip: GripSpec, val count: Int)
 
-    data class Point(val id: UUID, val date: Instant, val avgKg: Double)
+    /// One session on one grip's lines: `avgKg` is the time-weighted mean (the "Average
+    /// load" chart), `topKg` what the session held for its hardest 5 % of time on this grip
+    /// (`TrainingLoad.topLoadKg`, the "Hardest 5 % of time" chart beside it — warm-up pulls
+    /// drag the mean down; Gleb, 2026-10-31).
+    data class Point(val id: UUID, val date: Instant, val avgKg: Double, val topKg: Double)
 
     /// One card: one routine's grips, most-trained first, and each grip's series.
     data class Routine(
@@ -70,11 +75,12 @@ data class TrendModel(
         fun routineKey(templateID: UUID?, templateName: String): String =
             templateID?.toString()?.uppercase() ?: templateName
 
-        fun summary(series: List<Point>): Summary? {
-            val first = series.firstOrNull() ?: return null
-            val last = series.last()
-            val delta = last.avgKg - first.avgKg
-            if (abs(delta) < STEADY_BAND_KG) return Summary.Steady(last.avgKg)
+        /// `value` picks the line: `Point::avgKg` (the default) or `Point::topKg`.
+        fun summary(series: List<Point>, value: (Point) -> Double = Point::avgKg): Summary? {
+            val first = series.firstOrNull()?.let(value) ?: return null
+            val last = value(series.last())
+            val delta = last - first
+            if (abs(delta) < STEADY_BAND_KG) return Summary.Steady(last)
             return if (delta > 0) Summary.Up(abs(delta), series.size) else Summary.Down(abs(delta), series.size)
         }
 
@@ -105,10 +111,13 @@ data class TrendModel(
                 if (log.kind != SessionKind.hang) continue
                 val key = routineKey(log.templateID, log.templateName)
                 val group = groups.getOrPut(key) { Group() }
-                // One pass per session: grip counts and each grip's time-weighted mean — a rep
-                // dropped after a second must not weigh like a full hang (as in `avgKg`).
+                // One pass per session: grip counts, each grip's time-weighted mean — a rep
+                // dropped after a second must not weigh like a full hang (as in `avgKg`) — and
+                // each grip's reps for its hardest 5 % of time (`TrainingLoad.topLoadKg`). A
+                // grip with no held time gets no point on either line.
                 val held = LinkedHashMap<String, Double>()
                 val weighted = HashMap<String, Double>()
+                val byGrip = HashMap<String, MutableList<RepSummary>>()
                 var chartedAny = false
                 for (rep in reps(log)) {
                     if (!chartable(rep)) continue
@@ -117,11 +126,14 @@ data class TrendModel(
                     group.gripCounts[grip] = rep.grip to ((group.gripCounts[grip]?.second ?: 0) + 1)
                     held[grip] = (held[grip] ?: 0.0) + rep.heldSeconds
                     weighted[grip] = (weighted[grip] ?: 0.0) + rep.avgKg * rep.heldSeconds
+                    byGrip.getOrPut(grip) { mutableListOf() }.add(rep)
                 }
                 for ((grip, seconds) in held) {
                     if (seconds <= 0) continue
+                    // Never null here: held time > 0 means a qualifying rep exists.
+                    val top = TrainingLoad.topLoadKg(byGrip[grip].orEmpty()) ?: continue
                     group.series.getOrPut(grip) { mutableListOf() }
-                        .add(Point(log.id, log.startedAt, (weighted[grip] ?: 0.0) / seconds))
+                        .add(Point(log.id, log.startedAt, (weighted[grip] ?: 0.0) / seconds, top))
                 }
                 // A card exists from the newest session that charted anything and is named from
                 // it; a routine deleted from the store gets none.

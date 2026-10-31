@@ -27,10 +27,16 @@ struct TrendModel: Equatable, Sendable {
         let count: Int
     }
 
+    /// One session on one grip's lines.
     struct Point: Identifiable, Hashable, Sendable {
         let id: UUID
         let date: Date
+        /// The session's time-weighted mean on this grip — the "Average load" chart.
         let avgKg: Double
+        /// What the session held for its hardest 5 % of time on this grip
+        /// (`TrainingLoad.topLoadKg`) — the "Hardest 5 % of time" chart beside it, because
+        /// warm-up pulls drag the mean down (Gleb, 2026-10-31).
+        let topKg: Double
     }
 
     /// One card: one routine's grips, most-trained first, and each grip's series.
@@ -102,11 +108,13 @@ struct TrendModel: Equatable, Sendable {
             if Task.isCancelled { return TrendModel(routines: []) }
             let key = routineKey(templateID: row.templateID, templateName: row.templateName)
             var group = groups[key] ?? Group()
-            // One pass per session: grip counts and each grip's time-weighted mean — a
-            // rep dropped after a second must not weigh like a full hang (as in
-            // `WorkoutLog.avgKg`).
+            // One pass per session: grip counts, each grip's time-weighted mean — a rep
+            // dropped after a second must not weigh like a full hang (as in
+            // `WorkoutLog.avgKg`) — and each grip's reps for its hardest 5 % of time
+            // (`TrainingLoad.topLoadKg`). A grip with no held time gets no point on either.
             var held: [String: Double] = [:]
             var weighted: [String: Double] = [:]
+            var byGrip: [String: [RepSummary]] = [:]
             var chartedAny = false
             for rep in BlobCodec.decodeArray(RepSummary.self, from: row.resultsData)
             where chartable(rep) {
@@ -115,10 +123,14 @@ struct TrendModel: Equatable, Sendable {
                 group.gripCounts[grip] = (rep.grip, (group.gripCounts[grip]?.count ?? 0) + 1)
                 held[grip, default: 0] += rep.heldSeconds
                 weighted[grip, default: 0] += rep.avgKg * rep.heldSeconds
+                byGrip[grip, default: []].append(rep)
             }
             for (grip, seconds) in held where seconds > 0 {
+                // Never nil here: held time > 0 means a qualifying rep exists.
+                guard let top = TrainingLoad.topLoadKg(of: byGrip[grip] ?? []) else { continue }
                 group.series[grip, default: []].append(
-                    Point(id: row.id, date: row.startedAt, avgKg: weighted[grip, default: 0] / seconds))
+                    Point(id: row.id, date: row.startedAt,
+                          avgKg: weighted[grip, default: 0] / seconds, topKg: top))
             }
             // A card exists from the newest session that charted anything and is named
             // from it; a routine deleted from the store gets none.

@@ -77,7 +77,25 @@ final class TrendModelTests: XCTestCase {
         let series = try XCTUnwrap(routine.series[crimp.key])
         XCTAssertEqual(series.map(\.avgKg), [12, 12.5],
                        "oldest first; (20·10 + 10·30) / 40 for the newer session")
+        XCTAssertEqual(series.map(\.topKg), [12, 20],
+                       "the newer session's hardest 2 s of 40 were at 20 kg")
         XCTAssertEqual(series.map(\.id), [rows[1].id, rows[0].id])
+    }
+
+    /// Gleb's report (2026-10-31): warm-up pulls at 60–70 % before the hard sets drag the
+    /// session mean down, so a second line plots the hardest 5 % of held time on that grip —
+    /// per grip, so another grip's heavier pulls in the same session never lend it theirs.
+    func testWarmUpsDoNotDragThePointAndGripsDoNotLendEachOtherLoad() throws {
+        let daily = UUID()
+        let warmUps = Array(repeating: rep(crimp, kg: 13, held: 7), count: 6)
+        let work = Array(repeating: rep(crimp, kg: 20, held: 7), count: 6)
+        let rows = [row(warmUps + work + [rep(front3, kg: 30, held: 7)], routine: daily, daysAgo: 1)]
+        let routine = try XCTUnwrap(TrendModel.build(rows: rows, routineNames: [daily: "Daily"])
+            .routines.first)
+        let crimpPoint = try XCTUnwrap(routine.series[crimp.key]?.first)
+        XCTAssertEqual(crimpPoint.avgKg, 16.5, accuracy: 1e-9, "the mean still counts the warm-ups")
+        XCTAssertEqual(crimpPoint.topKg, 20, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(routine.series[front3.key]?.first).topKg, 30, accuracy: 1e-9)
     }
 
     func testASharedSelectionHoldsOnlyWhereTheRoutineTrainedIt() throws {

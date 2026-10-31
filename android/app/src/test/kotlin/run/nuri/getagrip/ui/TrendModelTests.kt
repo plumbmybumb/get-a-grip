@@ -101,7 +101,23 @@ class TrendModelTests {
         val series = routine.series.getValue(crimp.key)
         // Oldest first; (20·10 + 10·30) / 40 for the newer session.
         assertEquals(listOf(12.0, 12.5), series.map { it.avgKg })
+        // The newer session's hardest 2 s of 40 were at 20 kg.
+        assertEquals(listOf(12.0, 20.0), series.map { it.topKg })
         assertEquals(listOf(rows[1].id, rows[0].id), series.map { it.id })
+    }
+
+    /// Gleb's report (2026-10-31): warm-up pulls at 60–70 % before the hard sets drag the
+    /// session mean down, so a second line plots the hardest 5 % of held time on that grip —
+    /// per grip, so another grip's heavier pulls in the same session never lend it theirs.
+    @Test fun warmUpsDoNotDragThePointAndGripsDoNotLendEachOtherLoad() {
+        val daily = UUID.randomUUID()
+        val reps = List(6) { rep(crimp, 13.0, held = 7.0) } + List(6) { rep(crimp, 20.0, held = 7.0) } +
+            rep(front3, 30.0, held = 7.0)
+        val routine = TrendModel.build(listOf(row(reps, daily, daysAgo = 1.0)), mapOf(daily to "Daily")).routines.single()
+        val crimpPoint = routine.series.getValue(crimp.key).single()
+        assertEquals(16.5, crimpPoint.avgKg, 1e-9, "the mean still counts the warm-ups")
+        assertEquals(20.0, crimpPoint.topKg, 1e-9)
+        assertEquals(30.0, routine.series.getValue(front3.key).single().topKg, 1e-9)
     }
 
     @Test fun aSharedSelectionHoldsOnlyWhereTheRoutineTrainedIt() {
@@ -136,7 +152,7 @@ class TrendModelTests {
 
     /// Under half a kilo across a series is grip noise; calling it progress would be flattery.
     @Test fun theSummaryCallsHalfAKiloNoise() {
-        fun series(vararg kg: Double) = kg.mapIndexed { i, v -> TrendModel.Point(UUID.randomUUID(), base.plusSeconds(i * 86_400L), v) }
+        fun series(vararg kg: Double) = kg.mapIndexed { i, v -> TrendModel.Point(UUID.randomUUID(), base.plusSeconds(i * 86_400L), v, v + 5) }
         assertNull(TrendModel.summary(emptyList()))
         assertEquals(TrendModel.Summary.Steady(12.4), TrendModel.summary(series(12.0, 13.0, 12.4)))
         val up = assertIs<TrendModel.Summary.Up>(TrendModel.summary(series(12.0, 12.2, 13.0)))
@@ -145,5 +161,8 @@ class TrendModelTests {
         val down = assertIs<TrendModel.Summary.Down>(TrendModel.summary(series(14.0, 13.5)))
         assertEquals(0.5, down.deltaKg, 1e-9)
         assertEquals(2, down.sessions)
+        // The same rule reads the other line when asked; `topKg` is `avgKg + 5` here.
+        val top = assertIs<TrendModel.Summary.Steady>(TrendModel.summary(series(12.0, 13.0, 12.4)) { it.topKg })
+        assertEquals(17.4, top.lastKg, 1e-9)
     }
 }

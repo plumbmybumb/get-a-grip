@@ -13,7 +13,11 @@
    the peak rewards a snatch, the mean rewards nothing, and "what you held for your hardest
    5 % of time" is what the fingers sustained; it ignores warm-ups unasked and still means
    something for an all-easy no-hang session. Both platforms, one engine function with a
-   fixture; the export keeps its existing columns.
+   fixture; the export keeps its existing columns. **Built 31 Oct:**
+   `TrainingLoad.topLoadKg` (Swift + Kotlin, `Fixtures/trend/top-load.json`), per grip per
+   session. Owner's correction the same day: it is a SECOND chart IN ADDITION to the
+   average, never instead — each grip card now stacks "Average load" (unchanged) over
+   "Hardest 5 % of time", same session axis, each with its own one-line verdict.
 3. **"Wake" on the live gauge and max gauge is a button nobody wants to press.** Make the
    gauge screens re-kick a silent connected stream themselves (the runner's silence
    watchdog, same rule), so the control stays Tare; keep Wake only as the accessibility

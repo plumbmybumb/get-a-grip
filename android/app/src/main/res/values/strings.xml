@@ -282,6 +282,7 @@
     <string name="s_at_the_climbing_gym_d41f29">At the climbing gym</string>
     <string name="s_average">Average</string>
     <string name="s_average_force_per_pull">Average force per pull</string>
+    <string name="s_average_load">Average load</string>
     <string name="s_average_per_pull">Average per pull</string>
     <string name="s_average_lld_s_left">Average · %d s left</string>
     <string name="s_away_from_the_gauge_24683a">Away from the gauge</string>
@@ -559,6 +560,7 @@
     <string name="s_hard">Hard</string>
     <string name="s_hard_bouldering_or_projecting_at_your_limit">Hard bouldering or projecting, at your limit.</string>
     <string name="s_harder_than_your_max">Harder than your max</string>
+    <string name="s_hardest_5_of_time">Hardest 5 % of time</string>
     <string name="s_heaviest_pull_ce2bb6">Heaviest pull</string>
     <string name="s_hello">Hello,</string>
     <string name="s_hides_the_chart_and_actions">Hides the chart and actions</string>
