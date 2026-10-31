@@ -423,7 +423,7 @@ the booted iPhone Duo, use its Device/Controls menu to open, fold and rotate, th
 ## Unfolded layouts (2026-10-31)
 
 The nightstand half of the same day's work — landscape for the live runner, the
-compact-height far view, the regular-portrait runner and the StandBy probe — is in
+compact-height runner (the far view, since replaced by the wide layout), the regular-portrait runner and the StandBy probe — is in
 [IPHONE_DUO_NIGHTSTAND.md](IPHONE_DUO_NIGHTSTAND.md).
 
 Step 3 of the build order (§6-C, the inner-portrait grid) plus the `GripIslandPanel` gate

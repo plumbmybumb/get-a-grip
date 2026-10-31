@@ -60,11 +60,30 @@ extension View {
             RunnerLayoutProbe.record(name, $0)
         }
     }
+
+    /// `-exposeRunnerTrace`: the decorative trace canvas becomes ONE accessibility
+    /// element, `runner.trace`, so a UI test can measure that it runs edge to edge.
+    /// Without the argument (and in every release build) it stays hidden from
+    /// VoiceOver — a curve redrawn 80 times a second is not something to read.
+    @ViewBuilder
+    func runnerTraceMarker() -> some View {
+        if RunnerLayoutProbe.exposesTrace {
+            accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("runner.trace")
+        } else {
+            self
+        }
+    }
+}
+
+extension RunnerLayoutProbe {
+    static let exposesTrace = ProcessInfo.processInfo.arguments.contains("-exposeRunnerTrace")
 }
 #else
 import SwiftUI
 
 extension View {
     func runnerLayoutProbe(_ name: String) -> some View { self }
+    func runnerTraceMarker() -> some View { self }
 }
 #endif

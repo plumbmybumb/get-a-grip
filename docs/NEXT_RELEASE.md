@@ -56,7 +56,7 @@ CloudKit deploy is owed.
   bar; two-column Today/Benchmarks and two-pane History at the 669 pt inner display (also
   changes iPad: strip as a grid cell, two panes in portrait); grip picker as a safe-area
   card where there is no top cutout (Duo, home-button phones, iPad); the LIVE runner may
-  rotate on iPhone and draws a far view at compact height (nightstand/tent); regular-width
+  rotate on iPhone and, on its side (nightstand/tent), draws the wide layout at a phone's scale; regular-width
   portrait runner at 560 pt and the wide scale; Split View half survives. **Owed on Nuri's
   Duo**: tent pose keeps the foreground app or StandBy takes it; a turn reaching the app;
   Live Activity on the vertical island; a Progressor session through a fold.
