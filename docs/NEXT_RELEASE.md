@@ -36,14 +36,13 @@
 protocols at strengthclimbing.com/protocols/force-measured-protocols/ (submaximal work
 prescribed as a fraction of CF). Nobody ships this yet.
 
-**iOS BUILT (31 Oct 2026, branch `worktree-agent-adce1b827ffa34a08`, not merged); Android
-NOT started** — it ports from `docs/TARGET_BASIS.md` and `Fixtures/target-basis/`. What
-shipped on iOS, and what the release owes:
-- **CloudKit schema deploy OWED before any TestFlight/App Store build**: one new optional
-  String column, `SessionTemplate.targetBasisRaw` (CD_targetBasisRaw). Review the Deploy
-  Schema Changes diff as usual. The set-level basis rides inside `setsData` (no schema
-  change). In today's flow the column is written nil (the routine band is demoted onto the
-  sets on save), so it could be dropped before release to skip the deploy — Nuri's call.
+**iOS BUILT (31 Oct 2026, on `main`); Android NOT started** — it ports from
+`docs/TARGET_BASIS.md` and `Fixtures/target-basis/`. What shipped on iOS, and what the
+release owes:
+- **No CloudKit schema deploy is owed for this feature, and no Room migration.** The
+  routine-level basis column was built and then dropped (decided 31 Oct): it was always
+  written nil, because `RoutineDraft.normalized` demotes a routine band, basis and all, onto
+  the sets before every save. The set-level basis rides inside `setsData` / the sets JSON.
 - **The watch schema now includes `CriticalForceRecord`** so a CF routine resolves on the
   wrist; an additive entity in the same container the phone already syncs.
 - **CSV v5**: `target_basis`, `cf_at_start_kg`, `cf_reference` appended; the Markdown rep
@@ -57,8 +56,8 @@ shipped on iOS, and what the release owes:
 The original sketch:
 - **Model:** a target BASIS beside the existing precedence (kg → set % → routine %): `.max`
   (today) or `.criticalForce`. One field on the routine's percentage and on a set's own
-  percentage; defaults to `.max`, additive column on iOS (**CloudKit schema deploy owed**)
-  and Room (migration), optional in the share envelope so old apps read it as max.
+  percentage; defaults to `.max`, optional in the share envelope so old apps read it as max.
+  (Superseded: no stored column on either platform — see above.)
 - **Resolution:** `PlanMath.targetBand` resolves `.criticalForce` against the newest
   `CriticalForceRecord` per grip AND hand (the `MaxTable` rules verbatim: specific beats
   general, a one-handed value never leaks, both-hands only against a both-hands test, no

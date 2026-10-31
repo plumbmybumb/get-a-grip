@@ -2506,30 +2506,45 @@ extension TemplateStoreTests {
         XCTAssertEqual(w.store.currentCriticalForces.criticalForce(grip: grip.key, side: .left), 15)
     }
 
-    /// The set-level basis lives in the sets blob; the routine-level column survives a
-    /// delete and Undo (every column must be in `DeletedRoutine`).
-    func testTheBasisSurvivesSaveAndRoutineUndo() throws {
+    /// The basis lives ONLY in the sets blob: there is no routine-level column. A routine
+    /// band of critical force is demoted onto the inheriting sets, basis and all, by the
+    /// save itself — and a routine delete + Undo restores the blob, so the basis with it.
+    func testTheBasisIsStoredPerSetAndSurvivesRoutineUndo() throws {
         let w = try makeWorld()
         var draft = RoutineDraft.blank(named: "Aerobic")
         draft.remindersEnabled = false
-        var set = SetPlan(grip: GripSpec(), repsPerSide: 2, targetLoPercent: 0.7, targetHiPercent: 0.8)
-        set.targetBasis = .criticalForce
-        draft.plan.sets = [set]
+        var own = SetPlan(grip: GripSpec(), repsPerSide: 2, targetLoPercent: 0.2, targetHiPercent: 0.3)
+        own.targetBasis = .max
+        draft.plan.sets = [own, SetPlan(grip: GripSpec(), repsPerSide: 2)]
+        draft.plan.targetLoPercent = 0.7
+        draft.plan.targetHiPercent = 0.8
+        draft.plan.targetBasis = .criticalForce
         let saved = try XCTUnwrap(w.store.save(draft))
-        XCTAssertEqual(saved.plan.sets[0].targetBasis, .criticalForce)
-        XCTAssertNil(saved.targetBasisRaw, "normalized demotes the routine band, so the column stays empty")
+        XCTAssertNil(saved.targetLoPercent, "no routine-level band reaches disk")
+        XCTAssertNil(saved.plan.targetBasisRaw)
+        XCTAssertEqual(saved.plan.sets[0].targetBasis, .max, "its own band, its own basis")
+        XCTAssertEqual(saved.plan.sets[1].targetBasis, .criticalForce, "the inherited band kept its basis")
+        XCTAssertEqual(saved.plan.sets[1].targetPercentBand, 0.7...0.8)
 
-        // A row written with a routine-level band (an older save path, or a newer build).
-        saved.targetLoPercent = 0.6
-        saved.targetHiPercent = 0.6
-        saved.targetBasisRaw = "criticalForce"
-        try w.context.save()
         let id = saved.id
         XCTAssertTrue(w.store.delete(saved))
         w.store.undoDelete()
         let restored = try XCTUnwrap(routines(w).first { $0.id == id })
-        XCTAssertEqual(restored.targetBasisRaw, "criticalForce")
-        XCTAssertEqual(restored.plan.targetBasis, .criticalForce)
+        XCTAssertEqual(restored.plan.sets.map(\.targetBasis), [.max, .criticalForce])
+    }
+
+    /// A band left in the legacy routine-level columns predates the basis, so it is a
+    /// percentage of MAX — the reading that needs no column.
+    func testALegacyRoutineBandReadsAsMax() throws {
+        let w = try makeWorld()
+        var draft = RoutineDraft.blank(named: "Legacy")
+        draft.remindersEnabled = false
+        draft.plan.sets = [SetPlan(grip: GripSpec(), repsPerSide: 1)]
+        let saved = try XCTUnwrap(w.store.save(draft))
+        saved.targetLoPercent = 0.2
+        saved.targetHiPercent = 0.3
+        XCTAssertEqual(saved.plan.targetBasis, .max)
+        XCTAssertEqual(PlanMath.targetBasis(saved.plan.sets[0], in: saved.plan), .max)
     }
 
     /// Today's rung reads the live CF table: a CF routine is `unknown` (bleu) until both

@@ -47,13 +47,10 @@ final class SessionTemplate {
     /// sentinel like 0 would be indistinguishable from a deliberate zero.
     var targetLoPercent: Double? = nil
     var targetHiPercent: Double? = nil
-    /// What the routine-level percentage above is OF — a raw `TargetBasis`, nil for "max"
-    /// (every row before 2026-10-31). Raw for the same reason `handModeRaw` is. Additive,
-    /// optional, no backfill. In practice `RoutineDraft.normalized` demotes a routine band
-    /// onto the sets before every save, so this is written nil today; it exists so the band
-    /// and its basis are never stored apart. **CloudKit: deploy the schema** before a
-    /// TestFlight or App Store build writes it.
-    var targetBasisRaw: String? = nil
+    /// NO basis column (2026-10-31): a routine-level band is always written nil by `apply`,
+    /// because `RoutineDraft.normalized` demotes it — basis and all — onto the sets, where
+    /// the basis rides inside `setsData`. A band still in these two columns predates the
+    /// basis and so is a percentage of MAX, which is exactly what `plan` reads it as.
     /// `[SetPlan]` JSON.
     var setsData: Data = Data()
     var sessionsPerDay: Int = 2
@@ -141,8 +138,7 @@ extension SessionTemplate {
                     pausesOutsideTargetBand: pausesOutsideTargetBand,
                     pausesAboveTargetBand: pausesAboveTargetBand,
                     targetLoPercent: targetLoPercent,
-                    targetHiPercent: targetHiPercent,
-                    targetBasisRaw: targetBasisRaw)
+                    targetHiPercent: targetHiPercent)
     }
 
     /// The editor's working copy. The wizard IS the editor, so this is the same type
@@ -177,7 +173,11 @@ extension SessionTemplate {
         pausesAboveTargetBand = source.pausesAboveTargetBand
         targetLoPercent = source.targetLoPercent
         targetHiPercent = source.targetHiPercent
-        targetBasisRaw = source.targetBasisRaw
+        // `normalized` is the ONE guarantee that no routine-level basis reaches disk: it
+        // demotes the band onto the sets and clears the plan's basis, so the stored row
+        // needs no column for it. A band left here would be read back as % of MAX.
+        assert(source.targetBasisRaw == nil && source.targetPercentBand == nil,
+               "normalized must demote the routine band and its basis before a save")
         sets = source.sets
         sessionsPerDay = clean.sessionsPerDay
         reminders = clean.reminders

@@ -304,9 +304,9 @@ struct SessionPlan: Hashable, Sendable, Codable {
     /// (this with it) before every save, so it lives only in a draft and a share code.
     var targetMaxSeconds: Int? = nil
     /// What the routine's percentage is of — see `SetPlan.targetBasisRaw`. Demoted onto
-    /// the sets with the band by `RoutineDraft.normalized`, like `targetMaxSeconds`; it
-    /// also has a SwiftData column (`SessionTemplate.targetBasisRaw`) so a routine-level
-    /// band and its basis are always stored together.
+    /// the sets with the band by `RoutineDraft.normalized`, like `targetMaxSeconds`, so it
+    /// is NOT a SwiftData column: it lives only in a draft and a share code, and
+    /// `normalized` is the one guarantee that it never reaches a stored routine.
     var targetBasisRaw: String? = nil
 
     var targetBasis: TargetBasis {
