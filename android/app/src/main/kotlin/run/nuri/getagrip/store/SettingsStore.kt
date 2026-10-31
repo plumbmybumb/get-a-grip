@@ -25,6 +25,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import run.nuri.getagrip.engine.GaugeKind
+import run.nuri.getagrip.runner.CueSoundLevel
 import java.util.UUID
 import run.nuri.getagrip.ui.units.WeightUnit
 import run.nuri.getagrip.ui.units.WeightUnits
@@ -139,6 +140,9 @@ class SettingsStore(
         val scheduledRemindersKey = stringPreferencesKey("reminders.scheduled")
         val trainingDayRepairKey = intPreferencesKey("repair.trainingDays.version")
         val bodyWeightKgKey = doublePreferencesKey("bodyWeightKg")
+        /// iOS's keys: Settings' Sound card — see `CueSoundLevel`.
+        val cueSoundEnabledKey = booleanPreferencesKey("cueSoundEnabled")
+        val cueVolumeKey = doublePreferencesKey("cueVolume")
     }
 
     /// One blocking read for every key, rather than one per accessor on the same file.
@@ -146,6 +150,38 @@ class SettingsStore(
 
     init {
         WeightUnits.current = WeightUnit.fromRaw(loaded[weightUnitKey])
+    }
+
+    // Settings' Sound card. Device-local like everything here: it describes this phone's
+    // speaker. Mirrored into `CueSoundLevel`, which is what the players read.
+    private var cueSound: Boolean by mutableStateOf(loaded[cueSoundEnabledKey] ?: true)
+    private var cueLevel: Double by mutableStateOf(
+        (loaded[cueVolumeKey] ?: 1.0).let { if (it.isFinite()) it.coerceIn(0.0, 1.0) else 1.0 }
+    )
+
+    init {
+        CueSoundLevel.enabled = cueSound
+        CueSoundLevel.volume = cueLevel.toFloat()
+    }
+
+    /// Whether the cue tones play at all. Off leaves every haptic in place.
+    val cueSoundEnabled: Boolean get() = cueSound
+
+    /// The cues' own level, 0…1, multiplied into every tone. Kept while sound is off, so
+    /// turning it back on returns to the level chosen.
+    val cueVolume: Double get() = cueLevel
+
+    fun setCueSoundEnabled(value: Boolean) {
+        cueSound = value
+        CueSoundLevel.enabled = value
+        write { it[cueSoundEnabledKey] = value }
+    }
+
+    fun setCueVolume(value: Double) {
+        val level = if (value.isFinite()) value.coerceIn(0.0, 1.0) else 1.0
+        cueLevel = level
+        CueSoundLevel.volume = level.toFloat()
+        write { it[cueVolumeKey] = level }
     }
 
     val weightUnit: WeightUnit get() = WeightUnits.current

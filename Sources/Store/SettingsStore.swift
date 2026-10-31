@@ -93,6 +93,20 @@ final class SettingsStore {
         }
     }
 
+    /// Whether the cue tones play at all on THIS device. Off leaves every haptic in place:
+    /// the setting is about the speaker, not about being told. Device-local like
+    /// `remindsOnThisDevice`, because it describes this phone's speaker, not a routine.
+    var cueSoundEnabled: Bool {
+        didSet { store.set(cueSoundEnabled, forKey: CueSoundLevel.enabledKey) }
+    }
+
+    /// The cues' own level, 0…1, multiplied into every tone. They ride the MEDIA output so
+    /// a muted phone still hears them, which means the volume keys also move whatever the
+    /// climber is watching; this level moves the cues alone.
+    var cueVolume: Double {
+        didSet { store.set(cueVolume, forKey: CueSoundLevel.volumeKey) }
+    }
+
     /// `remindersDefault` is what an untouched device does — see `remindsOnThisDevice`.
     init(defaults: UserDefaults? = nil, remindersDefault: Bool = true) {
         let s = defaults ?? AppGroup.defaults ?? .standard
@@ -110,5 +124,29 @@ final class SettingsStore {
         frezIntroSeen = s.bool(forKey: "frezIntroSeen")
         reviewRequested = s.bool(forKey: "reviewRequested")
         bodyWeightKg = (s.object(forKey: "bodyWeightKg") as? Double).flatMap { $0 > 0 ? $0 : nil }
+        let level = CueSoundLevel.read(from: s)
+        cueSoundEnabled = level.enabled
+        cueVolume = level.volume
+    }
+}
+
+/// The cue level as the PLAYER reads it: straight from the defaults `SettingsStore` writes,
+/// so `CuePlayer` — built by sessions that never see the store — needs no plumbing, and a
+/// level changed in Settings is the level the next tone uses.
+struct CueSoundLevel: Equatable, Sendable {
+    static let enabledKey = "cueSoundEnabled"
+    static let volumeKey = "cueVolume"
+
+    var enabled: Bool
+    /// 0…1. A missing or non-finite value reads as full level, the shipping default.
+    var volume: Double
+
+    /// What every tone sample is multiplied by: 0 when off.
+    var gain: Float { enabled ? Float(volume) : 0 }
+
+    static func read(from defaults: UserDefaults) -> CueSoundLevel {
+        let enabled = defaults.object(forKey: enabledKey) as? Bool ?? true
+        let raw = defaults.object(forKey: volumeKey) as? Double ?? 1
+        return CueSoundLevel(enabled: enabled, volume: raw.isFinite ? min(max(raw, 0), 1) : 1)
     }
 }

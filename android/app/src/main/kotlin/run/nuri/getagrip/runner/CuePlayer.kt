@@ -63,6 +63,9 @@ class CuePlayer(
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
     /// Where audio evidence goes — the session's diagnostics ring. Called on the MAIN thread.
     private val diagnostic: ((String) -> Unit)? = null,
+    /// Settings' Sound card, read on the audio worker before every tone — see
+    /// `CueSoundLevel`. A parameter only so a test can pin it.
+    private val level: () -> Float = { CueSoundLevel.gain },
 ) : CueSink {
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -94,8 +97,16 @@ class CuePlayer(
 
     private val audio = CueAudioQueue(
         dispatcher = dispatcher,
-        enabled = { true },
-        render = { tone -> rendered.getOrPut(tone) { ToneSynth.render(ToneSynth.notes(tone), outputRate) } },
+        // Sound off (or a level of zero): no tone is written and no track is ever opened, so
+        // nothing of ours sits on the media stream. Haptics are separate calls and unaffected.
+        enabled = { level() > 0f },
+        // The level scales a COPY: the cached render stays the full-level figure.
+        render = { tone ->
+            CueSoundLevel.scaled(
+                rendered.getOrPut(tone) { ToneSynth.render(ToneSynth.notes(tone), outputRate) },
+                level(),
+            )
+        },
         open = ::openTrack,
         keepAlive = CueKeepAlive(
             silence = FloatArray(outputRate / 50), // 20 ms
@@ -123,6 +134,19 @@ class CuePlayer(
         if (!isRunning) return
         isRunning = false
         audio.end()
+    }
+
+    /// Which Settings preview is current; an older one does not end the player. Main thread.
+    private var previewGeneration = 0
+
+    /// Settings' volume slider, on release: one tick at the level just chosen, so it can be set
+    /// by ear without starting a session. Sound only — the slider moves the tones, and a buzz
+    /// would name the wrong cause. The output winds itself down a moment later. Main thread.
+    fun previewLevel() {
+        val generation = ++previewGeneration
+        begin()
+        sound(ToneSynth.Tone.tick)
+        mainHandler.postDelayed({ if (generation == previewGeneration) end() }, 1_500)
     }
 
     // MARK: - The one entry point
@@ -506,6 +530,32 @@ object ToneSynth {
         }
         return out
     }
+}
+
+/// Settings' Sound card, as every `CuePlayer` reads it (GitHub issue 7).
+///
+/// Cues ride `USAGE_MEDIA` so silent mode cannot mute them, which is exactly why the volume
+/// keys also move the video someone trains to; this level moves the tones alone. A
+/// process-wide holder like `WeightUnits.current`: `SettingsStore` writes it at load and on
+/// every change, and players — built by sessions that never see the store — read it on the
+/// audio worker, hence `@Volatile`.
+object CueSoundLevel {
+    @Volatile var enabled: Boolean = true
+    @Volatile var volume: Float = 1f
+
+    /// What every tone sample is multiplied by: 0 when off.
+    val gain: Float get() = gain(enabled, volume)
+
+    /// A non-finite stored level reads as full, the shipping default.
+    fun gain(enabled: Boolean, volume: Float): Float = when {
+        !enabled -> 0f
+        !volume.isFinite() -> 1f
+        else -> volume.coerceIn(0f, 1f)
+    }
+
+    /// `samples` at `gain`, as a copy; full level returns the original untouched.
+    fun scaled(samples: FloatArray, gain: Float): FloatArray =
+        if (gain >= 1f) samples else FloatArray(samples.size) { samples[it] * gain.coerceAtLeast(0f) }
 }
 
 /// Fallback when `getMinBufferSize` reports an error: 8192 float frames is well over the

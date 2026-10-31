@@ -14,7 +14,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1388) {
+val STRING_KEYS: Map<String, Int> = buildMap(1390) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -499,6 +499,7 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Critical force test"] = R.string.s_critical_force_test
     into["Critical force tested %s"] = R.string.s_critical_force_tested
     into["Critical force, %s"] = R.string.s_critical_force_26f98f
+    into["Cue volume"] = R.string.s_cue_volume
     into["Current %1\$s kilograms, peak %2\$s kilograms%3\$s"] = R.string.s_current_kilograms_peak_kilograms
     into["Current %s %s, peak %s %s%s"] = R.string.s_current_peak
     into["Current %s kilograms, peak %s kilograms%s"] = R.string.s_current_kilograms_peak_kilograms
@@ -636,10 +637,10 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause)."] = R.string.s_gauge_protocols_by_stevie_ray_hartog_2024_bsd_2_clause
     into["Gauge. Currently %1\$s. %2\$s"] = R.string.s_gauge_currently_cbee3f
     into["Gauge. Currently %s."] = R.string.s_gauge_currently_ee3b46
-    into["Gauge. Currently %s. %s"] = R.string.s_gauge_currently_cbee3f
 }
 
 private fun string_keysChunk4(into: MutableMap<String, Int>) {
+    into["Gauge. Currently %s. %s"] = R.string.s_gauge_currently_cbee3f
     into["Gauge: %1\$s%2\$s"] = R.string.s_gauge_45f0de
     into["Gauge: %1\$s%2\$s. %3\$s"] = R.string.s_gauge_c36f16
     into["Gauge: %s%s"] = R.string.s_gauge_45f0de
@@ -789,10 +790,10 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Measure a max"] = R.string.s_measure_a_max
     into["Measure again"] = R.string.s_measure_again
     into["Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom."] = R.string.s_measure_again_opens_the_gauge_for_this_grip_edit_changes
-    into["Measure both hands together"] = R.string.s_measure_both_hands_together
 }
 
 private fun string_keysChunk5(into: MutableMap<String, Int>) {
+    into["Measure both hands together"] = R.string.s_measure_both_hands_together
     into["Measure it on the gauge, or pull as hard as you can and set the number yourself. It doesn't have to be exact, and you can add a newer one whenever it changes."] = R.string.s_measure_it_on_the_gauge_or_pull_as_hard_as_you_can_and_s
     into["Measure left hand"] = R.string.s_measure_left_hand
     into["Measure max"] = R.string.s_measure_max
@@ -942,10 +943,10 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Pause timer"] = R.string.s_pause_timer
     into["Pause when I'm out of range"] = R.string.s_pause_when_i_m_out_of_range
     into["Paused"] = R.string.s_paused_c7dfb6
-    into["Peak"] = R.string.s_peak_c83dbb
 }
 
 private fun string_keysChunk6(into: MutableMap<String, Int>) {
+    into["Peak"] = R.string.s_peak_c83dbb
     into["Peak max"] = R.string.s_peak_max
     into["Per set"] = R.string.s_per_set
     into["Percentage of which max"] = R.string.s_percentage_of_which_max
@@ -1095,10 +1096,10 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Sessions: %1\$d · Max records: %2\$d"] = R.string.s_sessions_lld_max_records_lld
     into["Sessions: %d · Max records: %d"] = R.string.s_sessions_lld_max_records_lld
     into["Set"] = R.string.s_set_448ab7
-    into["Set %1\$d of %2\$d"] = R.string.s_set_lld_of_lld_8e1097
 }
 
 private fun string_keysChunk7(into: MutableMap<String, Int>) {
+    into["Set %1\$d of %2\$d"] = R.string.s_set_lld_of_lld_8e1097
     into["Set %1\$d of %2\$d · %3\$s"] = R.string.s_set_lld_of_lld_f52e6b
     into["Set %1\$d of %2\$d, pull %3\$d of %4\$d, %5\$s hand, %6\$s"] = R.string.s_set_lld_of_lld_pull_lld_of_lld_hand
     into["Set %1\$d · %2\$s"] = R.string.s_set_lld_a2a06d
@@ -1142,6 +1143,7 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["Some kilogram targets were set by the sender. Review them for your own training."] = R.string.s_some_kilogram_targets_were_set_by_the_sender_review_them
     into["Some sets carry kilogram targets typed by whoever shared this."] = R.string.s_some_sets_carry_kilogram_targets_typed_by_whoever_shared
     into["Some sets have fixed weight targets. Check they suit you."] = R.string.s_some_sets_have_fixed_weight_targets_check_they_suit_you
+    into["Sound"] = R.string.s_sound
     into["Source"] = R.string.s_source
     into["Source code"] = R.string.s_source_code
     into["Start"] = R.string.s_start
@@ -1247,11 +1249,11 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["This routine needs a newer Get a Grip. Update the app to import it."] = R.string.s_this_routine_needs_a_newer_get_a_grip_update_the_app_to
     into["This routine runs over an hour."] = R.string.s_this_routine_runs_over_an_hour
     into["Thumb"] = R.string.s_thumb_557518
-    into["Thumb, %s"] = R.string.s_thumb_2ce0ce
-    into["Time for a session."] = R.string.s_time_for_a_session
 }
 
 private fun string_keysChunk8(into: MutableMap<String, Int>) {
+    into["Thumb, %s"] = R.string.s_thumb_2ce0ce
+    into["Time for a session."] = R.string.s_time_for_a_session
     into["Timed max"] = R.string.s_timed_max
     into["Timer"] = R.string.s_timer
     into["Timer %1\$s. Pulls counted: %2\$d"] = R.string.s_timer_pulls_counted_lld
@@ -1400,11 +1402,11 @@ private fun string_keysChunk8(into: MutableMap<String, Int>) {
     into["of your %d s max"] = R.string.s_of_your_lld_s_max
     into["official protocol, untested here"] = R.string.s_official_protocol_untested_here
     into["over a year ago"] = R.string.a_over_a_year_ago
-    into["peak %1\$s %2\$s"] = R.string.s_peak_194d5b
-    into["peak %s %s"] = R.string.s_peak_194d5b
 }
 
 private fun string_keysChunk9(into: MutableMap<String, Int>) {
+    into["peak %1\$s %2\$s"] = R.string.s_peak_194d5b
+    into["peak %s %s"] = R.string.s_peak_194d5b
     into["peak %s kilograms"] = R.string.s_peak_kilograms
     into["peak RFD measurement"] = R.string.s_peak_rfd_measurement
     into["percent of max"] = R.string.s_percent_of_max

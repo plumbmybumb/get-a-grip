@@ -12902,6 +12902,26 @@
           }
         }
       }
+    },
+    "Sound" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son"
+          }
+        }
+      }
+    },
+    "Cue volume" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volume des signaux"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"
