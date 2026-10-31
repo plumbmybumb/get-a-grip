@@ -203,13 +203,17 @@ object Seeds {
                 val drift = (20 - daysAgo) * 0.08
                 val wobble = ((daysAgo * 7 + session * 3) % 5) * 0.2
                 val reps = slots.map { slot ->
+                    // Each hand's FIRST pull of a set is a warm-up at ~65 % of the working
+                    // load, so the "Hardest 5 % of time" trend visibly differs from the
+                    // average (iOS seed does the same).
+                    val warmUp = if (slot.repIndex < 2) 0.65 else 1.0
                     RepSummary(
                         setIndex = slot.setIndex, repIndex = slot.repIndex,
                         side = slot.side, grip = slot.grip,
                         targetSeconds = slot.holdSeconds,
                         heldSeconds = slot.holdSeconds.toDouble(),
-                        peakKg = 21 + drift + wobble,
-                        avgKg = 19.5 + drift + wobble,
+                        peakKg = (21 + drift + wobble) * warmUp,
+                        avgKg = (19.5 + drift + wobble) * warmUp,
                     )
                 }
                 val started = day.startOfDay().toInstant()

@@ -149,13 +149,17 @@ enum DebugSeeding {
                 let drift = Double(20 - daysAgo) * 0.08
                 let wobble = Double((daysAgo * 7 + session * 3) % 5) * 0.2
                 let reps = slots.map { slot in
-                    RepSummary(setIndex: slot.setIndex, repIndex: slot.repIndex,
-                               side: slot.side, grip: slot.grip,
-                               targetSeconds: slot.holdSeconds,
-                               heldSeconds: Double(slot.holdSeconds),
-                               peakKg: 21 + drift + wobble,
-                               avgKg: 19.5 + drift + wobble,
-                               outcome: .completed)
+                    // Each hand's FIRST pull of a set is a warm-up at ~65 % of the working
+                    // load — so the "Hardest 5 % of time" trend visibly differs from the
+                    // average (with a flat load the two charts were indistinguishable).
+                    let warmUp = slot.repIndex < 2 ? 0.65 : 1.0
+                    return RepSummary(setIndex: slot.setIndex, repIndex: slot.repIndex,
+                                      side: slot.side, grip: slot.grip,
+                                      targetSeconds: slot.holdSeconds,
+                                      heldSeconds: Double(slot.holdSeconds),
+                                      peakKg: (21 + drift + wobble) * warmUp,
+                                      avgKg: (19.5 + drift + wobble) * warmUp,
+                                      outcome: .completed)
                 }
                 let started = day.date().addingTimeInterval(session == 0 ? 8 * 3600 : 19 * 3600)
                 context.insert(WorkoutLog(
