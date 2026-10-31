@@ -98,9 +98,10 @@ final class AnalysisExportTests: XCTestCase {
             }
     }
 
-    /// A rep row is the ten-column one; everything else in the document is narrower.
+    /// A rep row is the eleven-column one (`% CF` joined `% max` on 2026-10-31);
+    /// everything else in the document is narrower.
     private func repRow(_ document: String, pull: Int) -> [String]? {
-        repRows(document).first { $0.count == 10 && $0.first == "\(pull)" }
+        repRows(document).first { $0.count == 11 && $0.first == "\(pull)" }
     }
 
     private static let percentColumn = 8
@@ -226,7 +227,7 @@ final class AnalysisExportTests: XCTestCase {
         XCTAssertEqual(skipped?[5], AnalysisExport.blank, "peak kg")
         XCTAssertEqual(skipped?[6], AnalysisExport.blank, "avg kg")
         XCTAssertEqual(skipped?[Self.percentColumn], AnalysisExport.blank)
-        XCTAssertEqual(skipped?[9], "skipped", "but it is still recorded, as a skip")
+        XCTAssertEqual(skipped?[10], "skipped", "but it is still recorded, as a skip")
         XCTAssertEqual(repRow(doc, pull: 1)?[5], "20.0", "the pull that happened is untouched")
     }
 

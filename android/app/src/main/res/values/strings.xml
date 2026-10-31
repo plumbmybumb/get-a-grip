@@ -15,9 +15,11 @@
     <string name="s_r_d7be60">" · R"</string>
     <string name="s_was">" · was %s"</string>
     <string name="s_x_4345cb">%</string>
+    <string name="s_of_critical_force_225f7f">% of critical force</string>
     <string name="s_of_max_f0fa38">% of max</string>
     <string name="s_x_ce8efc">%s %%</string>
     <string name="s_of_lld_s_max_583e23">%1$s %% of %2$d s max</string>
+    <string name="s_of_critical_force_bf9fc2">%s %% of critical force</string>
     <string name="s_of_max_0caf47">%s %% of max</string>
     <string name="s_x_ab8f46">%1$s %2$s</string>
     <string name="s_x_dc3df0">"%1$s %2$s  →  %3$s %4$s"</string>
@@ -48,6 +50,8 @@
     <string name="s_needs_a_one_time_calibration_lookup_from_its_maker_by_se">%s needs a one-time calibration lookup from its maker, by serial number. It\'s then kept on this phone. No other gauge uses a server.</string>
     <string name="s_of_lld_s">%1$s of %2$d s</string>
     <string name="s_of_lld_s_max_959f72">%1$s of %2$d s max</string>
+    <string name="s_of_critical_force_9fb5ca">%s of critical force</string>
+    <string name="s_of_each_hand_s_critical_force">%1$s of each hand\'s critical force · %2$s %3$s</string>
     <string name="s_of_each_hand_s_max">%1$s of each hand\'s max · %2$s %3$s</string>
     <string name="s_of_each_hand_s_max_kg">%1$s of each hand\'s max · %2$s kg</string>
     <string name="s_rest_1bd51a">%s rest</string>
@@ -82,6 +86,7 @@
     </plurals>
     <string name="s_critical_force_f69c90">%1$s, critical force %2$s %3$s</string>
     <string name="s_of_your_lld_second_max">%1$s, of your %2$d second max</string>
+    <string name="s_of_your_critical_force_12e4b8">%s, of your critical force</string>
     <string name="s_page_lld_of_3">%1$s, page %2$d of 3</string>
     <string name="s_target_to_df4f9b">%1$s, target %2$s to %3$s %4$s</string>
     <string name="s_target_to_kilograms_26ddd5">%1$s, target %2$s to %3$s kilograms</string>
@@ -100,6 +105,7 @@
     <string name="s_x_b2ab65">%1$s–%2$s</string>
     <string name="s_x_93a2c7">%1$s–%2$s %%</string>
     <string name="s_of_lld_s_max_643384">%1$s–%2$s %% of %3$d s max</string>
+    <string name="s_of_critical_force_31431b">%1$s–%2$s %% of critical force</string>
     <string name="s_of_max_f1b423">%1$s–%2$s %% of max</string>
     <string name="s_x_7c9c2f">%1$s–%2$s %3$s</string>
     <string name="s_target_790dca">%1$s–%2$s %3$s target</string>
@@ -109,6 +115,7 @@
     <string name="s_lld_80890b">%d %%</string>
     <string name="s_lld_of_lld_s_max">%1$d %% of %2$d s max</string>
     <string name="s_lld_of_body_weight">%d %% of body weight</string>
+    <string name="s_lld_of_critical_force">%d %% of critical force</string>
     <string name="s_lld_of_max">%d %% of max</string>
     <string name="s_lld_of_your_max">%d %% of your max</string>
     <string name="s_lld_e5f107">%1$d %2$s</string>
@@ -210,6 +217,7 @@
     <string name="s_lld_a_day_each">%1$d× a day · %2$s each</string>
     <string name="s_lld_lld_af72da">%1$d–%2$d %%</string>
     <string name="s_lld_lld_of_lld_s_max">%1$d–%2$d %% of %3$d s max</string>
+    <string name="s_lld_lld_of_critical_force">%1$d–%2$d %% of critical force</string>
     <string name="s_lld_lld_of_max">%1$d–%2$d %% of max</string>
     <string name="s_lld_lld_mm">%1$d–%2$d mm</string>
     <string name="s_hand_f5b987">, %s hand</string>
@@ -729,6 +737,10 @@
     <string name="s_no_lld_s_max_for_your_hand_yet_measure_one_in_benchmarks">No %1$d s max for your %2$s hand yet. Measure one in Benchmarks.</string>
     <string name="s_no_bluetooth">No Bluetooth</string>
     <string name="s_no_bluetooth_on_this_device_try_demo_mode">No Bluetooth on this device. Try demo mode.</string>
+    <string name="s_no_critical_force_for_0f99f8">No critical force for %s</string>
+    <string name="s_no_critical_force_for_fadcfc">No critical force for %1$s · %2$s</string>
+    <string name="s_no_critical_force_for_this_grip_yet_test_it_in_benchmark">No critical force for this grip yet. Test it in Benchmarks.</string>
+    <string name="s_no_critical_force_for_your_hand_yet_test_it_in_benchmark">No critical force for your %s hand yet. Test it in Benchmarks.</string>
     <string name="s_no_daily_target">No daily target</string>
     <string name="s_no_fingers">No fingers</string>
     <string name="s_no_gauge_found">No gauge found</string>
@@ -908,6 +920,8 @@
     <string name="s_routine_name">Routine name</string>
     <string name="s_routine_options">Routine options</string>
     <string name="s_routine_overview">Routine overview</string>
+    <string name="s_routine_target_of_critical_force_so">Routine target: %1$s of critical force, so %2$s.</string>
+    <string name="s_routine_target_of_critical_force_no_critical_force_for_t">Routine target: %s of critical force. No critical force for this grip yet.</string>
     <string name="s_routine_target_of_max_no_max_for_this_grip_yet">Routine target: %s of max. No max for this grip yet.</string>
     <string name="s_routine_target_of_your_lld_s_max_no_lld_s_max_for_this_g">Routine target: %1$s of your %2$d s max. No %3$d s max for this grip yet.</string>
     <string name="s_routine_target_so">Routine target: %1$s, so %2$s.</string>
@@ -1001,6 +1015,7 @@
     <string name="s_some_kilogram_targets_were_set_by_the_sender_review_them">Some kilogram targets were set by the sender. Review them for your own training.</string>
     <string name="s_some_sets_carry_kilogram_targets_typed_by_whoever_shared">Some sets carry kilogram targets typed by whoever shared this.</string>
     <string name="s_some_sets_have_fixed_weight_targets_check_they_suit_you">Some sets have fixed weight targets. Check they suit you.</string>
+    <string name="s_some_targets_use_your_critical_force_sets_on_a_grip_you">Some targets use your critical force. Sets on a grip you haven\'t tested have no target.</string>
     <string name="s_sound">Sound</string>
     <string name="s_source">Source</string>
     <string name="s_source_code">Source code</string>
@@ -1049,6 +1064,7 @@
     <string name="s_target_61ad50">Target</string>
     <string name="s_target_load">Target load</string>
     <string name="s_target_load_for_this_grip">Target load for this grip</string>
+    <string name="s_target_load_unit">Target load unit</string>
     <string name="s_target_loads_are_percentages_of_your_own_maxes">Target loads are percentages of your own maxes.</string>
     <string name="s_target_range">Target range</string>
     <string name="s_target_b346c9">Target: %s</string>
@@ -1080,6 +1096,7 @@
     <string name="s_the_sender_set_some_fixed_weight_targets_check_they_suit">The sender set some fixed weight targets. Check they suit you.</string>
     <string name="s_the_target_range_never_pauses_the_clock">The target range never pauses the clock</string>
     <string name="s_the_test_starts_when_you_pull_pull_as_hard_as_you_can">The test starts when you pull. Pull as hard as you can.</string>
+    <string name="s_their_sets_have_no_target_until_you_test_them_in_benchma">Their sets have no target until you test them in Benchmarks.</string>
     <string name="s_there_is_nothing_to_export_yet_finish_a_session_or_recor">There is nothing to export yet. Finish a session or record a max, and it lands here.</string>
     <string name="s_there_s_on_the_gauge_taring_now_counts_it_as_zero">There\'s %1$s %2$s on the gauge. Taring now counts it as zero.</string>
     <string name="s_there_s_kg_on_the_gauge_zero_it">There\'s %s kg on the gauge. Zero it?</string>
@@ -1183,6 +1200,10 @@
     <string name="s_your_routines_and_sessions_stay_on_this_device_and_in_yo">Your routines and sessions stay on this device and in your private iCloud. Nobody else can read them — not even us.</string>
     <string name="s_your_sessions_will_show_up_here">Your sessions will show up here.</string>
     <string name="s_zero_the_gauge">Zero the gauge</string>
+    <plurals name="s_and_lld_more_without_a_critical_force_test">
+        <item quantity="one">and %d more without a critical force test.</item>
+        <item quantity="other">and %d more without a critical force test.</item>
+    </plurals>
     <string name="s_at_the_climbing_gym_df87dc">at the climbing gym</string>
     <string name="s_at_the_gym">at the gym</string>
     <string name="s_at_the_gym_lld_hangs">at the gym · %d hangs</string>
@@ -1229,10 +1250,12 @@
     <string name="s_of_lld">of %d</string>
     <string name="s_of_lld_today">of %d today</string>
     <string name="s_of_your_lld_s_max">of your %d s max</string>
+    <string name="s_of_your_critical_force_bbc48a">of your critical force</string>
     <string name="s_official_protocol_untested_here">official protocol, untested here</string>
     <string name="s_peak_194d5b">peak %1$s %2$s</string>
     <string name="s_peak_kilograms">peak %s kilograms</string>
     <string name="s_peak_rfd_measurement">peak RFD measurement</string>
+    <string name="s_percent_of_critical_force">percent of critical force</string>
     <string name="s_percent_of_max">percent of max</string>
     <string name="s_ported_protocol">ported protocol</string>
     <string name="s_pounds_736137">pounds</string>
@@ -1253,6 +1276,7 @@
     <string name="s_target_to_bd15c7">target %1$s to %2$s %3$s</string>
     <string name="s_target_to_kilograms_5ca076">target %1$s to %2$s kilograms</string>
     <string name="s_target_to_percent_of_your_lld_second_max">target %1$s to %2$s percent of your %3$d second max</string>
+    <string name="s_target_to_percent_of_your_critical_force">target %1$s to %2$s percent of your critical force</string>
     <string name="s_target_to_percent_of_your_max">target %1$s to %2$s percent of your max</string>
     <string name="s_tested_your_maxes_f31019">tested your maxes</string>
     <string name="s_they_show">they show</string>

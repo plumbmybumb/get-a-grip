@@ -54,6 +54,12 @@
     "url" : "getagrip:\/\/routine#bVDBTsMwDP2VyucgdRw49MYYiAmqoY4b4mBWt43IkshOh9DUf8fZRi-QgxW9Z_u95yNY2fgV7dG3UHXohAxEhx6qIwwK1qElqABdIvaY6B53Q0MRDAzBtVvaBd8KVIvSgCNs136GFPG4z8OLsizi6JwUkbgQqxtVBEchuf0IB3pF7iktTxYSj_RLbsaUm__STJJmnWsVEuWZ8HMGb86g_t6O0LONOQ-1PdX1eaKzvidWHtZ185z9BLHJBg2uuV13x3YfYTJgVRXKy7v6p1zeArKvKC_E25xQT1JO7-oiIScVezz51yN1STvToBnyBZ969WPgC216CNyQHlFoSV1gajTlOfGUw4iou7x-hd-63cBB6_QD"
   },
   {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachSet\",\"holdSeconds\":10,\"leadInSeconds\":0,\"name\":\"Aerobic CF\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":6,\"targetBasis\":\"criticalForce\",\"targetHiPercent\":0.7,\"targetLoPercent\":0.6},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":2,\"targetBasis\":\"max\",\"targetHiPercent\":0.3,\"targetLoPercent\":0.2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":1,\"targetBasis\":\"wPrime\",\"targetHiPercent\":0.5,\"targetLoPercent\":0.5},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3,\"targetBasis\":\"criticalForce\",\"targetHiPercent\":0.9,\"targetLoPercent\":0.8}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":1,\"v\":1}",
+    "name" : "criticalForceBasis",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#vZNNT4NAEIb_ipkzmpbaqtz6YdNGSZvWm_EwhQE2wi7Z3baahv_uLP2IIZh4KocNeSez87wD7wGEWcgJFShjCBLMDXlQ5ighOEDGYqhiggAwt6QlWnrGKFuTBQ8ylcdripSMDQTdjgc5YTyXF4kViYVrHpJWGxHdjKfcVuLWkBlu1I7eUKdkR_Voq7d0Li621oi4pazJ2Mv9Pg8wXNeEnxdxcBT57f0AqRal80FxSmF47EiETElzHebhyuEoI6xQ7Jft5slYi6KEygPBQ6Fzem5bjtPTBYdVmiXptXCrGnhgT-BGuDmR5gER5lOlI4JzdSa4IyJpeVF3D2f1Vf1SB5V3HQ9-04Pf9FDgVzt5r5XcvxZ5r0nebZLvl3znH2vvt8L3rwV_34TvNeH_8es8tXp4rD44B1ywzDyrE8TxTFxsbcYpctl9SesPvUdh-f4VcXwNjShRmlacs2PmKhcnY9ilw5zgd73iHZ_VDw"
+  },
+  {
     "envelope" : null,
     "name" : "foreignSchemeMailto",
     "outcome" : "notARoutineLink",

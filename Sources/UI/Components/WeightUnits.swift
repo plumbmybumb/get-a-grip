@@ -20,12 +20,14 @@ extension WeightUnit {
 }
 
 extension WeightUnit {
-    func targetText(_ set: SetPlan, in plan: SessionPlan, maxes: MaxTable) -> String? {
+    func targetText(_ set: SetPlan, in plan: SessionPlan, maxes: MaxTable,
+                    criticalForces: CriticalForceTable = CriticalForceTable()) -> String? {
         guard plan.handMode.sideCount > 1 else {
-            return PlanMath.targetBand(set, in: plan, side: .both, maxes: maxes).map { bandText($0) }
+            return PlanMath.targetBand(set, in: plan, side: .both, maxes: maxes,
+                                       criticalForces: criticalForces).map { bandText($0) }
         }
-        let left = PlanMath.targetBand(set, in: plan, side: .left, maxes: maxes)
-        let right = PlanMath.targetBand(set, in: plan, side: .right, maxes: maxes)
+        let left = PlanMath.targetBand(set, in: plan, side: .left, maxes: maxes, criticalForces: criticalForces)
+        let right = PlanMath.targetBand(set, in: plan, side: .right, maxes: maxes, criticalForces: criticalForces)
         switch (left, right) {
         case (nil, nil): return nil
         case let (l?, r?) where l == r: return bandText(l)

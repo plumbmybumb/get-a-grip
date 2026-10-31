@@ -1,3 +1,29 @@
+# Training export v5 — 2026-10-31
+
+v5 adds targets set as a PERCENTAGE OF CRITICAL FORCE (see [TARGET_BASIS.md](TARGET_BASIS.md)).
+Three columns are appended, so every v4 column keeps its position: `target_basis`,
+`cf_at_start_kg`, `cf_reference`.
+
+- **`target_basis`** (pull and set rows only): `critical_force` when the pull's percentage
+  target was a percentage of critical force, read from the plan frozen into the workout;
+  `max` otherwise — a percentage of max, a kg band, no target, or a plan that did not
+  survive. Blank on every other record.
+- **On a `critical_force` row** the max columns go BLANK (`max_at_start_kg`,
+  `max_reference`, `max_basis`): the target was not set against a max. `cf_at_start_kg` is
+  the critical force on file AT OR BEFORE the session's start for that grip and hand — the
+  newest valid test on the standard `7:3x24` protocol, with `MaxTable`'s hand rules — and
+  `cf_reference` is `hand_specific`, `both_hands`, `both_hands_fallback` or
+  `no_recorded_cf_at_start`. A test recorded after the start never counts.
+- **On a `max` row** the CF columns are blank and the max columns are unchanged.
+- **Single-workout exports** still print no `cf_test` rows, but look the tests up for
+  `cf_at_start_kg`, exactly as they look up maxes.
+- The Markdown document's rep table gains **`% CF`** beside **`% max`**: the pull's peak over
+  that CF. `% max` is blank on a CF pull and `% CF` on every other pull — one prescription,
+  one reference.
+- Fixture: `Fixtures/export/critical-force-target-basis.*`. Every other export fixture was
+  regenerated for the new columns and the `% CF` column only. **Kotlin must emit the same
+  columns** before the Android export fixtures pass again.
+
 # Training export v4 — 2026-10-01
 
 v4 adds timed maxes: one column, `max_basis`, appended so every v3 column keeps its position.

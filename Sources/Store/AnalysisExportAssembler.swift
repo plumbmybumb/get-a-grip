@@ -86,8 +86,12 @@ enum AnalysisExportAssembler {
                 recordedAt: record.recordedAt, source: record.source,
                 seconds: record.durationSeconds)
         }
-        // A single workout's export carries no tests; skip the fetch rather than filter.
-        let tests = source.workoutID != nil ? [] : try context.fetch(
+        // A single workout's export prints no tests, but still LOOKS them up: a pull set
+        // at "% of critical force" reports the CF on file at its start, exactly as every
+        // pull reports its max. So the fetch always runs; only the per-pull blobs are
+        // skipped when nothing will print them.
+        let lookupOnly = source.workoutID != nil
+        let tests = try context.fetch(
             FetchDescriptor<CriticalForceRecord>(sortBy: [SortDescriptor(\.recordedAt)])).map { record in
             AnalysisExport.CriticalForceEntry(
                 id: record.id, grip: record.grip, side: record.side,
@@ -97,7 +101,7 @@ enum AnalysisExportAssembler {
                 peakKg: record.peakKg, endForceKg: record.endForceKg, repsRun: record.repsRun,
                 restsKept: record.restsKept, restsTotal: record.restsTotal,
                 bodyMassKg: record.bodyMassKg, maxAtTestKg: record.maxAtTestKg,
-                reps: record.reps)
+                reps: lookupOnly ? [] : record.reps)
         }
         let target = fetchedLogs.max(by: { $0.startedAt < $1.startedAt })?.sessionsPerDayTarget ?? 1
         return Snapshot(sessions: sessions, maxes: maxes, criticalForceTests: tests,

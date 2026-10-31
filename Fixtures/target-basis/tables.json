@@ -1,0 +1,48 @@
+{
+  "criticalForces" : [
+    {
+      "grip" : "20|IMR|halfCrimp",
+      "kg" : 15,
+      "side" : "left"
+    },
+    {
+      "grip" : "20|IMR|halfCrimp",
+      "kg" : 16,
+      "side" : "both"
+    },
+    {
+      "grip" : "20|IMRL|halfCrimp",
+      "kg" : 19,
+      "side" : "right"
+    }
+  ],
+  "description" : "(b) The tables plan.json resolves against. maxes: MaxTable rows (seconds absent = peak, else a timed max of that length). criticalForces: CriticalForceTable rows, already folded (newest valid standard test per grip|side).",
+  "maxes" : [
+    {
+      "grip" : "20|IMR|halfCrimp",
+      "kg" : 40,
+      "side" : "both"
+    },
+    {
+      "grip" : "20|IMRL|halfCrimp",
+      "kg" : 50,
+      "side" : "left"
+    },
+    {
+      "grip" : "20|IMRL|halfCrimp",
+      "kg" : 45,
+      "side" : "right"
+    },
+    {
+      "grip" : "20|IMRL|halfCrimp",
+      "kg" : 42,
+      "seconds" : 10,
+      "side" : "left"
+    },
+    {
+      "grip" : "15|IM|openHand",
+      "kg" : 20,
+      "side" : "both"
+    }
+  ]
+}

@@ -101,7 +101,22 @@ extension CriticalForceRecord {
     }
 }
 
+extension CriticalForceRecord {
+    /// The value the target fold reads — see `CriticalForceTable.folding`.
+    var tableEntry: CriticalForceTable.Entry {
+        CriticalForceTable.Entry(gripKey: gripKey, side: side, protocolKey: protocolKey,
+                                 criticalForceKg: criticalForceKg, recordedAt: recordedAt)
+    }
+}
+
 extension Collection where Element == CriticalForceRecord {
+    /// The table a session resolves "% of critical force" targets against: the newest
+    /// valid standard-protocol test per grip AND hand. Here rather than in the store so
+    /// the watch's runner folds exactly as the phone's does.
+    func criticalForceTable() -> CriticalForceTable {
+        CriticalForceTable.folding(map(\.tableEntry))
+    }
+
     /// The newest test overall.
     var newest: CriticalForceRecord? { self.max { $0.recordedAt < $1.recordedAt } }
 

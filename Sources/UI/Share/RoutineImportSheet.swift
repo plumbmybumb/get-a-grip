@@ -228,8 +228,12 @@ struct RoutineImportSheet: View {
         } else if let band = set.targetPercentBand {
             let lo = Int((band.lowerBound * 100).rounded())
             let hi = Int((band.upperBound * 100).rounded())
-            // Which max it is of: a percentage of a timed max is a different load.
-            if let seconds = set.targetMaxSeconds {
+            // Which max it is of: a percentage of a timed max is a different load, and a
+            // percentage of critical force is not of a max at all.
+            if set.targetBasis == .criticalForce {
+                parts.append(lo == hi ? String(localized: "\(hi) % of critical force")
+                                      : String(localized: "\(lo)–\(hi) % of critical force"))
+            } else if let seconds = set.targetMaxSeconds {
                 parts.append(lo == hi ? String(localized: "\(hi) % of \(seconds) s max")
                                       : String(localized: "\(lo)–\(hi) % of \(seconds) s max"))
             } else {
@@ -378,8 +382,11 @@ struct RoutineImportSheet: View {
         // under most routines, which prescribe no load.
         if hasPercentTargets || hasKilogramTargets {
             VStack(alignment: .leading, spacing: 8) {
-                if hasPercentTargets {
+                if hasMaxPercentTargets {
                     note(String(localized: "Targets use your saved maxes. Retest when they're out of date."))
+                }
+                if hasCriticalForceTargets {
+                    note(String(localized: "Some targets use your critical force. Sets on a grip you haven't tested have no target."))
                 }
                 if hasKilogramTargets {
                     note(origin == .shared
@@ -402,6 +409,17 @@ struct RoutineImportSheet: View {
     /// reaches its percentage.
     private var hasPercentTargets: Bool {
         sets.contains { $0.targetBand == nil && PlanMath.targetPercent($0, in: plan) != nil }
+    }
+
+    /// The same, split by what the percentage is OF — each note is shown only when true.
+    private var hasMaxPercentTargets: Bool {
+        sets.contains { $0.targetBand == nil && PlanMath.targetPercent($0, in: plan) != nil
+                        && PlanMath.targetBasis($0, in: plan) == .max }
+    }
+
+    private var hasCriticalForceTargets: Bool {
+        sets.contains { $0.targetBand == nil && PlanMath.targetPercent($0, in: plan) != nil
+                        && PlanMath.targetBasis($0, in: plan) == .criticalForce }
     }
 
     private var hasKilogramTargets: Bool {

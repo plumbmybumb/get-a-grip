@@ -101,6 +101,28 @@ enum HandMode: String, Codable, Hashable, Sendable, CaseIterable {
     }
 }
 
+// MARK: - What a percentage is OF
+
+/// **What a target PERCENTAGE is a percentage of** (2026-10-31, support request): the
+/// grip's max, as always, or its CRITICAL FORCE — the aerobic protocols prescribe
+/// submaximal work as a fraction of CF, and CF is roughly 40 % of max, so "80 %" means two
+/// very different loads depending on this one word.
+///
+/// Stored as a RAW string (`SetPlan.targetBasisRaw`, `SessionPlan.targetBasisRaw`, JSON key
+/// `targetBasis`) so a basis written by a newer build survives a round-trip through this
+/// one verbatim. A raw this build cannot read — and an absent key — reads as `.max`, the
+/// meaning every routine had before the field existed. Resolution lives in
+/// `PlanMath.referenceKg`; the spec is `docs/TARGET_BASIS.md`.
+enum TargetBasis: String, Codable, Hashable, Sendable, CaseIterable {
+    case max
+    case criticalForce
+
+    /// nil, empty and unknown all read as `.max`.
+    init(fallback raw: String?) {
+        self = raw.flatMap(TargetBasis.init(rawValue:)) ?? .max
+    }
+}
+
 // MARK: - One row of the routine
 
 struct SetPlan: Identifiable, Hashable, Sendable, Codable {
@@ -130,6 +152,11 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
     /// the hold: changing a hang from 10 s to 12 s must not silently point the set at a
     /// different (possibly unmeasured) max.
     var targetMaxSeconds: Int? = nil
+    /// WHAT this set's own percentage is of, as a raw `TargetBasis` (JSON key
+    /// `targetBasis`). nil — never written — is `.max`. Belongs to the percentage exactly
+    /// like `targetMaxSeconds`: read only alongside this set's own band, an inheriting set
+    /// uses the routine's (`PlanMath.targetBasis`). Raw so a newer build's basis survives.
+    var targetBasisRaw: String? = nil
 
     /// Decode clamps. `repsRange` starts at 0 because a zero-rep set is representable
     /// (and dropped by `SessionPlan.executable`); the UI floor is 1.
@@ -150,6 +177,13 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
     /// which also depends on the routine's band and on a max existing for the grip.
     var hasTarget: Bool { targetLoKg != nil || targetHiKg != nil }
     var hasPercentTarget: Bool { targetLoPercent != nil || targetHiPercent != nil }
+
+    /// This set's own basis, read through the raw. Setting it ALWAYS writes the raw — once
+    /// chosen, `max` is encoded too; only a set nobody chose for stays keyless.
+    var targetBasis: TargetBasis {
+        get { TargetBasis(fallback: targetBasisRaw) }
+        set { targetBasisRaw = newValue.rawValue }
+    }
 
     /// Normalized on the way out, so an upside-down band is never returned. One endpoint
     /// alone is a degenerate range — a target line, which is what one endpoint means.
@@ -186,6 +220,7 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
         case id, grip, repsPerSide, holdSeconds, restSeconds, targetLoKg, targetHiKg
         case targetLoPercent, targetHiPercent
         case targetMaxSeconds
+        case targetBasisRaw = "targetBasis"
     }
 }
 
@@ -206,6 +241,14 @@ extension SetPlan {
         self.targetLoPercent = c.optional(.targetLoPercent).map { Self.percentRange.clamping($0) }
         self.targetHiPercent = c.optional(.targetHiPercent).map { Self.percentRange.clamping($0) }
         self.targetMaxSeconds = Self.maxSeconds(c.optional(.targetMaxSeconds))
+        self.targetBasisRaw = Self.basisRaw(c.optional(.targetBasisRaw))
+    }
+
+    /// A stored basis raw: kept VERBATIM (a newer build's value must survive), except that
+    /// an empty string carries nothing and reads as absent.
+    static func basisRaw(_ raw: String?) -> String? {
+        guard let raw, !raw.isEmpty else { return nil }
+        return raw
     }
 }
 
@@ -260,6 +303,16 @@ struct SessionPlan: Hashable, Sendable, Codable {
     /// SwiftData column: `RoutineDraft.normalized` demotes the routine band onto the sets
     /// (this with it) before every save, so it lives only in a draft and a share code.
     var targetMaxSeconds: Int? = nil
+    /// What the routine's percentage is of — see `SetPlan.targetBasisRaw`. Demoted onto
+    /// the sets with the band by `RoutineDraft.normalized`, like `targetMaxSeconds`; it
+    /// also has a SwiftData column (`SessionTemplate.targetBasisRaw`) so a routine-level
+    /// band and its basis are always stored together.
+    var targetBasisRaw: String? = nil
+
+    var targetBasis: TargetBasis {
+        get { TargetBasis(fallback: targetBasisRaw) }
+        set { targetBasisRaw = newValue.rawValue }
+    }
 
     /// nil when no band is set. Normalized the same way `SetPlan.targetBand` is — one
     /// endpoint alone is a LINE, which is what one endpoint means.
@@ -291,6 +344,7 @@ struct SessionPlan: Hashable, Sendable, Codable {
         case startingHand
         case targetMaxSeconds
         case pausesAboveTargetBand
+        case targetBasisRaw = "targetBasis"
     }
 
     /// Which edges of the target band stop the rep clock — the two stored flags as the one
@@ -345,6 +399,7 @@ extension SessionPlan {
         self.targetLoPercent = c.optional(.targetLoPercent).map { SetPlan.percentRange.clamping($0) }
         self.targetHiPercent = c.optional(.targetHiPercent).map { SetPlan.percentRange.clamping($0) }
         self.targetMaxSeconds = SetPlan.maxSeconds(c.optional(.targetMaxSeconds))
+        self.targetBasisRaw = SetPlan.basisRaw(c.optional(.targetBasisRaw))
     }
 }
 
@@ -485,8 +540,13 @@ struct RoutineDraft: Hashable, Sendable, Codable {
                     s.targetLoPercent = hi
                     s.targetHiPercent = lo
                 }
-                // A length with no percentage of its own says nothing; keep blobs honest.
-                if !s.hasPercentTarget || s.hasTarget { s.targetMaxSeconds = nil }
+                // A length or basis with no percentage of its own says nothing; keep blobs
+                // honest. A percentage of CRITICAL FORCE has no max length either.
+                if !s.hasPercentTarget || s.hasTarget {
+                    s.targetMaxSeconds = nil
+                    s.targetBasisRaw = nil
+                }
+                if s.targetBasis == .criticalForce { s.targetMaxSeconds = nil }
                 return s
             }
         // The routine's own band too: an inverted one would invert every inheriting set.
@@ -504,13 +564,17 @@ struct RoutineDraft: Hashable, Sendable, Codable {
                 var s = set
                 s.targetLoPercent = band.lowerBound
                 s.targetHiPercent = band.upperBound
-                s.targetMaxSeconds = out.plan.targetMaxSeconds
+                // The basis travels WITH the band: 80 % of critical force demoted as
+                // "80 %" would read as 80 % of max — twice the load.
+                s.targetBasisRaw = out.plan.targetBasisRaw
+                s.targetMaxSeconds = s.targetBasis == .criticalForce ? nil : out.plan.targetMaxSeconds
                 return s
             }
             out.plan.targetLoPercent = nil
             out.plan.targetHiPercent = nil
         }
         out.plan.targetMaxSeconds = nil
+        out.plan.targetBasisRaw = nil
         out.sessionsPerDay = Self.sessionsRange.clamping(out.sessionsPerDay)
         out.reminders = Self.tidy(out.reminders)
         out.parkedReminders = Self.tidy(out.parkedReminders)

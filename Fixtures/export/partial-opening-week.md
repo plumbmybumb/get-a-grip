@@ -10,8 +10,9 @@ This document is written in English whatever language the app is set to, so that
 - **Plan s** is the hold the routine asked for. **Held s** is what was actually accrued while the load was over the rep's own threshold — so a pull that came off the edge halfway reads short rather than being rewritten.
 - **How held time was measured** is stated on every session header. `gauge` means the seconds came from the force gauge's own sample timestamps. `timer-only` means the session ran with no gauge attached and the seconds came off the WALL CLOCK; those sessions carry no kilograms at all. `logged` means the session was written down after the fact — no reps, only a duration.
 - **Peak kg / Avg kg are stored PER REP** — the numbers in the rep tables are that pull's own peak and its mean while engaged, not the session's. The session header's peak and average are the session-level figures kept beside them; for a session whose rep blob is missing or unreadable, the header figures are all that survives.
-- **% max** is that rep's own PEAK divided by the max on file for that grip AND hand **as it stood on the day of the session** — a max recorded later never rewrites what an older session was pulling at. Resolution is specific-beats-general: a left or right pull uses that hand's max and falls back to a both-hands max; a BOTH-hands pull resolves only against a both-hands max, never against the two hands added together. No max on file means a blank, never a number.
-- **Target kg** is what the rep was ASKED to pull for that hand, frozen at the time. Blank where the routine set no target or the grip had no max to take a percentage of.
+- **% max** is that rep's own PEAK divided by the max on file for that grip AND hand **as it stood on the day of the session** — a max recorded later never rewrites what an older session was pulling at. Resolution is specific-beats-general: a left or right pull uses that hand's max and falls back to a both-hands max; a BOTH-hands pull resolves only against a both-hands max, never against the two hands added together. No max on file means a blank, never a number. Blank too on a pull whose target was a percentage of critical force.
+- **% CF** is the same for a pull whose target was a PERCENTAGE OF CRITICAL FORCE: its own peak divided by the critical force on file for that grip and hand as it stood at the session's start (the newest standard 7:3x24 test, same hand rules as % max). Blank on every other pull, and where no critical force existed then.
+- **Target kg** is what the rep was ASKED to pull for that hand, frozen at the time. Blank where the routine set no target or the grip had no max (or, for a critical force target, no critical force) to take a percentage of.
 - **Outcome** is one of `completed`, `earlyRelease` (came off the edge), `skipped` (deliberately passed over — skipped pulls ARE recorded, and they count toward the planned total but never toward the completed one; their kilogram cells are blank because the pull never happened, not zero), `aborted` (the session or the link ended mid-rep).
 - **Hands**: `L` left, `R` right, `B` both.
 - **A climbing day counts as training.** A day at the gym is more finger load than the hangboard session it displaced, so `climbVolume`, `climbLimit` and `climbMaintenance` sessions settle a day the same way a routine session does. `benchmark` is a testing day, logged automatically the first time a gauge-measured max or a critical force test lands. `hangManual` is a weighted or max hang done away from the gauge.
@@ -47,33 +48,33 @@ Every session on record — the history begins 2026-08-06. Newest first.
 
 Pulls: 1 completed of 1 planned. Session peak 12.0 kg, session average 10.8 kg. Effort —, fingers —.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | — | — | completed |
 
 ### 2026-08-08 · A · hang · 20 min · held 10s · gauge
 
 Pulls: 1 completed of 1 planned. Session peak 12.0 kg, session average 10.8 kg. Effort —, fingers —.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | — | — | completed |
 
 ### 2026-08-07 · A · hang · 20 min · held 10s · gauge
 
 Pulls: 1 completed of 1 planned. Session peak 12.0 kg, session average 10.8 kg. Effort —, fingers —.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | — | — | completed |
 
 ### 2026-08-06 · A · hang · 20 min · held 10s · gauge
 
 Pulls: 1 completed of 1 planned. Session peak 12.0 kg, session average 10.8 kg. Effort —, fingers —.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | — | — | completed |
 
 ## Older than 8 weeks, by week
 

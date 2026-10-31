@@ -199,6 +199,32 @@ private func largerPullCountDraft(_ count: Int) -> RoutineDraft {
     return source
 }
 
+/// Targets as a percentage of CRITICAL FORCE (`TargetBasis`, docs/TARGET_BASIS.md): a CF
+/// set, a set that chose "max" explicitly (so the key is written), and a basis from a
+/// newer build that must survive the round trip verbatim. The routine-level band of CF is
+/// demoted onto the inheriting set by `normalized` before encoding, basis and all.
+private func criticalForceBasisDraft() -> RoutineDraft {
+    var source = RoutineDraft()
+    source.plan.name = "Aerobic CF"
+    source.plan.handMode = .alternateEachSet
+    let grip = GripSpec(edgeMM: 20, fingers: .frontThree, position: .halfCrimp)
+    var cf = SetPlan(grip: grip, repsPerSide: 6, targetLoPercent: 0.6, targetHiPercent: 0.7)
+    cf.targetBasis = .criticalForce
+    var max = SetPlan(grip: grip, repsPerSide: 2, targetLoPercent: 0.2, targetHiPercent: 0.3)
+    max.targetBasis = .max
+    var future = SetPlan(grip: grip, repsPerSide: 1, targetLoPercent: 0.5, targetHiPercent: 0.5)
+    future.targetBasisRaw = "wPrime"
+    let inherits = SetPlan(grip: grip, repsPerSide: 3)
+    source.plan.sets = [cf, max, future, inherits]
+    source.plan.targetLoPercent = 0.8
+    source.plan.targetHiPercent = 0.9
+    source.plan.targetBasis = .criticalForce
+    source.sessionsPerDay = 1
+    return stableIDs(RoutineDraft(templateID: nil, plan: source.normalized.plan,
+                                  sessionsPerDay: 1, reminders: [], parkedReminders: [],
+                                  remindersEnabled: false, isOnDemand: false))
+}
+
 private func encoderDrafts() -> [(name: String, draft: RoutineDraft)] {
     [
         ("starter", stableIDs(.starter)),
@@ -210,6 +236,7 @@ private func encoderDrafts() -> [(name: String, draft: RoutineDraft)] {
         ("fingerCurl", fingerCurlDraft()),
         ("thirtySixPullsPerSide", largerPullCountDraft(36)),
         ("oneHundredPullsPerSide", largerPullCountDraft(100)),
+        ("criticalForceBasis", criticalForceBasisDraft()),
     ]
 }
 

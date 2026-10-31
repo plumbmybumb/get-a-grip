@@ -205,7 +205,9 @@ struct RunnerView: View {
             // a max was recorded on another device mid-workout. `.standard` drafts keep a
             // finished session on disk until saved or discarded, surviving process death.
             let new = RunnerSession(template: template, device: device,
-                                    maxes: templates.maxTable, timerOnly: timerOnly,
+                                    maxes: templates.maxTable,
+                                    criticalForces: templates.currentCriticalForces,
+                                    timerOnly: timerOnly,
                                     draftStore: .standard)
             new.weightUnit = weightUnit
             session = new

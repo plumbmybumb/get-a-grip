@@ -241,7 +241,12 @@ struct RoutineOverviewSheet: View {
         let lo = (band.lowerBound * 100).formatted(.number.precision(.fractionLength(0...1)))
         let hi = (band.upperBound * 100).formatted(.number.precision(.fractionLength(0...1)))
         // Which max, when it is not the peak: the same percentage of a 10 s max is a
-        // different load, and the overview is where a shared routine is read first.
+        // different load, and the overview is where a shared routine is read first. A
+        // percentage of critical force says so, always.
+        if PlanMath.targetBasis(set, in: plan) == .criticalForce {
+            return lo == hi ? String(localized: "\(hi) % of critical force")
+                            : String(localized: "\(lo)–\(hi) % of critical force")
+        }
         if let seconds = PlanMath.maxSeconds(set, in: plan) {
             return lo == hi ? String(localized: "\(hi) % of \(seconds) s max")
                             : String(localized: "\(lo)–\(hi) % of \(seconds) s max")

@@ -15,9 +15,11 @@
     <string name="s_r_d7be60">" · D"</string>
     <string name="s_was">" · avant %s"</string>
     <string name="s_x_4345cb">%</string>
+    <string name="s_of_critical_force_225f7f">% de la force critique</string>
     <string name="s_of_max_f0fa38">% du max</string>
     <string name="s_x_ce8efc">%s %%</string>
     <string name="s_of_lld_s_max_583e23">%1$s %% de ton max sur %2$d s</string>
+    <string name="s_of_critical_force_bf9fc2">%s %% de la force critique</string>
     <string name="s_of_max_0caf47">%s %% du max</string>
     <string name="s_x_ab8f46">%1$s %2$s</string>
     <string name="s_x_dc3df0">"%1$s %2$s  →  %3$s %4$s"</string>
@@ -48,6 +50,8 @@
     <string name="s_needs_a_one_time_calibration_lookup_from_its_maker_by_se">%s demande une recherche unique de calibration auprès de son fabricant, par numéro de série. Elle est ensuite gardée sur ce téléphone. Aucun autre capteur n\'utilise de serveur.</string>
     <string name="s_of_lld_s">%1$s sur %2$d s</string>
     <string name="s_of_lld_s_max_959f72">%1$s du max sur %2$d s</string>
+    <string name="s_of_critical_force_9fb5ca">%s de la force critique</string>
+    <string name="s_of_each_hand_s_critical_force">%1$s de la force critique de chaque main · %2$s %3$s</string>
     <string name="s_of_each_hand_s_max">%1$s du max de chaque main · %2$s %3$s</string>
     <string name="s_of_each_hand_s_max_kg">%1$s du max de chaque main · %2$s kg</string>
     <string name="s_rest_1bd51a">%s de repos</string>
@@ -82,6 +86,7 @@
     </plurals>
     <string name="s_critical_force_f69c90">%1$s, force critique %2$s %3$s</string>
     <string name="s_of_your_lld_second_max">%1$s, de ton max sur %2$d secondes</string>
+    <string name="s_of_your_critical_force_12e4b8">%s, de ta force critique</string>
     <string name="s_page_lld_of_3">%1$s, page %2$d sur 3</string>
     <string name="s_target_to_df4f9b">%1$s, cible de %2$s à %3$s %4$s</string>
     <string name="s_target_to_kilograms_26ddd5">%1$s, cible de %2$s à %3$s kilogrammes</string>
@@ -100,6 +105,7 @@
     <string name="s_x_b2ab65">%1$s–%2$s</string>
     <string name="s_x_93a2c7">%1$s–%2$s %%</string>
     <string name="s_of_lld_s_max_643384">%1$s–%2$s %% de ton max sur %3$d s</string>
+    <string name="s_of_critical_force_31431b">%1$s–%2$s %% de la force critique</string>
     <string name="s_of_max_f1b423">%1$s–%2$s %% du max</string>
     <string name="s_x_7c9c2f">%1$s–%2$s %3$s</string>
     <string name="s_target_790dca">cible %1$s–%2$s %3$s</string>
@@ -109,6 +115,7 @@
     <string name="s_lld_80890b">%d %%</string>
     <string name="s_lld_of_lld_s_max">%1$d %% du max %2$d s</string>
     <string name="s_lld_of_body_weight">%d %% du poids du corps</string>
+    <string name="s_lld_of_critical_force">%d %% de la force critique</string>
     <string name="s_lld_of_max">%d %% du max</string>
     <string name="s_lld_of_your_max">%d %% de ton max</string>
     <string name="s_lld_e5f107">%1$d %2$s</string>
@@ -210,6 +217,7 @@
     <string name="s_lld_a_day_each">%1$d× par jour · %2$s chacune</string>
     <string name="s_lld_lld_af72da">%1$d–%2$d %%</string>
     <string name="s_lld_lld_of_lld_s_max">%1$d–%2$d %% du max %3$d s</string>
+    <string name="s_lld_lld_of_critical_force">%1$d–%2$d %% de la force critique</string>
     <string name="s_lld_lld_of_max">%1$d–%2$d %% du max</string>
     <string name="s_lld_lld_mm">%1$d–%2$d mm</string>
     <string name="s_hand_f5b987">, main %s</string>
@@ -727,6 +735,10 @@
     <string name="s_no_lld_s_max_for_your_hand_yet_measure_one_in_benchmarks">Pas encore de max sur %1$d s pour ta main %2$s. Mesures-en un dans Tests.</string>
     <string name="s_no_bluetooth">Pas de Bluetooth</string>
     <string name="s_no_bluetooth_on_this_device_try_demo_mode">Pas de Bluetooth sur cet appareil. Essaie le mode démo.</string>
+    <string name="s_no_critical_force_for_0f99f8">Pas de force critique pour %s</string>
+    <string name="s_no_critical_force_for_fadcfc">Pas de force critique pour %1$s · %2$s</string>
+    <string name="s_no_critical_force_for_this_grip_yet_test_it_in_benchmark">Pas encore de force critique pour cette prise. Teste-la dans Tests.</string>
+    <string name="s_no_critical_force_for_your_hand_yet_test_it_in_benchmark">Pas encore de force critique pour ta main %s. Teste-la dans Tests.</string>
     <string name="s_no_daily_target">Pas d\'objectif quotidien</string>
     <string name="s_no_fingers">Aucun doigt</string>
     <string name="s_no_gauge_found">Aucun capteur trouvé</string>
@@ -906,6 +918,8 @@
     <string name="s_routine_name">Nom de la routine</string>
     <string name="s_routine_options">Options de la routine</string>
     <string name="s_routine_overview">Aperçu de la routine</string>
+    <string name="s_routine_target_of_critical_force_so">Cible de la routine : %1$s de la force critique, soit %2$s.</string>
+    <string name="s_routine_target_of_critical_force_no_critical_force_for_t">Cible de la routine : %s de la force critique. Pas encore de force critique pour cette prise.</string>
     <string name="s_routine_target_of_max_no_max_for_this_grip_yet">Cible de la routine : %s du max. Pas encore de max pour cette prise.</string>
     <string name="s_routine_target_of_your_lld_s_max_no_lld_s_max_for_this_g">Cible de la routine : %1$s de ton max sur %2$d s. Pas encore de max sur %3$d s pour cette prise.</string>
     <string name="s_routine_target_so">Cible de la routine : %1$s, soit %2$s.</string>
@@ -999,6 +1013,7 @@
     <string name="s_some_kilogram_targets_were_set_by_the_sender_review_them">Certaines cibles en kilogrammes viennent de l’expéditeur. Vérifiez qu’elles conviennent à votre entraînement.</string>
     <string name="s_some_sets_carry_kilogram_targets_typed_by_whoever_shared">Certaines séries portent des cibles en kilos saisies par la personne qui a partagé ceci.</string>
     <string name="s_some_sets_have_fixed_weight_targets_check_they_suit_you">Certaines séries ont des cibles de poids fixes. Vérifie qu\'elles te conviennent.</string>
+    <string name="s_some_targets_use_your_critical_force_sets_on_a_grip_you">Certaines cibles utilisent ta force critique. Les séries sur une prise que tu n\'as pas testée n\'ont pas de cible.</string>
     <string name="s_sound">Son</string>
     <string name="s_source">Source</string>
     <string name="s_source_code">Code source</string>
@@ -1047,6 +1062,7 @@
     <string name="s_target_61ad50">Cible</string>
     <string name="s_target_load">Charge cible</string>
     <string name="s_target_load_for_this_grip">Charge cible pour cette prise</string>
+    <string name="s_target_load_unit">Unité de la charge cible</string>
     <string name="s_target_loads_are_percentages_of_your_own_maxes">Les charges cibles sont des pourcentages de tes propres max.</string>
     <string name="s_target_range">Plage cible</string>
     <string name="s_target_b346c9">Cible : %s</string>
@@ -1078,6 +1094,7 @@
     <string name="s_the_sender_set_some_fixed_weight_targets_check_they_suit">L\'expéditeur a fixé certaines cibles de poids. Vérifie qu\'elles te conviennent.</string>
     <string name="s_the_target_range_never_pauses_the_clock">La plage cible ne met jamais le chrono en pause</string>
     <string name="s_the_test_starts_when_you_pull_pull_as_hard_as_you_can">Le test commence quand tu tires. Tire aussi fort que possible.</string>
+    <string name="s_their_sets_have_no_target_until_you_test_them_in_benchma">Leurs séries n\'ont pas de cible tant que tu ne les as pas testées dans Tests.</string>
     <string name="s_there_is_nothing_to_export_yet_finish_a_session_or_recor">Il n\'y a encore rien à exporter. Termine une séance ou enregistre un max, et ça atterrira ici.</string>
     <string name="s_there_s_on_the_gauge_taring_now_counts_it_as_zero">Il y a %1$s %2$s sur le capteur. Tarer maintenant le compte comme zéro.</string>
     <string name="s_there_s_kg_on_the_gauge_zero_it">Il y a %s kg sur le capteur. Le mettre à zéro ?</string>
@@ -1181,6 +1198,10 @@
     <string name="s_your_routines_and_sessions_stay_on_this_device_and_in_yo">Tes routines et tes séances restent sur cet appareil et dans ton iCloud privé. Personne d\'autre ne peut les lire — nous non plus.</string>
     <string name="s_your_sessions_will_show_up_here">Tes séances apparaîtront ici.</string>
     <string name="s_zero_the_gauge">Mettre le capteur à zéro</string>
+    <plurals name="s_and_lld_more_without_a_critical_force_test">
+        <item quantity="one">et %d autre sans test de force critique.</item>
+        <item quantity="other">et %d autres sans test de force critique.</item>
+    </plurals>
     <string name="s_at_the_climbing_gym_df87dc">à la salle d\'escalade</string>
     <string name="s_at_the_gym">à la salle</string>
     <string name="s_at_the_gym_lld_hangs">à la salle · %d suspensions</string>
@@ -1227,10 +1248,12 @@
     <string name="s_of_lld">sur %d</string>
     <string name="s_of_lld_today">sur %d aujourd\'hui</string>
     <string name="s_of_your_lld_s_max">de ton max sur %d s</string>
+    <string name="s_of_your_critical_force_bbc48a">de ta force critique</string>
     <string name="s_official_protocol_untested_here">protocole officiel, non testé ici</string>
     <string name="s_peak_194d5b">pic à %1$s %2$s</string>
     <string name="s_peak_kilograms">pic à %s kilogrammes</string>
     <string name="s_peak_rfd_measurement">mesure du pic RFD</string>
+    <string name="s_percent_of_critical_force">pour cent de la force critique</string>
     <string name="s_percent_of_max">pour cent du max</string>
     <string name="s_ported_protocol">protocole porté</string>
     <string name="s_pounds_736137">livres</string>
@@ -1251,6 +1274,7 @@
     <string name="s_target_to_bd15c7">cible de %1$s à %2$s %3$s</string>
     <string name="s_target_to_kilograms_5ca076">cible de %1$s à %2$s kilogrammes</string>
     <string name="s_target_to_percent_of_your_lld_second_max">cible de %1$s à %2$s pour cent de ton max sur %3$d secondes</string>
+    <string name="s_target_to_percent_of_your_critical_force">cible de %1$s à %2$s pour cent de ta force critique</string>
     <string name="s_target_to_percent_of_your_max">cible de %1$s à %2$s pour cent de ton max</string>
     <string name="s_tested_your_maxes_f31019">testé tes max</string>
     <string name="s_they_show">elles n\'affichent</string>

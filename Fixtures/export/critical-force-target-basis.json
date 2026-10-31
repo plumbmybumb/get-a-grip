@@ -1,0 +1,213 @@
+{
+  "criticalForceTests" : [
+    {
+      "criticalForceKg" : 15,
+      "day" : 20673,
+      "endForceKg" : 13.5,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMR",
+        "position" : "halfCrimp"
+      },
+      "id" : "00000000-0000-0000-0000-000000000911",
+      "maxAtTestKg" : 35,
+      "peakKg" : 33,
+      "protocolKey" : "7:3x24",
+      "recordedAt" : "2026-08-08T18:00:00Z",
+      "reps" : [
+
+      ],
+      "repsRun" : 24,
+      "restsKept" : 23,
+      "restsTotal" : 23,
+      "side" : "left",
+      "wPrimeKgS" : 700
+    },
+    {
+      "criticalForceKg" : 30,
+      "day" : 20683,
+      "endForceKg" : 27,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMR",
+        "position" : "halfCrimp"
+      },
+      "id" : "00000000-0000-0000-0000-000000000912",
+      "maxAtTestKg" : 35,
+      "peakKg" : 66,
+      "protocolKey" : "5:5x20",
+      "recordedAt" : "2026-08-18T18:00:00Z",
+      "reps" : [
+
+      ],
+      "repsRun" : 24,
+      "restsKept" : 23,
+      "restsTotal" : 23,
+      "side" : "right",
+      "wPrimeKgS" : 700
+    },
+    {
+      "criticalForceKg" : 14,
+      "day" : 20693,
+      "endForceKg" : 12.6,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMR",
+        "position" : "halfCrimp"
+      },
+      "id" : "00000000-0000-0000-0000-000000000913",
+      "maxAtTestKg" : 35,
+      "peakKg" : 30.800000000000004,
+      "protocolKey" : "7:3x24",
+      "recordedAt" : "2026-08-28T18:00:00Z",
+      "reps" : [
+
+      ],
+      "repsRun" : 24,
+      "restsKept" : 23,
+      "restsTotal" : 23,
+      "side" : "right",
+      "wPrimeKgS" : 700
+    }
+  ],
+  "generatedOn" : 20693,
+  "maxes" : [
+    {
+      "day" : 20663,
+      "grip" : {
+        "edgeMM" : 20,
+        "fingers" : "IMR",
+        "position" : "halfCrimp"
+      },
+      "kg" : 35,
+      "recordedAt" : "2026-07-29T08:00:00Z",
+      "side" : "both",
+      "source" : "measured"
+    }
+  ],
+  "sessions" : [
+    {
+      "avgKg" : 11.16,
+      "completedReps" : 4,
+      "day" : 20692,
+      "id" : "00000000-0000-0000-0000-000000000177",
+      "kind" : "hang",
+      "minutes" : 20,
+      "notes" : "",
+      "peakKg" : 12.4,
+      "plan" : {
+        "handMode" : "alternateEachRep",
+        "holdSeconds" : 10,
+        "leadInSeconds" : 0,
+        "name" : "Aerobic CF",
+        "pausesAboveTargetBand" : true,
+        "pausesOutsideTargetBand" : true,
+        "restSeconds" : 20,
+        "setBreakSeconds" : 60,
+        "sets" : [
+          {
+            "grip" : {
+              "edgeMM" : 20,
+              "fingers" : "IMR",
+              "position" : "halfCrimp"
+            },
+            "id" : "00000000-0000-0000-0000-000000000921",
+            "repsPerSide" : 1,
+            "targetBasis" : "criticalForce",
+            "targetHiPercent" : 0.8,
+            "targetLoPercent" : 0.7
+          },
+          {
+            "grip" : {
+              "edgeMM" : 20,
+              "fingers" : "IMR",
+              "position" : "halfCrimp"
+            },
+            "id" : "00000000-0000-0000-0000-000000000922",
+            "repsPerSide" : 1,
+            "targetHiPercent" : 0.3,
+            "targetLoPercent" : 0.2
+          }
+        ],
+        "startingHand" : "left",
+        "thresholdKg" : 2,
+        "waitForReleaseBeforeRest" : true
+      },
+      "plannedReps" : 4,
+      "reps" : [
+        {
+          "avgKg" : 11.16,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMR",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 12.4,
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetHiKg" : 12,
+          "targetLoKg" : 10.5,
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 9.9,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMR",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 11,
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 8.55,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMR",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 9.5,
+          "repIndex" : 0,
+          "setIndex" : 1,
+          "side" : "left",
+          "targetHiKg" : 10.5,
+          "targetLoKg" : 7,
+          "targetSeconds" : 10
+        },
+        {
+          "avgKg" : 8.1,
+          "grip" : {
+            "edgeMM" : 20,
+            "fingers" : "IMR",
+            "position" : "halfCrimp"
+          },
+          "heldSeconds" : 10,
+          "outcome" : "completed",
+          "peakKg" : 9,
+          "repIndex" : 1,
+          "setIndex" : 1,
+          "side" : "right",
+          "targetHiKg" : 10.5,
+          "targetLoKg" : 7,
+          "targetSeconds" : 10
+        }
+      ],
+      "routineName" : "Aerobic CF",
+      "startedAt" : "2026-08-27T09:00:00Z",
+      "timing" : "gauge",
+      "totalHeldSeconds" : 40
+    }
+  ],
+  "sessionsPerDayTarget" : 2,
+  "today" : 20693
+}

@@ -123,8 +123,11 @@ extension RoutineSummary {
             // Against an EMPTY table: a percentage band IS the intensity and needs no
             // max, so it colours the mark as it will on Today. A kilogram band cannot
             // resolve without the reader's max, so the mark can only under-claim into
-            // `unknown`, never over-claim a load somebody's fingers would pay for.
-            peakIntensity: PlanMath.peakIntensity(of: plan, maxes: MaxTable()))
+            // `unknown`, never over-claim a load somebody's fingers would pay for. The
+            // same for a percentage of CRITICAL FORCE: restating it as a share of max needs
+            // both of the reader's numbers, so an empty CF table leaves it out.
+            peakIntensity: PlanMath.peakIntensity(of: plan, maxes: MaxTable(),
+                                                  criticalForces: CriticalForceTable()))
     }
 }
 

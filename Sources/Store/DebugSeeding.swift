@@ -63,6 +63,18 @@ enum DebugSeeding {
             max.plan.sets[1].targetHiKg = 30
             context.insert(SessionTemplate(draft: max.normalized, sortIndex: 1))
             try? context.save()
+        } else if args.contains("-seedCriticalForceRoutine") {
+            // An aerobic routine prescribed as a percentage of CRITICAL FORCE, on the grip
+            // `-seedHistory` tests (both hands), so the runner's band chip resolves from CF.
+            try? context.delete(model: SessionTemplate.self)
+            var aerobic = RoutineDraft.starter
+            aerobic.plan.name = "Aerobic CF"
+            aerobic.plan.sets = Array(aerobic.plan.sets.prefix(2))
+            aerobic.plan.targetLoPercent = 0.70
+            aerobic.plan.targetHiPercent = 0.80
+            aerobic.plan.targetBasis = .criticalForce
+            context.insert(SessionTemplate(draft: aerobic.normalized, sortIndex: 0))
+            try? context.save()
         }
 
         // History has nothing to draw until sessions exist, and driving three weeks of

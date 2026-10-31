@@ -23,6 +23,9 @@ struct TargetBandRow: View {
     /// Every max on file, by grip and hand, so a percentage shows the ACTUAL kilograms each
     /// hand will be asked for.
     var maxes: MaxTable
+    /// Every critical force on file, by grip and hand — what a "% of critical force" band
+    /// resolves against (`TargetBasis.criticalForce`).
+    var criticalForces: CriticalForceTable
     /// Whether this routine alternates hands. `bothHands` has no per-hand question, and the
     /// row must not invent one.
     var handMode: HandMode
@@ -36,9 +39,10 @@ struct TargetBandRow: View {
     /// fields under the finger still editing it.
     @State private var showsCustomFields = false
 
-    /// How a custom band is expressed. Not persisted: the STORED band says which it is; this
-    /// carries the choice only while the fields are open and momentarily empty.
-    private enum Unit: Hashable { case percent, kilograms }
+    /// How a band is expressed — a percentage of the max, a percentage of CRITICAL FORCE
+    /// (2026-10-31), or kilograms. Not persisted: the STORED band and basis say which it
+    /// is; this carries the choice only while the fields are open and momentarily empty.
+    private enum Unit: Hashable { case percent, criticalForce, kilograms }
     @State private var unit: Unit = .percent
 
     /// The bands worth one tap. Low-intensity volume is the app's centre of gravity, so it
@@ -68,7 +72,13 @@ struct TargetBandRow: View {
         .padding(.vertical, 2)
         // The STORED band decides the unit, or reopening a kilogram band would show
         // percentage fields over it.
-        .onAppear { unit = kgBand != nil ? .kilograms : .percent }
+        .onAppear {
+            unit = storedUnit
+            #if DEBUG
+            // Headless screenshots: `-builderOpenTarget` opens the editor on appear.
+            if ProcessInfo.processInfo.arguments.contains("-builderOpenTarget") { expanded = true }
+            #endif
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Target load for this grip"))
     }
@@ -89,8 +99,13 @@ struct TargetBandRow: View {
                         .font(.system(.subheadline, weight: .medium))
                         .foregroundStyle(Ink.primary)
                     // Which max the percentage is OF, said even when shut: 90 % of a 10 s
-                    // max and 90 % of a peak are different sessions.
-                    if let basis, band != nil, kgBand == nil {
+                    // max and 90 % of a peak are different sessions — and 80 % of critical
+                    // force is about half of 80 % of max.
+                    if band != nil, kgBand == nil, ofCriticalForce {
+                        Text("of your critical force")
+                            .font(.system(.caption))
+                            .foregroundStyle(Ink.secondary)
+                    } else if let basis, band != nil, kgBand == nil {
                         Text("of your \(basis) s max")
                             .font(.system(.caption))
                             .foregroundStyle(Ink.secondary)
@@ -147,15 +162,15 @@ struct TargetBandRow: View {
                 Chip(title: String(localized: "Custom"), isSelected: editingCustom) { beginCustom() }
             }
 
-            if editingCustom {
-                // WHICH UNIT, asked only here: how to express the load is not a preset
-                // value, and it only comes up once the presets do not fit.
-                Picker("Unit", selection: unitBinding) {
-                    Text("% of max").tag(Unit.percent)
-                    Text(weightUnit.name).tag(Unit.kilograms)
-                }
-                .pickerStyle(.segmented)
+            // WHICH UNIT: what the load is expressed in. Chips, because the choice is
+            // categorical (it was a two-way segmented picker inside Custom until critical
+            // force made it three). Shown whenever a target exists, so a preset can be made
+            // a percentage of critical force without opening Custom first.
+            if editingCustom || hasTarget {
+                unitChips
+            }
 
+            if editingCustom {
                 // ONE two-ended trimmer; a pair of steppers made "80 to 90" a dozen taps
                 // (Nuri, 2026-08-10). It snaps to the 5 % / 0.5 kg resolution targets
                 // round to.
@@ -167,14 +182,17 @@ struct TargetBandRow: View {
                     BandTrimmer(lo: trimLoBinding, hi: trimHiBinding,
                                 scale: SetPlan.percentRange, step: 0.05,
                                 format: { "\(Int(($0 * 100).rounded())) %" },
-                                spokenUnit: String(localized: "percent of max"))
+                                spokenUnit: unit == .criticalForce
+                                    ? String(localized: "percent of critical force")
+                                    : String(localized: "percent of max"))
                 }
                 exactBounds
             }
 
             // Only once this grip HAS a timed max (or the set already uses one): someone who
             // never measures one never meets the idea, and nobody can pick a max they lack.
-            if band != nil, kgBand == nil, !basisOptions.isEmpty {
+            // Timed maxes refine "% of max" only — a critical force has no length.
+            if band != nil, kgBand == nil, !ofCriticalForce, !basisOptions.isEmpty {
                 MaxBasisChips(selection: basis, options: basisOptions) { seconds in
                     self.set.targetMaxSeconds = seconds
                 }
@@ -192,9 +210,28 @@ struct TargetBandRow: View {
         }
     }
 
+    /// The three ways to express the load. Picking one CONVERTS nothing it cannot: a
+    /// percentage keeps its numbers when its basis changes (the kilograms on screen move,
+    /// which is the point), and kilograms seed from what is on screen.
+    private var unitChips: some View {
+        ChipGrid(base: 3) {
+            Chip(title: String(localized: "% of max"), isSelected: currentUnit == .percent) {
+                selectUnit(.percent)
+            }
+            Chip(title: String(localized: "% of critical force"), isSelected: currentUnit == .criticalForce) {
+                selectUnit(.criticalForce)
+            }
+            Chip(title: weightUnit.name, isSelected: currentUnit == .kilograms) {
+                selectUnit(.kilograms)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(String(localized: "Target load unit"))
+    }
+
     /// Typing keeps exact values; only dragging snaps to the trimmer's detents.
     private var exactBounds: some View {
-        let isPercent = unit == .percent
+        let isPercent = unit != .kilograms
         let bounds: ClosedRange<Double> = isPercent ? 1...100 : 0...weightUnit.fromKg(kgScaleTop)
         return VStack(spacing: 0) {
             ValueRow(title: String(localized: "Lower bound"), unit: isPercent ? "%" : weightUnit.symbol,
@@ -208,11 +245,11 @@ struct TargetBandRow: View {
 
     private func exactBound(lower: Bool) -> Binding<Double> {
         Binding {
-            let current = unit == .percent ? (band ?? 0.20...0.30) : (kgBand ?? Self.defaultKgBand)
+            let current = unit != .kilograms ? (band ?? 0.20...0.30) : (kgBand ?? Self.defaultKgBand)
             let amount = lower ? current.lowerBound : current.upperBound
-            return unit == .percent ? amount * 100 : weightUnit.fromKg(amount)
+            return unit != .kilograms ? amount * 100 : weightUnit.fromKg(amount)
         } set: { typed in
-            let percent = unit == .percent
+            let percent = unit != .kilograms
             let current = percent ? (band ?? 0.20...0.30) : (kgBand ?? Self.defaultKgBand)
             let value = percent ? typed / 100 : weightUnit.toKg(typed)
             // Crossing the other end moves it too, so labels never silently swap roles.
@@ -231,7 +268,27 @@ struct TargetBandRow: View {
     private var kgBand: ClosedRange<Double>? { self.set.targetBand }
     private var hasTarget: Bool { kgBand != nil || band != nil }
     /// Which max the percentage is of — nil is the peak. See `SetPlan.targetMaxSeconds`.
-    private var basis: Int? { self.set.targetMaxSeconds }
+    /// Never read for a percentage of critical force, which has no length.
+    private var basis: Int? { ofCriticalForce ? nil : self.set.targetMaxSeconds }
+
+    /// The percentage is of CRITICAL FORCE, not of a max. See `TargetBasis`.
+    private var ofCriticalForce: Bool { self.set.targetBasis == .criticalForce }
+
+    /// The unit the STORED band is in — the selection whenever a band exists.
+    private var storedUnit: Unit {
+        if kgBand != nil { return .kilograms }
+        return ofCriticalForce ? .criticalForce : .percent
+    }
+
+    /// What the unit chips light: the stored band's unit, else the one being chosen.
+    private var currentUnit: Unit { hasTarget ? storedUnit : unit }
+
+    /// The number this set's percentage resolves against for one hand — the max (peak or
+    /// timed) or the critical force. Neither ever stands in for the other.
+    private func reference(_ side: Side) -> Double? {
+        if ofCriticalForce { return criticalForces.criticalForce(grip: self.set.grip.key, side: side) }
+        return maxes.max(grip: self.set.grip.key, side: side, seconds: basis)
+    }
 
     /// Timed lengths worth a chip: what you have MEASURED on this grip, plus whatever is
     /// selected (so a saved choice never vanishes). Empty hides the row — see `MaxBasisChips`.
@@ -242,7 +299,9 @@ struct TargetBandRow: View {
     }
 
     private var spokenValue: String {
-        guard let basis, band != nil, kgBand == nil else { return valueText }
+        guard band != nil, kgBand == nil else { return valueText }
+        if ofCriticalForce { return String(localized: "\(valueText), of your critical force") }
+        guard let basis else { return valueText }
         return String(localized: "\(valueText), of your \(basis) second max")
     }
 
@@ -266,9 +325,7 @@ struct TargetBandRow: View {
     private func resolved(_ side: Side) -> ClosedRange<Double>? {
         // An explicit band needs no max and is the same for both hands.
         if let kgBand { return kgBand }
-        guard let band,
-              let maxKg = maxes.max(grip: self.set.grip.key, side: side, seconds: basis), maxKg > 0
-        else { return nil }
+        guard let band, let maxKg = reference(side), maxKg > 0 else { return nil }
         return PlanMath.roundedToHalfKg(maxKg * band.lowerBound)
              ... PlanMath.roundedToHalfKg(maxKg * band.upperBound)
     }
@@ -298,7 +355,11 @@ struct TargetBandRow: View {
 
         if resolvedSides.isEmpty {
             // Named: a percentage with no max resolves to no target at run time. A timed
-            // basis never falls back to the peak, so it says which max is missing.
+            // basis never falls back to the peak, so it says which max is missing — and a
+            // critical force basis never falls back to a max at all.
+            if ofCriticalForce {
+                return String(localized: "No critical force for this grip yet. Test it in Benchmarks.")
+            }
             if let basis {
                 return String(localized: "No \(basis) s max for this grip yet. Measure one in Benchmarks.")
             }
@@ -307,6 +368,9 @@ struct TargetBandRow: View {
         // One hand has a max and the other not (a left- or right-only max). Say
         // WHICH is unloaded, since the row shows a confident band for the other.
         if resolvedSides.count < sides.count, let missing = sides.first(where: { resolved($0) == nil }) {
+            if ofCriticalForce {
+                return String(localized: "No critical force for your \(missing.name.lowercased()) hand yet. Test it in Benchmarks.")
+            }
             if let basis {
                 return String(localized: "No \(basis) s max for your \(missing.name.lowercased()) hand yet. Measure one in Benchmarks.")
             }
@@ -316,6 +380,9 @@ struct TargetBandRow: View {
         let loads = sides.compactMap { side -> String? in
             guard let kg = resolved(side) else { return nil }
             return "\(side.prompt.prefix(1)) \(weightUnit.bandText(kg, withUnit: false))"
+        }
+        if ofCriticalForce {
+            return String(localized: "\(percentText(band)) of each hand's critical force · \(loads.joined(separator: " · ")) \(weightUnit.symbol)")
         }
         return String(localized: "\(percentText(band)) of each hand's max · \(loads.joined(separator: " · ")) \(weightUnit.symbol)")
     }
@@ -339,7 +406,7 @@ struct TargetBandRow: View {
     private func beginCustom() {
         showsCustomFields = true
         guard !hasTarget else {
-            unit = kgBand != nil ? .kilograms : .percent
+            unit = storedUnit
             return
         }
         // **Kilograms when a percentage could not work**: "20 % of your max" for an
@@ -348,15 +415,21 @@ struct TargetBandRow: View {
         if unit == .kilograms { applyKg(Self.defaultKgBand) } else { apply(0.20...0.30) }
     }
 
-    private var unitBinding: Binding<Unit> {
-        Binding { unit } set: { new in
-            guard new != unit else { return }
-            unit = new
-            switch new {
-            // Seed from what is on screen, so switching units reads as a conversion.
-            case .kilograms: applyKg(resolved(sides[0]) ?? Self.defaultKgBand)
-            case .percent:   apply(band ?? 0.20...0.30)
-            }
+    private func selectUnit(_ new: Unit) {
+        guard new != currentUnit else { return }
+        unit = new
+        switch new {
+        // Seed from what is on screen, so switching to kilograms reads as a conversion.
+        case .kilograms:
+            applyKg(resolved(sides[0]) ?? Self.defaultKgBand)
+        case .percent:
+            apply(band ?? 0.20...0.30)
+            self.set.targetBasis = .max
+        case .criticalForce:
+            apply(band ?? 0.20...0.30)
+            self.set.targetBasis = .criticalForce
+            // A critical force has no length: a timed basis left behind would be noise.
+            self.set.targetMaxSeconds = nil
         }
     }
 
@@ -396,7 +469,7 @@ struct TargetBandRow: View {
     /// strong pullers fit without making 10–15 kg a sliver.
     private var kgScaleTop: Double {
         let bandTop = kgBand?.upperBound ?? Self.defaultKgBand.upperBound
-        let maxTop = sides.compactMap { maxes.max(grip: self.set.grip.key, side: $0, seconds: basis) }.max() ?? 0
+        let maxTop = sides.compactMap { reference($0) }.max() ?? 0
         return (Swift.max(40, bandTop * 1.3, maxTop * 1.2) / 5).rounded(.up) * 5
     }
 
@@ -412,6 +485,7 @@ struct TargetBandRow: View {
         set.targetLoPercent = nil
         set.targetHiPercent = nil
         set.targetMaxSeconds = nil
+        set.targetBasisRaw = nil
     }
 
     private func apply(_ range: ClosedRange<Double>) {
@@ -427,6 +501,7 @@ struct TargetBandRow: View {
         set.targetLoPercent = nil
         set.targetHiPercent = nil
         set.targetMaxSeconds = nil
+        set.targetBasisRaw = nil
         set.targetLoKg = nil
         set.targetHiKg = nil
         showsCustomFields = false

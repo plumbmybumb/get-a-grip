@@ -13,11 +13,15 @@ enum BuilderDraftPreparation {
             result.targetLoPercent = band.lowerBound
             result.targetHiPercent = band.upperBound
             result.targetMaxSeconds = draft.plan.targetMaxSeconds
+            // The basis travels with the band, or "80 % of critical force" would land on
+            // the set as 80 % of max.
+            result.targetBasisRaw = draft.plan.targetBasisRaw
             return result
         }
         result.plan.targetLoPercent = nil
         result.plan.targetHiPercent = nil
         result.plan.targetMaxSeconds = nil
+        result.plan.targetBasisRaw = nil
         return result
     }
 }
@@ -29,20 +33,25 @@ extension BuilderDraftPreparation {
     /// `RoutineDraft.normalized` demotes it again on Save.
     static func promotingUniformBand(_ draft: RoutineDraft) -> RoutineDraft {
         let sets = draft.plan.sets
-        // The basis is part of the band: two sets at 90 % of different maxes do not share one.
+        // The basis is part of the band: two sets at 90 % of different maxes do not share
+        // one, and neither do 80 % of max and 80 % of critical force. Compared as the
+        // RESOLVED basis, so a never-chosen raw (nil) and an explicit "max" agree.
         guard draft.plan.targetPercentBand == nil,
               let first = sets.first, let band = first.targetPercentBand,
               sets.allSatisfy({ !$0.hasTarget && $0.targetPercentBand == band
-                                && $0.targetMaxSeconds == first.targetMaxSeconds }) else { return draft }
+                                && $0.targetMaxSeconds == first.targetMaxSeconds
+                                && $0.targetBasis == first.targetBasis }) else { return draft }
         var result = draft
         result.plan.targetLoPercent = band.lowerBound
         result.plan.targetHiPercent = band.upperBound
         result.plan.targetMaxSeconds = first.targetMaxSeconds
+        result.plan.targetBasisRaw = first.targetBasisRaw
         result.plan.sets = sets.map { set in
             var s = set
             s.targetLoPercent = nil
             s.targetHiPercent = nil
             s.targetMaxSeconds = nil
+            s.targetBasisRaw = nil
             return s
         }
         return result

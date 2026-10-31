@@ -1,0 +1,195 @@
+{
+  "description" : "(c) Every rep of plan.json resolved against tables.json: PlanMath.sequence(for:maxes:criticalForces:). basis is PlanMath.targetBasis of the rep's set (\"max\" for kg bands, untargeted sets and unknown raws). targetLo\/targetHi are kilograms rounded to 0.5 (round half away from zero) or null for no target. untargetedGripCount, missing (PlanMath.missingReferences) and peakIntensity (PlanMath.peakIntensity, a fraction of the PEAK max, null when nothing contributes) are the builder's and Today's folds over the same inputs.",
+  "missing" : [
+    {
+      "basis" : "criticalForce",
+      "grip" : "20|IMRL|halfCrimp",
+      "maxSeconds" : null,
+      "side" : "left"
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "15|IM|openHand",
+      "maxSeconds" : null,
+      "side" : "left"
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "15|IM|openHand",
+      "maxSeconds" : null,
+      "side" : "right"
+    },
+    {
+      "basis" : "max",
+      "grip" : "20|IMRL|halfCrimp",
+      "maxSeconds" : 10,
+      "side" : "right"
+    }
+  ],
+  "peakIntensity" : 0.7560000000000001,
+  "slots" : [
+    {
+      "basis" : "criticalForce",
+      "grip" : "20|IMR|halfCrimp",
+      "repIndex" : 0,
+      "setIndex" : 0,
+      "side" : "left",
+      "targetHi" : 12,
+      "targetLo" : 10.5
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "20|IMR|halfCrimp",
+      "repIndex" : 1,
+      "setIndex" : 0,
+      "side" : "right",
+      "targetHi" : 13,
+      "targetLo" : 11
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "20|IMR|halfCrimp",
+      "repIndex" : 2,
+      "setIndex" : 0,
+      "side" : "left",
+      "targetHi" : 12,
+      "targetLo" : 10.5
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "20|IMR|halfCrimp",
+      "repIndex" : 3,
+      "setIndex" : 0,
+      "side" : "right",
+      "targetHi" : 13,
+      "targetLo" : 11
+    },
+    {
+      "basis" : "max",
+      "grip" : "20|IMR|halfCrimp",
+      "repIndex" : 0,
+      "setIndex" : 1,
+      "side" : "left",
+      "targetHi" : 12,
+      "targetLo" : 8
+    },
+    {
+      "basis" : "max",
+      "grip" : "20|IMR|halfCrimp",
+      "repIndex" : 1,
+      "setIndex" : 1,
+      "side" : "right",
+      "targetHi" : 12,
+      "targetLo" : 8
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 0,
+      "setIndex" : 2,
+      "side" : "left",
+      "targetHi" : null,
+      "targetLo" : null
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 1,
+      "setIndex" : 2,
+      "side" : "right",
+      "targetHi" : 19,
+      "targetLo" : 17
+    },
+    {
+      "basis" : "max",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 0,
+      "setIndex" : 3,
+      "side" : "left",
+      "targetHi" : 25,
+      "targetLo" : 25
+    },
+    {
+      "basis" : "max",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 1,
+      "setIndex" : 3,
+      "side" : "right",
+      "targetHi" : 22.5,
+      "targetLo" : 22.5
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 0,
+      "setIndex" : 4,
+      "side" : "left",
+      "targetHi" : 10,
+      "targetLo" : 8
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 1,
+      "setIndex" : 4,
+      "side" : "right",
+      "targetHi" : 10,
+      "targetLo" : 8
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "15|IM|openHand",
+      "repIndex" : 0,
+      "setIndex" : 5,
+      "side" : "left",
+      "targetHi" : null,
+      "targetLo" : null
+    },
+    {
+      "basis" : "criticalForce",
+      "grip" : "15|IM|openHand",
+      "repIndex" : 1,
+      "setIndex" : 5,
+      "side" : "right",
+      "targetHi" : null,
+      "targetLo" : null
+    },
+    {
+      "basis" : "max",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 0,
+      "setIndex" : 6,
+      "side" : "left",
+      "targetHi" : 30,
+      "targetLo" : 30
+    },
+    {
+      "basis" : "max",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 1,
+      "setIndex" : 6,
+      "side" : "right",
+      "targetHi" : 27,
+      "targetLo" : 27
+    },
+    {
+      "basis" : "max",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 0,
+      "setIndex" : 7,
+      "side" : "left",
+      "targetHi" : 38,
+      "targetLo" : 38
+    },
+    {
+      "basis" : "max",
+      "grip" : "20|IMRL|halfCrimp",
+      "repIndex" : 1,
+      "setIndex" : 7,
+      "side" : "right",
+      "targetHi" : null,
+      "targetLo" : null
+    }
+  ],
+  "untargetedGripCount" : 2
+}

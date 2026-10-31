@@ -34,7 +34,27 @@
 
 "Choose target load based on Critical Force as well as MVC" — for the aerobic-capacity
 protocols at strengthclimbing.com/protocols/force-measured-protocols/ (submaximal work
-prescribed as a fraction of CF). Nobody ships this yet. Not started; the sketch:
+prescribed as a fraction of CF). Nobody ships this yet.
+
+**iOS BUILT (31 Oct 2026, branch `worktree-agent-adce1b827ffa34a08`, not merged); Android
+NOT started** — it ports from `docs/TARGET_BASIS.md` and `Fixtures/target-basis/`. What
+shipped on iOS, and what the release owes:
+- **CloudKit schema deploy OWED before any TestFlight/App Store build**: one new optional
+  String column, `SessionTemplate.targetBasisRaw` (CD_targetBasisRaw). Review the Deploy
+  Schema Changes diff as usual. The set-level basis rides inside `setsData` (no schema
+  change). In today's flow the column is written nil (the routine band is demoted onto the
+  sets on save), so it could be dropped before release to skip the deploy — Nuri's call.
+- **The watch schema now includes `CriticalForceRecord`** so a CF routine resolves on the
+  wrist; an additive entity in the same container the phone already syncs.
+- **CSV v5**: `target_basis`, `cf_at_start_kg`, `cf_reference` appended; the Markdown rep
+  table gained `% CF`. Every export fixture was regenerated deliberately for that (no rows
+  changed meaning); Kotlin must emit the same columns before Android's export fixtures
+  pass again. Same for `share/` (one new `criticalForceBasis` round-trip case).
+- **Older builds read a CF routine as % of MAX** (they ignore the unknown key), which on
+  a synced older phone or watch prescribes roughly twice the load. Ship both platforms in
+  one release and say so in What's New.
+
+The original sketch:
 - **Model:** a target BASIS beside the existing precedence (kg → set % → routine %): `.max`
   (today) or `.criticalForce`. One field on the routine's percentage and on a set's own
   percentage; defaults to `.max`, additive column on iOS (**CloudKit schema deploy owed**)

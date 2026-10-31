@@ -1,0 +1,845 @@
+{
+  "codable" : [
+    {
+      "canonical" : "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetHiPercent\":0.3,\"targetLoPercent\":0.2}",
+      "input" : "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetLoPercent\":0.2,\"targetHiPercent\":0.3}",
+      "name" : "setAbsentKeyIsMax",
+      "targetBasis" : "max",
+      "type" : "SetPlan"
+    },
+    {
+      "canonical" : "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetBasis\":\"criticalForce\",\"targetLoPercent\":0.7}",
+      "input" : "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetLoPercent\":0.7,\"targetBasis\":\"criticalForce\"}",
+      "name" : "setCriticalForce",
+      "targetBasis" : "criticalForce",
+      "type" : "SetPlan"
+    },
+    {
+      "canonical" : "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetBasis\":\"max\",\"targetLoPercent\":0.7}",
+      "input" : "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetLoPercent\":0.7,\"targetBasis\":\"max\"}",
+      "name" : "setExplicitMaxIsKept",
+      "targetBasis" : "max",
+      "type" : "SetPlan"
+    },
+    {
+      "canonical" : "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetBasis\":\"wPrime\",\"targetLoPercent\":0.7}",
+      "input" : "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetLoPercent\":0.7,\"targetBasis\":\"wPrime\"}",
+      "name" : "setUnknownRawSurvivesAndReadsMax",
+      "targetBasis" : "max",
+      "type" : "SetPlan"
+    },
+    {
+      "canonical" : "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2}",
+      "input" : "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetBasis\":\"\"}",
+      "name" : "setEmptyRawIsAbsent",
+      "targetBasis" : "max",
+      "type" : "SetPlan"
+    },
+    {
+      "canonical" : "{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2}",
+      "input" : "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2,\"targetBasis\":3}",
+      "name" : "setNonStringRawIsAbsent",
+      "targetBasis" : "max",
+      "type" : "SetPlan"
+    },
+    {
+      "canonical" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Old\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"startingHand\":\"left\",\"targetHiPercent\":0.3,\"targetLoPercent\":0.2,\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "input" : "{\"name\":\"Old\",\"targetLoPercent\":0.2,\"targetHiPercent\":0.3}",
+      "name" : "planAbsentKeyIsMax",
+      "targetBasis" : "max",
+      "type" : "SessionPlan"
+    },
+    {
+      "canonical" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"New\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[],\"startingHand\":\"left\",\"targetBasis\":\"criticalForce\",\"targetHiPercent\":0.8,\"targetLoPercent\":0.7,\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "input" : "{\"name\":\"New\",\"targetLoPercent\":0.7,\"targetHiPercent\":0.8,\"targetBasis\":\"criticalForce\"}",
+      "name" : "planCriticalForce",
+      "targetBasis" : "criticalForce",
+      "type" : "SessionPlan"
+    }
+  ],
+  "description" : "fold: CriticalForceTable.folding over raw tests (standard protocol 7:3x24 only; invalid kg skipped BEFORE choosing the newest; asOf inclusive; a recordedAt tie goes to the later entry) and the lookups with hand fallback (criticalForce) and without (exact). codable: lenient decode of input, canonical re-encode, and what targetBasis reads as. resolution: more plans in the plan.json\/tables.json\/expected.json shape.",
+  "fold" : [
+    {
+      "asOf" : null,
+      "entries" : [
+        {
+          "criticalForceKg" : 14,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:40Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 16,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:28:20Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 0,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:30:00Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 30,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "5:5x20",
+          "recordedAt" : "2026-05-28T20:31:40Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 17,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:27:30Z",
+          "side" : "both"
+        },
+        {
+          "criticalForceKg" : 19,
+          "grip" : "20|IMRL|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:50Z",
+          "side" : "right"
+        },
+        {
+          "criticalForceKg" : 18,
+          "grip" : "20|IMRL|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:50Z",
+          "side" : "right"
+        }
+      ],
+      "lookups" : [
+        {
+          "criticalForce" : 16,
+          "exact" : 16,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "left"
+        },
+        {
+          "criticalForce" : 17,
+          "exact" : null,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "right"
+        },
+        {
+          "criticalForce" : 17,
+          "exact" : 17,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "both"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "left"
+        },
+        {
+          "criticalForce" : 18,
+          "exact" : 18,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "right"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "both"
+        }
+      ],
+      "name" : "newestValidStandardPerGripAndHand"
+    },
+    {
+      "asOf" : "2026-05-28T20:28:19Z",
+      "entries" : [
+        {
+          "criticalForceKg" : 14,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:40Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 16,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:28:20Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 0,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:30:00Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 30,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "5:5x20",
+          "recordedAt" : "2026-05-28T20:31:40Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 17,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:27:30Z",
+          "side" : "both"
+        },
+        {
+          "criticalForceKg" : 19,
+          "grip" : "20|IMRL|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:50Z",
+          "side" : "right"
+        },
+        {
+          "criticalForceKg" : 18,
+          "grip" : "20|IMRL|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:50Z",
+          "side" : "right"
+        }
+      ],
+      "lookups" : [
+        {
+          "criticalForce" : 14,
+          "exact" : 14,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "left"
+        },
+        {
+          "criticalForce" : 17,
+          "exact" : null,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "right"
+        },
+        {
+          "criticalForce" : 17,
+          "exact" : 17,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "both"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "left"
+        },
+        {
+          "criticalForce" : 18,
+          "exact" : 18,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "right"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "both"
+        }
+      ],
+      "name" : "asOfBeforeTheNewest"
+    },
+    {
+      "asOf" : "2026-05-28T20:28:20Z",
+      "entries" : [
+        {
+          "criticalForceKg" : 14,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:40Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 16,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:28:20Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 0,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:30:00Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 30,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "5:5x20",
+          "recordedAt" : "2026-05-28T20:31:40Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 17,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:27:30Z",
+          "side" : "both"
+        },
+        {
+          "criticalForceKg" : 19,
+          "grip" : "20|IMRL|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:50Z",
+          "side" : "right"
+        },
+        {
+          "criticalForceKg" : 18,
+          "grip" : "20|IMRL|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:50Z",
+          "side" : "right"
+        }
+      ],
+      "lookups" : [
+        {
+          "criticalForce" : 16,
+          "exact" : 16,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "left"
+        },
+        {
+          "criticalForce" : 17,
+          "exact" : null,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "right"
+        },
+        {
+          "criticalForce" : 17,
+          "exact" : 17,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "both"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "left"
+        },
+        {
+          "criticalForce" : 18,
+          "exact" : 18,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "right"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "both"
+        }
+      ],
+      "name" : "asOfIsInclusive"
+    },
+    {
+      "asOf" : "2026-05-28T20:26:39Z",
+      "entries" : [
+        {
+          "criticalForceKg" : 14,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:40Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 16,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:28:20Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 0,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:30:00Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 30,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "5:5x20",
+          "recordedAt" : "2026-05-28T20:31:40Z",
+          "side" : "left"
+        },
+        {
+          "criticalForceKg" : 17,
+          "grip" : "20|IMR|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:27:30Z",
+          "side" : "both"
+        },
+        {
+          "criticalForceKg" : 19,
+          "grip" : "20|IMRL|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:50Z",
+          "side" : "right"
+        },
+        {
+          "criticalForceKg" : 18,
+          "grip" : "20|IMRL|halfCrimp",
+          "protocolKey" : "7:3x24",
+          "recordedAt" : "2026-05-28T20:26:50Z",
+          "side" : "right"
+        }
+      ],
+      "lookups" : [
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "left"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "right"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMR|halfCrimp",
+          "side" : "both"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "left"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "right"
+        },
+        {
+          "criticalForce" : null,
+          "exact" : null,
+          "grip" : "20|IMRL|halfCrimp",
+          "side" : "both"
+        }
+      ],
+      "name" : "asOfBeforeEverything"
+    }
+  ],
+  "resolution" : [
+    {
+      "criticalForces" : [
+        {
+          "grip" : "20|IMR|halfCrimp",
+          "kg" : 15,
+          "side" : "left"
+        },
+        {
+          "grip" : "20|IMR|halfCrimp",
+          "kg" : 17,
+          "side" : "right"
+        }
+      ],
+      "maxes" : [
+
+      ],
+      "missing" : [
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "both"
+        }
+      ],
+      "name" : "bothHandsNeedABothHandsCF",
+      "peakIntensity" : null,
+      "plan" : "{\"handMode\":\"bothHands\",\"holdSeconds\":10,\"leadInSeconds\":0,\"name\":\"Both hands\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000011\",\"repsPerSide\":2,\"targetBasis\":\"criticalForce\",\"targetHiPercent\":0.8,\"targetLoPercent\":0.6}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "slots" : [
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetHi" : null,
+          "targetLo" : null
+        }
+      ],
+      "untargetedGripCount" : 1
+    },
+    {
+      "criticalForces" : [
+        {
+          "grip" : "20|IMR|halfCrimp",
+          "kg" : 16,
+          "side" : "both"
+        }
+      ],
+      "maxes" : [
+        {
+          "grip" : "20|IMR|halfCrimp",
+          "kg" : 40,
+          "side" : "both"
+        }
+      ],
+      "missing" : [
+
+      ],
+      "name" : "bothHandsWithABothHandsCF",
+      "peakIntensity" : 0.32,
+      "plan" : "{\"handMode\":\"bothHands\",\"holdSeconds\":10,\"leadInSeconds\":0,\"name\":\"Both hands\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000011\",\"repsPerSide\":2,\"targetBasis\":\"criticalForce\",\"targetHiPercent\":0.8,\"targetLoPercent\":0.6}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "slots" : [
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetHi" : 13,
+          "targetLo" : 9.5
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "both",
+          "targetHi" : 13,
+          "targetLo" : 9.5
+        }
+      ],
+      "untargetedGripCount" : 0
+    },
+    {
+      "criticalForces" : [
+        {
+          "grip" : "20|IMR|halfCrimp",
+          "kg" : 15,
+          "side" : "left"
+        }
+      ],
+      "maxes" : [
+        {
+          "grip" : "20|IMR|halfCrimp",
+          "kg" : 40,
+          "side" : "both"
+        }
+      ],
+      "missing" : [
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "right"
+        }
+      ],
+      "name" : "oneHandedCFNeverLeaks",
+      "peakIntensity" : 0.3,
+      "plan" : "{\"handMode\":\"alternateEachSet\",\"holdSeconds\":10,\"leadInSeconds\":0,\"name\":\"One hand at a time\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000011\",\"repsPerSide\":2,\"targetBasis\":\"criticalForce\",\"targetHiPercent\":0.8,\"targetLoPercent\":0.6}],\"startingHand\":\"right\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "slots" : [
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetHi" : 12,
+          "targetLo" : 9
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 3,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetHi" : 12,
+          "targetLo" : 9
+        }
+      ],
+      "untargetedGripCount" : 1
+    },
+    {
+      "criticalForces" : [
+
+      ],
+      "maxes" : [
+
+      ],
+      "missing" : [
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "left"
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "right"
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMR|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "left"
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMR|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "right"
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMRL|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "left"
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMRL|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "right"
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "left"
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "maxSeconds" : null,
+          "side" : "right"
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "15|IM|openHand",
+          "maxSeconds" : null,
+          "side" : "left"
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "15|IM|openHand",
+          "maxSeconds" : null,
+          "side" : "right"
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "maxSeconds" : 10,
+          "side" : "left"
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "maxSeconds" : 10,
+          "side" : "right"
+        }
+      ],
+      "name" : "nothingOnFile",
+      "peakIntensity" : 0.6,
+      "plan" : "{\"handMode\":\"alternateEachRep\",\"holdSeconds\":7,\"leadInSeconds\":0,\"name\":\"Target basis\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":3,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000002\",\"repsPerSide\":1,\"targetBasis\":\"max\",\"targetHiPercent\":0.3,\"targetLoPercent\":0.2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000003\",\"repsPerSide\":1,\"targetBasis\":\"criticalForce\",\"targetHiPercent\":1,\"targetLoPercent\":0.9},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000004\",\"repsPerSide\":1,\"targetLoPercent\":0.5},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000005\",\"repsPerSide\":1,\"targetBasis\":\"criticalForce\",\"targetHiKg\":10,\"targetLoKg\":8},{\"grip\":{\"edgeMM\":15,\"fingers\":\"IM\",\"position\":\"openHand\"},\"id\":\"00000000-0000-0000-0000-000000000006\",\"repsPerSide\":1},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000007\",\"repsPerSide\":1,\"targetBasis\":\"wPrime\",\"targetHiPercent\":0.6,\"targetLoPercent\":0.6},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000008\",\"repsPerSide\":1,\"targetBasis\":\"max\",\"targetHiPercent\":0.9,\"targetLoPercent\":0.9,\"targetMaxSeconds\":10}],\"startingHand\":\"left\",\"targetBasis\":\"criticalForce\",\"targetHiPercent\":0.8,\"targetLoPercent\":0.7,\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "slots" : [
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 2,
+          "setIndex" : 0,
+          "side" : "left",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 3,
+          "setIndex" : 0,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 1,
+          "side" : "left",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMR|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 1,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 2,
+          "side" : "left",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 2,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 3,
+          "side" : "left",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 3,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 4,
+          "side" : "left",
+          "targetHi" : 10,
+          "targetLo" : 8
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 4,
+          "side" : "right",
+          "targetHi" : 10,
+          "targetLo" : 8
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "15|IM|openHand",
+          "repIndex" : 0,
+          "setIndex" : 5,
+          "side" : "left",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "criticalForce",
+          "grip" : "15|IM|openHand",
+          "repIndex" : 1,
+          "setIndex" : 5,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 6,
+          "side" : "left",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 6,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 0,
+          "setIndex" : 7,
+          "side" : "left",
+          "targetHi" : null,
+          "targetLo" : null
+        },
+        {
+          "basis" : "max",
+          "grip" : "20|IMRL|halfCrimp",
+          "repIndex" : 1,
+          "setIndex" : 7,
+          "side" : "right",
+          "targetHi" : null,
+          "targetLo" : null
+        }
+      ],
+      "untargetedGripCount" : 3
+    }
+  ]
+}

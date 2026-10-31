@@ -47,6 +47,13 @@ final class SessionTemplate {
     /// sentinel like 0 would be indistinguishable from a deliberate zero.
     var targetLoPercent: Double? = nil
     var targetHiPercent: Double? = nil
+    /// What the routine-level percentage above is OF — a raw `TargetBasis`, nil for "max"
+    /// (every row before 2026-10-31). Raw for the same reason `handModeRaw` is. Additive,
+    /// optional, no backfill. In practice `RoutineDraft.normalized` demotes a routine band
+    /// onto the sets before every save, so this is written nil today; it exists so the band
+    /// and its basis are never stored apart. **CloudKit: deploy the schema** before a
+    /// TestFlight or App Store build writes it.
+    var targetBasisRaw: String? = nil
     /// `[SetPlan]` JSON.
     var setsData: Data = Data()
     var sessionsPerDay: Int = 2
@@ -134,7 +141,8 @@ extension SessionTemplate {
                     pausesOutsideTargetBand: pausesOutsideTargetBand,
                     pausesAboveTargetBand: pausesAboveTargetBand,
                     targetLoPercent: targetLoPercent,
-                    targetHiPercent: targetHiPercent)
+                    targetHiPercent: targetHiPercent,
+                    targetBasisRaw: targetBasisRaw)
     }
 
     /// The editor's working copy. The wizard IS the editor, so this is the same type
@@ -169,6 +177,7 @@ extension SessionTemplate {
         pausesAboveTargetBand = source.pausesAboveTargetBand
         targetLoPercent = source.targetLoPercent
         targetHiPercent = source.targetHiPercent
+        targetBasisRaw = source.targetBasisRaw
         sets = source.sets
         sessionsPerDay = clean.sessionsPerDay
         reminders = clean.reminders

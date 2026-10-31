@@ -564,6 +564,57 @@ private func scenarios() -> [(name: String, input: AnalysisExport.Input)] {
                                         recordedAt: at(exportToday - 5, hour: 8), source: .measured,
                                         seconds: 10)])))
 
+    // LAST again (the id counter). Set 1 is 70–80 % of CRITICAL FORCE, set 2 is 20–30 %
+    // of max on the same grip. The left hand's CF was tested before the session; the
+    // right hand's only AFTER it, so at the session's start it had none: % CF and the CF
+    // columns are blank there, never filled from the later test or from the max. A
+    // second-protocol test (5:5x20) before the session never resolves anything.
+    let basisGrip = grip(20, .frontThree, .halfCrimp)
+    var basisPlan = SessionPlan()
+    basisPlan.name = "Aerobic CF"
+    basisPlan.handMode = .alternateEachRep
+    // Stable set ids: `SetPlan(grip:repsPerSide:)` mints a random one, and the plan is
+    // part of the scenario JSON.
+    var cfSet = SetPlan(grip: basisGrip, repsPerSide: 1)
+    cfSet.id = stableID(921)
+    cfSet.targetLoPercent = 0.7
+    cfSet.targetHiPercent = 0.8
+    cfSet.targetBasis = .criticalForce
+    var maxSet = SetPlan(grip: basisGrip, repsPerSide: 1)
+    maxSet.id = stableID(922)
+    maxSet.targetLoPercent = 0.2
+    maxSet.targetHiPercent = 0.3
+    basisPlan.sets = [cfSet, maxSet]
+    var cfLeft = rep(0, side: .left, grip: basisGrip, peak: 12.4, targetLo: 10.5, targetHi: 12)
+    cfLeft.setIndex = 0
+    var cfRight = rep(1, side: .right, grip: basisGrip, peak: 11)
+    cfRight.setIndex = 0
+    var maxLeft = rep(0, side: .left, grip: basisGrip, peak: 9.5, targetLo: 7, targetHi: 10.5)
+    maxLeft.setIndex = 1
+    var maxRight = rep(1, side: .right, grip: basisGrip, peak: 9, targetLo: 7, targetHi: 10.5)
+    maxRight.setIndex = 1
+    var basisSession = session(exportToday - 1, name: "Aerobic CF",
+                               reps: [cfLeft, cfRight, maxLeft, maxRight])
+    basisSession.plan = basisPlan
+    func basisTest(_ n: Int, side: Side, kg: Double, day: DayStamp, hour: Int,
+                   proto: String = "7:3x24") -> AnalysisExport.CriticalForceEntry {
+        AnalysisExport.CriticalForceEntry(
+            id: stableID(n), grip: basisGrip, side: side, day: day,
+            recordedAt: at(day, hour: hour), protocolKey: proto,
+            criticalForceKg: kg, wPrimeKgS: 700, peakKg: kg * 2.2, endForceKg: kg * 0.9,
+            repsRun: 24, restsKept: 23, restsTotal: 23, bodyMassKg: nil, maxAtTestKg: 35,
+            reps: [])
+    }
+    out.append(("critical-force-target-basis", AnalysisExport.Input(
+        sessions: [basisSession],
+        maxes: [maxEntry(35, grip: basisGrip, side: .both, on: exportToday - 30)],
+        criticalForceTests: [
+            basisTest(911, side: .left, kg: 15, day: exportToday - 20, hour: 18),
+            basisTest(912, side: .right, kg: 30, day: exportToday - 10, hour: 18, proto: "5:5x20"),
+            basisTest(913, side: .right, kg: 14, day: exportToday, hour: 18),
+        ],
+        today: exportToday, generatedOn: exportToday, sessionsPerDayTarget: 2)))
+
     return out.map { (name: $0.0, input: $0.1) }
 }
 

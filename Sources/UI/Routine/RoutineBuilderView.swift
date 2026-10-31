@@ -69,6 +69,18 @@ struct RoutineBuilderView: View {
                     draft.plan.sets[n - 1].holdSeconds = 7
                     draft.plan.sets[n - 1].restSeconds = 15
                 }
+                // `-builderTargetBasis routine`: the routine band is of critical force.
+                // `-builderTargetBasis set`: set 1 carries its own 70–80 % of critical force.
+                switch BuilderDebug.string("-builderTargetBasis") {
+                case "routine"?:
+                    draft.plan.targetBasis = .criticalForce
+                case "set"? where !draft.plan.sets.isEmpty:
+                    draft.plan.sets[0].targetLoPercent = 0.70
+                    draft.plan.sets[0].targetHiPercent = 0.80
+                    draft.plan.sets[0].targetBasis = .criticalForce
+                default:
+                    break
+                }
                 return draft
             }
             #endif
@@ -660,16 +672,21 @@ extension BuilderDocument {
                     setsVary: draft.plan.sets.contains { $0.hasTarget || $0.hasPercentTarget },
                     basis: draft.plan.targetMaxSeconds,
                     basisOptions: routineBasisOptions,
+                    targetBasis: draft.plan.targetBasis,
                     onChange: { band in
                         access.mutate { draft in
                             draft.plan.targetLoPercent = band?.lowerBound
                             draft.plan.targetHiPercent = band?.upperBound
-                            if band == nil { draft.plan.targetMaxSeconds = nil }
+                            if band == nil {
+                                draft.plan.targetMaxSeconds = nil
+                                draft.plan.targetBasisRaw = nil
+                            }
                             // One band for every set: their own targets give way.
                             for i in draft.plan.sets.indices {
                                 draft.plan.sets[i].targetLoPercent = nil
                                 draft.plan.sets[i].targetHiPercent = nil
                                 draft.plan.sets[i].targetMaxSeconds = nil
+                                draft.plan.sets[i].targetBasisRaw = nil
                                 draft.plan.sets[i].targetLoKg = nil
                                 draft.plan.sets[i].targetHiKg = nil
                             }
@@ -677,10 +694,19 @@ extension BuilderDocument {
                     },
                     onBasisChange: { seconds in
                         access.mutate { $0.plan.targetMaxSeconds = seconds }
+                    },
+                    onTargetBasisChange: { basis in
+                        access.mutate { draft in
+                            draft.plan.targetBasis = basis
+                            // A critical force has no length.
+                            if basis == .criticalForce { draft.plan.targetMaxSeconds = nil }
+                        }
                     })
                     .equatable()
             }
-            if draft.plan.targetPercentBand != nil,
+            if draft.plan.targetPercentBand != nil, draft.plan.targetBasis == .criticalForce {
+                missingCriticalForceNote
+            } else if draft.plan.targetPercentBand != nil,
                PlanMath.missingBenchmarkGripCount(draft.plan, maxes: templates.maxTable) > 0 {
                 Label(draft.plan.targetMaxSeconds.map {
                           String(localized: "Some grips have no \($0) s max yet, so their sets have no target.")
@@ -691,6 +717,37 @@ extension BuilderDocument {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    /// Under a routine band of critical force: WHICH grips and hands have no test, by name
+    /// ("No critical force for 20 mm · 3 fingers · Half crimp · left"). Named rather than
+    /// counted because the fix is a test per grip and hand, and a count does not say which.
+    /// Two lines at most, then how many more: page 1 has to stay close to one screen.
+    @ViewBuilder
+    private var missingCriticalForceNote: some View {
+        let missing = PlanMath.missingReferences(draft.plan, maxes: templates.maxTable,
+                                                 criticalForces: templates.currentCriticalForces)
+            .filter { $0.basis == .criticalForce }
+        if !missing.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(missing.prefix(2).enumerated()), id: \.offset) { _, item in
+                    Label(Self.missingCriticalForceText(item), systemImage: "exclamationmark.circle")
+                }
+                if missing.count > 2 {
+                    Text("and \(missing.count - 2) more without a critical force test.")
+                }
+                Text("Their sets have no target until you test them in Benchmarks.")
+            }
+            .font(.system(.footnote, weight: .medium))
+            .foregroundStyle(StatusTint.armed)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    static func missingCriticalForceText(_ item: PlanMath.MissingReference) -> String {
+        item.side == .both
+            ? String(localized: "No critical force for \(item.grip.displayName)")
+            : String(localized: "No critical force for \(item.grip.displayName) · \(item.side.name.lowercased())")
     }
 
     // MARK: Page 2 — Sets
@@ -721,6 +778,7 @@ extension BuilderDocument {
                    canMoveUp: index > 0,
                    canMoveDown: index < last,
                    maxes: templates.maxTable,
+                   criticalForces: templates.currentCriticalForces,
                    percentBandsVary: percentBandsVary,
                    live: setAccess(for: set),
                    onTap: { toggle(set.id) },
