@@ -43,7 +43,7 @@ extension View {
 
 /// A runner dock title that keeps to ONE line: **the icon steps aside first** when the
 /// cell is too narrow for both, and only then may the title wrap — which is what tells
-/// `AdaptiveActionRow(oneLinePerCell:)` to drop a column. In the far view's half-width
+/// `AdaptiveActionRow(oneLinePerCell:)` to drop a column. In the former far view's half-width
 /// cells "Connect" beside its glyph hyphenated to "Con- / nect" at the default size
 /// (Nuri's Duo, 2026-10-31). Every one of these titles already says what the glyph
 /// pictures, so the words are what stays.

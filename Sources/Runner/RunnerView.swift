@@ -36,14 +36,16 @@ struct RunnerView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     /// Size CLASS, never the idiom — see `live(_:)`.
     @Environment(\.horizontalSizeClass) private var sizeClass
-    /// Compact HEIGHT is a phone on its side — the far view (`farContent`).
+    /// Compact HEIGHT is a phone on its side — the island is then beside the content.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     /// This runner's claim on landscape — see `RunnerOrientation`.
     @State private var orientationToken = UUID()
 
     /// The wide layout's glass column — the panel and the dock in the two left
     /// corners at the phone's measured width (`Metrics.maxContentWidth`, the same token
-    /// `liveContent` caps the stacked column with), the graph filling the rest.
+    /// `liveContent` caps the stacked column with), the graph filling the rest. Never
+    /// more than 60 % of the safe width, so a phone on its side keeps the curve's
+    /// newest seconds in the clear — see `WideColumn`.
     private static let wideColumnWidth: CGFloat = Metrics.maxContentWidth
     /// How much larger the identity block draws in the wide layout — the numbers,
     /// the hand word and the grip picture, read from a bench. 1.4 is what that
@@ -56,9 +58,17 @@ struct RunnerView: View {
     /// that). Answered once because both the overlay and the layout depend on it.
     @State private var hasIsland = false
     /// The hand hangs off the island only while the island is at the TOP of the screen:
-    /// on its side (compact height) the cutout is beside the content, and the far view
-    /// draws its own glyph instead.
+    /// on its side (compact height) the cutout is beside the content, and the panel
+    /// draws the grip's own glyph instead.
     private var islandHandShown: Bool { hasIsland && verticalSizeClass != .compact }
+    /// The panel on a phone on its side (compact height, below the accessibility sizes,
+    /// which keep the scrolling stack): the grip glyph beside its name and the identity
+    /// block a little tighter, so panel and dock FIT the ~420 pt height without scrolling.
+    private var sidewaysPanel: Bool {
+        verticalSizeClass == .compact && !typeSize.isAccessibilitySize
+    }
+    private static let sidewaysGlyphScale: CGFloat = 0.7
+    private static let sidewaysIdentitySpacing: CGFloat = 8
     @State private var gripEmphasis = false
     @State private var gripBorderOpacity = 0.0
     @State private var emphasizedGripID: String?
@@ -81,9 +91,6 @@ struct RunnerView: View {
     @ScaledMetric(relativeTo: .subheadline) private var nameSize: CGFloat = 15
     /// The ambient countdown's size — see `ambientCountdown`.
     @ScaledMetric(relativeTo: .largeTitle) private var ambientSize: CGFloat = 176
-    /// The far view's one numeral, BEFORE the height clamps it — see `farNumeral`. Big
-    /// enough that the face's height, not this, is what sets the size on every phone.
-    @ScaledMetric(relativeTo: .largeTitle) private var farHeroSize: CGFloat = 340
 
     var body: some View {
         Group {
@@ -267,29 +274,7 @@ struct RunnerView: View {
 
     @ViewBuilder
     private func live(_ session: RunnerSession) -> some View {
-        if verticalSizeClass == .compact {
-            // ON ITS SIDE — a phone in landscape, or an iPhone Duo stood up like a tent
-            // on the floor under the board: the far view. Checked FIRST, at every text
-            // size: the far view keeps every action reachable by scrolling its own
-            // trailing column, where the scrolling stack below would put the whole
-            // runner of a ~440 pt tall screen behind a scroll.
-            GeometryReader { geometry in
-                let insets = geometry.safeAreaInsets
-                // A side that carries a system column (the Duo's bars, a Pro Max's island)
-                // already has its margin: our own 20 pt beside it was 105 pt of nothing
-                // on Nuri's Duo (2026-10-31). A bare side keeps the house margin.
-                let far = RunnerLayout.far(RunnerLayout.Far(
-                    columnWidth: farColumnWidth(for: geometry.size.width),
-                    columnLeading: insets.leading > insets.trailing + 1,
-                    leadingPadding: insets.leading > 0 ? 0 : Metrics.hPadding,
-                    trailingPadding: insets.trailing > 0 ? 0 : Metrics.hPadding))
-                liveContent(session, layout: far)
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .background {
-                        backgroundTrace(session, layout: far)
-                    }
-            }
-        } else if typeSize.isAccessibilitySize {
+        if typeSize.isAccessibilitySize {
             // At large accessibility sizes a small phone cannot hold five readable
             // actions and the measurements at once. Keep every action reachable by
             // scrolling instead of clipping labels or reducing their chosen type.
@@ -308,12 +293,22 @@ struct RunnerView: View {
                 }
             }
         } else {
-            // WIDE when the window is regular-width AND wider than tall. Size class and
-            // aspect, never the idiom — an iPad in portrait keeps the stacked column, and
-            // a Slide Over column is a phone.
+            // WIDE whenever the window is wider than tall: an iPad in landscape, an
+            // unfolded Duo, and a PHONE ON ITS SIDE — the iPhone Duo stood up like a tent
+            // under the board, outer display out. Aspect, never the idiom: an iPad in
+            // portrait keeps the stacked column, and a Slide Over column is a phone.
+            //
+            // A phone on its side used to get a third layout of its own (one numeral
+            // sized to the height, beside a column of controls). On Nuri's Duo it read
+            // as two boxes pushed high, dead space under and beside them, and a
+            // countdown so large it covered the graph (2026-10-31) — so a sideways
+            // phone is the iPad's layout at a phone's scale, one layout fewer.
             GeometryReader { geometry in
-                let layout: RunnerLayout = sizeClass == .regular && geometry.size.width > geometry.size.height
-                    ? .wide : .stacked
+                let layout: RunnerLayout = geometry.size.width > geometry.size.height
+                    ? .wide(Self.wideColumn(size: geometry.size, insets: geometry.safeAreaInsets,
+                                            compactHeight: verticalSizeClass == .compact,
+                                            typeSize: typeSize))
+                    : .stacked
                 liveContent(session, layout: layout, narrowDock: Self.isNarrow(geometry.size.width))
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     // The graph is the SCREEN in both layouts — see `backgroundTrace`.
@@ -328,22 +323,21 @@ struct RunnerView: View {
                              narrowDock: Bool = false) -> some View {
         Group {
             switch layout {
-            case .wide: wideContent(session)
+            case .wide(let column): wideContent(session, column: column)
             case .stacked: stackedContent(session, narrowDock: narrowDock)
-            case .far(let far):
-                farContent(session, columnWidth: far.columnWidth, columnLeading: far.columnLeading)
             }
         }
-        .padding(.leading, layout.far?.leadingPadding ?? Metrics.hPadding)
-        .padding(.trailing, layout.far?.trailingPadding ?? Metrics.hPadding)
+        .padding(.leading, layout.wide?.leadingPadding ?? Metrics.hPadding)
+        .padding(.trailing, layout.wide?.trailingPadding ?? Metrics.hPadding)
         // The fingers reach ~92 pt down the screen and content starts at 59, so the hand
         // needs the gap bought for it — otherwise the grip name lands under the knuckles.
-        .padding(.top, islandHandShown ? (typeSize.isAccessibilitySize ? 0 : 46 + handPush) : 8)
-        .padding(.bottom, Metrics.spacing)
+        .padding(.top, islandHandShown ? (typeSize.isAccessibilitySize ? 0 : 46 + handPush)
+                                       : RunnerLayout.topPadding)
+        .padding(.bottom, layout.wide?.bottomPadding ?? Metrics.spacing)
         // The stacked column keeps the PHONE's width on a phone — hero, ring and buttons
         // were all measured at 440 — and takes the regular-width token on a regular-width
         // portrait window (an unfolded Duo, an iPad upright), where 440 read as a phone in
-        // a frame. The wide and far layouts span the room.
+        // a frame. The wide layout spans the room.
         .frame(maxWidth: layout == .stacked ? stackedColumnWidth : .infinity)
         .frame(maxWidth: .infinity)
     }
@@ -356,7 +350,7 @@ struct RunnerView: View {
         sizeClass == .regular ? Metrics.maxContentWidthRegular : Metrics.maxContentWidth
     }
     /// A window narrower than any iPhone — Split View's half of an unfolded Duo, 313 pt —
-    /// gives Hold to end its own dock row, as the far view's column does (`controls`).
+    /// gives Hold to end its own dock row (`controls`).
     /// The narrowest iPhone is 375, so every phone keeps the measured two-row dock.
     static func isNarrow(_ width: CGFloat) -> Bool { width < narrowDockWidth }
     private static let narrowDockWidth: CGFloat = 360
@@ -402,23 +396,20 @@ struct RunnerView: View {
     ///
     /// No third NEXT card between them: over a live graph every glass surface hides
     /// the curve, and the rest panel already names the next hand and grip.
-    private func wideContent(_ session: RunnerSession) -> some View {
-        GlassEffectContainer(spacing: 24) {
+    ///
+    /// **A phone on its side is this layout too** (2026-10-31) — the iPhone Duo stood
+    /// up under the board, a Pro Max on a bench. Same panel, same dock, same trace; only
+    /// the column's numbers change (`wideColumn`): narrower, at a scale the height holds,
+    /// and scrolling only when a larger text size outgrows the screen.
+    private func wideContent(_ session: RunnerSession, column: RunnerLayout.WideColumn) -> some View {
+        // Blend distance UNDER the gap between panel and dock: on a phone on its side
+        // the two can sit 12 pt apart, and at 24 they would melt into one blob with a
+        // waist (measured on the Duo's outer display, 2026-10-31).
+        GlassEffectContainer(spacing: column.scrollHeight == nil ? 24 : 6) {
             HStack(alignment: .top, spacing: Metrics.spacing) {
-                VStack(spacing: 16) {
-                    if timerOnly {
-                        VStack(spacing: 14) {
-                            timerOnlyIdentity(session, scale: Self.wideScale)
-                            timerProgress(session)
-                        }
-                    } else {
-                        infoPanel(session, scale: Self.wideScale)
-                    }
-                    Spacer(minLength: 16)
-                    controls(session)
-                }
-                .frame(width: Self.wideColumnWidth)
-                .frame(maxHeight: .infinity)
+                wideColumnStack(session, column: column)
+                    .frame(width: column.width)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 if timerOnly {
                     timerDial(session)
                 } else {
@@ -428,195 +419,97 @@ struct RunnerView: View {
         }
     }
 
-    // MARK: - The far view: a phone on its side, read from the floor
-
-    /// **Nightstand mode** (docs/IPHONE_DUO_NIGHTSTAND.md) — compact HEIGHT, which is a
-    /// phone in landscape and, the case it was built for, an iPhone Duo stood up like a
-    /// tent under the hangboard with its outer display facing the climber.
-    ///
-    /// Read from one to two metres with chalk on your hands, so the FACE carries one
-    /// number and one word: the phase word, the countdown as large as the height allows,
-    /// the grip small above them, the time bar under them, and the trace and target lane
-    /// running behind it all. Everything you touch — the kilograms, where you are, and
-    /// the dock — moves to a column on the trailing edge, beside the system's vertical
-    /// bars. Nothing you would touch mid-hang lives in the far view.
-    ///
-    /// Built from the runner's own parts (`nameRow`, `prompt`, `RunnerTimeBar`,
-    /// `counters`, `controls`), never a lookalike of them.
-    private func farContent(_ session: RunnerSession, columnWidth: CGFloat,
-                            columnLeading: Bool) -> some View {
-        // Blend distance UNDER the 12 pt gap between panel and dock: at the stacked
-        // layout's 24 the two surfaces, stacked this close, melted into one blob with a
-        // waist (measured, Duo outer display).
-        GlassEffectContainer(spacing: 6) {
-            HStack(alignment: .top, spacing: Metrics.spacing) {
-                // The column sits BESIDE THE SYSTEM'S VERTICAL BARS, whichever edge they
-                // are on: on the Duo's outer display they are trailing in one landscape
-                // and LEADING in the other (measured: insets 0/84, then 84/0). Where the
-                // bars are is where the system puts what you touch; the face takes the
-                // clear side. Symmetric insets (a Pro Max on its side) keep it trailing.
-                if columnLeading { farColumnSlot(session, width: columnWidth) }
-                farFace(session)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if !columnLeading { farColumnSlot(session, width: columnWidth) }
-            }
-        }
-    }
-
-    private func farColumnSlot(_ session: RunnerSession, width: CGFloat) -> some View {
-        farColumn(session)
-            .frame(width: width)
-            .frame(maxHeight: .infinity, alignment: .top)
-    }
-
-    /// The column's width: 45 % of the safe width, so the glass grows into the room the
-    /// screen has instead of leaving it empty beside the system's bars (Nuri's Duo,
-    /// 2026-10-31: a fixed ~250 left 105 pt of nothing on the right). 250 is the floor
-    /// because at 220 the Tare button's "Pulling" state wrapped to "Pullin / g"
-    /// (measured, Duo outer display); the Duo's 594 pt landscape safe width still leaves
-    /// the face ~300 pt for a two-digit numeral.
-    ///
-    /// At accessibility sizes the column takes HALF the width: it carries every word and
-    /// action at the person's own size (and scrolls), while the face's numeral is
-    /// display-size whatever the setting.
-    private func farColumnWidth(for width: CGFloat) -> CGFloat {
-        max(Self.farColumnMin, width * (typeSize.isAccessibilitySize ? 0.5 : 0.45))
-    }
-    private static let farColumnMin: CGFloat = 250
-
-    /// The face: grip, word, numeral, bar — top to bottom, no glass. The numeral takes
-    /// every point the others leave.
-    ///
-    /// **The face stops growing at xxxLarge** (the column does not): its word and numeral
-    /// are display-size at every setting, and at AX3 the grip row and phase word grew
-    /// until the numeral had a third of the face (measured, Duo outer display). Every
-    /// word and action stays at the person's own size in the column, which scrolls.
-    /// The two sizes RunnerView scales itself (`promptSize`, `nameSize`) are clamped by
-    /// hand — a `dynamicTypeSize` modifier reaches only the views below it.
-    private func farFace(_ session: RunnerSession) -> some View {
-        VStack(spacing: 6) {
-            farIdentity(session)
-            prompt(session, scale: Self.farPromptScale * min(1, Self.farPromptCap / promptSize),
-                   singleLine: true)
-            farNumeral(session)
-            RunnerTimeBar(session: session, mode: RunnerTimeBar.Mode(session.snapshot.phase),
-                          identity: session.snapshot.phase.slotIndex ?? -1)
-                .padding(.horizontal, 8)
-            if showsSignalNotice(session) {
-                noSignalNotice(session)
-                    .accessibilityIdentifier("runner.signalWarning")
-            }
-        }
-        .padding(.bottom, 4)
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("runner.graph")
-        .runnerLayoutProbe("graph")
-    }
-
-    /// `promptSize` and `nameSize` at xxxLarge (34 → 40, 15 → 21 on the system's
-    /// largeTitle and subheadline ramps): the far face's ceiling, see `farFace`.
-    private static let farPromptCap: CGFloat = 40
-    private static let farNameCap: CGFloat = 21
-
-    /// The prompt draws a step larger than the wide layout's: it is the one word on the
-    /// face, and the room beside the numeral is real.
-    private static let farPromptScale: CGFloat = 1.6
-
-    /// The grip, small: its glyph beside the name row (badge, name, target chip). The
-    /// island hand is off on its side, so the picture has to be here.
-    private func farIdentity(_ session: RunnerSession) -> some View {
-        HStack(spacing: 10) {
-            if let grip = session.snapshot.grip {
-                RunnerGripGlyph(grip: grip, emphasized: gripEmphasis, scale: 0.7)
-                    .accessibilityHidden(true)
-            }
-            nameRow(session, timerOnly: timerOnly, scale: min(1, Self.farNameCap / nameSize))
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    /// **One numeral, as large as the face's height allows.** The size is the smaller of
-    /// a scaled metric and what the measured height holds — the line box of SF digits is
-    /// ~1.2× the point size — so it grows with Dynamic Type until the screen, not the
-    /// setting, is the limit, and `minimumScaleFactor` covers a narrow face.
-    ///
-    /// Medium weight, not the hero's thin: this one is read across a room, the watch
-    /// face's reason for the same choice. It rolls like every clock (`RollingNumeral`,
-    /// the house replacement for `.numericText()` on a countdown).
-    private func farNumeral(_ session: RunnerSession) -> some View {
-        GeometryReader { proxy in
-            // Sized to the DIGITS, not the line box: a digit is ~0.72 em tall, so at
-            // height / 0.8 it fills ~90 % of the region, and the line box's empty
-            // ascender and descender space is allowed to overhang it (the text frame is
-            // taller than the region, centred). Sizing by the line box (height / 1.2)
-            // left the numeral at ~60 % of the room it was given (measured).
-            let size = max(1, min(farHeroSize, proxy.size.height / 0.8))
-            RollingNumeral(value: "\(session.snapshot.secondsShown)", countsDown: true,
-                           rolls: clockRolls && !reduceMotion, shift: size * 0.25) { value in
-                Text(value)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.3)
-            }
-            .font(.system(size: size, weight: .medium))
-            .displayTracking(size)
-            .monospacedDigit()
-            .foregroundStyle(isStalled(session) ? StatusTint.armed : Ink.primary)
-            .frame(width: proxy.size.width, height: size * 1.3)
-            .frame(width: proxy.size.width, height: proxy.size.height)
-        }
-        .frame(minHeight: 0, maxHeight: .infinity)
-        // The numeral's band is where the trace PLOTS (`farPlot`): the curve itself is
-        // the screen's, drawn full-bleed by `backgroundTrace`.
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
-            traceGeometry.region = $0
-        }
-        // A numeral changing every second is not a VoiceOver channel; the counters and
-        // the cues are — the hero's own rule.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(countdownCaption(session) ?? "")
-        .accessibilityIdentifier("runner.hero")
-        .runnerLayoutProbe("hero")
-        .accessibilityHidden(countdownCaption(session) == nil)
-    }
-
-    /// The trailing column: what you are pulling and where you are, on one glass panel,
-    /// then the dock. It SCROLLS when it has to — at accessibility sizes, or on a short
-    /// screen — so every action stays reachable without shrinking anybody's type.
-    private func farColumn(_ session: RunnerSession) -> some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                farStatus(session)
-                controls(session, narrow: true)
-            }
-            .padding(.bottom, 4)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        // The panel's shadow is part of the surface; a scroll view clips it otherwise.
-        .scrollClipDisabled()
-        .accessibilityIdentifier("runner.farColumn")
-        .runnerLayoutProbe("farColumn")
-    }
-
-    private func farStatus(_ session: RunnerSession) -> some View {
-        VStack(spacing: 10) {
+    /// The panel top-aligned, the dock bottom-aligned. On a phone on its side the stack
+    /// sits in a scroll view sized to the screen: at the default text size it fits and
+    /// never moves (measured, `wideColumn`); a larger size scrolls rather than clips.
+    @ViewBuilder
+    private func wideColumnStack(_ session: RunnerSession, column: RunnerLayout.WideColumn) -> some View {
+        // Spacing 0: the Spacer IS the gap. A stack spacing would be paid on both sides
+        // of the Spacer as well as its own minimum — three gaps, 24 pt the panel and the
+        // dock could not afford on a phone on its side (measured, 17 Pro Max).
+        let stack = VStack(spacing: 0) {
             if timerOnly {
-                timerProgress(session)
+                VStack(spacing: 14) {
+                    timerOnlyIdentity(session, scale: column.scale)
+                    timerProgress(session)
+                }
             } else {
-                LiveForceReadout(tint: forceTint(session),
-                                 size: heroSize * 0.75, unitSize: unitSize * 0.8)
-                RoutinePills(model: routineModel(session), currentTint: tint(session))
-                    .accessibilityHidden(true)
-                counters(session)
+                infoPanel(session, scale: column.scale)
             }
+            Spacer(minLength: column.gap)
+            controls(session)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity)
-        .accessibleGlass(nil, in: RunnerGlass.surfaceShape)
-        .runnerFloatingShadow()
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("runner.panel")
-        .runnerLayoutProbe("panel")
+        if let height = column.scrollHeight {
+            ScrollView {
+                stack.frame(minHeight: height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            // The glass's shadow is part of the surface; a scroll view clips it otherwise.
+            .scrollClipDisabled()
+            .scrollIndicators(.hidden)
+            .accessibilityIdentifier("runner.column")
+            .runnerLayoutProbe("column")
+        } else {
+            stack
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("runner.column")
+                .runnerLayoutProbe("column")
+        }
+    }
+
+    /// The wide column's numbers for a window `size` (the SAFE size) with `insets`.
+    ///
+    /// - Width: the phone's measured 440, never more than 60 % of the safe width — 440
+    ///   on an iPad, ~356 on the Duo's outer display (594 safe), 440 on a Pro Max.
+    /// - Padding: none of our own on a side that carries a system column (the Duo's
+    ///   bars, a Pro Max's island) — that column already is the margin; our 20 pt beside
+    ///   the Duo's 84 was 105 pt of nothing on Nuri's Duo. A bare side keeps 20.
+    /// - Scale: the iPad's 1.4 at regular height; on a phone on its side (compact height), the
+    ///   largest of 1.2 / 1.1 / 1.0 whose panel and dock fit the height (`phoneScale`).
+    static func wideColumn(size: CGSize, insets: EdgeInsets, compactHeight: Bool,
+                           typeSize: DynamicTypeSize) -> RunnerLayout.WideColumn {
+        let width = min(wideColumnWidth, (size.width * 0.6).rounded(.down))
+        let leading = insets.leading > 0 ? 0 : Metrics.hPadding
+        let trailing = insets.trailing > 0 ? 0 : Metrics.hPadding
+        let headClearance = insets.trailing + 8
+        // Keyed to the HEIGHT class, not the width: a Pro Max on its side is REGULAR
+        // width (956 × 440, measured), and the iPad's 1.4 panel ran 75 pt off its top.
+        if !compactHeight {
+            return RunnerLayout.WideColumn(width: width, scale: wideScale, gap: 16,
+                                           leadingPadding: leading, trailingPadding: trailing,
+                                           bottomPadding: Metrics.spacing, scrollHeight: nil,
+                                           headClearance: headClearance)
+        }
+        let bottom = RunnerLayout.compactBottomPadding
+        let height = max(0, size.height - RunnerLayout.topPadding - bottom)
+        var scale = phoneScale(columnHeight: height, typeSize: typeSize)
+        #if DEBUG
+        // `-runnerWideScale 1.1`: force a step, to re-measure the panel at it.
+        let arguments = ProcessInfo.processInfo.arguments
+        if let i = arguments.firstIndex(of: "-runnerWideScale"), arguments.indices.contains(i + 1),
+           let forced = Double(arguments[i + 1]) { scale = forced }
+        #endif
+        return RunnerLayout.WideColumn(width: width, scale: scale,
+                                       gap: RunnerLayout.compactGap,
+                                       leadingPadding: leading, trailingPadding: trailing,
+                                       bottomPadding: bottom, scrollHeight: height,
+                                       headClearance: headClearance)
+    }
+
+    /// The panel's scale on a phone on its side, from the column's HEIGHT: the largest
+    /// step whose measured panel, gap and dock fit (`RunnerLayout.measuredPanel`). Only
+    /// at the default text size and smaller — above it the type itself has grown, the
+    /// panel is drawn at 1.0 and the column scrolls if it must.
+    ///
+    /// Both phones it was built for land on 1.0: the Pro Max's column is 400 pt and the
+    /// Duo's outer display 412, against 396 at 1.0 and 416 at 1.1.
+    static func phoneScale(columnHeight: CGFloat, typeSize: DynamicTypeSize) -> CGFloat {
+        guard typeSize <= .large else { return 1 }
+        for (scale, panel) in RunnerLayout.measuredPanel
+        where panel + RunnerLayout.compactGap + RunnerLayout.measuredDock <= columnHeight {
+            return scale
+        }
+        return 1
     }
 
     /// Only while the rep is actually live. A lane drawn during the rest would ask you
@@ -680,8 +573,8 @@ struct RunnerView: View {
     private func infoPanel(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
         measuredTop(session, scale: scale)
             .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 12)
+            .padding(.top, sidewaysPanel ? 10 : 14)
+            .padding(.bottom, sidewaysPanel ? 10 : 12)
             .frame(maxWidth: .infinity)
             // The rim is applied BEFORE the glass: inside a `GlassEffectContainer` the
             // glass composites above anything applied after `.glassEffect`, and an
@@ -753,19 +646,6 @@ struct RunnerView: View {
         }
     }
 
-    /// The far view's plot inside its full-bleed canvas: the numeral's vertical band
-    /// (the clearances the numeral-sized trace used to have), its head stepped in to the
-    /// face's trailing edge. Until both are measured, the wide layout's insets.
-    private var farPlot: ForceTraceView.PlotInsets {
-        let canvas = traceGeometry.canvas, band = traceGeometry.region
-        guard canvas.width > 0, band.width > 0, band.height > 0 else {
-            return ForceTraceView.PlotInsets(top: 44, bottom: 36, trailing: 8)
-        }
-        return ForceTraceView.PlotInsets(top: max(0, band.minY - canvas.minY) + 12,
-                                         bottom: max(0, canvas.maxY - band.maxY) + 6,
-                                         trailing: max(8, canvas.maxX - band.maxX + 8))
-    }
-
     /// The graph's canvas with its phase-tint blend, placed by the caller: the open
     /// region's background on the phone, the whole screen's on the iPad.
     private func liveTrace(_ session: RunnerSession, plot: ForceTraceView.PlotInsets) -> some View {
@@ -798,41 +678,30 @@ struct RunnerView: View {
     /// level down so a sample invalidates nothing but the canvas.
     @ViewBuilder
     private func backgroundTrace(_ session: RunnerSession, layout: RunnerLayout) -> some View {
-        if case .far = layout {
-            // THE FAR VIEW: the phase colour washes the WHOLE face — from two metres the
-            // colour is read before the word — and the trace is the SCREEN, as on the
-            // iPad (Nuri's Duo, 2026-10-31: confined to the numeral's width it left the
-            // room beside it empty). Full-bleed sideways, into the system columns and
-            // under the glass; vertically it plots in the numeral's band, so the line
-            // never crosses the phase word or the time bar, and its head stops at the
-            // face's trailing edge, newest seconds in the clear (`farPlot`). Timer-only
-            // keeps the wash: the colour is the far view's first signal, gauge or not.
-            ZStack {
-                PhaseWash(tint: tint(session), edge: .top, length: traceGeometry.canvas.height)
-                if !timerOnly {
-                    liveTrace(session, plot: farPlot)
-                }
-            }
-            // Measured INSIDE `ignoresSafeArea`, as below.
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
-                traceGeometry.canvas = $0
-            }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-        } else if !timerOnly {
-            let wide = layout == .wide
-            // On the PHONE only the wash lives under the glass: the trace draws in the
-            // open region (`graphRegion`), and the panel and dock sit on a fill that
-            // changes once per phase. On the iPad the trace IS the screen and runs under
-            // the glass column (Nuri, 2026-09-19). iOS re-blurs a glass backdrop every
-            // frame the layer beneath changes; the iPad pays that and is measured for it.
+        if !timerOnly {
+            let wide = layout.wide
+            // On the upright PHONE only the wash lives under the glass: the trace draws in
+            // the open region (`graphRegion`), and the panel and dock sit on a fill that
+            // changes once per phase. In the wide layout — an iPad, a phone on its side —
+            // the trace IS the screen and runs under the glass column (Nuri, 2026-09-19),
+            // edge to edge, under the system's side columns too, so no strip of the screen
+            // reads as dead space. iOS re-blurs a glass backdrop every frame the layer
+            // beneath changes; the iPad pays that and is measured for it.
+            //
+            // The lane and the threshold rule span the whole canvas; the curve's HEAD
+            // stops 8 pt inside the safe area (`headClearance`), so on the Duo's outer
+            // display, whose bars and camera sit in a trailing column in one landscape,
+            // the newest point is never drawn under the camera.
             ZStack {
                 PhaseWash(tint: tint(session),
-                          edge: wide ? .leading : .top,
-                          length: wide ? traceGeometry.regionLeadingInCanvas
-                                       : traceGeometry.regionTopInCanvas)
-                if wide {
-                    liveTrace(session, plot: ForceTraceView.PlotInsets(top: 44, bottom: 36, trailing: 8))
+                          edge: wide != nil ? .leading : .top,
+                          length: wide != nil ? traceGeometry.regionLeadingInCanvas
+                                              : traceGeometry.regionTopInCanvas)
+                if let wide {
+                    liveTrace(session, plot: ForceTraceView.PlotInsets(top: 44, bottom: 36,
+                                                                      trailing: wide.headClearance))
+                        .runnerTraceMarker()
+                        .runnerLayoutProbe("trace")
                 }
             }
             // Measured INSIDE `ignoresSafeArea`: outside it the reported frame is the
@@ -942,7 +811,7 @@ struct RunnerView: View {
 
     /// The grip, the prompt and the live weight — what the rest summary stands in for.
     private func identityBlock(_ session: RunnerSession, scale: CGFloat) -> some View {
-        VStack(spacing: 12 * scale) {
+        VStack(spacing: sidewaysPanel ? Self.sidewaysIdentitySpacing * scale : 12 * scale) {
             if islandHandShown {
                 gripLineText(session)
             } else {
@@ -977,14 +846,6 @@ struct RunnerView: View {
                     Spacer(minLength: 0)
                     countBlock(label: String(localized: "Pull"), value: pullValue(session), alignment: .trailing)
                 }
-            }
-            // The last resort, for a column narrower than both numerals side by side —
-            // the far view's at accessibility sizes, where the pair overflowed the glass
-            // (measured, Duo outer display at AX3). Only reached where nothing above fits.
-            VStack(spacing: 6) {
-                middle
-                countBlock(label: String(localized: "Set"), value: setValue(session), alignment: .leading, labelAfter: true)
-                countBlock(label: String(localized: "Pull"), value: pullValue(session), alignment: .trailing)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -1088,8 +949,18 @@ struct RunnerView: View {
     private func gripLine(_ session: RunnerSession, timerOnly: Bool = false,
                           scale: CGFloat = 1) -> some View {
         if let grip = session.snapshot.grip {
-            VStack(spacing: 6 * scale) {
-                RunnerGripGlyph(grip: grip, emphasized: gripEmphasis, scale: scale)
+            // On a phone on its side the picture sits BESIDE the name — one identity
+            // row — because the height is the one thing that screen is short of: stacked,
+            // the glyph cost the panel ~40 pt and the dock ran off the bottom (measured,
+            // 17 Pro Max landscape). Timer-only keeps the picture above: it has no glass
+            // panel and the height to spare, and its name row is two lines.
+            let beside = sidewaysPanel && !timerOnly
+            let layout = beside
+                ? AnyLayout(HStackLayout(spacing: 10 * scale))
+                : AnyLayout(VStackLayout(spacing: 6 * scale))
+            layout {
+                RunnerGripGlyph(grip: grip, emphasized: gripEmphasis,
+                                scale: beside ? Self.sidewaysGlyphScale * scale : scale)
                 nameRow(session, timerOnly: timerOnly, scale: scale)
             }
             .frame(maxWidth: .infinity)
@@ -1261,11 +1132,8 @@ struct RunnerView: View {
 
     /// The one thing that has to be readable across a room: which hand, and whether to
     /// be pulling right now.
-    /// `singleLine` is the far view's: on a landscape face every line the word wraps onto
-    /// comes out of the numeral, so it scales down instead, whatever the text size.
-    private func prompt(_ session: RunnerSession, scale: CGFloat = 1,
-                        singleLine: Bool = false) -> some View {
-        let wraps = typeSize.isAccessibilitySize && !singleLine
+    private func prompt(_ session: RunnerSession, scale: CGFloat = 1) -> some View {
+        let wraps = typeSize.isAccessibilitySize
         return ZStack {
             // Keep the phase label's line height when a longer translated instruction
             // scales to fit, so the graph cannot move at REST→PULL or REST→PAUSED.
@@ -1275,7 +1143,7 @@ struct RunnerView: View {
             .font(.system(size: promptSize * scale, weight: .heavy))
             .foregroundStyle(tint(session))
             .lineLimit(wraps ? nil : 1)
-            .minimumScaleFactor(wraps ? 1 : (singleLine ? 0.35 : 0.6))
+            .minimumScaleFactor(wraps ? 1 : 0.6)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: wraps)
             .frame(maxWidth: .infinity)
@@ -1640,11 +1508,11 @@ struct RunnerView: View {
     /// on glass is the layering Liquid Glass asks you not to do. Hold to end keeps its
     /// red fill, as a toolbar's one destructive action would.
     ///
-    /// `narrow` is the far view's column and a Split View half: Hold to end takes a row
-    /// of its own, because three-up at ~250–270 pt wrapped "Skip pull" and truncated
-    /// "Hold to end" to "Hold…" (measured: the Duo's outer display on its side, and the
-    /// 313 pt half of the inner one) — and the one destructive action is the last thing
-    /// that may lose its words.
+    /// `narrow` is a Split View half: Hold to end takes a row of its own, because
+    /// three-up at ~250–270 pt wrapped "Skip pull" and truncated "Hold to end" to
+    /// "Hold…" (measured: the 313 pt half of the Duo's inner display, and a 250 pt
+    /// column on its outer one) — and the one destructive action is the last thing that
+    /// may lose its words.
     ///
     /// **Every capsule label stays on ONE line** (`oneLinePerCell`, 2026-10-31): a row
     /// whose labels would wrap or truncate drops to two columns — Hold to end then takes
@@ -1788,27 +1656,52 @@ private struct GripCueKey: Equatable {
     var resting: Bool
 }
 
-/// Which of the runner's three layouts is on screen — chosen by size class and aspect
-/// in `RunnerView.live(_:)`, never by the idiom.
-private enum RunnerLayout: Equatable {
-    /// The phone's column: identity, graph, controls, top to bottom.
+/// Which of the runner's two layouts is on screen — chosen by aspect in
+/// `RunnerView.live(_:)`, never by the idiom.
+enum RunnerLayout: Equatable {
+    /// Taller than wide: identity, graph, controls, top to bottom.
     case stacked
-    /// Regular width and wider than tall: the glass column left, the graph the screen.
-    case wide
-    /// Compact HEIGHT — a phone on its side: the far view, the controls in a column of
-    /// this width beside the system's vertical bars (`columnLeading` when they are on the
-    /// leading edge).
-    case far(Far)
+    /// Wider than tall — an iPad in landscape, an unfolded Duo, a phone on its side: the
+    /// glass column on the leading side, the graph the screen.
+    case wide(WideColumn)
 
-    struct Far: Equatable {
-        var columnWidth: CGFloat
-        var columnLeading: Bool
+    /// The wide layout's column, worked out by `RunnerView.wideColumn`.
+    struct WideColumn: Equatable {
+        var width: CGFloat
+        /// The identity block's scale: 1.4 on an iPad, 1.0–1.2 on a phone on its side.
+        var scale: CGFloat
+        /// The least space between the panel and the dock.
+        var gap: CGFloat
         /// Zero on a side the system already margins with its own column.
         var leadingPadding: CGFloat
         var trailingPadding: CGFloat
+        var bottomPadding: CGFloat
+        /// On a phone on its side, the column's height: the stack scrolls inside it
+        /// when a larger text size outgrows the screen. Nil on an iPad.
+        var scrollHeight: CGFloat?
+        /// The trace head's distance from the canvas's trailing edge — inside the safe
+        /// area, clear of any system column on that side.
+        var headClearance: CGFloat
     }
 
-    var far: Far? {
-        if case .far(let far) = self { far } else { nil }
+    var wide: WideColumn? {
+        if case .wide(let column) = self { column } else { nil }
     }
+
+    /// The column's top padding when no island hand hangs over it.
+    static let topPadding: CGFloat = 8
+    /// The bottom padding on a phone on its side: the system's own bottom inset (the
+    /// home indicator) is already below it, so the iPad's 22 would be margin on margin.
+    static let compactBottomPadding: CGFloat = 12
+    /// The least space between the panel and the dock on a phone on its side.
+    static let compactGap: CGFloat = 12
+
+    /// The panel's height at each scale on a phone on its side, at the default text size
+    /// (measured with `-dumpRunnerLayout -runnerWideScale <s>` on a 17 Pro Max in
+    /// landscape, working with a target band — the tallest identity row; a rest's
+    /// summary fits inside the same block — and 264 again from the Duo outer display's
+    /// pixels at 1.0, 356 pt wide), largest scale first. The dock is two rows at both
+    /// widths (Pause · Tare, then Skip pull · Skip set · Hold to end), 120 pt.
+    static let measuredPanel: [(scale: CGFloat, height: CGFloat)] = [(1.2, 304), (1.1, 284), (1.0, 264)]
+    static let measuredDock: CGFloat = 120
 }

@@ -22,7 +22,7 @@ import SwiftUI
 /// draws nothing anywhere else — a hand hanging off a notch is a smear, and off a flat
 /// top edge it is four bars stuck to the ceiling. A fixed rect is correct because the
 /// hand only ever draws UPRIGHT: iPhone is portrait except the live runner
-/// (`RunnerOrientation`), and on its side the runner switches to the far view and turns
+/// (`RunnerOrientation`), and on its side the runner switches to the wide layout and turns
 /// the hand off (`RunnerView.islandHandShown`) — the island is then beside the content.
 /// Where the Dynamic Island sits, from the one thing the system does report: the top
 /// safe-area inset.
