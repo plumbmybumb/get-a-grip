@@ -44,8 +44,8 @@ CloudKit deploy is owed.
   no-break spaces (`DisplayText.kt`), History rows and chart axes, duration dial, tab bar,
   share image at font scale 1, weight-unit chips, segmented rows, pinned runner dock,
   summary stats, chip grids, menus (Android). Fine tuning no longer states two titles twice.
-  **Decision owed to Nuri:** the Android runner dock is now two rows + Hold to end at the
-  default size on a Pixel 8 (one-line capsule rule measured against "Keep holding…").
+  **Decided (Nuri, 31 Oct): keep** the Android runner dock's new default — two rows plus a
+  full-width Hold to end on a Pixel 8 (one-line capsule rule measured against "Keep holding…").
 - **GitHub issue 7** (sound): Settings › Sound card — cue tones on/off and a level, haptics
   untouched, releasing the slider plays a tick. **Issue 9** (holds): every hold-to-confirm
   is 0.6 s (was 0.9) on iPhone, watch and Android; both holds kept. **Issues 6 and 8
