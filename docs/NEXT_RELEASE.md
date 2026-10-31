@@ -1,5 +1,25 @@
 # Release record and the queue behind it
 
+## Feedback queue — not started (Gleb, support mail, 31 Oct 2026; iOS 1.4.0, Progressor)
+
+1. **Open a past workout from History.** Rows export but do not open. Build: tapping a row
+   shows the finish summary read-only from the frozen `WorkoutLog` reps (pulls, under
+   tension, peak, per-rep bars, new maxes), both platforms.
+2. **Trend "average" counts the warm-up pulls** (his sets at 60–70 % of max before the
+   hard ones). Recommendation: the Load-per-grip series reads a TIME-WEIGHTED TOP-5 % LOAD
+   ("what you held for your hardest 5 % of time") instead of the session mean — works for
+   routines with no targets and ignores warm-ups without knowing which set is which. Spell
+   it on the chart. Decision owed to Nuri (top 5 % vs heaviest set).
+3. **"Wake" on the live gauge and max gauge is a button nobody wants to press.** Make the
+   gauge screens re-kick a silent connected stream themselves (the runner's silence
+   watchdog, same rule), so the control stays Tare; keep Wake only as the accessibility
+   fallback if the stream refuses.
+4. **Reset on the live gauge** for the max and average readouts. Small.
+5. **Demo mode showed "demo device active" on a real Progressor** — he fell into "Try demo
+   mode" and could not see the way out. Demo stays (App Review, gauge-less users), but:
+   state it loudly on the gauge and Today while active, offer "Leave demo" right there,
+   and never persist it across launches when a real gauge has ever connected.
+
 ## Queue — on `main`, unreleased (31 Oct 2026)
 
 Next builds: iOS ≥ 30 (version ≥ 1.4.1), Android versionCode ≥ 19. No SwiftData/Room
