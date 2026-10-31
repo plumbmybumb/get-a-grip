@@ -45,6 +45,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -77,7 +78,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -297,6 +300,7 @@ internal fun criticalForceTint(phase: CriticalForceTest.Phase, palette: GripPale
 private fun FormScreen(request: CriticalForceTestRequest, ended: String?, onClose: () -> Unit, onStart: () -> Unit) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
+    val focus = LocalFocusManager.current
     var showingAbout by remember { mutableStateOf(false) }
     Scaffold(
         containerColor = Color.Transparent,
@@ -351,6 +355,8 @@ private fun FormScreen(request: CriticalForceTestRequest, ended: String?, onClos
     ) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).readablePageWidth()
+                // A tap outside any control puts the body-weight keyboard away and commits it.
+                .pointerInput(Unit) { detectTapGestures { focus.clearFocus() } }
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = Metrics.hPadding).padding(top = 12.dp, bottom = Metrics.spacing),
             verticalArrangement = Arrangement.spacedBy(18.dp),
