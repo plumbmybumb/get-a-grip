@@ -216,7 +216,7 @@ struct RunnerView: View {
         // Landscape while the LIVE runner is up, and given back the moment the session
         // finishes (the summary is portrait) or the view goes, by any route — see
         // `RunnerOrientation`.
-        .onChange(of: session.map { !$0.isFinished } ?? false, initial: true) { _, live in
+        .onChange(of: isSessionLive, initial: true) { _, live in
             RunnerOrientation.setLandscapeAllowed(live, by: orientationToken)
         }
         // The island is a portrait fact: re-read it when the phone comes back upright,
@@ -366,6 +366,14 @@ struct RunnerView: View {
     /// never reach into the numbers. The ordinary long-rest enlargement does NOT push:
     /// that would move the graph at every REST→PULL boundary, and at a fifth larger the
     /// tips still clear the panel. Reduce Motion draws no enlarged hand.
+    /// A live session is one that exists and has not finished. Its own property, because
+    /// the inline `session.map { !$0.isFinished } ?? false` inside `.onChange` was the
+    /// expression GitHub's macOS runner could not type-check in time (CI, 2026-10-31).
+    private var isSessionLive: Bool {
+        guard let session else { return false }
+        return !session.isFinished
+    }
+
     private var handPush: CGFloat {
         gripEmphasis && !reduceMotion ? IslandHand.tipDrop(scale: IslandHand.emphasisScale) : 0
     }
