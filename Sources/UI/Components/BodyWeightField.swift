@@ -6,7 +6,17 @@ import SwiftUI
 /// Body weight as a number you TYPE, never a slider (Nuri, 2026-09-25): a slider is a
 /// poor way to state an exact personal number, and a track whose far end reads as a
 /// verdict on your body is worse. Empty until entered, with no invented default; in the
-/// user's weight unit; the decimal keypad with a Done key.
+/// user's weight unit; the decimal keypad.
+///
+/// **The way out lives IN THE ROW** (Thomas, 2026-10-31: "I can't get the keyboard out so
+/// I can't Save or exit the settings screen"). The decimal pad has no Return key, and the
+/// only exit used to be a CONDITIONAL keyboard toolbar (`if focused { … }`): host
+/// machinery the field cannot guarantee. The simulator drew it in both hosts (Settings and
+/// the critical force test, UITests/BodyWeightKeyboardUITests), so the failure was never
+/// reproduced, only reported — and a keyboard whose one way out belongs to someone else
+/// is the bug either way. A Done beside the unit, shown while editing, is `ValueField`'s
+/// own shape and depends on no host; it replaces the toolbar rather than doubling it.
+/// Hosts also dismiss on scroll.
 struct BodyWeightField: View {
     /// Kilograms. nil = not entered.
     @Binding var kilograms: Double?
@@ -15,6 +25,7 @@ struct BodyWeightField: View {
     var titleFont: Font = .system(.subheadline, weight: .medium)
 
     @Environment(\.weightUnit) private var weightUnit
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focused: Bool
     @State private var text = ""
 
@@ -39,7 +50,22 @@ struct BodyWeightField: View {
             Text(weightUnit.symbol)
                 .font(.system(.subheadline))
                 .foregroundStyle(Ink.tertiary)
+            if focused {
+                // Frame and content shape INSIDE the label — the house order (see
+                // `ValueField`): outside the Button they are layout only.
+                Button { focused = false } label: {
+                    Text("Done")
+                        .font(.system(.subheadline, weight: .semibold))
+                        .padding(.horizontal, 12)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(PressFeedbackButtonStyle())
+                .accessibilityIdentifier("bodyWeight.done")
+                .transition(.opacity)
+            }
         }
+        .animation(Motion.state(reduceMotion), value: focused)
         .frame(minHeight: 44)
         .contentShape(.rect)
         .onTapGesture { focused = true }
@@ -48,14 +74,6 @@ struct BodyWeightField: View {
         .onChange(of: weightUnit) { _, _ in text = display(kilograms) }
         .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
         .onSubmit(commit)
-        .toolbar {
-            if focused {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { focused = false }
-                }
-            }
-        }
     }
 
     private func display(_ kg: Double?) -> String {

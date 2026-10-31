@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -73,7 +74,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalUriHandler
@@ -160,6 +163,7 @@ private fun SettingsRoot(
 ) {
     val palette = LocalGripPalette.current
     val device = LocalDeviceStore.current
+    val focus = LocalFocusManager.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
@@ -185,6 +189,9 @@ private fun SettingsRoot(
                 .fillMaxSize()
                 .padding(padding)
                 .readablePageWidth()
+                // A tap on the page outside any control puts the body-weight keyboard away
+                // (and commits it). Controls consume their own taps first; a scroll cancels it.
+                .pointerInput(Unit) { detectTapGestures { focus.clearFocus() } }
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = Metrics.hPadding)
                 .padding(bottom = Metrics.spacing + LocalFloatingTabBarInset.current),

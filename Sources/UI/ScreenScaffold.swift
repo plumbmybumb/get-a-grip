@@ -46,6 +46,9 @@ struct ScreenScaffold<Content: View>: View {
                 // large title. Still scrolls when content genuinely overflows.
                 .scrollBounceBehavior(.basedOnSize)
                 .scrollEdgeEffectStyle(.soft, for: .bottom)
+                // A keyboard on a tab screen (Settings' body weight) always has a way out
+                // that needs no particular button: drag the page and it goes.
+                .scrollDismissesKeyboard(.interactively)
             // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling it
             // disturbs the ScrollView's safe-area layout and the title creeps under the
             // status bar. (The house rule; other screens refer here.)

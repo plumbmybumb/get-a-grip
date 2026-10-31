@@ -5,6 +5,7 @@ package run.nuri.getagrip.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
@@ -13,7 +14,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,8 +47,15 @@ import run.nuri.getagrip.ui.units.WeightUnits
 /// your body is worse. Empty until entered, with no invented default; in the user's weight
 /// unit; the decimal keypad.
 ///
-/// `kilograms` null = not entered. The entry commits when the field loses focus or on the
-/// keyboard's Done. An empty or unreadable entry keeps what was there.
+/// `kilograms` null = not entered. The entry commits when the field loses focus, on the
+/// keyboard's Done, on the row's own Done, or when the screen goes away mid-edit. An empty
+/// or unreadable entry keeps what was there.
+///
+/// **The way out lives IN THE ROW** (Thomas, 2026-10-31: "I can't get the keyboard out so I
+/// can't Save or exit the settings screen"). The IME's action key is the keyboard's choice to
+/// draw, and system Back only HIDES the keyboard — the field keeps focus and the number stays
+/// uncommitted. A Done beside the unit while editing is `ValueField`'s own shape, and the
+/// hosts also clear focus on a tap outside.
 @Composable
 fun BodyWeightField(
     kilograms: Double?,
@@ -73,6 +83,12 @@ fun BodyWeightField(
         onChange(kg)
         text = BodyWeightEntry.display(kg, unit)
     }
+
+    // Leaving the screen while typing (Back, a tab, the critical force test closing) is not
+    // a reason to lose the number: a focused field that leaves composition commits — through
+    // the LATEST `commit`, so the unit and callback are the ones on screen at the time.
+    val latestCommit by rememberUpdatedState({ commit() })
+    DisposableEffect(Unit) { onDispose { if (focused) latestCommit() } }
 
     Row(
         modifier.fillMaxWidth().heightIn(min = 48.dp),
@@ -109,6 +125,14 @@ fun BodyWeightField(
             },
         )
         Text(unit.symbol, style = MaterialTheme.typography.bodyMedium, color = palette.inkTertiary)
+        if (focused) {
+            TextButton(
+                onClick = { focus.clearFocus() },
+                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp).testTag("bodyWeight.done"),
+            ) {
+                Text(tr("Done"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            }
+        }
     }
 }
 

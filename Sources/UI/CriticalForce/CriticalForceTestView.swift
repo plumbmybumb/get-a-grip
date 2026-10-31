@@ -135,6 +135,8 @@ struct CriticalForceTestView: View {
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
+            // The body-weight keypad has no Return key; dragging the form puts it away.
+            .scrollDismissesKeyboard(.interactively)
             .background { AppBackground() }
             .safeAreaInset(edge: .bottom) {
                 formDock
