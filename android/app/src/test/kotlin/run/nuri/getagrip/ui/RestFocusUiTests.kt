@@ -261,6 +261,10 @@ class RestFocusUiTests {
             )).use { h ->
                 h.holdUntilRelease(); h.sample(0.0)
                 showRunner(h, fontScale = fontScale)
+                // At 2× on a 740 dp phone the pinned dock (one capsule per row, none wrapping)
+                // leaves the readouts their own scroll, and the graph carrying the countdown can
+                // start below its fold: reachable by scrolling the readouts, never under the dock.
+                node("countdown").performScrollTo()
                 assertText("countdown", "900")
                 node("grip").assertTextEquals(grip.line)
                 node("target").assertExists()
@@ -278,8 +282,9 @@ class RestFocusUiTests {
                     assertTextFits(id)
                 }
                 capture("android-rest-focus-french-accessibility-$suffix-counts.png")
-                compose.onNodeWithText(context.tr("Pause")).performScrollTo().assertIsDisplayed()
-                compose.onNodeWithContentDescription(context.tr("End session")).performScrollTo().assertIsDisplayed()
+                // Pinned outside the scrolling readouts: reachable with no scroll at all.
+                compose.onNodeWithText(context.tr("Pause")).assertIsDisplayed()
+                compose.onNodeWithContentDescription(context.tr("End session")).assertIsDisplayed()
                 capture("android-rest-focus-french-accessibility-$suffix-controls.png")
             }
         } finally { L10n.lookup = previous }
@@ -346,7 +351,12 @@ class RestFocusUiTests {
         // in a card: it runs the full screen width (360 dp against the card's 312 dp of plot), so
         // 140 dp of it is MORE drawable graph than the card's old 152 — the floor keeps that
         // area, it does not trade it away.
-        assertTrue(graph.height > 135, "The graph must remain a useful live plot: ${graph.height}")
+        //
+        // 2026-10-31: dock capsule labels no longer wrap ("Hold to / end"); a label that would
+        // takes its own row instead. In that tightest case the skips and Hold to end ("Keep
+        // holding…" measured with it) go one per row, and the plot measures 109. The floor
+        // follows the rule rather than letting labels break inside their capsules.
+        assertTrue(graph.height > 100, "The graph must remain a useful live plot: ${graph.height}")
         for (id in listOf("hand", "grip", "phase", "setCount", "pullCount")) {
             node(id).assertIsDisplayed()
             assertTrue(bounds(id).bottom <= graph.top, "$id must stay entirely above the graph")

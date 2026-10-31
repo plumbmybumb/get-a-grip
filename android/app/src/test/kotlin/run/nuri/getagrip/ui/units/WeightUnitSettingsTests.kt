@@ -52,11 +52,11 @@ class WeightUnitSettingsTests {
         settings.setWeightUnit(WeightUnit.kg)
         finishWrites()
         compose.setContent { GetAGripTheme { WeightUnitSetting(settings) } }
-        compose.onNodeWithText("Pounds · lb").performClick().assertIsSelected()
+        compose.onNodeWithText("Pounds").performClick().assertIsSelected()
         compose.runOnIdle { assertEquals(WeightUnit.lb, settings.weightUnit) }
         finishWrites()
         compose.runOnIdle { assertEquals(WeightUnit.lb, SettingsStore(context, owner).weightUnit) }
-        compose.onNodeWithText("Kilograms · kg").performClick().assertIsSelected()
+        compose.onNodeWithText("Kilograms").performClick().assertIsSelected()
         finishWrites()
         compose.runOnIdle { assertEquals(WeightUnit.kg, SettingsStore(context, owner).weightUnit) }
     }

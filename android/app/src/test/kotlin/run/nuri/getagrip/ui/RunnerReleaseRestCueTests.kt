@@ -276,11 +276,13 @@ class RunnerReleaseRestCueTests {
                 val text = layouts.single()
                 assertEquals(context.tr("RIGHT HAND NEXT").length, text.getLineEnd(text.lineCount - 1))
                 assertTrue(text.getLineBottom(text.lineCount - 1) <= prompt.fetchSemanticsNode().boundsInRoot.height + 1f)
+                // The dock is PINNED outside the scrolling readouts: every control is on screen
+                // without scrolling, which is the point of pinning it.
                 for (key in listOf("Pause", "Skip pull", "Skip set")) {
-                    compose.onNodeWithText(context.tr(key)).performScrollTo()
+                    compose.onNodeWithText(context.tr(key)).assertIsDisplayed()
                     assertButtonLabelFits(context.tr(key))
                 }
-                compose.onNodeWithContentDescription(context.tr("End session")).performScrollTo()
+                compose.onNodeWithContentDescription(context.tr("End session")).assertIsDisplayed()
                 compose.onNodeWithText(context.tr("Hold to end"), useUnmergedTree = true).assertIsDisplayed()
                 capture("android-runner-french-margins-2x.png")
             }

@@ -213,7 +213,8 @@ fun HouseSegmentedRow(
     }
 }
 
-/// Air each side of a segment's label: the 4 dp content padding, the border, and enough that a
-/// label never reads as touching its divider.
-private val segmentLabelInset = 12.dp
+/// Air each side of a segment's label: the 4 dp content padding, the border, and a few points
+/// so a label never reads as touching its divider. Not more: "One at a time" must keep its
+/// segment at 360 dp and standard text, which is why the padding was tightened to 4.
+private val segmentLabelInset = 8.dp
 private val chipSpacing = 8.dp
