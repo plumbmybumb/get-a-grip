@@ -370,7 +370,9 @@ private fun TrendChart(series: List<TrendModel.Point>, spoken: String) {
         val labelColumn = maxOf(tickLabels.maxOf { it.size.width }, unitLabel.size.width)
         val plotLeft = 0f
         val plotRight = size.width - labelColumn - gap
-        val plotTop = unitLabel.size.height + gap
+        // The top tick's label is CENTRED on its gridline, so half of it rises above
+        // `plotTop`; without that half the unit sat on the "30" from 1.5 up.
+        val plotTop = unitLabel.size.height + gap + tickLabels.last().size.height / 2f
         val xLabelHeight = tickLabels.first().size.height
         val plotBottom = size.height - xLabelHeight - gap
         val plotHeight = maxOf(1f, plotBottom - plotTop)
@@ -396,17 +398,32 @@ private fun TrendChart(series: List<TrendModel.Point>, spoken: String) {
         drawText(unitLabel, topLeft = Offset(plotRight + gap, 0f))
 
         // Date labels at a few sessions along the axis; the end labels hang inward.
-        for (index in TrendChartGeometry.sessionTicks(series.size)) {
+        // MEASURED against each other: at large text four dates no longer fit and ran
+        // together ("Oct 12Oct 31"). The ends always draw — they state the span — and an
+        // interior label that would touch a neighbour is skipped; its gridline stays.
+        val dateTicks = TrendChartGeometry.sessionTicks(series.size)
+        val placed = dateTicks.map { index ->
             val mx = x(index)
-            drawLine(grid, Offset(mx, plotTop), Offset(mx, plotBottom), hairline)
             val label = measurer.measure(dateFormat.format(series[index].date.atZone(zone).toLocalDate()), labelStyle)
-            val centred = mx - label.size.width / 2f
             val lx = when (index) {
                 0 -> mx
                 lastIndex -> mx - label.size.width
-                else -> centred
+                else -> mx - label.size.width / 2f
             }.coerceAtMost(plotRight - label.size.width).coerceAtLeast(0f)
-            drawText(label, topLeft = Offset(lx, plotBottom + gap))
+            Triple(mx, label, lx)
+        }
+        val labelGap = 8.dp.toPx()
+        val lastLeft = placed.lastOrNull()?.third ?: Float.MAX_VALUE
+        var previousRight = Float.NEGATIVE_INFINITY
+        placed.forEachIndexed { i, (mx, label, lx) ->
+            drawLine(grid, Offset(mx, plotTop), Offset(mx, plotBottom), hairline)
+            val isEnd = i == 0 || i == placed.lastIndex
+            val right = lx + label.size.width
+            val fits = lx >= previousRight + labelGap && (isEnd || right + labelGap <= lastLeft)
+            if (isEnd || fits) {
+                drawText(label, topLeft = Offset(lx, plotBottom + gap))
+                previousRight = right
+            }
         }
 
         // The curve: a monotone cubic, so between two sessions it never claims a load

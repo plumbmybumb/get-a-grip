@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -204,11 +205,22 @@ fun DialTrack(
         // dial over 3…60): one label per detent smears into nothing. Below
         // `DialLadder.minLabelSlot` per detent, only `anchorIndices` are drawn, each under
         // its own tick; the row above states the exact value either way.
+        //
+        // The slot is compared against the WIDEST LABEL AS MEASURED, not just a fixed 20 dp:
+        // at 2.0 text "1h30" is wider than its slot and the labels ran together ("1h3",
+        // "2h3"). Measured in the bold weight the current detent draws in.
+        val measurer = rememberTextMeasurer()
+        val labelStyle = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
+        val widestLabelPx = remember(values, labelStyle, measurer) {
+            values.maxOfOrNull { measurer.measure(format(it), labelStyle, maxLines = 1).size.width } ?: 0
+        }
         BoxWithConstraints(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
             val width = constraints.maxWidth.toFloat()
             val slot = DialLadder.slotWidth(width, values.size)
             val density = LocalDensity.current
-            if (with(density) { slot.toDp() } >= DialLadder.minLabelSlot) {
+            val labelGap = with(density) { LABEL_GAP.toPx() }
+            val minSlot = maxOf(with(density) { DialLadder.minLabelSlot.toPx() }, widestLabelPx + labelGap)
+            if (slot >= minSlot) {
                 Row(Modifier.fillMaxWidth()) {
                     values.forEachIndexed { index, ladderValue ->
                         DialLabel(format(ladderValue), mark == DialLadder.RenderingMark.Detent(index),
@@ -216,7 +228,10 @@ fun DialTrack(
                     }
                 }
             } else {
-                val anchors = DialLadder.anchorIndices(values, with(density) { slot.toDp() })
+                val anchors = DialLadder.anchorIndices(
+                    values, with(density) { slot.toDp() },
+                    minGap = maxOf(32.dp, with(density) { (widestLabelPx + labelGap).toDp() }),
+                )
                 Box(Modifier.fillMaxWidth()) {
                     // A hidden label holds the row's height, as iOS's template Text does.
                     DialLabel("0", false, Modifier.alpha(0f))
@@ -253,6 +268,9 @@ private fun DialLabel(text: String, isCurrent: Boolean, modifier: Modifier = Mod
 /// What the ticks draw into.
 private val TRACK_HEIGHT = 30.dp
 
+/// The least air between two neighbouring scale labels.
+private val LABEL_GAP = 6.dp
+
 /// What the finger gets — see the note on the Canvas.
 private val HIT_HEIGHT = 44.dp
 
@@ -273,7 +291,10 @@ object DialLadder {
                 abs(ratio - Math.round(ratio)) < 0.001
             }
             val gaps = anchors.zipWithNext { a, b -> slot * (b - a) }
-            if (anchors.isNotEmpty() && gaps.all { it >= minGap }) return anchors
+            // TWO at least: one lone anchor has no gaps to fail, so at 2.0 text the log
+            // sheet's duration dial "passed" with a single "2h30" under the middle of the
+            // track — a scale that states no range. (The iOS twin accepts one; same latent bug.)
+            if (anchors.size >= 2 && gaps.all { it >= minGap }) return anchors
         }
         return listOf(0, values.lastIndex)
     }

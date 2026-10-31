@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui
 
+import androidx.compose.ui.unit.dp
 import run.nuri.getagrip.ui.components.DialLadder
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,5 +51,13 @@ class DialTrackTests {
     fun anUnsetDialDrawsNoOffLadderMarkEither() {
         assertNull(DialLadder.renderingMark(0.0, ladder, isUnset = true))
         assertNull(DialLadder.renderingMark(2.5, ladder, isUnset = true))
+    }
+
+    /// A dense ladder's scale states a RANGE: one lone anchor ("2h30" under the middle of
+    /// the log sheet's duration dial at 2.0 text) is never the answer — the ends are.
+    @Test
+    fun aDenseScaleNeverLabelsJustOneAnchor() {
+        val minutes = listOf(30.0, 45.0, 60.0, 90.0, 120.0, 150.0, 180.0, 240.0)
+        assertEquals(listOf(0, 7), DialLadder.anchorIndices(minutes, slot = 40.dp, minGap = 80.dp))
     }
 }

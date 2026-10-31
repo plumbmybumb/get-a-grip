@@ -100,11 +100,16 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            // TWO PANES when the window is regular-width AND wider than tall: an iPad in
-            // landscape, or a foldable opened sideways. Size class and aspect, never the
-            // idiom — an iPad in portrait keeps one column, a Slide Over column is a phone.
-            // `RunnerView.live(_:)` gates its wide layout on the same expression.
-            content(wide: sizeClass == .regular && isLandscape, width: viewWidth)
+            // TWO PANES when the window is regular-width AND either wider than tall (an iPad
+            // in landscape, a foldable opened sideways) or wide enough for two ~300 pt
+            // panes in portrait — the unfolded iPhone Duo (669 pt) and an iPad in portrait,
+            // the same shape, where one `List` drew the month grid's cells as coasters
+            // (2026-10-31, `docs/IPHONE_DUO.md`). Size class and width, never the idiom — a
+            // Slide Over or Split View column is compact and stays a phone.
+            // (`RunnerView.live(_:)` still gates on the landscape half alone: a runner's
+            // two columns are a different question from a list beside its summaries.)
+            content(wide: sizeClass == .regular && (isLandscape || viewWidth >= Self.twoPanePortraitWidth),
+                    width: viewWidth)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onGeometryChange(for: Bool.self, of: { $0.size.width > $0.size.height }) {
                     isLandscape = $0
@@ -219,11 +224,22 @@ struct HistoryView: View {
     ///
     /// A little under half the window, capped at the regular-width column: past 560 the
     /// five-week grid spaces its cells until a week stops reading as a row, and the log is
-    /// the longer thing. 420 is the floor the cards were measured at (below it the trend
-    /// chips wrap), and never more than half, so the sessions never get a gutter.
+    /// the longer thing. Never more than half, so the sessions never get a gutter.
+    ///
+    /// The floor is the grid's card minimum (280), not the old 420 (2026-10-31): on an
+    /// unfolded Duo (669 pt) 420 hit the half cap and split it 334/334, which truncated
+    /// every session row's load ("23.2…"). At 0.44 the summaries are 294 — the month grid
+    /// keeps square cells, the trend chips are a scrolling rail at any width — and the log
+    /// gets 375, a 375 pt phone's row. A window wide enough for 0.44 × total ≥ 420 (every
+    /// iPad landscape) is unchanged.
     private func summaryWidth(in total: CGFloat) -> CGFloat {
-        min(max(total * 0.44, 420), Metrics.maxContentWidthRegular, total * 0.5)
+        min(max(total * 0.44, Metrics.cardMinWidth), Metrics.maxContentWidthRegular, total * 0.5)
     }
+
+    /// The narrowest portrait window that gets two panes: two `cardMinWidth` cards with
+    /// the house margins. 622 — the unfolded Duo is 669 on the simulator, 626 by the press
+    /// figure.
+    static let twoPanePortraitWidth: CGFloat = Metrics.cardMinWidth * 2 + Metrics.hPadding * 2 + Metrics.spacing
 
     // MARK: - The blocks both layouts are made of
 

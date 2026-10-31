@@ -91,6 +91,7 @@ import run.nuri.getagrip.data.CriticalForceRecordEntity
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.components.SecondaryButton
 import run.nuri.getagrip.ui.components.SessionRow
+import run.nuri.getagrip.ui.components.sessionRowTextStart
 import run.nuri.getagrip.ui.components.UndoSnackbar
 import run.nuri.getagrip.ui.components.UndoSnackbarEffect
 import run.nuri.getagrip.ui.components.benchmarkBore
@@ -646,15 +647,19 @@ private fun SwipeableSessionRow(
         Column {
             SessionRow(log = log, name = name, leadingGrip = leadingGrip,
                 modifier = Modifier.padding(horizontal = Metrics.hPadding).padding(vertical = 2.dp))
-            HorizontalDivider(Modifier.padding(start = SEPARATOR_INSET),
-                color = palette.inkTertiary.copy(alpha = 0.25f))
+            // Inset on BOTH sides to the row's own content: it starts under the text (iOS's
+            // `listRowSeparatorLeading` guide) and stops at the same margin the date keeps.
+            // It used to run off the right edge while starting 60 dp in on the left.
+            HorizontalDivider(
+                Modifier.padding(
+                    start = Metrics.hPadding + sessionRowTextStart(),
+                    end = Metrics.hPadding,
+                ),
+                color = palette.inkTertiary.copy(alpha = 0.25f),
+            )
         }
     }
 }
-
-/// 60 dp: `Metrics.hPadding` (20) + the 44 dp artwork tile, less a hair, exactly as iOS
-/// aligns its `listRowSeparatorLeading` guide.
-private val SEPARATOR_INSET = 60.dp
 
 @Composable
 private fun ShowAllRow(hidden: Int, onShow: () -> Unit) {

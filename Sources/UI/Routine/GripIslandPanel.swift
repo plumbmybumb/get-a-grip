@@ -8,12 +8,30 @@ import SwiftUI
 /// The status bar is hidden while this overlay is visible, without changing the window's
 /// color scheme. Filled white fingers are selected; outlined fingers remain off the edge.
 /// A white palm was tried and retired because it separated the hand from the black cutout.
+///
+/// **Only where there IS a top-centre cutout to hang from** — a Dynamic Island, or a
+/// notch, whose black the panel swallows just as well (the 2026-08-22 notch verdict:
+/// validated on notch hardware, do not change it). An iPhone Duo has neither on either
+/// display — the outer's camera stands on the TRAILING edge beside a vertical status
+/// column, the inner's is under the display — so there the hand hung off nothing, the
+/// panel ran under the side bars and the status column vanished (`docs/IPHONE_DUO.md`,
+/// finding 2). With no cutout (the Duo, a home-button phone, an iPad) the same picker is
+/// an ordinary top-anchored card: inside the safe area, rounded all round, status bar
+/// left alone, and the fingers as `FingerPips`, the house finger control.
 struct GripIslandPanel: View {
     @Binding var grip: GripSpec
     var onClose: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown = false
+    /// Read in `onAppear`, BEFORE `shown` flips: the first body pass has no key window to
+    /// ask (the window inset reads zero there), and nothing of the card is drawn until
+    /// `shown`, so the card's first frame is already the right shape.
+    @State private var hasTopCutout = false
+    /// The window's top safe inset at and above which the top edge carries a cutout:
+    /// island 59+, notch 47–48; the Duo's outer display 24, an iPad 24, a home-button
+    /// phone 20. Below `IslandHand.islandInset` (55) so the notch keeps its panel.
+    private static let cutoutTopInset: CGFloat = 44
 
     /// Rounded at the BOTTOM only. The top is square and flush with the screen edge, so
     /// the panel and the island are one black object.
@@ -23,10 +41,14 @@ struct GripIslandPanel: View {
     /// On a regular-width screen the panel is a centred black TAB from the top edge, not a
     /// slab across a 13-inch display. Every phone is narrower, so there it is full width.
     private static let widthCap: CGFloat = 520
+    /// Without a cutout: the card's corners and its margin from the safe area.
+    private static let floatingRadius: CGFloat = Metrics.radiusSheet
+    private static let floatingMargin: CGFloat = 8
 
     var body: some View {
         GeometryReader { geo in
-            let panelWidth = min(geo.size.width, Self.widthCap)
+            let panelWidth = min(geo.size.width - (hasTopCutout ? 0 : Self.floatingMargin * 2),
+                                 Self.widthCap)
             ZStack(alignment: .top) {
                 // Darker than a normal scrim: the unselected fingers are BLACK.
                 Color.black
@@ -38,24 +60,35 @@ struct GripIslandPanel: View {
                     .accessibilityAddTraits(.isButton)
 
                 if shown {
-                    ZStack(alignment: .top) {
-                        card
-                        IslandHandPicker(fingers: $grip.fingers,
-                                         position: grip.position,
-                                         screenWidth: panelWidth)
+                    Group {
+                        if hasTopCutout {
+                            ZStack(alignment: .top) {
+                                card
+                                IslandHandPicker(fingers: $grip.fingers,
+                                                 position: grip.position,
+                                                 screenWidth: panelWidth)
+                            }
+                        } else {
+                            card
+                        }
                     }
-                    .frame(width: panelWidth)
+                    .frame(width: max(0, panelWidth))
                     .frame(maxWidth: .infinity)
+                    .padding(.top, hasTopCutout ? 0 : Self.floatingMargin)
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
         }
-        .ignoresSafeArea()
+        // With a cutout the panel IS the top of the screen; without one it lives in the
+        // safe area like any other card (the scrim still covers everything).
+        .ignoresSafeArea(edges: hasTopCutout ? .all : [])
         // HIDDEN, not re-themed: the clock would be dark text on black, and
         // `preferredColorScheme(.dark)` propagates to the WINDOW (measured
         // 2026-08-11: the builder turned dark and STAYED dark after dismissal).
-        .statusBarHidden(true)
+        // Only over a cutout: a floating card leaves the status bar clear of it.
+        .statusBarHidden(hasTopCutout)
         .onAppear {
+            hasTopCutout = IslandHand.windowTopInset >= Self.cutoutTopInset
             withAnimation(Motion.state(reduceMotion)) { shown = true }
         }
     }
@@ -69,10 +102,17 @@ struct GripIslandPanel: View {
             IntValueRow(title: String(localized: "Edge"), unit: String(localized: "mm"), value: $grip.edgeMM,
                         range: 4...45, limit: GripSpec.edgeRange,
                         control: .dial([6, 10, 15, 20, 25, 30, 35, 45]))
+            if !hasTopCutout {
+                // No cutout to hang the hand from: the builder's own finger control, which
+                // says the pinch rule itself. The name line above already names the set.
+                block(String(localized: "FINGERS")) {
+                    FingerPips(fingers: $grip.fingers, position: grip.position, showsName: false)
+                }
+            }
             // Said in words, mirroring `FingerPips`: the locked thumb bar refuses taps,
             // and a control that looks live and refuses with no reason on screen is the
             // failure the hit-target rule exists to prevent.
-            if grip.position == .pinch {
+            if hasTopCutout, grip.position == .pinch {
                 Text("A pinch always includes the thumb.")
                     .font(.system(.caption, weight: .medium))
                     .foregroundStyle(Ink.tertiary)
@@ -82,17 +122,22 @@ struct GripIslandPanel: View {
         }
         .padding(.horizontal, Metrics.hPadding)
         // Clears the hand hanging off the island above it.
-        .padding(.top, Self.handClearance)
+        .padding(.top, hasTopCutout ? Self.handClearance : 20)
         .padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            UnevenRoundedRectangle(bottomLeadingRadius: Self.bottomRadius,
-                                   bottomTrailingRadius: Self.bottomRadius,
-                                   style: .continuous)
-                .fill(Color.black)
-                .ignoresSafeArea(edges: .top)
+            if hasTopCutout {
+                UnevenRoundedRectangle(bottomLeadingRadius: Self.bottomRadius,
+                                       bottomTrailingRadius: Self.bottomRadius,
+                                       style: .continuous)
+                    .fill(Color.black)
+                    .ignoresSafeArea(edges: .top)
+            } else {
+                RoundedRectangle(cornerRadius: Self.floatingRadius, style: .continuous)
+                    .fill(Color.black)
+            }
         }
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(edges: hasTopCutout ? .top : [])
         // Scoped, NOT `preferredColorScheme`: adaptive tokens resolve dark inside
         // the card (`Accent.graphite` near-white on black) without touching the window.
         .environment(\.colorScheme, .dark)

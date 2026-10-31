@@ -3,9 +3,11 @@
 
 package run.nuri.getagrip.ui.history
 
+import android.icu.text.MeasureFormat
+import android.icu.util.Measure
+import android.icu.util.MeasureUnit
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,10 +16,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import run.nuri.getagrip.data.LifetimeStats
+import run.nuri.getagrip.engine.DisplayText
+import java.util.Locale
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.LocalGripPalette
@@ -80,27 +87,69 @@ fun LifetimeCard(stats: LifetimeStats, modifier: Modifier = Modifier) {
 
 /// The Settings device card's row, with the value in primary ink and a little weight: these
 /// are facts about the person, not the link's status.
+///
+/// **Side by side only when both fit on one line with a real gap; otherwise STACKED** —
+/// label above, value under it on the same right-hand axis. A plain SpaceBetween row let
+/// "Under tension" and its value touch from 1.5 and wrapped the value over three lines
+/// at 2.0. Measured, not thresholded on the font scale, so a short value like "91" stays
+/// beside its label at every size.
 @Composable
 private fun LedgerRow(label: String, value: String) {
     val palette = LocalGripPalette.current
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
-            fontWeight = FontWeight.SemiBold,
-            color = palette.inkPrimary,
-        )
+    Layout(
+        content = {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                fontWeight = FontWeight.SemiBold,
+                color = palette.inkPrimary,
+                textAlign = TextAlign.End,
+            )
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val gap = LEDGER_GAP.roundToPx()
+        val labelWidth = measurables[0].maxIntrinsicWidth(Constraints.Infinity)
+        val valueWidth = measurables[1].maxIntrinsicWidth(Constraints.Infinity)
+        val loose = Constraints(maxWidth = width)
+        if (labelWidth + gap + valueWidth <= width) {
+            val l = measurables[0].measure(loose)
+            val v = measurables[1].measure(loose)
+            layout(width, maxOf(l.height, v.height)) {
+                l.placeRelative(0, 0)
+                v.placeRelative(width - v.width, 0)
+            }
+        } else {
+            val l = measurables[0].measure(loose)
+            val v = measurables[1].measure(loose)
+            layout(width, l.height + v.height) {
+                l.placeRelative(0, 0)
+                v.placeRelative(width - v.width, l.height)
+            }
+        }
     }
 }
 
-/// Hours and minutes once there are hours, minutes before — two units, never three.
-@Composable
+private val LEDGER_GAP = 12.dp
+
+/// Two units, never three — the iOS card's `Duration.formatted(.units(width:
+/// .abbreviated, maximumUnitCount: 2))`, through the same CLDR data: "8 hr, 38 min",
+/// "8 h et 38 min". The long "8 hours and 38 minutes" was the one value on the card too
+/// wide to sit beside its label at large text.
 private fun heldText(seconds: Double): String {
     val total = seconds.toLong()
     val hours = (total / 3600).toInt()
     val minutes = ((total % 3600) / 60).toInt()
-    return if (hours > 0) tr("%d hours and %d minutes", hours, minutes) else tr("%d min", minutes)
+    val format = MeasureFormat.getInstance(Locale.getDefault(), MeasureFormat.FormatWidth.SHORT)
+    val text = if (hours > 0) {
+        format.formatMeasures(Measure(hours, MeasureUnit.HOUR), Measure(minutes, MeasureUnit.MINUTE))
+    } else {
+        format.formatMeasures(Measure(minutes, MeasureUnit.MINUTE))
+    }
+    // A number never parts from its unit; the list separator may still break.
+    return text.replace(Regex("(\\d)[ \\u202F]")) { "${it.groupValues[1]}${DisplayText.NBSP}" }
 }
 
 /// Tonnes once kilograms pass a thousand — "20.3 t" is the odometer reading, "20 300 kg" is
@@ -112,8 +161,8 @@ private fun volumeText(volumeKg: Double): String {
     val whole = NumberFormat.getIntegerInstance()
     return when (unit) {
         WeightUnit.kg ->
-            if (volumeKg >= 1000) tr("%s t", oneDecimal.format(volumeKg / 1000))
-            else "${whole.format(volumeKg)} ${unit.symbol}"
-        WeightUnit.lb -> "${whole.format(unit.fromKg(volumeKg))} ${unit.symbol}"
+            if (volumeKg >= 1000) DisplayText.token(tr("%s t", oneDecimal.format(volumeKg / 1000)))
+            else "${whole.format(volumeKg)}${DisplayText.NBSP}${unit.symbol}"
+        WeightUnit.lb -> "${whole.format(unit.fromKg(volumeKg))}${DisplayText.NBSP}${unit.symbol}"
     }
 }

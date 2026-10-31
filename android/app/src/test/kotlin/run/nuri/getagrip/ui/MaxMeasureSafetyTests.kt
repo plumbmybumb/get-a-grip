@@ -27,6 +27,7 @@ import run.nuri.getagrip.inertScope
 import run.nuri.getagrip.ble.ProgressorConnectionState
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.engine.ForceSample
+import run.nuri.getagrip.engine.DisplayText
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.MaxMeasurementResult
 import run.nuri.getagrip.engine.MaxSource
@@ -125,7 +126,8 @@ class MaxMeasureSafetyTests {
     }
 
     private fun saving(side: String, text: String) {
-        compose.onNodeWithTag("max.review.saving.$side").assertTextEquals(text)
+        // A unit rides a no-break space ("23.0 kg"); the expectations are written plain.
+        compose.onNodeWithTag("max.review.saving.$side").assertTextEquals(text.replace(" kg", "${DisplayText.NBSP}kg"))
     }
 
     @Test fun theVisitReadsOnOpenWithNoStartAndLogsEveryPull() {

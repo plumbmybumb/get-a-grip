@@ -300,8 +300,8 @@ class GripKeyTests {
     @Test
     fun frozenGripCopyStrings() {
         val fourFinger = GripSpec(edgeMM = 20, fingers = FingerSet.four, position = GripPosition.halfCrimp)
-        assertEquals("20 mm · 4 fingers · half crimp", fourFinger.line)
-        assertEquals("20 mm · 4 fingers · Half crimp", fourFinger.displayName)
+        assertEquals("20\u00A0mm\u00A0· 4\u00A0fingers\u00A0· half\u00A0crimp", fourFinger.line)
+        assertEquals("20\u00A0mm\u00A0· 4\u00A0fingers\u00A0· Half\u00A0crimp", fourFinger.displayName)
         assertEquals("20 mm edge, 4 fingers, half crimp", fourFinger.spoken)
         assertEquals(
             "20mm F2 FC",

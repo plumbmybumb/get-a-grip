@@ -280,10 +280,10 @@ class TemplateStoreTests {
         assertEquals(seed.plan.sets.map { it.grip.key }, template.sets.map { it.grip.key })
         assertEquals(seed.reminders, template.reminders)
         assertEquals(1290, template.estimatedSeconds)
-        assertEquals("6 sets · 36 pulls · ≈21 min", template.summaryLine)
+        assertEquals("6\u00A0sets\u00A0· 36\u00A0pulls\u00A0· ≈21\u00A0min", template.summaryLine)
 
         val summary = w.store.summary(template)
-        assertEquals("20 mm · 6 sets · 36 pulls · ≈21 min", summary.metaLine)
+        assertEquals("20\u00A0mm\u00A0· 6\u00A0sets\u00A0· 36\u00A0pulls\u00A0· ≈21\u00A0min", summary.metaLine)
         assertEquals(6, summary.setCount)
         assertEquals(36, summary.totalReps)
         assertEquals(20, summary.sharedEdgeMM)
@@ -700,7 +700,7 @@ class TemplateStoreTests {
 
         w.store.undoDelete()
         assertEquals(1, routines(w).size)
-        assertEquals("6 sets · 36 pulls · ≈21 min", routines(w).firstOrNull()?.summaryLine)
+        assertEquals("6\u00A0sets\u00A0· 36\u00A0pulls\u00A0· ≈21\u00A0min", routines(w).firstOrNull()?.summaryLine)
     }
 
     // MARK: - The new routine-level columns
@@ -2129,7 +2129,7 @@ class RoutineSummaryValueTests {
 
     @Test
     fun aOneEdgeRoutineStatesTheEdgePlainly() {
-        assertEquals("20 mm", summary(listOf(20, 20, 20)).edgeLine)
+        assertEquals("20\u00A0mm", summary(listOf(20, 20, 20)).edgeLine)
     }
 
     /// The span runs in LADDER order — "20–10" for a protocol that starts deep and thins
@@ -2137,15 +2137,15 @@ class RoutineSummaryValueTests {
     /// direction, not an interval on a number line.
     @Test
     fun aMixedLadderStatesItsSpanInLadderOrder() {
-        assertEquals("20–10 mm", summary(listOf(20, 15, 10)).edgeLine)
-        assertEquals("10–20 mm", summary(listOf(10, 15, 20)).edgeLine)
+        assertEquals("20–10\u00A0mm", summary(listOf(20, 15, 10)).edgeLine)
+        assertEquals("10–20\u00A0mm", summary(listOf(10, 15, 20)).edgeLine)
     }
 
     /// A first edge that is neither extreme has no directional claim, so the span falls
     /// back to ascending rather than inventing one.
     @Test
     fun aFirstEdgeThatIsNeitherExtremeFallsBackToAscending() {
-        assertEquals("10–20 mm", summary(listOf(15, 20, 10)).edgeLine)
+        assertEquals("10–20\u00A0mm", summary(listOf(15, 20, 10)).edgeLine)
     }
 
     /// The old behaviour this replaces: `sharedEdgeMM` DROPPED the edge from `metaLine`
@@ -2153,7 +2153,7 @@ class RoutineSummaryValueTests {
     /// sentence now opens with the span.
     @Test
     fun metaLineCarriesTheSpanInsteadOfGoingSilent() {
-        assertTrue(summary(listOf(20, 10)).metaLine.startsWith("20–10 mm · "))
+        assertTrue(summary(listOf(20, 10)).metaLine.startsWith("20–10\u00A0mm\u00A0· "))
     }
 
     @Test

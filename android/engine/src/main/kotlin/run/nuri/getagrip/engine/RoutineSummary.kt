@@ -81,8 +81,10 @@ data class RoutineSummary(
             val first = edges.firstOrNull() ?: return null
             val lo = edges.min()
             val hi = edges.max()
-            if (lo == hi) return L10n.tr("%d mm", hi)
-            return if (first == hi) L10n.tr("%d–%d mm", hi, lo) else L10n.tr("%d–%d mm", lo, hi)
+            if (lo == hi) return DisplayText.token(L10n.tr("%d mm", hi))
+            return DisplayText.token(
+                if (first == hi) L10n.tr("%d–%d mm", hi, lo) else L10n.tr("%d–%d mm", lo, hi)
+            )
         }
 
     /// The grip the card's `EdgeMark` draws — the routine's SIGNATURE. Weighted by PULLS
@@ -113,7 +115,7 @@ data class RoutineSummary(
             val pullWord = if (totalReps == 1) L10n.tr("pull") else L10n.tr("pulls")
             parts.add(L10n.tr("%d %s", totalReps, pullWord))
             parts.add(PlanMath.approxMinutes(estimatedSeconds))
-            return parts.joinToString(" · ")
+            return DisplayText.dotted(parts)
         }
 
     companion object {

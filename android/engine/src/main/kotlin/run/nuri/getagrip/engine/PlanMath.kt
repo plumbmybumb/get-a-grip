@@ -523,11 +523,13 @@ object PlanMath {
     /// component in others.
     fun durationText(seconds: Int): String {
         val s = maxOf(0, seconds)
-        if (s < 60) return L10n.tr("%d s", s)
+        if (s < 60) return DisplayText.token(L10n.tr("%d s", s))
         val minutes = s / 60
         val remainder = s % 60
-        return if (remainder == 0) L10n.tr("%d min", minutes)
-        else L10n.tr("%d min %d s", minutes, remainder)
+        return DisplayText.token(
+            if (remainder == 0) L10n.tr("%d min", minutes)
+            else L10n.tr("%d min %d s", minutes, remainder)
+        )
     }
 
     /// "5:45" · "21:30" — the stopwatch form, for anything sitting next to a number.
@@ -541,31 +543,25 @@ object PlanMath {
     /// "N s", because "≈0 min" is not an estimate of anything.
     fun approxMinutes(seconds: Int): String {
         val s = maxOf(0, seconds)
-        if (s < 60) return L10n.tr("%d s", s)
-        return L10n.tr("≈%d min", s / 60)
+        if (s < 60) return DisplayText.token(L10n.tr("%d s", s))
+        return DisplayText.token(L10n.tr("≈%d min", s / 60))
     }
 
     // MARK: - The four frozen line builders
 
     /// "6 sets · 36 pulls · ≈21 min"
-    fun summaryLine(plan: SessionPlan): String = L10n.tr(
-        "%s · %s · %s",
-        setsText(plan),
-        pullsText(plan),
-        approxMinutes(totalSeconds(plan)),
+    fun summaryLine(plan: SessionPlan): String = DisplayText.dotted(
+        L10n.tr("%s · %s · %s", setsText(plan), pullsText(plan), approxMinutes(totalSeconds(plan)))
     )
 
     /// "≈21 min · 36 pulls" — the nav subtitle, where the estimate comes FIRST because
     /// the commitment is the thing being decided while the chips are still one tap away.
     fun subtitleLine(plan: SessionPlan): String =
-        L10n.tr("%s · %s", approxMinutes(totalSeconds(plan)), pullsText(plan))
+        DisplayText.dotted(L10n.tr("%s · %s", approxMinutes(totalSeconds(plan)), pullsText(plan)))
 
     /// "6 sets · 36 pulls · 21:30 in total" — the exact figure, not the estimate.
-    fun totalsLine(plan: SessionPlan): String = L10n.tr(
-        "%s · %s · %s in total",
-        setsText(plan),
-        pullsText(plan),
-        clockText(totalSeconds(plan)),
+    fun totalsLine(plan: SessionPlan): String = DisplayText.dotted(
+        L10n.tr("%s · %s · %s in total", setsText(plan), pullsText(plan), clockText(totalSeconds(plan)))
     )
 
     /// "18 pulls per side · 3:00 under tension per side". null when the mode has one

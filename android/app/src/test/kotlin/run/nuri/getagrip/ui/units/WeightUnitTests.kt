@@ -27,7 +27,7 @@ class WeightUnitTests {
     @Test fun usesExactInternationalPoundAndPreservesSignedTareReadings() {
         assertEquals(0.45359237, WeightUnit.lb.toKg(1.0), 0.0)
         assertEquals(1.0, WeightUnit.lb.fromKg(0.45359237), 0.0)
-        assertEquals("-1.1 lb", WeightUnit.lb.text(-0.5))
+        assertEquals("-1.1\u00A0lb", WeightUnit.lb.text(-0.5))
         for (kg in listOf(-0.5, 0.0, 0.5, 12.345678, 250.0)) {
             assertEquals(kg, WeightUnit.lb.toKg(WeightUnit.lb.fromKg(kg)), 1e-12)
         }
@@ -52,7 +52,7 @@ class WeightUnitTests {
 
     @Test fun targetBandAndNotificationConvertBothEndpointsButNotTheirDeadline() {
         WeightUnits.current = WeightUnit.lb
-        assertEquals("22.0–33.1 lb", WeightUnits.band(10.0..15.0))
+        assertEquals("22.0–33.1\u00A0lb", WeightUnits.band(10.0..15.0))
         val state = SessionActivityState(GripSpec(), Side.left, SessionActivityPhase.resting, 1, 2,
             targetLoKg = 10.0, targetHiKg = 15.0, endsAtEpochMillis = 50_000, pendingSeconds = null)
         val content = LiveUpdateContent.of(state, 6, 1, 40_000)
@@ -71,7 +71,7 @@ class WeightUnitTests {
         Locale.setDefault(Locale.FRANCE)
         L10n.lookup = { key -> when (key) { "pounds" -> "livres"; "target %s to %s kilograms" -> "cible de %s à %s kilogrammes"; else -> null } }
         WeightUnits.current = WeightUnit.lb
-        assertEquals("22,0 lb", WeightUnits.text(10.0))
+        assertEquals("22,0\u00A0lb", WeightUnits.text(10.0))
         assertEquals("cible de 22,0 à 33,1 livres", WeightUnits.tr("target %s to %s kilograms", WeightUnits.number(10.0), WeightUnits.number(15.0)))
     }
 
