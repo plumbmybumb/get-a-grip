@@ -46,6 +46,7 @@
     <string name="s_kilograms_your_hardest_pull">%s kilograms, your hardest pull</string>
     <string name="s_lead_in_before_each_set_ce038b">%s lead-in before each set</string>
     <string name="s_needs_a_one_time_calibration_lookup_from_its_maker_by_se">%s needs a one-time calibration lookup from its maker, by serial number. It\'s then kept on this phone. No other gauge uses a server.</string>
+    <string name="s_of_lld_s">%1$s of %2$d s</string>
     <string name="s_of_lld_s_max_959f72">%1$s of %2$d s max</string>
     <string name="s_of_each_hand_s_max">%1$s of each hand\'s max · %2$s %3$s</string>
     <string name="s_of_each_hand_s_max_kg">%1$s of each hand\'s max · %2$s kg</string>
@@ -147,6 +148,7 @@
     <string name="s_lld_of_lld_days_trained">%1$d of %2$d days trained</string>
     <string name="s_lld_of_lld_days_trained_since_you_started">%1$d of %2$d days trained since you started</string>
     <string name="s_lld_of_lld_pulls_completed">%1$d of %2$d pulls completed</string>
+    <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension">%1$d of %2$d pulls completed, %3$d seconds under tension</string>
     <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension_pea_cb6f8b">%1$d of %2$d pulls completed, %3$d seconds under tension, peak %4$s %5$s</string>
     <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension_pea_3a3be9">%1$d of %2$d pulls completed, %3$d seconds under tension, peak %4$s kilograms</string>
     <string name="s_lld_of_lld_pulls_done">%1$d of %2$d pulls done</string>
@@ -424,6 +426,7 @@
     <string name="s_delete_this_earlier_max_for">Delete this earlier max for %s</string>
     <string name="s_delete_this_max_for">Delete this max for %1$s%2$s</string>
     <string name="s_delete_this_session_on">Delete this session, %1$s on %2$s</string>
+    <string name="s_delete_workout">Delete workout</string>
     <string name="s_deleting_a_session_also_removes_it_from_your_streak_and">Deleting a session also removes it from your streak and trends.</string>
     <string name="s_demo_device">Demo device</string>
     <string name="s_describe_your_routine_to_chatgpt_claude_or_any_ai_chat_i">Describe your routine to ChatGPT, Claude or any AI chat in your own words. It writes the routine in a form Get a Grip can read.</string>
@@ -448,6 +451,7 @@
     <string name="s_drag">Drag</string>
     <string name="s_duplicate">Duplicate</string>
     <string name="s_duplicate_last_set">Duplicate last set</string>
+    <string name="s_duration">Duration</string>
     <string name="s_ease_off">EASE OFF</string>
     <string name="s_every_day">EVERY DAY</string>
     <string name="s_each_bar_is_one_pull_s_average_critical_force_is_the_mea">Each bar is one pull\'s average. Critical force is the mean of pulls %1$d–%2$d.</string>
@@ -463,6 +467,7 @@
     <string name="s_edit_maxes_for">Edit maxes for %s</string>
     <string name="s_edit_routine">Edit routine</string>
     <string name="s_edit_shared_max">Edit shared max</string>
+    <string name="s_effort">Effort</string>
     <string name="s_email">Email %s</string>
     <string name="s_email_details">Email details</string>
     <string name="s_end_session">End session</string>
@@ -659,6 +664,7 @@
     <string name="s_max_both_hands_together">Max, both hands together</string>
     <string name="s_max_one_hand_at_a_time">Max, one hand at a time</string>
     <string name="s_maxes_a9b915">Maxes</string>
+    <string name="s_maxes_saved">Maxes saved</string>
     <string name="s_maxes_saved_but_the_targets_didn_t_update_try_again">Maxes saved, but the targets didn\'t update. Try again.</string>
     <string name="s_maxes_tested">Maxes tested</string>
     <string name="s_maxes_tested_today">Maxes tested today</string>
@@ -757,6 +763,7 @@
     <string name="s_not_now">Not now</string>
     <string name="s_not_rated">Not rated</string>
     <string name="s_not_set">Not set</string>
+    <string name="s_note">Note</string>
     <string name="s_nothing">Nothing</string>
     <string name="s_nothing_here_yet">Nothing here yet</string>
     <string name="s_nothing_is_saved_the_session_is_gone">Nothing is saved. The session is gone.</string>
@@ -794,6 +801,7 @@
     <string name="s_opens_the_routine_builder">Opens the routine builder.</string>
     <string name="s_opens_the_target_editor">Opens the target editor</string>
     <string name="s_opens_this_set_for_editing">Opens this set for editing</string>
+    <string name="s_opens_this_workout">Opens this workout</string>
     <string name="s_optional_it_s_what_tells_you_later_whether_to_add_load">Optional. It\'s what tells you later whether to add load.</string>
     <string name="s_other_6e6a6f">Other</string>
     <string name="s_other_10cf91">Other…</string>
@@ -866,6 +874,7 @@
     <string name="s_record_another_test">Record another test</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Record what you can hold on each grip, per hand if they differ, and measure one on the gauge from here. Percentages need this; kilograms do not.</string>
     <string name="s_refresh_battery">Refresh battery</string>
+    <string name="s_released_early">Released early</string>
     <string name="s_remind_me">Remind me</string>
     <string name="s_remind_on_this_ipad">Remind on this iPad</string>
     <string name="s_remind_on_this_iphone">Remind on this iPhone</string>
@@ -983,6 +992,7 @@
     <string name="s_skip_is_unavailable_while_paused">Skip is unavailable while paused.</string>
     <string name="s_skip_pull">Skip pull</string>
     <string name="s_skip_set">Skip set</string>
+    <string name="s_skipped">Skipped</string>
     <string name="s_solid">Solid</string>
     <string name="s_some_apps_may_flatten_the_transparent_background">Some apps may flatten the transparent background.</string>
     <string name="s_some_fixed_weight_targets_moved">Some fixed weight targets moved</string>
@@ -1011,6 +1021,7 @@
     <string name="s_start_with_the_left_hand">Start with the left hand</string>
     <string name="s_start_with_the_right_hand">Start with the right hand</string>
     <string name="s_start_without_a_gauge">Start without a gauge</string>
+    <string name="s_started">Started</string>
     <string name="s_starts_on_the_left_hand">Starts on the left hand</string>
     <string name="s_starts_on_the_right_hand">Starts on the right hand</string>
     <string name="s_status">Status</string>
@@ -1195,6 +1206,7 @@
     <string name="s_grip_has">grip has</string>
     <string name="s_grips_have">grips have</string>
     <string name="s_heaviest_pull_a31a89">heaviest pull %1$s %2$s</string>
+    <string name="s_held_of_lld_seconds">held %1$s of %2$d seconds</string>
     <string name="s_held_since">held since %s</string>
     <string name="s_hour">hour</string>
     <string name="s_hours">hours</string>

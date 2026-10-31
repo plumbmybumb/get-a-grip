@@ -74,8 +74,63 @@ enum DebugSeeding {
             seedHistory(context: context)
             seedMaxes(context: context)
             seedCriticalForce(context: context)
+            // With `-seedSessionKinds`, the four shapes a session detail draws differently,
+            // newest first so `-openSession 0…3` reaches each one headlessly.
+            if args.contains("-seedSessionKinds") { seedSessionKinds(context: context) }
             try? context.save()
         }
+    }
+
+    /// Tonight, newest first: a limit climb (row 0), hangs logged away from the gauge
+    /// (1), a timer-only run (2) and a measured run that saved a max (3). Behind its own
+    /// flag so the plain `-seedHistory` world other screenshots rely on is unchanged.
+    private static func seedSessionKinds(context: ModelContext) {
+        let plan = RoutineDraft.starter.normalized.plan.executable
+        let slots = PlanMath.sequence(for: plan)
+        let today = DayStamp.today()
+        let evening = today.date().addingTimeInterval(20 * 3600)
+        let ids = idsByName(context)
+
+        func run(at started: Date, measured: Bool) -> (WorkoutLog, [RepSummary]) {
+            // Every pull but two: a skip mid-way, and the session ended on the last one.
+            let reps = slots.enumerated().map { index, slot in
+                let outcome: RepOutcome = index == 3 ? .skipped
+                    : (index == slots.count - 1 ? .aborted : .completed)
+                let held = outcome == .completed ? Double(slot.holdSeconds)
+                    : (outcome == .aborted ? Double(slot.holdSeconds) * 0.4 : 0)
+                let peak = measured && outcome != .skipped ? 22.0 + Double(index % 4) * 0.6 : 0
+                return RepSummary(setIndex: slot.setIndex, repIndex: slot.repIndex,
+                                  side: slot.side, grip: slot.grip,
+                                  targetSeconds: slot.holdSeconds, heldSeconds: held,
+                                  peakKg: index == 0 && measured ? 33.4 : peak,
+                                  avgKg: measured && held > 0 ? peak - 1.5 : 0,
+                                  outcome: outcome)
+            }
+            let log = WorkoutLog(plan: plan, templateID: ids[plan.name], templateName: plan.name,
+                                 sessionsPerDayTarget: 2, reps: reps, startedAt: started,
+                                 finishedAt: started.addingTimeInterval(Double(PlanMath.totalSeconds(plan))),
+                                 day: today)
+            return (log, reps)
+        }
+
+        let (measured, reps) = run(at: evening, measured: true)
+        measured.rpe = RPE.hard.rawValue
+        context.insert(measured)
+        // The max its summary saved: the first pull's peak, bit for bit, seconds after.
+        if let first = reps.first {
+            context.insert(MaxRecord(grip: first.grip, kg: first.peakKg, source: .measured,
+                                     side: first.side,
+                                     recordedAt: measured.finishedAt.addingTimeInterval(40)))
+        }
+        let (timerOnly, _) = run(at: evening.addingTimeInterval(1800), measured: false)
+        timerOnly.rpe = RPE.solid.rawValue
+        context.insert(timerOnly)
+        context.insert(WorkoutLog(logged: .hangManual, day: today, at: evening.addingTimeInterval(3600),
+                                  sessionsPerDayTarget: 2, minutes: 25, rpe: .comfortable,
+                                  fingerStrain: .worked))
+        context.insert(WorkoutLog(logged: .climbLimit, day: today, at: evening.addingTimeInterval(5400),
+                                  sessionsPerDayTarget: 2, minutes: 105, rpe: .maximal,
+                                  fingerStrain: .taxed, notes: "Projected the crimpy 7A in the cave."))
     }
 
     /// Two critical force visits on the main grip (both hands each), seven and one week old, built by the

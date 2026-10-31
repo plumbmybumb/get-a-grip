@@ -46,6 +46,7 @@
     <string name="s_kilograms_your_hardest_pull">%s kilogrammes, ton tirage le plus fort</string>
     <string name="s_lead_in_before_each_set_ce038b">Décompte de %s avant chaque série</string>
     <string name="s_needs_a_one_time_calibration_lookup_from_its_maker_by_se">%s demande une recherche unique de calibration auprès de son fabricant, par numéro de série. Elle est ensuite gardée sur ce téléphone. Aucun autre capteur n\'utilise de serveur.</string>
+    <string name="s_of_lld_s">%1$s sur %2$d s</string>
     <string name="s_of_lld_s_max_959f72">%1$s du max sur %2$d s</string>
     <string name="s_of_each_hand_s_max">%1$s du max de chaque main · %2$s %3$s</string>
     <string name="s_of_each_hand_s_max_kg">%1$s du max de chaque main · %2$s kg</string>
@@ -147,6 +148,7 @@
     <string name="s_lld_of_lld_days_trained">%1$d sur %2$d jours d\'entraînement</string>
     <string name="s_lld_of_lld_days_trained_since_you_started">%1$d sur %2$d jours d\'entraînement depuis tes débuts</string>
     <string name="s_lld_of_lld_pulls_completed">%1$d sur %2$d tirages effectués</string>
+    <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension">%1$d sur %2$d tirages effectués, %3$d secondes sous tension</string>
     <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension_pea_cb6f8b">%1$d sur %2$d tirages effectués, %3$d secondes sous tension, pic %4$s %5$s</string>
     <string name="s_lld_of_lld_pulls_completed_lld_seconds_under_tension_pea_3a3be9">%1$d sur %2$d tirages effectués, %3$d secondes sous tension, pic à %4$s kilogrammes</string>
     <string name="s_lld_of_lld_pulls_done">%1$d sur %2$d tirages faits</string>
@@ -423,6 +425,7 @@
     <string name="s_delete_this_earlier_max_for">Supprimer ce max antérieur pour %s</string>
     <string name="s_delete_this_max_for">Supprimer ce max pour %1$s%2$s</string>
     <string name="s_delete_this_session_on">Supprimer cette séance, %1$s le %2$s</string>
+    <string name="s_delete_workout">Supprimer la séance</string>
     <string name="s_deleting_a_session_also_removes_it_from_your_streak_and">Supprimer une séance la retire aussi de ta série et de tes tendances.</string>
     <string name="s_demo_device">Appareil de démo</string>
     <string name="s_describe_your_routine_to_chatgpt_claude_or_any_ai_chat_i">Décris ta routine avec tes mots à ChatGPT, Claude ou toute autre IA. Elle l\'écrit dans un format que Get a Grip sait lire.</string>
@@ -447,6 +450,7 @@
     <string name="s_drag">À plat</string>
     <string name="s_duplicate">Dupliquer</string>
     <string name="s_duplicate_last_set">Dupliquer la dernière série</string>
+    <string name="s_duration">Durée</string>
     <string name="s_ease_off">MOINS FORT</string>
     <string name="s_every_day">CHAQUE JOUR</string>
     <string name="s_each_bar_is_one_pull_s_average_critical_force_is_the_mea">Chaque barre est la moyenne d\'un tirage. La force critique est la moyenne des tirages %1$d à %2$d.</string>
@@ -462,6 +466,7 @@
     <string name="s_edit_maxes_for">Modifier les max pour %s</string>
     <string name="s_edit_routine">Modifier la routine</string>
     <string name="s_edit_shared_max">Modifier le max commun</string>
+    <string name="s_effort">Effort</string>
     <string name="s_email">Écrire à %s</string>
     <string name="s_email_details">Détails de l’e-mail</string>
     <string name="s_end_session">Terminer la séance</string>
@@ -657,6 +662,7 @@
     <string name="s_max_both_hands_together">Max, les deux mains ensemble</string>
     <string name="s_max_one_hand_at_a_time">Max, une main à la fois</string>
     <string name="s_maxes_a9b915">Max</string>
+    <string name="s_maxes_saved">Max enregistrés</string>
     <string name="s_maxes_saved_but_the_targets_didn_t_update_try_again">Max enregistrés, mais les cibles n\'ont pas été mises à jour. Réessaie.</string>
     <string name="s_maxes_tested">Max testés</string>
     <string name="s_maxes_tested_today">Max testés aujourd\'hui</string>
@@ -755,6 +761,7 @@
     <string name="s_not_now">Pas maintenant</string>
     <string name="s_not_rated">Non évalué</string>
     <string name="s_not_set">Non défini</string>
+    <string name="s_note">Note</string>
     <string name="s_nothing">Rien</string>
     <string name="s_nothing_here_yet">Rien ici pour l\'instant</string>
     <string name="s_nothing_is_saved_the_session_is_gone">Rien n\'est enregistré. La séance est perdue.</string>
@@ -792,6 +799,7 @@
     <string name="s_opens_the_routine_builder">Ouvre le créateur de routine.</string>
     <string name="s_opens_the_target_editor">Ouvre l\'éditeur de cible</string>
     <string name="s_opens_this_set_for_editing">Ouvre cette série pour la modifier</string>
+    <string name="s_opens_this_workout">Ouvre cette séance</string>
     <string name="s_optional_it_s_what_tells_you_later_whether_to_add_load">Facultatif. C\'est ce qui te dira plus tard s\'il faut ajouter de la charge.</string>
     <string name="s_other_6e6a6f">Autre</string>
     <string name="s_other_10cf91">Autre…</string>
@@ -864,6 +872,7 @@
     <string name="s_record_another_test">Enregistrer un nouveau test</string>
     <string name="s_record_what_you_can_hold_on_each_grip_per_hand_if_they_d">Enregistre ce que tu peux tenir sur chaque prise, par main si elles diffèrent, et mesures-en un au capteur d\'ici. Les pourcentages en ont besoin ; les kilos non.</string>
     <string name="s_refresh_battery">Actualiser la batterie</string>
+    <string name="s_released_early">Lâché tôt</string>
     <string name="s_remind_me">Me rappeler</string>
     <string name="s_remind_on_this_ipad">Rappels sur cet iPad</string>
     <string name="s_remind_on_this_iphone">Rappels sur cet iPhone</string>
@@ -981,6 +990,7 @@
     <string name="s_skip_is_unavailable_while_paused">Passer est indisponible en pause.</string>
     <string name="s_skip_pull">Passer le tirage</string>
     <string name="s_skip_set">Passer la série</string>
+    <string name="s_skipped">Sauté</string>
     <string name="s_solid">Solide</string>
     <string name="s_some_apps_may_flatten_the_transparent_background">Certaines apps peuvent aplatir le fond transparent.</string>
     <string name="s_some_fixed_weight_targets_moved">Certaines cibles de poids fixes ont changé</string>
@@ -1009,6 +1019,7 @@
     <string name="s_start_with_the_left_hand">Commencer par la main gauche</string>
     <string name="s_start_with_the_right_hand">Commencer par la main droite</string>
     <string name="s_start_without_a_gauge">Commencer sans capteur</string>
+    <string name="s_started">Début</string>
     <string name="s_starts_on_the_left_hand">Commence par la main gauche</string>
     <string name="s_starts_on_the_right_hand">Commence par la main droite</string>
     <string name="s_status">État</string>
@@ -1193,6 +1204,7 @@
     <string name="s_grip_has">prise n\'a pas</string>
     <string name="s_grips_have">prises n\'ont pas</string>
     <string name="s_heaviest_pull_a31a89">tirage le plus lourd %1$s %2$s</string>
+    <string name="s_held_of_lld_seconds">tenu %1$s sur %2$d secondes</string>
     <string name="s_held_since">tenu depuis %s</string>
     <string name="s_hour">heure</string>
     <string name="s_hours">heures</string>
