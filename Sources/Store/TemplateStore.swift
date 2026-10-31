@@ -111,8 +111,6 @@ final class TemplateStore {
         let pausesAboveTargetBand: Bool
         let targetLoPercent: Double?
         let targetHiPercent: Double?
-        /// The routine band's basis — see `SessionTemplate.targetBasisRaw`.
-        let targetBasisRaw: String?
         let setsData: Data
         let sessionsPerDay: Int
         let remindersData: Data
@@ -922,7 +920,6 @@ final class TemplateStore {
             pausesAboveTargetBand: template.pausesAboveTargetBand,
             targetLoPercent: template.targetLoPercent,
             targetHiPercent: template.targetHiPercent,
-            targetBasisRaw: template.targetBasisRaw,
             setsData: template.setsData,
             sessionsPerDay: template.sessionsPerDay,
             remindersData: template.remindersData,
@@ -979,7 +976,6 @@ final class TemplateStore {
         template.pausesAboveTargetBand = restorable.pausesAboveTargetBand
         template.targetLoPercent = restorable.targetLoPercent
         template.targetHiPercent = restorable.targetHiPercent
-        template.targetBasisRaw = restorable.targetBasisRaw
         template.setsData = restorable.setsData
         template.sessionsPerDay = restorable.sessionsPerDay
         template.remindersData = restorable.remindersData

@@ -15,7 +15,11 @@ reference and `Fixtures/target-basis/` is the contract.
 | --- | --- | --- | --- | --- |
 | `SetPlan` (a set's OWN percentage) | `targetBasisRaw` | `targetBasis` | String, optional | nil → `.max` |
 | `SessionPlan` (the routine's percentage) | `targetBasisRaw` | `targetBasis` | String, optional | nil → `.max` |
-| `SessionTemplate` (SwiftData column) | `targetBasisRaw` | — (CloudKit `CD_targetBasisRaw`) | `String?` | nil |
+
+**No stored column, on either platform.** iOS `SessionTemplate` has NO basis column (no
+CloudKit schema change) and the Android Room routine entity gets NO new column either (no
+migration). The routine-level basis lives only in a draft and a share envelope; the set-level
+basis rides inside the sets JSON. See §3.
 
 Raw values: exactly `"max"` and `"criticalForce"`.
 
@@ -44,8 +48,11 @@ In this order, per set:
 Then the routine-level band is DEMOTED onto every set with neither a kg nor a percentage
 band of its own, **carrying the routine's `targetBasisRaw` with it** (and the routine's
 `targetMaxSeconds` only when that basis is not `.criticalForce`). The routine's band, length
-and basis are then cleared. So after any save the routine-level column is nil and the basis
-lives per set, inside `setsData`.
+and basis are then cleared — UNCONDITIONALLY, so no routine-level basis ever reaches storage
+and the stored routine needs no column for it. After any save the basis lives per set, inside
+`setsData`. A band still sitting in the legacy routine-level percentage columns predates the
+basis and is read as a percentage of MAX, which is correct for it. iOS asserts this in
+`SessionTemplate.apply`; Android's save path must run the same normalisation.
 
 `RoutineDraft.normalized` is what share import, the builder's Save and `SessionTemplate.apply`
 all run; `RoutineShare` itself carries the plan VERBATIM (routine-level basis included).
@@ -117,13 +124,15 @@ fold with this one function.
 
 ## 3. Storage and sync
 
-- iOS: `SessionTemplate.targetBasisRaw: String? = nil` (additive, optional; in
-  `DeletedRoutine` so routine Undo restores it). **CloudKit schema deploy owed.**
-- The set-level basis is inside the `setsData` blob — Codable forward-compatible, no schema
-  change.
-- Watch: `CriticalForceRecord` joined the watch's SwiftData schema (additive entity).
-- Android: the Room equivalent is one nullable `targetBasisRaw` column on the routine table
-  (migration), the set field inside the sets JSON.
+- iOS: **no new SwiftData column, no CloudKit schema deploy.** The set-level basis is inside
+  the `setsData` blob (Codable forward-compatible), so routine delete + Undo restores it with
+  the blob. `RoutineDraft.normalized` guarantees nothing routine-level needs storing.
+- Watch: `CriticalForceRecord` joined the watch's SwiftData schema (additive entity, already
+  deployed for the phone).
+- **Android: the Room routine entity gets NO new column and NO migration.** The set-level
+  basis is one more optional key inside the sets JSON; the routine-level basis exists only on
+  the in-memory plan, the draft and the share envelope, and normalisation demotes it onto the
+  sets before every save.
 - **Older builds ignore the key and read a CF band as % of MAX** — about twice the load. Ship
   both platforms together.
 
