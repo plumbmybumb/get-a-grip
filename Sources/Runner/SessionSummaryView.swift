@@ -350,7 +350,7 @@ struct SessionSummaryView: View {
 
 /// Discarding a finished session takes a deliberate HOLD, exactly like ending one.
 ///
-/// Shares `HoldToEndButton`'s gesture and its 0.9 s: one vocabulary for "this cannot be
+/// Shares `HoldToEndButton`'s gesture and its 0.6 s: one vocabulary for "this cannot be
 /// undone", learned once. It is quieter than Save — outlined rather than filled — because
 /// throwing the session away is the rarer answer and must never be the reflex. It sits in
 /// a scrolling summary, so any drift cancels the hold and scrolls instead.
