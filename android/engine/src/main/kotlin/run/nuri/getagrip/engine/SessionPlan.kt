@@ -114,6 +114,35 @@ enum class HandMode(val rawValue: String) {
     }
 }
 
+// MARK: - What a percentage is OF
+
+/// **What a target PERCENTAGE is a percentage of** (2026-10-31, support request): the
+/// grip's max, as always, or its CRITICAL FORCE — the aerobic protocols prescribe
+/// submaximal work as a fraction of CF, and CF is roughly 40 % of max, so "80 %" means two
+/// very different loads depending on this one word.
+///
+/// Stored as a RAW string (`SetPlan.targetBasisRaw`, `SessionPlan.targetBasisRaw`, JSON key
+/// `targetBasis`) so a basis written by a newer build survives a round-trip through this
+/// one verbatim. A raw this build cannot read — and an absent key — reads as `max`, the
+/// meaning every routine had before the field existed. Resolution lives in
+/// `PlanMath.referenceKg`; the spec is `docs/TARGET_BASIS.md`.
+enum class TargetBasis(val rawValue: String) {
+    max("max"),
+    criticalForce("criticalForce");
+
+    companion object {
+        fun fromRaw(raw: String?): TargetBasis? = entries.firstOrNull { it.rawValue == raw }
+
+        /// null, empty and unknown all read as `max`.
+        fun fallback(raw: String?): TargetBasis = fromRaw(raw) ?: max
+
+        /// A stored basis raw: kept VERBATIM (a newer build's value must survive), except
+        /// that an empty string carries nothing and reads as absent. A non-string is absent.
+        fun rawFromJson(element: JsonElement?): String? =
+            JsonRead.string(element)?.takeIf { it.isNotEmpty() }
+    }
+}
+
 // MARK: - One row of the routine
 
 data class SetPlan(
@@ -144,7 +173,18 @@ data class SetPlan(
     /// 10 s max". Read only alongside this set's own band; an inheriting set uses the
     /// routine's. Chosen explicitly, never derived from the hold.
     val targetMaxSeconds: Int? = null,
+    /// WHAT this set's own percentage is of, as a raw `TargetBasis` (JSON key
+    /// `targetBasis`). null — never written — is `max`. Belongs to the percentage exactly
+    /// like `targetMaxSeconds`: read only alongside this set's own band, an inheriting set
+    /// uses the routine's (`PlanMath.targetBasis`). Raw so a newer build's basis survives.
+    val targetBasisRaw: String? = null,
 ) : JsonEncodable {
+
+    /// This set's own basis, read through the raw. `withTargetBasis` ALWAYS writes the raw —
+    /// once chosen, `max` is encoded too; only a set nobody chose for stays keyless.
+    val targetBasis: TargetBasis get() = TargetBasis.fallback(targetBasisRaw)
+
+    fun withTargetBasis(basis: TargetBasis): SetPlan = copy(targetBasisRaw = basis.rawValue)
 
     val overridesTiming: Boolean get() = holdSeconds != null || restSeconds != null
 
@@ -175,6 +215,7 @@ data class SetPlan(
         targetLoPercent?.let { fields["targetLoPercent"] = JsonPrimitive(it) }
         targetHiPercent?.let { fields["targetHiPercent"] = JsonPrimitive(it) }
         targetMaxSeconds?.let { fields["targetMaxSeconds"] = JsonPrimitive(it) }
+        targetBasisRaw?.let { fields["targetBasis"] = JsonPrimitive(it) }
         return JsonObject(fields)
     }
 
@@ -235,6 +276,7 @@ data class SetPlan(
             targetLoPercent = o.optionalDouble("targetLoPercent")?.let { percentRange.clamping(it) },
             targetHiPercent = o.optionalDouble("targetHiPercent")?.let { percentRange.clamping(it) },
             targetMaxSeconds = maxSeconds(o.optionalInt("targetMaxSeconds")),
+            targetBasisRaw = TargetBasis.rawFromJson(o["targetBasis"]),
         )
     }
 }
@@ -294,7 +336,16 @@ data class SessionPlan(
     /// stored column: `RoutineDraft.normalized` demotes the routine band onto the sets
     /// (this with it) before every save, so it lives only in a draft and a share code.
     val targetMaxSeconds: Int? = null,
+    /// What the routine's percentage is of — see `SetPlan.targetBasisRaw`. Demoted onto
+    /// the sets with the band by `RoutineDraft.normalized`, like `targetMaxSeconds`. NOT a
+    /// stored column on Android (2026-10-31, owner's decision): after every save the basis
+    /// lives per set inside the sets blob, so it exists only in a draft and a share code.
+    val targetBasisRaw: String? = null,
 ) : JsonEncodable {
+
+    val targetBasis: TargetBasis get() = TargetBasis.fallback(targetBasisRaw)
+
+    fun withTargetBasis(basis: TargetBasis): SessionPlan = copy(targetBasisRaw = basis.rawValue)
 
     /// null when no band is set. Normalized the same way `SetPlan.targetBand` is — one
     /// endpoint alone is a LINE, which is what one endpoint means.
@@ -340,6 +391,7 @@ data class SessionPlan(
         targetLoPercent?.let { fields["targetLoPercent"] = JsonPrimitive(it) }
         targetHiPercent?.let { fields["targetHiPercent"] = JsonPrimitive(it) }
         targetMaxSeconds?.let { fields["targetMaxSeconds"] = JsonPrimitive(it) }
+        targetBasisRaw?.let { fields["targetBasis"] = JsonPrimitive(it) }
         return JsonObject(fields)
     }
 
@@ -394,6 +446,7 @@ data class SessionPlan(
             targetHiPercent = o.optionalDouble("targetHiPercent")
                 ?.let { SetPlan.percentRange.clamping(it) },
             targetMaxSeconds = SetPlan.maxSeconds(o.optionalInt("targetMaxSeconds")),
+            targetBasisRaw = TargetBasis.rawFromJson(o["targetBasis"]),
         )
     }
 }
@@ -533,8 +586,12 @@ data class RoutineDraft(
                         if (loPercent != null && hiPercent != null && loPercent > hiPercent) {
                             s = s.copy(targetLoPercent = hiPercent, targetHiPercent = loPercent)
                         }
-                        // A length with no percentage of its own says nothing; keep blobs honest.
-                        if (!s.hasPercentTarget || s.hasTarget) s = s.copy(targetMaxSeconds = null)
+                        // A length or basis with no percentage of its own says nothing; keep
+                        // blobs honest. A percentage of CRITICAL FORCE has no max length either.
+                        if (!s.hasPercentTarget || s.hasTarget) {
+                            s = s.copy(targetMaxSeconds = null, targetBasisRaw = null)
+                        }
+                        if (s.targetBasis == TargetBasis.criticalForce) s = s.copy(targetMaxSeconds = null)
                         s
                     }
             )
@@ -553,17 +610,23 @@ data class RoutineDraft(
                 outPlan = outPlan.copy(
                     sets = outPlan.sets.map { set ->
                         if (set.hasTarget || set.hasPercentTarget) set
+                        // The basis travels WITH the band: 80 % of critical force demoted as
+                        // "80 %" would read as 80 % of max — twice the load.
                         else set.copy(
                             targetLoPercent = band.start,
                             targetHiPercent = band.endInclusive,
-                            targetMaxSeconds = outPlan.targetMaxSeconds,
+                            targetBasisRaw = outPlan.targetBasisRaw,
+                            targetMaxSeconds = if (outPlan.targetBasis == TargetBasis.criticalForce) null
+                            else outPlan.targetMaxSeconds,
                         )
                     },
                     targetLoPercent = null,
                     targetHiPercent = null,
                 )
             }
-            outPlan = outPlan.copy(targetMaxSeconds = null)
+            // The routine-level basis is never persisted on Android (no Room column): it is
+            // cleared here, and the band above carried it down onto the sets' own blob.
+            outPlan = outPlan.copy(targetMaxSeconds = null, targetBasisRaw = null)
             var out = copy(
                 plan = outPlan,
                 sessionsPerDay = sessionsRange.clamping(sessionsPerDay),

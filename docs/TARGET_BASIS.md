@@ -122,8 +122,10 @@ fold with this one function.
 - The set-level basis is inside the `setsData` blob — Codable forward-compatible, no schema
   change.
 - Watch: `CriticalForceRecord` joined the watch's SwiftData schema (additive entity).
-- Android: the Room equivalent is one nullable `targetBasisRaw` column on the routine table
-  (migration), the set field inside the sets JSON.
+- Android: **no Room column** (owner's decision, 2026-10-31). The routine-level basis is never
+  persisted: `RoutineDraft.normalized` demotes the routine band and its basis onto the sets and
+  clears `SessionPlan.targetBasisRaw`, so the basis only ever lives in the sets JSON blob the
+  entity already stores. See §7.
 - **Older builds ignore the key and read a CF band as % of MAX** — about twice the load. Ship
   both platforms together.
 
@@ -193,3 +195,40 @@ The runner, Live Activity and summary are unchanged: they show the resolved kilo
 
 Also regenerated: `Fixtures/share/*` (new `criticalForceBasis` round trip) and every
 `Fixtures/export/*` output, plus the new `critical-force-target-basis` scenario.
+
+## 7. Android (2026-10-31)
+
+The Kotlin port mirrors §1–§5 rule for rule; where Kotlin differs it is a translation, not a
+rule change.
+
+- **Engine** (`android/engine`): `TargetBasis` (`rawValue`, `fromRaw`, `fallback`,
+  `rawFromJson` — a non-string or empty raw is null, any other string kept verbatim) and
+  `targetBasisRaw` on `SetPlan`/`SessionPlan` with a computed `targetBasis` and a
+  `withTargetBasis(_)` copier (Kotlin values are immutable, so the Swift setter is a copy that
+  always writes the raw). `CriticalForceTable.kt` wraps `MaxTable` exactly as Swift does,
+  `folding(entries, asOf)` included (`Instant`, inclusive). `PlanMath.targetBasis`,
+  `referenceKg`, `MissingReference`/`missingReferences`, the CF branch of `peakIntensity`, the
+  CF-aware `maxSeconds`, and a `criticalForces` parameter (defaulted empty) on `sequence`,
+  `targetBand`, `targetText`, `targetDiffersByHand`, `untargetedGripCount`,
+  `missingBenchmarkGripCount` and `resolvingTargets`. `SessionRunner(criticalForces =)`.
+  `MaxReceiptMath` skips CF sets. `AnalysisExport` writes CSV v5 and the `% CF` column.
+- **Tests**: `TargetBasisFixtureTests` reads all four `Fixtures/target-basis/*` files (plan
+  executed as written, every resolution case, the fold with its four `asOf` variants, the
+  codable cases re-encoded byte for byte); `TargetBasisTests` ports the iOS unit tests.
+- **App**: `TemplateStore.currentCriticalForces` is folded from `CriticalForceRecordEntity`
+  (`List<CriticalForceRecordEntity>.criticalForceTable()`) on the same pass that publishes
+  `criticalForceRecords`, so every CF save, delete and Undo refolds it; the Today summary's
+  rung reads it. `RunnerSession(criticalForces =)` captures it at start. History's export
+  always passes the tests: a single-workout export prints none but still looks them up
+  (`criticalForceLookupOnly` skips their pull blobs), exactly like iOS.
+- **Builder**: `TargetBandRow`'s segmented "% of max | kg" became three chips ("% of max",
+  "% of critical force", "Kilograms"/"Pounds"), shown whenever the set has a target or Custom is
+  open; the timed-max chips only under "% of max". `RoutineTargetRow` gained the two basis chips;
+  under a CF band the Rhythm page names up to two grip/hand pairs with no test, then
+  "and N more…", then the footer. `BuilderDraft.editable`/`promotingUniformBand`/
+  `withRoutineBand` carry or clear the basis with the band; `withRoutineTargetBasis` clears a
+  timed length when CF is chosen.
+- **Not supported**, as on iOS: "Create with AI" builds max-based targets only.
+- **DEBUG extras** (headless screenshots): `--ez seedCriticalForceRoutine true` (with
+  `--ez seedHistory true` for the CF tests), `--es builderTargetBasis routine|set`,
+  `--ez builderOpenTarget true`.

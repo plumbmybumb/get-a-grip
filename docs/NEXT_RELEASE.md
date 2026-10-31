@@ -36,9 +36,12 @@
 protocols at strengthclimbing.com/protocols/force-measured-protocols/ (submaximal work
 prescribed as a fraction of CF). Nobody ships this yet.
 
-**iOS BUILT (31 Oct 2026, branch `worktree-agent-adce1b827ffa34a08`, not merged); Android
-NOT started** — it ports from `docs/TARGET_BASIS.md` and `Fixtures/target-basis/`. What
-shipped on iOS, and what the release owes:
+**iOS BUILT (31 Oct 2026, merged into `main` at `debf753`); Android BUILT (31 Oct 2026,
+branch `worktree-agent-a78f29d2d34c278a8`, not merged)** — ported from `docs/TARGET_BASIS.md`
+and `Fixtures/target-basis/` (now read by `TargetBasisFixtureTests.kt`; the export and share
+fixtures pass on Kotlin again). Android stores NO new Room column: the routine-level basis is
+never persisted, `RoutineDraft.normalized` demotes it onto the sets' own blob. What shipped
+on iOS, and what the release owes:
 - **CloudKit schema deploy OWED before any TestFlight/App Store build**: one new optional
   String column, `SessionTemplate.targetBasisRaw` (CD_targetBasisRaw). Review the Deploy
   Schema Changes diff as usual. The set-level basis rides inside `setsData` (no schema

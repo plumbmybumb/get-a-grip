@@ -323,8 +323,12 @@ internal fun overviewTarget(set: SetPlan, plan: SessionPlan): String? {
     val lower = formatter.format(band.start * 100)
     val upper = formatter.format(band.endInclusive * 100)
     // Which max, when it is not the peak: the same percentage of a 10 s max is a different load.
+    // A percentage of critical force says so, always.
     val seconds = PlanMath.maxSeconds(set, plan)
+    val ofCriticalForce = PlanMath.targetBasis(set, plan) == run.nuri.getagrip.engine.TargetBasis.criticalForce
     val amount = when {
+        ofCriticalForce && lower == upper -> L10n.tr("%s %% of critical force", lower)
+        ofCriticalForce -> L10n.tr("%s–%s %% of critical force", lower, upper)
         seconds != null && lower == upper -> L10n.tr("%s %% of %d s max", lower, seconds)
         seconds != null -> L10n.tr("%s–%s %% of %d s max", lower, upper, seconds)
         lower == upper -> L10n.tr("%s %% of max", lower)

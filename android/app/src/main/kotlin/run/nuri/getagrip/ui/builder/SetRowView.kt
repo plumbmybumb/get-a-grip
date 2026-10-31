@@ -58,8 +58,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.util.UUID
 import kotlin.math.roundToInt
+import run.nuri.getagrip.engine.CriticalForceTable
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.MaxTable
+import run.nuri.getagrip.engine.TargetBasis
 import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
@@ -106,6 +108,8 @@ fun SetRowView(
     onDuplicate: () -> Unit,
     onRemove: () -> Unit,
     onSetChange: (SetPlan) -> Unit,
+    /// Every critical force on file, for "% of critical force" bands — a value too.
+    criticalForces: CriticalForceTable = CriticalForceTable(),
 ) {
     val palette = LocalGripPalette.current
     val reduceMotion = rememberReduceMotion()
@@ -274,10 +278,11 @@ fun SetRowView(
                     CustomTiming(set, sessionPlan, onSetChange)
 
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TargetBandRow(set, maxes, sessionPlan.handMode, onChange = onSetChange)
+                        TargetBandRow(set, maxes, sessionPlan.handMode, criticalForces = criticalForces,
+                            onChange = onSetChange)
                         // With no band of its own the set follows the routine's, said under the row that
                         // could override it.
-                        val inherited = inheritedTargetText(set, sessionPlan, maxes)
+                        val inherited = inheritedTargetText(set, sessionPlan, maxes, criticalForces)
                         if (inherited != null) {
                             Text(keepUnitsAttached(inherited), style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
                         }
@@ -411,7 +416,11 @@ internal fun loadText(set: SetPlan, context: SetRowContext): String? {
         (percent.start * 100).roundToInt(),
         (percent.endInclusive * 100).roundToInt(),
     )
-    // Named on the shut row too: 90 % of a 10 s max is not 90 % of the peak.
+    // Named on the shut row too: 90 % of a 10 s max is not 90 % of the peak, and 80 % of
+    // critical force is not 80 % of anything else.
+    if (PlanMath.targetBasis(set, context.plan) == TargetBasis.criticalForce) {
+        return L10n.tr("%s of critical force", range)
+    }
     val seconds = PlanMath.maxSeconds(set, context.plan) ?: return range
     return L10n.tr("%s of %d s max", range, seconds)
 }
@@ -427,15 +436,26 @@ internal fun timingOverrideText(set: SetPlan, context: SetRowContext): String {
 /// What the routine's percentage means for THIS grip, per hand — or null when the set has a
 /// target of its own or the routine has none. Without a max it says so rather than showing a
 /// percentage that resolves to nothing at session time.
-internal fun inheritedTargetText(set: SetPlan, plan: SessionPlan, maxes: MaxTable): String? {
+internal fun inheritedTargetText(
+    set: SetPlan,
+    plan: SessionPlan,
+    maxes: MaxTable,
+    criticalForces: CriticalForceTable = CriticalForceTable(),
+): String? {
     if (set.hasTarget || set.hasPercentTarget) return null
     val percent = plan.targetPercentBand ?: return null
     val range = "${(percent.start * 100).roundToInt()}–${(percent.endInclusive * 100).roundToInt()} %"
+    val ofCriticalForce = plan.targetBasis == TargetBasis.criticalForce
     val seconds = plan.targetMaxSeconds
-    val load = perHandLoadText(set, plan, maxes)
-        ?: return if (seconds != null) {
-            L10n.tr("Routine target: %s of your %d s max. No %d s max for this grip yet.", range, seconds, seconds)
-        } else L10n.tr("Routine target: %s of max. No max for this grip yet.", range)
+    val load = perHandLoadText(set, plan, maxes, criticalForces)
+        ?: return when {
+            ofCriticalForce ->
+                L10n.tr("Routine target: %s of critical force. No critical force for this grip yet.", range)
+            seconds != null ->
+                L10n.tr("Routine target: %s of your %d s max. No %d s max for this grip yet.", range, seconds, seconds)
+            else -> L10n.tr("Routine target: %s of max. No max for this grip yet.", range)
+        }
+    if (ofCriticalForce) return L10n.tr("Routine target: %s of critical force, so %s.", range, load)
     return L10n.tr("Routine target: %s, so %s.", range, load)
 }
 
@@ -447,12 +467,17 @@ internal fun keepUnitsAttached(text: String): String = text
     .replace(Regex("(?<=(^|\\s)\\p{Lu}) "), "\u00A0")
 
 /// "L 4.0–6.0 · R 4.5–6.5 kg", or one band when the hands agree or share the edge.
-internal fun perHandLoadText(set: SetPlan, plan: SessionPlan, maxes: MaxTable): String? {
+internal fun perHandLoadText(
+    set: SetPlan,
+    plan: SessionPlan,
+    maxes: MaxTable,
+    criticalForces: CriticalForceTable = CriticalForceTable(),
+): String? {
     if (plan.handMode.sideCount <= 1) {
-        return PlanMath.targetBand(set, plan, Side.both, maxes)?.let { WeightUnits.band(it) }
+        return PlanMath.targetBand(set, plan, Side.both, maxes, criticalForces)?.let { WeightUnits.band(it) }
     }
-    val left = PlanMath.targetBand(set, plan, Side.left, maxes)
-    val right = PlanMath.targetBand(set, plan, Side.right, maxes)
+    val left = PlanMath.targetBand(set, plan, Side.left, maxes, criticalForces)
+    val right = PlanMath.targetBand(set, plan, Side.right, maxes, criticalForces)
     return when {
         left == null && right == null -> null
         left != null && right != null && left == right -> WeightUnits.band(left)
@@ -471,8 +496,18 @@ internal fun spokenOverride(set: SetPlan, context: SetRowContext, percentBandsVa
     set.restSeconds?.takeIf { it != context.restSeconds }?.let { parts.add(trQuantity("%d second rest", it)) }
     val kg = set.targetBand
     val percent = set.targetPercentBand
+    val anyPercent = percent ?: context.plan.targetPercentBand
     if (kg != null) {
         parts.add(WeightUnits.tr("target %s to %s kilograms", kgText(kg.start), kgText(kg.endInclusive)))
+    } else if (anyPercent != null && PlanMath.targetBasis(set, context.plan) == TargetBasis.criticalForce) {
+        // Always spoken: it changes what the percentage means.
+        parts.add(
+            L10n.tr(
+                "target %s to %s percent of your critical force",
+                (anyPercent.start * 100).roundToInt().toString(),
+                (anyPercent.endInclusive * 100).roundToInt().toString(),
+            )
+        )
     } else if (percentBandsVary && percent != null) {
         parts.add(
             L10n.tr(

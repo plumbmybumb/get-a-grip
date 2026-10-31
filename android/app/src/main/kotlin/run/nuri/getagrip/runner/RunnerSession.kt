@@ -20,6 +20,7 @@ import run.nuri.getagrip.ble.SystemHostClock
 import run.nuri.getagrip.engine.GaugeKind
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.MaxTable
+import run.nuri.getagrip.engine.CriticalForceTable
 import run.nuri.getagrip.engine.RepOutcome
 import run.nuri.getagrip.engine.RepSummary
 import run.nuri.getagrip.engine.RunnerCue
@@ -67,6 +68,10 @@ class RunnerSession(
     /// silently undo per-hand loads; the freeze comes from capturing the TABLE once.
     private val maxes: MaxTable = MaxTable(),
 
+    /// Every critical force on file (`TemplateStore.currentCriticalForces`), for sets
+    /// prescribed as a percentage of CF. Captured here, once, exactly like `maxes`.
+    private val criticalForces: CriticalForceTable = CriticalForceTable(),
+
     /// Run the whole plan on the clock with no gauge — see `SessionRunner.timerOnly`.
     /// Nothing touches `DeviceStore` then: no connect, stream, sample callback or watchdog.
     /// The store is still held for the shared screen, and so a gauge-free session never
@@ -102,6 +107,7 @@ class RunnerSession(
     val runner: SessionRunner = SessionRunner(
         plan = plan,
         maxes = maxes,
+        criticalForces = criticalForces,
         timerOnly = timerOnly,
         // Keyed to the CAPABILITY, never the kind: a clockless gauge is stamped from host
         // uptime, so one delta is an arrival gap and may only buy the cap. The Progressor's

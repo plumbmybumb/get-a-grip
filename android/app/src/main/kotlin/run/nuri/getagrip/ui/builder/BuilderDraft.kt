@@ -13,6 +13,7 @@ import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
+import run.nuri.getagrip.engine.TargetBasis
 
 /// The builder's non-drawing decisions, lifted out so each is JVM-testable. Each rule was paid
 /// for once on iOS and is easy to break: a stash outliving a Cancel returns as a ghost; a
@@ -25,11 +26,14 @@ object BuilderDraft {
         val band = draft.plan.targetPercentBand ?: return draft
         return draft.copy(plan = draft.plan.copy(
             sets = draft.plan.sets.map { set ->
+                // The basis travels with the band, or "80 % of critical force" would land on
+                // the set as 80 % of max.
                 if (set.hasTarget || set.hasPercentTarget) set else set.copy(
                     targetLoPercent = band.start, targetHiPercent = band.endInclusive,
-                    targetMaxSeconds = draft.plan.targetMaxSeconds)
+                    targetMaxSeconds = draft.plan.targetMaxSeconds,
+                    targetBasisRaw = draft.plan.targetBasisRaw)
             },
-            targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null,
+            targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null, targetBasisRaw = null,
         ))
     }
 
@@ -42,15 +46,23 @@ object BuilderDraft {
         if (draft.plan.targetPercentBand != null) return draft
         val first = sets.firstOrNull() ?: return draft
         val band = first.targetPercentBand ?: return draft
-        // The basis is part of the band: two sets at 90 % of different maxes do not share one.
-        if (!sets.all { !it.hasTarget && it.targetPercentBand == band && it.targetMaxSeconds == first.targetMaxSeconds }) {
+        // The basis is part of the band: two sets at 90 % of different maxes do not share one,
+        // and neither do 80 % of max and 80 % of critical force. Compared as the RESOLVED
+        // basis, so a never-chosen raw (null) and an explicit "max" agree.
+        if (!sets.all {
+                !it.hasTarget && it.targetPercentBand == band &&
+                    it.targetMaxSeconds == first.targetMaxSeconds && it.targetBasis == first.targetBasis
+            }) {
             return draft
         }
         return draft.copy(plan = draft.plan.copy(
             targetLoPercent = band.start,
             targetHiPercent = band.endInclusive,
             targetMaxSeconds = first.targetMaxSeconds,
-            sets = sets.map { it.copy(targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null) },
+            targetBasisRaw = first.targetBasisRaw,
+            sets = sets.map {
+                it.copy(targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null, targetBasisRaw = null)
+            },
         ))
     }
 
@@ -65,15 +77,23 @@ object BuilderDraft {
             targetLoPercent = band?.start,
             targetHiPercent = band?.endInclusive,
             targetMaxSeconds = if (band == null) null else draft.plan.targetMaxSeconds,
+            targetBasisRaw = if (band == null) null else draft.plan.targetBasisRaw,
             sets = draft.plan.sets.map {
                 it.copy(targetLoPercent = null, targetHiPercent = null, targetLoKg = null, targetHiKg = null,
-                    targetMaxSeconds = null)
+                    targetMaxSeconds = null, targetBasisRaw = null)
             },
         ))
 
     /// Which max the Rhythm page's band is of — null is the peak.
     fun withRoutineBasis(draft: RoutineDraft, seconds: Int?): RoutineDraft =
         draft.copy(plan = draft.plan.copy(targetMaxSeconds = seconds))
+
+    /// What the Rhythm page's band is a percentage OF — the max or critical force. A
+    /// critical force has no length, so choosing it clears any timed basis.
+    fun withRoutineTargetBasis(draft: RoutineDraft, basis: TargetBasis): RoutineDraft =
+        draft.copy(plan = draft.plan.withTargetBasis(basis).let {
+            if (basis == TargetBasis.criticalForce) it.copy(targetMaxSeconds = null) else it
+        })
 
     /// **Custom timing** on one set. ON seeds both overrides with the routine's current values,
     /// so the steppers start where the set already was; OFF returns it to the routine.

@@ -83,6 +83,8 @@ import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.SetPlan
+import run.nuri.getagrip.engine.Side
+import run.nuri.getagrip.engine.TargetBasis
 import run.nuri.getagrip.store.LocalSettingsStore
 import run.nuri.getagrip.store.LocalTemplateStore
 import run.nuri.getagrip.store.TemplateStore
@@ -148,7 +150,13 @@ fun RoutineBuilderHost(
 
     // The Rhythm page edits ONE routine-wide band, so a band every set shares is folded up to the
     // routine for editing (and demoted again on Save).
-    val editableSeed = remember(seed) { BuilderDraft.opening(seed) }
+    val debugIntent = if (run.nuri.getagrip.BuildConfig.DEBUG) androidx.activity.compose.LocalActivity.current?.intent else null
+    val editableSeed = remember(seed) {
+        BuilderDraft.opening(seed).let { opened ->
+            // DEBUG, headless screenshots: `--es builderTargetBasis routine|set` (see `BuilderDebug`).
+            if (debugIntent != null) BuilderDebug.applying(opened, debugIntent) else opened
+        }
+    }
     // **SAVED, not remembered — for creating AND editing.** Rotation destroys every `remember`,
     // and the rescue stash lags up to half a second and does not exist for edits.
     val draftState = rememberSaveable(seed, stateSaver = RoutineDraftSaver) { mutableStateOf(editableSeed) }
@@ -395,12 +403,21 @@ fun RoutineBuilderHost(
                                         lo = draft.plan.targetLoPercent,
                                         hi = draft.plan.targetHiPercent,
                                         basis = draft.plan.targetMaxSeconds,
+                                        targetBasis = draft.plan.targetBasis,
+                                        // Under a band of critical force: which grips and hands have no test.
+                                        missingCriticalForce = if (draft.plan.targetPercentBand != null &&
+                                            draft.plan.targetBasis == TargetBasis.criticalForce) {
+                                            PlanMath.missingReferences(draft.plan, templates.maxTable,
+                                                templates.currentCriticalForces)
+                                                .filter { it.basis == TargetBasis.criticalForce }
+                                        } else emptyList(),
                                         // Lengths measured on any grip this routine trains,
                                         // plus the selection. Empty hides the choice.
                                         basisOptions = (draft.plan.sets.flatMap { templates.maxTable.timedLengths(it.grip.key) } +
                                             listOfNotNull(draft.plan.targetMaxSeconds)).toSortedSet().toList(),
                                         setsVary = draft.plan.sets.any { it.hasTarget || it.hasPercentTarget },
                                         missingMaxes = draft.plan.targetPercentBand != null &&
+                                            draft.plan.targetBasis == TargetBasis.max &&
                                             PlanMath.missingBenchmarkGripCount(draft.plan, templates.maxTable) > 0,
                                         update = update,
                                     )
@@ -422,6 +439,7 @@ fun RoutineBuilderHost(
                                                         context = rowContext,
                                                         isExpanded = expanded == id,
                                                         maxes = templates.maxTable,
+                                                        criticalForces = templates.currentCriticalForces,
                                                         percentBandsVary = percentBandsVary,
                                                         canMoveUp = index > 0,
                                                         canMoveDown = index < sets.size - 1,
@@ -550,6 +568,8 @@ private fun RoutineLoadBlock(
     lo: Double?,
     hi: Double?,
     basis: Int?,
+    targetBasis: TargetBasis,
+    missingCriticalForce: List<PlanMath.MissingReference>,
     basisOptions: List<Int>,
     setsVary: Boolean,
     missingMaxes: Boolean,
@@ -566,7 +586,23 @@ private fun RoutineLoadBlock(
                 basis = basis,
                 basisOptions = basisOptions,
                 onBasisChange = { seconds -> update { BuilderDraft.withRoutineBasis(it, seconds) } },
+                targetBasis = targetBasis,
+                onTargetBasisChange = { new -> update { BuilderDraft.withRoutineTargetBasis(it, new) } },
             ) { band -> update { BuilderDraft.withRoutineBand(it, band) } }
+        }
+        // Under a routine band of critical force: WHICH grips and hands have no test, by name.
+        // Named rather than counted because the fix is a test per grip and hand, and a count
+        // does not say which. Two at most, then how many more: page 1 has to stay one screen.
+        if (missingCriticalForce.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                missingCriticalForce.take(2).forEach { item ->
+                    Advisory(missingCriticalForceText(item), Icons.Outlined.WarningAmber)
+                }
+                if (missingCriticalForce.size > 2) {
+                    AdvisoryNote(tr("and %d more without a critical force test.", missingCriticalForce.size - 2))
+                }
+                AdvisoryNote(tr("Their sets have no target until you test them in Benchmarks."))
+            }
         }
         if (missingMaxes) {
             Advisory(
@@ -576,6 +612,19 @@ private fun RoutineLoadBlock(
             )
         }
     }
+}
+
+/// "No critical force for 20 mm · 3 fingers · Half crimp · left" — no hand for both hands.
+internal fun missingCriticalForceText(item: PlanMath.MissingReference): String =
+    if (item.side == Side.both) L10n.tr("No critical force for %s", item.grip.displayName)
+    else L10n.tr("No critical force for %s · %s", item.grip.displayName, item.side.displayName.lowercase())
+
+/// A line under the advisories, in the same amber, aligned with their text.
+@Composable
+private fun AdvisoryNote(text: String) {
+    val palette = LocalGripPalette.current
+    Text(text, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, color = palette.armed,
+        modifier = Modifier.padding(start = 22.dp))
 }
 
 @Composable

@@ -24,9 +24,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import run.nuri.getagrip.BuildConfig
+import run.nuri.getagrip.engine.CriticalForceTable
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.GripPosition
 import run.nuri.getagrip.engine.GripSpec
@@ -57,6 +56,7 @@ import run.nuri.getagrip.engine.MaxTable
 import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
+import run.nuri.getagrip.engine.TargetBasis
 import run.nuri.getagrip.ui.components.BandTrimmer
 import run.nuri.getagrip.ui.components.Chip
 import run.nuri.getagrip.ui.components.ChipGrid
@@ -76,8 +76,13 @@ import run.nuri.getagrip.ui.theme.rememberReduceMotion
 /// load is the bookkeeping this app refuses. Kilograms resolve fresh each session.
 ///
 /// **Kilograms are typeable too** (Nuri, 2026-08-09): a percentage of an unmeasured max
-/// resolves to no band at run time, found out mid-session. The unit is a choice inside
-/// Custom, defaulting to kilograms exactly when a percentage could not work.
+/// resolves to no band at run time, found out mid-session. Custom defaults to kilograms
+/// exactly when a percentage could not work.
+///
+/// **A percentage of CRITICAL FORCE too** (2026-10-31, `docs/TARGET_BASIS.md`): the unit is
+/// three chips — "% of max" · "% of critical force" · kilograms — shown whenever the set has
+/// a target (or Custom is open), so a preset can become a percentage of critical force
+/// without opening Custom. Neither reference ever stands in for the other.
 ///
 /// **SHUT BY DEFAULT — and its warning is not.** The editor measured ~293 pt, a third of an
 /// expanded set row, on a screen where most sets carry no target.
@@ -90,33 +95,49 @@ fun TargetBandRow(
     /// the row must not invent one.
     handMode: HandMode,
     modifier: Modifier = Modifier,
+    /// Every critical force on file, by grip and hand — what a "% of critical force" band
+    /// resolves against (`TargetBasis.criticalForce`).
+    criticalForces: CriticalForceTable = CriticalForceTable(),
     onChange: (SetPlan) -> Unit,
 ) {
     val palette = LocalGripPalette.current
 
-    /// CLOSED on every appearance — see the header note.
-    var expanded by remember { mutableStateOf(false) }
+    /// CLOSED on every appearance — see the header note. DEBUG `--ez builderOpenTarget true`
+    /// opens it for headless screenshots, which cannot tap.
+    val openForDebug = BuildConfig.DEBUG &&
+        androidx.activity.compose.LocalActivity.current?.intent?.getBooleanExtra("builderOpenTarget", false) == true
+    var expanded by remember { mutableStateOf(openForDebug) }
 
     /// Sticky once opened: a custom band landing on 20–30 % would otherwise close the fields
     /// under the finger editing them.
     var showsCustomFields by remember { mutableStateOf(false) }
-
-    /// How a custom band is expressed. Not persisted: the STORED band says which (`targetLoKg`
-    /// means kilograms); this only holds the choice while both fields are empty.
-    var unit by remember { mutableStateOf(if (set.targetBand != null) Unit_.Kilograms else Unit_.Percent) }
-
-    // Otherwise reopening a kilogram band would show percentage fields over it.
-    LaunchedEffect(set.id) {
-        unit = if (set.targetBand != null) Unit_.Kilograms else Unit_.Percent
-    }
 
     val percentBand = set.targetPercentBand
     /// An explicit kilogram band OUTRANKS any percentage (`PlanMath.targetBand` order). Setting
     /// either clears the other, so the row never shows one and runs the other.
     val kgBand = set.targetBand
     val hasTarget = kgBand != null || percentBand != null
+    /// The percentage is of CRITICAL FORCE, not of a max. See `TargetBasis`.
+    val ofCriticalForce = set.targetBasis == TargetBasis.criticalForce
     /// Which max the percentage is of — null is the peak. See `SetPlan.targetMaxSeconds`.
-    val basis = set.targetMaxSeconds
+    /// Never read for a percentage of critical force, which has no length.
+    val basis = if (ofCriticalForce) null else set.targetMaxSeconds
+    /// The unit the STORED band is in — the selection whenever a band exists.
+    val storedUnit = when {
+        kgBand != null -> Unit_.Kilograms
+        ofCriticalForce -> Unit_.CriticalForce
+        else -> Unit_.Percent
+    }
+
+    /// How a band is expressed. Not persisted: the STORED band and basis say which; this only
+    /// holds the choice while no band exists yet.
+    var unit by remember { mutableStateOf(storedUnit) }
+
+    // Otherwise reopening a kilogram band would show percentage fields over it.
+    LaunchedEffect(set.id) { unit = storedUnit }
+
+    /// What the unit chips light: the stored band's unit, else the one being chosen.
+    val currentUnit = if (hasTarget) storedUnit else unit
     /// Timed lengths worth a chip: what you have MEASURED on this grip, plus whatever is
     /// selected. Empty hides the row entirely — see `MaxBasisChips`.
     val basisOptions = (maxes.timedLengths(set.grip.key) + listOfNotNull(basis)).toSortedSet().toList()
@@ -124,22 +145,28 @@ fun TargetBandRow(
     /// The hands this routine asks about, in the order the runner alternates them.
     val sides = if (handMode.sideCount > 1) listOf(Side.left, Side.right) else listOf(Side.both)
 
+    /// The number this set's percentage resolves against for one hand — the max (peak or
+    /// timed) or the critical force. Neither ever stands in for the other.
+    fun reference(side: Side): Double? =
+        if (ofCriticalForce) criticalForces.criticalForce(set.grip.key, side)
+        else maxes.max(set.grip.key, side, basis)
+
     /// The kilograms this set asks of one hand, resolved locally because this row holds no
     /// `SessionPlan` for `PlanMath.targetBand`.
     fun resolved(side: Side): ClosedFloatingPointRange<Double>? {
         // An explicit band is already the answer, the same for both hands.
         if (kgBand != null) return kgBand
         val band = percentBand ?: return null
-        val maxKg = maxes.max(set.grip.key, side, basis) ?: return null
+        val maxKg = reference(side) ?: return null
         if (maxKg <= 0) return null
         return PlanMath.roundedToHalfKg(maxKg * band.start)..
             PlanMath.roundedToHalfKg(maxKg * band.endInclusive)
     }
 
     val differsByHand = sides.size > 1 && resolved(Side.left) != resolved(Side.right)
-    /// A percentage is set, and at least one hand has no max to resolve it against.
+    /// A percentage is set, and at least one hand has nothing to resolve it against.
     val unresolved = percentBand != null && sides.any { resolved(it) == null }
-    val hasResolvableMax = sides.any { (maxes.max(set.grip.key, it, basis) ?: 0.0) > 0 }
+    val hasResolvableMax = sides.any { (reference(it) ?: 0.0) > 0 }
 
     fun applyPercent(lo: Double, hi: Double) {
         // `PlanMath.targetBand` ranks kg first, so a percentage beside kilograms would silently
@@ -157,6 +184,7 @@ fun TargetBandRow(
             set.copy(
                 targetLoKg = lo, targetHiKg = hi,
                 targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null,
+                targetBasisRaw = null,
             ),
         )
     }
@@ -166,9 +194,36 @@ fun TargetBandRow(
             set.copy(
                 targetLoKg = null, targetHiKg = null,
                 targetLoPercent = null, targetHiPercent = null, targetMaxSeconds = null,
+                targetBasisRaw = null,
             ),
         )
         showsCustomFields = false
+    }
+
+    /// Picking a unit CONVERTS nothing it cannot: a percentage keeps its numbers when its
+    /// basis changes (the kilograms on screen move, which is the point), and kilograms seed
+    /// from what is on screen.
+    fun selectUnit(new: Unit_) {
+        if (new == currentUnit) return
+        unit = new
+        val lo = percentBand?.start ?: 0.20
+        val hi = percentBand?.endInclusive ?: 0.30
+        when (new) {
+            Unit_.Kilograms -> {
+                val seed = resolved(sides[0])
+                applyKg(seed?.start ?: DEFAULT_KG_LO, seed?.endInclusive ?: DEFAULT_KG_HI)
+            }
+            Unit_.Percent -> onChange(
+                set.copy(targetLoPercent = lo, targetHiPercent = hi, targetLoKg = null, targetHiKg = null)
+                    .withTargetBasis(TargetBasis.max),
+            )
+            // A critical force has no length: a timed basis left behind would be noise.
+            Unit_.CriticalForce -> onChange(
+                set.copy(targetLoPercent = lo, targetHiPercent = hi, targetLoKg = null, targetHiKg = null,
+                    targetMaxSeconds = null)
+                    .withTargetBasis(TargetBasis.criticalForce),
+            )
+        }
     }
 
     fun matches(lo: Double, hi: Double): Boolean {
@@ -200,11 +255,19 @@ fun TargetBandRow(
             val resolvedSides = sides.filter { resolved(it) != null }
             when {
                 // Named, not hinted: a percentage with no max resolves to no target at run time.
-                // A timed basis never falls back to the peak, so it says which max is missing.
+                // A timed basis never falls back to the peak, so it says which max is missing —
+                // and a critical force basis never falls back to a max at all.
+                resolvedSides.isEmpty() && ofCriticalForce ->
+                    tr("No critical force for this grip yet. Test it in Benchmarks.")
                 resolvedSides.isEmpty() && basis != null ->
                     tr("No %d s max for this grip yet. Measure one in Benchmarks.", basis)
                 resolvedSides.isEmpty() ->
                     tr("No max for this grip yet. Measure one in Benchmarks.")
+                resolvedSides.size < sides.size && ofCriticalForce -> {
+                    val missing = sides.first { resolved(it) == null }
+                    tr("No critical force for your %s hand yet. Test it in Benchmarks.",
+                        missing.displayName.lowercase())
+                }
                 resolvedSides.size < sides.size && basis != null -> {
                     val missing = sides.first { resolved(it) == null }
                     tr("No %d s max for your %s hand yet. Measure one in Benchmarks.",
@@ -226,11 +289,20 @@ fun TargetBandRow(
                             L10n.tr("%s %s", side.prompt.take(1), WeightUnits.band(it, withUnit = false))
                         }
                     }
-                    WeightUnits.tr(
-                        "%s of each hand's max · %s kg",
-                        percentText(percentBand),
-                        loads.joinToString(" · "),
-                    )
+                    if (ofCriticalForce) {
+                        tr(
+                            "%s of each hand's critical force · %s %s",
+                            percentText(percentBand),
+                            loads.joinToString(" · "),
+                            WeightUnits.symbol,
+                        )
+                    } else {
+                        WeightUnits.tr(
+                            "%s of each hand's max · %s kg",
+                            percentText(percentBand),
+                            loads.joinToString(" · "),
+                        )
+                    }
                 }
             }
         }
@@ -249,8 +321,12 @@ fun TargetBandRow(
                 .semantics(mergeDescendants = true) {
                     role = Role.Button
                     contentDescription = L10n.tr("Target load")
-                    stateDescription = if (basis != null && percentBand != null && kgBand == null)
-                        L10n.tr("%s, of your %d second max", valueText, basis) else valueText
+                    stateDescription = when {
+                        percentBand == null || kgBand != null -> valueText
+                        ofCriticalForce -> L10n.tr("%s, of your critical force", valueText)
+                        basis != null -> L10n.tr("%s, of your %d second max", valueText, basis)
+                        else -> valueText
+                    }
                 }
                 .clickable(
                     interactionSource = interactionSource,
@@ -268,8 +344,12 @@ fun TargetBandRow(
                     color = palette.inkPrimary,
                 )
                 // Which max the percentage is OF, said even when shut: 90 % of a 10 s max and
-                // 90 % of a peak are different sessions.
-                if (basis != null && percentBand != null && kgBand == null) {
+                // 90 % of a peak are different sessions — and 80 % of critical force is about
+                // half of 80 % of max.
+                if (ofCriticalForce && percentBand != null && kgBand == null) {
+                    Text(tr("of your critical force"), style = MaterialTheme.typography.bodySmall,
+                        color = palette.inkSecondary)
+                } else if (basis != null && percentBand != null && kgBand == null) {
                     Text(tr("of your %d s max", basis), style = MaterialTheme.typography.bodySmall,
                         color = palette.inkSecondary)
                 }
@@ -340,7 +420,7 @@ fun TargetBandRow(
                             Chip(tr("Custom"), editingCustom, cell) {
                                 showsCustomFields = true
                                 if (hasTarget) {
-                                    unit = if (kgBand != null) Unit_.Kilograms else Unit_.Percent
+                                    unit = storedUnit
                                 } else {
                                     // **Kilograms when a percentage could not work**: "20 % of your max" with no max
                                     // resolves to nothing at run time.
@@ -356,45 +436,38 @@ fun TargetBandRow(
                     },
                 )
 
-                if (editingCustom) {
-                    // WHICH UNIT, asked only here: it is how you express the load, not a preset value,
-                    // and only matters once the presets do not fit.
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        Unit_.entries.forEachIndexed { index, option ->
-                            SegmentedButton(
-                                selected = unit == option,
-                                onClick = {
-                                    if (unit == option) return@SegmentedButton
-                                    unit = option
-                                    // Seed from what is on screen, so switching units reads as a conversion, not a reset.
-                                    when (option) {
-                                        Unit_.Kilograms -> {
-                                            val seed = resolved(sides[0])
-                                            applyKg(
-                                                seed?.start ?: DEFAULT_KG_LO,
-                                                seed?.endInclusive ?: DEFAULT_KG_HI,
-                                            )
-                                        }
-                                        Unit_.Percent -> applyPercent(
-                                            percentBand?.start ?: 0.20,
-                                            percentBand?.endInclusive ?: 0.30,
-                                        )
+                // WHICH UNIT: what the load is expressed in. Chips, because the choice is
+                // categorical (a two-way segmented row inside Custom until critical force made it
+                // three). Shown whenever a target exists, so a preset can be made a percentage of
+                // critical force without opening Custom first.
+                if (editingCustom || hasTarget) {
+                    Column(
+                        Modifier.semantics { contentDescription = L10n.tr("Target load unit") },
+                    ) {
+                        ChipGrid(
+                            base = 3,
+                            content = buildList {
+                                Unit_.entries.forEach { option ->
+                                    add { cell: Modifier ->
+                                        Chip(option.label, currentUnit == option,
+                                            cell.testTag("target.unit.${option.name}")) { selectUnit(option) }
                                     }
-                                },
-                                shape = SegmentedButtonDefaults.itemShape(index, Unit_.entries.size),
-                            ) { Text(option.label) }
-                        }
+                                }
+                            },
+                        )
                     }
+                }
 
+                if (editingCustom) {
                     // ONE two-ended trimmer, replacing steppers that made "80 to 90" a dozen taps. Steps snap
                     // to the 5 % / 0.5 kg resolution targets round to.
-                    if (unit == Unit_.Kilograms) {
+                    if (currentUnit == Unit_.Kilograms) {
                         val lo = kgBand?.start ?: DEFAULT_KG_LO
                         val hi = kgBand?.endInclusive ?: DEFAULT_KG_HI
                         BandTrimmer(
                             lo = WeightUnits.fromKg(lo),
                             hi = WeightUnits.fromKg(hi),
-                            scale = WeightUnits.sliderRange(0.0..kgScaleTop(kgBand?.endInclusive, set, maxes, sides)),
+                            scale = WeightUnits.sliderRange(0.0..kgScaleTop(kgBand?.endInclusive, sides, ::reference)),
                             step = 0.5,
                             format = { "${WeightUnits.formatDisplayed(it)} ${WeightUnits.symbol}" },
                             spokenUnit = WeightUnits.spoken,
@@ -406,14 +479,14 @@ fun TargetBandRow(
                             scale = SetPlan.percentRange,
                             step = 0.05,
                             format = { percentUnit(it) },
-                            spokenUnit = tr("percent of max"),
+                            spokenUnit = if (ofCriticalForce) tr("percent of critical force") else tr("percent of max"),
                         ) { newLo, newHi -> applyPercent(newLo, newHi) }
                     }
-                    val isPercent = unit == Unit_.Percent
+                    val isPercent = currentUnit != Unit_.Kilograms
                     val currentLo = if (isPercent) percentBand?.start ?: 0.20 else kgBand?.start ?: DEFAULT_KG_LO
                     val currentHi = if (isPercent) percentBand?.endInclusive ?: 0.30 else kgBand?.endInclusive ?: DEFAULT_KG_HI
                     val factor = if (isPercent) 100.0 else WeightUnits.fromKg(1.0)
-                    val bounds = if (isPercent) 1.0..100.0 else WeightUnits.fromKg(0.0..kgScaleTop(kgBand?.endInclusive, set, maxes, sides))
+                    val bounds = if (isPercent) 1.0..100.0 else WeightUnits.fromKg(0.0..kgScaleTop(kgBand?.endInclusive, sides, ::reference))
                     for (lower in listOf(true, false)) {
                         run.nuri.getagrip.ui.components.ValueRow(
                             title = if (lower) tr("Lower bound") else tr("Upper bound"),
@@ -433,7 +506,8 @@ fun TargetBandRow(
 
                 // Only once this grip HAS a timed max (or the set already uses one): someone who
                 // never measures one never meets the idea, and nobody can pick a max they lack.
-                if (percentBand != null && kgBand == null && basisOptions.isNotEmpty()) {
+                // Timed maxes refine "% of max" only — a critical force has no length.
+                if (percentBand != null && kgBand == null && !ofCriticalForce && basisOptions.isNotEmpty()) {
                     MaxBasisChips(basis, basisOptions) { seconds -> onChange(set.copy(targetMaxSeconds = seconds)) }
                 }
 
@@ -474,10 +548,12 @@ internal fun MaxBasisChips(selection: Int?, options: List<Int>, onSelect: (Int?)
     }
 }
 
-/// How a custom band is expressed. Trailing underscore because `Unit` is Kotlin's void type.
+/// How a band is expressed — a percentage of the max, a percentage of CRITICAL FORCE
+/// (2026-10-31), or kilograms. Trailing underscore because `Unit` is Kotlin's void type.
 /// The label is a `get()` — see `Tab`.
 private enum class Unit_(private val key: String) {
     Percent("% of max"),
+    CriticalForce("% of critical force"),
     Kilograms("Kilograms");
 
     val label: String get() = if (this == Kilograms) L10n.tr(if (WeightUnits.current == run.nuri.getagrip.ui.units.WeightUnit.kg) "Kilograms" else "Pounds") else L10n.tr(key)
@@ -499,16 +575,15 @@ private val PRESETS = listOf(
 private const val DEFAULT_KG_LO = 10.0
 private const val DEFAULT_KG_HI = 15.0
 
-/// The kilogram scale's top: grows with the band and the strongest max on file, so a
-/// 10–15 kg band is not a sliver.
+/// The kilogram scale's top: grows with the band and the strongest reference on file (max or
+/// critical force), so a 10–15 kg band is not a sliver.
 private fun kgScaleTop(
     bandTop: Double?,
-    set: SetPlan,
-    maxes: MaxTable,
     sides: List<Side>,
+    reference: (Side) -> Double?,
 ): Double {
     val top = bandTop ?: DEFAULT_KG_HI
-    val maxTop = sides.mapNotNull { maxes.max(set.grip.key, it, set.targetMaxSeconds) }.maxOrNull() ?: 0.0
+    val maxTop = sides.mapNotNull { reference(it) }.maxOrNull() ?: 0.0
     return ceil(maxOf(40.0, top * 1.3, maxTop * 1.2) / 5.0) * 5.0
 }
 

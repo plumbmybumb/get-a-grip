@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -48,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import run.nuri.getagrip.engine.L10n
+import run.nuri.getagrip.engine.TargetBasis
 import run.nuri.getagrip.ui.components.Chip
 import run.nuri.getagrip.ui.components.ChipGrid
 import run.nuri.getagrip.ui.components.HouseSegmentedRow
@@ -132,13 +134,20 @@ internal fun RoutineTargetRow(
     /// Timed lengths to offer beside "Peak max" — empty hides the choice (`MaxBasisChips`).
     basisOptions: List<Int> = emptyList(),
     onBasisChange: (Int?) -> Unit = {},
+    /// What the band is a percentage OF: the max, or critical force. See `TargetBasis`.
+    targetBasis: TargetBasis = TargetBasis.max,
+    onTargetBasisChange: (TargetBasis) -> Unit = {},
     /// Writes the routine band and clears every set's own target: one band for all.
     onChange: (ClosedFloatingPointRange<Double>?) -> Unit,
 ) {
     val palette = LocalGripPalette.current
     val reduceMotion = rememberReduceMotion()
     val band = if (lo != null && hi != null) minOf(lo, hi)..maxOf(lo, hi) else null
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    val ofCriticalForce = targetBasis == TargetBasis.criticalForce
+    // DEBUG `--ez builderOpenTarget true` opens the editor for headless screenshots.
+    val openForDebug = run.nuri.getagrip.BuildConfig.DEBUG &&
+        androidx.activity.compose.LocalActivity.current?.intent?.getBooleanExtra("builderOpenTarget", false) == true
+    var expanded by rememberSaveable { mutableStateOf(openForDebug) }
     var custom by rememberSaveable { mutableStateOf(band != null && PRESETS.none { it.second == band }) }
     val stacked = LocalDensity.current.fontScale >= 1.5f
 
@@ -175,7 +184,11 @@ internal fun RoutineTargetRow(
             .clickable(interactionSource = interaction, indication = null) { expanded = !expanded }
             .pressFeedback(interaction, scales = false)
             .semantics(mergeDescendants = true) {
-                contentDescription = "$label, $valueText"
+                contentDescription = when {
+                    band != null && ofCriticalForce -> "$label, ${L10n.tr("%s, of your critical force", valueText)}"
+                    band != null && basis != null -> "$label, ${L10n.tr("%s, of your %d second max", valueText, basis)}"
+                    else -> "$label, $valueText"
+                }
                 stateDescription = disclosure
                 role = Role.Button
             }
@@ -193,7 +206,10 @@ internal fun RoutineTargetRow(
                         fontWeight = FontWeight.Medium,
                         color = palette.inkPrimary,
                     )
-                    if (basis != null && band != null) {
+                    if (band != null && ofCriticalForce) {
+                        Text(tr("of your critical force"), style = MaterialTheme.typography.bodySmall,
+                            color = palette.inkSecondary)
+                    } else if (basis != null && band != null) {
                         Text(tr("of your %d s max", basis), style = MaterialTheme.typography.bodySmall,
                             color = palette.inkSecondary)
                     }
@@ -252,8 +268,29 @@ internal fun RoutineTargetRow(
                         control = ValueControl.Stepper,
                     ) { new -> onChange(ordered(current.start, new / 100.0)) }
                 } }
+                // What the percentage is OF — kilograms stay per set, so two choices here.
                 AnimatedVisibility(
-                    visible = band != null && basisOptions.isNotEmpty(),
+                    visible = band != null,
+                    enter = expandVertically(Motion.state(reduceMotion)) + fadeIn(Motion.state(reduceMotion)),
+                    exit = shrinkVertically(Motion.state(reduceMotion)) + fadeOut(Motion.state(reduceMotion)),
+                ) {
+                    Column(Modifier.semantics { contentDescription = L10n.tr("Target load unit") }) {
+                        ChipGrid(base = 2, content = buildList {
+                            add { m ->
+                                Chip(tr("% of max"), !ofCriticalForce, m.testTag("routine.basis.max")) {
+                                    onTargetBasisChange(TargetBasis.max)
+                                }
+                            }
+                            add { m ->
+                                Chip(tr("% of critical force"), ofCriticalForce, m.testTag("routine.basis.criticalForce")) {
+                                    onTargetBasisChange(TargetBasis.criticalForce)
+                                }
+                            }
+                        })
+                    }
+                }
+                AnimatedVisibility(
+                    visible = band != null && !ofCriticalForce && basisOptions.isNotEmpty(),
                     enter = expandVertically(Motion.state(reduceMotion)) + fadeIn(Motion.state(reduceMotion)),
                     exit = shrinkVertically(Motion.state(reduceMotion)) + fadeOut(Motion.state(reduceMotion)),
                 ) { MaxBasisChips(basis, basisOptions, onBasisChange) }

@@ -32,8 +32,9 @@ data class RepSlot(
     val isLastOfSet: Boolean,
 
     /// The load to aim for in kilograms, ALREADY RESOLVED per hand by `PlanMath.sequence`
-    /// against the max table frozen at session start, so nothing downstream looks up a
-    /// max. null when the set has no target or its grip has no max on file.
+    /// against the max and critical force tables frozen at session start, so nothing
+    /// downstream looks up either. null when the set has no target or its grip has nothing
+    /// on file to take the percentage of.
     val targetBand: ClosedFloatingPointRange<Double>? = null,
 ) {
     val id: String get() = "$setIndex.$repIndex"
@@ -62,9 +63,10 @@ object PlanMath {
     ///    sets at 17–22 %" a single edit, exactly like `hold` and `rest`;
     /// 4. **nothing**.
     ///
-    /// A null `maxKg` collapses 2 and 3 to nothing rather than to a guess: there is no
-    /// percentage of a max nobody has recorded, and inventing one would put a confident
-    /// kilogram figure on a screen somebody trains against.
+    /// `maxKg` is the REFERENCE the percentage is of — a max or a critical force, per
+    /// `targetBasis`; `referenceKg` picks it. A null collapses 2 and 3 to nothing rather
+    /// than to a guess: there is no percentage of a number nobody has recorded, and
+    /// inventing one would put a confident kilogram figure on a screen somebody trains against.
     fun targetBand(set: SetPlan, plan: SessionPlan, maxKg: Double?): ClosedFloatingPointRange<Double>? {
         set.targetBand?.let { return it }
         val percent = set.targetPercentBand ?: plan.targetPercentBand ?: return null
@@ -77,13 +79,41 @@ object PlanMath {
     /// WHICH max a set's percentage is of: null is the peak, otherwise a timed max of that
     /// many seconds. It travels WITH the percentage — the set's own when the set has its
     /// own band, the routine's when it inherits.
-    fun maxSeconds(set: SetPlan, plan: SessionPlan): Int? =
-        if (set.targetPercentBand != null) set.targetMaxSeconds else plan.targetMaxSeconds
+    ///
+    /// null too when the percentage is of CRITICAL FORCE: a CF has no length, and a stray
+    /// length left beside it must never send a CF set looking up a timed max. Callers that
+    /// print "peak" for null ask `targetBasis` first.
+    fun maxSeconds(set: SetPlan, plan: SessionPlan): Int? {
+        if (targetBasis(set, plan) != TargetBasis.max) return null
+        return if (set.targetPercentBand != null) set.targetMaxSeconds else plan.targetMaxSeconds
+    }
+
+    /// WHAT a set's percentage is of — max or critical force. It travels with the
+    /// percentage like `maxSeconds`: the set's own basis when the set has its own band,
+    /// the routine's when it inherits, so a band and its basis never come from two levels.
+    fun targetBasis(set: SetPlan, plan: SessionPlan): TargetBasis =
+        if (set.targetPercentBand != null) set.targetBasis else plan.targetBasis
 
     /// The max a set's percentage resolves against for one hand — peak or timed. A timed
-    /// basis with no timed max on file is null, NEVER the peak.
+    /// basis with no timed max on file is null, NEVER the peak. Max basis only; callers
+    /// resolving a target use `referenceKg`, which also knows critical force.
     fun maxKg(set: SetPlan, plan: SessionPlan, side: Side, maxes: MaxTable): Double? =
         maxes.max(set.grip.key, side, maxSeconds(set, plan))
+
+    /// The number a set's percentage resolves against for one hand: the max (peak or
+    /// timed, per `maxSeconds`) or the critical force, per `targetBasis`. Each table keeps
+    /// its own rules and NEITHER falls back to the other: a missing CF is no target, never
+    /// "the max will do" — 80 % of max is roughly twice 80 % of CF.
+    fun referenceKg(
+        set: SetPlan,
+        plan: SessionPlan,
+        side: Side,
+        maxes: MaxTable,
+        criticalForces: CriticalForceTable,
+    ): Double? = when (targetBasis(set, plan)) {
+        TargetBasis.max -> maxKg(set, plan, side, maxes)
+        TargetBasis.criticalForce -> criticalForces.criticalForce(set.grip.key, side)
+    }
 
     /// The percentage band a set will USE, ignoring any kg override — what the builder
     /// shows as "following the routine". null when neither level sets one.
@@ -99,8 +129,9 @@ object PlanMath {
         plan: SessionPlan,
         side: Side,
         maxes: MaxTable,
+        criticalForces: CriticalForceTable = CriticalForceTable(),
     ): ClosedFloatingPointRange<Double>? =
-        targetBand(set, plan, maxKg(set, plan, side, maxes))
+        targetBand(set, plan, referenceKg(set, plan, side, maxes, criticalForces))
 
     /// Bake every percentage target down to today's kilograms, keyed by each set's grip.
     ///
@@ -108,9 +139,13 @@ object PlanMath {
     /// session-start path: the runner freezes a MaxTable and `sequence` resolves each
     /// hand, whereas one band baked onto a set would hand both hands the same kilograms.
     /// Sets without a max keep no band; percentages stay untouched.
-    fun resolvingTargets(plan: SessionPlan, maxes: MaxTable): SessionPlan = plan.copy(
+    fun resolvingTargets(
+        plan: SessionPlan,
+        maxes: MaxTable,
+        criticalForces: CriticalForceTable = CriticalForceTable(),
+    ): SessionPlan = plan.copy(
         sets = plan.sets.map { set ->
-            val band = targetBand(set, plan, Side.both, maxes) ?: return@map set
+            val band = targetBand(set, plan, Side.both, maxes, criticalForces) ?: return@map set
             set.copy(targetLoKg = band.start, targetHiKg = band.endInclusive)
         }
     )
@@ -158,9 +193,14 @@ object PlanMath {
     /// The whole session, rep by rep. Zero-rep sets are dropped ENTIRELY (no lead-in, no
     /// set break): an emptied row is not a pause.
     ///
-    /// `maxes` makes loads per-hand, since only a rep knows its hand. Callers that want
-    /// the session's shape rather than its loads (totals, estimates) pass the empty default.
-    fun sequence(plan: SessionPlan, maxes: MaxTable = MaxTable()): List<RepSlot> {
+    /// `maxes` and `criticalForces` make loads per-hand, since only a rep knows its hand.
+    /// Callers that want the session's shape rather than its loads (totals, estimates) pass
+    /// the empty defaults — and an empty CF table resolves every CF-based set to no target.
+    fun sequence(
+        plan: SessionPlan,
+        maxes: MaxTable = MaxTable(),
+        criticalForces: CriticalForceTable = CriticalForceTable(),
+    ): List<RepSlot> {
         val live = plan.executable
         val slots = mutableListOf<RepSlot>()
         for ((setIndex, set) in live.sets.withIndex()) {
@@ -189,7 +229,8 @@ object PlanMath {
                         // A band already BAKED onto the set wins: it is either a number the
                         // user typed or one `resolvingTargets` froze, and both outrank a
                         // fresh lookup. Otherwise resolve for THIS hand.
-                        targetBand = set.targetBand ?: targetBand(set, live, repSide, maxes),
+                        targetBand = set.targetBand
+                            ?: targetBand(set, live, repSide, maxes, criticalForces),
                         restAfter = if (isLast) (if (isLastSet) 0 else live.setBreakSeconds) else restSeconds,
                         isFirstOfSet = isFirst,
                         isLastOfSet = isLast,
@@ -357,14 +398,19 @@ object PlanMath {
     ///
     /// null when neither hand resolves — the caller then says "no max" rather than
     /// printing an empty band.
-    fun targetText(set: SetPlan, plan: SessionPlan, maxes: MaxTable): String? {
+    fun targetText(
+        set: SetPlan,
+        plan: SessionPlan,
+        maxes: MaxTable,
+        criticalForces: CriticalForceTable = CriticalForceTable(),
+    ): String? {
         // One side means the hands are on the edge together; there is no per-hand
         // question to answer and "L … · R …" would invent one.
         if (plan.handMode.sideCount <= 1) {
-            return targetBand(set, plan, Side.both, maxes)?.let { bandText(it) }
+            return targetBand(set, plan, Side.both, maxes, criticalForces)?.let { bandText(it) }
         }
-        val left = targetBand(set, plan, Side.left, maxes)
-        val right = targetBand(set, plan, Side.right, maxes)
+        val left = targetBand(set, plan, Side.left, maxes, criticalForces)
+        val right = targetBand(set, plan, Side.right, maxes, criticalForces)
         return when {
             left == null && right == null -> null
             left != null && right != null && left == right -> bandText(left)
@@ -379,22 +425,35 @@ object PlanMath {
 
     /// True when this set will ask the two hands for different loads — what a caller
     /// checks before spending the width on two figures.
-    fun targetDiffersByHand(set: SetPlan, plan: SessionPlan, maxes: MaxTable): Boolean {
+    fun targetDiffersByHand(
+        set: SetPlan,
+        plan: SessionPlan,
+        maxes: MaxTable,
+        criticalForces: CriticalForceTable = CriticalForceTable(),
+    ): Boolean {
         if (plan.handMode.sideCount <= 1) return false
-        return targetBand(set, plan, Side.left, maxes) != targetBand(set, plan, Side.right, maxes)
+        return targetBand(set, plan, Side.left, maxes, criticalForces) !=
+            targetBand(set, plan, Side.right, maxes, criticalForces)
     }
 
     /// Distinct grips in the plan that cannot resolve a target for at least ONE hand.
     /// Per hand, not per grip: a left-only max leaves the right hand with nothing, and a
     /// count that missed it would report a fully-loaded routine that is half unloaded.
-    fun untargetedGripCount(plan: SessionPlan, maxes: MaxTable): Int {
+    ///
+    /// Basis-aware: a set at "% of critical force" counts a hand with no CF on file, never
+    /// a hand with no max.
+    fun untargetedGripCount(
+        plan: SessionPlan,
+        maxes: MaxTable,
+        criticalForces: CriticalForceTable = CriticalForceTable(),
+    ): Int {
         val live = plan.executable
         val seen = mutableSetOf<String>()
         var count = 0
         for (set in live.sets) {
             if (seen.contains(set.grip.key)) continue
             val sides = if (live.handMode.sideCount > 1) listOf(Side.left, Side.right) else listOf(Side.both)
-            if (sides.any { targetBand(set, live, it, maxes) == null }) {
+            if (sides.any { targetBand(set, live, it, maxes, criticalForces) == null }) {
                 seen.add(set.grip.key)
                 count += 1
             }
@@ -403,11 +462,50 @@ object PlanMath {
     }
 
     /// Missing benchmarks only; explicit kg targets and deliberately untargeted sets do not qualify.
-    fun missingBenchmarkGripCount(plan: SessionPlan, maxes: MaxTable): Int {
+    fun missingBenchmarkGripCount(
+        plan: SessionPlan,
+        maxes: MaxTable,
+        criticalForces: CriticalForceTable = CriticalForceTable(),
+    ): Int {
         val live = plan.executable
         return untargetedGripCount(live.copy(sets = live.sets.filter {
             it.targetBand == null && targetPercent(it, live) != null
-        }), maxes)
+        }), maxes, criticalForces)
+    }
+
+    /// One (grip, hand, basis) a percentage target needs and nothing on file answers — what
+    /// the builder names ("No critical force for 20 mm · 3 fingers · Half crimp · left").
+    data class MissingReference(
+        val grip: GripSpec,
+        val side: Side,
+        val basis: TargetBasis,
+        /// The timed-max length when `basis == max` and the max is timed; null otherwise.
+        val maxSeconds: Int?,
+    )
+
+    /// Every hand a percentage set asks for and cannot resolve, in plan order, each
+    /// (grip, hand, basis, length) once. Kilogram sets and untargeted sets never qualify.
+    /// The hands are the ones the set's reps actually use (`handSequence`), in order.
+    fun missingReferences(
+        plan: SessionPlan,
+        maxes: MaxTable,
+        criticalForces: CriticalForceTable,
+    ): List<MissingReference> {
+        val live = plan.executable
+        val seen = mutableSetOf<String>()
+        val out = mutableListOf<MissingReference>()
+        for (set in live.sets) {
+            if (set.targetBand != null || targetPercent(set, live) == null) continue
+            val basis = targetBasis(set, live)
+            val seconds = maxSeconds(set, live)
+            for (side in handSequence(set, live).distinct()) {
+                if (referenceKg(set, live, side, maxes, criticalForces) != null) continue
+                val identity = "${set.grip.key}|${side.rawValue}|${basis.rawValue}|${seconds ?: 0}"
+                if (!seen.add(identity)) continue
+                out.add(MissingReference(set.grip, side, basis, seconds))
+            }
+        }
+        return out
     }
 
     /// TRANSLATION NOTE: Swift's `.formatted(.number.precision(.fractionLength(1)))` is
@@ -469,12 +567,21 @@ object PlanMath {
     ///   (`handSequence`, with `MaxTable`'s fallbacks; a `both` rep never uses a
     ///   synthesised sum). The HIGHEST fraction wins: the weaker hand names the day.
     /// - **A percentage band** IS the intensity and needs no max.
+    /// - **A percentage of CRITICAL FORCE** is restated against the PEAK max of each hand
+    ///   (`percent × CF / peak`) and contributes only where BOTH are on file. Otherwise it
+    ///   contributes nothing, so a CF routine with no tests reads `unknown` — the bleu rung,
+    ///   as before — rather than its raw percentage: "80 %" of CF is a moderate load, and
+    ///   colouring it as 80 % of max would cry wolf in red.
     ///
     /// A set that cannot resolve contributes NOTHING rather than blanking the answer;
     /// null only when no set contributed (a routine trained by feel). The HI bound is the
     /// intensity; a lone endpoint normalizes to `lo..lo`. Nothing is clamped to 1.0: a
     /// 110 % prescription against a stale max belongs in `nearMax`, not hidden at 100 %.
-    fun peakIntensity(plan: SessionPlan, maxes: MaxTable): Double? {
+    fun peakIntensity(
+        plan: SessionPlan,
+        maxes: MaxTable,
+        criticalForces: CriticalForceTable = CriticalForceTable(),
+    ): Double? {
         var peak: Double? = null
         // Only a finite fraction may raise the peak: a NaN wins no comparison, so an
         // unguarded max would keep it and poison the whole answer.
@@ -499,7 +606,14 @@ object PlanMath {
                 // number is never second-guessed by arithmetic.
                 val percent = targetPercent(set, live) ?: continue
                 val seconds = maxSeconds(set, live)
-                if (seconds == null) {
+                if (targetBasis(set, live) == TargetBasis.criticalForce) {
+                    for (side in handSequence(set, live).toSet()) {
+                        val cf = criticalForces.criticalForce(set.grip.key, side) ?: continue
+                        val peakKg = maxes.max(set.grip.key, side) ?: continue
+                        if (peakKg <= 0) continue
+                        consider(percent.endInclusive * cf / peakKg)
+                    }
+                } else if (seconds == null) {
                     consider(percent.endInclusive)
                 } else {
                     // 90 % of a 10 s max is NOT 90 % of a peak — restate it against the peak
