@@ -350,6 +350,14 @@ struct TodayView: View {
 
     /// Size CLASS, never the idiom: an iPad in Slide Over is a phone and keeps the deck.
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// 20 beside a system side column (the Duo's vertical bars), 0 on every phone.
+    @State private var sideColumnPeek: CGFloat = 0
+
+    private func refreshSideColumnPeek() {
+        let insets = ClearOfSideBars.windowSideInsets
+        let next: CGFloat = (insets.left > 0 || insets.right > 0) ? 20 : 0
+        if next != sideColumnPeek { sideColumnPeek = next }
+    }
 
     /// The regular-width layout: the same cards, the strip and the ghost, two wide where
     /// the window allows. No pin and no settle — every routine is on screen, and the
@@ -421,10 +429,16 @@ struct TodayView: View {
         // hairline where 20 reads as a card. The last card still lands on the grid.
         .padding(.horizontal, -Metrics.hPadding)
         .contentMargins(.leading, Metrics.hPadding, for: .scrollContent)
-        .contentMargins(.trailing, Metrics.hPadding + 8, for: .scrollContent)
+        // Beside a system column (iPhone Duo) the neighbour peeks 20 pt further: the rail
+        // ends at the column edge in a fade (`ClearOfSideBars`), not at a bezel, and a
+        // 12 pt peek dissolved to nothing there. 32 pt leaves a soft tail that says
+        // "more to the right" (Nuri, on his Duo, 2026-10-31).
+        .contentMargins(.trailing, Metrics.hPadding + 8 + sideColumnPeek, for: .scrollContent)
         // On the iPhone Duo the tab bar stands on the trailing edge; without this the
         // scroll view ran under it and the neighbour peeked beneath the bar.
         .clearOfSideBars()
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in refreshSideColumnPeek() }
+        .onAppear(perform: refreshSideColumnPeek)
         // Placed, never animated, on first layout.
         .onAppear { deckPosition = deck.selectedID }
         // Programmatic re-selection: a day rollover, a save, a CloudKit merge deleting

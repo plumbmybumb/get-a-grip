@@ -51,6 +51,7 @@ struct ClearOfSideBars: ViewModifier {
             .padding(.leading, hairline.leading)
             .padding(.trailing, hairline.trailing)
             .clipShape(SideClip(sideways: hairline != EdgeInsets()))
+            .mask { SideFade(insets: hairline) }
             .ignoresSafeArea(.container, edges: .horizontal)
             .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in refresh() }
             .onAppear(perform: refresh)
@@ -75,6 +76,37 @@ struct ClearOfSideBars: ViewModifier {
             .flatMap(\.windows)
             .first { $0.isKeyWindow }?
             .safeAreaInsets ?? .zero
+    }
+}
+
+/// **The neighbour card dissolves at the column edge instead of being cut.** With the
+/// clip alone, the 16 pt of the next card that peeks beyond the current one ended in a
+/// hard vertical line against the system column (Nuri, on his Duo, 2026-10-31: "you can
+/// slightly see the edge of the next routine card … kinda sloppy"). Running the deck under
+/// the column was not an option: at the deck's height the column holds the clock and the
+/// round gauge buttons on plain background, not the glass tab bar, so the card would sit
+/// uncovered beside the clock — the first survey's finding. A fade over the last
+/// `SideFade.width` points (Today's deck peeks 20 pt further beside a column, so ~12 pt
+/// of the neighbour stay solid before the tail) keeps the "there is more to the right" cue and loses the edge.
+/// Same vertical slack as `SideClip`, so the context-menu lift is untouched; on a window
+/// with no side column the mask is solid and changes nothing.
+private struct SideFade: View {
+    var insets: EdgeInsets
+    static let width: CGFloat = 20
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if insets.leading > 0 {
+                LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: Self.width)
+            }
+            Color.black
+            if insets.trailing > 0 {
+                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: Self.width)
+            }
+        }
+        .padding(.vertical, -1000)
     }
 }
 
