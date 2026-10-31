@@ -105,7 +105,7 @@ struct WatchSummaryView: View {
 }
 
 /// Discarding takes a deliberate HOLD — the phone's `HoldToDiscardButton`, sized for a
-/// wrist, on the same `HoldToConfirm`: same 0.9 s, same "cannot be undone" vocabulary, and
+/// wrist, on the same `HoldToConfirm`: same 0.6 s, same "cannot be undone" vocabulary, and
 /// the same escape — lifting or sliding off early cancels for free, and any drift lets the
 /// summary scroll instead.
 private struct WatchHoldToDiscardButton: View {

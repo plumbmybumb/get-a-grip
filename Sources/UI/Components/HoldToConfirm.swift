@@ -22,8 +22,9 @@ struct HoldToConfirm<Label: View>: View {
         case leavingBounds(slop: CGFloat)
     }
 
-    /// Long enough to be deliberate, short enough not to feel like a punishment.
-    static var defaultSeconds: Double { 0.9 }
+    /// Long enough to be deliberate, short enough not to feel like a punishment. 0.6 s since
+    /// issue 9 (0.9 s read as too long); still well past a stray tap or a thumb brush.
+    static var defaultSeconds: Double { 0.6 }
 
     var seconds: Double = Self.defaultSeconds
     var cancel: Cancel

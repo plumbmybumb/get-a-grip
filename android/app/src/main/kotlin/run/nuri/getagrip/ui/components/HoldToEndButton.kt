@@ -76,7 +76,7 @@ fun HoldToEndButton(modifier: Modifier = Modifier, onEnd: () -> Unit) {
     )
 }
 
-/// Discarding a finished session takes the same 0.9 s HOLD: one gesture for "cannot be
+/// Discarding a finished session takes the same 0.6 s HOLD: one gesture for "cannot be
 /// undone". A lighter fill than Save, because discarding is rarer and must never be the reflex.
 @Composable
 fun HoldToDiscardButton(modifier: Modifier = Modifier, onDiscard: () -> Unit) {
@@ -114,8 +114,9 @@ fun HoldToStopTestButton(canKeep: Boolean, modifier: Modifier = Modifier, onStop
     )
 }
 
-/// Long enough to be deliberate, short enough not to feel like a punishment.
-private const val HOLD_MILLIS = 900L
+/// Long enough to be deliberate, short enough not to feel like a punishment. 0.6 s since
+/// issue 9 (0.9 s read as too long); same value as the iPhone and the watch.
+private const val HOLD_MILLIS = 600L
 private const val SLIDE_SLOP_DP = 24f
 private const val DRIFT_SLOP_DP = 10f
 
