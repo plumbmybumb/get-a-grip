@@ -1,0 +1,7 @@
+• Ouvre n'importe quelle séance passée depuis l'Historique : chaque tirage, comment il s'est terminé, la charge, le pic et les maxes enregistrés.
+• La charge par prise gagne un second graphique, les 5 % du temps les plus durs sur la réglette : l'échauffement ne cache plus le vrai travail.
+• Les charges cibles peuvent être un pourcentage de ta force critique, en plus de ton max, pour les protocoles aérobie.
+• Réglages › Son : coupe les signaux sonores ou règle leur volume. Les vibrations restent.
+• La jauge en direct mesure toute seule, et Réinitialiser efface le pic et la moyenne. Le mode démo disparaît.
+• iPhone Duo : Aujourd'hui, Tests et Historique sur deux colonnes une fois ouvert, et un écran de séance en paysage quand le téléphone tient debout.
+• Maintenir pour finir ou abandonner prend 0,6 s. Les grandes tailles de texte s'affichent proprement partout, et le champ Poids a toujours un bouton OK.

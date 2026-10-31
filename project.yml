@@ -149,8 +149,8 @@ targets:
         # this project. Flip it deliberately, then re-check the App Store Connect
         # availability box that mirrors it.
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
-        MARKETING_VERSION: "1.4.0"
-        CURRENT_PROJECT_VERSION: "29"
+        MARKETING_VERSION: "1.5.0"
+        CURRENT_PROJECT_VERSION: "30"
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
     dependencies:
@@ -191,8 +191,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: run.nuri.doigt.widget
         TARGETED_DEVICE_FAMILY: "1,2"
-        MARKETING_VERSION: "1.4.0"
-        CURRENT_PROJECT_VERSION: "29"
+        MARKETING_VERSION: "1.5.0"
+        CURRENT_PROJECT_VERSION: "30"
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
 
@@ -268,8 +268,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: "$(GETAGRIP_COMPANION_BUNDLE_ID).watchkitapp"
-        MARKETING_VERSION: "1.4.0"
-        CURRENT_PROJECT_VERSION: "29"
+        MARKETING_VERSION: "1.5.0"
+        CURRENT_PROJECT_VERSION: "30"
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
         SKIP_INSTALL: YES

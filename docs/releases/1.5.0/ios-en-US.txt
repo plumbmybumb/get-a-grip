@@ -1,0 +1,7 @@
+• Open any past workout from History: every pull, how it ended, the load, the peak and the maxes it saved.
+• Load per grip gets a second chart, the hardest 5 % of your time on the edge, so warm-up pulls no longer hide the real work.
+• Target loads can now be a percentage of your critical force as well as of your max, for aerobic protocols.
+• Settings › Sound: turn the cue tones off or set their level. Haptics stay.
+• The live gauge starts measuring on its own, and a Reset clears the peak and average. Demo mode is gone.
+• iPhone Duo: two-column Today, Benchmarks and History when open, and a landscape session screen when the phone stands on its own.
+• Hold to end and hold to discard take 0.6 s. Large text sizes lay out cleanly on every screen, and the body-weight field always has a Done.
