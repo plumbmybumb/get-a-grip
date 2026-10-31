@@ -76,7 +76,7 @@ class L10nWiringTests {
         install(french())
         val grip = GripSpec(edgeMM = 20, fingers = FingerSet.four, position = GripPosition.halfCrimp)
         // `GripSpec.displayName` is `L10n.tr("%d mm · %s · %s", …)` inside the engine.
-        assertEquals("20 mm · 4 doigts · Semi-arquée", grip.displayName)
+        assertEquals("20\u00A0mm\u00A0· 4\u00A0doigts\u00A0· Semi-arquée", grip.displayName)
     }
 
     /// With no lookup installed — a JVM test, or before `Application.onCreate` — the engine

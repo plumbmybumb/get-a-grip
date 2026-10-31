@@ -6,6 +6,7 @@ package run.nuri.getagrip.ui.units
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import run.nuri.getagrip.engine.DisplayText
 import run.nuri.getagrip.engine.L10n
 
 /** A presentation preference. Engine, BLE, database and machine exports always use kg. */
@@ -23,9 +24,10 @@ enum class WeightUnit(val rawValue: String, val symbol: String) {
     /** No conversion is ever written back merely because a value was formatted. */
     fun number(kilograms: Double, decimals: Int = 1): String =
         WeightNumberFormatter.format(fromKg(if (kilograms.isFinite()) kilograms else 0.0), decimals)
-    fun text(kilograms: Double): String = "${number(kilograms)} $symbol"
+    /** The unit rides a NO-BREAK space: "22.8 / kg" on two lines is two facts. */
+    fun text(kilograms: Double): String = "${number(kilograms)}${DisplayText.NBSP}$symbol"
     fun band(range: ClosedRange<Double>, withUnit: Boolean = true): String =
-        "${number(range.start)}–${number(range.endInclusive)}" + if (withUnit) " $symbol" else ""
+        "${number(range.start)}–${number(range.endInclusive)}" + if (withUnit) "${DisplayText.NBSP}$symbol" else ""
 
     /**
      * Localized legacy UI templates carry kg words. Replace only the unit tokens, BEFORE

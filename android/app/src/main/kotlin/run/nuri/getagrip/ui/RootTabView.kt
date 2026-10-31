@@ -34,6 +34,10 @@ import run.nuri.getagrip.runner.AndroidSessionServiceController
 import run.nuri.getagrip.store.LogIdentity
 import run.nuri.getagrip.store.LocalDeviceStore
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -333,8 +337,25 @@ fun RootTabView() {
             InstrumentSurface(shape = RoundedCornerShape(28.dp), shadowElevation = 4.dp,
                 modifier = Modifier.widthIn(max = 440.dp)) {
             // Two native rows keep every tab name readable at accessibility text sizes.
+            // MEASURED: the switch happens when the widest label no longer fits a quarter of
+            // the bar, not at a fixed scale — at 1.5 a 1.6 threshold clipped "Benchmarks" to
+            // "Benchmar", and French or a larger display size moves the point again.
+            val tabLabelMeasurer = rememberTextMeasurer()
+            val tabLabelStyle = MaterialTheme.typography.labelMedium
+            val widestTabLabel = remember(tabLabelStyle, tabLabelMeasurer, LocalConfiguration.current) {
+                Tab.entries.maxOf { tabLabelMeasurer.measure(it.label, tabLabelStyle, maxLines = 1).size.width }
+            }
+            BoxWithConstraints {
+            // NavigationBar spaces its items TAB_ITEM_SPACING apart; a label may use its
+            // item's whole width, less a hair so it never touches the neighbour's.
+            val count = Tab.entries.size
+            val labelRoom = with(LocalDensity.current) {
+                (constraints.maxWidth - (count - 1) * TAB_ITEM_SPACING.roundToPx()) / count -
+                    TAB_LABEL_MARGIN.roundToPx()
+            }
+            val perRow = if (widestTabLabel > labelRoom || LocalDensity.current.fontScale >= 1.6f) 2 else 4
             Column {
-            Tab.entries.chunked(if (LocalDensity.current.fontScale >= 1.6f) 2 else 4).forEach { tabs ->
+            Tab.entries.chunked(perRow).forEach { tabs ->
             NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp,
                 windowInsets = WindowInsets(0, 0, 0, 0)) {
                 // **The selection pill is GRAPHITE, not Material's lavender**: `secondaryContainer` leaks a
@@ -364,6 +385,7 @@ fun RootTabView() {
                         colors = itemColours,
                     )
                 }
+            }
             }
             }
             }
@@ -435,3 +457,9 @@ fun RootTabView() {
     ReviewRequestDialog(review)
 
 }
+
+/// Material 3's `NavigationBarItemHorizontalPadding`: the gap NavigationBar leaves between items.
+private val TAB_ITEM_SPACING = 8.dp
+
+/// Air a tab label keeps inside its item, so a label that "fits" is not drawn edge to edge.
+private val TAB_LABEL_MARGIN = 4.dp

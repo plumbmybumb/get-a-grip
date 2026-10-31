@@ -322,7 +322,8 @@ class RestFocusUiTests {
     private fun bounds(suffix: String) = node(suffix).fetchSemanticsNode().boundsInRoot
     private fun text(suffix: String): String {
         val config = node(suffix).fetchSemanticsNode().config
-        config.getOrNull(SemanticsProperties.Text)?.let { texts -> return texts.joinToString(" ") { it.text } }
+        // Folded to plain spaces: these checks pin WORDS; `DisplayTextTests` pins where they break.
+        config.getOrNull(SemanticsProperties.Text)?.let { texts -> return DisplayText.plain(texts.joinToString(" ") { it.text }) }
         config.getOrNull(SemanticsProperties.ContentDescription)?.let { return it.joinToString(" ") }
         // A counter is a numeral and a label side by side ("1/2 SET", "PULL 2/8"): read its
         // texts in layout order.

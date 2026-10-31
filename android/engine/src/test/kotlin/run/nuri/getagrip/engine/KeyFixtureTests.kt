@@ -60,8 +60,12 @@ class KeyFixtureTests {
 
             assertEquals(text("name"), grip.fingers.name, "$label name")
             assertEquals(text("shortName"), grip.fingers.shortName, "$label shortName")
-            assertEquals(text("line"), grip.line, "$label line")
-            assertEquals(text("displayName"), grip.displayName, "$label displayName")
+            // The fixture is shared with iOS and written with plain spaces; Android binds
+            // the spaces inside each token (`DisplayText.dotted`). The WORDS stay pinned
+            // here; where the line may break is pinned in `DisplayTextTests`.
+            assertEquals(text("line"), DisplayText.plain(grip.line), "$label line")
+            assertEquals(text("displayName"), DisplayText.plain(grip.displayName), "$label displayName")
+            assertEquals(DisplayText.dotted(text("line")), grip.line, "$label line breaks")
             assertEquals(text("shortForm"), grip.shortName, "$label shortForm")
         }
     }

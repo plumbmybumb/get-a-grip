@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.runner
 
+import run.nuri.getagrip.engine.DisplayText
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.GripPosition
 import run.nuri.getagrip.engine.GripSpec
@@ -170,11 +171,11 @@ class LiveUpdateContentTests {
     fun theHandLeadsTheGripLineAndBothIsSilent() {
         assertEquals(
             "20 mm · 4 fingers · half crimp",
-            content(state(SessionActivityPhase.pulling, side = Side.both)).text,
+            DisplayText.plain(content(state(SessionActivityPhase.pulling, side = Side.both)).text),
         )
         assertEquals(
             "Left · 20 mm · 4 fingers · half crimp",
-            content(state(SessionActivityPhase.pulling, side = Side.left)).text,
+            DisplayText.plain(content(state(SessionActivityPhase.pulling, side = Side.left)).text),
         )
     }
 
@@ -185,7 +186,7 @@ class LiveUpdateContentTests {
     @Test
     fun theTargetBandRidesWithTheGrip() {
         val card = content(state(SessionActivityPhase.pulling, lo = 8.0, hi = 12.0))
-        assertEquals("20 mm · 4 fingers · half crimp · 8.0–12.0 kg", card.text)
+        assertEquals("20 mm · 4 fingers · half crimp · 8.0–12.0 kg", DisplayText.plain(card.text))
     }
 
     /// No max on file means no band, and a card with no band says nothing about load rather
@@ -194,7 +195,7 @@ class LiveUpdateContentTests {
     fun noBandAddsNothing() {
         assertEquals(
             "20 mm · 4 fingers · half crimp",
-            content(state(SessionActivityPhase.pulling, lo = 8.0, hi = null)).text,
+            DisplayText.plain(content(state(SessionActivityPhase.pulling, lo = 8.0, hi = null)).text),
         )
     }
 

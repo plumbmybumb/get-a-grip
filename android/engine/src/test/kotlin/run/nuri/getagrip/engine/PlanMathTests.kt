@@ -101,9 +101,9 @@ class PlanMathTests {
     @Test
     fun starterFrozenLines() {
         val plan = starter
-        assertEquals("≈21 min · 36 pulls", PlanMath.subtitleLine(plan))
-        assertEquals("6 sets · 36 pulls · ≈21 min", PlanMath.summaryLine(plan))
-        assertEquals("6 sets · 36 pulls · 21:30 in total", PlanMath.totalsLine(plan))
+        assertEquals("≈21\u00A0min\u00A0· 36\u00A0pulls", PlanMath.subtitleLine(plan))
+        assertEquals("6\u00A0sets\u00A0· 36\u00A0pulls\u00A0· ≈21\u00A0min", PlanMath.summaryLine(plan))
+        assertEquals("6\u00A0sets\u00A0· 36\u00A0pulls\u00A0· 21:30\u00A0in\u00A0total", PlanMath.totalsLine(plan))
         assertEquals("18 pulls per side · 3:00 under tension per side", PlanMath.perSideLine(plan))
     }
 
@@ -779,11 +779,11 @@ class PlanMathTests {
 
     @Test
     fun durationAndClockFormatting() {
-        assertEquals("45 s", PlanMath.durationText(45))
-        assertEquals("21 min 30 s", PlanMath.durationText(1290))
-        assertEquals("19 min", PlanMath.durationText(1140))
-        assertEquals("0 s", PlanMath.durationText(0))
-        assertEquals("0 s", PlanMath.durationText(-5))
+        assertEquals("45\u00A0s", PlanMath.durationText(45))
+        assertEquals("21\u00A0min\u00A030\u00A0s", PlanMath.durationText(1290))
+        assertEquals("19\u00A0min", PlanMath.durationText(1140))
+        assertEquals("0\u00A0s", PlanMath.durationText(0))
+        assertEquals("0\u00A0s", PlanMath.durationText(-5))
 
         assertEquals("5:45", PlanMath.clockText(345))
         assertEquals("21:30", PlanMath.clockText(1290))
@@ -794,9 +794,9 @@ class PlanMathTests {
     /// copy string in the app.
     @Test
     fun approxMinutesTruncatesRatherThanRounds() {
-        assertEquals("≈21 min", PlanMath.approxMinutes(1290))
-        assertEquals("≈19 min", PlanMath.approxMinutes(1140))
-        assertEquals("45 s", PlanMath.approxMinutes(45))
+        assertEquals("≈21\u00A0min", PlanMath.approxMinutes(1290))
+        assertEquals("≈19\u00A0min", PlanMath.approxMinutes(1140))
+        assertEquals("45\u00A0s", PlanMath.approxMinutes(45))
     }
 
     // MARK: - Peak intensity
