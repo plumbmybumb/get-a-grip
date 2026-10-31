@@ -389,6 +389,9 @@ struct TodayView: View {
         .padding(.horizontal, -Metrics.hPadding)
         .contentMargins(.leading, Metrics.hPadding, for: .scrollContent)
         .contentMargins(.trailing, Metrics.hPadding + 8, for: .scrollContent)
+        // On the iPhone Duo the tab bar stands on the trailing edge; without this the
+        // scroll view ran under it and the neighbour peeked beneath the bar.
+        .clearOfSideBars()
         // Placed, never animated, on first layout.
         .onAppear { deckPosition = deck.selectedID }
         // Programmatic re-selection: a day rollover, a save, a CloudKit merge deleting

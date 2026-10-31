@@ -382,13 +382,23 @@ the booted iPhone Duo, use its Device/Controls menu to open, fold and rotate, th
    gate it on `IslandHand.isSupported` or anchor it to the `.occlusion` region as §5 says.
 3. **Today fits one page on the outer**: the content column ends at y = 604 of 678, no
    scroll, large title intact. With two routines the deck renders as the horizontal rail.
-4. **The horizontal rails paint UNDER the vertical bars.** Today's routine deck
-   (`HostingScrollView 0,138 466 × 327`, content 1018 wide) and History's "Load per grip"
-   rail are full-window-width scrollers inside a 381 pt page column, so the second card
-   slides under the tab bar / status column and the gauge button sits on top of it
-   (`today-closed-portrait.png`, `history-closed-portrait.png`). On a phone the same
-   scroller runs under nothing. This is the one visibly wrong thing in the closed pose;
-   it wants a trailing safe-area inset on the rail, or the rail clipped to the column.
+4. **The horizontal rails painted UNDER the vertical bars — FIXED the same day**
+   (`Sources/UI/Components/ClearOfSideBars.swift`, applied to Today's routine deck and
+   History's trend and month decks). Today's deck (`HostingScrollView 0,138 466 × 327`)
+   and History's "Load per grip" rail were full-window-width scrollers inside the 381 pt
+   page column, so the second card slid under the tab bar and the gauge button
+   (`today-closed-portrait.png`, `history-closed-portrait.png`). Three measured facts
+   decided the modifier: in a `List` row `ignoresSafeArea(.horizontal)` alone stops the
+   nested scroll view extending (466 → 382); inside the scaffold's vertical `ScrollView`
+   it does not, and padding the rail by the window inset came out 298 (subtracted inside
+   the column, the rail never grows) — a 1 pt trailing pad, so the scroll view's edge no
+   longer coincides with the safe-area boundary, gave exactly 381; and Today's deck,
+   unclipped for the context-menu lift, still drew the neighbour past the corrected
+   frame, so a sideways-only clip with 1000 pt of vertical slack cuts the neighbour at
+   the column edge and leaves the lift intact. The hairline and the clip are active only
+   where the window reports a side inset, re-read on every size change; the phone
+   measures byte-identically (deck `0,243 402 × 327`), unit tests and
+   `LongPressLiftUITests` pass.
 5. **Runner, closed portrait**: hero card, trace and dock all live inside the 381 pt column;
    the trace is full-bleed on the left and stops at the column edge, so the picture is
    asymmetric but nothing is clipped. The hero card starts ~8 pt below the top edge (there

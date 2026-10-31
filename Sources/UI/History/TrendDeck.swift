@@ -114,6 +114,7 @@ struct TrendDeck: View, Equatable {
         // peeking 20 pt.
         .contentMargins(.leading, Metrics.hPadding, for: .scrollContent)
         .contentMargins(.trailing, Metrics.hPadding + 8, for: .scrollContent)
+        .clearOfSideBars()
     }
 
     /// One routine's trend. `maxHeight: .infinity` makes every card stand the deck's full

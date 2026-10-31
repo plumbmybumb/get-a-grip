@@ -514,6 +514,7 @@ struct HistoryView: View {
         .scrollIndicators(peeks ? .hidden : .automatic)
         .contentMargins(.leading, Metrics.hPadding, for: .scrollContent)
         .contentMargins(.trailing, Metrics.hPadding + (peeks ? 8 : 0), for: .scrollContent)
+        .clearOfSideBars()
     }
 
     /// How many windows have anything to show: from today back to the first day on
