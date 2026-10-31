@@ -28,6 +28,10 @@ sealed interface DiagnosticBreadcrumb {
     /// could not answer.
     data class StreamStopped(val cause: StreamStopCause) : DiagnosticBreadcrumb
 
+    /// A live screen's keeper re-kicked a silent stream as often as it may and the samples
+    /// did not come back; the screen now offers Wake. See `DeviceStore.checkStreamKeepAlive`.
+    data object StreamRekickGaveUp : DiagnosticBreadcrumb
+
     data object BackgroundDisconnectScheduled : DiagnosticBreadcrumb
     data object BackgroundDisconnectCancelled : DiagnosticBreadcrumb
 
@@ -53,6 +57,7 @@ sealed interface DiagnosticBreadcrumb {
             is StreamStartDeferred -> "Stream start deferred by tare (" + cause.label + ")"
             is StreamStartWritten -> "Stream start written (" + cause.label + ")"
             is StreamStopped -> "Stream stopped (" + cause.label + ")"
+            StreamRekickGaveUp -> "Stream still silent after automatic restarts — Wake offered"
             BackgroundDisconnectScheduled ->
                 "Backgrounded — holding the link, disconnect scheduled"
             BackgroundDisconnectCancelled ->

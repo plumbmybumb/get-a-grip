@@ -21,7 +21,7 @@ BUILT FOR ANDROID
 An ongoing notification keeps a supported Bluetooth session within reach while the app is in the background. English and French are included. Training data is stored on your device; Android system backup may be available according to your device and backup settings. There is no account to create, no subscription and no advertising.
 
 TRY IT WITHOUT A GAUGE
-Use timer-only sessions or explore demo mode before connecting hardware. Live force measurement requires a compatible Bluetooth force gauge. Tindeq Progressor support is hardware-tested; experimental support for other gauges is clearly identified in the app.
+Use timer-only sessions before connecting hardware. Live force measurement requires a compatible Bluetooth force gauge. Tindeq Progressor support is hardware-tested; experimental support for other gauges is clearly identified in the app.
 
 Get a Grip is free and open source:
 https://github.com/plumbmybumb/get-a-grip

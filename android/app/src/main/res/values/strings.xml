@@ -359,6 +359,7 @@
     <string name="s_connect_your_gauge_to_test">Connect your gauge to test.</string>
     <string name="s_connected">Connected</string>
     <string name="s_connected_but_no_readings_yet_tap_wake">Connected, but no readings yet. Tap Wake.</string>
+    <string name="s_connected_waiting_for_readings">Connected. Waiting for readings…</string>
     <string name="s_connecting_to_your_gauge">Connecting to your gauge…</string>
     <string name="s_connecting_fd3e79">Connecting…</string>
     <string name="s_connection_attempts_exhausted">Connection attempts exhausted</string>
@@ -424,7 +425,6 @@
     <string name="s_delete_this_max_for">Delete this max for %1$s%2$s</string>
     <string name="s_delete_this_session_on">Delete this session, %1$s on %2$s</string>
     <string name="s_deleting_a_session_also_removes_it_from_your_streak_and">Deleting a session also removes it from your streak and trends.</string>
-    <string name="s_demo_device">Demo device</string>
     <string name="s_describe_your_routine_to_chatgpt_claude_or_any_ai_chat_i">Describe your routine to ChatGPT, Claude or any AI chat in your own words. It writes the routine in a form Get a Grip can read.</string>
     <string name="s_device">Device</string>
     <string name="s_device_asleep">Device asleep</string>
@@ -616,7 +616,6 @@
     <string name="s_last">Last: %1$s · %2$s</string>
     <string name="s_lead_in">Lead-in</string>
     <string name="s_lead_in_before_each_set_d6ca0a">Lead-in before each set</string>
-    <string name="s_leave_demo_mode">Leave demo mode</string>
     <string name="s_leave_them_as_they_are">Leave them as they are</string>
     <string name="s_left_8ae1c3">Left</string>
     <string name="s_left_first">Left first</string>
@@ -720,7 +719,6 @@
     <string name="s_no_lld_s_max_for_this_grip_yet_measure_one_in_benchmarks">No %d s max for this grip yet. Measure one in Benchmarks.</string>
     <string name="s_no_lld_s_max_for_your_hand_yet_measure_one_in_benchmarks">No %1$d s max for your %2$s hand yet. Measure one in Benchmarks.</string>
     <string name="s_no_bluetooth">No Bluetooth</string>
-    <string name="s_no_bluetooth_on_this_device_try_demo_mode">No Bluetooth on this device. Try demo mode.</string>
     <string name="s_no_daily_target">No daily target</string>
     <string name="s_no_fingers">No fingers</string>
     <string name="s_no_gauge_found">No gauge found</string>
@@ -739,6 +737,7 @@
     <string name="s_no_pulls_held_nothing_to_log">No pulls held. Nothing to log.</string>
     <string name="s_no_pulls_recorded_tare_the_gauge_and_pull_through_it">No pulls recorded. Tare the gauge and pull through it.</string>
     <string name="s_no_pulls_with_this_hand">No pulls with this hand.</string>
+    <string name="s_no_readings_from_the_gauge_check_it_s_on_then_tap_wake">No readings from the gauge. Check it\'s on, then tap Wake.</string>
     <string name="s_no_scale_found">No scale found</string>
     <string name="s_no_session_done_today">No session done today</string>
     <plurals name="s_no_sessions_done_today_lld_planned">
@@ -859,6 +858,7 @@
     <string name="s_rhythm_4665ba">RHYTHM</string>
     <string name="s_right_952532">RIGHT</string>
     <string name="s_right_hand_next_0ba39f">RIGHT HAND NEXT</string>
+    <string name="s_readings_stopped_and_automatic_restarts_didn_t_bring_the">Readings stopped and automatic restarts didn\'t bring them back. Restarts the stream; doesn\'t tare.</string>
     <string name="s_reads_the_routine_the_ai_wrote">Reads the routine the AI wrote.</string>
     <string name="s_recent_connection_events_kept_in_memory_only_and_cleared">Recent connection events. Kept in memory only and cleared when the app quits.</string>
     <string name="s_record_another_test">Record another test</string>
@@ -872,6 +872,7 @@
     <string name="s_report_a_bug">Report a bug</string>
     <string name="s_request_a_feature">Request a feature</string>
     <string name="s_reset">Reset</string>
+    <string name="s_resets_peak_average_timer_and_pulls_doesn_t_tare">Resets peak, average, timer and pulls. Doesn\'t tare.</string>
     <string name="s_rest_b79e5f">Rest</string>
     <string name="s_rest_between_pulls">Rest between pulls</string>
     <string name="s_restarts_a_stalled_reading">Restarts a stalled reading.</string>
@@ -999,6 +1000,7 @@
     <string name="s_start_fourth_session">Start fourth session</string>
     <string name="s_start_in_half_crimp_and_curl_your_fingers_into_the_edge">Start in half crimp and curl your fingers into the edge.</string>
     <string name="s_start_measuring">Start measuring</string>
+    <string name="s_start_measuring_to_tare">Start measuring to tare.</string>
     <string name="s_start_second_session">Start second session</string>
     <string name="s_start_session">Start session</string>
     <string name="s_start_session_lld">Start session %d</string>
@@ -1102,7 +1104,6 @@
     <string name="s_too_short_held_of_lld_s">Too short · held %1$s of %2$d s</string>
     <string name="s_trained_on_lld_of_lld_tracked_days_lld_of_them_fully">Trained on %1$d of %2$d tracked days, %3$d of them fully.</string>
     <string name="s_try_again">Try again</string>
-    <string name="s_try_demo_mode">Try demo mode</string>
     <string name="s_twice_a_day">Twice a day</string>
     <string name="s_twice_a_day_each">Twice a day · %s each</string>
     <string name="s_type_a_value">Type a value</string>
@@ -1126,6 +1127,7 @@
     <string name="s_what_kind_of_session">WHAT KIND OF SESSION</string>
     <string name="s_what_you_ll_pull">WHAT YOU\'LL PULL</string>
     <string name="s_when">WHEN</string>
+    <string name="s_waiting_for_readings_from_the_gauge">Waiting for readings from the gauge.</string>
     <string name="s_waiting_for_the_gauge">Waiting for the gauge</string>
     <string name="s_wake">Wake</string>
     <string name="s_warm_up_first_use_the_same_grip_and_arm_position_each_ti">Warm up first. Use the same grip and arm position each time. Leave a few weeks between tests; the first is partly practice.</string>

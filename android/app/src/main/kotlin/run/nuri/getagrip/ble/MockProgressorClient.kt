@@ -17,13 +17,14 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-/// A synthetic Progressor — the only way to run the app without a phone and a real gauge
-/// (**the emulator has no working Bluetooth**), and what demo mode uses, so someone without
-/// hardware can watch a whole session.
+/// A synthetic Progressor — for US, not for users: the only way to run the app without a
+/// phone and a real gauge (**the emulator has no working Bluetooth**).
 ///
-/// **Always compiled in**, and reached two ways: the `--ez mockDevice true` launch extra
-/// (iOS's `-mockDevice`, read by `DeviceStore`) and the "Try demo mode" button in the
-/// gauge's disconnected state. A debug-only mock would strand anyone without hardware.
+/// Reached ONLY through the `--ez mockDevice true` launch extra in a DEBUG build (iOS's
+/// `-mockDevice`, read by `DeviceStore`, which ANDs it with `BuildConfig.DEBUG`), plus
+/// previews and tests. It used to back a user-facing "Try demo mode" button; Nuri removed
+/// that on 2026-10-31 ("it's just for us to test"). People without a gauge have "Start
+/// without a gauge".
 ///
 /// TRANSLATION NOTE: Swift's `Task` inherits `@MainActor`; Kotlin takes the scope
 /// explicitly (the app passes `Dispatchers.Main.immediate`, a test its test scope), so it
@@ -200,8 +201,8 @@ enum class MockForceProfile(val rawValue: String) {
 
     /// A critical force test done properly: all-out 7 s pulls on a 10 s cycle, decaying
     /// from about 35 kg to an 18 kg plateau, with every fifth pull held a little past the
-    /// bell. The demo gauge switches to it while a test runs, so demo mode (store review
-    /// included) sees a real-looking plateau rather than the routine's 10-on/20-off shape.
+    /// bell. The mock gauge switches to it while a test runs, so a debug `mockDevice` run sees
+    /// a real-looking plateau rather than the routine's 10-on/20-off shape.
     allOut("allOut");
 
     companion object {

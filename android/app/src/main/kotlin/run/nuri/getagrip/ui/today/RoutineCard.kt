@@ -121,7 +121,6 @@ fun RoutineCard(
     /// A routine written by the climber's AI chat, read back from the clipboard.
     onCreateWithAI: () -> Unit = {},
     onDelete: () -> Unit = {},
-    onDemo: () -> Unit = {},
 ) {
     val palette = LocalGripPalette.current
     var menuOpen by remember { mutableStateOf(false) }
@@ -185,7 +184,7 @@ fun RoutineCard(
                 CompletionRow(summary, completionText)
             }
             PlanRow(summary, onOverview)
-            StartBlock(summary, deviceState, battery, onStart, onStartTimerOnly, onDemo)
+            StartBlock(summary, deviceState, battery, onStart, onStartTimerOnly)
         }
     }
 }
@@ -633,7 +632,6 @@ private fun StartBlock(
     battery: Double?,
     onStart: () -> Unit,
     onStartTimerOnly: () -> Unit,
-    onDemo: () -> Unit,
 ) {
     val palette = LocalGripPalette.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -692,13 +690,8 @@ private fun StartBlock(
                 )
             }
         }
-
-        when (deviceState) {
-            // Always compiled in: without hardware, on an emulator or in review, this is the only way to see it work.
-            is ProgressorConnectionState.Unsupported ->
-                SecondaryButton(title = tr("Try demo mode"), modifier = Modifier.fillMaxWidth(), onClick = onDemo)
-            else -> Unit
-        }
+        // No Bluetooth radio: "Start without a gauge" above is the way in. There is no demo mode
+        // to offer (Nuri, 2026-10-31: the mock is "just for us to test").
     }
 }
 

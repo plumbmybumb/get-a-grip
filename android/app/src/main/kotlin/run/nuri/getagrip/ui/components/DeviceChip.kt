@@ -73,7 +73,6 @@ fun DeviceChip(modifier: Modifier = Modifier) {
 
     val connected = device.state.isConnected
     val title = when {
-        device.isMock && connected -> tr("Demo device")
         // Fall back to the selected KIND's name, not a hardcoded "Progressor" — a WH-C06
         // that advertises namelessly must not be labelled as a Tindeq.
         connected -> device.deviceName ?: device.gaugeKind.displayName
@@ -104,9 +103,9 @@ fun DeviceChip(modifier: Modifier = Modifier) {
                 menuOpen = false
                 device.readBattery()
             })
-            DropdownMenuItem(text = { Text(if (device.isMock) tr("Leave demo mode") else tr("Disconnect")) }, onClick = {
+            DropdownMenuItem(text = { Text(tr("Disconnect")) }, onClick = {
                 menuOpen = false
-                if (device.isMock) device.useMockDevice(false) else device.disconnect()
+                device.disconnect()
             })
         }
         Surface(
@@ -162,8 +161,8 @@ fun DeviceChip(modifier: Modifier = Modifier) {
 }
 
 /// Bleu is the LIVE signal, amber means waiting on something, alarm red is a link the app
-/// cannot open without the person doing something. Demo mode is amber, never bleu: a
-/// synthetic number that looks like a measurement is worse than no number.
+/// cannot open without the person doing something. The debug-only mock is amber, never
+/// bleu, so a developer can tell it from hardware at a glance.
 private fun dotColour(
     state: ProgressorConnectionState,
     isMock: Boolean,

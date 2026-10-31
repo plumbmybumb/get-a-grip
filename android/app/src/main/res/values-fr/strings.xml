@@ -358,6 +358,7 @@
     <string name="s_connect_your_gauge_to_test">Connecte ton capteur pour faire le test.</string>
     <string name="s_connected">Connecté</string>
     <string name="s_connected_but_no_readings_yet_tap_wake">Connecté, mais aucune mesure pour l\'instant. Touche Réveiller.</string>
+    <string name="s_connected_waiting_for_readings">Connecté. En attente des valeurs…</string>
     <string name="s_connecting_to_your_gauge">Connexion au capteur…</string>
     <string name="s_connecting_fd3e79">Connexion…</string>
     <string name="s_connection_attempts_exhausted">Tentatives de connexion épuisées</string>
@@ -423,7 +424,6 @@
     <string name="s_delete_this_max_for">Supprimer ce max pour %1$s%2$s</string>
     <string name="s_delete_this_session_on">Supprimer cette séance, %1$s le %2$s</string>
     <string name="s_deleting_a_session_also_removes_it_from_your_streak_and">Supprimer une séance la retire aussi de ta série et de tes tendances.</string>
-    <string name="s_demo_device">Appareil de démo</string>
     <string name="s_describe_your_routine_to_chatgpt_claude_or_any_ai_chat_i">Décris ta routine avec tes mots à ChatGPT, Claude ou toute autre IA. Elle l\'écrit dans un format que Get a Grip sait lire.</string>
     <string name="s_device">Appareil</string>
     <string name="s_device_asleep">Appareil en veille</string>
@@ -615,7 +615,6 @@
     <string name="s_last">Dernier : %1$s · %2$s</string>
     <string name="s_lead_in">Décompte</string>
     <string name="s_lead_in_before_each_set_d6ca0a">Décompte avant chaque série</string>
-    <string name="s_leave_demo_mode">Quitter le mode démo</string>
     <string name="s_leave_them_as_they_are">Les laisser telles quelles</string>
     <string name="s_left_8ae1c3">Gauche</string>
     <string name="s_left_first">Gauche d’abord</string>
@@ -718,7 +717,6 @@
     <string name="s_no_lld_s_max_for_this_grip_yet_measure_one_in_benchmarks">Pas encore de max sur %d s pour cette prise. Mesures-en un dans Tests.</string>
     <string name="s_no_lld_s_max_for_your_hand_yet_measure_one_in_benchmarks">Pas encore de max sur %1$d s pour ta main %2$s. Mesures-en un dans Tests.</string>
     <string name="s_no_bluetooth">Pas de Bluetooth</string>
-    <string name="s_no_bluetooth_on_this_device_try_demo_mode">Pas de Bluetooth sur cet appareil. Essaie le mode démo.</string>
     <string name="s_no_daily_target">Pas d\'objectif quotidien</string>
     <string name="s_no_fingers">Aucun doigt</string>
     <string name="s_no_gauge_found">Aucun capteur trouvé</string>
@@ -737,6 +735,7 @@
     <string name="s_no_pulls_held_nothing_to_log">Aucun tirage tenu. Rien à enregistrer.</string>
     <string name="s_no_pulls_recorded_tare_the_gauge_and_pull_through_it">Aucun tirage enregistré. Tare le capteur et tire à travers lui.</string>
     <string name="s_no_pulls_with_this_hand">Aucun tirage avec cette main.</string>
+    <string name="s_no_readings_from_the_gauge_check_it_s_on_then_tap_wake">Aucune valeur du capteur. Vérifie qu\'il est allumé, puis touche Réveiller.</string>
     <string name="s_no_scale_found">Aucune balance trouvée</string>
     <string name="s_no_session_done_today">Aucune séance faite aujourd\'hui</string>
     <plurals name="s_no_sessions_done_today_lld_planned">
@@ -857,6 +856,7 @@
     <string name="s_rhythm_4665ba">RYTHME</string>
     <string name="s_right_952532">DROITE</string>
     <string name="s_right_hand_next_0ba39f">MAIN DROITE ENSUITE</string>
+    <string name="s_readings_stopped_and_automatic_restarts_didn_t_bring_the">Les valeurs se sont arrêtées et les relances automatiques ne les ont pas ramenées. Relance le flux, sans tarer.</string>
     <string name="s_reads_the_routine_the_ai_wrote">Lit la routine écrite par l\'IA.</string>
     <string name="s_recent_connection_events_kept_in_memory_only_and_cleared">Événements de connexion récents. Gardés en mémoire seulement et effacés quand l\'app se ferme.</string>
     <string name="s_record_another_test">Enregistrer un nouveau test</string>
@@ -870,6 +870,7 @@
     <string name="s_report_a_bug">Signaler un bug</string>
     <string name="s_request_a_feature">Demander une fonctionnalité</string>
     <string name="s_reset">Remise à zéro</string>
+    <string name="s_resets_peak_average_timer_and_pulls_doesn_t_tare">Remet à zéro le pic, la moyenne, le chrono et les tirages. Ne tare pas.</string>
     <string name="s_rest_b79e5f">Repos</string>
     <string name="s_rest_between_pulls">Repos entre les tirages</string>
     <string name="s_restarts_a_stalled_reading">Relance une mesure bloquée.</string>
@@ -997,6 +998,7 @@
     <string name="s_start_fourth_session">Commencer la quatrième séance</string>
     <string name="s_start_in_half_crimp_and_curl_your_fingers_into_the_edge">Pars en semi-arquée et fléchis les doigts sur la réglette.</string>
     <string name="s_start_measuring">Commencer la mesure</string>
+    <string name="s_start_measuring_to_tare">Lance la mesure pour tarer.</string>
     <string name="s_start_second_session">Commencer la deuxième séance</string>
     <string name="s_start_session">Commencer la séance</string>
     <string name="s_start_session_lld">Commencer la séance %d</string>
@@ -1100,7 +1102,6 @@
     <string name="s_too_short_held_of_lld_s">Trop court · tenu %1$s s sur %2$d</string>
     <string name="s_trained_on_lld_of_lld_tracked_days_lld_of_them_fully">Entraînement sur %1$d des %2$d jours suivis, dont %3$d complets.</string>
     <string name="s_try_again">Réessayer</string>
-    <string name="s_try_demo_mode">Essayer le mode démo</string>
     <string name="s_twice_a_day">Deux fois par jour</string>
     <string name="s_twice_a_day_each">Deux fois par jour · %s chacune</string>
     <string name="s_type_a_value">Saisir une valeur</string>
@@ -1124,6 +1125,7 @@
     <string name="s_what_kind_of_session">QUEL TYPE DE SÉANCE</string>
     <string name="s_what_you_ll_pull">CE QUE TU VAS TIRER</string>
     <string name="s_when">QUAND</string>
+    <string name="s_waiting_for_readings_from_the_gauge">En attente des valeurs du capteur.</string>
     <string name="s_waiting_for_the_gauge">En attente du capteur</string>
     <string name="s_wake">Réveiller</string>
     <string name="s_warm_up_first_use_the_same_grip_and_arm_position_each_ti">Échauffe-toi d\'abord. Garde la même prise et la même position de bras à chaque fois. Laisse quelques semaines entre deux tests ; le premier sert en partie d\'entraînement.</string>
