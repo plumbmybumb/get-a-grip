@@ -51,15 +51,14 @@ struct TareButton: View {
                 }
             }
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: tapDecision == .wakeStream
-                      ? "arrow.clockwise" : "arrow.counterclockwise")
-                // The label says what the tap will actually DO — "Wake" when the stream
-                // is dead, the phase's reason while disabled (`TarePolicy.disabledLabel`).
-                Text(tapDecision == .wakeStream
-                     ? String(localized: "Wake")
-                     : (TarePolicy.disabledLabel(for: session.snapshot.phase) ?? String(localized: "Tare")))
-            }
+            // The label says what the tap will actually DO — "Wake" when the stream is
+            // dead, the phase's reason while disabled (`TarePolicy.disabledLabel`). The
+            // icon steps aside before the word wraps — see `DockActionLabel`.
+            DockActionLabel(
+                title: tapDecision == .wakeStream
+                    ? String(localized: "Wake")
+                    : (TarePolicy.disabledLabel(for: session.snapshot.phase) ?? String(localized: "Tare")),
+                systemImage: tapDecision == .wakeStream ? "arrow.clockwise" : "arrow.counterclockwise")
             .font(.system(.subheadline, weight: .semibold))
             .actionLabelLayout(fullWidth: true, fillsRowHeight: true)
             .runnerActionSurface(docked: docked)

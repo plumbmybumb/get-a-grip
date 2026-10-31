@@ -667,7 +667,12 @@ final class RunnerSession {
     private func publish() {
         // `displaySlot`, not `currentSlot`: during a rest the screen describes the rep
         // you are about to do. See `SessionRunner.displaySlot`.
-        let slot = runner.displaySlot
+        //
+        // CONNECTING (`.idle`) has no slot yet, but the first pull's grip and hand are
+        // the plan's: name them, so the climber sets up the right hand while the gauge
+        // connects (Nuri's Duo, 2026-10-31: the far view showed no grip at all until
+        // the session went live). Nothing else reads the slot as a rep in progress.
+        let slot = runner.displaySlot ?? (runner.phase == .idle ? runner.slots.first : nil)
         // Sub-percent: rounding makes a long hold visibly stop between 1% boundaries.
         let progress = runner.repProgress
         if progress != repProgress { repProgress = progress }

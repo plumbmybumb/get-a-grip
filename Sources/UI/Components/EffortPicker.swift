@@ -121,7 +121,9 @@ struct EffortPicker: View {
                 .multilineTextAlignment(.trailing)
         }
         .font(.caption2)
-        .foregroundStyle(Ink.tertiary)
+        // Secondary: the ends NAME the scale ("Easy", "All I had"), and tertiary
+        // measured 4.27:1 light / 4.32:1 dark, under the 4.5:1 floor for small text.
+        .foregroundStyle(Ink.secondary)
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityHidden(true)
     }

@@ -37,6 +37,7 @@ struct SettingsView: View {
     @Environment(TemplateStore.self) private var templates
     @Environment(SettingsStore.self) private var settings
     @Environment(\.weightUnit) private var weightUnit
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// The Sound card's one-tick preview player — see `previewCueLevel`.
     @State private var cuePreview: CuePlayer?
 
@@ -198,31 +199,28 @@ struct SettingsView: View {
             GaugePickerView()
         } label: {
             MaterialCard(surface: .flat) {
-                HStack(spacing: 14) {
-                    Image(systemName: "dot.radiowaves.left.and.right")
-                        .font(.system(.title2))
-                        .foregroundStyle(Accent.bleu)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Gauge")
-                            .font(.system(.headline, weight: .semibold))
-                            .foregroundStyle(Ink.primary)
-                        Text(device.isMock ? String(localized: "Demo device") : device.gaugeKind.displayName)
-                            .font(.system(.subheadline))
-                            .foregroundStyle(Ink.secondary)
-                        Text(gaugeChoiceNote)
-                            .font(.system(.footnote))
-                            // Secondary, not tertiary: it is a sentence to read, and
-                            // tertiary measured 4.07:1 in dark mode, under 4.5:1.
-                            .foregroundStyle(Ink.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 3)
+                // Accessibility sizes STACK, as `GripToken` does: beside the glyph and the
+                // chevron the caption kept a sliver of the card at AX3 and broke into
+                // "Tap to / choose / from 8". Glyph and chevron share the top line, and
+                // the words get the full width under them.
+                Group {
+                    if typeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                gaugeKindGlyph
+                                Spacer(minLength: 8)
+                                gaugeKindChevron
+                            }
+                            gaugeKindWords
+                        }
+                    } else {
+                        HStack(spacing: 14) {
+                            gaugeKindGlyph
+                            gaugeKindWords
+                            Spacer(minLength: 0)
+                            gaugeKindChevron
+                        }
                     }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(.footnote, weight: .semibold))
-                        .foregroundStyle(Ink.tertiary)
-                        .accessibilityHidden(true)
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -237,6 +235,38 @@ struct SettingsView: View {
         .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityLabel("Gauge. Currently \(device.isMock ? "the demo device" : device.gaugeKind.displayName). \(gaugeChoiceNote)")
+    }
+
+    private var gaugeKindGlyph: some View {
+        Image(systemName: "dot.radiowaves.left.and.right")
+            .font(.system(.title2))
+            .foregroundStyle(Accent.bleu)
+            .accessibilityHidden(true)
+    }
+
+    private var gaugeKindWords: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("Gauge")
+                .font(.system(.headline, weight: .semibold))
+                .foregroundStyle(Ink.primary)
+            Text(device.isMock ? String(localized: "Demo device") : device.gaugeKind.displayName)
+                .font(.system(.subheadline))
+                .foregroundStyle(Ink.secondary)
+            Text(gaugeChoiceNote)
+                .font(.system(.footnote))
+                // Secondary, not tertiary: it is a sentence to read, and
+                // tertiary measured 4.07:1 in dark mode, under 4.5:1.
+                .foregroundStyle(Ink.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 3)
+        }
+    }
+
+    private var gaugeKindChevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(.footnote, weight: .semibold))
+            .foregroundStyle(Ink.tertiary)
+            .accessibilityHidden(true)
     }
 
     /// Counted from the registry, like the makers sentence in About, so a ninth gauge

@@ -19,6 +19,25 @@ extension View {
     }
 }
 
+/// How a cell's label keeps to one line, read by `AdaptiveActionRow(oneLinePerCell:)`.
+///
+/// A label that WRAPS (the default) gives itself away by growing taller at the cell's
+/// width. A label that SHRINKS instead (`lineLimit(1)` + `minimumScaleFactor`) never
+/// grows — it truncates once even its smallest scale is too wide — so it declares that
+/// scale and the row checks its ideal width against the cell.
+enum ActionLabelFit: LayoutValueKey {
+    case wraps
+    case shrinks(minimumScale: CGFloat)
+    static let defaultValue = ActionLabelFit.wraps
+}
+
+extension View {
+    /// See `ActionLabelFit`. Set on the row's direct child, or inside its body.
+    func actionLabelFit(_ fit: ActionLabelFit) -> some View {
+        layoutValue(key: ActionLabelFit.self, value: fit)
+    }
+}
+
 /// Keep equal action widths while padded labels fit in a compact row; reflow rather
 /// than shaving off their inner margins or shrinking accessibility text. Measuring
 /// the actual localized labels also handles narrower phones without device lists.
@@ -27,6 +46,12 @@ struct AdaptiveActionRow: Layout {
     /// Two ordinary lines fit comfortably. Larger text gets fewer columns instead
     /// of three very tall, narrow capsules stealing all of the live graph's height.
     var maximumRowHeight: CGFloat = 72
+    /// **A capsule label never wraps or truncates**: a cell whose label would take a
+    /// second line, or shrink past its floor, moves the row to fewer columns instead —
+    /// two, then one. The runner dock's rule (2026-10-31): at XXXL "Hold to end"
+    /// truncated to "Hold t…" while "Skip / pull" wrapped beside it. Off by default, so
+    /// every other row keeps the two-line allowance it was measured with.
+    var oneLinePerCell = false
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews,
                      cache: inout ()) -> CGSize {
@@ -55,12 +80,33 @@ struct AdaptiveActionRow: Layout {
         let y: CGFloat
     }
 
+    /// Whether `subview`'s label reads on one line at `cellWidth` — see `ActionLabelFit`.
+    /// The half point of slack absorbs rounding, never a real second line.
+    static func staysOnOneLine(_ subview: LayoutSubview, in cellWidth: CGFloat,
+                               height: CGFloat) -> Bool {
+        switch subview[ActionLabelFit.self] {
+        case .wraps:
+            return height <= subview.sizeThatFits(.unspecified).height + 0.5
+        case .shrinks(let minimumScale):
+            return shrunkWidth(ideal: subview.sizeThatFits(.unspecified).width,
+                               minimumScale: minimumScale) <= cellWidth + 0.5
+        }
+    }
+
+    /// A shrinking label's narrowest one-line width: the text scales, its insets do not.
+    static func shrunkWidth(ideal: CGFloat, minimumScale: CGFloat) -> CGFloat {
+        let insets = Metrics.buttonHorizontalPadding * 2
+        return insets + max(0, ideal - insets) * minimumScale
+    }
+
     private func rows(width: CGFloat, subviews: Subviews) -> [Row] {
         guard !subviews.isEmpty else { return [] }
         let columns = (1...subviews.count).reversed().first { count in
             let cellWidth = max(0, (width - spacing * CGFloat(count - 1)) / CGFloat(count))
-            return subviews.allSatisfy {
-                $0.sizeThatFits(ProposedViewSize(width: cellWidth, height: nil)).height <= maximumRowHeight
+            return subviews.allSatisfy { subview in
+                let height = subview.sizeThatFits(ProposedViewSize(width: cellWidth, height: nil)).height
+                guard height <= maximumRowHeight else { return false }
+                return !oneLinePerCell || Self.staysOnOneLine(subview, in: cellWidth, height: height)
             }
         } ?? 1
         var rows: [Row] = []
