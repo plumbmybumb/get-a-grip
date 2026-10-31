@@ -24,6 +24,25 @@
    state it loudly on the gauge and Today while active, offer "Leave demo" right there,
    and never persist it across launches when a real gauge has ever connected.
 
+## Feature request — target load as % of CRITICAL FORCE (support mail, 31 Oct 2026; Android 1.4.0, Pixel 7a, WH-C06, en-AU)
+
+"Choose target load based on Critical Force as well as MVC" — for the aerobic-capacity
+protocols at strengthclimbing.com/protocols/force-measured-protocols/ (submaximal work
+prescribed as a fraction of CF). Nobody ships this yet. Not started; the sketch:
+- **Model:** a target BASIS beside the existing precedence (kg → set % → routine %): `.max`
+  (today) or `.criticalForce`. One field on the routine's percentage and on a set's own
+  percentage; defaults to `.max`, additive column on iOS (**CloudKit schema deploy owed**)
+  and Room (migration), optional in the share envelope so old apps read it as max.
+- **Resolution:** `PlanMath.targetBand` resolves `.criticalForce` against the newest
+  `CriticalForceRecord` per grip AND hand (the `MaxTable` rules verbatim: specific beats
+  general, a one-handed value never leaks, both-hands only against a both-hands test, no
+  value → no target, never a guess). The band freezes on the rep like today.
+- **Builder:** the load unit picker grows one option, "% of critical force"; the untargeted
+  count names grips with no CF test; the Benchmarks CF card already exists.
+- **Runner/export:** unchanged display; the CSV's `% max` column gets a sibling `% CF` (blank
+  when the basis is max), per `docs/CSV_EXPORT.md` rules (blank is never zero).
+- Both platforms, shared replay fixture for the resolver.
+
 ## Queue — on `main`, unreleased (31 Oct 2026)
 
 Next builds: iOS ≥ 30 (version ≥ 1.4.1), Android versionCode ≥ 19. No SwiftData/Room
