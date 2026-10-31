@@ -3,6 +3,10 @@
 
 package run.nuri.getagrip.ui.today
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -101,6 +105,24 @@ fun RoutineOverviewSheet(
     ) {
         // Edit remains reachable while inspecting the later sets. It replaces this
         // sheet with the same builder used by the routine's options menu.
+        //
+        // The title rides the bar only while it fits there on ONE line: squeezed between Close
+        // and Edit routine it broke to "Routine / overview", so at large sizes it opens the body.
+        val title = tr("Routine overview")
+        val titleStyle = MaterialTheme.typography.titleMedium
+        val editLabel = tr("Edit routine")
+        val editStyle = MaterialTheme.typography.labelLarge
+        val measurer = rememberTextMeasurer(cacheSize = 4)
+        val density = LocalDensity.current
+        // A modal sheet spans the window up to Material's 640 dp cap.
+        val sheetWidth = minOf(LocalConfiguration.current.screenWidthDp, 640).dp
+        val titleInBar = remember(title, editLabel, titleStyle, editStyle, sheetWidth, density.density, density.fontScale) {
+            fun width(text: String, style: androidx.compose.ui.text.TextStyle) =
+                measurer.measure(text, style, softWrap = false, maxLines = 1).size.width
+            // Row insets 12 + 12, Close 48, the title's own 4 + 4, Edit's 12 + 12 padding.
+            val room = with(density) { (sheetWidth - 24.dp - 48.dp - 8.dp - 24.dp).roundToPx() } - width(editLabel, editStyle)
+            width(title, titleStyle) <= room
+        }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -108,12 +130,17 @@ fun RoutineOverviewSheet(
             IconButton(onClick = { dismiss(false) }, enabled = !leaving) {
                 Icon(Icons.Outlined.Close, contentDescription = tr("Close"), tint = palette.inkSecondary)
             }
-            Text(
-                tr("Routine overview"),
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp).semantics { heading() },
-                style = MaterialTheme.typography.titleMedium,
-                color = palette.inkPrimary,
-            )
+            if (titleInBar) {
+                Text(
+                    title,
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp).semantics { heading() },
+                    style = titleStyle,
+                    color = palette.inkPrimary,
+                    maxLines = 1,
+                )
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
             TextButton(
                 onClick = { dismiss(true) }, enabled = !leaving,
                 modifier = Modifier.testTag("routineOverview.edit"),
@@ -129,6 +156,16 @@ fun RoutineOverviewSheet(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (!titleInBar) {
+                item("title") {
+                    Text(
+                        title,
+                        modifier = Modifier.semantics { heading() },
+                        style = titleStyle,
+                        color = palette.inkSecondary,
+                    )
+                }
+            }
             item("identity") {
                 Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
                     Row(

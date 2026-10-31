@@ -406,13 +406,23 @@ private fun Setup(request: CriticalForceTestRequest) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             FingerGlyph(request.grip.fingers, position = request.grip.position, dot = 8.dp, gap = 3.dp,
                 modifier = Modifier.clearAndSetSemantics {})
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                CapsLabel(tr("GRIP"))
-                Text(request.grip.displayName, style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
+            // Change moves under the name once the name would wrap beside it ("20 mm · 4 /
+            // fingers · Half / crimp" at 1.3): the grip reads whole, the action follows it.
+            run.nuri.getagrip.ui.components.RowOrStack(
+                Modifier.weight(1f),
+                spacing = 12.dp,
+                stackedSpacing = 6.dp,
+                leading = {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        CapsLabel(tr("GRIP"))
+                        Text(request.grip.displayName, style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
+                    }
+                },
+            ) {
+                Text(if (request.editingGrip) tr("Done") else tr("Change"), style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold, color = palette.graphite, maxLines = 1, softWrap = false)
             }
-            Text(if (request.editingGrip) tr("Done") else tr("Change"), style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold, color = palette.graphite)
         }
     }
     if (request.editingGrip) {
@@ -734,7 +744,7 @@ private fun TareAndStart(title: String, tag: String, onStart: () -> Unit) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
     AdaptiveActionRow(listOf(listOf(tr("Tare"), tr("Wake")), listOf(title)),
-        spacing = InstrumentStage.dockSpacing) { index, cell ->
+        spacing = InstrumentStage.dockSpacing, iconAllowance = 24.dp) { index, cell ->
         if (index == 0) {
             GaugeZeroButton(canTare = true, modifier = cell.testTag("cf.tare"))
         } else {
@@ -867,7 +877,7 @@ private fun ResultScreen(request: CriticalForceTestRequest, onDiscard: () -> Uni
                     val discard = tr("Don't save")
                     val save = tr("Save")
                     AdaptiveActionRow(listOf(listOf(discard), listOf(save)),
-                        spacing = InstrumentStage.dockSpacing) { index, cell ->
+                        spacing = InstrumentStage.dockSpacing, iconAllowance = 24.dp) { index, cell ->
                         if (index == 0) {
                             DockButton(discard, modifier = cell.testTag("cf.discard"),
                                 enabled = !request.isSaving) { onDiscard() }

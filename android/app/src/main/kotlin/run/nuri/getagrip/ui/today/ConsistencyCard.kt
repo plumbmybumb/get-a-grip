@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,6 +58,7 @@ import run.nuri.getagrip.ui.components.benchmarkBore
 import run.nuri.getagrip.ui.components.climbNotch
 import run.nuri.getagrip.ui.components.pressFeedback
 import run.nuri.getagrip.ui.l10n.tr
+import run.nuri.getagrip.ui.components.RowOrStack
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.theme.Metrics
@@ -87,16 +89,22 @@ fun ConsistencyCard(
             Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.weight(1f).heightIn(min = 44.dp)
-                        .clickable(role = Role.Button, onClick = onShowHistory),
-                    contentAlignment = Alignment.CenterStart,
-                ) {
-                    CapsLabel(tr("Last 14 days"))
-                }
-                LogSessionButton(onLogSession)
-            }
+            // Log drops under the title rather than squeezing it to "LAST 14 / DAYS".
+            RowOrStack(
+                Modifier.fillMaxWidth(),
+                spacing = 8.dp,
+                stackedSpacing = 0.dp,
+                stackedAlignment = Alignment.End,
+                leading = {
+                    Box(
+                        Modifier.heightIn(min = 44.dp)
+                            .clickable(role = Role.Button, onClick = onShowHistory),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        CapsLabel(tr("Last 14 days"))
+                    }
+                },
+            ) { LogSessionButton(onLogSession) }
 
             // Only the history body navigates; Log is a sibling target, so it never also switches tabs.
             Column(
@@ -201,9 +209,12 @@ private fun ConsistencyStrip(days: List<DayRecord>) {
     //
     // A strip is a sparkline and must FIT; History's month grid has the readable detail.
     val scaled = 12.dp * LocalDensity.current.fontScale
-    val dot: Dp = minOf(scaled, 22.dp)
     val summary = remember(days) { spokenSummary(days) }
 
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    // And never wider than its cell less 4 dp, so neighbours never touch on a narrow screen.
+    val cell = maxWidth / maxOf(1, days.size)
+    val dot: Dp = minOf(scaled, 22.dp, cell - 4.dp).coerceAtLeast(4.dp)
     Row(
         Modifier
             .fillMaxWidth()
@@ -222,6 +233,7 @@ private fun ConsistencyStrip(days: List<DayRecord>) {
                 DayCell(record, dot, isToday = index == days.size - 1)
             }
         }
+    }
     }
 }
 

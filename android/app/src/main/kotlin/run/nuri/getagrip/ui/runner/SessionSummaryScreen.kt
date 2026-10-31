@@ -277,10 +277,22 @@ private fun Stat(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // The title takes what the figure leaves: a 50/50 split wrapped "Under / tension"
+                // beside an empty half. The unit rides INLINE after the figure ("17.0 kg",
+                // "6 of 6") and reserves no line when there is none, so "1:00" sits centred.
                 Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                    StatValue(value, palette)
-                    Text(suffix.orEmpty(), style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary, minLines = 1)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    StatValue(value, palette, Modifier.alignByBaseline())
+                    if (!suffix.isNullOrEmpty()) {
+                        Text(
+                            suffix,
+                            Modifier.alignByBaseline(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = palette.inkSecondary,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
                 }
             }
         } else {
@@ -308,9 +320,10 @@ private fun Stat(
 }
 
 @Composable
-private fun StatValue(value: String, palette: GripPalette) {
+private fun StatValue(value: String, palette: GripPalette, modifier: Modifier = Modifier) {
     Text(
         value,
+        modifier,
         style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
         fontWeight = FontWeight.SemiBold,
         color = palette.inkPrimary,

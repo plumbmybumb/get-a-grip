@@ -568,18 +568,20 @@ private fun GripCard(
                     }
                 }
 
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
+                // Half the row each while both labels fit one line; once "Measure again" would wrap
+                // inside its capsule, each action takes the full row instead.
+                run.nuri.getagrip.ui.components.EqualCellsOrStack(Modifier.fillMaxWidth(), spacing = 12.dp) {
                     if (hasMax) {
-                        TextButton(onClick = { onEdit(group.grip) }, modifier = Modifier.weight(1f)
+                        TextButton(onClick = { onEdit(group.grip) }, modifier = Modifier
                             .testTag("maxes.edit.${group.key}")) {
                             Text(tr("Edit"), color = palette.inkPrimary, fontWeight = FontWeight.SemiBold)
                         }
                     } else {
-                        Spacer(Modifier.weight(1f))
+                        // Holds the leading half open; dropped when the actions stack.
+                        Box(Modifier)
                     }
                     SecondaryButton(title = if (hasMax || group.timed.isNotEmpty()) tr("Measure again") else tr("Measure max"),
-                        modifier = Modifier.weight(1f).testTag("maxes.measure.${group.key}")) {
+                        modifier = Modifier.testTag("maxes.measure.${group.key}")) {
                         onMeasure()
                     }
                 }

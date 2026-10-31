@@ -597,7 +597,7 @@ private fun Dock(session: LiveMaxSession, onReview: () -> Unit) {
         if (device.state.isConnected) {
             val review = reviewTitle(attempts)
             AdaptiveActionRow(listOf(listOf(tr("Tare"), tr("Wake")), listOf(review)),
-                spacing = InstrumentStage.dockSpacing) { index, cell ->
+                spacing = InstrumentStage.dockSpacing, iconAllowance = 24.dp) { index, cell ->
                 if (index == 0) {
                     GaugeZeroButton(
                         canTare = !session.isPulling && !session.committed,

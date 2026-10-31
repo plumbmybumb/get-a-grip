@@ -354,13 +354,22 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                 .padding(
                     top = PalmGeometry.TOTAL_HEIGHT.dp + cameraHandOffset() + if (timerOnly) 22.dp else 14.dp,
                     bottom = if (timerOnly) Metrics.spacing else 8.dp,
-                )
-                .then(if (scrollsForLargeText) Modifier.verticalScroll(scrollState) else Modifier),
+                ),
             // Tight around the open graph: the trace carries its own top and bottom inset, so the
             // gaps read as air either way and every point here is a point of graph.
             verticalArrangement = Arrangement.spacedBy(if (timerOnly) 12.dp else 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+          // Only the READOUTS scroll at large text; the dock stays pinned at the foot. Scrolling
+          // the whole page put Hold to end below the fold and slid the panel up under the hand.
+          Column(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .then(if (scrollsForLargeText) Modifier.verticalScroll(scrollState) else Modifier),
+            verticalArrangement = Arrangement.spacedBy(if (timerOnly) 12.dp else 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+          ) {
             if (timerOnly) {
                 GripNameRow(snapshot, palette, timerOnly = true)
                 GripChangeNotice(snapshot, palette)
@@ -422,6 +431,7 @@ internal fun RunnerLive(session: RunnerSession, timerOnly: Boolean) {
                     }
                 }
             }
+          }
             RunnerDock(session, snapshot, timerOnly)
         }
     }

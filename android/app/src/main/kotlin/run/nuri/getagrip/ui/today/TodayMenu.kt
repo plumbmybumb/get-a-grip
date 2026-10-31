@@ -3,6 +3,7 @@
 
 package run.nuri.getagrip.ui.today
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -134,6 +135,10 @@ private fun Item(
         leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
         enabled = enabled,
         onClick = onClick,
+        // Vertical air of its own: Material's item pads only the sides, so at large text a
+        // label that wraps ("Make this the one / Today opens on") ran into the next item.
+        // Single lines still sit inside the 48 dp minimum, unchanged at standard sizes.
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         colors = MenuDefaults.itemColors(
             textColor = ink,
             leadingIconColor = if (tint != null) ink else palette.inkSecondary,

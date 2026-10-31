@@ -433,9 +433,15 @@ private fun Header(
         }
         Text(dateLine, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            DeviceChip()
-            Spacer(Modifier.weight(1f))
+        // The reminder moves under the chip when the two cannot share a line: a time never
+        // wraps ("7:00 P / M" at the largest display and font sizes).
+        run.nuri.getagrip.ui.components.RowOrStack(
+            Modifier.fillMaxWidth(),
+            spacing = 8.dp,
+            stackedSpacing = 6.dp,
+            fillLeading = false,
+            leading = { DeviceChip() },
+        ) {
             if (nextReminderText != null) {
                 Row(
                     Modifier.semantics {
@@ -455,6 +461,8 @@ private fun Header(
                         nextReminderText,
                         style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                         color = palette.inkTertiary,
+                        maxLines = 1,
+                        softWrap = false,
                     )
                 }
             }

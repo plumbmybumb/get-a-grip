@@ -82,13 +82,8 @@ fun FineTuningSection(
         Surface(shape = RoundedCornerShape(Metrics.radiusCard), color = palette.card) {
             Column(Modifier.padding(16.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    // ONE statement per control: the row names itself, so no heading repeats it above.
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            tr("A pull counts above"),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = palette.inkPrimary,
-                        )
                         ValueRow(
                             title = tr("A pull counts above"),
                             value = WeightUnits.fromKg(values.thresholdKg),
@@ -120,12 +115,6 @@ fun FineTuningSection(
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            tr("Lead-in before each set"),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = palette.inkPrimary,
-                        )
                         IntValueRow(
                             title = tr("Lead-in before each set"),
                             value = values.leadInSeconds,

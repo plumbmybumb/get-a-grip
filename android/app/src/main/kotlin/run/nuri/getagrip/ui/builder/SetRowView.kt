@@ -279,7 +279,7 @@ fun SetRowView(
                         // could override it.
                         val inherited = inheritedTargetText(set, sessionPlan, maxes)
                         if (inherited != null) {
-                            Text(inherited, style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
+                            Text(keepUnitsAttached(inherited), style = MaterialTheme.typography.bodySmall, color = palette.inkTertiary)
                         }
                     }
 
@@ -355,7 +355,10 @@ private fun MoveButton(
         Modifier
             .heightIn(min = 44.dp)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = Metrics.buttonHorizontalPadding, vertical = Metrics.buttonVerticalPadding)
+            // No leading inset: the chevron lines up with the set's content edge (and "Remove this
+            // set" under it); the trailing inset keeps the target wide and the pair apart.
+            .padding(end = Metrics.buttonHorizontalPadding, top = Metrics.buttonVerticalPadding,
+                bottom = Metrics.buttonVerticalPadding)
             .semantics(mergeDescendants = true) {
                 role = Role.Button
                 // Say WHY it is dim: at either end of the list one of these is always disabled.
@@ -435,6 +438,13 @@ internal fun inheritedTargetText(set: SetPlan, plan: SessionPlan, maxes: MaxTabl
         } else L10n.tr("Routine target: %s of max. No max for this grip yet.", range)
     return L10n.tr("Routine target: %s, so %s.", range, load)
 }
+
+/// DISPLAY ONLY: no-break spaces where a line break would strand a fragment — before a unit
+/// ("4.5 kg", "22 %") and after a one-letter hand ("L 3.5–4.5") — so a wrapped caption never
+/// leaves "kg" alone on its last line. TalkBack reads the same words either way.
+internal fun keepUnitsAttached(text: String): String = text
+    .replace(Regex(" (?=(?:kg|lb|%)(?![\\p{L}\\p{N}]))"), "\u00A0")
+    .replace(Regex("(?<=(^|\\s)\\p{Lu}) "), "\u00A0")
 
 /// "L 4.0–6.0 · R 4.5–6.5 kg", or one band when the hands agree or share the edge.
 internal fun perHandLoadText(set: SetPlan, plan: SessionPlan, maxes: MaxTable): String? {

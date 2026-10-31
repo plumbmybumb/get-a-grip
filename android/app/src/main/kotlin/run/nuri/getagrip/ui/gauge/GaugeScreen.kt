@@ -6,8 +6,11 @@ package run.nuri.getagrip.ui.gauge
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -268,7 +271,7 @@ fun GaugeScreen(modifier: Modifier = Modifier, stage: StageGeometry = rememberSt
                 val tare = if (device.isReadingLive) tr("Tare") else tr("Wake")
                 val disconnect = tr("Disconnect")
                 AdaptiveActionRow(listOf(listOf(tr("Tare"), tr("Wake")), listOf(disconnect)),
-                    spacing = InstrumentStage.dockSpacing) { index, cell ->
+                    spacing = InstrumentStage.dockSpacing, iconAllowance = 24.dp) { index, cell ->
                     if (index == 0) {
                         DockButton(title = tare, icon = Icons.Outlined.Refresh,
                             modifier = cell.testTag("gauge.tare")) { requestTare() }
@@ -472,27 +475,59 @@ private fun GaugeReadouts() {
         )
     }
 
-    Row(
+    val peakTitle = tr("Peak")
+    val averageTitle = tr("Average")
+    val batteryTitle = tr("Battery")
+    @Composable fun peak(modifier: Modifier) = Readout(peakTitle, kgText(device.peakKg), WeightUnits.symbol, modifier)
+    // The reading the flickering hero can't give: hang steady, read the average.
+    @Composable fun average(modifier: Modifier) = Readout(
+        averageTitle,
+        average?.let { kgText(it) } ?: tr("—"),
+        if (average == null) "" else WeightUnits.symbol,
+        modifier,
+    )
+    @Composable fun battery(modifier: Modifier) = Readout(
+        batteryTitle,
+        battery?.let { "${run.nuri.getagrip.ui.components.BatteryDisplay.percentage(it)}" } ?: tr("—"),
+        if (battery == null) "" else tr("%"),
+        modifier,
+    )
+
+    // Three across while every caps title fits its third with air to spare; two and one once a
+    // title would touch its neighbour ("AVERAGE BATTERY" read as one heading at 2.0).
+    val measurer = rememberTextMeasurer(cacheSize = 8)
+    val density = LocalDensity.current
+    val titleStyle = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp)
+    BoxWithConstraints(
         Modifier
             .fillMaxWidth()
             .testTag("gauge.readouts")
             .semantics(mergeDescendants = true) { contentDescription = summary },
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Readout(tr("Peak"), kgText(device.peakKg), WeightUnits.symbol, Modifier.weight(1f))
-        // The reading the flickering hero can't give: hang steady, read the average.
-        Readout(
-            tr("Average"),
-            average?.let { kgText(it) } ?: tr("—"),
-            if (average == null) "" else WeightUnits.symbol,
-            Modifier.weight(1f),
-        )
-        Readout(
-            tr("Battery"),
-            battery?.let { "${run.nuri.getagrip.ui.components.BatteryDisplay.percentage(it)}" } ?: tr("—"),
-            if (battery == null) "" else tr("%"),
-            Modifier.weight(1f),
-        )
+        val threeAcross = remember(maxWidth, density.density, density.fontScale, titleStyle, peakTitle, averageTitle, batteryTitle) {
+            val third = with(density) { ((maxWidth - 16.dp) / 3 - 8.dp).roundToPx() }
+            listOf(peakTitle, averageTitle, batteryTitle).all {
+                measurer.measure(it.uppercase(), titleStyle, softWrap = false, maxLines = 1).size.width <= third
+            }
+        }
+        if (threeAcross) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                peak(Modifier.weight(1f))
+                average(Modifier.weight(1f))
+                battery(Modifier.weight(1f))
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    peak(Modifier.weight(1f))
+                    average(Modifier.weight(1f))
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    battery(Modifier.weight(1f))
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        }
     }
 }
 
@@ -651,7 +686,7 @@ private fun GaugeTimerDockRow(tally: GaugeTally) {
     val startPause = if (running) tr("Pause timer") else tr("Start timer")
     val reset = tr("Reset")
     AdaptiveActionRow(listOf(listOf(tr("Start timer"), tr("Pause timer")), listOf(reset)),
-        spacing = InstrumentStage.dockSpacing) { index, cell ->
+        spacing = InstrumentStage.dockSpacing, iconAllowance = 24.dp) { index, cell ->
         if (index == 0) {
             DockButton(
                 title = startPause,

@@ -4,6 +4,16 @@
 package run.nuri.getagrip.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
+import run.nuri.getagrip.ui.theme.Metrics
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -121,6 +131,11 @@ fun HandsHeader(
 
 /// ONE segmented control in the house colours: graphite selection, as the tab bar — Material's
 /// lavender is a hue the palette does not have. Selection tick on change.
+///
+/// **A label never truncates.** When any label would not fit its segment on one line with air
+/// on both sides ("Out of …", "One at a t…" at large text, labels touching the borders at 1.3),
+/// the choice is drawn as the house chips instead, in whole rows — for two or three long
+/// labels, one full-width chip each: the builder's Hands control made the same trade first.
 @Composable
 fun HouseSegmentedRow(
     labels: List<String>,
@@ -130,29 +145,75 @@ fun HouseSegmentedRow(
 ) {
     val palette = LocalGripPalette.current
     val haptics = LocalHapticFeedback.current
-    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
-        labels.forEachIndexed { index, label ->
-            SegmentedButton(
-                selected = index == selectedIndex,
-                onClick = {
-                    if (index != selectedIndex) {
-                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                        onSelect(index)
+    val measurer = rememberTextMeasurer(cacheSize = 16)
+    val density = LocalDensity.current
+    val segmentStyle = MaterialTheme.typography.labelLarge
+    val chipStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+    fun choose(index: Int) {
+        if (index != selectedIndex) {
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            onSelect(index)
+        }
+    }
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val fallbackColumns = remember(labels, maxWidth, density.density, density.fontScale, segmentStyle, chipStyle) {
+            fun widest(style: androidx.compose.ui.text.TextStyle) =
+                labels.maxOfOrNull { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width } ?: 0
+            val segmentRoom = with(density) { (maxWidth / maxOf(1, labels.size) - segmentLabelInset * 2).roundToPx() }
+            if (widest(segmentStyle) <= segmentRoom) {
+                null
+            } else {
+                val chipLabel = widest(chipStyle)
+                val fitting = (labels.size downTo 1).firstOrNull { columns ->
+                    val cell = with(density) {
+                        ((maxWidth - chipSpacing * (columns - 1)) / columns - Metrics.buttonHorizontalPadding * 2).roundToPx()
                     }
-                },
-                shape = SegmentedButtonDefaults.itemShape(index, labels.size),
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = palette.graphite.copy(alpha = 0.12f),
-                    activeContentColor = palette.inkPrimary,
-                    activeBorderColor = palette.inkTertiary.copy(alpha = 0.5f),
-                    inactiveContainerColor = Color.Transparent,
-                    inactiveContentColor = palette.inkSecondary,
-                    inactiveBorderColor = palette.inkTertiary.copy(alpha = 0.5f),
-                ),
-                icon = {},
-                // Tighter than Material's 12 dp a side: "One at a time" must keep its words at 360 dp.
-                contentPadding = PaddingValues(horizontal = 4.dp),
-            ) { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    chipLabel <= cell
+                } ?: 1
+                // Whole rows only: three choices that cannot share a row stack one per line
+                // rather than drawing two and an orphan.
+                (fitting downTo 1).first { labels.size % it == 0 }
+            }
+        }
+        if (fallbackColumns == null) {
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                labels.forEachIndexed { index, label ->
+                    SegmentedButton(
+                        selected = index == selectedIndex,
+                        onClick = { choose(index) },
+                        shape = SegmentedButtonDefaults.itemShape(index, labels.size),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = palette.graphite.copy(alpha = 0.12f),
+                            activeContentColor = palette.inkPrimary,
+                            activeBorderColor = palette.inkTertiary.copy(alpha = 0.5f),
+                            inactiveContainerColor = Color.Transparent,
+                            inactiveContentColor = palette.inkSecondary,
+                            inactiveBorderColor = palette.inkTertiary.copy(alpha = 0.5f),
+                        ),
+                        icon = {},
+                        // Tighter than Material's 12 dp a side: "One at a time" must keep its words at 360 dp.
+                        contentPadding = PaddingValues(horizontal = 4.dp),
+                    ) { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                }
+            }
+        } else {
+            Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(chipSpacing)) {
+                labels.indices.chunked(fallbackColumns).forEach { row ->
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(chipSpacing)) {
+                        row.forEach { index ->
+                            Chip(labels[index], index == selectedIndex, Modifier.weight(1f).fillMaxHeight()) { choose(index) }
+                        }
+                        // The last row keeps the column width, as `ChipGrid` does.
+                        repeat(fallbackColumns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
         }
     }
 }
+
+/// Air each side of a segment's label: the 4 dp content padding, the border, and enough that a
+/// label never reads as touching its divider.
+private val segmentLabelInset = 12.dp
+private val chipSpacing = 8.dp

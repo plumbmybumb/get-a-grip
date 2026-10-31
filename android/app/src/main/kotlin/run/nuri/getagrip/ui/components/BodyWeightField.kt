@@ -90,12 +90,18 @@ fun BodyWeightField(
     val latestCommit by rememberUpdatedState({ commit() })
     DisposableEffect(Unit) { onDispose { if (focused) latestCommit() } }
 
-    Row(
+    // Beside the title while both fit on one line; under it once the title would wrap
+    // (Settings at the largest display and font sizes broke "Body / weight"). Stacked, it keeps
+    // the trailing edge it has beside the title: the number is right-aligned in its field.
+    RowOrStack(
         modifier.fillMaxWidth().heightIn(min = 48.dp),
+        spacing = 8.dp,
+        stackedAlignment = Alignment.End,
+        leading = { Text(title, style = titleStyle, color = palette.inkPrimary) },
+    ) { Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(title, style = titleStyle, color = palette.inkPrimary, modifier = Modifier.weight(1f))
         val numberStyle = MaterialTheme.typography.titleLarge.copy(
             fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum",
             color = palette.inkPrimary, textAlign = TextAlign.End,
@@ -124,7 +130,8 @@ fun BodyWeightField(
                 inner()
             },
         )
-        Text(unit.symbol, style = MaterialTheme.typography.bodyMedium, color = palette.inkTertiary)
+        Text(unit.symbol, style = MaterialTheme.typography.bodyMedium, color = palette.inkTertiary,
+            maxLines = 1, softWrap = false)
         if (focused) {
             TextButton(
                 onClick = { focus.clearFocus() },
@@ -133,7 +140,7 @@ fun BodyWeightField(
                 Text(tr("Done"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             }
         }
-    }
+    } }
 }
 
 /// The field's arithmetic, pure so it can be tested without a screen.

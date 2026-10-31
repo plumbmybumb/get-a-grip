@@ -22,33 +22,33 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import run.nuri.getagrip.ui.theme.Metrics
 
-/** Equal action cells with real label insets. Long translations can take two lines;
- * larger text moves a cell to the next row before a word gets split or clipped.
- * Alternate labels are measured together so beginning a hold never moves its target. */
+/** Equal action cells with real label insets. **A capsule label never wraps**: a label that
+ * would take a second line ("Hold to / end", "Start / timer" at 1.3) moves cells to the next
+ * row instead, down to one per row. Alternate labels are measured together so beginning a
+ * hold never moves its target. */
 @Composable
 internal fun AdaptiveActionRow(
     labels: List<List<String>>,
     modifier: Modifier = Modifier,
     /// The gap between cells, and between rows once they wrap. A dock packs at its own 8 dp.
     spacing: Dp = 10.dp,
+    /// Room a cell's leading icon takes beside its label (a dock icon is 18 dp plus a 6 dp gap).
+    iconAllowance: Dp = 0.dp,
     content: @Composable (index: Int, modifier: Modifier) -> Unit,
 ) {
     val measurer = rememberTextMeasurer(cacheSize = 32)
     val density = LocalDensity.current
     val style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        val horizontalInsets = with(density) { (Metrics.buttonHorizontalPadding * 2).roundToPx() }
-        val columns = remember(labels, maxWidth, spacing, style, density.density, density.fontScale) {
+        val horizontalInsets = with(density) { (Metrics.buttonHorizontalPadding * 2 + iconAllowance).roundToPx() }
+        val columns = remember(labels, maxWidth, spacing, iconAllowance, style, density.density, density.fontScale) {
             val variants = labels.flatten()
             (labels.size downTo 1).firstOrNull { count ->
                 val width = with(density) {
                     ((maxWidth - spacing * (count - 1)) / count).roundToPx()
                 } - horizontalInsets
                 width > 0 && variants.all { label ->
-                    val layout = measurer.measure(label, style, constraints = Constraints(maxWidth = width))
-                    layout.lineCount <= 2 && !layout.hasVisualOverflow && label.split(Regex("\\s+")).all { word ->
-                        measurer.measure(word, style, softWrap = false).size.width <= width
-                    }
+                    measurer.measure(label, style, softWrap = false, maxLines = 1).size.width <= width
                 }
             } ?: 1
         }

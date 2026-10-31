@@ -595,9 +595,15 @@ private fun AboutCard() {
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Gauge diagnostics", report))
             diagnosticsCopied = true
             copyGeneration += 1
-        }) {
+        },
+            // Flush with the rows above (no leading inset) and the whole row wide: the label
+            // starts where the card's content starts and, if it must wrap, wraps as a line of
+            // text rather than inside a centred capsule.
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 12.dp, top = 8.dp, bottom = 8.dp),
+        ) {
             Text(tr(if (diagnosticsCopied) "Copied" else "Copy the diagnostics to the clipboard"),
-                Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
+                Modifier.fillMaxWidth().semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
         }
 
         Spacer(Modifier.size(4.dp))
@@ -637,8 +643,14 @@ private fun Card(
 @Composable
 private fun LabelledValue(label: String, value: String) {
     val palette = LocalGripPalette.current
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary)
+    // The value moves under its label rather than butting against it ("SourceTindeq /
+    // Progressor" at the largest display and font sizes).
+    run.nuri.getagrip.ui.components.RowOrStack(
+        Modifier.fillMaxWidth(),
+        spacing = 12.dp,
+        stackedSpacing = 0.dp,
+        leading = { Text(label, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary) },
+    ) {
         Text(
             value,
             style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
@@ -756,12 +768,13 @@ internal fun WeightUnitSetting(settings: run.nuri.getagrip.store.SettingsStore) 
     val palette = LocalGripPalette.current
     Card {
         Text(tr("Weight units"), style = MaterialTheme.typography.titleMedium, color = palette.inkPrimary)
-        Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // The word alone: the symbol was a second statement of the same choice, and the one
+        // that wrapped ("Kilogram / s · kg"). Two across while both fit one line, else stacked.
+        run.nuri.getagrip.ui.components.EqualCellsOrStack(Modifier.fillMaxWidth().selectableGroup(), spacing = 8.dp) {
             WeightUnit.entries.forEach { option ->
                 Chip(
-                    title = if (option == WeightUnit.kg) tr("Kilograms") + " · kg" else tr("Pounds") + " · lb",
+                    title = if (option == WeightUnit.kg) tr("Kilograms") else tr("Pounds"),
                     isSelected = settings.weightUnit == option,
-                    modifier = Modifier.weight(1f),
                 ) { settings.setWeightUnit(option) }
             }
         }

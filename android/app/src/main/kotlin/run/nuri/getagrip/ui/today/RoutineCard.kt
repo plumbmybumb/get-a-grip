@@ -285,7 +285,11 @@ private fun CompletionRow(summary: RoutineSummary, completionText: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        SessionDots(summary)
+        // A whenever routine not yet done draws NO dot — and an empty slot still took the row's
+        // 8 dp gap, setting "Whenever you're fresh" in from the title and the stat row.
+        val drawsDots = summary.climbedToday != null || summary.benchmarkedToday ||
+            !summary.isOnDemand || summary.completedToday > 0
+        if (drawsDots) SessionDots(summary)
 
         // A CLIMB DAY says what happened. "0 of 2 today" beside a checkmark contradicts itself and
         // is the "you didn't train" reading this feature exists to stop.

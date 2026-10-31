@@ -134,7 +134,7 @@ fun ChipGrid(
     val minimum = minimumChipWidth(base)
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val available = maxWidth
-        val columns = chipColumns(available, minimum, spacing).coerceAtMost(maxOf(1, content.size))
+        val columns = balancedColumns(content.size, chipColumns(available, minimum, spacing))
         Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
             content.chunked(columns).forEach { row ->
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(spacing)) {
@@ -152,6 +152,15 @@ internal fun chipColumns(available: Dp, minimum: Dp, spacing: Dp): Int {
     if (available <= 0.dp) return 1
     val n = ((available + spacing).value / (minimum + spacing).value).toInt()
     return maxOf(1, n)
+}
+
+/// The fewest rows `maxColumns` allows, then as few columns as fill those rows: four chips
+/// that fit three across are drawn two by two, never three and an orphan ("1 2 3" + "4").
+internal fun balancedColumns(count: Int, maxColumns: Int): Int {
+    if (count <= 0) return 1
+    val columns = maxColumns.coerceIn(1, count)
+    val rows = (count + columns - 1) / columns
+    return (count + rows - 1) / rows
 }
 
 /// `base` is the row's column count at standard text: numeric rows (6) want narrow cells,
