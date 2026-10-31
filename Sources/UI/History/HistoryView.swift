@@ -786,7 +786,34 @@ private struct SessionRow: View {
     @ScaledMetric(relativeTo: .subheadline) private var rawArtwork: CGFloat = 44
     private var artwork: CGFloat { min(rawArtwork, 56) }
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
+        Group {
+            if typeSize < .xLarge {
+                inlineRow(oneLineTexts: false)
+            } else {
+                // From xLarge up, the row keeps Music's shape only while title and subtitle
+                // each fit on ONE line beside the date. Otherwise the date moves under the
+                // title and the subtitle wraps: on a 13 mini the fixed-width date left
+                // "Dail… / 36/…" at accessibility3 and "36/36 pulls · 6:0…" at XXXL
+                // (2026-10-31), and an ellipsis inside a number is a wrong number.
+                ViewThatFits(in: .horizontal) {
+                    inlineRow(oneLineTexts: true)
+                    stackedRow
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        // The row is one thing to VoiceOver; four separate stops to read one session is
+        // the classic list-accessibility failure.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken)
+    }
+
+    /// `oneLineTexts`: inside `ViewThatFits` the texts claim their full one-line width, so
+    /// a row that would shrink or truncate measures as not fitting.
+    private func inlineRow(oneLineTexts: Bool) -> some View {
         HStack(spacing: 12) {
             artworkTile
             VStack(alignment: .leading, spacing: 2) {
@@ -797,21 +824,42 @@ private struct SessionRow: View {
                     // Same shrink floor as `subtitle`: otherwise the title's only path as it
                     // grows toward the artwork's ceiling is truncation.
                     .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: oneLineTexts, vertical: false)
                 Text(subtitle)
                     .font(.system(.footnote))
                     .monospacedDigit()
                     .foregroundStyle(Ink.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: oneLineTexts, vertical: false)
             }
             Spacer(minLength: 8)
             trailing
         }
-        .padding(.vertical, 4)
-        // The row is one thing to VoiceOver; four separate stops to read one session is
-        // the classic list-accessibility failure.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spoken)
+    }
+
+    /// Big type: the words get the row's whole width after the artwork, and the date (with
+    /// the grade beside it) reads as a third line.
+    private var stackedRow: some View {
+        HStack(spacing: 12) {
+            artworkTile
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(.subheadline, weight: .medium))
+                    .foregroundStyle(Ink.primary)
+                    .lineLimit(2)
+                Text(subtitle)
+                    .font(.system(.footnote))
+                    .monospacedDigit()
+                    .foregroundStyle(Ink.secondary)
+                    .lineLimit(3)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    dateText
+                    gradeBadge
+                }
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     private var artworkTile: some View {
@@ -894,20 +942,28 @@ private struct SessionRow: View {
     /// slot, carrying the two things you scan a log for.
     private var trailing: some View {
         VStack(alignment: .trailing, spacing: 3) {
-            Text(log.historyDate().formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
-                .font(.system(.footnote))
-                .monospacedDigit()
-                .foregroundStyle(Ink.tertiary)
-            if let grade = log.grade {
-                Text(grade.name)
-                    .font(.system(.caption2, weight: .semibold))
-                    .foregroundStyle(Ink.secondary)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
-            }
+            dateText
+            gradeBadge
         }
         .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var dateText: some View {
+        Text(log.historyDate().formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+            .font(.system(.footnote))
+            .monospacedDigit()
+            .foregroundStyle(Ink.tertiary)
+    }
+
+    @ViewBuilder private var gradeBadge: some View {
+        if let grade = log.grade {
+            Text(grade.name)
+                .font(.system(.caption2, weight: .semibold))
+                .foregroundStyle(Ink.secondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Capsule().stroke(Ink.tertiary.opacity(0.35), lineWidth: 1))
+        }
     }
 
     private var spoken: String {

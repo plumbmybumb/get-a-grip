@@ -2,6 +2,7 @@
 // Original contributions Copyright 2026 Nuri Bruner.
 
 import SwiftUI
+import UIKit
 
 // Shared screen chrome, ported from Schengen Slice's RootTabView.swift.
 
@@ -39,16 +40,26 @@ struct ScreenScaffold<Content: View>: View {
     /// width.
     @Environment(\.horizontalSizeClass) private var sizeClass
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         NavigationStack {
-            ScrollView { column }
-                // No rubber-band when everything fits — that phantom bounce collapses the
-                // large title. Still scrolls when content genuinely overflows.
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollEdgeEffectStyle(.soft, for: .bottom)
-                // A keyboard on a tab screen (Settings' body weight) always has a way out
-                // that needs no particular button: drag the page and it goes.
-                .scrollDismissesKeyboard(.interactively)
+            ScrollViewReader { proxy in
+                ScrollView { column }
+                    // No rubber-band when everything fits — that phantom bounce collapses the
+                    // large title. Still scrolls when content genuinely overflows.
+                    .scrollBounceBehavior(.basedOnSize)
+                    .scrollEdgeEffectStyle(.soft, for: .bottom)
+                    // A keyboard on a tab screen (Settings' body weight) always has a way out
+                    // that needs no particular button: drag the page and it goes.
+                    .scrollDismissesKeyboard(.interactively)
+                    // See `KeyboardReveal`.
+                    .environment(\.revealAboveKeyboard, KeyboardReveal.Action { [reduceMotion] in
+                        withAnimation(Motion.state(reduceMotion)) {
+                            proxy.scrollTo(KeyboardReveal.id, anchor: .bottom)
+                        }
+                    })
+            }
             // ALWAYS via `.background {}`, never as a ZStack sibling — as a sibling it
             // disturbs the ScrollView's safe-area layout and the title creeps under the
             // status bar. (The house rule; other screens refer here.)
@@ -69,6 +80,40 @@ struct ScreenScaffold<Content: View>: View {
                ? (gridsOnWideScreens ? Metrics.maxContentWidthGrid : Metrics.maxContentWidthRegular)
                : Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// **A field being typed in keeps its CARD above the keyboard** (2026-10-31).
+///
+/// The system scrolls only the focused field itself into view, so Settings' body weight sat
+/// flush on the keyboard with the rest of its card, caption included, underneath it. Extra
+/// bottom safe area while the keyboard is up was tried first and measured to change
+/// nothing: the system's own focus scroll does not read it. So the field marks the room it
+/// needs below itself with `KeyboardReveal.id` while focused, and once the keyboard is up
+/// asks the screen, through `revealAboveKeyboard`, to scroll that mark's bottom onto the
+/// keyboard's top edge. Only when it is hidden: a field already clear stays where it is.
+enum KeyboardReveal {
+    static let id = "keyboard.reveal"
+
+    /// Equal to every other, like `DismissAction`, so a scaffold re-render never
+    /// invalidates the fields that read it.
+    struct Action: Equatable {
+        let run: @MainActor () -> Void
+        init(_ run: @escaping @MainActor () -> Void) { self.run = run }
+        @MainActor func callAsFunction() { run() }
+        static func == (_: Self, _: Self) -> Bool { true }
+    }
+}
+
+private struct RevealAboveKeyboardKey: EnvironmentKey {
+    static var defaultValue: KeyboardReveal.Action? { nil }
+}
+
+extension EnvironmentValues {
+    /// Set by `ScreenScaffold`; nil in hosts that do not scroll a field clear.
+    var revealAboveKeyboard: KeyboardReveal.Action? {
+        get { self[RevealAboveKeyboardKey.self] }
+        set { self[RevealAboveKeyboardKey.self] = newValue }
     }
 }
 
