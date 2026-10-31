@@ -23,6 +23,10 @@ enum DiagnosticBreadcrumb: Equatable, Sendable {
     /// question the ring could not answer, and it is the difference between a real stall
     /// and normal behaviour.
     case streamStopped(StreamStopCause)
+    /// A live screen's keeper re-kicked a silent stream as often as it may and the
+    /// samples did not come back; the screen now offers Wake. See
+    /// `DeviceStore.checkStreamKeepAlive`.
+    case streamRekickGaveUp
     case backgroundDisconnectScheduled
     case backgroundDisconnectCancelled
     /// A remotely calibrated gauge's progress from "connected" to "produces force". The
@@ -59,6 +63,8 @@ enum DiagnosticBreadcrumb: Equatable, Sendable {
             "Stream start written (" + cause.label + ")"
         case .streamStopped(let cause):
             "Stream stopped (" + cause.label + ")"
+        case .streamRekickGaveUp:
+            "Stream still silent after automatic restarts — Wake offered"
         case .backgroundDisconnectScheduled:
             "Backgrounded — holding the link, disconnect scheduled"
         case .backgroundDisconnectCancelled:

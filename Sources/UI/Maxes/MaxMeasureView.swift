@@ -36,10 +36,9 @@ struct MaxMeasureView: View {
     @State private var pendingReceipt: MaxSaveReceipt?
     @State private var committed = false
     @State private var selectionTick = 0
-    @State private var tareTick = 0
-    @State private var promptedKg = 0.0
-    @State private var promptedEpoch: UInt64 = 0
-    @State private var showingTareConfirmation = false
+
+    /// The keeper's name for this screen — see `DeviceStore.keepStreamAlive`.
+    private static let keepAliveHolder = "maxMeasure"
 
     private static let dockSpacing: CGFloat = 8
 
@@ -80,13 +79,6 @@ struct MaxMeasureView: View {
         }
         .sensoryFeedback(.success, trigger: session.newBestTick)
         .sensoryFeedback(.selection, trigger: selectionTick)
-        .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: tareTick)
-        .alert("Tare under load?", isPresented: $showingTareConfirmation) {
-            Button("Tare", role: .destructive) { confirmTare() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Taring now counts it as zero."))
-        }
         .onAppear { begin() }
         .onChange(of: device.state.isConnected) { _, connected in
             if connected { startReading() } else { session.close() }
@@ -176,7 +168,10 @@ struct MaxMeasureView: View {
                        ? String(localized: "Connecting to your gauge…")
                        : String(localized: "Connect your gauge to measure."))
             } else if device.isStreaming, waitingForSignal, !device.isSignalFresh {
-                notice(String(localized: "Connected, but no readings yet. Tap Wake."))
+                // The keeper is re-kicking; Wake is named only once it has given up.
+                notice(device.streamRekickExhausted
+                       ? String(localized: "No readings from the gauge. Check it's on, then tap Wake.")
+                       : String(localized: "Connected. Waiting for readings…"))
             }
         }
         .frame(minHeight: typeSize.isAccessibilitySize ? 200 : nil, maxHeight: .infinity)
@@ -208,14 +203,13 @@ struct MaxMeasureView: View {
         return VStack(spacing: Self.dockSpacing) {
             if device.state.isConnected {
                 AdaptiveActionRow(spacing: Self.dockSpacing) {
-                    DockButton(device.isReadingLive ? String(localized: "Tare") : String(localized: "Wake"),
-                               systemImage: device.isReadingLive ? "arrow.counterclockwise" : "arrow.clockwise",
-                               enabled: !session.isPulling,
-                               disabledReason: String(localized: "Let go of the edge first."),
-                               fillsRowHeight: true) { requestTare() }
+                    GaugeTareDockButton(enabled: !session.isPulling,
+                                        disabledReason: String(localized: "Let go of the edge first."),
+                                        fillsRowHeight: true)
                         .accessibilityIdentifier("max.measure.tare")
                     reviewButton(attempts)
                 }
+
             } else {
                 DockTintedButton(connectTitle,
                                  systemImage: device.canCancelBroadcastSearch ? "xmark" : "dot.radiowaves.left.and.right",
@@ -228,9 +222,6 @@ struct MaxMeasureView: View {
                 if attempts > 0 {
                     // Logged pulls are local data: a lost link cannot hide their save.
                     reviewButton(attempts)
-                } else {
-                    DockButton(device.isMock ? String(localized: "Leave demo mode") : String(localized: "Try demo mode"),
-                               tint: Ink.secondary) { device.useMockDevice(!device.isMock) }
                 }
             }
         }
@@ -267,6 +258,9 @@ struct MaxMeasureView: View {
         // Capture the session object, never a changing lookup through `self`.
         let session = session
         device.onTracePoint = { point in session.receive(point) }
+        // Reads the moment it opens, so a silent stream is re-kicked here rather than
+        // handed to the person as "Wake" — see `DeviceStore.keepStreamAlive`.
+        device.keepStreamAlive(Self.keepAliveHolder, true)
         if device.state.isConnected {
             startReading()
         } else if !device.state.isBusy {
@@ -282,6 +276,7 @@ struct MaxMeasureView: View {
 
     private func teardown() {
         device.onTracePoint = nil
+        device.keepStreamAlive(Self.keepAliveHolder, false)
         if device.isStreaming { device.stopStreaming(cause: .screenClosed) }
     }
 
@@ -294,44 +289,6 @@ struct MaxMeasureView: View {
         teardown()
         if saved.hasDetails { pendingReceipt = saved }
         reviewing = false
-    }
-
-    // MARK: - Tare
-
-    private func requestTare() {
-        guard device.state.isConnected, !session.isPulling else { return }
-        guard device.isReadingLive,
-              TarePolicy.isSafeToTareNow(sampleAge: device.secondsSinceLastSample(),
-                                        maxAgeSeconds: device.tareReadingMaxAge) else {
-            device.startStreaming(cause: .manualWake)
-            return
-        }
-        if TarePolicy.shouldConfirm(readingKg: device.currentKg) { promptTare() }
-        else { device.tare(); tareTick += 1 }
-    }
-
-    private func promptTare() {
-        promptedKg = device.currentKg
-        promptedEpoch = device.connectionEpoch
-        showingTareConfirmation = true
-    }
-
-    private func confirmTare() {
-        switch TarePolicy.confirmationDecision(
-            promptedKg: promptedKg, currentKg: device.currentKg,
-            promptedEpoch: promptedEpoch, currentEpoch: device.connectionEpoch,
-            isConnected: device.state.isConnected, sampleAge: device.secondsSinceLastSample(),
-            phase: .idle, maxAgeSeconds: device.tareReadingMaxAge
-        ) {
-        case .reject: return
-        case .tare: device.tare(); tareTick += 1
-        case .reask:
-            Task { @MainActor in
-                await Task.yield()
-                guard device.state.isConnected else { return }
-                promptTare()
-            }
-        }
     }
 }
 

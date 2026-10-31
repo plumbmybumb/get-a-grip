@@ -223,7 +223,7 @@ private struct WatchTodayList: View {
                 .foregroundStyle(device.state.isConnected ? StatusTint.engaged : Color.secondary)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(device.isMock ? String(localized: "Demo gauge") : device.gaugeKind.displayName)
+                Text(device.gaugeKind.displayName)
                     .font(.footnote)
                 Text(device.state.label)
                     .font(.caption2)
@@ -275,13 +275,6 @@ struct WatchRoutineScreen: View {
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("watch.startTimerOnly")
                 gaugeLine
-                // Always compiled in, like the phone's — see `DeviceStore.useMockDevice`.
-                if !device.state.isConnected, !device.isMock {
-                    Button("Try demo mode") { device.useMockDevice(true) }
-                        .buttonStyle(.plain)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
             }
         }
         .navigationTitle(template.name)
@@ -297,7 +290,7 @@ struct WatchRoutineScreen: View {
 
     private var gaugeLine: some View {
         Label {
-            let gauge = device.isMock ? String(localized: "Demo gauge") : device.gaugeKind.displayName
+            let gauge = device.gaugeKind.displayName
             Text("\(gauge) · \(device.state.label)")
         } icon: {
             Image(systemName: "dot.radiowaves.left.and.right")

@@ -70,14 +70,6 @@ struct WatchGaugeView: View {
                     .tint(StatusTint.engaged)
                     .disabled(device.state.isBusy && !device.canCancelBroadcastSearch)
                     .accessibilityIdentifier("watch.gauge.connect")
-                    // Always compiled in, like the phone's: a DEBUG-only demo would leave
-                    // anyone without hardware on a screen that never connects.
-                    if !device.isMock {
-                        Button("Try demo mode") { device.useMockDevice(true) }
-                            .buttonStyle(.plain)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
                 }
                 Text(device.state.label)
                     .font(.caption2)

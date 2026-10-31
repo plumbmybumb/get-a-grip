@@ -431,6 +431,16 @@
         }
       }
     },
+    "Connected. Waiting for readings…" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecté. En attente des valeurs…"
+          }
+        }
+      }
+    },
     "Copy instructions" : {
       "localizations" : {
         "fr" : {
@@ -661,6 +671,16 @@
         }
       }
     },
+    "No readings from the gauge. Check it's on, then tap Wake." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune valeur du capteur. Vérifie qu'il est allumé, puis touche Réveiller."
+          }
+        }
+      }
+    },
     "Other" : {
       "localizations" : {
         "fr" : {
@@ -741,12 +761,32 @@
         }
       }
     },
+    "Readings stopped and automatic restarts didn't bring them back. Restarts the stream; doesn't tare." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les valeurs se sont arrêtées et les relances automatiques ne les ont pas ramenées. Relance le flux, sans tarer."
+          }
+        }
+      }
+    },
     "Reads the routine the AI wrote." : {
       "localizations" : {
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lit la routine écrite par l'IA."
+          }
+        }
+      }
+    },
+    "Resets peak, average, timer and pulls. Doesn't tare." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remet à zéro le pic, la moyenne, le chrono et les tirages. Ne tare pas."
           }
         }
       }
@@ -807,6 +847,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Certaines séries ont des cibles de poids fixes. Vérifie qu'elles te conviennent."
+          }
+        }
+      }
+    },
+    "Start measuring to tare." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lance la mesure pour tarer."
           }
         }
       }
@@ -907,6 +957,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Trop court · tenu %1$@ s sur %2$lld"
+          }
+        }
+      }
+    },
+    "Waiting for readings from the gauge." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente des valeurs du capteur."
           }
         }
       }
@@ -4535,16 +4595,6 @@
         }
       }
     },
-    "Demo device" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Appareil de démo"
-          }
-        }
-      }
-    },
     "Device" : {
       "localizations" : {
         "fr" : {
@@ -6478,16 +6528,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Décompte avant chaque série"
-          }
-        }
-      }
-    },
-    "Leave demo mode" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quitter le mode démo"
           }
         }
       }
@@ -10735,16 +10775,6 @@
         }
       }
     },
-    "No Bluetooth on this device. Try demo mode." : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pas de Bluetooth sur cet appareil. Essaie le mode démo."
-          }
-        }
-      }
-    },
     "This Dyno sent no serial number, so its calibration can't be looked up." : {
       "localizations" : {
         "fr" : {
@@ -10932,16 +10962,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réessayer"
-          }
-        }
-      }
-    },
-    "Try demo mode" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Essayer le mode démo"
           }
         }
       }

@@ -24,14 +24,8 @@ struct DeviceChip: View {
                 Button(String(localized: "Refresh battery"), systemImage: "arrow.clockwise") {
                     device.readBattery()
                 }
-                if device.isMock {
-                    Button(String(localized: "Leave demo mode"), systemImage: "xmark.circle") {
-                        device.useMockDevice(false)
-                    }
-                } else {
-                    Button(String(localized: "Disconnect"), systemImage: "xmark.circle") {
-                        device.disconnect()
-                    }
+                Button(String(localized: "Disconnect"), systemImage: "xmark.circle") {
+                    device.disconnect()
                 }
             } label: {
                 chip
@@ -97,7 +91,6 @@ struct DeviceChip: View {
     }
 
     private var title: String {
-        if device.isMock && device.state.isConnected { return String(localized: "Demo device") }
         // The selected KIND's name, not a hardcoded "Progressor": a nameless WH-C06
         // must not be labelled as a Tindeq.
         if device.state.isConnected { return device.deviceName ?? device.gaugeKind.displayName }

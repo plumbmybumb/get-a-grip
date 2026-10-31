@@ -42,7 +42,6 @@ struct RoutineCard: View, Equatable {
     var onNew: () -> Void
     var onMakePrimary: () -> Void
     var onDelete: () -> Void
-    var onDemo: () -> Void
 
     /// Compared on what the card DRAWS, never on its eleven closures, which made it unequal
     /// to itself on every Today render. Each closure acts on `summary.id`, so equal values
@@ -573,10 +572,8 @@ struct RoutineCard: View, Equatable {
                 SolidSecondaryButton(title: String(localized: "Open Settings")) {
                     if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                 }
-            case .unsupported:
-                // Always compiled in, never `#if DEBUG` — without hardware, in the
-                // Simulator or in App Review, this is the only way to see it work.
-                SolidSecondaryButton(title: String(localized: "Try demo mode"), action: onDemo)
+            // No Bluetooth radio: "Start without a gauge" above is the way in. There is no
+            // demo mode to offer (Nuri, 2026-10-31: the mock is "just for us to test").
             default:
                 EmptyView()
             }
