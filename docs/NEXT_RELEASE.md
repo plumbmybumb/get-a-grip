@@ -9,7 +9,11 @@
    hard ones). Recommendation: the Load-per-grip series reads a TIME-WEIGHTED TOP-5 % LOAD
    ("what you held for your hardest 5 % of time") instead of the session mean — works for
    routines with no targets and ignores warm-ups without knowing which set is which. Spell
-   it on the chart. Decision owed to Nuri (top 5 % vs heaviest set).
+   it on the chart. **Decided 31 Oct (Nuri): the time-weighted top-5 % load.** Rationale:
+   the peak rewards a snatch, the mean rewards nothing, and "what you held for your hardest
+   5 % of time" is what the fingers sustained; it ignores warm-ups unasked and still means
+   something for an all-easy no-hang session. Both platforms, one engine function with a
+   fixture; the export keeps its existing columns.
 3. **"Wake" on the live gauge and max gauge is a button nobody wants to press.** Make the
    gauge screens re-kick a silent connected stream themselves (the runner's silence
    watchdog, same rule), so the control stays Tare; keep Wake only as the accessibility
