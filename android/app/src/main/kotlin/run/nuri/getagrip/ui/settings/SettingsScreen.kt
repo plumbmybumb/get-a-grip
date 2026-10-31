@@ -232,7 +232,7 @@ private fun SettingsRoot(
             // The live gauge is a button on Today's bar (2026-09-20): one door, not two.
 
             SupportCard(
-                // No demo suffix: there is no user-facing demo mode (2026-10-31), and the
+                // No demo suffix: there is no user-facing demo mode any more (2026-10-31), and the
                 // debug-only mock never reaches a release build's support mail.
                 gauge = device.gaugeKind.displayName,
                 diagnostics = {

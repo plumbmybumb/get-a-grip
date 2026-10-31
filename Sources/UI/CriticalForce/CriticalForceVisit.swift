@@ -113,7 +113,7 @@ final class CriticalForceVisit {
     // MARK: - Flow
 
     /// Start the visit on the first hand. The demo gauge pulls an all-out profile while a
-    /// test runs, so demo mode sees a real-looking plateau — switched only for a Start that
+    /// test runs, so the DEBUG mock gauge shows a real-looking plateau — switched only for a Start that
     /// goes through, never for one refused under load.
     func start(device: DeviceStore) {
         guard stage == .setup, device.state.isConnected, !refusesUnderLoad(device) else { return }
