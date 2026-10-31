@@ -21,9 +21,10 @@
    fallback if the stream refuses.
 4. **Reset on the live gauge** for the max and average readouts. Small.
 5. **Demo mode showed "demo device active" on a real Progressor** — he fell into "Try demo
-   mode" and could not see the way out. Demo stays (App Review, gauge-less users), but:
-   state it loudly on the gauge and Today while active, offer "Leave demo" right there,
-   and never persist it across launches when a real gauge has ever connected.
+   mode" and could not see the way out. **Decided 31 Oct (Nuri): demo mode is REMOVED from
+   the shipping app**; the mock gauge survives only behind the DEBUG `-mockDevice` launch
+   argument for our own testing. Gauge-less users have "Start without a gauge". The App
+   Review notes in `appstore/SUBMISSION.md` were rewritten around it the same day.
 
 ## Feature request — target load as % of CRITICAL FORCE (support mail, 31 Oct 2026; Android 1.4.0, Pixel 7a, WH-C06, en-AU)
 
