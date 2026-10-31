@@ -33,6 +33,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeMute
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.draw.alpha
+import kotlin.math.roundToInt
+import run.nuri.getagrip.runner.CuePlayer
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Check
@@ -213,6 +224,7 @@ private fun SettingsRoot(
 
             WeightUnitSetting(LocalSettingsStore.current)
             BodyWeightSetting(LocalSettingsStore.current)
+            SoundSetting(LocalSettingsStore.current)
 
             // The live gauge is a button on Today's bar (2026-09-20): one door, not two.
 
@@ -767,5 +779,86 @@ internal fun BodyWeightSetting(settings: run.nuri.getagrip.store.SettingsStore) 
             style = MaterialTheme.typography.bodySmall,
             color = palette.inkSecondary,
         )
+    }
+}
+
+/// The cue tones' own level (GitHub issue 7). They ride the MEDIA stream so silent mode cannot
+/// mute them, which is exactly why the volume keys also move the video someone trains to; this
+/// moves the tones alone. Haptics are not part of it.
+@Composable
+internal fun SoundSetting(settings: run.nuri.getagrip.store.SettingsStore) {
+    val palette = LocalGripPalette.current
+    val context = LocalContext.current
+    val on = settings.cueSoundEnabled
+    // One player for the card's life. It plays nothing until a slider release, and winds
+    // itself down after each preview.
+    val preview = remember { CuePlayer(context) }
+    DisposableEffect(preview) { onDispose { preview.end() } }
+    Card {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .toggleable(
+                    value = on,
+                    role = Role.Switch,
+                    onValueChange = { settings.setCueSoundEnabled(it) },
+                )
+                .testTag("settings.cueSound"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                tr("Sound"),
+                style = MaterialTheme.typography.titleMedium,
+                color = palette.inkPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = on,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(
+                    checkedTrackColor = palette.graphite,
+                    checkedThumbColor = palette.graphiteInverse,
+                ),
+            )
+        }
+        val label = tr("Cue volume")
+        val percent = "${(settings.cueVolume * 100).roundToInt()}%"
+        Row(
+            Modifier.fillMaxWidth().alpha(if (on) 1f else 0.4f),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.VolumeMute,
+                contentDescription = null,
+                tint = palette.inkSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+            Slider(
+                value = settings.cueVolume.toFloat(),
+                onValueChange = { settings.setCueVolume(it.toDouble()) },
+                // Released, it plays one tick at the new level: set by ear, no session needed.
+                onValueChangeFinished = { preview.previewLevel() },
+                enabled = on,
+                colors = SliderDefaults.colors(
+                    thumbColor = palette.graphite,
+                    activeTrackColor = palette.graphite,
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("settings.cueVolume")
+                    .semantics {
+                        contentDescription = label
+                        stateDescription = percent
+                    },
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.VolumeUp,
+                contentDescription = null,
+                tint = palette.inkSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }

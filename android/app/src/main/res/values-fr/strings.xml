@@ -399,6 +399,7 @@
     <string name="s_critical_force_test">Test de force critique</string>
     <string name="s_critical_force_tested">Force critique testée %s</string>
     <string name="s_critical_force_26f98f">Force critique, %s</string>
+    <string name="s_cue_volume">Volume des signaux</string>
     <string name="s_current_peak">Actuel %1$s %2$s, pic %3$s %4$s%5$s</string>
     <string name="s_current_kilograms_peak_kilograms">Actuel %1$s kilogrammes, pic %2$s kilogrammes%3$s</string>
     <string name="s_custom">Personnalisé</string>
@@ -986,6 +987,7 @@
     <string name="s_some_kilogram_targets_were_set_by_the_sender_review_them">Certaines cibles en kilogrammes viennent de l’expéditeur. Vérifiez qu’elles conviennent à votre entraînement.</string>
     <string name="s_some_sets_carry_kilogram_targets_typed_by_whoever_shared">Certaines séries portent des cibles en kilos saisies par la personne qui a partagé ceci.</string>
     <string name="s_some_sets_have_fixed_weight_targets_check_they_suit_you">Certaines séries ont des cibles de poids fixes. Vérifie qu\'elles te conviennent.</string>
+    <string name="s_sound">Son</string>
     <string name="s_source">Source</string>
     <string name="s_source_code">Code source</string>
     <string name="s_start">Commencer</string>

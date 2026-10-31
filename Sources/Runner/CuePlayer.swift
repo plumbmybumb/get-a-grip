@@ -64,25 +64,63 @@ final class CuePlayer {
     /// `setDiagnosticSink`. Optional: output never depends on being observed.
     private var onDiagnostic: ((String) -> Void)?
 
-    init() {}
+    /// Where Settings' Sound card writes (`SettingsStore`'s own defaults). Read on every
+    /// tone, so the level is whatever was last chosen — see `CueSoundLevel`.
+    private let preferences: UserDefaults
+    /// Which Settings preview is the current one; an older one neither plays nor ends.
+    private var previewGeneration = 0
+
+    init(preferences: UserDefaults? = nil) {
+        self.preferences = preferences ?? AppGroup.defaults ?? .standard
+    }
 
     /// Activate the audio session and prepare both engines, ONCE per session: starting
     /// an `AVAudioEngine` costs tens of milliseconds. The audio-session half runs OFF the
     /// main thread (`startAudio`) — `setCategory`/`setActive` are synchronous round trips
     /// to the audio server, called while the runner's cover is presenting.
-    func begin() {
+    func begin() { start(haptics: true) }
+
+    private func start(haptics: Bool) {
         guard !isRunning else { return }
         isRunning = true
         buildTones()
         // The graph is built AFTER the session is configured (in `startAudio`): preparing
         // an engine under the default `.soloAmbient` category creates it non-mixable.
         installObservers()
-        startAudio()
+        // Sound off: no audio session at all, so nothing of ours ever sits beside the
+        // climber's own audio. The haptics below are untouched by the setting.
+        if CueSoundLevel.read(from: preferences).gain > 0 { startAudio() }
+        guard haptics else { return }
         prepareHaptics()
         // ASYNC here: the synchronous `start()` blocks the main thread on the haptic
         // server. A lazy restart from `haptic(_:)` stays synchronous, because the cue
         // that needed it is about to play.
         startHapticEngineAsync()
+    }
+
+    /// Settings' volume slider, on release: one tick at the level just chosen, so it can
+    /// be set by ear without starting a session. Sound only — the slider moves the tones,
+    /// and a buzz would name the wrong cause. The player winds itself down a moment later.
+    func previewLevel() {
+        previewGeneration += 1
+        let generation = previewGeneration
+        if !isRunning { start(haptics: false) }
+        // Strong capture on purpose: the preview always reaches `end()`, even if Settings
+        // let go of this player meanwhile, so no audio session is left behind.
+        Task { @MainActor in
+            // Activation is a round trip to the audio server; the tick waits for it (up to
+            // a second) instead of being the cue lost to an engine not yet running.
+            var waits = 0
+            while !(audioReady && engine.isRunning), waits < 20 {
+                try? await Task.sleep(for: .milliseconds(50))
+                waits += 1
+            }
+            guard generation == previewGeneration else { return }
+            sound(.tick)
+            try? await Task.sleep(for: .seconds(1.5))
+            guard generation == previewGeneration else { return }
+            end()
+        }
     }
 
     /// Deactivate the audio session and stop the haptic engine. Also the ONE place
@@ -151,8 +189,8 @@ final class CuePlayer {
         }
     }
 
-    /// A short contrasting interval, one announcement per transition. No sound
-    /// preference gates it: like every cue it mixes without ducking and fails silent.
+    /// A short contrasting interval, one announcement per transition. Like every tone it
+    /// honours Settings' Sound card, mixes without ducking and fails silent.
     func gripChanged() { sound(.gripChange) }
 
     // MARK: - Audio session and graph
@@ -236,6 +274,10 @@ final class CuePlayer {
 
     private func sound(_ tone: CueTone) {
         guard isRunning else { return }
+        // Settings' Sound card, read per tone. Off (or a level of zero) renders nothing and
+        // never wakes the audio session; the haptic beside each cue is a separate call.
+        let gain = CueSoundLevel.read(from: preferences).gain
+        guard gain > 0 else { return }
         guard audioReady, engine.isRunning else {
             // **A dead engine is retried.** Interruptions often end without
             // `.shouldResume` (Siri, an alarm), so one phone call could otherwise silence
@@ -247,6 +289,9 @@ final class CuePlayer {
             return
         }
         guard let buffer = tones[tone] else { return }
+        // The level multiplies the player node's output, so the synthesised buffers stay
+        // as they are and a change in Settings applies from the next tone.
+        player.volume = gain
         // Queued, NOT `.interrupts`: the runner returns cues in batches (rep-end, set-end,
         // session-end together) and interrupting would leave only the last audible.
         player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)

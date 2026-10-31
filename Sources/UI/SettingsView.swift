@@ -37,6 +37,8 @@ struct SettingsView: View {
     @Environment(TemplateStore.self) private var templates
     @Environment(SettingsStore.self) private var settings
     @Environment(\.weightUnit) private var weightUnit
+    /// The Sound card's one-tick preview player — see `previewCueLevel`.
+    @State private var cuePreview: CuePlayer?
 
     var body: some View {
         ScreenScaffold(title: String(localized: "Settings")) {
@@ -45,6 +47,7 @@ struct SettingsView: View {
             deviceCard.staggerIn(1)
             weightUnitsCard.staggerIn(2)
             bodyWeightCard.staggerIn(3)
+            soundCard.staggerIn(4)
             remindersCard.staggerIn(4)
             // ABOVE About: About is the statements the app OWES you (storage,
             // attribution, licence); a door out to a person is an action, not small print.
@@ -106,6 +109,51 @@ struct SettingsView: View {
                     .font(.system(.caption)).foregroundStyle(Ink.secondary)
             }
         }
+    }
+
+    // MARK: - Sound
+
+    /// The cue tones' own level (GitHub issue 7). They play on the MEDIA output so a muted
+    /// phone still hears them, which is exactly why the volume keys also move the video
+    /// someone is watching; this moves the tones alone. Haptics are not part of it.
+    private var soundCard: some View {
+        @Bindable var settings = settings
+        let on = settings.cueSoundEnabled
+        return MaterialCard(surface: .flat) {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(isOn: $settings.cueSoundEnabled) {
+                    Text("Sound").font(.system(.headline, weight: .semibold))
+                }
+                .accessibilityIdentifier("settings.cueSound")
+                HStack(spacing: 12) {
+                    Image(systemName: "speaker.fill")
+                        .accessibilityHidden(true)
+                    // Released, it plays one tick at the new level — the level is set by
+                    // ear, without starting a session.
+                    Slider(value: $settings.cueVolume, in: 0...1) {
+                        Text("Cue volume")
+                    } onEditingChanged: { editing in
+                        if !editing { previewCueLevel() }
+                    }
+                    .accessibilityValue(Text(settings.cueVolume, format: .percent.precision(.fractionLength(0))))
+                    .accessibilityIdentifier("settings.cueVolume")
+                    Image(systemName: "speaker.wave.3.fill")
+                        .accessibilityHidden(true)
+                }
+                .font(.system(.footnote))
+                .foregroundStyle(Ink.secondary)
+                .disabled(!on)
+                .opacity(on ? 1 : 0.4)
+            }
+        }
+    }
+
+    /// Built on the first release, not with the view: an audio engine per Settings
+    /// evaluation would be waste for a slider most people never touch.
+    private func previewCueLevel() {
+        let player = cuePreview ?? CuePlayer()
+        cuePreview = player
+        player.previewLevel()
     }
 
     // MARK: - Device

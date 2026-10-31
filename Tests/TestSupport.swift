@@ -118,6 +118,8 @@ extension XCTestCase {
         settings.remindsOnThisDevice = true
         settings.frezIntroSeen = false
         settings.reviewRequested = false
+        settings.cueSoundEnabled = true
+        settings.cueVolume = 1
         return settings
     }
 

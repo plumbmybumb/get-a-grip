@@ -400,6 +400,7 @@
     <string name="s_critical_force_test">Critical force test</string>
     <string name="s_critical_force_tested">Critical force tested %s</string>
     <string name="s_critical_force_26f98f">Critical force, %s</string>
+    <string name="s_cue_volume">Cue volume</string>
     <string name="s_current_peak">Current %1$s %2$s, peak %3$s %4$s%5$s</string>
     <string name="s_current_kilograms_peak_kilograms">Current %1$s kilograms, peak %2$s kilograms%3$s</string>
     <string name="s_custom">Custom</string>
@@ -988,6 +989,7 @@
     <string name="s_some_kilogram_targets_were_set_by_the_sender_review_them">Some kilogram targets were set by the sender. Review them for your own training.</string>
     <string name="s_some_sets_carry_kilogram_targets_typed_by_whoever_shared">Some sets carry kilogram targets typed by whoever shared this.</string>
     <string name="s_some_sets_have_fixed_weight_targets_check_they_suit_you">Some sets have fixed weight targets. Check they suit you.</string>
+    <string name="s_sound">Sound</string>
     <string name="s_source">Source</string>
     <string name="s_source_code">Source code</string>
     <string name="s_start">Start</string>
