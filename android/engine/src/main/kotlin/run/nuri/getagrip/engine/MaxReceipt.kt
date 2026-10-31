@@ -128,6 +128,10 @@ object MaxReceiptMath {
                         if (move !in kgMoves) kgMoves.add(move)
                     } else {
                         val percent = PlanMath.targetPercent(set, plan) ?: continue
+                        // A percentage of CRITICAL FORCE does not move when a max does —
+                        // and keyed as "peak" below it would hide a real peak set at the
+                        // same percentage.
+                        if (PlanMath.targetBasis(set, plan) != TargetBasis.max) continue
                         // Keyed with the basis too: 90 % of the peak and 90 % of a 10 s max
                         // are different targets on the same grip.
                         val basis = PlanMath.maxSeconds(set, plan)?.let { "${it}s" } ?: "peak"

@@ -94,9 +94,10 @@ class AnalysisExportTests {
             .filter { it.startsWith("| ") && it.contains(" | ") }
             .map { row -> row.split("|").map { it.trim() }.filter { it.isNotEmpty() } }
 
-    /// A rep row is the ten-column one; everything else in the document is narrower.
+    /// A rep row is the eleven-column one (`% CF` joined `% max` on 2026-10-31);
+    /// everything else in the document is narrower.
     private fun repRow(document: String, pull: Int): List<String>? =
-        repRows(document).firstOrNull { it.size == 10 && it.firstOrNull() == "$pull" }
+        repRows(document).firstOrNull { it.size == 11 && it.firstOrNull() == "$pull" }
 
     private val percentColumn = 8
 
@@ -229,7 +230,7 @@ class AnalysisExportTests {
         assertEquals(AnalysisExport.blank, skipped?.get(5), "peak kg")
         assertEquals(AnalysisExport.blank, skipped?.get(6), "avg kg")
         assertEquals(AnalysisExport.blank, skipped?.get(percentColumn))
-        assertEquals("skipped", skipped?.get(9), "but it is still recorded, as a skip")
+        assertEquals("skipped", skipped?.get(10), "but it is still recorded, as a skip")
         assertEquals("20.0", repRow(doc, 1)?.get(5), "the pull that happened is untouched")
     }
 

@@ -32,6 +32,10 @@ object AnalysisExportAssembler {
         logs: List<WorkoutLogEntity>,
         maxRecords: List<MaxRecordEntity>,
         criticalForceRecords: List<CriticalForceRecordEntity> = emptyList(),
+        /// True for a single workout's export: it prints no tests, but still LOOKS them up —
+        /// a pull set at "% of critical force" reports the CF on file at its start, exactly
+        /// as every pull reports its max. Only the per-pull blobs are skipped then.
+        criticalForceLookupOnly: Boolean = false,
         reps: (WorkoutLogEntity) -> List<RepSummary>,
         displayName: (WorkoutLogEntity) -> String,
         today: DayStamp,
@@ -82,7 +86,7 @@ object AnalysisExportAssembler {
                 peakKg = record.peakKg, endForceKg = record.endForceKg, repsRun = record.repsRun,
                 restsKept = record.restsKept, restsTotal = record.restsTotal,
                 bodyMassKg = record.bodyMassKg, maxAtTestKg = record.maxAtTestKg,
-                reps = record.reps,
+                reps = if (criticalForceLookupOnly) emptyList() else record.reps,
             )
         }
 

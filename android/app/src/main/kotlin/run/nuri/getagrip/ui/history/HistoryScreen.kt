@@ -192,7 +192,10 @@ fun HistoryScreen(
                 SessionDetailScreen(
                     content = content,
                     onBack = back,
-                    onExport = { exportRequest = buildExportRequest(feed, routineNames, clock.today, log) },
+                    onExport = {
+                        exportRequest = buildExportRequest(feed, routineNames, clock.today, log,
+                            criticalForce = templates.criticalForceRecords)
+                    },
                     // Pop first, then the store's delete — which raises the Undo only when the
                     // delete landed. No dialog, the same bargain as the swipe.
                     onDelete = {
@@ -346,7 +349,10 @@ private fun HistoryRoot(
                         name = displayName(log),
                         leadingGrip = feed.leadingGrip(log),
                         onOpen = { onOpen(log) },
-                        onExport = { onExport(buildExportRequest(feed, routineNames, today, log)) },
+                        onExport = {
+                            onExport(buildExportRequest(feed, routineNames, today, log,
+                                criticalForce = templates.criticalForceRecords))
+                        },
                         onDelete = {
                             scope.launch {
                                 // Leaves the list only once the delete landed; the same guard raises the Undo.
@@ -409,13 +415,14 @@ private fun buildExportRequest(
 ): AnalysisExportRequest {
     val logs = workout?.let { listOf(it) } ?: feed.logs
     val maxRecords = feed.maxRecords
-    // A single workout's export carries no tests.
-    val tests = if (workout != null) emptyList() else criticalForce
+    // A single workout's export prints no tests but still looks them up: a pull set at
+    // "% of critical force" reports the CF that stood at its start.
     return AnalysisExportRequest(isWorkout = workout != null) {
         AnalysisExportAssembler.input(
             logs = logs,
             maxRecords = maxRecords,
-            criticalForceRecords = tests,
+            criticalForceRecords = criticalForce,
+            criticalForceLookupOnly = workout != null,
             reps = feed::reps,
             displayName = { sessionDisplayName(it, routineNames) },
             today = today,

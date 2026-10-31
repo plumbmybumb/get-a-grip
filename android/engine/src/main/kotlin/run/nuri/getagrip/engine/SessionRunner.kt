@@ -123,6 +123,9 @@ sealed interface RunnerCue {
 class SessionRunner(
     plan: SessionPlan,
     maxes: MaxTable = MaxTable(),
+    /// Read once beside `maxes`, for sets prescribed as a percentage of critical force
+    /// (`TargetBasis`); empty resolves those sets to no target.
+    criticalForces: CriticalForceTable = CriticalForceTable(),
 
     /// No gauge at all — a flat battery, or the gauge left at home (Nuri, 2026-08-09).
     /// The engine changes in exactly three places:
@@ -234,7 +237,8 @@ class SessionRunner(
     /// `maxes` is read ONCE here, which freezes the session's loads: percentage targets
     /// become kilograms per rep, per hand, so a max recorded next month cannot rewrite
     /// what this morning prescribed. Empty by default for callers testing timing only.
-    val slots: List<RepSlot> = PlanMath.sequence(this.plan, maxes)
+    /// `criticalForces` is frozen the same way.
+    val slots: List<RepSlot> = PlanMath.sequence(this.plan, maxes, criticalForces)
 
     private val engageKg: Double = this.plan.thresholdKg
     private val releaseKg: Double =

@@ -382,4 +382,6 @@ internal fun rememberRoutineSummary(templates: TemplateStore, routine: SessionTe
         templates.climbToday,
         templates.benchmarkedToday,
         templates.maxTable,
+        // A CF test recolours a "% of critical force" routine's rung, as a max does.
+        templates.currentCriticalForces,
     ) { templates.summary(routine) }

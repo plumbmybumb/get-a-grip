@@ -45,6 +45,7 @@ import run.nuri.getagrip.engine.BlobCodec
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.PlanMath
+import run.nuri.getagrip.engine.TargetBasis
 import run.nuri.getagrip.engine.RoutineDraft
 import run.nuri.getagrip.engine.RoutineSummary
 import run.nuri.getagrip.engine.SessionPlan
@@ -394,10 +395,14 @@ private fun setDetailLine(set: SetPlan, plan: SessionPlan): String? {
     } else if (percent != null) {
         val lo = Math.round(percent.start * 100)
         val hi = Math.round(percent.endInclusive * 100)
-        // Which max it is of: a percentage of a timed max is a different load.
+        // Which max it is of: a percentage of a timed max is a different load, and a
+        // percentage of critical force is not of a max at all.
         val seconds = set.targetMaxSeconds
+        val ofCriticalForce = set.targetBasis == TargetBasis.criticalForce
         parts.add(
             when {
+                ofCriticalForce && lo == hi -> L10n.tr("%d %% of critical force", hi)
+                ofCriticalForce -> L10n.tr("%d–%d %% of critical force", lo, hi)
                 seconds != null && lo == hi -> L10n.tr("%d %% of %d s max", hi, seconds)
                 seconds != null -> L10n.tr("%d–%d %% of %d s max", lo, hi, seconds)
                 lo == hi -> L10n.tr("%d %% of max", hi)
@@ -564,15 +569,31 @@ private fun Notes(sets: List<SetPlan>, plan: SessionPlan, origin: ImportOrigin) 
     val palette = LocalGripPalette.current
     /// `PlanMath.targetBand` precedence: a set with typed kilograms never reaches its percentage.
     val hasPercent = sets.any { it.targetBand == null && PlanMath.targetPercent(it, plan) != null }
+    // The same, split by what the percentage is OF — each note shown only when true.
+    val hasMaxPercent = sets.any {
+        it.targetBand == null && PlanMath.targetPercent(it, plan) != null &&
+            PlanMath.targetBasis(it, plan) == TargetBasis.max
+    }
+    val hasCriticalForcePercent = sets.any {
+        it.targetBand == null && PlanMath.targetPercent(it, plan) != null &&
+            PlanMath.targetBasis(it, plan) == TargetBasis.criticalForce
+    }
     val hasKilograms = sets.any { it.targetBand != null }
     // Guarded around the STACK: an empty column is still a child, and the 18 dp spacing would
     // leave a gap under the (common) routine prescribing no load.
     if (!hasPercent && !hasKilograms) return
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (hasPercent) {
+        if (hasMaxPercent) {
             Text(
                 tr("Targets use your saved maxes. Retest when they're out of date."),
+                style = MaterialTheme.typography.bodySmall,
+                color = palette.inkTertiary,
+            )
+        }
+        if (hasCriticalForcePercent) {
+            Text(
+                tr("Some targets use your critical force. Sets on a grip you haven't tested have no target."),
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.inkTertiary,
             )

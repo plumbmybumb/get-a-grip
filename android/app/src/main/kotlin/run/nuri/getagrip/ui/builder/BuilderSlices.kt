@@ -47,6 +47,8 @@ data class SetRowContext(
     val targetHiPercent: Double? = null,
     /// Which max that band is of — null is the peak.
     val targetMaxSeconds: Int? = null,
+    /// What that band is a percentage OF — a raw `TargetBasis`, null for max.
+    val targetBasisRaw: String? = null,
 ) {
     /// A plan carrying ONLY those fields, so every `PlanMath` call a row makes goes through
     /// the one resolver the runner uses rather than a second copy of its arithmetic. Built
@@ -61,12 +63,13 @@ data class SetRowContext(
         targetLoPercent = targetLoPercent,
         targetHiPercent = targetHiPercent,
         targetMaxSeconds = targetMaxSeconds,
+        targetBasisRaw = targetBasisRaw,
     )
 
     companion object {
         fun of(plan: SessionPlan): SetRowContext = SetRowContext(
             plan.handMode, plan.holdSeconds, plan.restSeconds, plan.leadInSeconds,
-            plan.targetLoPercent, plan.targetHiPercent, plan.targetMaxSeconds,
+            plan.targetLoPercent, plan.targetHiPercent, plan.targetMaxSeconds, plan.targetBasisRaw,
         )
     }
 }

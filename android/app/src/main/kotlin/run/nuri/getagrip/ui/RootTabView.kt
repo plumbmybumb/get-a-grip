@@ -413,6 +413,7 @@ fun RootTabView() {
                                 routineName = template.name,
                                 device = device,
                                 maxes = templates.maxTable,
+                                criticalForces = templates.currentCriticalForces,
                                 timerOnly = timerOnly,
                                 scope = sessionScope,
                                 cues = CuePlayer(appContext, diagnostic = device::recordAudio),

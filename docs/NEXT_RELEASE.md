@@ -36,9 +36,9 @@
 protocols at strengthclimbing.com/protocols/force-measured-protocols/ (submaximal work
 prescribed as a fraction of CF). Nobody ships this yet.
 
-**iOS BUILT (31 Oct 2026, on `main`); Android NOT started** — it ports from
-`docs/TARGET_BASIS.md` and `Fixtures/target-basis/`. What shipped on iOS, and what the
-release owes:
+**iOS BUILT and Android BUILT (31 Oct 2026, both on `main`)** — Android ported from
+`docs/TARGET_BASIS.md` and `Fixtures/target-basis/` (read by `TargetBasisFixtureTests.kt`; the
+export and share fixtures pass on Kotlin again). What shipped, and what the release owes:
 - **No CloudKit schema deploy is owed for this feature, and no Room migration.** The
   routine-level basis column was built and then dropped (decided 31 Oct): it was always
   written nil, because `RoutineDraft.normalized` demotes a routine band, basis and all, onto

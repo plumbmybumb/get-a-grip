@@ -33,6 +33,8 @@ import run.nuri.getagrip.data.climb
 import run.nuri.getagrip.data.storedNow
 import run.nuri.getagrip.engine.BlobCodec
 import run.nuri.getagrip.engine.CriticalForceResult
+import run.nuri.getagrip.engine.CriticalForceTable
+import run.nuri.getagrip.data.criticalForceTable
 import run.nuri.getagrip.engine.AgentRoutine
 import run.nuri.getagrip.engine.DayRecord
 import run.nuri.getagrip.engine.DayStamp
@@ -187,6 +189,14 @@ class TemplateStore(
     var criticalForceRecords: List<CriticalForceRecordEntity> by mutableStateOf(emptyList())
         private set
 
+    /// Every critical force on file as the engine consumes it — the newest valid
+    /// standard-protocol test per grip AND hand (`CriticalForceTable.folding`). What a set
+    /// prescribed as "% of critical force" resolves against. Folded on the same pass that
+    /// publishes `criticalForceRecords`, and stored for the same hot-path reason as
+    /// `maxTable`: the builder reads it on every drag frame.
+    var currentCriticalForces: CriticalForceTable by mutableStateOf(CriticalForceTable())
+        private set
+
     /// A deleted critical force test, restorable for the undo window. Its own slot, like
     /// sessions', so a delete on one surface never retracts another's Undo. The Room row
     /// IS the raw columns, blobs included, so restoring it is exact.
@@ -315,7 +325,10 @@ class TemplateStore(
             // `maxes` arrives sorted by `recordedAt`, so the last measured one is newest.
             lastMeasuredMaxAt = maxes.lastOrNull { it.source == MaxSource.measured }?.recordedAt
         }
-        if (tests != null) criticalForceRecords = tests.sortedWith(criticalForceOrder)
+        if (tests != null) {
+            criticalForceRecords = tests.sortedWith(criticalForceOrder)
+            currentCriticalForces = tests.criticalForceTable()
+        }
 
         // Recomputed on the same pass as the completion counts, so finishing a session
         // replans the day's reminders as "2 of 2" appears. The midnight refresh restores
@@ -482,7 +495,7 @@ class TemplateStore(
             isOnDemand = template.isOnDemand,
             // Against the live max table: intensity is a fact about TODAY's prescription,
             // unlike the runner's freeze-at-start rule.
-            peakIntensity = PlanMath.peakIntensity(plan, maxTable),
+            peakIntensity = PlanMath.peakIntensity(plan, maxTable, currentCriticalForces),
         )
     }
 

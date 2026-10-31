@@ -73,7 +73,9 @@ class StringCatalogTests {
                 assertTrue(value != null, "no plural behind '$key' at $quantity")
             }
         }
-        assertEquals(17, PLURAL_KEYS.values.toSet().size, "the catalog's seventeen counted strings")
+        // Eighteen since 2026-10-31: "and %d more without a critical force test." (the Rhythm
+        // page's missing-test overflow) joined the catalog with the target-basis strings.
+        assertEquals(18, PLURAL_KEYS.values.toSet().size, "the catalog's eighteen counted strings")
     }
 
     /// A key that had to be POSITIONED for French is reachable under BOTH spellings — the

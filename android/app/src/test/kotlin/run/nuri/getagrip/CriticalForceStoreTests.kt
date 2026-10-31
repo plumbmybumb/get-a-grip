@@ -242,4 +242,52 @@ class CriticalForceStoreTests {
         assertTrue(!w.store.deleteCriticalForce(record))
         assertNull(w.store.lastDeletedCriticalForce)
     }
+
+    /// `currentCriticalForces` is the fold every "% of critical force" target resolves
+    /// against (`docs/TARGET_BASIS.md`): the newest test per grip AND hand, refolded on a save,
+    /// a delete and its Undo.
+    @Test
+    fun theCriticalForceTableFollowsEverySaveDeleteAndUndo() = runTest {
+        val w = makeWorld()
+        val grip = GripSpec()
+        assertTrue(w.store.currentCriticalForces.isEmpty)
+
+        val first = assertNotNull(w.store.recordCriticalForce(cfResult(cf = 16.0), ByteArray(0), grip, Side.left, null))
+        assertEquals(16.0, w.store.currentCriticalForces.criticalForce(grip.key, Side.left))
+        assertNull(w.store.currentCriticalForces.criticalForce(grip.key, Side.right), "a one-handed CF never leaks")
+
+        val newer = assertNotNull(w.store.recordCriticalForce(cfResult(cf = 18.0), ByteArray(0), grip, Side.left, null))
+        assertEquals(18.0, w.store.currentCriticalForces.criticalForce(grip.key, Side.left), "the newest test wins")
+
+        assertTrue(w.store.deleteCriticalForce(newer))
+        assertEquals(16.0, w.store.currentCriticalForces.criticalForce(grip.key, Side.left))
+        w.store.undoDeleteCriticalForce()
+        assertEquals(18.0, w.store.currentCriticalForces.criticalForce(grip.key, Side.left))
+        assertTrue(first.recordedAt <= newer.recordedAt)
+    }
+
+    /// A routine at "% of critical force" colours its rung against the peak max only when
+    /// both numbers are on file — and the band resolves per hand from the store's table.
+    @Test
+    fun aCriticalForceRoutineResolvesFromTheStoresTable() = runTest {
+        val w = makeWorld()
+        val grip = GripSpec()
+        val plan = run.nuri.getagrip.engine.SessionPlan(
+            handMode = run.nuri.getagrip.engine.HandMode.bothHands,
+            sets = listOf(run.nuri.getagrip.engine.SetPlan(grip = grip, repsPerSide = 1,
+                targetLoPercent = 0.7, targetHiPercent = 0.8)
+                .withTargetBasis(run.nuri.getagrip.engine.TargetBasis.criticalForce)),
+        )
+        assertNull(run.nuri.getagrip.engine.PlanMath.sequence(plan, w.store.maxTable, w.store.currentCriticalForces)
+            .single().targetBand)
+        assertNotNull(w.store.recordCriticalForce(cfResult(cf = 20.0), ByteArray(0), grip, Side.both, null))
+        assertEquals(14.0..16.0,
+            run.nuri.getagrip.engine.PlanMath.sequence(plan, w.store.maxTable, w.store.currentCriticalForces)
+                .single().targetBand)
+        assertNull(run.nuri.getagrip.engine.PlanMath.peakIntensity(plan, w.store.maxTable, w.store.currentCriticalForces),
+            "no max on file: the rung stays unknown rather than reading 80 %")
+        assertTrue(w.store.recordMaxes(listOf(MaxSave(grip, Side.both, 40.0, MaxSource.manual))))
+        assertEquals(0.8 * 20 / 40,
+            run.nuri.getagrip.engine.PlanMath.peakIntensity(plan, w.store.maxTable, w.store.currentCriticalForces)!!, 1e-12)
+    }
 }

@@ -9,6 +9,7 @@ import run.nuri.getagrip.engine.CriticalForcePoint
 import run.nuri.getagrip.engine.CriticalForceProtocol
 import run.nuri.getagrip.engine.CriticalForceRep
 import run.nuri.getagrip.engine.CriticalForceRepsCodec
+import run.nuri.getagrip.engine.CriticalForceTable
 import run.nuri.getagrip.engine.CriticalForceResult
 import run.nuri.getagrip.engine.CriticalForceTrace
 import run.nuri.getagrip.engine.CriticalForceHands
@@ -178,6 +179,16 @@ val List<CriticalForceRecordEntity>.latestHands: CriticalForceHands?
         if (visit.size > 1) return CriticalForceHands.OneAtATime(Side.left)
         return if (first.side == Side.both) CriticalForceHands.BothHands else CriticalForceHands.Single(first.side)
     }
+
+/// The value the target fold reads — see `CriticalForceTable.folding`.
+val CriticalForceRecordEntity.tableEntry: CriticalForceTable.Entry
+    get() = CriticalForceTable.Entry(gripKey, side, protocolKey, criticalForceKg, recordedAt)
+
+/// The table a session resolves "% of critical force" targets against: the newest valid
+/// standard-protocol test per grip AND hand. One function, so every surface that folds
+/// records reads them exactly the same way.
+fun List<CriticalForceRecordEntity>.criticalForceTable(): CriticalForceTable =
+    CriticalForceTable.folding(map { it.tableEntry })
 
 /// "L", "R", "B": a hand on a line with no room for its name.
 val Side.initial: String

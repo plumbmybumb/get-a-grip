@@ -101,7 +101,7 @@ adding a device cannot quietly skip this contract.
 ## `target-basis/`
 
 Targets as a percentage of max OR of critical force — the spec is `docs/TARGET_BASIS.md`.
-Written and checked by `oracle target-basis generate|verify`; no Kotlin reader yet (the
+Written and checked by `oracle target-basis generate|verify`; read on Kotlin by `TargetBasisFixtureTests.kt` (the
 Android port adds one).
 
 - `plan.json` — `{description, plan}`, `plan` a canonical `SessionPlan` JSON string using both

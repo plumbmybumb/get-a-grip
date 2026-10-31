@@ -144,4 +144,58 @@ class BuilderDraftTests {
         assertTrue(BuilderDraft.isVeryLong(long))
         assertTrue(BuilderDraft.canSave(long))
     }
+
+    // MARK: - Target basis (docs/TARGET_BASIS.md)
+
+    private val cf = run.nuri.getagrip.engine.TargetBasis.criticalForce
+
+    /// Opening spreads a routine band onto the sets WITH its basis, then folds a shared one
+    /// back up — "80 % of critical force" must never land on a set as 80 % of max.
+    @Test
+    fun theBasisTravelsWithTheBandBothWays() {
+        val sets = listOf(SetPlan(repsPerSide = 2), SetPlan(repsPerSide = 2))
+        val draft = RoutineDraft.blank().let {
+            it.copy(plan = it.plan.copy(sets = sets, targetLoPercent = 0.7, targetHiPercent = 0.8).withTargetBasis(cf))
+        }
+        val editable = BuilderDraft.editable(draft)
+        assertTrue(editable.plan.sets.all { it.targetBasis == cf })
+        assertEquals(null, editable.plan.targetBasisRaw)
+        val opened = BuilderDraft.opening(draft)
+        assertEquals(cf, opened.plan.targetBasis)
+        assertTrue(opened.plan.sets.all { it.targetBasisRaw == null && !it.hasPercentTarget })
+    }
+
+    /// Two sets at the same percentage of DIFFERENT references do not share one band.
+    @Test
+    fun aMixedBasisIsNeverPromoted() {
+        val sets = listOf(
+            SetPlan(repsPerSide = 2, targetLoPercent = 0.7, targetHiPercent = 0.8).withTargetBasis(cf),
+            SetPlan(repsPerSide = 2, targetLoPercent = 0.7, targetHiPercent = 0.8),
+        )
+        val draft = RoutineDraft.blank().let { it.copy(plan = it.plan.copy(sets = sets)) }
+        assertEquals(draft, BuilderDraft.promotingUniformBand(draft))
+        // A never-chosen raw and an explicit "max" agree: they ARE the same reference.
+        val agreeing = draft.copy(plan = draft.plan.copy(sets = listOf(
+            sets[1].withTargetBasis(run.nuri.getagrip.engine.TargetBasis.max), sets[1])))
+        assertEquals(0.7..0.8, BuilderDraft.promotingUniformBand(agreeing).plan.targetPercentBand)
+    }
+
+    /// Choosing critical force clears a timed length; clearing the band clears the basis; and
+    /// a save leaves the routine-level basis nowhere but inside the sets (no Room column).
+    @Test
+    fun theRoutineBasisChipAndSaveKeepTheBasisOnTheSets() {
+        val base = RoutineDraft.blank().let {
+            it.copy(plan = it.plan.copy(sets = listOf(SetPlan(repsPerSide = 2)),
+                targetLoPercent = 0.7, targetHiPercent = 0.8, targetMaxSeconds = 10))
+        }
+        val chosen = BuilderDraft.withRoutineTargetBasis(base, cf)
+        assertEquals(cf, chosen.plan.targetBasis)
+        assertEquals(null, chosen.plan.targetMaxSeconds, "a critical force has no length")
+        assertEquals(null, BuilderDraft.withRoutineBand(chosen, null).plan.targetBasisRaw)
+
+        val saved = chosen.normalized.plan
+        assertEquals(null, saved.targetBasisRaw)
+        assertEquals(cf, saved.sets.single().targetBasis)
+        assertEquals(0.7..0.8, saved.sets.single().targetPercentBand)
+    }
 }

@@ -101,9 +101,28 @@ class SessionDetailFlowTests {
         return w
     }
 
+    /// The `index`th session row, newest first. A lazy list composes only what is on screen,
+    /// and History's cards push the rows down until only the first two are composed, so the
+    /// rows are walked by scrolling and told apart by their spoken description (unique for
+    /// every row this file builds) rather than by a position among the composed ones.
     private fun openRow(index: Int) {
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("history.session"))
-        compose.onAllNodesWithTag("history.session")[index].assertHasClickAction().performClick()
+        val list = compose.onNode(hasScrollToIndexAction())
+        list.performScrollToNode(hasTestTag("history.session"))
+        val seen = mutableListOf<String>()
+        for (attempt in 0 until 20) {
+            compose.onAllNodesWithTag("history.session").fetchSemanticsNodes()
+                .sortedBy { it.boundsInRoot.top }
+                .mapNotNull { node ->
+                    node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription) { null }
+                        ?.firstOrNull()
+                }
+                .forEach { if (it !in seen) seen.add(it) }
+            if (seen.size > index) break
+            list.performTouchInput { swipeUp(startY = bottom * 0.8f, endY = bottom * 0.45f) }
+            compose.waitForIdle()
+        }
+        compose.onNode(hasTestTag("history.session") and hasContentDescription(seen[index]))
+            .assertHasClickAction().performClick()
         compose.waitForIdle()
     }
 

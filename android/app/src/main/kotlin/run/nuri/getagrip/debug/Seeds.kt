@@ -25,6 +25,7 @@ import run.nuri.getagrip.engine.SessionKind
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
+import run.nuri.getagrip.engine.TargetBasis
 import java.util.UUID
 
 /// Headless UI verification: `adb` cannot tap through a five-step builder, so
@@ -52,7 +53,7 @@ object Seeds {
     }
 
     private val flags = listOf(
-        "seedNoRoutines", "seedRoutine", "seedTwoRoutines", "seedHistory",
+        "seedNoRoutines", "seedRoutine", "seedTwoRoutines", "seedHistory", "seedCriticalForceRoutine",
     )
 
     /// The store screenshots' two refinements, read only alongside the flags above:
@@ -102,6 +103,12 @@ object Seeds {
         } else if (wants("seedTwoRoutines")) {
             db.routines().deleteAll()
             seedTwoRoutines(db, kgTarget = wants("seedTargetKg"))
+        } else if (wants("seedCriticalForceRoutine")) {
+            // An aerobic routine prescribed as a percentage of CRITICAL FORCE, on the grip
+            // `seedHistory` tests (both hands), so the runner's band chip resolves from CF and
+            // the second set's grip, never tested, shows the missing-test warning.
+            db.routines().deleteAll()
+            db.routines().upsert(SessionTemplateEntity.from(criticalForceRoutine().normalized, 0))
         }
 
         // History has nothing to draw without sessions, and typing three weeks of them is
@@ -145,6 +152,18 @@ object Seeds {
                 bodyMassKg = 70.0, maxAtTestKg = 30.5, recordedAt = at,
             ))
         }
+    }
+
+    /// The starter's first two sets at 70–80 % of critical force, set on the ROUTINE —
+    /// `normalized` demotes the band and its basis onto the sets, as every save does.
+    fun criticalForceRoutine(): RoutineDraft {
+        val starter = RoutineDraft.starter
+        return starter.copy(plan = starter.plan.copy(
+            name = "Aerobic CF",
+            sets = starter.plan.sets.take(2),
+            targetLoPercent = 0.70,
+            targetHiPercent = 0.80,
+        ).withTargetBasis(TargetBasis.criticalForce))
     }
 
     /// The ritual plus a max-day routine — the pair `seedHistory` logs for, so the two
