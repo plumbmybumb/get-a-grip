@@ -14,7 +14,8 @@ data class LoggedLoad(
 )
 
 /// Staged, tested calculations for a future trend surface. Current screens store and
-/// display the two effort inputs but do not present these derived load estimates.
+/// display the two effort inputs but do not present these derived load estimates — except
+/// `topLoadKg`, which History's "Load per grip" card draws beside the average.
 object TrainingLoad {
 
     /// Borg CR-10, which is the scale session-RPE is defined on.
@@ -62,6 +63,48 @@ object TrainingLoad {
             val total = totals[day] ?: (0.0 to 0.0)
             DayLoad(day = day, systemic = total.first, finger = total.second)
         }
+    }
+
+    /// The share of held time `topLoadKg` reads by default: the hardest 5 %.
+    const val TOP_LOAD_FRACTION = 0.05
+
+    /// **What you held for your hardest `fraction` of time**, in kilograms — History's
+    /// "Hardest 5 % of time" chart, beside the "Average load" one (2026-10-31). The session
+    /// mean is dragged down by warm-up pulls at 60–70 % before the hard sets, so a session
+    /// that ended heavier can read as a weaker one; this line ignores them unasked.
+    ///
+    /// Reps that count: COMPLETED, measured (`avgKg > 0` — a gauge-free rep logs 0 kg
+    /// because nothing was measured, not because nothing was pulled) and with held time.
+    /// Sorted heaviest first, they are walked until `fraction` of the total held seconds is
+    /// covered; the rep that crosses the boundary contributes only the slice of its seconds
+    /// still needed. The answer is the time-weighted mean load over that slice.
+    ///
+    /// Null when nothing qualifies — no held time is a blank, never a zero. Derived on read
+    /// and stored nowhere: changing the fraction is a code change, not a migration.
+    /// `Fixtures/trend/top-load.json` pins it on both engines.
+    fun topLoadKg(reps: List<RepSummary>, fraction: Double = TOP_LOAD_FRACTION): Double? {
+        if (!(fraction > 0) || !fraction.isFinite()) return null
+        // `sortedByDescending` is stable: equal loads give the same mean in any order, but
+        // the walk stays reproducible.
+        val held = reps
+            .filter {
+                it.outcome == RepOutcome.completed && it.avgKg > 0 && it.avgKg.isFinite() &&
+                    it.heldSeconds > 0 && it.heldSeconds.isFinite()
+            }
+            .sortedByDescending { it.avgKg }
+        val total = held.sumOf { it.heldSeconds }
+        if (!(total > 0)) return null
+
+        val budget = total * minOf(fraction, 1.0)
+        var covered = 0.0
+        var weighted = 0.0
+        for (rep in held) {
+            val slice = minOf(rep.heldSeconds, budget - covered)
+            if (!(slice > 0)) break
+            covered += slice
+            weighted += rep.avgKg * slice
+        }
+        return if (covered > 0) weighted / covered else null
     }
 
     /// RAW rolling sums. No ratio, no verdict, no "sweet spot" — the schema stores

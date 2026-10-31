@@ -9,13 +9,17 @@ Who asserts what is NOT symmetric, and it is worth knowing before trusting a gre
 - **Kotlin reads every family.** `android/engine/src/test/kotlin/.../*FixtureTests.kt` covers
   `blob/` (`BlobFixtureTests`, `JsonFixtureTests`), `codec/` (`CodecFixtureTests`), `keys/`
   (`KeyFixtureTests`), `planmath/` (`PlanMathFixtureTests`), `export/` (`ExportFixtureTests`),
-  `runner/` (`RunnerFixtureTests`) and `share/` (`ShareFixtureTests`).
+  `runner/` (`RunnerFixtureTests`), `share/` (`ShareFixtureTests`) and `trend/`
+  (`TopLoadFixtureTests`).
 - **Swift reads three**, through the oracle in `tools/oracle/`: `runner verify`, `share verify`
   and `export verify`. There is no Swift reader for `blob/`, `codec/`, `keys/` or `planmath/` —
   the iOS side asserts those rules in its own XCTest files against the same values, not against
   these files. (An earlier version of this README promised a
   `Tests/FixtureConformanceTests.swift`; it was never written. Adding one is the obvious way to
   close the gap, and until then a change to those four families is only checked on Kotlin.)
+  `trend/` is the exception: `Tests/TopLoadFixtureTests.swift` reads the file straight off the
+  repository (a simulator test process sees the host's file system), so both engines assert
+  the same bytes.
 
 Every file is plain JSON, except the export documents, which are Markdown and CSV. "Canonical JSON" always means the
 byte-exact output of `BlobCodec` (Foundation `JSONEncoder([.sortedKeys])`): compact, sorted keys,
@@ -143,6 +147,16 @@ files, of which 108 are CSV:
   day the DTO shape changes it goes stale by hand or not at all. It needs a builder restoring or
   the eight files deleting — a decision for the maintainer, recorded here rather than tidied
   away.
+
+## `trend/`
+
+- `top-load.json` — `{description, cases:[{name, fraction, reps:[{avgKg, heldSeconds, outcome}],
+  expectKg|null}]}`. `TrainingLoad.topLoadKg(of:fraction:)`, the value History's "Load per grip"
+  card plots in its "Hardest 5 % of time" chart (beside the unchanged average): the time-weighted mean load over the hardest `fraction` of held time. Only reps
+  that are `completed`, measured (`avgKg > 0`) and held (`heldSeconds > 0`) count; sorted
+  heaviest first, they are walked until `fraction` × the total held seconds is covered, and the
+  rep crossing that boundary contributes only the slice still needed. `expectKg: null` is the
+  blank (nothing qualifies) — never a zero. Compared within 1e-9.
 
 ## `runner/`
 

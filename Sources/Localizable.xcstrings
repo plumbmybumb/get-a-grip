@@ -3404,6 +3404,16 @@
         }
       }
     },
+    "Average load" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charge moyenne"
+          }
+        }
+      }
+    },
     "away from the gauge" : {
       "localizations" : {
         "fr" : {
@@ -5869,6 +5879,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Plus dur que ton max"
+          }
+        }
+      }
+    },
+    "Hardest 5 % of time" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les 5 % du temps les plus durs"
           }
         }
       }

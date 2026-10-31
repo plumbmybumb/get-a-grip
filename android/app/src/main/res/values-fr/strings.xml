@@ -281,6 +281,7 @@
     <string name="s_at_the_climbing_gym_d41f29">À la salle d\'escalade</string>
     <string name="s_average">Moyenne</string>
     <string name="s_average_force_per_pull">Force moyenne par tirage</string>
+    <string name="s_average_load">Charge moyenne</string>
     <string name="s_average_per_pull">Moyenne par tirage</string>
     <string name="s_average_lld_s_left">Moyenne · encore %d s</string>
     <string name="s_away_from_the_gauge_24683a">Loin du capteur</string>
@@ -558,6 +559,7 @@
     <string name="s_hard">Dur</string>
     <string name="s_hard_bouldering_or_projecting_at_your_limit">Bloc dur ou projet, à ta limite.</string>
     <string name="s_harder_than_your_max">Plus dur que ton max</string>
+    <string name="s_hardest_5_of_time">Les 5 % du temps les plus durs</string>
     <string name="s_heaviest_pull_ce2bb6">Tirage le plus lourd</string>
     <string name="s_hello">Hello,</string>
     <string name="s_hides_the_chart_and_actions">Masque le graphique et les actions</string>

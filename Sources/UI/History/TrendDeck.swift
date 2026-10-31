@@ -99,6 +99,12 @@ struct TrendDeck: View, Equatable {
     /// into a zigzag that tracked which routine ran. Averaged, not peak: this is volume
     /// training, and the session mean is what the fingers absorbed.
     ///
+    /// A SECOND chart sits under it: what each session held for its hardest 5 % of time on
+    /// that grip (`TrainingLoad.topLoadKg`, Gleb, 2026-10-31) — warm-up pulls at 60–70 %
+    /// drag the mean down, and this line ignores them unasked. In addition to the average,
+    /// never instead (Nuri): each chart is labelled over itself so the two cannot be confused,
+    /// and both share the session x-axis.
+    ///
     /// Three horizontal gestures share this screen (the deck, the grip chips, row
     /// swipe-to-delete), so the deck moves ONE card per swipe and the chip row hands the
     /// drag back whenever its chips fit (`.basedOnSize`).
@@ -144,11 +150,8 @@ struct TrendDeck: View, Equatable {
                         .foregroundStyle(Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    chart(series)
-                    Text(trendSummary(series))
-                        .font(.system(.footnote))
-                        .monospacedDigit()
-                        .foregroundStyle(Ink.tertiary)
+                    trendBlock(String(localized: "Average load"), series, value: \.avgKg)
+                    trendBlock(String(localized: "Hardest 5 % of time"), series, value: \.topKg)
                 }
             }
             .frame(maxHeight: .infinity, alignment: .top)
@@ -167,11 +170,18 @@ struct TrendDeck: View, Equatable {
                     .fixedSize()
                     .hidden()
                     .padding(.vertical, 2)
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 170)
-                Text(verbatim: " ")
-                    .font(.system(.footnote))
+                ForEach(0..<2, id: \.self) { block in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(verbatim: " ")
+                            .font(.system(.subheadline, weight: .semibold))
+                        ProgressView()
+                            .opacity(block == 0 ? 1 : 0)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: Self.chartHeight)
+                        Text(verbatim: " ")
+                            .font(.system(.footnote))
+                    }
+                }
             }
         }
         .accessibilityElement(children: .ignore)
@@ -213,7 +223,30 @@ struct TrendDeck: View, Equatable {
         .sensoryFeedback(.selection, trigger: selectedGripKey)
     }
 
-    private func chart(_ series: [TrendModel.Point]) -> some View {
+    /// Each chart's height. Two stack in a card, so it is one constant for the placeholder too.
+    private static let chartHeight: CGFloat = 170
+
+    /// One labelled chart and its one-line verdict. The label is spoken with the chart, so it
+    /// is hidden on its own.
+    private func trendBlock(_ title: String, _ series: [TrendModel.Point],
+                            value: KeyPath<TrendModel.Point, Double>) -> some View {
+        let summary = trendSummary(series, value: value)
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(.subheadline, weight: .semibold))
+                .foregroundStyle(Ink.secondary)
+                .accessibilityHidden(true)
+            chart(series, value: value, spoken: "\(title). \(summary)")
+            Text(summary)
+                .font(.system(.footnote))
+                .monospacedDigit()
+                .foregroundStyle(Ink.tertiary)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private func chart(_ series: [TrendModel.Point], value: KeyPath<TrendModel.Point, Double>,
+                       spoken: String) -> some View {
         // Sessions, evenly spaced: a break from training is not drawn as a gap. Dates still
         // label the axis, at a few sessions along it.
         let ticks = TrendModel.sessionTicks(count: series.count, desired: narrowChart ? 3 : 4)
@@ -221,15 +254,15 @@ struct TrendDeck: View, Equatable {
             // The runner's brush: bleu 0.28 → 0.02 under the curve (ForceTraceView),
             // since this is the same measured kilograms. A naked hairline read as a
             // second, thinner instrument.
-            AreaMark(x: .value("Session", index), y: .value("Load", weightUnit.fromKg(point.avgKg)))
+            AreaMark(x: .value("Session", index), y: .value("Load", weightUnit.fromKg(point[keyPath: value])))
                 .interpolationMethod(.monotone)
                 .foregroundStyle(LinearGradient(
                     colors: [Accent.bleu.opacity(0.28), Accent.bleu.opacity(0.02)],
                     startPoint: .top, endPoint: .bottom))
-            LineMark(x: .value("Session", index), y: .value("Load", weightUnit.fromKg(point.avgKg)))
+            LineMark(x: .value("Session", index), y: .value("Load", weightUnit.fromKg(point[keyPath: value])))
                 .interpolationMethod(.monotone)
                 .foregroundStyle(Accent.bleu)
-            PointMark(x: .value("Session", index), y: .value("Load", weightUnit.fromKg(point.avgKg)))
+            PointMark(x: .value("Session", index), y: .value("Load", weightUnit.fromKg(point[keyPath: value])))
                 .foregroundStyle(Accent.bleu)
                 .symbolSize(28)
         }
@@ -253,20 +286,22 @@ struct TrendDeck: View, Equatable {
                 AxisValueLabel()
             }
         }
-        .frame(height: 170)
+        .frame(height: Self.chartHeight)
         .onGeometryChange(for: Bool.self, of: { $0.size.width < 300 }) { narrowChart = $0 }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(trendSummary(series))
+        .accessibilityLabel(spoken)
     }
 
-    private func trendSummary(_ series: [TrendModel.Point]) -> String {
-        guard let first = series.first, let last = series.last else { return "" }
-        let delta = last.avgKg - first.avgKg
+    private func trendSummary(_ series: [TrendModel.Point],
+                              value: KeyPath<TrendModel.Point, Double>) -> String {
+        guard let first = series.first?[keyPath: value],
+              let last = series.last?[keyPath: value] else { return "" }
+        let delta = last - first
         let magnitude = weightUnit.number(abs(delta))
         // Under half a kilo across a series is grip noise; calling it progress
         // would be flattery.
         guard abs(delta) >= 0.5 else {
-            return String(localized: "Holding steady around \(weightUnit.number(last.avgKg)) \(weightUnit.symbol).")
+            return String(localized: "Holding steady around \(weightUnit.number(last)) \(weightUnit.symbol).")
         }
         return delta > 0
             ? String(localized: "Up \(magnitude) \(weightUnit.symbol) across \(series.count) sessions.")

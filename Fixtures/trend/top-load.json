@@ -1,0 +1,317 @@
+{
+  "description": "TrainingLoad.topLoadKg, History's 'Load per grip' trend: the time-weighted mean load over the hardest `fraction` of held time. Reps that count (outcome completed, avgKg > 0, heldSeconds > 0) are sorted heaviest first and walked until fraction x total held seconds is covered; the rep that crosses the boundary contributes only the slice still needed. expectKg null = blank (nothing qualifies), never zero. Compare within 1e-9.",
+  "cases": [
+    {
+      "name": "one rep: its own load",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 30,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 30.0
+    },
+    {
+      "name": "equal loads: that load, in any order",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 20,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 20.0
+    },
+    {
+      "name": "a boundary-crossing rep contributes only the slice still needed",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 30,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 40,
+          "heldSeconds": 2,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 10,
+          "heldSeconds": 88,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 34.0
+    },
+    {
+      "name": "the boundary landing exactly on a rep's end",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 20,
+          "heldSeconds": 2,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 30,
+          "heldSeconds": 3,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 10,
+          "heldSeconds": 95,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 26.0
+    },
+    {
+      "name": "warm-ups at 65 % do not drag it down (the session mean is 16.5)",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 13,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 13,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 13,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 13,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 13,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 13,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 7,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 20.0
+    },
+    {
+      "name": "the heaviest rep alone covers the 5 %",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 10,
+          "heldSeconds": 50,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 25,
+          "heldSeconds": 50,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 25.0
+    },
+    {
+      "name": "only completed reps count, however heavy the others",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 50,
+          "heldSeconds": 10,
+          "outcome": "skipped"
+        },
+        {
+          "avgKg": 45,
+          "heldSeconds": 10,
+          "outcome": "aborted"
+        },
+        {
+          "avgKg": 40,
+          "heldSeconds": 10,
+          "outcome": "earlyRelease"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 20.0
+    },
+    {
+      "name": "an unmeasured 0 kg rep adds no time",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 0,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 18,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 18.0
+    },
+    {
+      "name": "sub-second held times, crossing inside the second rep",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 22.4,
+          "heldSeconds": 6.8,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 21.9,
+          "heldSeconds": 7.0,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 15.0,
+          "heldSeconds": 140.0,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 22.342132639791938
+    },
+    {
+      "name": "fraction 1 is the time-weighted session mean",
+      "fraction": 1.0,
+      "reps": [
+        {
+          "avgKg": 20,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 10,
+          "heldSeconds": 30,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 12.5
+    },
+    {
+      "name": "a larger fraction walks further",
+      "fraction": 0.25,
+      "reps": [
+        {
+          "avgKg": 10,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 20,
+          "heldSeconds": 5,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 40,
+          "heldSeconds": 1,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 30,
+          "heldSeconds": 4,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": 32.0
+    },
+    {
+      "name": "zero held time is blank, never zero",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 20,
+          "heldSeconds": 0,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 25,
+          "heldSeconds": 0,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": null
+    },
+    {
+      "name": "a timer-only session is blank",
+      "fraction": 0.05,
+      "reps": [
+        {
+          "avgKg": 0,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        },
+        {
+          "avgKg": 0,
+          "heldSeconds": 10,
+          "outcome": "completed"
+        }
+      ],
+      "expectKg": null
+    },
+    {
+      "name": "no reps is blank",
+      "fraction": 0.05,
+      "reps": [],
+      "expectKg": null
+    }
+  ]
+}

@@ -14,7 +14,7 @@ import run.nuri.getagrip.R
 // twice: once positioned (`%1$s · %2$s`) and once under the unpositioned
 // alias `:engine` writes, so both resolve to the one positioned resource.
 
-val STRING_KEYS: Map<String, Int> = buildMap(1390) {
+val STRING_KEYS: Map<String, Int> = buildMap(1392) {
     string_keysChunk0(this)
     string_keysChunk1(this)
     string_keysChunk2(this)
@@ -364,6 +364,7 @@ private fun string_keysChunk2(into: MutableMap<String, Int>) {
     into["At the climbing gym"] = R.string.s_at_the_climbing_gym_d41f29
     into["Average"] = R.string.s_average
     into["Average force per pull"] = R.string.s_average_force_per_pull
+    into["Average load"] = R.string.s_average_load
     into["Average per pull"] = R.string.s_average_per_pull
     into["Average · %d s left"] = R.string.s_average_lld_s_left
     into["Away from the gauge"] = R.string.s_away_from_the_gauge_24683a
@@ -483,10 +484,10 @@ private fun string_keysChunk2(into: MutableMap<String, Int>) {
     into["Couldn't write to Photos."] = R.string.a_couldn_t_write_to_photos
     into["Couldn’t save. Your measurements are still here — try again."] = R.string.s_couldn_t_save_your_measurements_are_still_here_try_again
     into["Counting"] = R.string.s_counting
-    into["Counts as one session for %s."] = R.string.s_counts_as_one_session_for
 }
 
 private fun string_keysChunk3(into: MutableMap<String, Int>) {
+    into["Counts as one session for %s."] = R.string.s_counts_as_one_session_for
     into["Create with AI"] = R.string.s_create_with_ai
     into["Critical force"] = R.string.s_critical_force_648670
     into["Critical force %1\$s %2\$s"] = R.string.s_critical_force_dd9046
@@ -636,10 +637,10 @@ private fun string_keysChunk3(into: MutableMap<String, Int>) {
     into["Gauge not connected"] = R.string.s_gauge_not_connected
     into["Gauge protocols by Stevie-Ray Hartog (© 2024, BSD-2-Clause)."] = R.string.s_gauge_protocols_by_stevie_ray_hartog_2024_bsd_2_clause
     into["Gauge. Currently %1\$s. %2\$s"] = R.string.s_gauge_currently_cbee3f
-    into["Gauge. Currently %s."] = R.string.s_gauge_currently_ee3b46
 }
 
 private fun string_keysChunk4(into: MutableMap<String, Int>) {
+    into["Gauge. Currently %s."] = R.string.s_gauge_currently_ee3b46
     into["Gauge. Currently %s. %s"] = R.string.s_gauge_currently_cbee3f
     into["Gauge: %1\$s%2\$s"] = R.string.s_gauge_45f0de
     into["Gauge: %1\$s%2\$s. %3\$s"] = R.string.s_gauge_c36f16
@@ -675,6 +676,7 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Hard"] = R.string.s_hard
     into["Hard bouldering or projecting, at your limit."] = R.string.s_hard_bouldering_or_projecting_at_your_limit
     into["Harder than your max"] = R.string.s_harder_than_your_max
+    into["Hardest 5 % of time"] = R.string.s_hardest_5_of_time
     into["Heaviest pull"] = R.string.s_heaviest_pull_ce2bb6
     into["Hello,"] = R.string.s_hello
     into["Hides the chart and actions"] = R.string.s_hides_the_chart_and_actions
@@ -788,11 +790,11 @@ private fun string_keysChunk4(into: MutableMap<String, Int>) {
     into["Maxes. What you can pull on each grip."] = R.string.s_maxes_what_you_can_pull_on_each_grip
     into["Measure"] = R.string.s_measure
     into["Measure a max"] = R.string.s_measure_a_max
-    into["Measure again"] = R.string.s_measure_again
-    into["Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom."] = R.string.s_measure_again_opens_the_gauge_for_this_grip_edit_changes
 }
 
 private fun string_keysChunk5(into: MutableMap<String, Int>) {
+    into["Measure again"] = R.string.s_measure_again
+    into["Measure again opens the gauge for this grip. Edit changes your hand values and opens earlier records. Add a max is at the bottom."] = R.string.s_measure_again_opens_the_gauge_for_this_grip_edit_changes
     into["Measure both hands together"] = R.string.s_measure_both_hands_together
     into["Measure it on the gauge, or pull as hard as you can and set the number yourself. It doesn't have to be exact, and you can add a newer one whenever it changes."] = R.string.s_measure_it_on_the_gauge_or_pull_as_hard_as_you_can_and_s
     into["Measure left hand"] = R.string.s_measure_left_hand
@@ -941,11 +943,11 @@ private fun string_keysChunk5(into: MutableMap<String, Int>) {
     into["Pause is unavailable while connecting."] = R.string.s_pause_is_unavailable_while_connecting
     into["Pause the clock"] = R.string.s_pause_the_clock
     into["Pause timer"] = R.string.s_pause_timer
-    into["Pause when I'm out of range"] = R.string.s_pause_when_i_m_out_of_range
-    into["Paused"] = R.string.s_paused_c7dfb6
 }
 
 private fun string_keysChunk6(into: MutableMap<String, Int>) {
+    into["Pause when I'm out of range"] = R.string.s_pause_when_i_m_out_of_range
+    into["Paused"] = R.string.s_paused_c7dfb6
     into["Peak"] = R.string.s_peak_c83dbb
     into["Peak max"] = R.string.s_peak_max
     into["Per set"] = R.string.s_per_set
@@ -1094,11 +1096,11 @@ private fun string_keysChunk6(into: MutableMap<String, Int>) {
     into["Sessions a day"] = R.string.s_sessions_a_day
     into["Sessions and trends"] = R.string.s_sessions_and_trends
     into["Sessions: %1\$d · Max records: %2\$d"] = R.string.s_sessions_lld_max_records_lld
-    into["Sessions: %d · Max records: %d"] = R.string.s_sessions_lld_max_records_lld
-    into["Set"] = R.string.s_set_448ab7
 }
 
 private fun string_keysChunk7(into: MutableMap<String, Int>) {
+    into["Sessions: %d · Max records: %d"] = R.string.s_sessions_lld_max_records_lld
+    into["Set"] = R.string.s_set_448ab7
     into["Set %1\$d of %2\$d"] = R.string.s_set_lld_of_lld_8e1097
     into["Set %1\$d of %2\$d · %3\$s"] = R.string.s_set_lld_of_lld_f52e6b
     into["Set %1\$d of %2\$d, pull %3\$d of %4\$d, %5\$s hand, %6\$s"] = R.string.s_set_lld_of_lld_pull_lld_of_lld_hand
@@ -1247,11 +1249,11 @@ private fun string_keysChunk7(into: MutableMap<String, Int>) {
     into["This routine has no sets. Ask the AI to add at least one."] = R.string.s_this_routine_has_no_sets_ask_the_ai_to_add_at_least_one
     into["This routine is too large to import."] = R.string.s_this_routine_is_too_large_to_import
     into["This routine needs a newer Get a Grip. Update the app to import it."] = R.string.s_this_routine_needs_a_newer_get_a_grip_update_the_app_to
-    into["This routine runs over an hour."] = R.string.s_this_routine_runs_over_an_hour
-    into["Thumb"] = R.string.s_thumb_557518
 }
 
 private fun string_keysChunk8(into: MutableMap<String, Int>) {
+    into["This routine runs over an hour."] = R.string.s_this_routine_runs_over_an_hour
+    into["Thumb"] = R.string.s_thumb_557518
     into["Thumb, %s"] = R.string.s_thumb_2ce0ce
     into["Time for a session."] = R.string.s_time_for_a_session
     into["Timed max"] = R.string.s_timed_max
@@ -1400,11 +1402,11 @@ private fun string_keysChunk8(into: MutableMap<String, Int>) {
     into["of %d"] = R.string.s_of_lld
     into["of %d today"] = R.string.s_of_lld_today
     into["of your %d s max"] = R.string.s_of_your_lld_s_max
-    into["official protocol, untested here"] = R.string.s_official_protocol_untested_here
-    into["over a year ago"] = R.string.a_over_a_year_ago
 }
 
 private fun string_keysChunk9(into: MutableMap<String, Int>) {
+    into["official protocol, untested here"] = R.string.s_official_protocol_untested_here
+    into["over a year ago"] = R.string.a_over_a_year_ago
     into["peak %1\$s %2\$s"] = R.string.s_peak_194d5b
     into["peak %s %s"] = R.string.s_peak_194d5b
     into["peak %s kilograms"] = R.string.s_peak_kilograms

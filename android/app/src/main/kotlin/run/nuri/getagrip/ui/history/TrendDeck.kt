@@ -138,6 +138,12 @@ private class ByIdentity<T : Any>(val value: T) {
 /// zigzag that tracked which routine ran. Averaged, not peak: this is volume training, and
 /// the session mean is what the fingers absorbed.
 ///
+/// A SECOND chart sits under it: what each session held for its hardest 5 % of time on that
+/// grip (`TrainingLoad.topLoadKg`, Gleb, 2026-10-31) — warm-up pulls at 60–70 % drag the mean
+/// down, and this line ignores them unasked. In addition to the average, never instead
+/// (Nuri): each chart is labelled over itself so the two cannot be confused, and both share
+/// the session x-axis.
+///
 /// TRANSLATION NOTE: iOS pages with `.viewAligned(limitBehavior: .always)` — one card per
 /// swipe, because three horizontal gestures share this screen (the deck, the grip chips, row
 /// swipe actions). `HorizontalPager` does that by default, and nested scrolling hands a drag
@@ -222,15 +228,8 @@ private fun TrendCard(
                         color = palette.inkSecondary,
                     )
                 } else {
-                    val summary = trendSummary(series)
-                    TrendChart(series, summary)
-                    Text(
-                        summary,
-                        style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                        color = palette.inkTertiary,
-                        // The chart already speaks this sentence; once is enough.
-                        modifier = Modifier.clearAndSetSemantics {},
-                    )
+                    TrendBlock(tr("Average load"), series) { it.avgKg }
+                    TrendBlock(tr("Hardest 5 % of time"), series) { it.topKg }
                 }
             }
         }
@@ -276,10 +275,18 @@ private fun PlaceholderCard(modifier: Modifier = Modifier) {
             CapsLabel(label)
             Text(" ", style = MaterialTheme.typography.titleLarge)
             Box(Modifier.height(48.dp))
-            Box(Modifier.fillMaxWidth().height(CHART_HEIGHT), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(Modifier.size(24.dp), color = palette.inkTertiary, strokeWidth = 2.dp)
+            // Two blocks, as a charted card draws them.
+            for (block in 0 until 2) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(" ", style = blockTitleStyle())
+                    Box(Modifier.fillMaxWidth().height(CHART_HEIGHT), contentAlignment = Alignment.Center) {
+                        if (block == 0) {
+                            CircularProgressIndicator(Modifier.size(24.dp), color = palette.inkTertiary, strokeWidth = 2.dp)
+                        }
+                    }
+                    Text(" ", style = MaterialTheme.typography.bodySmall)
+                }
             }
-            Text(" ", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -304,10 +311,38 @@ private fun EmptyTrendCard(modifier: Modifier = Modifier) {
     }
 }
 
+/// One labelled chart and its one-line verdict. The label and the sentence are spoken with the
+/// chart, so neither is spoken on its own.
 @Composable
-private fun trendSummary(series: List<TrendModel.Point>): String {
+private fun TrendBlock(title: String, series: List<TrendModel.Point>, value: (TrendModel.Point) -> Double) {
+    val palette = LocalGripPalette.current
+    val summary = trendSummary(series, value)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            title,
+            style = blockTitleStyle(),
+            color = palette.inkSecondary,
+            modifier = Modifier.clearAndSetSemantics {},
+        )
+        TrendChart(series, series.map(value), "$title. $summary")
+        Text(
+            summary,
+            style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+            color = palette.inkTertiary,
+            // The chart already speaks this sentence; once is enough.
+            modifier = Modifier.clearAndSetSemantics {},
+        )
+    }
+}
+
+/// iOS's `.subheadline` semibold.
+@Composable
+private fun blockTitleStyle() = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+
+@Composable
+private fun trendSummary(series: List<TrendModel.Point>, value: (TrendModel.Point) -> Double): String {
     val unit = WeightUnits.current
-    return when (val summary = TrendModel.summary(series)) {
+    return when (val summary = TrendModel.summary(series, value)) {
         null -> ""
         is TrendModel.Summary.Steady ->
             tr("Holding steady around %s %s.", unit.number(summary.lastKg), unit.symbol)
@@ -328,7 +363,7 @@ private val CHART_HEIGHT = 170.dp
 /// Quiet axes, as Swift Charts draws them here: tertiary-ink gridlines at 20 %, four date
 /// marks along the bottom, value marks from zero on the trailing edge, the unit over them.
 @Composable
-private fun TrendChart(series: List<TrendModel.Point>, spoken: String) {
+private fun TrendChart(series: List<TrendModel.Point>, kg: List<Double>, spoken: String) {
     val palette = LocalGripPalette.current
     val unit: WeightUnit = WeightUnits.current
     val measurer = rememberTextMeasurer()
@@ -354,7 +389,7 @@ private fun TrendChart(series: List<TrendModel.Point>, spoken: String) {
             .height(CHART_HEIGHT)
             .clearAndSetSemantics { contentDescription = spoken },
     ) {
-        val values = series.map { unit.fromKg(it.avgKg) }
+        val values = kg.map { unit.fromKg(it) }
         val ticks = TrendChartGeometry.valueTicks(values.max())
         val top = ticks.last()
         val step = if (ticks.size > 1) ticks[1] - ticks[0] else 1.0
