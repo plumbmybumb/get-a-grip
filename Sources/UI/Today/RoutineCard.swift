@@ -124,43 +124,109 @@ struct RoutineCard: View, Equatable {
 
     // MARK: - 1 · Title
 
-    private var titleRow: some View {
-        HStack(spacing: 0) {
-            // The routine's SIGNATURE grip leads the name. Without the ladder the card
-            // went "bland and text heavy", and an identical badge on every card failed
-            // too (Nuri, 2026-08-17). One derived mark: identity that differs exactly
-            // when the routines do.
-            EdgeMark(fingers: summary.signatureFingers ?? .four, rungTint: rungTint)
-                .padding(.trailing, 10)
-
-            // `.title2`, a notch above other card titles: on the deck this card IS the
-            // chooser, and the name is what a peeking card must say. Still `.semibold`.
-            Text(summary.name)
-                .font(.system(.title2, weight: .semibold))
-                .foregroundStyle(Ink.primary)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-                // The border's spoken counterpart: a stroke is invisible to VoiceOver.
-                .accessibilityLabel(isUpNext ? String(localized: "\(summary.name). Up next.") : summary.name)
-
-            Spacer(minLength: 8)
-
-            Menu {
-                menuItems
-            } label: {
-                // 44pt frame + content shape, and NO glass (muddy inside a material card);
-                // otherwise only the glyph's opaque pixels hit-test.
-                Image(systemName: "ellipsis")
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(Ink.secondary)
-                    .frame(width: 44, height: 44)
-                    .contentShape(.circle)
+    /// The mark and the ⋯ button flank the name while its longest WORD fits between them;
+    /// otherwise they take a row of their own and the name gets the card's whole width.
+    /// Beside them, "Daily no-hangs" hyphenated to "Daily no- / hangs" at
+    /// accessibility-medium on a 13 mini and at XXXL in a 303 pt Duo grid cell (2026-10-31).
+    /// Always stacked at accessibility sizes: big type is served by words.
+    @ViewBuilder private var titleRow: some View {
+        if typeSize.isAccessibilitySize {
+            stackedTitleRow
+        } else {
+            // Width-only, on one row, so the page-level ViewThatFits trap (the large-title
+            // proposal) does not apply.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 0) {
+                    edgeMark
+                        .padding(.trailing, 10)
+                    ZStack(alignment: .topLeading) {
+                        longestWordGauge
+                        // Ideal width ZERO, so the fit is judged by the gauge beside it, the
+                        // longest word, and never by the whole name on one line: a name that
+                        // wraps by words beside the mark is the ordinary case.
+                        routineName.lineLimit(2)
+                            .frame(idealWidth: 0, maxWidth: .infinity, alignment: .leading)
+                    }
+                    Spacer(minLength: 8)
+                    optionsMenu
+                }
+                stackedTitleRow
             }
-            // Pulls the glyph back onto the card's inner edge while the target stays 44.
-            .padding(.trailing, -10)
-            .accessibilityLabel(String(localized: "Routine options"))
-            // The timer-only option lives here while a connected gauge hides its shortcut.
         }
+    }
+
+    private var stackedTitleRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 0) {
+                edgeMark
+                Spacer(minLength: 8)
+                optionsMenu
+            }
+            // Three lines, not two: alone on its row, a long name wraps by words instead
+            // of shrinking into a hyphen.
+            routineName.lineLimit(3)
+        }
+    }
+
+    /// Every word of the name, unbreakable, stacked and invisible: its width is the
+    /// narrowest the name can be set without splitting a word. Zero height, so it never
+    /// moves the row.
+    private var longestWordGauge: some View {
+        let words = unbrokenName.split(whereSeparator: \.isWhitespace).map(String.init)
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(words.enumerated()), id: \.offset) { _, word in
+                Text(verbatim: word)
+                    .font(.system(.title2, weight: .semibold))
+                    .fixedSize()
+            }
+        }
+        .frame(height: 0, alignment: .top)
+        .hidden()
+        .accessibilityHidden(true)
+    }
+
+    /// The routine's SIGNATURE grip leads the name. Without the ladder the card went "bland
+    /// and text heavy", and an identical badge on every card failed too (Nuri, 2026-08-17).
+    /// One derived mark: identity that differs exactly when the routines do.
+    private var edgeMark: some View {
+        EdgeMark(fingers: summary.signatureFingers ?? .four, rungTint: rungTint)
+    }
+
+    /// `.title2`, a notch above other card titles: on the deck this card IS the chooser, and
+    /// the name is what a peeking card must say. Still `.semibold`.
+    private var routineName: some View {
+        Text(unbrokenName)
+            .font(.system(.title2, weight: .semibold))
+            .foregroundStyle(Ink.primary)
+            .minimumScaleFactor(0.8)
+            // The border's spoken counterpart: a stroke is invisible to VoiceOver.
+            .accessibilityLabel(isUpNext ? String(localized: "\(summary.name). Up next.") : summary.name)
+    }
+
+    /// The name as DRAWN, with every hyphen non-breaking (U+2011): a hyphen is a legal line
+    /// break, so a name too wide for one line split "Daily no- / hangs" even with the whole
+    /// word room to spare below. Compounds now wrap whole, at a space, which is also what
+    /// `longestWordGauge` measures. VoiceOver keeps the name as typed.
+    private var unbrokenName: String {
+        summary.name.replacingOccurrences(of: "-", with: "\u{2011}")
+    }
+
+    private var optionsMenu: some View {
+        Menu {
+            menuItems
+        } label: {
+            // 44pt frame + content shape, and NO glass (muddy inside a material card);
+            // otherwise only the glyph's opaque pixels hit-test.
+            Image(systemName: "ellipsis")
+                .font(.system(.subheadline, weight: .semibold))
+                .foregroundStyle(Ink.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(.circle)
+        }
+        // Pulls the glyph back onto the card's inner edge while the target stays 44.
+        .padding(.trailing, -10)
+        .accessibilityLabel(String(localized: "Routine options"))
+        // The timer-only option lives here while a connected gauge hides its shortcut.
     }
 
     /// Nuri's intensity ladder for the rung (2026-08-17): how hard the routine is, at a
@@ -237,15 +303,19 @@ struct RoutineCard: View, Equatable {
                     .font(.system(.subheadline, weight: summary.completedToday > 0 ? .semibold : .medium))
                     .foregroundStyle(summary.completedToday > 0 ? Ink.primary : Ink.secondary)
             } else if summary.sessionsPerDay > 1 {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(summary.completedToday, format: .number)
-                        .font(.system(.title3, weight: .medium))
-                        .monospacedDigit()
+                if typeSize.isAccessibilitySize {
+                    // ONE Text, so it wraps as one sentence: as two views, "of 2 today"
+                    // wrapped under itself beside the numeral and the pieces lost their
+                    // shared baseline (accessibility3, 2026-10-31). Interpolated Text keeps
+                    // each run's font, and "%@ %@" is a key the catalog already has.
+                    Text("\(tallyNumeral) \(tallyRest)")
                         .contentTransition(.numericText())
-                        .foregroundStyle(Ink.primary)
-                    Text("of \(summary.sessionsPerDay) today")
-                        .font(.system(.subheadline, weight: .medium))
-                        .foregroundStyle(Ink.secondary)
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        tallyNumeral
+                            .contentTransition(.numericText())
+                        tallyRest
+                    }
                 }
             } else {
                 // "1 of 1" is silly; say what the number stood for.
@@ -265,6 +335,20 @@ struct RoutineCard: View, Equatable {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(completionText)
+    }
+
+    /// The "2" of "2 of 2 today".
+    private var tallyNumeral: Text {
+        Text(summary.completedToday, format: .number)
+            .font(.system(.title3, weight: .medium))
+            .monospacedDigit()
+            .foregroundStyle(Ink.primary)
+    }
+
+    private var tallyRest: Text {
+        Text("of \(summary.sessionsPerDay) today")
+            .font(.system(.subheadline, weight: .medium))
+            .foregroundStyle(Ink.secondary)
     }
 
     /// "at the gym", plus any hang rounds anyway — said second, as the extra on a day
@@ -366,11 +450,13 @@ struct RoutineCard: View, Equatable {
                     ViewThatFits(in: .horizontal) {
                         statRow(compact: false)
                         statRow(compact: true)
+                        // Two lines, as at accessibility sizes: on one, a 13 mini at XXXL cut
+                        // "≈21 min" to "≈21…", the fact the row exists for (2026-10-31).
                         Text(summary.metaLine)
                             .font(.system(.footnote))
                             .monospacedDigit()
                             .foregroundStyle(Ink.secondary)
-                            .lineLimit(1)
+                            .lineLimit(2)
                             .minimumScaleFactor(0.8)
                     }
                 }

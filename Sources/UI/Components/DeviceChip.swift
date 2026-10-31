@@ -11,6 +11,12 @@ import SwiftUI
 /// the hit target: glass INSIDE the label, then `.contentShape(.capsule)`.
 struct DeviceChip: View {
     @Environment(DeviceStore.self) private var device
+    /// Set the title on ONE line. Today's header asks for it on the row it shares with the
+    /// reminder time, inside a `ViewThatFits`: a wrappable title let that row "fit" and then
+    /// squeezed the capsule into a circle reading "Not / con- / nected" (accessibility3,
+    /// 2026-10-31). Where one line does not fit, the header stacks and the title wraps by
+    /// words, which a long disconnect reason may need.
+    var titleOnOneLine = false
 
     var body: some View {
         if device.state.isConnected && !device.canCancelBroadcastSearch {
@@ -57,6 +63,7 @@ struct DeviceChip: View {
             Text(title)
                 .font(.system(.subheadline, weight: .semibold))
                 .foregroundStyle(Ink.primary)
+                .fixedSize(horizontal: titleOnOneLine, vertical: false)
 
             if device.canCancelBroadcastSearch {
                 Image(systemName: "xmark")

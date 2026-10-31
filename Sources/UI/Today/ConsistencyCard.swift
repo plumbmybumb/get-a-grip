@@ -27,9 +27,17 @@ struct ConsistencyCard: View {
                 // "Log a / session" although the row fit. Where even one line cannot fit,
                 // the glyph alone stands in — same button, same spoken label. Not at
                 // accessibility sizes: big-text readers are served by words, so there the
-                // title wraps as it always did.
+                // button drops BELOW the label when one line cannot fit beside it, rather
+                // than wrapping to "Log a / session" inside its capsule (13 mini at
+                // accessibility-medium, 2026-10-31).
                 if typeSize.isAccessibilitySize {
-                    header(logTitle: .wrapping)
+                    ViewThatFits(in: .horizontal) {
+                        header(logTitle: .oneLine)
+                        VStack(alignment: .leading, spacing: 4) {
+                            historyLink
+                            logClimbButton(title: .wrapping)
+                        }
+                    }
                 } else {
                     ViewThatFits(in: .horizontal) {
                         header(logTitle: .oneLine)
@@ -71,21 +79,25 @@ struct ConsistencyCard: View {
 
     private func header(logTitle: LogTitle?) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Button(action: onShowHistory) {
-                HStack(spacing: 6) {
-                    CapsLabel(String(localized: "Last 14 days"))
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Ink.tertiary)
-                    Spacer(minLength: 0)
-                }
-                .frame(minHeight: 44)
-                .contentShape(.rect)
-            }
-            .buttonStyle(PressFeedbackButtonStyle())
-            .accessibilityLabel("History")
+            historyLink
             logClimbButton(title: logTitle)
         }
+    }
+
+    private var historyLink: some View {
+        Button(action: onShowHistory) {
+            HStack(spacing: 6) {
+                CapsLabel(String(localized: "Last 14 days"))
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Ink.tertiary)
+                Spacer(minLength: 0)
+            }
+            .frame(minHeight: 44)
+            .contentShape(.rect)
+        }
+        .buttonStyle(PressFeedbackButtonStyle())
+        .accessibilityLabel("History")
     }
 
     /// Glass INSIDE the label, then the content shape, then the button style — the house

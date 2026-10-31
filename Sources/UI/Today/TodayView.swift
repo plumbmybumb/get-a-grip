@@ -307,18 +307,36 @@ struct TodayView: View {
 
     // MARK: - Header
 
+    /// The chip and the reminder time share a row while both fit on one line each; when
+    /// they cannot, they STACK, rather than the row squeezing the chip into a circle that
+    /// hyphenates "Not con- nected" (accessibility3 on a 17 Pro) or a tall pill beside the
+    /// time (accessibility-medium on a 13 mini), both measured 2026-10-31. Width-only, on
+    /// one row, so the page-level `ViewThatFits` trap (the large-title proposal) does not
+    /// apply.
     private func header(_ deck: Deck) -> some View {
-        HStack(spacing: 10) {
-            DeviceChip()
-            Spacer(minLength: 8)
-            if let next = deck.selectedSummary?.nextReminder {
-                Label(next.displayText(), systemImage: "bell")
-                    .font(.system(.footnote))
-                    .monospacedDigit()
-                    .foregroundStyle(Ink.tertiary)
-                    // "19:30" is fine to read and too terse to hear.
-                    .accessibilityLabel("Next reminder at \(next.displayText())")
+        let next = deck.selectedSummary?.nextReminder
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                DeviceChip(titleOnOneLine: true)
+                Spacer(minLength: 8)
+                reminderLabel(next)
             }
+            VStack(alignment: .leading, spacing: 6) {
+                DeviceChip()
+                reminderLabel(next)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func reminderLabel(_ next: ReminderTime?) -> some View {
+        if let next {
+            Label(next.displayText(), systemImage: "bell")
+                .font(.system(.footnote))
+                .monospacedDigit()
+                .foregroundStyle(Ink.tertiary)
+                // "19:30" is fine to read and too terse to hear.
+                .accessibilityLabel("Next reminder at \(next.displayText())")
         }
     }
 
