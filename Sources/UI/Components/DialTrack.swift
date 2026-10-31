@@ -162,7 +162,9 @@ struct DialTrack: View {
                 return abs(ratio - ratio.rounded()) < 0.001
             }
             let gaps = zip(anchors, anchors.dropFirst()).map { CGFloat($1 - $0) * slot }
-            if !anchors.isEmpty, gaps.allSatisfy({ $0 >= minGap }) { return anchors }
+            // Two or more: a lone anchor has no gaps, so it passed vacuously and the dial
+            // showed one number mid-track (found on Android, 2026-10-31, "2h30" alone).
+            if anchors.count >= 2, gaps.allSatisfy({ $0 >= minGap }) { return anchors }
         }
         return [values.startIndex, values.index(before: values.endIndex)]
     }

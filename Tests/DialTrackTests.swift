@@ -52,4 +52,12 @@ final class DialTrackTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(340 / CGFloat(short.count), DialTrack.minLabelSlot,
                                     "The builder's short ladders keep a label on every detent")
     }
+
+    /// Squeezed until only one round number keeps its distance, the scale falls back to
+    /// its two ends rather than labelling a single value mid-track.
+    func testADenseScaleNeverLabelsJustOneAnchor() {
+        let values = (3...60).map(Double.init)
+        let anchors = DialTrack.anchorIndices(values, slot: 1)
+        XCTAssertEqual(anchors, [values.startIndex, values.index(before: values.endIndex)])
+    }
 }
