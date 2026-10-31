@@ -216,46 +216,37 @@ struct MaxesTab: View {
             VStack(alignment: .leading, spacing: 12) {
                 cardHeader(group, isOpen: isOpen)
 
-                HStack(alignment: .bottom, spacing: 12) {
-                Group {
-                    if group.records.isEmpty, !group.timed.isEmpty {
-                        timedReadout(group)
-                    } else if group.records.isEmpty {
-                        if group.tests.isEmpty || isOpen {
-                            Text("No max yet. Measure one to compare with critical force.")
-                                .font(.system(.footnote))
-                                .foregroundStyle(Ink.tertiary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        } else {
-                            // Shut, a critical-force-only grip still states its number.
-                            criticalForceReadout(group)
+                // THE READOUT CHOOSES ITS SHAPE FROM WHAT FITS, not from a size category
+                // (2026-10-31). Three columns plus Measure ran out of room well below the
+                // accessibility sizes, and every column was a third of what was left, so
+                // "29.4" broke one digit per line. Each candidate is measured at its ideal
+                // width, numbers never wrap, and the first that fits is drawn: all in one
+                // row; the hands in a row with Measure under them; the hands stacked (and
+                // Measure as its own full capsule, as at accessibility sizes before).
+                if isOpen {
+                    ViewThatFits(in: .horizontal) {
+                        readout(group, sides: sides, isOpen: true, stacked: false)
+                        readout(group, sides: sides, isOpen: true, stacked: true)
+                    }
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .bottom, spacing: 12) {
+                            readout(group, sides: sides, isOpen: false, stacked: false)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            compactMeasureButton(group.grip)
                         }
-                    } else {
+                        // Same capsule, same bottom-trailing corner as its neighbours,
+                        // one row lower.
+                        VStack(alignment: .leading, spacing: 4) {
+                            readout(group, sides: sides, isOpen: false, stacked: false)
+                            compactMeasureButton(group.grip)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                        }
                         VStack(alignment: .leading, spacing: 12) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                // Named once a second kind of max shares the card.
-                                if !group.timed.isEmpty {
-                                    CapsLabel(String(localized: "Peak max"))
-                                } else if isOpen && !group.tests.isEmpty {
-                                    CapsLabel(String(localized: "Max"))
-                                }
-                                currentReadout(group, sides: sides, showBest: isOpen)
-                            }
-                            if !group.timed.isEmpty { timedReadout(group) }
+                            readout(group, sides: sides, isOpen: false, stacked: true)
+                            measureButton(group.grip, label: String(localized: "Measure"))
                         }
                     }
-                }
-                .contentShape(.rect)
-                .onTapGesture { toggle(group.key) }
-
-                    if !isOpen, !dynamicTypeSize.isAccessibilitySize {
-                        compactMeasureButton(group.grip)
-                    }
-                }
-
-                // At accessibility sizes the readout stacks, so Measure gets its own row.
-                if !isOpen, dynamicTypeSize.isAccessibilitySize {
-                    measureButton(group.grip, label: String(localized: "Measure"))
                 }
 
                 if isOpen {
@@ -267,6 +258,42 @@ struct MaxesTab: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// What a card states about its numbers: peak maxes, timed maxes, or critical force
+    /// alone. `stacked` puts each hand on its own line; `gripCard` picks it by fit.
+    @ViewBuilder
+    private func readout(_ group: GripGroup, sides: [Side], isOpen: Bool, stacked: Bool) -> some View {
+        Group {
+            if group.records.isEmpty, !group.timed.isEmpty {
+                timedReadout(group, stacked: stacked)
+            } else if group.records.isEmpty {
+                if group.tests.isEmpty || isOpen {
+                    Text("No max yet. Measure one to compare with critical force.")
+                        .font(.system(.footnote))
+                        .foregroundStyle(Ink.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    // Shut, a critical-force-only grip still states its number.
+                    criticalForceReadout(group, stacked: stacked)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        // Named once a second kind of max shares the card.
+                        if !group.timed.isEmpty {
+                            CapsLabel(String(localized: "Peak max"))
+                        } else if isOpen && !group.tests.isEmpty {
+                            CapsLabel(String(localized: "Max"))
+                        }
+                        currentReadout(group, sides: sides, showBest: isOpen, stacked: stacked)
+                    }
+                    if !group.timed.isEmpty { timedReadout(group, stacked: stacked) }
+                }
+            }
+        }
+        .contentShape(.rect)
+        .onTapGesture { toggle(group.key) }
+    }
+
     private func toggle(_ key: String) {
         withAnimation(Motion.state(reduceMotion)) {
             if expanded.contains(key) { expanded.remove(key) } else { expanded.insert(key) }
@@ -274,20 +301,38 @@ struct MaxesTab: View {
     }
 
     private func cardHeader(_ group: GripGroup, isOpen: Bool) -> some View {
-        Button { toggle(group.key) } label: {
-            HStack(spacing: 12) {
-                glyphTile(group.grip)
-                Text(group.grip.displayName)
-                    .font(.system(.title3, weight: .semibold))
-                    .foregroundStyle(Ink.primary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                    .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.8)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Ink.tertiary)
+        let title = Text(group.grip.displayName)
+            .font(.system(.title3, weight: .semibold))
+            .foregroundStyle(Ink.primary)
+            .multilineTextAlignment(.leading)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.8)
+            .fixedSize(horizontal: false, vertical: true)
+        let chevron = Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+            .font(.system(.footnote, weight: .semibold))
+            .foregroundStyle(Ink.tertiary)
+        return Button { toggle(group.key) } label: {
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    // The scaled tile beside the name left the name a third of the card,
+                    // one word per line ("20 mm · Front / 3"). Above it, the name gets
+                    // the card's whole width.
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 12) {
+                            glyphTile(group.grip)
+                            Spacer(minLength: 0)
+                            chevron
+                        }
+                        title
+                    }
+                } else {
+                    HStack(spacing: 12) {
+                        glyphTile(group.grip)
+                        title
+                        Spacer(minLength: 0)
+                        chevron
+                    }
+                }
             }
             .frame(maxWidth: .infinity, minHeight: 44)
             // MANDATORY: a full-width label with a Spacer hit-tests only its glyphs.
@@ -310,7 +355,10 @@ struct MaxesTab: View {
     private func details(_ group: GripGroup, sides: [Side]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if !group.tests.isEmpty, !group.records.isEmpty {
-                criticalForceReadout(group)
+                ViewThatFits(in: .horizontal) {
+                    criticalForceReadout(group, stacked: false)
+                    criticalForceReadout(group, stacked: true)
+                }
             }
 
             if group.records.count + group.tests.count >= 2 {
@@ -382,10 +430,8 @@ struct MaxesTab: View {
 
     /// Critical force per hand, each with its share of that hand's max when it was tested.
     @ViewBuilder
-    private func criticalForceReadout(_ group: GripGroup) -> some View {
-        let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 20))
+    private func criticalForceReadout(_ group: GripGroup, stacked: Bool) -> some View {
+        let layout = handsLayout(stacked: stacked)
         VStack(alignment: .leading, spacing: 6) {
             CapsLabel(String(localized: "Critical force"))
             layout {
@@ -395,6 +441,7 @@ struct MaxesTab: View {
                             Text(side == .both ? String(localized: "Both hands") : side.name)
                                 .font(.system(.caption, weight: .medium))
                                 .foregroundStyle(Ink.secondary)
+                                .lineLimit(1)
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 weightText(test.criticalForceKg, style: .title2)
                                 if let pct = test.percentOfMax {
@@ -404,7 +451,6 @@ struct MaxesTab: View {
                                 }
                             }
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(String(localized: "Critical force, \(side == .both ? String(localized: "both hands") : side.name)"))
                         .accessibilityValue(test.percentOfMax.map { "\(weightUnit.text(test.criticalForceKg)), \(Int($0.rounded())) % of max" }
@@ -476,10 +522,8 @@ struct MaxesTab: View {
     /// The current working numbers, trailing the title. One value for a both-hands
     /// grip; a compact L/R pair once the hands have their own records.
     @ViewBuilder
-    private func currentReadout(_ group: GripGroup, sides: [Side], showBest: Bool) -> some View {
-        let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 20))
+    private func currentReadout(_ group: GripGroup, sides: [Side], showBest: Bool, stacked: Bool) -> some View {
+        let layout = handsLayout(stacked: stacked)
         layout {
             ForEach(sides, id: \.self) { side in
                 if let record = newest(in: group, side: side) {
@@ -487,6 +531,7 @@ struct MaxesTab: View {
                         Text(side == .both ? String(localized: "Shared max") : side.name)
                             .font(.system(.caption, weight: .medium))
                             .foregroundStyle(Ink.secondary)
+                            .lineLimit(1)
                         weightText(record.kg, style: .title2)
                         // The PR, under the number it is the best OF — only when the
                         // working max is below it, so a card at its best says nothing extra.
@@ -497,7 +542,6 @@ struct MaxesTab: View {
                                 .foregroundStyle(Ink.tertiary)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(side == .both ? String(localized: "Shared max") : side.name)
                     // The best is spoken too: `.ignore` drops the drawn caption.
@@ -514,11 +558,9 @@ struct MaxesTab: View {
     /// "90 % of your 10 s max" runs on. Shown shut as well as open: like the peak, it is
     /// the number targets are made of.
     @ViewBuilder
-    private func timedReadout(_ group: GripGroup) -> some View {
+    private func timedReadout(_ group: GripGroup, stacked: Bool) -> some View {
         let lengths = Set(group.timed.map(\.durationSeconds)).sorted()
-        let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 20))
+        let layout = handsLayout(stacked: stacked)
         VStack(alignment: .leading, spacing: 12) {
             ForEach(lengths, id: \.self) { seconds in
                 let series = group.timed.filter { $0.durationSeconds == seconds }
@@ -532,9 +574,9 @@ struct MaxesTab: View {
                                     Text(side == .both ? String(localized: "Shared max") : side.name)
                                         .font(.system(.caption, weight: .medium))
                                         .foregroundStyle(Ink.secondary)
+                                        .lineLimit(1)
                                     weightText(record.kg, style: .title3)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .accessibilityElement(children: .ignore)
                                 .accessibilityLabel(String(localized: "\(seconds) second max, \(side == .both ? String(localized: "both hands") : side.name)"))
                                 .accessibilityValue(weightUnit.text(record.kg))
@@ -547,6 +589,8 @@ struct MaxesTab: View {
         }
     }
 
+    /// A number never wraps: it is drawn at its own width and the layout around it
+    /// gives way instead (`gripCard` re-arranges rather than squeezing it).
     private func weightText(_ kg: Double, style: Font.TextStyle) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 2) {
             Text(weightUnit.number(kg))
@@ -557,6 +601,16 @@ struct MaxesTab: View {
                 .font(.system(.caption))
                 .foregroundStyle(Ink.tertiary)
         }
+        .lineLimit(1)
+        .fixedSize()
+    }
+
+    /// The hands side by side at their own widths, or one under another. Columns are not
+    /// stretched to equal thirds: an equal share is what broke a wide label or number
+    /// while a narrow neighbour had room to spare.
+    private func handsLayout(stacked: Bool) -> AnyLayout {
+        stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 16))
     }
 
     /// "Best 31.5 kg · up 2.4 kg since 12 Jul" — the PR beside how the newest test

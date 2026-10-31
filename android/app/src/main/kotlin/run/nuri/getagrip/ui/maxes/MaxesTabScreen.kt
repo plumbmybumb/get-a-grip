@@ -74,6 +74,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -452,40 +459,74 @@ private fun GripCard(
         }
         // Shut, Measure sits bottom-trailing beside the numbers (Nuri, 2026-10-04: measuring
         // again should not cost opening the card first; iOS twin). Open, it gives way to the
-        // full Measure again beside Edit. At large text the readout stacks, so it gets a row.
-        val largeText = LocalDensity.current.fontScale >= 1.5f
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Not inside the header's merged node — each hand keeps its own spoken value — but a
-        // tap here opens the card too. A bare tap GESTURE, not `clickable`: clickable merges
-        // its children into one button and would read both hands as a single node.
-        Column(
-            Modifier.weight(1f).pointerInput(onToggle) { detectTapGestures { onToggle() } },
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            if (hasMax) {
-                // Named once a second kind of max shares the card.
-                if (group.timed.isNotEmpty()) CapsLabel(tr("Peak max"))
-                else if (isOpen && tests.isNotEmpty()) CapsLabel(tr("Max"))
-                CurrentReadout(group, sides, showBest = isOpen)
-                if (group.timed.isNotEmpty()) TimedReadout(group)
-            } else if (group.timed.isNotEmpty()) {
-                TimedReadout(group)
-            } else if (tests.isNotEmpty() && !isOpen) {
-                // Shut, a critical-force-only grip still states its number.
-                CriticalForceReadout(benchmark, cfSides)
-            } else {
-                Text(
-                    tr("No max yet. Measure one to compare with critical force."),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = palette.inkTertiary,
-                )
+        // full Measure again beside Edit.
+        //
+        // THE SHAPE COMES FROM WHAT FITS, not from a font-scale threshold (2026-10-31, iOS
+        // report): three weighted columns plus Measure broke "Shared max" onto two lines at
+        // the DEFAULT scale and the unit to "k / g" at 1.3. `ReadoutFit` measures each column
+        // with its real text styles and picks the first form that fits: all in one row; the
+        // hands in a row with Measure under them; the hands stacked over a full Measure.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val fit = rememberReadoutFit()
+            val readoutWidth = fit.readoutWidth(benchmark, sides, cfSides, isOpen = isOpen)
+            val form = when {
+                isOpen -> if (readoutWidth <= maxWidth) ReadoutForm.Row else ReadoutForm.Stacked
+                readoutWidth + 12.dp + fit.compactMeasureWidth() <= maxWidth -> ReadoutForm.Row
+                readoutWidth <= maxWidth -> ReadoutForm.MeasureBelow
+                else -> ReadoutForm.Stacked
             }
-        }
-            if (!isOpen && !largeText) CompactMeasureButton(group.grip, group.key, onMeasure)
-        }
-        if (!isOpen && largeText) {
-            SecondaryButton(title = tr("Measure"), modifier = Modifier.fillMaxWidth().testTag("maxes.measure.${group.key}"),
-                onClick = onMeasure)
+            val stacked = form == ReadoutForm.Stacked
+            // Not inside the header's merged node — each hand keeps its own spoken value — but
+            // a tap here opens the card too. A bare tap GESTURE, not `clickable`: clickable
+            // merges its children into one button and would read both hands as a single node.
+            @Composable fun Readout(modifier: Modifier) {
+                Column(
+                    modifier.pointerInput(onToggle) { detectTapGestures { onToggle() } },
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (hasMax) {
+                        // Named once a second kind of max shares the card.
+                        if (group.timed.isNotEmpty()) CapsLabel(tr("Peak max"))
+                        else if (isOpen && tests.isNotEmpty()) CapsLabel(tr("Max"))
+                        CurrentReadout(group, sides, showBest = isOpen, stacked = stacked)
+                        if (group.timed.isNotEmpty()) TimedReadout(group, stacked = stacked)
+                    } else if (group.timed.isNotEmpty()) {
+                        TimedReadout(group, stacked = stacked)
+                    } else if (tests.isNotEmpty() && !isOpen) {
+                        // Shut, a critical-force-only grip still states its number.
+                        CriticalForceReadout(benchmark, cfSides, stacked = stacked)
+                    } else {
+                        Text(
+                            tr("No max yet. Measure one to compare with critical force."),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = palette.inkTertiary,
+                        )
+                    }
+                }
+            }
+            when {
+                isOpen -> Readout(Modifier.fillMaxWidth())
+                form == ReadoutForm.Row ->
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Readout(Modifier.weight(1f))
+                        CompactMeasureButton(group.grip, group.key, onMeasure)
+                    }
+                form == ReadoutForm.MeasureBelow ->
+                    // Same capsule, same bottom-trailing corner as its neighbours, one row lower.
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Readout(Modifier.fillMaxWidth())
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                            CompactMeasureButton(group.grip, group.key, onMeasure)
+                        }
+                    }
+                else ->
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Readout(Modifier.fillMaxWidth())
+                        SecondaryButton(title = tr("Measure"),
+                            modifier = Modifier.fillMaxWidth().testTag("maxes.measure.${group.key}"),
+                            onClick = onMeasure)
+                    }
+            }
         }
 
         // `Motion.state`, not Compose's unguarded 400 ms default — see `TargetBandRow`.
@@ -495,7 +536,13 @@ private fun GripCard(
             exit = shrinkVertically(Motion.state(reduceMotion)) + fadeOut(Motion.state(reduceMotion)),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (tests.isNotEmpty() && hasMax) CriticalForceReadout(benchmark, cfSides)
+                if (tests.isNotEmpty() && hasMax) {
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val fit = rememberReadoutFit()
+                        CriticalForceReadout(benchmark, cfSides,
+                            stacked = fit.criticalForceWidth(benchmark, cfSides) > maxWidth)
+                    }
+                }
 
                 // A chart needs two points to have a direction; one record is a fact, not a trend.
                 if (group.records.size + tests.size >= 2) {
@@ -560,9 +607,8 @@ private fun GripCard(
 
 /// Critical force per hand, each with its share of that hand's max when it was tested.
 @Composable
-private fun CriticalForceReadout(group: BenchmarkGroup, sides: List<Side>) {
+private fun CriticalForceReadout(group: BenchmarkGroup, sides: List<Side>, stacked: Boolean) {
     val palette = LocalGripPalette.current
-    val largeText = LocalDensity.current.fontScale >= 1.5f
     @Composable fun Readout(side: Side, modifier: Modifier = Modifier) {
         group.tests.lastOrNull { it.side == side }?.let { test ->
             val pct = test.percentOfMax?.let { roundedPercent(it) }
@@ -573,7 +619,7 @@ private fun CriticalForceReadout(group: BenchmarkGroup, sides: List<Side>) {
             Column(modifier.testTag("maxes.cf.current.${group.key}.${side.rawValue}")
                 .clearAndSetSemantics { contentDescription = "$label, $value" },
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(handName(side), style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary)
+                Text(handName(side), style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary, maxLines = 1, softWrap = false)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
                     KgText(test.criticalForceKg, prominent = true)
                     pct?.let {
@@ -586,13 +632,7 @@ private fun CriticalForceReadout(group: BenchmarkGroup, sides: List<Side>) {
     }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         CapsLabel(tr("Critical force"))
-        if (largeText) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { sides.forEach { Readout(it) } }
-        } else {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                sides.forEach { Readout(it, Modifier.weight(1f)) }
-            }
-        }
+        HandsLayout(stacked) { sides.forEach { Readout(it) } }
     }
 }
 
@@ -637,23 +677,21 @@ private fun EmptyCard() {
 /// compact L/R pair once the hands have their own records — because 25 % of the left max and
 /// 25 % of the right max are simply different kilograms, and this is where you see that.
 @Composable
-private fun CurrentReadout(group: MaxGripGroup, sides: List<Side>, showBest: Boolean = false) {
+private fun CurrentReadout(group: MaxGripGroup, sides: List<Side>, showBest: Boolean = false, stacked: Boolean) {
     val palette = LocalGripPalette.current
-    val largeText = LocalDensity.current.fontScale >= 1.5f
     @Composable fun Readout(side: Side, modifier: Modifier = Modifier) {
         newest(group, side)?.let { record ->
             val label = if (side == Side.both) tr("Shared max") else side.displayName
             // The PR, under the number it is the best OF — only when the working max is below
             // it, so a card at its best says nothing extra. Spoken too: the node clears its
             // children, so a best that is only drawn would be invisible to TalkBack.
-            val best = group.records.filter { it.side == side }.maxOfOrNull { it.kg }
-                ?.takeIf { showBest && it > record.kg + 0.05 }
+            val best = bestShown(group, side, record.kg, showBest)
             val bestText = best?.let { tr("best %s", WeightUnits.number(it, 1)) }
             val spoken = listOfNotNull("$label, ${WeightUnits.text(record.kg)}", bestText).joinToString(", ")
             Column(modifier.testTag("maxes.current.${group.key}.${side.rawValue}")
                 .clearAndSetSemantics { contentDescription = spoken },
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(label, style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary)
+                Text(label, style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary, maxLines = 1, softWrap = false)
                 KgText(record.kg, prominent = true)
                 bestText?.let {
                     Text(it, style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
@@ -662,21 +700,14 @@ private fun CurrentReadout(group: MaxGripGroup, sides: List<Side>, showBest: Boo
             }
         }
     }
-    if (largeText) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { sides.forEach { Readout(it) } }
-    } else {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            sides.forEach { Readout(it, Modifier.weight(1f)) }
-        }
-    }
+    HandsLayout(stacked) { sides.forEach { Readout(it) } }
 }
 
 /// Each timed length on its own line, newest value per hand — what a routine set to "90 % of
 /// your 10 s max" runs on. Shown shut as well as open: like the peak, targets are made of it.
 @Composable
-private fun TimedReadout(group: MaxGripGroup) {
+private fun TimedReadout(group: MaxGripGroup, stacked: Boolean) {
     val palette = LocalGripPalette.current
-    val largeText = LocalDensity.current.fontScale >= 1.5f
     val lengths = group.timed.map { it.durationSeconds }.toSortedSet()
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 6.dp)) {
         lengths.forEach { seconds ->
@@ -691,20 +722,114 @@ private fun TimedReadout(group: MaxGripGroup) {
                     Column(modifier.testTag("maxes.timed.${group.key}.$seconds.${side.rawValue}")
                         .clearAndSetSemantics { contentDescription = spoken },
                         verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(label, style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary)
+                        Text(label, style = MaterialTheme.typography.labelMedium, color = palette.inkSecondary, maxLines = 1, softWrap = false)
                         KgText(record.kg, prominent = false)
                     }
                 }
-                if (largeText) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { sides.forEach { Readout(it) } }
-                } else {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        sides.forEach { Readout(it, Modifier.weight(1f)) }
-                    }
-                }
+                HandsLayout(stacked) { sides.forEach { Readout(it) } }
             }
         }
     }
+}
+
+/// The PR under a working max, or nil when the card is shut or the max IS the best.
+private fun bestShown(group: MaxGripGroup, side: Side, current: Double, showBest: Boolean): Double? =
+    group.records.filter { it.side == side }.maxOfOrNull { it.kg }?.takeIf { showBest && it > current + 0.05 }
+
+/// The three shapes a card's readout takes — see `GripCard`. iOS twin: the `ViewThatFits`
+/// in `MaxesTab.gripCard`.
+private enum class ReadoutForm { Row, MeasureBelow, Stacked }
+
+private val HANDS_GAP = 16.dp
+
+/// The hands side by side at their own widths, or one under another. Columns are not
+/// stretched to equal shares: an equal share is what broke a wide label or number while a
+/// narrow neighbour had room to spare.
+@Composable
+private fun HandsLayout(stacked: Boolean, content: @Composable () -> Unit) {
+    if (stacked) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+    else Row(horizontalArrangement = Arrangement.spacedBy(HANDS_GAP)) { content() }
+}
+
+@Composable
+private fun rememberReadoutFit(): ReadoutFit {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val typography = MaterialTheme.typography
+    return remember(measurer, density, typography) { ReadoutFit(measurer, density, typography) }
+}
+
+/// Single-line widths of a card's readout, measured with the SAME text styles the readout
+/// draws (a `TextMeasurer`, not a character estimate — iOS measures with `ViewThatFits`), so
+/// the row-or-stack decision is exact. Compose has no `ViewThatFits`; a `SubcomposeLayout`
+/// of every candidate would compose each readout, and its test tags, three times over.
+private class ReadoutFit(
+    private val measurer: TextMeasurer,
+    private val density: Density,
+    private val typography: Typography,
+) {
+    private fun width(text: String, style: TextStyle): Dp =
+        with(density) { measurer.measure(text, style, softWrap = false, maxLines = 1).size.width.toDp() }
+
+    /// `KgText`: the number, 2 dp, the unit.
+    private fun kg(kg: Double, prominent: Boolean): Dp {
+        val number = (if (prominent) typography.headlineSmall else typography.bodyLarge)
+            .copy(fontFeatureSettings = "tnum", fontWeight = FontWeight.SemiBold)
+        return width(WeightUnits.number(kg, 1), number) + 2.dp + width(WeightUnits.symbol, typography.labelSmall)
+    }
+
+    private fun label(text: String) = width(text, typography.labelMedium)
+
+    private fun row(columns: List<Dp>): Dp =
+        if (columns.isEmpty()) 0.dp else columns.fold(0.dp) { sum, column -> sum + column } + HANDS_GAP * (columns.size - 1)
+
+    @Composable
+    fun compactMeasureWidth(): Dp =
+        width(tr("Measure"), typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)) + 28.dp
+
+    @Composable
+    fun readoutWidth(benchmark: BenchmarkGroup, sides: List<Side>, cfSides: List<Side>, isOpen: Boolean): Dp {
+        val group = benchmark.maxes
+        return when {
+            group.records.isNotEmpty() -> maxOf(currentWidth(group, sides, showBest = isOpen), timedWidth(group))
+            group.timed.isNotEmpty() -> timedWidth(group)
+            benchmark.tests.isNotEmpty() && !isOpen -> criticalForceWidth(benchmark, cfSides)
+            else -> 0.dp
+        }
+    }
+
+    @Composable
+    private fun currentWidth(group: MaxGripGroup, sides: List<Side>, showBest: Boolean): Dp {
+        val shared = tr("Shared max")
+        return row(sides.mapNotNull { side ->
+            val record = newest(group, side) ?: return@mapNotNull null
+            val best = bestShown(group, side, record.kg, showBest)
+            maxOf(label(if (side == Side.both) shared else side.displayName), kg(record.kg, prominent = true),
+                best?.let { width(tr("best %s", WeightUnits.number(it, 1)),
+                    typography.labelMedium.copy(fontFeatureSettings = "tnum")) } ?: 0.dp)
+        })
+    }
+
+    @Composable
+    private fun timedWidth(group: MaxGripGroup): Dp {
+        val shared = tr("Shared max")
+        return group.timed.map { it.durationSeconds }.distinct().maxOfOrNull { seconds ->
+            val series = group.timed.filter { it.durationSeconds == seconds }
+            row(listOf(Side.both, Side.left, Side.right).mapNotNull { side ->
+                val record = series.lastOrNull { it.side == side } ?: return@mapNotNull null
+                maxOf(label(if (side == Side.both) shared else side.displayName), kg(record.kg, prominent = false))
+            })
+        } ?: 0.dp
+    }
+
+    @Composable
+    fun criticalForceWidth(benchmark: BenchmarkGroup, sides: List<Side>): Dp = row(sides.mapNotNull { side ->
+        val test = benchmark.tests.lastOrNull { it.side == side } ?: return@mapNotNull null
+        val pct = test.percentOfMax?.let { roundedPercent(it) }
+        val number = kg(test.criticalForceKg, prominent = true) +
+            (pct?.let { 6.dp + width(tr("%d %%", it), typography.bodySmall) } ?: 0.dp)
+        maxOf(label(handName(side)), number)
+    })
 }
 
 @Composable
@@ -720,8 +845,10 @@ internal fun KgText(kg: Double, prominent: Boolean) {
             fontWeight = FontWeight.SemiBold,
             color = if (prominent) palette.inkPrimary else palette.inkSecondary,
             maxLines = 1,
+            softWrap = false,
         )
-        Text(WeightUnits.symbol, style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary)
+        Text(WeightUnits.symbol, style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary,
+            maxLines = 1, softWrap = false)
     }
 }
 
