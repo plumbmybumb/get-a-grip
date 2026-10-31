@@ -8,6 +8,8 @@ Version numbers are per platform and deliberately not kept in step.
 
 | Version | Date | Status | Record |
 | --- | --- | --- | --- |
+| iOS 1.5.0 (30) | 31 Oct 2026 | Submitted for App Store review (automatic release). History session detail, "Hardest 5 %" trend chart, targets as % of critical force, gauge auto-restart + Reset, demo mode removed, Sound settings, 0.6 s holds, large-text sweep, iPhone Duo layouts + the first Duo screenshots | [Record](docs/releases/notes/RELEASE_2026-10-31_1.5.0.md) |
+| Android 1.5.0 (19) | 31 Oct 2026 | Sent for Google Play review (production, full rollout). The same features without the Duo work | [Record](docs/releases/notes/RELEASE_2026-10-31_1.5.0.md) |
 | iOS 1.2.1 (27) | 28 Sep 2026 | Submitted for App Store review. Live gauge stopwatch and pull count, reading on connect, large timer-only counters, island hand placed per iPhone, max-review correction fix | [Record](docs/releases/notes/RELEASE_2026-09-28_1.2.1.md) |
 | Android 1.2.1 (16) | 28 Sep 2026 | Sent for Google Play production review. The same gauge and timer-only changes (no island on Android) | [Record](docs/releases/notes/RELEASE_2026-09-28_1.2.1.md) |
 | iOS 1.2.0 (26) | 26 Sep 2026 | Approved and released on the App Store, with the three-page routine builder. Build 24 was withdrawn before review. Critical force test, Maxes → Benchmarks, max test as a visit, stacked set/pull bars, no tour or builder hints, app-wide copy pass, full French incl. the watch | [Record](docs/releases/notes/RELEASE_2026-09-26_1.2.0.md) |
