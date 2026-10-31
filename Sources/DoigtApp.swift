@@ -8,6 +8,9 @@ import UIKit
 @main
 struct DoigtApp: App {
     @Environment(\.scenePhase) private var scenePhase
+    /// Only for the runtime orientation mask: iPhone is portrait except while the live
+    /// runner holds landscape — see `RunnerOrientation`.
+    @UIApplicationDelegateAdaptor(DoigtAppDelegate.self) private var appDelegate
 
     private let container: ModelContainer
     @State private var clock: DayClock
@@ -99,7 +102,7 @@ struct DoigtApp: App {
                         let env = "Env: reduceMotion=\(UIAccessibility.isReduceMotionEnabled)"
                             + " reduceTransparency=\(UIAccessibility.isReduceTransparencyEnabled)"
                             + " lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled)"
-                            + " maxFPS=\(UIScreen.main.maximumFramesPerSecond)"
+                            + " maxFPS=\(Self.maximumFramesPerSecond)"
                             + "\n" + device.playbackReport
                         let report = env + "\n\n" + DiagnosticReport.text(from: device.diagnosticEntries)
                             + "\n\nLast trace draw: " + TraceDrawProbe.shared.line
@@ -152,6 +155,18 @@ struct DoigtApp: App {
         }
         .modelContainer(container)
     }
+
+    #if DEBUG
+    /// The diagnostics' refresh-rate line, from the scene's own screen — not
+    /// `UIScreen.main`, which is deprecated and on an iPhone Duo is not even the display
+    /// the app is on.
+    @MainActor
+    private static var maximumFramesPerSecond: Int {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first?.screen.maximumFramesPerSecond ?? 0
+    }
+    #endif
 
     /// CloudKit-backed store in the App Group, with a deliberate local-only fallback:
     /// ad-hoc-signed simulator builds strip the iCloud entitlements, so the CloudKit

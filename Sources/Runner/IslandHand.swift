@@ -20,8 +20,10 @@ import SwiftUI
 /// that a device HAS one is a top safe-area inset of 59 pt or more (a notch is 47–48,
 /// everything else ≤ 24). So this draws on island devices and quietly
 /// draws nothing anywhere else — a hand hanging off a notch is a smear, and off a flat
-/// top edge it is four bars stuck to the ceiling. The app is portrait-locked
-/// (`UISupportedInterfaceOrientations`), which is what lets a fixed rect be correct.
+/// top edge it is four bars stuck to the ceiling. A fixed rect is correct because the
+/// hand only ever draws UPRIGHT: iPhone is portrait except the live runner
+/// (`RunnerOrientation`), and on its side the runner switches to the far view and turns
+/// the hand off (`RunnerView.islandHandShown`) — the island is then beside the content.
 /// Where the Dynamic Island sits, from the one thing the system does report: the top
 /// safe-area inset.
 ///
@@ -67,7 +69,7 @@ struct IslandHand: View {
     private static let islandWidth = IslandGeometry.width
     private static var islandBottom: CGFloat { IslandGeometry.top + IslandGeometry.height }
     /// A Dynamic Island reports 59 or more. A notch reports 47–48.
-    static let islandInset: CGFloat = 55
+    nonisolated static let islandInset: CGFloat = 55
 
     /// Four bars inside the island's own width, so they hang from within its footprint
     /// rather than splaying past its edges.

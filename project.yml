@@ -107,11 +107,15 @@ targets:
           - remote-notification
           - bluetooth-central
         NSSupportsLiveActivities: true
-        # iPhone stays PORTRAIT: the island hand's fixed rect and the one-page Today are
-        # both portrait facts. iPad must support every orientation — multitasking has
-        # required it since iOS 9 and iPadOS 26 is retiring the full-screen opt-out —
-        # so the layouts that need a landscape form (the runner, History) switch on size
-        # class and aspect, never on the idiom.
+        # iPhone stays PORTRAIT here, and that is load-bearing: the live runner alone
+        # turns sideways, by explicit request from `RunnerOrientation` (nightstand mode —
+        # an iPhone Duo stood up like a tent, docs/IPHONE_DUO_NIGHTSTAND.md). Measured on
+        # the Duo simulator: listing the landscapes here let the system turn the SCENE
+        # under a portrait Today, and the runner then stayed counter-rotated. iPad must
+        # support every orientation — multitasking has required it since iOS 9 and
+        # iPadOS 26 is retiring the full-screen opt-out — so the layouts that need a
+        # landscape form (the runner, History) switch on size class and aspect, never on
+        # the idiom.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UISupportedInterfaceOrientations~ipad:
