@@ -49,6 +49,15 @@ struct SessionProgressModel: Equatable {
         let next = results.count
         current = next < slots.count ? next : nil
     }
+
+    /// A FINISHED session read back (History's detail): the same pills with no current
+    /// one — nothing is being pulled, so nothing stands proud. Pulls past the last result
+    /// were never reached and stay track.
+    init(setSizes: [Int], reps: [RepSummary]) {
+        self.setSizes = setSizes
+        finished = reps.map { $0.outcome == .completed }
+        current = nil
+    }
 }
 
 // MARK: - The routine as pills

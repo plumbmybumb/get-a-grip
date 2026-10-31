@@ -41,6 +41,9 @@ struct HistoryView: View {
     @State private var showAllSessions = false
     @State private var calendarShare: ShareCalendarRequest?
     @State private var analysisExport: AnalysisExportRequest?
+    /// The session pushed onto this stack — a VALUE copied off the log at the tap, so a
+    /// Delete from the detail cannot leave its view reading a removed model.
+    @State private var openedSession: SessionDetailContent?
 
     /// Decoded rep blobs, once per log EVER.
     ///
@@ -123,6 +126,24 @@ struct HistoryView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) { exportButton }
             }
+            // A PUSH inside History's own stack (support request, Gleb, 1.4.0: "I can't
+            // open each one to see the insights"). The back button says where it goes,
+            // and the tab bar stays, as for any drill-down in a tab.
+            .navigationDestination(item: $openedSession) { session in
+                SessionDetailView(content: session,
+                                  onExport: { analysisExport = makeExportRequest(session: session) },
+                                  onDelete: { delete(session) })
+            }
+            #if DEBUG
+            // Headless screenshots: `-openSession N` pushes the Nth row (simctl can't tap).
+            .task {
+                let args = ProcessInfo.processInfo.arguments
+                guard openedSession == nil, let flag = args.firstIndex(of: "-openSession"),
+                      flag + 1 < args.count, let index = Int(args[flag + 1]),
+                      logs.indices.contains(index) else { return }
+                open(logs[index])
+            }
+            #endif
         }
         // Declared ONCE and shared by both layouts, or the wide window would get two
         // undo bars and two copies of every sheet.
@@ -305,22 +326,30 @@ struct HistoryView: View {
         // TEN, then a door (Nuri, 2026-08-10): the log grows forever. The recent ones
         // are the ones you check; the rest are one tap away, not gone.
         ForEach(visibleLogs) { log in
-            SessionRow(log: log,
-                       name: displayName(of: log),
-                       leadingGrip: reps(for: log).first?.grip)
-                .sessionListRow()
-                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                    Button {
-                        analysisExport = makeExportRequest(workout: log)
-                    } label: {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                    }
-                    .tint(Accent.graphite)
-                    .accessibilityLabel("Export workout")
+            // A row OPENS its session; the swipes stay what they were.
+            Button { open(log) } label: {
+                SessionRow(log: log,
+                           name: displayName(of: log),
+                           leadingGrip: reps(for: log).first?.grip)
+                    // MANDATORY: the row's Spacer and padding take no taps otherwise.
+                    .contentShape(.rect)
+            }
+            .buttonStyle(PressFeedbackButtonStyle(scales: false))
+            .accessibilityHint("Opens this workout")
+            .accessibilityIdentifier("history.session")
+            .sessionListRow()
+            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                Button {
+                    analysisExport = makeExportRequest(workout: log)
+                } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
                 }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    deleteButton(log)
-                }
+                .tint(Accent.graphite)
+                .accessibilityLabel("Export workout")
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                deleteButton(log)
+            }
         }
 
         if !showAllSessions, logs.count > Self.recentSessionLimit {
@@ -357,6 +386,55 @@ struct HistoryView: View {
         return AnalysisExportRequest(
             source: source,
             workout: workout.map { .init(name: displayName(of: $0), day: $0.day) })
+    }
+
+    /// The detail's Export: the same per-workout export the leading swipe makes, addressed
+    /// by the snapshot's id, so it never touches the model.
+    private func makeExportRequest(session: SessionDetailContent) -> AnalysisExportRequest {
+        let source = AnalysisExportAssembler.Source(
+            container: modelContext.container,
+            workoutID: session.id,
+            routineNames: templates.routineNames,
+            today: clock.today)
+        return AnalysisExportRequest(source: source,
+                                     workout: .init(name: session.name, day: session.day))
+    }
+
+    // MARK: - Opening a session
+
+    /// Copy the tapped log into the detail's value. Reps come from `RepsCache`, so a
+    /// session's blob is still decoded once ever; the plan blob and the max records are
+    /// read for THIS session only, and only for the kinds that can have them — nothing on
+    /// this path scales with the length of the history.
+    private func open(_ log: WorkoutLog) {
+        var records: [SessionDetailContent.RecordFact] = []
+        let window: ClosedRange<Date>? = switch log.kind {
+        case .hang:
+            log.finishedAt.addingTimeInterval(-60)...log.finishedAt.addingTimeInterval(SessionDetailContent.saveWindow)
+        case .benchmark:
+            // The training day's span, padded for the 04:00 rollover; the rule itself
+            // then keeps only records whose training day IS this one.
+            log.day.date().addingTimeInterval(-86_400)...log.day.date().addingTimeInterval(3 * 86_400)
+        default:
+            nil
+        }
+        if let window {
+            let lo = window.lowerBound, hi = window.upperBound
+            let descriptor = FetchDescriptor<MaxRecord>(
+                predicate: #Predicate { $0.recordedAt >= lo && $0.recordedAt <= hi })
+            records = ((try? modelContext.fetch(descriptor)) ?? []).map(SessionDetailContent.RecordFact.init)
+        }
+        openedSession = SessionDetailContent(log: log, name: displayName(of: log),
+                                             reps: reps(for: log), records: records)
+    }
+
+    /// Delete from the detail: pop first, then the store's own delete — which fills the
+    /// undo slot only when the delete landed, so History's Undo bar is waiting on return.
+    /// No dialog, same bargain as the swipe.
+    private func delete(_ session: SessionDetailContent) {
+        openedSession = nil
+        guard let log = logs.first(where: { $0.id == session.id }) else { return }
+        _ = templates.deleteSession(log)
     }
 
     private static let recentSessionLimit = 10

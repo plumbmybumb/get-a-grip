@@ -8,6 +8,16 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import run.nuri.getagrip.ui.l10n.LocalizedPattern
 import run.nuri.getagrip.ui.components.LocalFloatingTabBarInset
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.ui.platform.testTag
+import androidx.lifecycle.Lifecycle
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import run.nuri.getagrip.engine.SessionKind
+import run.nuri.getagrip.ui.theme.Motion
+import run.nuri.getagrip.ui.theme.rememberReduceMotion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -115,22 +125,117 @@ import run.nuri.getagrip.ui.theme.Metrics
 ///
 /// Between the calendar and the odometer sits the per-routine TREND deck (`TrendDeck`): is
 /// the load going anywhere, grip by grip.
-@OptIn(ExperimentalMaterial3Api::class)
+///
+/// **A session row OPENS that workout** (support request, Gleb, 1.4.0: "I can't open each one
+/// to see the insights"). TRANSLATION NOTE: iOS pushes onto History's `NavigationStack`; here
+/// a NavHost scoped to this tab, as Settings does, so predictive back pops it and the tab bar
+/// stays. The Undo snackbar and the export sheet live ABOVE the NavHost, so a Delete from the
+/// detail lands back on History with its Undo already up, and neither is torn down by a push.
 @Composable
 fun HistoryScreen(
     onLogSession: () -> Unit,
     modifier: Modifier = Modifier,
     feed: HistoryFeed = LocalHistoryFeed.current,
 ) {
+    val templates = LocalTemplateStore.current
+    val clock = LocalDayClock.current
+    val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
+    var exportRequest by remember { mutableStateOf<AnalysisExportRequest?>(null) }
+    val nav = rememberNavController()
+    // Explicit, from the Motion ladder, as Settings: Navigation Compose's default cross-fade
+    // is 700 ms with both screens composed.
+    val reduceMotion = rememberReduceMotion()
+    val routineNames = templates.routineNames
+
+    Box(modifier.fillMaxSize()) {
+        NavHost(
+            nav, startDestination = ROUTE_HISTORY, modifier = Modifier.fillMaxSize(),
+            enterTransition = { fadeIn(Motion.state(reduceMotion)) },
+            exitTransition = { fadeOut(Motion.state(reduceMotion)) },
+            popEnterTransition = { fadeIn(Motion.state(reduceMotion)) },
+            popExitTransition = { fadeOut(Motion.state(reduceMotion)) },
+        ) {
+            composable(ROUTE_HISTORY) { entry ->
+                HistoryRoot(
+                    onLogSession = onLogSession,
+                    feed = feed,
+                    onExport = { exportRequest = it },
+                    // Only a RESUMED destination navigates: a double tap, or a tap mid-pop,
+                    // must not push twice.
+                    onOpen = { log ->
+                        if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                            nav.navigate("$ROUTE_SESSION/${log.id}") { launchSingleTop = true }
+                        }
+                    },
+                )
+            }
+            composable("$ROUTE_SESSION/{id}") { entry ->
+                val id = entry.arguments?.getString("id")
+                val back = { if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                    nav.popBackStack(ROUTE_HISTORY, inclusive = false)
+                } }
+                val log = feed.logs.firstOrNull { it.id.toString() == id }
+                if (log == null) {
+                    // Deleted (here or on another device) or not yet read: nothing to show.
+                    LaunchedEffect(Unit) { back() }
+                    return@composable
+                }
+                // A VALUE, copied once per log: the blob through the feed's once-ever cache,
+                // the max records the save wrote. Nothing here walks the history.
+                val content = remember(log, feed.maxRecords) {
+                    SessionDetailContent.of(log, sessionDisplayName(log, routineNames), feed.reps(log),
+                        if (log.kind == SessionKind.hang || log.kind == SessionKind.benchmark) {
+                            feed.maxRecords.map(SessionDetailContent.RecordFact::of)
+                        } else emptyList())
+                }
+                SessionDetailScreen(
+                    content = content,
+                    onBack = back,
+                    onExport = { exportRequest = buildExportRequest(feed, routineNames, clock.today, log) },
+                    // Pop first, then the store's delete — which raises the Undo only when the
+                    // delete landed. No dialog, the same bargain as the swipe.
+                    onDelete = {
+                        back()
+                        scope.launch { if (templates.deleteSession(log)) feed.refresh() }
+                    },
+                )
+            }
+        }
+        UndoSnackbar(snackbar, Modifier.align(Alignment.BottomCenter))
+    }
+
+    UndoSnackbarEffect(
+        hostState = snackbar,
+        deleted = templates.lastDeletedSession,
+        message = tr("Session deleted"),
+        onUndo = { scope.launch { templates.undoDeleteSession(); feed.refresh() } },
+        onExpired = { templates.dismissSessionUndo() },
+    )
+
+    exportRequest?.let { request ->
+        AnalysisExportSheet(request) { exportRequest = null }
+    }
+}
+
+private const val ROUTE_HISTORY = "history"
+private const val ROUTE_SESSION = "session"
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HistoryRoot(
+    onLogSession: () -> Unit,
+    feed: HistoryFeed,
+    onExport: (AnalysisExportRequest) -> Unit,
+    onOpen: (WorkoutLogEntity) -> Unit,
+) {
     val palette = LocalGripPalette.current
     val templates = LocalTemplateStore.current
     val clock = LocalDayClock.current
     val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
-    val snackbar = remember { SnackbarHostState() }
 
     var showAllSessions by remember { mutableStateOf(false) }
-    var exportRequest by remember { mutableStateOf<AnalysisExportRequest?>(null) }
     var shareRequest by remember { mutableStateOf<ShareCalendarRequest?>(null) }
 
     // The feed has no live query, so the screen asks on the way in; it READS only when a write
@@ -153,10 +258,9 @@ fun HistoryScreen(
 
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         // `RootTabView`'s Scaffold already inset this subtree; a second inset would pad twice.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { UndoSnackbar(snackbar) },
         topBar = {
             LargeTopAppBar(
                 title = { Text(tr("History")) },
@@ -174,8 +278,8 @@ fun HistoryScreen(
                     // Offered even with nothing logged: the sheet says so, which beats a toolbar item that
                     // comes and goes.
                     IconButton(onClick = {
-                        exportRequest = buildExportRequest(feed, routineNames, today,
-                            criticalForce = templates.criticalForceRecords)
+                        onExport(buildExportRequest(feed, routineNames, today,
+                            criticalForce = templates.criticalForceRecords))
                     }) {
                         Icon(
                             ImageVector.vectorResource(R.drawable.ic_glyph_export),
@@ -241,7 +345,8 @@ fun HistoryScreen(
                         log = log,
                         name = displayName(log),
                         leadingGrip = feed.leadingGrip(log),
-                        onExport = { exportRequest = buildExportRequest(feed, routineNames, today, log) },
+                        onOpen = { onOpen(log) },
+                        onExport = { onExport(buildExportRequest(feed, routineNames, today, log)) },
                         onDelete = {
                             scope.launch {
                                 // Leaves the list only once the delete landed; the same guard raises the Undo.
@@ -278,17 +383,6 @@ fun HistoryScreen(
         }
     }
 
-    UndoSnackbarEffect(
-        hostState = snackbar,
-        deleted = templates.lastDeletedSession,
-        message = tr("Session deleted"),
-        onUndo = { scope.launch { templates.undoDeleteSession(); feed.refresh() } },
-        onExpired = { templates.dismissSessionUndo() },
-    )
-
-    exportRequest?.let { request ->
-        AnalysisExportSheet(request) { exportRequest = null }
-    }
     shareRequest?.let { request ->
         ShareCalendarSheet(request) { shareRequest = null }
     }
@@ -635,6 +729,7 @@ private fun SwipeableSessionRow(
     log: WorkoutLogEntity,
     name: String,
     leadingGrip: GripSpec?,
+    onOpen: () -> Unit,
     onDelete: () -> Unit,
     onExport: () -> Unit,
 ) {
@@ -645,8 +740,21 @@ private fun SwipeableSessionRow(
         deleteLabel = tr("%s. Delete", spokenSession(log, name)),
     ) {
         Column {
+            // The row OPENS its session; the swipes stay what they were. The click label is
+            // TalkBack's hint ("double tap to open this workout").
+            val interaction = remember { MutableInteractionSource() }
             SessionRow(log = log, name = name, leadingGrip = leadingGrip,
-                modifier = Modifier.padding(horizontal = Metrics.hPadding).padding(vertical = 2.dp))
+                modifier = Modifier
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        role = Role.Button,
+                        onClickLabel = tr("Opens this workout"),
+                        onClick = onOpen,
+                    )
+                    .pressFeedback(interaction, scales = false)
+                    .testTag("history.session")
+                    .padding(horizontal = Metrics.hPadding).padding(vertical = 2.dp))
             // Inset on BOTH sides to the row's own content: it starts under the text (iOS's
             // `listRowSeparatorLeading` guide) and stops at the same margin the date keeps.
             // It used to run off the right edge while starting 60 dp in on the left.

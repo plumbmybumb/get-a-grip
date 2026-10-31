@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -138,30 +139,17 @@ fun SessionSummaryScreen(
                 .padding(horizontal = Metrics.hPadding, vertical = Metrics.spacing),
             verticalArrangement = Arrangement.spacedBy(Metrics.spacing),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                CapsLabel(outcome.routineName)
-                Text(
-                    if (outcome.didAnyWork) tr("Session done") else tr("Session ended"),
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = palette.inkPrimary,
-                )
-                if (sessionsPerDayTarget > 1) {
-                    Text(
-                        tr("This routine asks for %d a day.", sessionsPerDayTarget),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = palette.inkTertiary,
-                    )
-                }
-            }
+            SessionSummaryHeader(
+                caption = outcome.routineName,
+                title = if (outcome.didAnyWork) tr("Session done") else tr("Session ended"),
+                note = if (sessionsPerDayTarget > 1) tr("This routine asks for %d a day.", sessionsPerDayTarget) else null,
+            )
 
-            Stats(
+            SessionSummaryStats(
                 completed = outcome.completedReps,
                 planned = outcome.plannedReps,
                 heldSeconds = heldSeconds,
-                peakKg = outcome.peakKg,
-                timerOnly = outcome.timerOnly,
-                palette = palette,
+                peakKg = if (outcome.timerOnly) null else outcome.peakKg,
             )
 
             if (outcome.didAnyWork && candidates.isNotEmpty()) {
@@ -212,19 +200,44 @@ fun SessionSummaryScreen(
     }
 }
 
+/// The routine above, the outcome below. History's session detail passes the day as the
+/// title, so the two screens read as one document. Shared, never copied.
 @Composable
-private fun Stats(
+internal fun SessionSummaryHeader(caption: String, title: String, note: String? = null) {
+    val palette = LocalGripPalette.current
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        CapsLabel(caption)
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = palette.inkPrimary,
+        )
+        if (note != null) {
+            Text(
+                note,
+                style = MaterialTheme.typography.bodySmall,
+                color = palette.inkTertiary,
+            )
+        }
+    }
+}
+
+/// Pulls of planned, time under tension, peak. `peakKg` null is a session no gauge measured
+/// (timer-only): the card says "—", never "0.0 kg", which would claim a measurement.
+@Composable
+internal fun SessionSummaryStats(
     completed: Int,
     planned: Int,
     heldSeconds: Int,
-    peakKg: Double,
-    timerOnly: Boolean,
-    palette: GripPalette,
+    peakKg: Double?,
 ) {
+    val palette = LocalGripPalette.current
+    val timerOnly = peakKg == null
     // ONE key per whole sentence, not three appended fragments: which clause goes where
     // is language-specific, and a fragment beginning with a comma cannot be moved.
-    val spoken = if (timerOnly) {
-        tr("%d of %d pulls completed", completed, planned)
+    val spoken = if (peakKg == null) {
+        tr("%d of %d pulls completed, %d seconds under tension", completed, planned, heldSeconds)
     } else {
         WeightUnits.tr(
             "%d of %d pulls completed, %d seconds under tension, peak %s kilograms",
@@ -240,7 +253,7 @@ private fun Stats(
         val values = listOf(
             Triple(tr("Pulls"), "$completed", tr("of %d", planned)),
             Triple(tr("Under tension"), PlanMath.clockText(heldSeconds), null),
-            Triple(tr("Peak"), if (timerOnly) tr("—") else kgText(peakKg), if (timerOnly) null else WeightUnits.symbol),
+            Triple(tr("Peak"), peakKg?.let { kgText(it) } ?: tr("—"), if (timerOnly) null else WeightUnits.symbol),
         )
         if (stacked) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -399,26 +412,7 @@ private fun MaxRow(
     ) {
         FingerGlyph(candidate.grip.fingers, position = candidate.grip.position,
             dot = 8.dp, gap = 3.dp, tint = if (saved) palette.armed else palette.inkSecondary)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(Modifier.align(Alignment.CenterVertically),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(kgText(candidate.kg), Modifier.alignByBaseline(),
-                        style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
-                        fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
-                    Text(WeightUnits.symbol, Modifier.alignByBaseline(),
-                        style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
-                }
-                Text(handLabel(candidate.side), Modifier.align(Alignment.CenterVertically),
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                    color = palette.inkPrimary)
-            }
-            Text(candidate.grip.line, style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
-            candidate.previous?.let {
-                Text(WeightUnits.tr("Previous: %s kg", kgText(it)), style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary)
-            }
-        }
+        PeakFigure(candidate.grip, candidate.side, candidate.kg, candidate.previous, Modifier.weight(1f))
         Checkbox(checked = saved, onCheckedChange = null,
             colors = CheckboxDefaults.colors(checkedColor = palette.armed,
                 uncheckedColor = palette.inkTertiary.copy(alpha = 0.65f)))
@@ -430,7 +424,43 @@ private fun sideLine(candidate: MaxCandidate): String {
     return WeightUnits.tr("%s · %s · %s kg", handLabel(candidate.side), candidate.grip.shortName, kg)
 }
 
-private fun handLabel(side: Side): String = L10n.tr(when (side) {
+/// A peak as the summary states it: the weight, the hand beside it, the grip, and the max it
+/// would replace. Shared with History's session detail, which lists the maxes a session saved.
+@Composable
+internal fun PeakFigure(
+    grip: GripSpec,
+    side: Side,
+    kg: Double,
+    previous: Double?,
+    modifier: Modifier = Modifier,
+    /// A timed max's window; 0 is a peak, and says nothing extra.
+    seconds: Int = 0,
+) {
+    val palette = LocalGripPalette.current
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(Modifier.align(Alignment.CenterVertically),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(kgText(kg), Modifier.alignByBaseline(),
+                    style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
+                Text(WeightUnits.symbol, Modifier.alignByBaseline(),
+                    style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
+            }
+            Text(handLabel(side), Modifier.align(Alignment.CenterVertically),
+                style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                color = palette.inkPrimary)
+        }
+        Text(if (seconds > 0) "${grip.line} · ${tr("%d s", seconds)}" else grip.line,
+            style = MaterialTheme.typography.bodySmall, color = palette.inkSecondary)
+        previous?.let {
+            Text(WeightUnits.tr("Previous: %s kg", kgText(it)), style = MaterialTheme.typography.labelSmall, color = palette.inkTertiary)
+        }
+    }
+}
+
+internal fun handLabel(side: Side): String = L10n.tr(when (side) {
     Side.left -> "Left hand"
     Side.right -> "Right hand"
     Side.both -> "Both hands"
@@ -447,9 +477,15 @@ private fun GradeCard(grade: RPE?, palette: GripPalette, onPick: (RPE?) -> Unit)
 }
 
 /// Per set, so a bad set is visible rather than averaged away.
+///
+/// `showsReps` (History's session detail) lists every pull under its set — hand, time held,
+/// peak, and how it ended — because an old session is opened to see exactly that. The live
+/// summary keeps one line per set. `measured` false (timer-only) drops the peak, which would
+/// read "0.0 kg".
 @Composable
-private fun SetBreakdown(reps: List<RepSummary>, palette: GripPalette,
-                         expanded: Boolean, onToggle: () -> Unit) {
+internal fun SetBreakdown(reps: List<RepSummary>, palette: GripPalette,
+                          expanded: Boolean, showsReps: Boolean = false, measured: Boolean = true,
+                          onToggle: () -> Unit) {
     val order = LinkedHashMap<Int, MutableList<RepSummary>>()
     for (rep in reps) order.getOrPut(rep.setIndex) { mutableListOf() }.add(rep)
 
@@ -478,6 +514,7 @@ private fun SetBreakdown(reps: List<RepSummary>, palette: GripPalette,
             // Read outside the semantics lambda, which is not composable.
             val spoken = tr("%s: %d of %d completed", grip?.spoken ?: tr("Set"), done, inSet.size)
             Surface(shape = RoundedCornerShape(Metrics.radiusInner), color = palette.card) {
+              Column {
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -507,9 +544,63 @@ private fun SetBreakdown(reps: List<RepSummary>, palette: GripPalette,
                         color = if (done == inSet.size) palette.inkPrimary else palette.armed,
                     )
                 }
+                if (showsReps) for (rep in inSet) {
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp),
+                        color = palette.inkTertiary.copy(alpha = 0.15f))
+                    RepLine(rep, measured, palette)
+                }
+              }
             }
         }
     }
+}
+
+/// One pull: the hand, what was held of what was asked, the peak, and — only when it did not
+/// simply complete — how it ended, in amber (a fact, not an alarm). ONE TalkBack stop.
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun RepLine(rep: RepSummary, measured: Boolean, palette: GripPalette) {
+    val seconds = String.format(java.util.Locale.getDefault(), "%.1f", rep.heldSeconds)
+    val held = tr("%s of %d s", seconds, rep.targetSeconds)
+    val peak = if (measured && rep.peakKg > 0) "${kgText(rep.peakKg)} ${WeightUnits.symbol}" else null
+    val ending = repEnding(rep.outcome)
+    val spoken = buildList {
+        add(handLabel(rep.side))
+        add(tr("held %s of %d seconds", seconds, rep.targetSeconds))
+        if (peak != null) add(WeightUnits.tr("peak %s kilograms", kgText(rep.peakKg)))
+        if (ending != null) add(ending)
+    }.joinToString(", ")
+    val style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum")
+    // A flow, so at large text the figures drop under the hand instead of ellipsizing.
+    FlowRow(
+        Modifier.fillMaxWidth().heightIn(min = 40.dp)
+            .clearAndSetSemantics { contentDescription = spoken }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(L10n.tr(when (rep.side) {
+            Side.left -> "Left"
+            Side.right -> "Right"
+            Side.both -> "Both"
+        }), style = style, color = palette.inkPrimary)
+        if (ending != null) {
+            Text(ending, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
+                color = palette.armed)
+        }
+        Spacer(Modifier.weight(1f))
+        Text(held, style = style, color = palette.inkSecondary)
+        if (peak != null) Text(peak, style = style, fontWeight = FontWeight.SemiBold, color = palette.inkPrimary)
+    }
+}
+
+/// null for a pull that simply completed.
+internal fun repEnding(outcome: RepOutcome): String? = when (outcome) {
+    RepOutcome.completed -> null
+    RepOutcome.skipped -> L10n.tr("Skipped")
+    RepOutcome.earlyRelease -> L10n.tr("Released early")
+    RepOutcome.aborted -> L10n.tr("Stopped")
 }
 
 // MARK: - Previews

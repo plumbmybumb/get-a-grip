@@ -21,7 +21,6 @@ struct SessionSummaryView: View {
 
     @Environment(TemplateStore.self) private var templates
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var grade: RPE?
     @State private var saved = false
     @State private var gradeTick = 0
@@ -46,11 +45,14 @@ struct SessionSummaryView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Metrics.spacing) {
-                    header
-                    stats
+                    SessionSummaryHeader(caption: template.name,
+                                         title: didAnyWork ? String(localized: "Session done")
+                                                           : String(localized: "Session ended"))
+                    SessionSummaryStats(completed: completed.count, planned: reps.count,
+                                        heldSeconds: heldSeconds, peakKg: peakKg)
                     if didAnyWork { newMaxCard }
                     if didAnyWork { gradeCard }
-                    setBreakdown
+                    SessionSetBreakdown(reps: reps, expanded: $showsSets)
                 }
                 .padding(.horizontal, Metrics.hPadding)
                 .padding(.vertical, Metrics.spacing)
@@ -91,56 +93,6 @@ struct SessionSummaryView: View {
         .frame(maxWidth: Metrics.maxContentWidth)
         .frame(maxWidth: .infinity)
     }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            CapsLabel(template.name)
-            Text(didAnyWork ? "Session done" : "Session ended")
-                .font(.system(.largeTitle, weight: .semibold))
-                .foregroundStyle(Ink.primary)
-        }
-    }
-
-    /// Three cards whose VALUES share a line. "Under tension" has no suffix and was the
-    /// one label that wrapped on a 13 mini, so its value sat ~25 pt below "6 of 36" and
-    /// "17.0 kg" beside it — the summary's most visibly slapped-in spot (audit
-    /// 2026-10-31). Every card now reserves the TALLEST label and a suffix line
-    /// (`StatCard`), so the three values sit on one baseline at any width. At
-    /// accessibility sizes a third of the row cannot hold a word, so the cards stack,
-    /// each full width with its unit inline after the value.
-    private var stats: some View {
-        let cards = [
-            StatCard.Content(title: String(localized: "Pulls"), value: "\(completed.count)",
-                             suffix: String(localized: "of \(reps.count)")),
-            StatCard.Content(title: String(localized: "Under tension"),
-                             value: PlanMath.clockText(heldSeconds), suffix: nil),
-            StatCard.Content(title: String(localized: "Peak"), value: weightUnit.number(peakKg),
-                             suffix: weightUnit.symbol),
-        ]
-        return Group {
-            if typeSize.isAccessibilitySize {
-                VStack(spacing: 10) {
-                    ForEach(cards.indices, id: \.self) { StatCard(content: cards[$0], stacked: true) }
-                }
-            } else {
-                HStack(spacing: 10) {
-                    ForEach(cards.indices, id: \.self) {
-                        StatCard(content: cards[$0], stacked: false,
-                                 reservedTitles: cards.map(\.title),
-                                 reservesSuffix: cards.contains { $0.suffix != nil })
-                    }
-                }
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("""
-            \(completed.count) of \(reps.count) pulls completed, \
-            \(heldSeconds) seconds under tension, \
-            peak \(weightUnit.number(peakKg)) \(weightUnit.spokenName)
-            """)
-    }
-
 
     // MARK: - New maxes
 
@@ -203,28 +155,9 @@ struct SessionSummaryView: View {
                 FingerGlyph(fingers: candidate.grip.fingers, position: candidate.grip.position,
                             dot: 8, gap: 3, tint: saved ? StatusTint.armed : Ink.secondary)
                     .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            peakWeight(candidate)
-                            peakHand(candidate.side)
-                        }
-                        .fixedSize(horizontal: true, vertical: false)
-                        VStack(alignment: .leading, spacing: 2) {
-                            peakWeight(candidate)
-                            peakHand(candidate.side)
-                        }
-                    }
-                    .monospacedDigit()
-                    Text(candidate.grip.line)
-                        .font(.system(.caption)).foregroundStyle(Ink.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let previous = candidate.previous {
-                        Text(String(localized: "Previous: \(weightUnit.number(previous)) \(weightUnit.symbol)"))
-                            .font(.system(.caption2)).foregroundStyle(Ink.tertiary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                SessionPeakFigure(grip: candidate.grip, side: candidate.side, kg: candidate.kg,
+                                  previous: candidate.previous)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: saved ? "checkmark.circle.fill" : "circle")
                     .font(.system(.title3))
                     .foregroundStyle(saved ? StatusTint.armed : Ink.tertiary.opacity(0.65))
@@ -240,34 +173,9 @@ struct SessionSummaryView: View {
         .accessibilityAddTraits(saved ? .isSelected : [])
     }
 
-    private func peakWeight(_ candidate: SessionMaxCandidate) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(weightUnit.number(candidate.kg))
-                .font(.system(.title2, weight: .semibold))
-                .foregroundStyle(Ink.primary)
-            Text(weightUnit.symbol).font(.system(.caption)).foregroundStyle(Ink.secondary)
-        }
-        .fixedSize(horizontal: true, vertical: false)
-    }
-
-    private func peakHand(_ side: Side) -> some View {
-        Text(handLabel(side))
-            .font(.system(.caption, weight: .semibold))
-            .foregroundStyle(Ink.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private func handLabel(_ side: Side) -> String {
-        switch side {
-        case .left: String(localized: "Left hand")
-        case .right: String(localized: "Right hand")
-        case .both: String(localized: "Both hands")
-        }
-    }
-
     private func sideLine(_ candidate: SessionMaxCandidate) -> String {
         let kg = weightUnit.number(candidate.kg)
-        return String(localized: "\(handLabel(candidate.side)) · \(candidate.grip.shortName) · \(kg) \(weightUnit.symbol)")
+        return String(localized: "\(SessionPeakFigure.handLabel(candidate.side)) · \(candidate.grip.shortName) · \(kg) \(weightUnit.symbol)")
     }
 
     private var gradeCard: some View {
@@ -277,67 +185,6 @@ struct SessionSummaryView: View {
                          labels: RPE.allCases.map(\.name),
                          title: String(localized: "How hard did it feel?"), identifier: "effort.overall")
         }
-    }
-
-    /// Per set, so a bad set is visible rather than averaged away.
-    private var setBreakdown: some View {
-        let grouped = groupedReps
-        return VStack(alignment: .leading, spacing: 8) {
-            Button {
-                withAnimation(Motion.state(reduceMotion)) { showsSets.toggle() }
-            } label: {
-                HStack {
-                    Text("Sets").font(.system(.subheadline, weight: .semibold))
-                    Spacer(minLength: 8)
-                    Text("\(grouped.order.count)").monospacedDigit()
-                    Image(systemName: showsSets ? "chevron.up" : "chevron.down")
-                }
-                .foregroundStyle(Ink.secondary)
-                .padding(.horizontal, 14)
-                .frame(minHeight: 48)
-                .cardSurface(.flat, in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
-                .contentShape(.rect)
-            }
-            .buttonStyle(PressFeedbackButtonStyle())
-            .accessibilityIdentifier("summary.sets")
-            .accessibilityValue(showsSets ? String(localized: "Expanded") : String(localized: "Collapsed"))
-            if showsSets {
-                ForEach(grouped.order, id: \.self) { index in
-                    let inSet = grouped.byIndex[index] ?? []
-                    let done = inSet.filter { $0.outcome == .completed }.count
-                    HStack(spacing: 10) {
-                        if let grip = inSet.first?.grip {
-                            FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 8, gap: 3)
-                            Text(grip.line)
-                                .font(.system(.subheadline))
-                                .foregroundStyle(Ink.secondary)
-                                .lineLimit(1)
-                        }
-                        Spacer(minLength: 8)
-                        Text("\(done)/\(inSet.count)")
-                            .font(.system(.subheadline, weight: .semibold))
-                            .monospacedDigit()
-                            .foregroundStyle(done == inSet.count ? Ink.primary : StatusTint.armed)
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 14)
-                    .cardSurface(.flat,
-                                in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(inSet.first?.grip.spoken ?? String(localized: "Set")): \(done) of \(inSet.count) completed")
-                }
-            }
-        }
-    }
-
-    private var groupedReps: (order: [Int], byIndex: [Int: [RepSummary]]) {
-        var order: [Int] = []
-        var byIndex: [Int: [RepSummary]] = [:]
-        for rep in reps {
-            if byIndex[rep.setIndex] == nil { order.append(rep.setIndex) }
-            byIndex[rep.setIndex, default: []].append(rep)
-        }
-        return (order, byIndex)
     }
 
     private func finish() {
@@ -353,6 +200,316 @@ struct SessionSummaryView: View {
             saved = true
         }
         onDone()
+    }
+}
+
+// MARK: - Pieces the finish summary and History's session detail share
+
+/// The routine above, the outcome below, at the summary's own scale. History's detail
+/// passes the day instead of "Session done"; both read as the same document.
+struct SessionSummaryHeader: View {
+    var caption: String
+    var title: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            CapsLabel(caption)
+            Text(title)
+                .font(.system(.largeTitle, weight: .semibold))
+                .foregroundStyle(Ink.primary)
+        }
+    }
+}
+
+/// Three cards whose VALUES share a line. "Under tension" has no suffix and was the
+/// one label that wrapped on a 13 mini, so its value sat ~25 pt below "6 of 36" and
+/// "17.0 kg" beside it — the summary's most visibly slapped-in spot (audit
+/// 2026-10-31). Every card now reserves the TALLEST label and a suffix line
+/// (`StatCard`), so the three values sit on one baseline at any width. At
+/// accessibility sizes a third of the row cannot hold a word, so the cards stack,
+/// each full width with its unit inline after the value.
+///
+/// `peakKg` nil is a session nothing measured (History's timer-only sessions): the card
+/// says "—", never "0.0 kg", which would state a measurement nobody took.
+struct SessionSummaryStats: View {
+    var completed: Int
+    var planned: Int
+    var heldSeconds: Int
+    var peakKg: Double?
+
+    @Environment(\.weightUnit) private var weightUnit
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        let cards = [
+            StatCard.Content(title: String(localized: "Pulls"), value: "\(completed)",
+                             suffix: String(localized: "of \(planned)")),
+            StatCard.Content(title: String(localized: "Under tension"),
+                             value: PlanMath.clockText(heldSeconds), suffix: nil),
+            StatCard.Content(title: String(localized: "Peak"),
+                             value: peakKg.map { weightUnit.number($0) } ?? String(localized: "—"),
+                             suffix: peakKg == nil ? nil : weightUnit.symbol),
+        ]
+        return Group {
+            if typeSize.isAccessibilitySize {
+                VStack(spacing: 10) {
+                    ForEach(cards.indices, id: \.self) { StatCard(content: cards[$0], stacked: true) }
+                }
+            } else {
+                HStack(spacing: 10) {
+                    ForEach(cards.indices, id: \.self) {
+                        StatCard(content: cards[$0], stacked: false,
+                                 reservedTitles: cards.map(\.title),
+                                 reservesSuffix: cards.contains { $0.suffix != nil })
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(spoken)
+    }
+
+    private var spoken: String {
+        guard let peakKg else {
+            return String(localized: "\(completed) of \(planned) pulls completed, \(heldSeconds) seconds under tension")
+        }
+        return String(localized: """
+            \(completed) of \(planned) pulls completed, \
+            \(heldSeconds) seconds under tension, \
+            peak \(weightUnit.number(peakKg)) \(weightUnit.spokenName)
+            """)
+    }
+}
+
+/// A peak as the summary states it: the weight, the hand beside it (or under it, when
+/// the two will not share a line), the grip, and the max it would replace.
+struct SessionPeakFigure: View {
+    var grip: GripSpec
+    var side: Side
+    var kg: Double
+    var previous: Double?
+    /// A timed max's window; 0 is a peak, and says nothing extra.
+    var seconds: Int = 0
+
+    @Environment(\.weightUnit) private var weightUnit
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    peakWeight
+                    peakHand
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 2) {
+                    peakWeight
+                    peakHand
+                }
+            }
+            .monospacedDigit()
+            Text(seconds > 0 ? "\(grip.line) · \(String(localized: "\(seconds) s"))" : grip.line)
+                .font(.system(.caption)).foregroundStyle(Ink.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let previous {
+                Text(String(localized: "Previous: \(weightUnit.number(previous)) \(weightUnit.symbol)"))
+                    .font(.system(.caption2)).foregroundStyle(Ink.tertiary)
+            }
+        }
+    }
+
+    private var peakWeight: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(weightUnit.number(kg))
+                .font(.system(.title2, weight: .semibold))
+                .foregroundStyle(Ink.primary)
+            Text(weightUnit.symbol).font(.system(.caption)).foregroundStyle(Ink.secondary)
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var peakHand: some View {
+        Text(Self.handLabel(side))
+            .font(.system(.caption, weight: .semibold))
+            .foregroundStyle(Ink.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    static func handLabel(_ side: Side) -> String {
+        switch side {
+        case .left: String(localized: "Left hand")
+        case .right: String(localized: "Right hand")
+        case .both: String(localized: "Both hands")
+        }
+    }
+}
+
+/// Per set, so a bad set is visible rather than averaged away.
+///
+/// `showsReps` (History's detail) lists every pull under its set — hand, time held, peak,
+/// and how it ended — because an old session is opened to see exactly that. The live
+/// summary keeps one line per set: it is a moment, not a record to read back.
+struct SessionSetBreakdown: View {
+    var reps: [RepSummary]
+    @Binding var expanded: Bool
+    var showsReps = false
+    /// false for a timer-only session: no peak column, which would read "0.0 kg".
+    var measured = true
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.weightUnit) private var weightUnit
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        let grouped = groupedReps
+        return VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(Motion.state(reduceMotion)) { expanded.toggle() }
+            } label: {
+                HStack {
+                    Text("Sets").font(.system(.subheadline, weight: .semibold))
+                    Spacer(minLength: 8)
+                    Text("\(grouped.order.count)").monospacedDigit()
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                }
+                .foregroundStyle(Ink.secondary)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .cardSurface(.flat, in: RoundedRectangle(cornerRadius: Metrics.radiusInner))
+                .contentShape(.rect)
+            }
+            .buttonStyle(PressFeedbackButtonStyle())
+            .accessibilityIdentifier("summary.sets")
+            .accessibilityValue(expanded ? String(localized: "Expanded") : String(localized: "Collapsed"))
+            if expanded {
+                ForEach(grouped.order, id: \.self) { index in
+                    setRow(grouped.byIndex[index] ?? [])
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func setRow(_ inSet: [RepSummary]) -> some View {
+        let done = inSet.filter { $0.outcome == .completed }.count
+        if showsReps {
+            VStack(alignment: .leading, spacing: 0) {
+                setHeader(inSet, done: done)
+                    .padding(.vertical, 10)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(inSet.first?.grip.spoken ?? String(localized: "Set")): \(done) of \(inSet.count) completed")
+                ForEach(inSet.indices, id: \.self) { i in
+                    Divider().overlay(Ink.tertiary.opacity(0.08))
+                    repLine(inSet[i])
+                }
+            }
+            .padding(.horizontal, 14)
+            .cardSurface(.flat,
+                        in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
+        } else {
+            setHeader(inSet, done: done)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 14)
+                .cardSurface(.flat,
+                            in: RoundedRectangle(cornerRadius: Metrics.radiusInner, style: .continuous))
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(inSet.first?.grip.spoken ?? String(localized: "Set")): \(done) of \(inSet.count) completed")
+        }
+    }
+
+    private func setHeader(_ inSet: [RepSummary], done: Int) -> some View {
+        HStack(spacing: 10) {
+            if let grip = inSet.first?.grip {
+                FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 8, gap: 3)
+                Text(grip.line)
+                    .font(.system(.subheadline))
+                    .foregroundStyle(Ink.secondary)
+                    .lineLimit(showsReps ? nil : 1)
+            }
+            Spacer(minLength: 8)
+            Text("\(done)/\(inSet.count)")
+                .font(.system(.subheadline, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(done == inSet.count ? Ink.primary : StatusTint.armed)
+        }
+    }
+
+    /// One pull: the hand, what was held of what was asked, the peak, and — only when it
+    /// did not simply complete — how it ended, in amber (a fact, not an alarm).
+    private func repLine(_ rep: RepSummary) -> some View {
+        let seconds = rep.heldSeconds.formatted(.number.precision(.fractionLength(1)))
+        let held = String(localized: "\(seconds) of \(rep.targetSeconds) s")
+        let peak = measured && rep.peakKg > 0 ? "\(weightUnit.number(rep.peakKg)) \(weightUnit.symbol)" : nil
+        let ending = Self.ending(rep.outcome)
+        return Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(Self.hand(rep.side)).foregroundStyle(Ink.primary)
+                    Text(held).foregroundStyle(Ink.secondary)
+                    if let peak { Text(peak).foregroundStyle(Ink.primary) }
+                    if let ending { Text(ending).foregroundStyle(StatusTint.armed) }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(Self.hand(rep.side)).foregroundStyle(Ink.primary)
+                    if let ending {
+                        Text(ending).font(.system(.caption, weight: .semibold))
+                            .foregroundStyle(StatusTint.armed)
+                    }
+                    Spacer(minLength: 8)
+                    Text(held).foregroundStyle(Ink.secondary)
+                    if let peak {
+                        Text(peak).fontWeight(.semibold).foregroundStyle(Ink.primary)
+                    }
+                }
+            }
+        }
+        .font(.system(.subheadline))
+        .monospacedDigit()
+        .padding(.vertical, 8)
+        .frame(minHeight: 36)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenRep(rep))
+    }
+
+    private func spokenRep(_ rep: RepSummary) -> String {
+        let seconds = rep.heldSeconds.formatted(.number.precision(.fractionLength(1)))
+        var parts = [SessionPeakFigure.handLabel(rep.side),
+                     String(localized: "held \(seconds) of \(rep.targetSeconds) seconds")]
+        if measured, rep.peakKg > 0 {
+            parts.append(String(localized: "peak \(weightUnit.number(rep.peakKg)) \(weightUnit.spokenName)"))
+        }
+        if let ending = Self.ending(rep.outcome) { parts.append(ending) }
+        return parts.joined(separator: ", ")
+    }
+
+    private static func hand(_ side: Side) -> String {
+        switch side {
+        case .left: String(localized: "Left")
+        case .right: String(localized: "Right")
+        case .both: String(localized: "Both")
+        }
+    }
+
+    /// nil for a pull that simply completed.
+    static func ending(_ outcome: RepOutcome) -> String? {
+        switch outcome {
+        case .completed: nil
+        case .skipped: String(localized: "Skipped")
+        case .earlyRelease: String(localized: "Released early")
+        case .aborted: String(localized: "Stopped")
+        }
+    }
+
+    private var groupedReps: (order: [Int], byIndex: [Int: [RepSummary]]) {
+        var order: [Int] = []
+        var byIndex: [Int: [RepSummary]] = [:]
+        for rep in reps {
+            if byIndex[rep.setIndex] == nil { order.append(rep.setIndex) }
+            byIndex[rep.setIndex, default: []].append(rep)
+        }
+        return (order, byIndex)
     }
 }
 
