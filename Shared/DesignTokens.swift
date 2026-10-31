@@ -169,11 +169,20 @@ enum Metrics {
     /// keep 440.
     static let maxContentWidthRegular: CGFloat = 560
     /// A GRID of cards on a wide screen: two phone-width cards and the gap between them,
-    /// used by Today and Maxes once the window has room for two.
+    /// used by Today and Maxes once the window has room for two. Today shows its routines
+    /// AS a grid only from this width down to two phone columns (`wideGridMinWidth`);
+    /// narrower two-column windows put the deck beside the strip instead.
     static let maxContentWidthGrid: CGFloat = 1080
-    /// The narrowest a card in that grid may go: the phone column, where every card was
-    /// measured.
-    static let cardMinWidth: CGFloat = 440
+    /// The content width at which two PHONE-width (440) cards fit side by side — where
+    /// Today switches from "deck beside the strip" to "every routine on screen".
+    static let wideGridMinWidth: CGFloat = maxContentWidth * 2 + spacing
+    /// The narrowest a card in a TWO-column grid may go. 280, not the phone's 440
+    /// (2026-10-31): an unfolded iPhone Duo is 669 pt wide on the simulator (626 by the
+    /// press figure), a 629 pt content column, and two cards there are ≈303 pt — 282 at
+    /// the press figure. 440 kept that screen a single 629 pt banner per card. Every card
+    /// that enters a grid was re-measured at 303 (`docs/IPHONE_DUO.md`, "Unfolded
+    /// layouts"); a Split View half (313 pt) is compact width and never reaches a grid.
+    static let cardMinWidth: CGFloat = 280
     static let fieldHeight: CGFloat = 54
     static let buttonHeight: CGFloat = 56
     static let buttonHorizontalPadding: CGFloat = 16

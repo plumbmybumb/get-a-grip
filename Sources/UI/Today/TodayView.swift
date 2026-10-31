@@ -146,12 +146,10 @@ struct TodayView: View {
             .animation(Motion.state(reduceMotion), value: deck.ordered.count)
             .staggerIn(1)
 
-            // With no routine there is no ritual for the strip to describe.
-            if !deck.ordered.isEmpty {
-                ConsistencyCard(days: templates.consistency,
-                                onLogClimb: { loggingSession = true },
-                                onShowHistory: onShowHistory)
-                    .staggerIn(2)
+            // With no routine there is no ritual for the strip to describe. On a regular-
+            // width window the strip is a cell of the routine grid instead.
+            if !deck.ordered.isEmpty, sizeClass != .regular {
+                consistencyCard.staggerIn(2)
             }
         }
         // The builder is FULL SCREEN, not a sheet: a sheet's top edge sits ~50 pt below
@@ -335,17 +333,34 @@ struct TodayView: View {
     /// Size CLASS, never the idiom: an iPad in Slide Over is a phone and keeps the deck.
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    /// The regular-width layout: the same cards and ghost, two wide where the window
-    /// allows. No pin and no settle — every routine is on screen, and the up-next border
-    /// still says which one Today opens on.
+    /// The regular-width layout: the same cards, the strip and the ghost, two wide where
+    /// the window allows. No pin and no settle — every routine is on screen, and the
+    /// up-next border still says which one Today opens on.
+    ///
+    /// **The strip is a CELL, after the routines and before the ghost** (2026-10-31). An
+    /// unfolded iPhone Duo is 669 × 951 pt: with 280 pt as the grid's minimum the cards go
+    /// two to a row at ≈303, and one routine stands beside its strip — `[routine | strip]
+    /// [new]`, two routines `[A | B] [strip | new]` — on one page. Below the grid, the strip
+    /// was a 629 pt band under a half-empty row, and on a 13-inch iPad a 1080 pt one. A
+    /// deck-beside-the-strip variant was built and measured first: one 275 pt card and a
+    /// strip, with the lower half of the screen empty — a phone layout in a bigger frame,
+    /// which is the complaint this screen is answering. Reading order stays the phone's:
+    /// what you do, how it went, make another.
     private func routineGrid(_ deck: Deck) -> some View {
         CardGrid {
             ForEach(deck.cards) { card in
                 routineCard(card, deck: deck)
             }
+            consistencyCard
             newRoutineGhost
                 .id(Self.ghostID)
         }
+    }
+
+    private var consistencyCard: some View {
+        ConsistencyCard(days: templates.consistency,
+                        onLogClimb: { loggingSession = true },
+                        onShowHistory: onShowHistory)
     }
 
     /// The routines as a PAGED DECK — Music's Top Picks, not a browse feed. The card IS the
