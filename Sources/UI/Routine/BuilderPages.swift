@@ -166,7 +166,10 @@ struct RoutineTargetRow: View, Equatable {
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .foregroundStyle(band == nil ? Ink.tertiary : Ink.primary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        // One line, always: at AX3 on a 13 mini "18–22 %" broke and left
+                        // the "%" alone under the numbers.
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
                         .font(.system(.footnote, weight: .semibold))
                         .foregroundStyle(Ink.tertiary)

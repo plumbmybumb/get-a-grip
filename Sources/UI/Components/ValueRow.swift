@@ -178,9 +178,10 @@ struct ValueRow: View {
     @ViewBuilder
     private func ladderRow(_ ladder: [Double]) -> some View {
         let stops = dialValues(ladder)
-        // Accessibility sizes STACK the title over the stepper: side by side, the three
-        // 44 pt controls crushed "Rest between pulls" into one syllable per line.
-        let layout = typeSize.isAccessibilitySize
+        // Large sizes STACK the title over the stepper: side by side, the three 44 pt
+        // controls crushed "Rest between pulls" into one syllable per line at AX3, and
+        // already at XXXL on a 13 mini they squeezed the value itself ("6 s" over "0").
+        let layout = typeSize >= .xxxLarge
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
             : AnyLayout(HStackLayout(alignment: .center, spacing: 0))
         let row = layout {
@@ -283,6 +284,9 @@ struct ValueRow: View {
                     Text(unit).font(.system(.subheadline)).foregroundStyle(Ink.tertiary)
                 }
             }
+            // A number never wraps: a squeezed row broke "60 s" into "6 s" over "0", which
+            // reads as a different value. The title beside it is the part that gives way.
+            .fixedSize()
             .foregroundStyle(Ink.primary)
             .padding(.horizontal, 10)
             // 44 both ways: a short unitless value can be one digit plus padding, well

@@ -68,16 +68,13 @@ struct PrimaryGlassButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                if let systemImage { Image(systemName: systemImage) }
-                Text(title)
-            }
-            .font(.system(size: textSize, weight: .semibold))
-            .foregroundStyle(labelColor)
-            // No HARD height: it would clip "Start second session" at accessibility
-            // sizes instead of growing. Short titles still measure exactly
-            // Metrics.buttonHeight.
-            .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
+            ActionTitle(title: title, systemImage: systemImage, spacing: 8)
+                .font(.system(size: textSize, weight: .semibold))
+                .foregroundStyle(labelColor)
+                // No HARD height: it would clip "Start second session" at accessibility
+                // sizes instead of growing. Short titles still measure exactly
+                // Metrics.buttonHeight.
+                .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
         }
         .buttonStyle(.glassProminent)
         .tint(tint)
@@ -108,15 +105,12 @@ struct SolidPrimaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                if let systemImage { Image(systemName: systemImage) }
-                Text(title)
-            }
-            .font(.system(size: textSize, weight: .semibold))
-            .foregroundStyle(labelColor)
-            .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
-            .background(tint, in: .capsule)
-            .contentShape(.capsule)
+            ActionTitle(title: title, systemImage: systemImage, spacing: 8)
+                .font(.system(size: textSize, weight: .semibold))
+                .foregroundStyle(labelColor)
+                .actionLabelLayout(minHeight: Metrics.buttonHeight, fullWidth: true)
+                .background(tint, in: .capsule)
+                .contentShape(.capsule)
         }
         .buttonStyle(PressFeedbackButtonStyle())
     }
@@ -132,14 +126,11 @@ struct SolidSecondaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                if let systemImage { Image(systemName: systemImage) }
-                Text(title)
-            }
-            .font(.system(size: textSize, weight: .semibold))
-            .foregroundStyle(Ink.primary)
-            .actionLabelLayout(minHeight: Metrics.fieldHeight)
-            .background(Color.adaptive(Color(hex: "FFFFFF"), Color(hex: "343A44")),
+            ActionTitle(title: title, systemImage: systemImage, spacing: 6)
+                .font(.system(size: textSize, weight: .semibold))
+                .foregroundStyle(Ink.primary)
+                .actionLabelLayout(minHeight: Metrics.fieldHeight)
+                .background(Color.adaptive(Color(hex: "FFFFFF"), Color(hex: "343A44")),
                         in: .capsule)
             .contentShape(.capsule)
         }
@@ -158,14 +149,36 @@ struct SecondaryGlassButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                if let systemImage { Image(systemName: systemImage) }
-                Text(title)
-            }
-            .font(.system(size: textSize, weight: .semibold))
-            .actionLabelLayout(minHeight: Metrics.fieldHeight)
+            ActionTitle(title: title, systemImage: systemImage, spacing: 6)
+                .font(.system(size: textSize, weight: .semibold))
+                .actionLabelLayout(minHeight: Metrics.fieldHeight)
         }
         .buttonStyle(.glass)
         .tint(tint)
+    }
+}
+
+/// The four buttons' shared label: icon, then title.
+///
+/// **At accessibility sizes the icon steps aside and the title gets the whole capsule.**
+/// Beside a 60 pt glyph the critical force setup's full-width Connect broke inside its
+/// one word ("Conne / ct") on a 13 mini at AX3. Every one of these titles already says
+/// what the symbol pictures, so someone who asked for big text is served by the words;
+/// stacking the icon above instead would have spent a line of height on a decoration.
+private struct ActionTitle: View {
+    let title: String
+    let systemImage: String?
+    let spacing: CGFloat
+
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        HStack(spacing: spacing) {
+            if let systemImage, !typeSize.isAccessibilitySize {
+                Image(systemName: systemImage)
+            }
+            Text(title)
+                .lineLimit(nil)
+        }
     }
 }

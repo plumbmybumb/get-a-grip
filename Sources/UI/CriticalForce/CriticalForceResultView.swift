@@ -190,6 +190,9 @@ struct CriticalForceHandColumn: View {
                     .foregroundStyle(Ink.secondary)
             }
             .padding(.vertical, 10)
+            // Clear of the selection stroke: at AXM on a 13 mini the number shrank only
+            // until it met the column's edge, and "16.2 kg" ran into the bleu border.
+            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity)
             .background(Ink.primary.opacity(selected ? 0.07 : 0), in: shape)
             .overlay { shape.strokeBorder(selected ? StatusTint.engaged : .clear, lineWidth: 1.5) }
