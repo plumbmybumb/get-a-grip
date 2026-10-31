@@ -1,5 +1,42 @@
 # Release record and the queue behind it
 
+## Queue — on `main`, unreleased (31 Oct 2026)
+
+Next builds: iOS ≥ 30 (version ≥ 1.4.1), Android versionCode ≥ 19. No SwiftData/Room
+schema change in this batch (the two sound settings are per-device UserDefaults), so no
+CloudKit deploy is owed.
+
+- **Body weight field always has a way out** (user report, Thomas): an inline Done beside
+  the unit on both platforms, scroll-to-dismiss on iOS, tap-outside on Android; a field
+  still focused when the screen closes saves its number. Not reproduced in the Simulator —
+  Thomas's phone is the real check.
+- **Benchmarks at large text** (user report): the card picks its layout by fit
+  (`ViewThatFits` on iOS, a `TextMeasurer` on Android); "Shared max 29.4 kg" never breaks
+  mid-digit again. Android had the same break at the DEFAULT font scale.
+- **Dynamic Type / font-scale sweep, both platforms**: builder grip token and steppers,
+  the glass buttons' icon+title, gauge readouts and dock, critical force result and setup,
+  Settings device card and gauge caption contrast, Today header and routine card, History
+  rows, runner dock and summary stat cards (iOS); units kept with their numbers via
+  no-break spaces (`DisplayText.kt`), History rows and chart axes, duration dial, tab bar,
+  share image at font scale 1, weight-unit chips, segmented rows, pinned runner dock,
+  summary stats, chip grids, menus (Android). Fine tuning no longer states two titles twice.
+  **Decision owed to Nuri:** the Android runner dock is now two rows + Hold to end at the
+  default size on a Pixel 8 (one-line capsule rule measured against "Keep holding…").
+- **GitHub issue 7** (sound): Settings › Sound card — cue tones on/off and a level, haptics
+  untouched, releasing the slider plays a tick. **Issue 9** (holds): every hold-to-confirm
+  is 0.6 s (was 0.9) on iPhone, watch and Android; both holds kept. **Issues 6 and 8
+  declined** (per-set rep counting with both hands as one rep; pulling during the other
+  hand's rest — the per-hand timers were built and killed on 2 Oct).
+- **iPhone Duo** ([IPHONE_DUO.md](IPHONE_DUO.md) "Unfolded layouts",
+  [IPHONE_DUO_NIGHTSTAND.md](IPHONE_DUO_NIGHTSTAND.md)): rails clear of the vertical tab
+  bar; two-column Today/Benchmarks and two-pane History at the 669 pt inner display (also
+  changes iPad: strip as a grid cell, two panes in portrait); grip picker as a safe-area
+  card where there is no top cutout (Duo, home-button phones, iPad); the LIVE runner may
+  rotate on iPhone and draws a far view at compact height (nightstand/tent); regular-width
+  portrait runner at 560 pt and the wide scale; Split View half survives. **Owed on Nuri's
+  Duo**: tent pose keeps the foreground app or StandBy takes it; a turn reaching the app;
+  Live Activity on the vertical island; a Progressor session through a fold.
+
 ## iOS 1.2.0 (24) and Android 1.2.0 (14) — critical force, Benchmarks, fewer words
 
 Status: **prepared on branch `release/next`, not yet uploaded.** What's New:
