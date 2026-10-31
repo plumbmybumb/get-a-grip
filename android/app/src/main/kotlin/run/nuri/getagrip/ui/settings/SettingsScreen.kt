@@ -204,7 +204,7 @@ private fun SettingsRoot(
                 icon = Icons.Outlined.SettingsInputAntenna,
                 iconTint = palette.bleu,
                 title = tr("Gauge"),
-                subtitle = if (device.isMock) tr("Demo device") else device.gaugeKind.displayName,
+                subtitle = device.gaugeKind.displayName,
                 // Counted from the registry, so a ninth gauge cannot leave this claiming eight.
                 note = tr("Tap to choose from %d supported gauges.", GaugeKind.selectable.size),
                 outline = palette.bleu,
@@ -221,12 +221,8 @@ private fun SettingsRoot(
                 device.batteryFraction?.let {
                     LabelledValue(tr("Battery"), "${run.nuri.getagrip.ui.components.BatteryDisplay.percentage(it)}%")
                 }
-                // A synthetic number that looks like a measurement is worse than none, so demo mode is
-                // never ambiguous. Otherwise this names the SELECTED gauge, not a hardcoded Progressor.
-                LabelledValue(
-                    tr("Source"),
-                    if (device.isMock) tr("Demo device") else device.gaugeKind.displayName,
-                )
+                // The SELECTED gauge, not a hardcoded Progressor.
+                LabelledValue(tr("Source"), device.gaugeKind.displayName)
             }
 
             WeightUnitSetting(LocalSettingsStore.current)
@@ -236,7 +232,9 @@ private fun SettingsRoot(
             // The live gauge is a button on Today's bar (2026-09-20): one door, not two.
 
             SupportCard(
-                gauge = device.gaugeKind.displayName + if (device.isMock) " (${tr("Demo device")})" else "",
+                // No demo suffix: there is no user-facing demo mode (2026-10-31), and the
+                // debug-only mock never reaches a release build's support mail.
+                gauge = device.gaugeKind.displayName,
                 diagnostics = {
                     if (device.diagnosticEntries.isEmpty()) null
                     else device.diagnosticEntries.diagnosticTimeline() +
@@ -290,8 +288,7 @@ fun GaugePickerScreen(modifier: Modifier = Modifier, onSelected: () -> Unit) {
                         color = MaterialTheme.colorScheme.outlineVariant,
                     )
                 }
-                // Demo mode is a client, not a kind, so nothing reads selected; tapping the selected gauge
-                // leaves it.
+                // The debug-only mock is a client, not a kind, so nothing reads selected while it runs.
                 val isSelected = device.gaugeKind == kind && !device.isMock
                 val interactionSource = remember { MutableInteractionSource() }
                 Row(

@@ -631,16 +631,6 @@
         }
       }
     },
-    "Demo gauge" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Capteur de démo"
-          }
-        }
-      }
-    },
     "Device asleep" : {
       "localizations" : {
         "fr" : {
@@ -2387,16 +2377,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tindeq Progressor"
-          }
-        }
-      }
-    },
-    "Try demo mode" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Essayer le mode démo"
           }
         }
       }

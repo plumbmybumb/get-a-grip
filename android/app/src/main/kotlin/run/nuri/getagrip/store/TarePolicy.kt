@@ -139,6 +139,57 @@ object TarePolicy {
         is RunnerPhase.Releasing -> L10n.tr("Let go")
         else -> null
     }
+
+    /// What a live gauge screen's Tare control shows — the live gauge, the max test and the
+    /// critical force setup share it through `GaugeZeroButton` (iOS `TarePolicy.gaugeMode`).
+    ///
+    /// **Wake is a fallback, not a mode the stream drifts into.** A screen that keeps its
+    /// stream alive (`DeviceStore.keepStreamAlive`) re-kicks silence itself, so the control
+    /// stays Tare — disabled, with the reason spoken, while the readings come back — and
+    /// shows Wake only once the keeper has given up. A screen without a keeper keeps the
+    /// old rule: no live reading, Wake.
+    ///
+    /// Reads the same `isReadingLive` as before, so the mode and the tap's own re-check
+    /// (`isSafeToTareNow` against `DeviceStore.tareReadingMaxAge`) still read one number.
+    fun gaugeMode(
+        isStreaming: Boolean,
+        isReadingLive: Boolean,
+        keepsStreamAlive: Boolean,
+        rekickExhausted: Boolean,
+    ): GaugeTareMode = when {
+        isReadingLive -> GaugeTareMode.tare
+        !keepsStreamAlive -> GaugeTareMode.wake
+        !isStreaming -> GaugeTareMode.notMeasuring
+        rekickExhausted -> GaugeTareMode.wakeAfterRestarts
+        else -> GaugeTareMode.waitingForReadings
+    }
+}
+
+/// See `TarePolicy.gaugeMode`.
+enum class GaugeTareMode {
+    /// Live reading: a tap tares (asking first under a load).
+    tare,
+    /// The stream was stopped on purpose; Start measuring is beside it.
+    notMeasuring,
+    /// Connected and asked to stream, with the keeper re-kicking the silence.
+    waitingForReadings,
+    /// The keeper re-kicked as often as it may: a tap restarts the stream, never tares.
+    wakeAfterRestarts,
+    /// No keeper on this screen and no live reading — the old rule: a tap wakes.
+    wake;
+
+    val isWake: Boolean get() = this == wake || this == wakeAfterRestarts
+
+    val isEnabled: Boolean get() = this == tare || isWake
+
+    /// Spoken: why Tare is disabled, or why Wake is there at all.
+    val reason: String?
+        get() = when (this) {
+            tare, wake -> null
+            notMeasuring -> L10n.tr("Start measuring to tare.")
+            waitingForReadings -> L10n.tr("Waiting for readings from the gauge.")
+            wakeAfterRestarts -> L10n.tr("Readings stopped and automatic restarts didn't bring them back. Restarts the stream; doesn't tare.")
+        }
 }
 
 /// Pure policy for the runner's Pause/Resume and Skip controls, testable like `TarePolicy`.

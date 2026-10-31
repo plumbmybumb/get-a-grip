@@ -3,11 +3,15 @@
 
 import Foundation
 
-/// A synthetic Progressor.
+#if DEBUG
+/// A synthetic Progressor — for US, not for users.
 ///
 /// The only way to run the app without a physical gauge — **the Simulator has no
-/// Bluetooth stack at all** — and what demo mode uses, so someone without hardware
-/// (an App Store reviewer included) can see a whole session run.
+/// Bluetooth stack at all** — reached ONLY through the DEBUG `-mockDevice` launch
+/// argument (`./build.sh run`, previews, UI tests). It used to back a user-facing "Try
+/// demo mode" button; Nuri removed that on 2026-10-31 ("it's just for us to test") after
+/// a Progressor user got stuck in it. `#if DEBUG` so a release build has no path to it;
+/// people without a gauge have "Start without a gauge".
 ///
 /// Same `@MainActor` shape as the live client; the sample pump is a `Task` created
 /// in main-actor context, so it inherits that isolation.
@@ -215,6 +219,8 @@ final class MockProgressorClient: ProgressorClient {
     }
 }
 
+#endif
+
 // MARK: - Force profiles
 
 /// Scripted force traces. Pure functions of elapsed time, so a test can sample the
@@ -231,8 +237,8 @@ enum MockForceProfile: String, CaseIterable, Sendable {
     case idle
     /// A critical force test done properly: all-out 7 s pulls on a 10 s cycle, decaying
     /// from about 35 kg to an 18 kg plateau, with every fifth pull held a little past the
-    /// bell. The demo gauge switches to it while a test runs, so demo mode (App Review
-    /// included) sees a real-looking plateau rather than the routine's 10-on/20-off shape.
+    /// bell. The mock gauge switches to it while a test runs, so a `-mockDevice` run sees
+    /// a real-looking plateau rather than the routine's 10-on/20-off shape.
     case allOut
 
     /// The default no-hang shape (10 s on, 20 s off), with the pull held a second and a

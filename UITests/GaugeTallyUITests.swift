@@ -27,7 +27,9 @@ final class GaugeTallyUITests: XCTestCase {
 
         app.buttons["gauge.timerReset"].tap()
         waitFor(tally, NSPredicate(format: "label ENDSWITH 'Pulls counted: 0'"), timeout: 3)
-        XCTAssertFalse(app.buttons["gauge.timerReset"].isEnabled, "Nothing left to reset")
+        XCTAssertTrue(tally.label.hasPrefix("Timer 0 seconds"), tally.label)
+        // Reset also zeroes the peak and average, and a live gauge earns a new peak at
+        // once — so the button stays available while the stream reads.
         attachScreenshot(app, name: "Gauge — reset")
     }
 }

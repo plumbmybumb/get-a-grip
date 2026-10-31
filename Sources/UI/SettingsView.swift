@@ -177,11 +177,9 @@ struct SettingsView: View {
                             .contentTransition(.numericText())
                     }
                 }
-                // A synthetic number that looks like a measurement is worse than none, so
-                // demo mode is never ambiguous. Otherwise this states the SELECTED gauge,
-                // not a hardcoded "Tindeq Progressor".
+                // The SELECTED gauge, not a hardcoded "Tindeq Progressor".
                 LabeledContent("Source") {
-                    Text(device.isMock ? String(localized: "Demo device") : device.gaugeKind.displayName)
+                    Text(device.gaugeKind.displayName)
                 }
             }
             .font(.system(.subheadline))
@@ -234,7 +232,7 @@ struct SettingsView: View {
         // Full-width row, full-width hit area: material and Spacer are not hit-tested.
         .contentShape(RoundedRectangle(cornerRadius: Metrics.radiusCard, style: .continuous))
         .buttonStyle(PressFeedbackButtonStyle())
-        .accessibilityLabel("Gauge. Currently \(device.isMock ? "the demo device" : device.gaugeKind.displayName). \(gaugeChoiceNote)")
+        .accessibilityLabel("Gauge. Currently \(device.gaugeKind.displayName). \(gaugeChoiceNote)")
     }
 
     private var gaugeKindGlyph: some View {
@@ -249,7 +247,7 @@ struct SettingsView: View {
             Text("Gauge")
                 .font(.system(.headline, weight: .semibold))
                 .foregroundStyle(Ink.primary)
-            Text(device.isMock ? String(localized: "Demo device") : device.gaugeKind.displayName)
+            Text(device.gaugeKind.displayName)
                 .font(.system(.subheadline))
                 .foregroundStyle(Ink.secondary)
             Text(gaugeChoiceNote)
@@ -711,12 +709,9 @@ private struct SupportCard: View {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "unknown"
         let build = info?["CFBundleVersion"] as? String ?? "unknown"
-        // Demo mode is a CLIENT, not a kind, so it is stated alongside the gauge: a
-        // demo report read as a real Progressor sends somebody hunting firmware for
-        // numbers a timer invented.
-        let gauge = device.isMock
-            ? "\(device.gaugeKind.displayName) (demo device active)"
-            : device.gaugeKind.displayName
+        // No demo suffix: there is no user-facing demo mode any more (2026-10-31), and
+        // the DEBUG-only mock never reaches a shipped build's support mail.
+        let gauge = device.gaugeKind.displayName
         return [
             "Get a Grip \(version) (\(build))",
             "iOS \(UIDevice.current.systemVersion) · \(Self.deviceModel)",
@@ -809,8 +804,7 @@ private struct GaugePickerView: View {
     }
 
     private func row(for kind: GaugeKind) -> some View {
-        // Demo mode is a client, not a kind, so nothing is selected while it runs;
-        // tapping the selected gauge is how you leave it.
+        // The DEBUG mock is a client, not a kind, so nothing is selected while it runs.
         let isSelected = device.gaugeKind == kind && !device.isMock
         return Button {
             if kind.capabilities.requiresRemoteCalibration, !settings.frezIntroSeen {

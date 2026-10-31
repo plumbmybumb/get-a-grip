@@ -566,8 +566,7 @@ struct TodayView: View {
             // no source on screen and it degrades to the standard presentation.
             onNew: { builder = .addAnother },
             onMakePrimary: { templates.makePrimary(routine) },
-            onDelete: { _ = templates.delete(routine) },
-            onDemo: { device.useMockDevice(true) }
+            onDelete: { _ = templates.delete(routine) }
         )
         .equatable()
         .matchedTransitionSource(id: routine.id.uuidString, in: zoom)

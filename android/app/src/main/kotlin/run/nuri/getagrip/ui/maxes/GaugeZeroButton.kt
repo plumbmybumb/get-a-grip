@@ -21,21 +21,27 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.engine.RunnerPhase
+import run.nuri.getagrip.store.GaugeTareMode
 import run.nuri.getagrip.store.LocalDeviceStore
 import run.nuri.getagrip.store.TareConfirmationDecision
 import run.nuri.getagrip.store.TarePolicy
-import run.nuri.getagrip.store.TareTapDecision
 import run.nuri.getagrip.ui.components.DockButton
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.LocalGripPalette
 import run.nuri.getagrip.ui.units.WeightUnits
 
-/// Tare the gauge before a measurement: "Wake" while the stream is silent, a confirmation
-/// quoting the real reading when there is load on it, a direct tare otherwise.
+/// Tare the gauge: a confirmation quoting the real reading when there is load on it, a
+/// direct tare otherwise.
 ///
-/// Shared by the max test and the critical force test (iOS: `GaugeZeroButton`); `canTare`
-/// is false once a measurement runs, and is re-read when the confirmation is answered, so
-/// a dialog left open across the start of a measurement can never zero a live one.
+/// **Wake is a fallback** (`TarePolicy.gaugeMode`): on a screen that keeps its stream alive
+/// (the live gauge, the max test) silence is re-kicked automatically and the control stays
+/// Tare — disabled, with the reason spoken — until the readings return. Wake appears only
+/// once the automatic restarts have given up, or on a screen that runs no keeper.
+///
+/// Shared by the live gauge, the max test and the critical force test (iOS:
+/// `GaugeTareDockButton`); `canTare` is false once a measurement runs, and is re-read when
+/// the confirmation is answered, so a dialog left open across the start of a measurement
+/// can never zero a live one.
 @Composable
 fun GaugeZeroButton(
     canTare: Boolean,
@@ -45,6 +51,9 @@ fun GaugeZeroButton(
     /// Spoken while `canTare` is false — why the control is off (the max visit: "Let go of
     /// the edge first.").
     disabledReason: String? = null,
+    /// Runs just before a tare is written — the live gauge drops a pull in progress, which a
+    /// new zero would otherwise read as ending.
+    willTare: () -> Unit = {},
 ) {
     val device = LocalDeviceStore.current
     val palette = LocalGripPalette.current
@@ -53,30 +62,49 @@ fun GaugeZeroButton(
     var promptedKg by remember { mutableStateOf<Double?>(null) }
     var promptedEpoch by remember { mutableStateOf(0uL) }
 
-    // A dock action: both screens that zero the gauge before a measurement carry it in their dock.
+    val mode = TarePolicy.gaugeMode(
+        isStreaming = device.isStreaming,
+        isReadingLive = device.isReadingLive,
+        keepsStreamAlive = device.keepsStreamAlive,
+        rekickExhausted = device.streamRekickExhausted,
+    )
+    val currentWillTare by rememberUpdatedState(willTare)
+    fun tareNow() {
+        currentWillTare()
+        device.tare()
+        // The haptic names its cause: fire only when the tare did something.
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+    val reason = if (canTare) mode.reason else disabledReason
+
+    // A dock action: every screen that zeroes the gauge carries it in its dock.
     DockButton(
-        title = if (device.isReadingLive) liveTitle else tr("Wake"),
+        title = if (mode.isWake) tr("Wake") else liveTitle,
         icon = Icons.Outlined.Refresh,
-        enabled = canTare,
-        modifier = if (!canTare && disabledReason != null) {
-            modifier.semantics { stateDescription = disabledReason }
-        } else modifier,
+        enabled = canTare && device.state.isConnected && mode.isEnabled,
+        modifier = if (reason != null) modifier.semantics { stateDescription = reason } else modifier,
     ) {
         if (!allowed || !device.state.isConnected) return@DockButton
-        when (TarePolicy.tapDecision(phase = RunnerPhase.Idle,
-            isReadingLive = device.isReadingLive, isLoadedForTare = device.isLoadedForTare)) {
-            TareTapDecision.wakeStream -> device.startStreaming(StreamStartCause.manualWake)
-            TareTapDecision.blocked -> Unit
-            TareTapDecision.confirm -> {
+        // Re-read at the tap, never the rendered mode: the stream may have gone quiet since.
+        val now = TarePolicy.gaugeMode(
+            isStreaming = device.isStreaming,
+            isReadingLive = device.isReadingLive,
+            keepsStreamAlive = device.keepsStreamAlive,
+            rekickExhausted = device.streamRekickExhausted,
+        )
+        when {
+            now.isWake -> device.startStreaming(StreamStartCause.manualWake)
+            now != GaugeTareMode.tare -> Unit
+            // The exact age at ACTION time: the flag lags up to one watchdog tick. Drawn as
+            // Tare, stale by the tap: never a zero. A keeper is already re-kicking; without
+            // one, wake as this always did.
+            !TarePolicy.isSafeToTareNow(device.secondsSinceLastSample(), device.tareReadingMaxAge) ->
+                if (!device.keepsStreamAlive) device.startStreaming(StreamStartCause.manualWake)
+            TarePolicy.shouldConfirm(device.currentKg) -> {
                 promptedKg = device.currentKg
                 promptedEpoch = device.connectionEpoch
             }
-            TareTapDecision.tare -> {
-                if (TarePolicy.isSafeToTareNow(device.secondsSinceLastSample(), device.tareReadingMaxAge)) {
-                    device.tare()
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                } else device.startStreaming(StreamStartCause.manualWake)
-            }
+            else -> tareNow()
         }
     }
 
@@ -115,8 +143,7 @@ fun GaugeZeroButton(
                     ) {
                         TareConfirmationDecision.tare -> {
                             promptedKg = null
-                            device.tare()
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            tareNow()
                         }
                         // The load moved while the alert was open: ask again with the true number.
                         TareConfirmationDecision.reask -> {

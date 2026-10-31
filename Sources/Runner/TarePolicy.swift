@@ -107,6 +107,64 @@ enum TarePolicy {
         return readingIsStable(promptedKg: promptedKg, currentKg: currentKg) ? .tare : .reask
     }
 
+    /// What a live gauge screen's Tare control shows — the live gauge, the max test and
+    /// the critical force setup share it through `GaugeTareDockButton`.
+    ///
+    /// **Wake is a fallback, not a mode the stream drifts into.** A screen that keeps its
+    /// stream alive (`DeviceStore.keepStreamAlive`) re-kicks silence by itself, so the
+    /// control stays Tare — disabled, with the reason spoken, while the readings come
+    /// back — and shows Wake only once the keeper has given up. A screen without a
+    /// keeper keeps the old rule: no live reading, Wake.
+    ///
+    /// Reads the same `isReadingLive` as before, so the mode and the tap's own re-check
+    /// (`isSafeToTareNow` against `DeviceStore.tareReadingMaxAge`) still read one number.
+    static func gaugeMode(isStreaming: Bool, isReadingLive: Bool,
+                          keepsStreamAlive: Bool, rekickExhausted: Bool) -> GaugeTareMode {
+        if isReadingLive { return .tare }
+        guard keepsStreamAlive else { return .wake }
+        guard isStreaming else { return .notMeasuring }
+        return rekickExhausted ? .wakeAfterRestarts : .waitingForReadings
+    }
+}
+
+/// See `TarePolicy.gaugeMode`.
+enum GaugeTareMode: Sendable, Equatable {
+    /// Live reading: a tap tares (asking first under a load).
+    case tare
+    /// The stream was stopped on purpose; Start measuring is beside it.
+    case notMeasuring
+    /// Connected and asked to stream, with the keeper re-kicking the silence.
+    case waitingForReadings
+    /// The keeper re-kicked as often as it may and the readings stayed away: a tap
+    /// restarts the stream (and the keeper), never tares.
+    case wakeAfterRestarts
+    /// No keeper on this screen and no live reading — the old rule: a tap wakes.
+    case wake
+
+    var isWake: Bool { self == .wake || self == .wakeAfterRestarts }
+
+    var title: String {
+        isWake ? String(localized: "Wake") : String(localized: "Tare")
+    }
+
+    var systemImage: String {
+        isWake ? "arrow.clockwise" : "arrow.counterclockwise"
+    }
+
+    var isEnabled: Bool { self == .tare || isWake }
+
+    /// Spoken as the hint: why Tare is disabled, or why Wake is there at all.
+    var reason: String? {
+        switch self {
+        case .tare, .wake: nil
+        case .notMeasuring: String(localized: "Start measuring to tare.")
+        case .waitingForReadings: String(localized: "Waiting for readings from the gauge.")
+        case .wakeAfterRestarts: String(localized: "Readings stopped and automatic restarts didn't bring them back. Restarts the stream; doesn't tare.")
+        }
+    }
+}
+
+extension TarePolicy {
     static func disabledReason(for phase: RunnerPhase) -> String? {
         switch phase {
         case .paused(let inner): disabledReason(for: inner)

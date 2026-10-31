@@ -3636,6 +3636,16 @@
         }
       }
     },
+    "Connected. Waiting for readings…": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecté. En attente des valeurs…"
+          }
+        }
+      }
+    },
     "Connecting to your gauge…": {
       "localizations": {
         "fr": {
@@ -4309,16 +4319,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Supprimer une séance la retire aussi de ta série et de tes tendances."
-          }
-        }
-      }
-    },
-    "Demo device": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Appareil de démo"
           }
         }
       }
@@ -6438,16 +6438,6 @@
         }
       }
     },
-    "Leave demo mode": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quitter le mode démo"
-          }
-        }
-      }
-    },
     "Leave them as they are": {
       "localizations": {
         "fr": {
@@ -7535,16 +7525,6 @@
         }
       }
     },
-    "No Bluetooth on this device. Try demo mode.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pas de Bluetooth sur cet appareil. Essaie le mode démo."
-          }
-        }
-      }
-    },
     "No critical force for %@": {
       "localizations": {
         "fr": {
@@ -7769,6 +7749,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aucun tirage avec cette main."
+          }
+        }
+      }
+    },
+    "No readings from the gauge. Check it's on, then tap Wake.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune valeur du capteur. Vérifie qu'il est allumé, puis touche Réveiller."
           }
         }
       }
@@ -9052,6 +9042,16 @@
         }
       }
     },
+    "Readings stopped and automatic restarts didn't bring them back. Restarts the stream; doesn't tare.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les valeurs se sont arrêtées et les relances automatiques ne les ont pas ramenées. Relance le flux, sans tarer."
+          }
+        }
+      }
+    },
     "Reads the routine the AI wrote.": {
       "localizations": {
         "fr": {
@@ -9195,6 +9195,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Remise à zéro"
+          }
+        }
+      }
+    },
+    "Resets peak, average, timer and pulls. Doesn't tare.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remet à zéro le pic, la moyenne, le chrono et les tirages. Ne tare pas."
           }
         }
       }
@@ -10557,6 +10567,16 @@
         }
       }
     },
+    "Start measuring to tare.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lance la mesure pour tarer."
+          }
+        }
+      }
+    },
     "Start second session": {
       "localizations": {
         "fr": {
@@ -11668,16 +11688,6 @@
         }
       }
     },
-    "Try demo mode": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Essayer le mode démo"
-          }
-        }
-      }
-    },
     "Twice a day": {
       "localizations": {
         "fr": {
@@ -11921,6 +11931,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "QUAND"
+          }
+        }
+      }
+    },
+    "Waiting for readings from the gauge.": {
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente des valeurs du capteur."
           }
         }
       }

@@ -165,6 +165,7 @@ fun MaxMeasureScreen(
 
     fun teardown() {
         device.onTracePoint = null
+        device.keepStreamAlive(MAX_KEEP_ALIVE_HOLDER, false)
         if (device.isStreaming) device.stopStreaming(StreamStopCause.screenClosed)
     }
 
@@ -174,6 +175,9 @@ fun MaxMeasureScreen(
         if (!session.committed) {
             // Capture the session object, never a changing lookup.
             device.onTracePoint = { point -> session.receive(point) }
+            // Reads the moment it opens, so a silent stream is re-kicked here rather than
+            // handed to the person as "Wake" — see `DeviceStore.keepStreamAlive`.
+            device.keepStreamAlive(MAX_KEEP_ALIVE_HOLDER, true)
             if (!session.hasStarted) {
                 session.hasStarted = true
                 if (device.state.isConnected) startReading() else if (!device.state.isBusy) device.connect()
@@ -572,8 +576,10 @@ private fun GraphNotice() {
     val text = when {
         !device.state.isConnected ->
             if (device.state.isBusy) tr("Connecting to your gauge…") else tr("Connect your gauge to measure.")
+        // The keeper is re-kicking; Wake is named only once it has given up.
         device.isStreaming && waitingForSignal && !device.isSignalFresh ->
-            tr("Connected, but no readings yet. Tap Wake.")
+            if (device.streamRekickExhausted) tr("No readings from the gauge. Check it's on, then tap Wake.")
+            else tr("Connected. Waiting for readings…")
         else -> null
     } ?: return
     Text(text, style = MaterialTheme.typography.bodyMedium, color = palette.inkSecondary, textAlign = TextAlign.Center,
@@ -628,12 +634,6 @@ private fun Dock(session: LiveMaxSession, onReview: () -> Unit) {
             if (attempts > 0) {
                 // Logged pulls are local data: a lost link cannot hide their save.
                 ReviewButton(attempts, session, Modifier.fillMaxWidth(), onReview)
-            } else {
-                DockButton(
-                    title = if (device.isMock) tr("Leave demo mode") else tr("Try demo mode"),
-                    tint = palette.inkSecondary,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { device.useMockDevice(!device.isMock) }
             }
         }
     }
@@ -672,3 +672,6 @@ private fun MaxMeasurePreview() {
         }
     }
 }
+
+/// The keeper's name for this screen — see `DeviceStore.keepStreamAlive`.
+private const val MAX_KEEP_ALIVE_HOLDER = "maxMeasure"

@@ -30,11 +30,6 @@ struct GaugeView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 78
     @ScaledMetric(relativeTo: .title3) private var unitSize: CGFloat = 22
 
-    /// Bumped per tare so `.sensoryFeedback` has a value to react to — the house pattern.
-    @State private var tareTick = 0
-    @State private var promptedKg = 0.0
-    @State private var promptedEpoch: UInt64 = 0
-    @State private var showingTareConfirmation = false
     /// Where the open graph and canvas lie, so the wash hangs down to the graph's upper edge.
     @State private var traceGeometry = BackgroundTraceGeometry()
     /// Armed a beat after Start, or "Waiting for the gauge" flashes on every tap before the
@@ -45,6 +40,12 @@ struct GaugeView: View {
     @State private var tally = GaugeTally()
     /// Bumped per timer action, so the haptic names its cause (the tap), not a value.
     @State private var timerTick = 0
+    /// Where Reset put the average's floor: the one-second mean counts only readings
+    /// after it, so it restarts from the tap instead of carrying the last second over.
+    @State private var averageSince: TimeInterval?
+
+    /// The keeper's name for this screen — see `DeviceStore.keepStreamAlive`.
+    private static let keepAliveHolder = "gauge"
 
     private static let dockSpacing: CGFloat = 8
 
@@ -72,14 +73,7 @@ struct GaugeView: View {
                 }
             }
         }
-        .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: tareTick)
         .sensoryFeedback(.selection, trigger: timerTick)
-        .alert("Tare under load?", isPresented: $showingTareConfirmation) {
-            Button("Tare", role: .destructive) { confirmTare() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(String(localized: "There's \(weightUnit.number(promptedKg)) \(weightUnit.symbol) on the gauge. Taring now counts it as zero."))
-        }
         .task(id: device.isStreaming) {
             waitingForSignal = false
             guard device.isStreaming else { return }
@@ -92,6 +86,9 @@ struct GaugeView: View {
             // Capture the tally object, never a changing lookup through `self`.
             let tally = tally
             device.onTracePoint = { point in tally.receive(point) }
+            // This screen exists to show the force: a silent stream is re-kicked here,
+            // never handed to the person as "Wake" — see `DeviceStore.keepStreamAlive`.
+            device.keepStreamAlive(Self.keepAliveHolder, true)
             startReadingIfConnected()
         }
         .onChange(of: device.state.isConnected) { _, connected in
@@ -103,6 +100,7 @@ struct GaugeView: View {
         }
         .onDisappear {
             device.onTracePoint = nil
+            device.keepStreamAlive(Self.keepAliveHolder, false)
             // Never leave the device streaming: it drains its battery and the radio.
             if device.isStreaming { device.stopStreaming(cause: .screenClosed) }
         }
@@ -154,7 +152,7 @@ struct GaugeView: View {
             // LEAVES: `currentKg`, `peakKg` and `trace` mutate per sample, and read from
             // THIS body would invalidate the whole screen 80×/second.
             GaugeHero(heroSize: heroSize, unitSize: unitSize)
-            GaugeReadouts()
+            GaugeReadouts(averageSince: averageSince)
             GaugeTimerRow(tally: tally)
             // A remotely calibrated gauge can be connected with no force to show.
             // Frez's rule is to say why rather than guess.
@@ -187,7 +185,10 @@ struct GaugeView: View {
             if !device.state.isConnected {
                 notice(String(localized: "Connect a gauge and pull to see the force."))
             } else if device.isStreaming, waitingForSignal, !device.isSignalFresh {
-                notice(String(localized: "Connected, but no readings yet. Tap Wake."))
+                // The keeper is re-kicking; Wake is named only once it has given up.
+                notice(device.streamRekickExhausted
+                       ? String(localized: "No readings from the gauge. Check it's on, then tap Wake.")
+                       : String(localized: "Connected. Waiting for readings…"))
                     .accessibilityIdentifier("gauge.signalWarning")
             }
         }
@@ -221,12 +222,10 @@ struct GaugeView: View {
         VStack(spacing: Self.dockSpacing) {
             if device.state.isConnected {
                 OneLineActionRow(spacing: Self.dockSpacing) {
-                    DockButton(device.isReadingLive ? String(localized: "Tare") : String(localized: "Wake"),
-                               systemImage: device.isReadingLive ? "arrow.counterclockwise" : "arrow.clockwise",
-                               fillsRowHeight: true) {
-                        requestTare()
-                    }
-                    .accessibilityIdentifier("gauge.tare")
+                    // A new zero under a pull in progress would read as the pull ending,
+                    // so the pull is dropped rather than counted.
+                    GaugeTareDockButton(fillsRowHeight: true, willTare: { tally.cancelPull() })
+                        .accessibilityIdentifier("gauge.tare")
                     DockButton(String(localized: "Disconnect"), fillsRowHeight: true) { device.disconnect() }
                         .accessibilityIdentifier("gauge.disconnect")
                 }
@@ -256,17 +255,10 @@ struct GaugeView: View {
                 .accessibilityValue(device.canCancelBroadcastSearch ? device.state.label : "")
                 .accessibilityIdentifier("gauge.connectionAction")
 
-                // Always compiled in, never DEBUG-only: without hardware (Simulator, App
-                // Review) this is the only way to see the app work.
-                DockButton(device.isMock ? String(localized: "Leave demo mode") : String(localized: "Try demo mode"),
-                           tint: Ink.secondary) {
-                    device.useMockDevice(!device.isMock)
-                }
-
                 timerRow
 
                 if case .unsupported = device.state {
-                    Text("No Bluetooth on this device. Try demo mode.")
+                    Text("This device has no Bluetooth radio.")
                         .font(.system(.footnote))
                         .foregroundStyle(Ink.tertiary)
                         .multilineTextAlignment(.center)
@@ -313,13 +305,25 @@ struct GaugeView: View {
                 timerTick += 1
             }
             .accessibilityIdentifier("gauge.timer")
+            // **Reset is the screen's statistics, all of them** (a Progressor user,
+            // 2026-10-31): peak, average, timer and pulls start over together. No
+            // confirmation — nothing here is a record — and never a tare or a stream
+            // change: the zero and the reading are untouched.
             DockButton(String(localized: "Reset"), systemImage: "arrow.counterclockwise",
-                       enabled: tally.canReset, fillsRowHeight: true) {
-                tally.reset()
-                timerTick += 1
+                       enabled: tally.canReset || device.hasPeak,
+                       disabledReason: String(localized: "Resets peak, average, timer and pulls. Doesn't tare."),
+                       fillsRowHeight: true) {
+                resetStatistics()
             }
             .accessibilityIdentifier("gauge.timerReset")
         }
+    }
+
+    private func resetStatistics() {
+        tally.reset()
+        device.resetDisplayStatistics()
+        averageSince = Date().timeIntervalSinceReferenceDate
+        timerTick += 1
     }
 
     private var connectTitle: String {
@@ -337,51 +341,6 @@ struct GaugeView: View {
             String(localized: "Looking up this Dyno's calibration…")
         case .failed(_, let failure):
             failure.label
-        }
-    }
-
-    // MARK: - Tare
-
-    private func requestTare() {
-        guard device.state.isConnected else { return }
-        guard TarePolicy.isSafeToTareNow(sampleAge: device.secondsSinceLastSample(),
-                                        maxAgeSeconds: device.tareReadingMaxAge) else {
-            device.startStreaming(cause: .manualWake)
-            return
-        }
-        if TarePolicy.shouldConfirm(readingKg: device.currentKg) { promptTare() }
-        else { tare() }
-    }
-
-    /// A new zero under a pull in progress would read as the pull ending, so the pull
-    /// is dropped rather than counted.
-    private func tare() {
-        tally.cancelPull()
-        device.tare()
-        tareTick += 1
-    }
-
-    private func promptTare() {
-        promptedKg = device.currentKg
-        promptedEpoch = device.connectionEpoch
-        showingTareConfirmation = true
-    }
-
-    private func confirmTare() {
-        switch TarePolicy.confirmationDecision(
-            promptedKg: promptedKg, currentKg: device.currentKg,
-            promptedEpoch: promptedEpoch, currentEpoch: device.connectionEpoch,
-            isConnected: device.state.isConnected, sampleAge: device.secondsSinceLastSample(),
-            phase: .idle, maxAgeSeconds: device.tareReadingMaxAge
-        ) {
-        case .reject: return
-        case .tare: tare()
-        case .reask:
-            Task { @MainActor in
-                await Task.yield()
-                guard device.state.isConnected else { return }
-                promptTare()
-            }
         }
     }
 }
@@ -442,6 +401,9 @@ private struct GaugeTrace: View {
 /// Peak, one-second mean and battery, as three quiet columns. The mean walks the whole
 /// trace, so it wants to be alone in here.
 private struct GaugeReadouts: View {
+    /// Readings before this playback time are left out of the mean — Reset's floor.
+    var averageSince: TimeInterval?
+
     @Environment(\.weightUnit) private var weightUnit
     @Environment(DeviceStore.self) private var device
 
@@ -453,6 +415,7 @@ private struct GaugeReadouts: View {
         for sample in device.trace.reversed() {
             // Playback-time age, same convention as the trace's own drawing.
             guard newest.t - sample.t <= 1.0 else { break }
+            if let averageSince, sample.t < averageSince { break }
             sum += sample.kg
             count += 1
         }

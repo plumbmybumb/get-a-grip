@@ -109,7 +109,6 @@ fun RoutineDeck(
     /// Paste a routine the climber's AI chat wrote — like scanning, about the app.
     onCreateWithAI: () -> Unit = {},
     onDelete: (SessionTemplateEntity) -> Unit = {},
-    onDemo: () -> Unit = {},
 ) {
     val haptics = LocalHapticFeedback.current
     val reduceMotion = rememberReduceMotion()
@@ -195,7 +194,6 @@ fun RoutineDeck(
                 onScan = onScan,
                 onCreateWithAI = onCreateWithAI,
                 onDelete = { onDelete(routine) },
-                onDemo = onDemo,
             )
         }
     }

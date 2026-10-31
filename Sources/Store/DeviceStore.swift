@@ -78,8 +78,18 @@ final class DeviceStore {
     @ObservationIgnored private var latestPeak: Double = 0
     private(set) var peakKg: Double {
         get { _ = sampleRevision; return latestPeak }
-        set { guard latestPeak != newValue else { return }; latestPeak = newValue; sampleStateChanged() }
+        set {
+            guard latestPeak != newValue else { return }
+            latestPeak = newValue
+            sampleStateChanged()
+            // Coarse and change-guarded, like `isLoadedForTare`: the gauge screen's Reset
+            // needs to know only WHETHER there is a peak, never the 80 Hz figure.
+            let has = newValue > 0
+            if has != hasPeak { hasPeak = has }
+        }
     }
+    /// Whether there is a peak to reset — see `peakKg`.
+    private(set) var hasPeak = false
     /// The rolling window the force trace draws, on a PLAYBACK timeline built here at
     /// ingestion — not on raw device timestamps.
     ///
@@ -158,8 +168,8 @@ final class DeviceStore {
     }
 
 
-    /// True when driven by `MockProgressorClient` rather than real hardware. The UI
-    /// must say so.
+    /// True when driven by the DEBUG-only `MockProgressorClient` (`-mockDevice`). Always
+    /// false in a release build.
     private(set) var isMock: Bool
 
     /// Which gauge the app is driving.
@@ -271,14 +281,21 @@ final class DeviceStore {
     private var client: any ProgressorClient
 
     init(useMock: Bool = DeviceStore.mockRequestedAtLaunch) {
+        #if DEBUG
         isMock = useMock
-        // **Demo mode reports the Progressor whatever is stored**: the mock scripts a
-        // Tindeq, and the stored kind would claim capabilities it lacks. The stored
-        // choice comes back when demo mode ends.
+        // **The mock reports the Progressor whatever is stored**: it scripts a Tindeq, and
+        // the stored kind would claim capabilities it lacks.
         let kind: GaugeKind = useMock ? .progressor : DeviceStore.persistedGaugeKind()
         gaugeKind = kind
         client = useMock ? MockProgressorClient(profile: DeviceStore.mockProfileRequestedAtLaunch)
                          : DeviceStore.makeClient(for: kind)
+        #else
+        // A release build has no path to the mock — `mockRequestedAtLaunch` is false there.
+        isMock = false
+        let kind = DeviceStore.persistedGaugeKind()
+        gaugeKind = kind
+        client = DeviceStore.makeClient(for: kind)
+        #endif
         wire()
     }
 
@@ -303,8 +320,8 @@ final class DeviceStore {
     /// `-mockDevice` is passed by `./build.sh run`. DEBUG only: a shipped build must not
     /// be switchable to a scripted gauge by a launch argument.
     ///
-    /// This gates the ARGUMENT, never the mock: `MockProgressorClient` stays compiled
-    /// into every configuration for "Try demo mode" — see `useMockDevice(_:)`.
+    /// The mock itself is DEBUG-only too: there is no user-facing demo mode (Nuri,
+    /// 2026-10-31: "it's just for us to test"), so this argument is the only way in.
     static var mockRequestedAtLaunch: Bool {
         #if DEBUG
         return ProcessInfo.processInfo.arguments.contains("-mockDevice")
@@ -313,9 +330,9 @@ final class DeviceStore {
         #endif
     }
 
-    /// `-mockProfile shaky` (or `weak`, `idle`) scripts the demo gauge for a headless
+    /// `-mockProfile shaky` (or `weak`, `idle`) scripts the mock gauge for a headless
     /// run — the way to put RE-GRIP on a screenshot, since `clean` never drops. DEBUG
-    /// only; a release build's demo mode is always the textbook pull.
+    /// only; a release build has no mock to script.
     static var mockProfileRequestedAtLaunch: MockForceProfile {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
@@ -372,13 +389,13 @@ final class DeviceStore {
     /// does NOT connect: the system Bluetooth prompt must arrive with a Connect tap
     /// behind it.
     func selectGaugeKind(_ kind: GaugeKind) {
-        // `isMock` is in the guard because choosing a gauge while the demo device is
+        // `isMock` is in the guard because choosing a gauge while the DEBUG mock is
         // running has to do something even when the kind already matches.
         guard kind != gaugeKind || isMock else { return }
         Self.persistGaugeKind(kind)
         gaugeKind = kind
-        // Choosing a real gauge leaves demo mode: the mock scripts a Tindeq and cannot
-        // stand in for the device just chosen.
+        // Choosing a real gauge leaves the mock: it scripts a Tindeq and cannot stand in
+        // for the device just chosen.
         isMock = false
         adopt(Self.makeClient(for: kind))
     }
@@ -425,7 +442,87 @@ final class DeviceStore {
             record(.streamStartRequested(cause))
         }
         isStreaming = true
+        // A start anybody but the keeper asked for is a fresh chance: its count starts
+        // over and its spacing runs from here. That is also how Wake, once shown, hands
+        // the stream back to the automatic re-kick.
+        if cause != .watchdog {
+            rekicksWithoutSample = 0
+            lastRekickAt = Date()
+            if streamRekickExhausted { streamRekickExhausted = false }
+        }
         client.startStreaming(cause: cause)
+    }
+
+    // MARK: - Keeping a live screen's stream alive
+
+    /// **A screen whose whole job is showing the force re-kicks a silent stream itself**
+    /// (a Progressor user, 2026-10-31: "why do I have to press anything to start
+    /// measuring?"). The live gauge and the max test had no silence monitor, so a stream
+    /// that never delivered, or stopped, sat there until somebody read "Wake" and pressed it.
+    ///
+    /// Held by NAME, not counted, so an `onAppear` that SwiftUI re-runs cannot leave a
+    /// holder behind. The runner holds none: it has its own watchdog, which also sends
+    /// the engine's `.streamRestarted` before every start. A re-kick from here carries no
+    /// engine event, which is right only for screens timed by the store's playback clock
+    /// (`onTracePoint`), never by device deltas.
+    func keepStreamAlive(_ holder: String, _ keep: Bool) {
+        if keep { keepAliveHolders.insert(holder) } else { keepAliveHolders.remove(holder) }
+        let keeps = !keepAliveHolders.isEmpty
+        if keeps != keepsStreamAlive { keepsStreamAlive = keeps }
+    }
+    @ObservationIgnored private var keepAliveHolders: Set<String> = []
+    /// Whether a screen is keeping the stream alive — the Tare control reads it to know
+    /// that silence is being handled and need not be handed to the person as "Wake".
+    private(set) var keepsStreamAlive = false
+
+    /// Re-kicks in a row that may go unanswered before the keeper stops and the screen
+    /// offers Wake. Spaced `streamRekickSpacing` apart, so on a Progressor Wake appears
+    /// ~7 s after the readings stop: past every stall a re-kick recovers, soon enough that
+    /// a gauge switched off mid-stream is said out loud.
+    static let maximumRekicksWithoutSample = 3
+    @ObservationIgnored private var rekicksWithoutSample = 0
+    @ObservationIgnored private var lastRekickAt: Date?
+    /// The keeper spent its re-kicks and the samples did not come back: the one case in
+    /// which a live screen still shows Wake.
+    private(set) var streamRekickExhausted = false
+
+    /// Silence that means "re-kick" for THIS gauge — the runner's
+    /// `RunnerSession.silenceThreshold(forRate:isBroadcast:)`, restated because this file
+    /// also builds for the watch; a test holds the two equal for every kind.
+    nonisolated static func silenceRekickSeconds(forRate rate: Double, isBroadcast: Bool) -> Double {
+        isBroadcast ? max(3.0, 8.0 / max(1, rate)) : max(0.8, 8.0 / max(1, rate))
+    }
+
+    var streamSilenceRekickSeconds: Double {
+        Self.silenceRekickSeconds(forRate: gaugeCapabilities.nominalSampleRate,
+                                  isBroadcast: gaugeCapabilities.isBroadcast)
+    }
+
+    /// Never closer than two seconds: a re-kick needs time to reach the gauge and its
+    /// first packet time to come back.
+    var streamRekickSpacing: Double { max(streamSilenceRekickSeconds, 2.0) }
+
+    /// One keeper tick, on the freshness watchdog's 500 ms beat while a stream is
+    /// requested. Internal so tests drive it with an explicit clock.
+    ///
+    /// Re-sends start and NOTHING else — never a tare, never a stop, never `sleep`. Every
+    /// protocol rule stays where it lives: the Tindeq client still serializes its queries
+    /// and holds its tare latch, and a broadcast scan is never bounced (a scale that is
+    /// still scanning is not connected, so nothing here runs, and a start on a running
+    /// scan is a no-op).
+    func checkStreamKeepAlive(now: Date = .now) {
+        guard keepsStreamAlive, state.isConnected, isStreaming, !streamRekickExhausted else { return }
+        guard let quietSince = lastSignalAt ?? freshnessStartedAt,
+              now.timeIntervalSince(quietSince) > streamSilenceRekickSeconds else { return }
+        if let lastRekickAt, now.timeIntervalSince(lastRekickAt) < streamRekickSpacing { return }
+        guard rekicksWithoutSample < Self.maximumRekicksWithoutSample else {
+            streamRekickExhausted = true
+            record(.streamRekickGaveUp)
+            return
+        }
+        rekicksWithoutSample += 1
+        lastRekickAt = now
+        startStreaming(cause: .watchdog)
     }
 
     func recordScenePhase(_ phase: String) {
@@ -579,6 +676,13 @@ final class DeviceStore {
         sampleStateChanged()
     }
 
+    /// The live gauge's Reset: zero the peak on screen and NOTHING else — no tare, no
+    /// stop, no restart, and the trace stays. The screen restarts its own mean and tally
+    /// beside this.
+    func resetDisplayStatistics() {
+        resetPeak(preservingTrace: true)
+    }
+
     /// **Throw the graph away when the app comes back to the foreground.**
     ///
     /// CoreBluetooth hands over everything it buffered while suspended, and
@@ -647,23 +751,27 @@ final class DeviceStore {
         return candidate + min(max(error, -0.0005), 0.0005)
     }
 
-    /// Reshape the demo gauge's pulls. A no-op on real hardware. The critical force test
-    /// asks for `.allOut` while it runs and hands back the launch profile afterwards.
+    /// Reshape the mock gauge's pulls. A no-op on real hardware, and in a release build,
+    /// which has no mock. The critical force test asks for `.allOut` while it runs and
+    /// hands back the launch profile afterwards.
     func setMockProfile(_ profile: MockForceProfile) {
+        #if DEBUG
         (client as? MockProgressorClient)?.profile = profile
+        #endif
     }
 
-    /// Swap in the synthetic device (demo mode, or anything running in the
-    /// Simulator). Always compiled in — a DEBUG-only mock leaves anyone without
-    /// hardware, reviewers included, stuck on a screen that never connects.
+    #if DEBUG
+    /// Swap the synthetic device in or out. DEBUG only, for tests: the app reaches the
+    /// mock through `-mockDevice` alone.
     ///
-    /// Leaving demo mode returns to whatever gauge is SELECTED, not always the Progressor.
+    /// Leaving the mock returns to whatever gauge is SELECTED, not always the Progressor.
     func useMockDevice(_ mock: Bool, profile: MockForceProfile = .clean) {
         isMock = mock
         gaugeKind = mock ? .progressor : Self.persistedGaugeKind()
         adopt(mock ? MockProgressorClient(profile: profile) : Self.makeClient(for: gaugeKind))
         connect()
     }
+    #endif
 
     /// Retire the current client and adopt another.
     ///
@@ -787,6 +895,9 @@ final class DeviceStore {
             if isStreaming {
                 lastSignalAt = Date()
                 setSignalFresh(true)
+                // The stream answered, so the keeper starts over. Change-guarded: per sample.
+                if rekicksWithoutSample != 0 { rekicksWithoutSample = 0 }
+                if streamRekickExhausted { streamRekickExhausted = false }
                 // Immediately, not on the next watchdog tick: a stream coming back must
                 // return the Tare button to taring in the same frame the numbers move.
                 refreshReadingLiveness()
@@ -874,6 +985,7 @@ final class DeviceStore {
 
                 let now = Date()
                 self.refreshReadingLiveness(now: now)
+                self.checkStreamKeepAlive(now: now)
                 if let lastSignalAt = self.lastSignalAt {
                     if now.timeIntervalSince(lastSignalAt) <= self.signalSilenceTolerance {
                         self.setSignalFresh(true)
@@ -898,6 +1010,10 @@ final class DeviceStore {
         lastSignalAt = nil
         setSignalFresh(false)
         isReadingLive = false
+        // The keeper belongs to a requested stream; a stopped or lost one is owed nothing.
+        rekicksWithoutSample = 0
+        lastRekickAt = nil
+        if streamRekickExhausted { streamRekickExhausted = false }
     }
 
     private func setSignalFresh(_ fresh: Bool) {

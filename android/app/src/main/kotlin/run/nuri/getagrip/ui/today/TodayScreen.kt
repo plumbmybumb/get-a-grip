@@ -275,7 +275,6 @@ fun TodayScreen(
                             if (templates.delete(routine)) feed.refresh()
                         }
                     },
-                    onDemo = { device.useMockDevice(true) },
                 )
 
                 // With no routine there is nothing the strip could honestly describe.
