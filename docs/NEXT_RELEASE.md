@@ -9,7 +9,8 @@
    hard ones). Recommendation: the Load-per-grip series reads a TIME-WEIGHTED TOP-5 % LOAD
    ("what you held for your hardest 5 % of time") instead of the session mean — works for
    routines with no targets and ignores warm-ups without knowing which set is which. Spell
-   it on the chart. **Decided 31 Oct (Nuri): the time-weighted top-5 % load.** Rationale:
+   it on the chart. **Decided 31 Oct (Nuri): ADD the time-weighted top-5 % load as a second
+   graph beside the average — the average stays.** Rationale:
    the peak rewards a snatch, the mean rewards nothing, and "what you held for your hardest
    5 % of time" is what the fingers sustained; it ignores warm-ups unasked and still means
    something for an all-easy no-hang session. Both platforms, one engine function with a
