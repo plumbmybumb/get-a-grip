@@ -15,27 +15,26 @@ struct ConsistencyCard: View {
     /// fact about the routine, and the control sits next to the strip it changes.
     var onLogClimb: () -> Void
     var onShowHistory: () -> Void = {}
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         // 12 rather than 16 vertically: the least load-bearing card on Today, where
         // the last points came from to fit under a large title.
         MaterialCard(verticalPadding: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
-                    Button(action: onShowHistory) {
-                        HStack(spacing: 6) {
-                            CapsLabel(String(localized: "Last 14 days"))
-                            Image(systemName: "chevron.right")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(Ink.tertiary)
-                            Spacer(minLength: 0)
-                        }
-                        .frame(minHeight: 44)
-                        .contentShape(.rect)
+                // Width-only, on one row. The title is set on ONE line: in a 313 pt Split
+                // View half on an unfolded Duo (measured 2026-10-31) the capsule wrapped to
+                // "Log a / session" although the row fit. Where even one line cannot fit,
+                // the glyph alone stands in — same button, same spoken label. Not at
+                // accessibility sizes: big-text readers are served by words, so there the
+                // title wraps as it always did.
+                if typeSize.isAccessibilitySize {
+                    header(logTitle: .wrapping)
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        header(logTitle: .oneLine)
+                        header(logTitle: nil)
                     }
-                    .buttonStyle(PressFeedbackButtonStyle())
-                    .accessibilityLabel("History")
-                    logClimbButton
                 }
 
                 Button(action: onShowHistory) {
@@ -65,17 +64,45 @@ struct ConsistencyCard: View {
         }
     }
 
+    /// How the log button's title is set: wrapping where it may take two lines, on ONE line
+    /// inside `ViewThatFits` (a wrappable title let the row "fit" at its ideal width and then
+    /// wrap anyway in the HStack's real layout — measured at 313 pt), or absent.
+    private enum LogTitle { case wrapping, oneLine }
+
+    private func header(logTitle: LogTitle?) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Button(action: onShowHistory) {
+                HStack(spacing: 6) {
+                    CapsLabel(String(localized: "Last 14 days"))
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Ink.tertiary)
+                    Spacer(minLength: 0)
+                }
+                .frame(minHeight: 44)
+                .contentShape(.rect)
+            }
+            .buttonStyle(PressFeedbackButtonStyle())
+            .accessibilityLabel("History")
+            logClimbButton(title: logTitle)
+        }
+    }
+
     /// Glass INSIDE the label, then the content shape, then the button style — the house
     /// shape; the 44 pt frame makes the whole capsule live.
-    private var logClimbButton: some View {
+    private func logClimbButton(title: LogTitle?) -> some View {
         Button(action: onLogClimb) {
             HStack(spacing: 5) {
                 Image("glyph.log")
-                Text("Log a session")
+                if let title {
+                    Text("Log a session")
+                        .fixedSize(horizontal: title == .oneLine, vertical: false)
+                }
             }
             .font(.system(.footnote, weight: .semibold))
             .foregroundStyle(Accent.graphite)
             .actionLabelLayout(minHeight: 44)
+            .frame(minWidth: 44)
             .accessibleGlass(nil, in: .capsule)
             .contentShape(.capsule)
         }

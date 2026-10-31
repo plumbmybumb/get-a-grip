@@ -39,6 +39,10 @@ struct TrendDeck: View, Equatable {
     /// nothing.
     @State private var selectedGripKey: String?
     @State private var model: TrendModel?
+    /// The plot is under 300 pt wide — an unfolded Duo's 294 pt summary pane. Four date
+    /// labels there ran "Oct 12" into the end label ("Oct 1Oct 31", measured 2026-10-31);
+    /// three keep the ends and the middle. Every card is one width, so one flag serves all.
+    @State private var narrowChart = false
 
     private struct BuildKey: Equatable {
         let generation: Int
@@ -212,7 +216,7 @@ struct TrendDeck: View, Equatable {
     private func chart(_ series: [TrendModel.Point]) -> some View {
         // Sessions, evenly spaced: a break from training is not drawn as a gap. Dates still
         // label the axis, at a few sessions along it.
-        let ticks = TrendModel.sessionTicks(count: series.count)
+        let ticks = TrendModel.sessionTicks(count: series.count, desired: narrowChart ? 3 : 4)
         return Chart(Array(series.enumerated()), id: \.element.id) { index, point in
             // The runner's brush: bleu 0.28 → 0.02 under the curve (ForceTraceView),
             // since this is the same measured kilograms. A naked hairline read as a
@@ -250,6 +254,7 @@ struct TrendDeck: View, Equatable {
             }
         }
         .frame(height: 170)
+        .onGeometryChange(for: Bool.self, of: { $0.size.width < 300 }) { narrowChart = $0 }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(trendSummary(series))
     }

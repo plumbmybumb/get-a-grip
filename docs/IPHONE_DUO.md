@@ -271,7 +271,8 @@ rule and ours: size classes, regions, arrangements).
    on a 678 pt outer. Edge-to-edge and vertical bars come free.
 2. **Runner `ArrangementView`** (A, B, E) — replaces the iPad wide layout; far-view
    scale on `.partiallyOpen`.
-3. **Inner-portrait grid + 313 pt runner** (C, D).
+3. **Inner-portrait grid + 313 pt runner** (C, D). Grid, History panes and the grip
+   panel gate done 2026-10-31 ("Unfolded layouts"); the 313 pt runner is still owed.
 4. **Nightstand** (F) — landscape on iPhone, a compact-height far-view runner, a
    `systemSmall` Today widget; gated on the two hardware answers below.
 5. **Hardware** — session continuity across a fold, whether tent StandBy shows the Live
@@ -380,6 +381,7 @@ the booted iPhone Duo, use its Device/Controls menu to open, fold and rotate, th
    column disappears while the picker is open, and the panel spans the full 466 pt — it
    ignores the ≈85 pt trailing column every other surface respects. Usable, not broken;
    gate it on `IslandHand.isSupported` or anchor it to the `.occlusion` region as §5 says.
+   **FIXED 2026-10-31** — gated on a top cutout; see "Unfolded layouts".
 3. **Today fits one page on the outer**: the content column ends at y = 604 of 678, no
    scroll, large title intact. With two routines the deck renders as the horizontal rail.
 4. **The horizontal rails painted UNDER the vertical bars — FIXED the same day**
@@ -417,3 +419,176 @@ the booted iPhone Duo, use its Device/Controls menu to open, fold and rotate, th
    large controls fit; a full grip-panel-closed pass is still owed on the inner display.
 9. Benchmarks and Settings lay out cleanly in the column; the blue outline on Settings'
    Gauge card is pre-existing focus styling, not a Duo effect.
+
+## Unfolded layouts (2026-10-31)
+
+Step 3 of the build order (§6-C, the inner-portrait grid) plus the `GripIslandPanel` gate
+from §5 / finding 2. Screenshots in `docs/screenshots/duo/`: `*-open-portrait.png`
+(669 × 951), `*-open-landscape.png` (951 × 669), `*-split-half.png` (313 × 678),
+`*-closed-portrait.png` (outer, refreshed), and `builder-grip-closed-portrait-before.png`
+beside the new `builder-grip-closed-portrait.png`.
+
+### The verification seam: `devicectl appResize`
+
+The fold still cannot be driven, but the INNER display's size can be: `appResize` moves
+the frontmost app onto a "Resizable" display at any point size, and that is enough to
+lay out every unfolded width headlessly.
+
+```bash
+UDID=C09E63E9-5FD7-407E-A1BB-D7D64EA42C99            # the Duo, booted closed
+xcrun simctl launch $UDID run.nuri.doigt -mockDevice -seedTwoRoutines -seedHistory -tab 0
+sleep 4                                               # the app must be FRONTMOST first, or:
+                                                      # "There is no foreground application"
+nohup xcrun devicectl device appResize start --device $UDID --preferred-size 669x951 &
+sleep 7
+xcrun simctl io $UDID screenshot --display=5 today.png   # display 5 = "Resizable"
+xcrun devicectl device appResize set --device $UDID --preferred-size 313x678  # live resize
+kill %1                                               # ends the session
+```
+
+- 669 × 951 reports **regular** width (the Settings app shows its sidebar split there).
+- 313 × 678 (a Split View half) reports compact.
+- **951 × 669 does NOT give landscape**: the Resizable display honours
+  `UISupportedInterfaceOrientations`, and iPhone is portrait-only, so it hands back a
+  **501 × 669 portrait, compact** window (itself a useful width to have seen: the phone
+  layout, fine). The real inner display ignores supported orientations. The landscape
+  captures were taken from a MEASUREMENT-ONLY copy of the built `.app` with landscape
+  added to its `Info.plist` with `plutil` and re-signed ad hoc — no source or
+  `project.yml` change. That window has a bottom tab bar; the real open-landscape pose
+  stands its bars on the trailing edge, so those captures are wider at the bottom than
+  hardware will be.
+- `-dumpInteractions` dumps 3 s and 6 s after launch, so start the resize ~3 s after
+  launch to have the 6 s dump report the resized window (`UIWindow 669 × 951` confirmed).
+- The resizable window has no hinge, no division region and no vertical bars. It answers
+  "does this width lay out", nothing about poses.
+
+### The grid rule, and why
+
+`Metrics.cardMinWidth` **440 → 280**, and `CardGrid` is now a two-column `Layout`
+(`CardGridLayout`), not `LazyVGrid(.adaptive)`:
+
+| Window | Content | Columns | Card |
+|---|---|---|---|
+| Duo inner, simulator | 669 − 40 = 629 | 2 | **303.5** |
+| Duo inner, press figure | 626 − 40 = 586 | 2 | 282 |
+| iPad 13" portrait / landscape cap | 992 / 1080 | 2 | 485 / 529 |
+| Split View half, outer, any phone | — | compact: no grid | — |
+
+- Two columns need `2 × 280 + 22 = 582` of content. 280 rather than 300 so the press
+  figure's 586 still splits; the simulator's 669 is the working number, but the margin
+  costs nothing.
+- **Why not just lower the adaptive minimum**: an adaptive grid at 280 gives an iPad's
+  1080 column THREE cards (3 × 345 + 44), and no single minimum yields "two at 629" and
+  "two at 1080". The cap at two is the HIG's even count, and the iPad keeps exactly the
+  pair it had.
+- **At accessibility text sizes the minimum is 440 again** (`CardColumns.count`): every
+  card was measured at 303 at default sizes, and big type in 303 wraps every line. The Duo
+  then gets one card per row; the iPad keeps its pair.
+- `UnfoldedLayoutTests` pins all of the above.
+
+### Today at 669 — the strip is a grid CELL
+
+Measured: **two columns of 303.5 with the 22 gap**; the page ends at y ≈ 789 against a
+tab bar at 868 — one page, large title intact. Every card lays out at 303: the plan row
+keeps its glyphed stats (`ViewThatFits` falls to the compact form), Start / Connect and
+start / Start without a gauge sit on one line each, the strip's 14 dots at 12 pt fit
+with room (the 22 pt dot cap only bites at accessibility sizes, where the grid is one
+column anyway).
+
+Order: `routines…, strip, ghost` — one routine reads `[routine | strip] [new]`, two
+`[A | B] [strip | new]` (`today-open-portrait.png`), i.e. what you do, how it went, make
+another. The same grid now runs on every regular-width window, so on an iPad the strip is
+a 529 pt cell beside the ghost instead of a 1080 pt band under the routines.
+
+**Tried first and thrown out (built, measured):** the phone's paged deck in the leading
+column and the strip beside it, as §6-C sketched it. The deck's card came to 275 pt (the
+peek has to live INSIDE the column, or it lands on the strip), and the lower half of a
+951 pt screen stood empty — a phone layout in a bigger frame, which is the complaint.
+The grid shows every routine at once and still fits.
+
+With three or more routines Today scrolls at 669 (the phone's deck does not), as it
+already did on an iPad. Open landscape at 951 × 669 lays out the same grid at 444.5 and
+its second row runs under the bottom tab bar of the resizable window; on hardware the bars
+move to the trailing edge, which gives the row back but takes ~85 pt of width
+(content ≈ 826, still two columns). Before this change the landscape window stacked the
+strip as a full-width band below the grid, so it was taller, not shorter.
+
+**Closed outer, re-checked**: unchanged — compact width, deck + strip, the column now ends
+at y ≈ 597 (604 last survey), the deck still clipped at the column edge by
+`clearOfSideBars`. `LongPressLiftUITests` passes.
+
+### Benchmarks at 669
+
+Two cards per row at 303 through `CardGrid`, collapsed and expanded (`-expandBenchmarks`):
+title wraps to two lines, Left/Right + Measure on one row, the expanded chart and
+critical-force block fit. At 313 (compact, phone layout) the per-hand value wraps to
+"20. / 5 kg" — a Maxes-card large-number issue, not a grid one; left to the Maxes owner.
+
+### History — two panes at 669 in portrait
+
+The gate was `regular && wider-than-tall`, which kept the inner display (and an iPad in
+portrait — the same shape) on the phone `List`, where the month grid's cells came out as
+wide bars. Now `regular && (landscape || width ≥ 622)`
+(`HistoryView.twoPanePortraitWidth`, two `cardMinWidth` cards and margins). The runner's
+wide layout still keys on landscape alone and is untouched.
+
+Pane widths at 669: **summaries 294, sessions 375**. The summary floor dropped from 420 to
+`cardMinWidth`: at 420 it hit the half cap (334 / 334) and every session row truncated
+its load ("23.2…"); at 0.44 × 669 the log gets a 375 pt phone's row and the month grid
+keeps square cells. Windows where 0.44 × width ≥ 420 (every iPad landscape) are
+unchanged. The trend chart drew "Oct 12" into "Oct 31" at 262 pt of plot, so under 300 pt
+it labels three dates instead of four. Landscape (951 × 669): summaries 418, sessions 533.
+
+### `GripIslandPanel` — gated on a top cutout
+
+Gated on the window's top safe inset ≥ 44 (`GripIslandPanel.cutoutTopInset`), read in
+`onAppear` before `shown` flips so the card's first frame is already the right shape — NOT
+on `IslandHand.isSupported` (≥ 55) as §5 first proposed: that would also have changed
+NOTCH phones (inset 47–48), which the 2026-08-22 notch verdict validated on hardware and
+says not to touch. Island and notch therefore keep the original panel exactly — verified on
+a temporary iPhone 17 Pro simulator (created for the check and deleted): black to y = 0,
+hand off the island, status bar hidden. With no top cutout — both Duo displays (outer
+inset 24), a home-button phone (20), an iPad (24) — it is a top-anchored black card inside
+the safe area: 8 pt margins, `Metrics.radiusSheet` corners all round, status bar left
+alone, width ≤ 520, and the fingers as `FingerPips` (which states the pinch rule itself).
+On the outer display the card sits in the 381 pt column beside the vertical status column
+(`builder-grip-closed-portrait.png` vs `-before.png`); at 669 it is a centred 520 card
+(`builder-grip-open-portrait.png`). The iPad's "centred black tab from the top edge"
+becomes the same floating card: there is no cutout up there for it to meet either.
+
+### Builder at 669 — one document, decided
+
+The builder already caps at `maxContentWidthRegular` (560) on regular width; at 669 that is
+a readable centred document (`builder-open-portrait.png`). "Set list beside the expanded
+set" is NOT built: it is a second layout of the most complex screen for a width only the
+Duo and an iPad in portrait have, and the three-page builder already puts one page's
+worth on screen. Revisit with hardware use.
+
+### Split View half (313 × 678)
+
+Compact, so every screen is the phone's. Today does not fit one page there (the strip runs
+under the tab bar — it scrolls); the strip's "Log a session" capsule wrapped to "Log a /
+session" in the HStack's real layout even though its ideal width fit. It is now set on one
+line inside a width-only `ViewThatFits`, falling back to the glyph alone (same spoken
+label) when even that does not fit; at accessibility sizes the title still wraps, words
+over a glyph. The runner at 313 (§6-D) was not in scope.
+
+### iPad, re-checked
+
+On a temporary iPad Pro 13-inch simulator (iOS 26.5, created for the check and deleted):
+portrait (1032) Today is two 485 pt routine cards with the strip and the ghost as the
+second row, and History is now two panes in portrait too (summaries 454) — the same shape
+as the open Duo, so the same answer. `WideLayoutUITests` is iPad-only: on the Duo both
+cases skip; on the fresh iPad simulator the run hung at test launch for 20 minutes
+(simulator-side, after a clean build) and was stopped, so the iPad runner rotation tests
+were NOT re-run here. Nothing in the runner changed.
+
+### Still owed on hardware
+
+- Fold continuity: unfold with Today / History / the builder open and confirm the grid and
+  the two panes appear without a relaunch, and that a deck position or a scroll survives.
+- Split View pairing (Get a Grip beside a video), saved pairs, and the stacked
+  video-over-app layout.
+- Open landscape with the real trailing bars (Today's second row), and the book /
+  tabletop poses — none reachable through `appResize`.
+- Whether the real inner display is 669 or 626 wide (both split into two columns).
