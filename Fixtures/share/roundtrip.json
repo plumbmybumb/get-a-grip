@@ -70,5 +70,13 @@
       "sessionsPerDay" : 1
     },
     "name" : "oneHundredPullsPerSide"
+  },
+  {
+    "draft" : {
+      "isOnDemand" : false,
+      "plan" : "{\"handMode\":\"alternateEachSet\",\"holdSeconds\":10,\"leadInSeconds\":0,\"name\":\"Aerobic CF\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000001\",\"repsPerSide\":6,\"targetBasis\":\"criticalForce\",\"targetHiPercent\":0.7,\"targetLoPercent\":0.6},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000002\",\"repsPerSide\":2,\"targetBasis\":\"max\",\"targetHiPercent\":0.3,\"targetLoPercent\":0.2},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000003\",\"repsPerSide\":1,\"targetBasis\":\"wPrime\",\"targetHiPercent\":0.5,\"targetLoPercent\":0.5},{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMR\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000004\",\"repsPerSide\":3,\"targetBasis\":\"criticalForce\",\"targetHiPercent\":0.9,\"targetLoPercent\":0.8}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true}",
+      "sessionsPerDay" : 1
+    },
+    "name" : "criticalForceBasis"
   }
 ]

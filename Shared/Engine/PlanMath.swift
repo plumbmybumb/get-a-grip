@@ -19,8 +19,9 @@ struct RepSlot: Hashable, Sendable, Identifiable {
     /// The set's lead-in, on rep 0 only; 0 otherwise.
     var leadInBefore: Int
     /// The load to aim for in kilograms, ALREADY RESOLVED per hand by `PlanMath.sequence`
-    /// against the max table frozen at session start, so nothing downstream looks up a
-    /// max. nil when the set has no target or its grip has no max on file.
+    /// against the max and critical force tables frozen at session start, so nothing
+    /// downstream looks up either. nil when the set has no target or its grip has nothing
+    /// on file to take the percentage of.
     var targetBand: ClosedRange<Double>? = nil
     /// The intra-set rest, the SET BREAK on a set's last rep, or 0 at the very end of
     /// the session — nobody rests after the last pull, and counting that rest would put
@@ -59,9 +60,10 @@ enum PlanMath {
     ///    sets at 17–22 %" a single edit, exactly like `hold` and `rest`;
     /// 4. **nothing**.
     ///
-    /// nil `maxKg` collapses 2 and 3 to nothing rather than to a guess: there is no
-    /// percentage of a max nobody has recorded, and inventing one would put a confident
-    /// kilogram figure on a screen somebody trains against.
+    /// `maxKg` is the REFERENCE the percentage is of — a max or a critical force, per
+    /// `targetBasis`; `referenceKg` picks it. nil collapses 2 and 3 to nothing rather than
+    /// to a guess: there is no percentage of a number nobody has recorded, and inventing
+    /// one would put a confident kilogram figure on a screen somebody trains against.
     static func targetBand(_ set: SetPlan, in plan: SessionPlan,
                            maxKg: Double?) -> ClosedRange<Double>? {
         if let explicit = set.targetBand { return explicit }
@@ -76,14 +78,34 @@ enum PlanMath {
     /// many seconds. It travels WITH the percentage — the set's own when the set has its
     /// own band, the routine's when it inherits — so a band and its basis can never come
     /// from two different levels.
+    ///
+    /// nil too when the percentage is of CRITICAL FORCE: a CF has no length, and a stray
+    /// length left beside it must never send a CF set looking up a timed max. Callers that
+    /// print "peak" for nil ask `targetBasis` first.
     static func maxSeconds(_ set: SetPlan, in plan: SessionPlan) -> Int? {
-        set.targetPercentBand != nil ? set.targetMaxSeconds : plan.targetMaxSeconds
+        guard targetBasis(set, in: plan) == .max else { return nil }
+        return set.targetPercentBand != nil ? set.targetMaxSeconds : plan.targetMaxSeconds
     }
 
-    /// The max a set's percentage resolves against for one hand — peak or timed, per
-    /// `maxSeconds`. A timed basis with no timed max on file is nil, NEVER the peak.
-    static func maxKg(_ set: SetPlan, in plan: SessionPlan, side: Side, maxes: MaxTable) -> Double? {
-        maxes.max(grip: set.grip.key, side: side, seconds: maxSeconds(set, in: plan))
+    /// WHAT a set's percentage is of — max or critical force. It travels with the
+    /// percentage like `maxSeconds`: the set's own basis when the set has its own band,
+    /// the routine's when it inherits, so a band and its basis never come from two levels.
+    static func targetBasis(_ set: SetPlan, in plan: SessionPlan) -> TargetBasis {
+        set.targetPercentBand != nil ? set.targetBasis : plan.targetBasis
+    }
+
+    /// The number a set's percentage resolves against for one hand: the max (peak or
+    /// timed, per `maxSeconds`) or the critical force, per `targetBasis`. Each table keeps
+    /// its own rules and NEITHER falls back to the other: a missing CF is no target, never
+    /// "the max will do" — 80 % of max is roughly twice 80 % of CF.
+    static func referenceKg(_ set: SetPlan, in plan: SessionPlan, side: Side,
+                            maxes: MaxTable, criticalForces: CriticalForceTable) -> Double? {
+        switch targetBasis(set, in: plan) {
+        case .max:
+            maxes.max(grip: set.grip.key, side: side, seconds: maxSeconds(set, in: plan))
+        case .criticalForce:
+            criticalForces.criticalForce(grip: set.grip.key, side: side)
+        }
     }
 
     /// The percentage band a set will USE, ignoring any kg override — what the builder
@@ -96,9 +118,10 @@ enum PlanMath {
     /// they do not share a max, so this is computed per REP — see `sequence`. A kg band
     /// typed on the set stays hand-agnostic: splitting a typed 8 kg into 8.4 / 7.6 would
     /// second-guess a number a person typed. Per-hand loads come from percentages.
-    static func targetBand(_ set: SetPlan, in plan: SessionPlan,
-                           side: Side, maxes: MaxTable) -> ClosedRange<Double>? {
-        targetBand(set, in: plan, maxKg: maxKg(set, in: plan, side: side, maxes: maxes))
+    static func targetBand(_ set: SetPlan, in plan: SessionPlan, side: Side, maxes: MaxTable,
+                           criticalForces: CriticalForceTable = CriticalForceTable()) -> ClosedRange<Double>? {
+        targetBand(set, in: plan, maxKg: referenceKg(set, in: plan, side: side, maxes: maxes,
+                                                     criticalForces: criticalForces))
     }
 
     /// Bake every percentage target down to today's kilograms, keyed by each set's grip.
@@ -107,11 +130,13 @@ enum PlanMath {
     /// session-start path: the runner freezes a MaxTable and `sequence` resolves each
     /// hand, whereas one band baked onto a set would hand both hands the same kilograms.
     /// Sets without a max keep no band; percentages stay untouched.
-    static func resolvingTargets(_ plan: SessionPlan, maxes: MaxTable) -> SessionPlan {
+    static func resolvingTargets(_ plan: SessionPlan, maxes: MaxTable,
+                                 criticalForces: CriticalForceTable = CriticalForceTable()) -> SessionPlan {
         var out = plan
         out.sets = plan.sets.map { set in
             var s = set
-            guard let band = targetBand(set, in: plan, side: .both, maxes: maxes) else { return s }
+            guard let band = targetBand(set, in: plan, side: .both, maxes: maxes,
+                                        criticalForces: criticalForces) else { return s }
             s.targetLoKg = band.lowerBound
             s.targetHiKg = band.upperBound
             return s
@@ -165,9 +190,11 @@ enum PlanMath {
     /// The whole session, rep by rep. Zero-rep sets are dropped ENTIRELY (no lead-in, no
     /// set break): an emptied row is not a pause.
     ///
-    /// `maxes` makes loads per-hand, since only a rep knows its hand. Callers that want
-    /// the session's shape rather than its loads (totals, estimates) pass the empty default.
-    static func sequence(for plan: SessionPlan, maxes: MaxTable = MaxTable()) -> [RepSlot] {
+    /// `maxes` and `criticalForces` make loads per-hand, since only a rep knows its hand.
+    /// Callers that want the session's shape rather than its loads (totals, estimates) pass
+    /// the empty defaults — and an empty CF table resolves every CF-based set to no target.
+    static func sequence(for plan: SessionPlan, maxes: MaxTable = MaxTable(),
+                         criticalForces: CriticalForceTable = CriticalForceTable()) -> [RepSlot] {
         let live = plan.executable
         var slots: [RepSlot] = []
         for (setIndex, set) in live.sets.enumerated() {
@@ -193,7 +220,8 @@ enum PlanMath {
                     // user typed or one `resolvingTargets` froze, and both outrank a
                     // fresh lookup. Otherwise resolve for THIS hand.
                     targetBand: set.targetBand
-                        ?? targetBand(set, in: live, side: repSide, maxes: maxes),
+                        ?? targetBand(set, in: live, side: repSide, maxes: maxes,
+                                      criticalForces: criticalForces),
                     restAfter: isLast ? (isLastSet ? 0 : live.setBreakSeconds) : restSeconds,
                     isFirstOfSet: isFirst,
                     isLastOfSet: isLast))
@@ -350,14 +378,16 @@ enum PlanMath {
     ///
     /// nil when neither hand resolves — the caller then says "no max" rather than
     /// printing an empty band.
-    static func targetText(_ set: SetPlan, in plan: SessionPlan, maxes: MaxTable) -> String? {
+    static func targetText(_ set: SetPlan, in plan: SessionPlan, maxes: MaxTable,
+                           criticalForces: CriticalForceTable = CriticalForceTable()) -> String? {
         // One side means the hands are on the edge together; there is no per-hand
         // question to answer and "L … · R …" would invent one.
         guard plan.handMode.sideCount > 1 else {
-            return targetBand(set, in: plan, side: .both, maxes: maxes).map { bandText($0) }
+            return targetBand(set, in: plan, side: .both, maxes: maxes,
+                              criticalForces: criticalForces).map { bandText($0) }
         }
-        let left = targetBand(set, in: plan, side: .left, maxes: maxes)
-        let right = targetBand(set, in: plan, side: .right, maxes: maxes)
+        let left = targetBand(set, in: plan, side: .left, maxes: maxes, criticalForces: criticalForces)
+        let right = targetBand(set, in: plan, side: .right, maxes: maxes, criticalForces: criticalForces)
         switch (left, right) {
         case (nil, nil):
             return nil
@@ -376,23 +406,28 @@ enum PlanMath {
 
     /// True when this set will ask the two hands for different loads — what a caller
     /// checks before spending the width on two figures.
-    static func targetDiffersByHand(_ set: SetPlan, in plan: SessionPlan,
-                                    maxes: MaxTable) -> Bool {
+    static func targetDiffersByHand(_ set: SetPlan, in plan: SessionPlan, maxes: MaxTable,
+                                    criticalForces: CriticalForceTable = CriticalForceTable()) -> Bool {
         guard plan.handMode.sideCount > 1 else { return false }
-        return targetBand(set, in: plan, side: .left, maxes: maxes)
-            != targetBand(set, in: plan, side: .right, maxes: maxes)
+        return targetBand(set, in: plan, side: .left, maxes: maxes, criticalForces: criticalForces)
+            != targetBand(set, in: plan, side: .right, maxes: maxes, criticalForces: criticalForces)
     }
 
     /// Distinct grips in the plan that cannot resolve a target for at least ONE hand.
     /// Per hand, not per grip: a left-only max leaves the right hand with nothing, and a
     /// count that missed it would report a fully-loaded routine that is half unloaded.
-    static func untargetedGripCount(_ plan: SessionPlan, maxes: MaxTable) -> Int {
+    ///
+    /// Basis-aware: a set at "% of critical force" counts a hand with no CF on file, never
+    /// a hand with no max.
+    static func untargetedGripCount(_ plan: SessionPlan, maxes: MaxTable,
+                                    criticalForces: CriticalForceTable = CriticalForceTable()) -> Int {
         let live = plan.executable
         var seen = Set<String>()
         var count = 0
         for set in live.sets where !seen.contains(set.grip.key) {
             let sides: [Side] = live.handMode.sideCount > 1 ? [.left, .right] : [.both]
-            if sides.contains(where: { targetBand(set, in: live, side: $0, maxes: maxes) == nil }) {
+            if sides.contains(where: { targetBand(set, in: live, side: $0, maxes: maxes,
+                                                  criticalForces: criticalForces) == nil }) {
                 seen.insert(set.grip.key)
                 count += 1
             }
@@ -401,13 +436,47 @@ enum PlanMath {
     }
 
     /// Missing benchmarks only; explicit kg targets and deliberately untargeted sets do not qualify.
-    static func missingBenchmarkGripCount(_ plan: SessionPlan, maxes: MaxTable) -> Int {
+    static func missingBenchmarkGripCount(_ plan: SessionPlan, maxes: MaxTable,
+                                          criticalForces: CriticalForceTable = CriticalForceTable()) -> Int {
         let live = plan.executable
         var percentagePlan = live
         percentagePlan.sets = live.sets.filter {
             $0.targetBand == nil && targetPercent($0, in: live) != nil
         }
-        return untargetedGripCount(percentagePlan, maxes: maxes)
+        return untargetedGripCount(percentagePlan, maxes: maxes, criticalForces: criticalForces)
+    }
+
+    /// One (grip, hand, basis) a percentage target needs and nothing on file answers — what
+    /// the builder names ("No critical force for 20 mm · 3 fingers · Half crimp · left").
+    struct MissingReference: Hashable, Sendable {
+        var grip: GripSpec
+        var side: Side
+        var basis: TargetBasis
+        /// The timed-max length when `basis == .max` and the max is timed; nil otherwise.
+        var maxSeconds: Int?
+    }
+
+    /// Every hand a percentage set asks for and cannot resolve, in plan order, each
+    /// (grip, hand, basis, length) once. Kilogram sets and untargeted sets never qualify.
+    /// The hands are the ones the set's reps actually use (`handSequence`), in order.
+    static func missingReferences(_ plan: SessionPlan, maxes: MaxTable,
+                                  criticalForces: CriticalForceTable) -> [MissingReference] {
+        let live = plan.executable
+        var seen = Set<String>()
+        var out: [MissingReference] = []
+        for set in live.sets where set.targetBand == nil && targetPercent(set, in: live) != nil {
+            var sides: [Side] = []
+            for side in handSequence(set, in: live) where !sides.contains(side) { sides.append(side) }
+            let basis = targetBasis(set, in: live)
+            let seconds = maxSeconds(set, in: live)
+            for side in sides where referenceKg(set, in: live, side: side, maxes: maxes,
+                                               criticalForces: criticalForces) == nil {
+                let identity = "\(set.grip.key)|\(side.rawValue)|\(basis.rawValue)|\(seconds ?? 0)"
+                guard seen.insert(identity).inserted else { continue }
+                out.append(MissingReference(grip: set.grip, side: side, basis: basis, maxSeconds: seconds))
+            }
+        }
+        return out
     }
 
     static func bandText(_ band: ClosedRange<Double>, withUnit: Bool = true) -> String {
@@ -455,12 +524,18 @@ enum PlanMath {
     ///   (`handSequence`, with `MaxTable`'s fallbacks; a `.both` rep never uses a
     ///   synthesised sum). The HIGHEST fraction wins: the weaker hand names the day.
     /// - **A percentage band** IS the intensity and needs no max.
+    /// - **A percentage of CRITICAL FORCE** is restated against the PEAK max of each hand
+    ///   (`percent × CF / peak`) and contributes only where BOTH are on file. Otherwise it
+    ///   contributes nothing, so a CF routine with no tests reads `unknown` — the bleu rung,
+    ///   as before — rather than its raw percentage: "80 %" of CF is a moderate load, and
+    ///   colouring it as 80 % of max would cry wolf in red.
     ///
     /// A set that cannot resolve contributes NOTHING rather than blanking the answer;
     /// nil only when no set contributed (a routine trained by feel). The HI bound is the
     /// intensity; a lone endpoint normalizes to `lo...lo`. Nothing is clamped to 1.0: a
     /// 110 % prescription against a stale max belongs in `nearMax`, not hidden at 100 %.
-    static func peakIntensity(of plan: SessionPlan, maxes: MaxTable) -> Double? {
+    static func peakIntensity(of plan: SessionPlan, maxes: MaxTable,
+                              criticalForces: CriticalForceTable = CriticalForceTable()) -> Double? {
         var peak: Double?
         // Only a finite fraction may raise the peak: a NaN wins no comparison, so an
         // unguarded max would keep it and poison the whole answer.
@@ -481,7 +556,14 @@ enum PlanMath {
             } else if let percent = targetPercent(set, in: live) {
                 // A kg set never falls back to a percentage it also carries: a typed
                 // number is never second-guessed by arithmetic.
-                if let seconds = maxSeconds(set, in: live) {
+                if targetBasis(set, in: live) == .criticalForce {
+                    for side in Set(handSequence(set, in: live)) {
+                        guard let cf = criticalForces.criticalForce(grip: set.grip.key, side: side),
+                              let peakKg = maxes.max(grip: set.grip.key, side: side),
+                              peakKg > 0 else { continue }
+                        consider(percent.upperBound * cf / peakKg)
+                    }
+                } else if let seconds = maxSeconds(set, in: live) {
                     // 90 % of a 10 s max is NOT 90 % of a peak — the card would cry wolf.
                     // Restate it against the peak where both are on file; with no peak to
                     // compare, the set contributes nothing rather than a guess.

@@ -76,7 +76,11 @@ struct DoigtWatchApp: App {
     /// on the wrist reads one. A simulator build strips the iCloud entitlement, so the
     /// local rung is what `-mockDevice` runs on.
     private static func makeContainer() -> (ModelContainer, StorageMode) {
-        let schema = Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self])
+        // `CriticalForceRecord` (2026-10-31) so a routine prescribed as a percentage of
+        // critical force resolves on the wrist exactly as on the phone. Additive: the
+        // phone already syncs the entity into the same CloudKit container.
+        let schema = Schema([SessionTemplate.self, WorkoutLog.self, MaxRecord.self,
+                             CriticalForceRecord.self])
 
         let cloud = ModelConfiguration("Doigt", schema: schema,
                                        cloudKitDatabase: .private(AppGroup.cloudContainer))

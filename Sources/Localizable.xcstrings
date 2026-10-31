@@ -12922,6 +12922,246 @@
           }
         }
       }
+    },
+    "% of critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "% de la force critique"
+          }
+        }
+      }
+    },
+    "%@ %% of critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ %% de la force critique"
+          }
+        }
+      }
+    },
+    "%@ of critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ de la force critique"
+          }
+        }
+      }
+    },
+    "%@ of each hand's critical force · %@ %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ de la force critique de chaque main · %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "%@, of your critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, de ta force critique"
+          }
+        }
+      }
+    },
+    "%@–%@ %% of critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@–%2$@ %% de la force critique"
+          }
+        }
+      }
+    },
+    "%lld %% of critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %% de la force critique"
+          }
+        }
+      }
+    },
+    "%lld–%lld %% of critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld–%2$lld %% de la force critique"
+          }
+        }
+      }
+    },
+    "No critical force for %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de force critique pour %@"
+          }
+        }
+      }
+    },
+    "No critical force for %@ · %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de force critique pour %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "No critical force for this grip yet. Test it in Benchmarks." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore de force critique pour cette prise. Teste-la dans Tests."
+          }
+        }
+      }
+    },
+    "No critical force for your %@ hand yet. Test it in Benchmarks." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore de force critique pour ta main %@. Teste-la dans Tests."
+          }
+        }
+      }
+    },
+    "Routine target: %@ of critical force, so %@." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cible de la routine : %1$@ de la force critique, soit %2$@."
+          }
+        }
+      }
+    },
+    "Routine target: %@ of critical force. No critical force for this grip yet." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cible de la routine : %@ de la force critique. Pas encore de force critique pour cette prise."
+          }
+        }
+      }
+    },
+    "Some targets use your critical force. Sets on a grip you haven't tested have no target." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Certaines cibles utilisent ta force critique. Les séries sur une prise que tu n'as pas testée n'ont pas de cible."
+          }
+        }
+      }
+    },
+    "Target load unit" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unité de la charge cible"
+          }
+        }
+      }
+    },
+    "Their sets have no target until you test them in Benchmarks." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leurs séries n'ont pas de cible tant que tu ne les as pas testées dans Tests."
+          }
+        }
+      }
+    },
+    "of your critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "de ta force critique"
+          }
+        }
+      }
+    },
+    "percent of critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pour cent de la force critique"
+          }
+        }
+      }
+    },
+    "target %@ to %@ percent of your critical force" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cible de %1$@ à %2$@ pour cent de ta force critique"
+          }
+        }
+      }
+    },
+    "and %lld more without a critical force test." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "and %lld more without a critical force test."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "and %lld more without a critical force test."
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "et %lld autre sans test de force critique."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "et %lld autres sans test de force critique."
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

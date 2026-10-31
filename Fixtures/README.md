@@ -94,6 +94,24 @@ adding a device cannot quietly skip this contract.
   right-first cases pin `startingHand`: the same rows mirrored, and the reset at every set
   boundary landing on the right.
 
+## `target-basis/`
+
+Targets as a percentage of max OR of critical force — the spec is `docs/TARGET_BASIS.md`.
+Written and checked by `oracle target-basis generate|verify`; no Kotlin reader yet (the
+Android port adds one).
+
+- `plan.json` — `{description, plan}`, `plan` a canonical `SessionPlan` JSON string using both
+  bases at routine and set level. Run it AS WRITTEN through `PlanMath.sequence`.
+- `tables.json` — `{description, maxes:[{grip, side, kg, seconds?}], criticalForces:[{grip,
+  side, kg}]}`, the tables `plan.json` resolves against.
+- `expected.json` — `{description, slots:[{setIndex, repIndex, side, grip, basis,
+  targetLo|null, targetHi|null}], untargetedGripCount, missing:[{grip, side, basis,
+  maxSeconds|null}], peakIntensity|null}`. Compare `peakIntensity` with a tolerance.
+- `cases.json` — `{fold, codable, resolution}`: the `CriticalForceTable` fold over raw tests
+  (`{entries, asOf|null, lookups:[{grip, side, criticalForce|null, exact|null}]}`), the
+  decode/encode cases (`{type, input, canonical, targetBasis}`), and more resolution cases in
+  the `plan/tables/expected` shape.
+
 ## `share/`
 
 - `urls.json` — `[{name, url, outcome, envelope|null}]`. `outcome` ∈ `ok`, `notARoutineLink`,
@@ -178,6 +196,7 @@ From the repository root:
 ./Fixtures/tools/oracle/build/oracle runner verify Fixtures
 ./Fixtures/tools/oracle/build/oracle share  verify Fixtures
 ./Fixtures/tools/oracle/build/oracle export verify Fixtures
+./Fixtures/tools/oracle/build/oracle target-basis verify Fixtures
 ./android/build.sh engine    # the Kotlin half — every family, including the four the oracle does not read
 ```
 

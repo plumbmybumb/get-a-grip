@@ -25,6 +25,10 @@ struct WatchRunnerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: [SortDescriptor(\MaxRecord.recordedAt)]) private var maxRecords: [MaxRecord]
+    /// For sets prescribed as a percentage of critical force — folded exactly as the
+    /// phone folds them (`criticalForceTable()`), so one routine resolves one load.
+    @Query(sort: [SortDescriptor(\CriticalForceRecord.recordedAt)])
+    private var criticalForceRecords: [CriticalForceRecord]
 
     @State private var session: RunnerSession?
     @State private var keeper = WorkoutKeeper()
@@ -89,7 +93,9 @@ struct WatchRunnerView: View {
             guard session == nil else { return }
             // Maxes read ONCE and `.standard` drafts, as on the phone — see `RunnerView`.
             let new = RunnerSession(template: template, device: device,
-                                    maxes: maxRecords.maxTable(), timerOnly: timerOnly,
+                                    maxes: maxRecords.maxTable(),
+                                    criticalForces: criticalForceRecords.criticalForceTable(),
+                                    timerOnly: timerOnly,
                                     cues: WatchCuePlayer(), draftStore: .standard)
             session = new
             new.begin()

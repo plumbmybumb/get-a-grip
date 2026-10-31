@@ -145,7 +145,7 @@ enum AnalysisExport {
         out += currentMaxes(maxes)
         out += maxHistory(maxes)
         out += criticalForce(input.criticalForceTests)
-        out += recentSessions(recent, maxes: maxes, cutoff: cutoff)
+        out += recentSessions(recent, maxes: maxes, tests: input.criticalForceTests, cutoff: cutoff)
         out += weeklyRollups(older, cutoff: cutoff)
         out += consistency(sessions, target: input.sessionsPerDayTarget, today: input.today)
         out += questions()
@@ -175,8 +175,9 @@ enum AnalysisExport {
         out.append("- **Plan s** is the hold the routine asked for. **Held s** is what was actually accrued while the load was over the rep's own threshold — so a pull that came off the edge halfway reads short rather than being rewritten.")
         out.append("- **How held time was measured** is stated on every session header. `gauge` means the seconds came from the force gauge's own sample timestamps. `timer-only` means the session ran with no gauge attached and the seconds came off the WALL CLOCK; those sessions carry no kilograms at all. `logged` means the session was written down after the fact — no reps, only a duration.")
         out.append("- **Peak kg / Avg kg are stored PER REP** — the numbers in the rep tables are that pull's own peak and its mean while engaged, not the session's. The session header's peak and average are the session-level figures kept beside them; for a session whose rep blob is missing or unreadable, the header figures are all that survives.")
-        out.append("- **% max** is that rep's own PEAK divided by the max on file for that grip AND hand **as it stood on the day of the session** — a max recorded later never rewrites what an older session was pulling at. Resolution is specific-beats-general: a left or right pull uses that hand's max and falls back to a both-hands max; a BOTH-hands pull resolves only against a both-hands max, never against the two hands added together. No max on file means a blank, never a number.")
-        out.append("- **Target kg** is what the rep was ASKED to pull for that hand, frozen at the time. Blank where the routine set no target or the grip had no max to take a percentage of.")
+        out.append("- **% max** is that rep's own PEAK divided by the max on file for that grip AND hand **as it stood on the day of the session** — a max recorded later never rewrites what an older session was pulling at. Resolution is specific-beats-general: a left or right pull uses that hand's max and falls back to a both-hands max; a BOTH-hands pull resolves only against a both-hands max, never against the two hands added together. No max on file means a blank, never a number. Blank too on a pull whose target was a percentage of critical force.")
+        out.append("- **% CF** is the same for a pull whose target was a PERCENTAGE OF CRITICAL FORCE: its own peak divided by the critical force on file for that grip and hand as it stood at the session's start (the newest standard 7:3x24 test, same hand rules as % max). Blank on every other pull, and where no critical force existed then.")
+        out.append("- **Target kg** is what the rep was ASKED to pull for that hand, frozen at the time. Blank where the routine set no target or the grip had no max (or, for a critical force target, no critical force) to take a percentage of.")
         out.append("- **Outcome** is one of `completed`, `earlyRelease` (came off the edge), `skipped` (deliberately passed over — skipped pulls ARE recorded, and they count toward the planned total but never toward the completed one; their kilogram cells are blank because the pull never happened, not zero), `aborted` (the session or the link ended mid-rep).")
         out.append("- **Hands**: `L` left, `R` right, `B` both.")
         out.append("- **A climbing day counts as training.** A day at the gym is more finger load than the hangboard session it displaced, so `climbVolume`, `climbLimit` and `climbMaintenance` sessions settle a day the same way a routine session does. `benchmark` is a testing day, logged automatically the first time a gauge-measured max or a critical force test lands. `hangManual` is a weighted or max hang done away from the gauge.")
@@ -329,6 +330,7 @@ enum AnalysisExport {
     // MARK: - Sessions, last 8 weeks
 
     private static func recentSessions(_ sessions: [Session], maxes: [MaxEntry],
+                                       tests: [CriticalForceEntry],
                                        cutoff: DayStamp) -> [String] {
         var out = ["## Sessions, last 8 weeks", ""]
         // When the whole history fits inside the window, "on or after <cutoff>" implies
@@ -349,11 +351,13 @@ enum AnalysisExport {
         // pointer advances over the maxes, so "the max as it stood that day" costs a
         // dictionary write per record rather than a filter per session.
         let tables = tablesAtSessionTime(sessions, maxes: maxes)
+        let cfTables = criticalForceTablesAtSessionTime(sessions, tests: tests)
 
         for session in sessions {
             out.append("### \(sessionHeader(session))")
             out.append("")
-            out += sessionBody(session, table: tables[session.id] ?? MaxTable())
+            out += sessionBody(session, table: tables[session.id] ?? MaxTable(),
+                               cfTable: cfTables[session.id] ?? CriticalForceTable())
         }
         return out
     }
@@ -369,7 +373,8 @@ enum AnalysisExport {
         return parts.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
-    private static func sessionBody(_ session: Session, table: MaxTable) -> [String] {
+    private static func sessionBody(_ session: Session, table: MaxTable,
+                                    cfTable: CriticalForceTable) -> [String] {
         var out: [String] = []
         var facts: [String] = []
         facts.append("Pulls: \(session.completedReps) completed of \(session.plannedReps) planned.")
@@ -393,8 +398,8 @@ enum AnalysisExport {
             return out
         }
 
-        out.append("| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |")
-        out.append("| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |")
+        out.append("| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |")
+        out.append("| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |")
         for (index, rep) in session.reps.enumerated() {
             // A SKIPPED pull registered no load, which is not "it registered zero";
             // printing 0.0 would drag any average taken down this column.
@@ -402,13 +407,45 @@ enum AnalysisExport {
             let peak = measured ? kgText(rep.peakKg) : blank
             let avg = measured ? kgText(rep.avgKg) : blank
             let band = rep.targetBand.map { "\(kgText($0.lowerBound))–\(kgText($0.upperBound))" } ?? blank
-            let intensity = measured
+            // A CF-based pull reports against CF and leaves % max blank; every other pull
+            // the reverse. Never both: one prescription, one reference.
+            let ofCF = targetBasis(of: rep, in: session) == .criticalForce
+            let intensity = measured && !ofCF
                 ? percentText(rep.peakKg, maxKg: table.max(grip: rep.grip.key, side: rep.side))
                 : blank
-            out.append("| \(index + 1) | \(handCode(rep.side)) | \(gripCode(rep.grip)) | \(rep.targetSeconds) | \(secondsText(rep.heldSeconds)) | \(peak) | \(avg) | \(band) | \(intensity) | \(rep.outcome.rawValue) |")
+            let cfIntensity = measured && ofCF
+                ? percentText(rep.peakKg, maxKg: cfTable.criticalForce(grip: rep.grip.key, side: rep.side))
+                : blank
+            out.append("| \(index + 1) | \(handCode(rep.side)) | \(gripCode(rep.grip)) | \(rep.targetSeconds) | \(secondsText(rep.heldSeconds)) | \(peak) | \(avg) | \(band) | \(intensity) | \(cfIntensity) | \(rep.outcome.rawValue) |")
         }
         out.append("")
         return out
+    }
+
+    /// WHAT a recorded pull's percentage target was of, read from the session's FROZEN
+    /// plan. A kg band, no target, an out-of-range set index or a plan that did not survive
+    /// all read as `.max` — the meaning every export had before the basis existed.
+    static func targetBasis(of rep: RepSummary, in session: Session) -> TargetBasis {
+        guard let plan = session.plan?.executable, plan.sets.indices.contains(rep.setIndex) else { return .max }
+        let set = plan.sets[rep.setIndex]
+        guard set.targetBand == nil, PlanMath.targetPercent(set, in: plan) != nil else { return .max }
+        return PlanMath.targetBasis(set, in: plan)
+    }
+
+    /// The critical force table as it stood at each session's start instant, keyed by
+    /// session id — `CriticalForceTable.folding` with `asOf`, so the newest valid standard
+    /// test per grip and hand recorded at or before the start.
+    private static func criticalForceTablesAtSessionTime(_ sessions: [Session],
+                                                         tests: [CriticalForceEntry]) -> [UUID: CriticalForceTable] {
+        let entries = tests.map {
+            CriticalForceTable.Entry(gripKey: $0.grip.key, side: $0.side, protocolKey: $0.protocolKey,
+                                     criticalForceKg: $0.criticalForceKg, recordedAt: $0.recordedAt)
+        }
+        var result: [UUID: CriticalForceTable] = [:]
+        for session in sessions {
+            result[session.id] = CriticalForceTable.folding(entries, asOf: session.startedAt)
+        }
+        return result
     }
 
     /// The max table as it stood at each session's own start instant, keyed by session id.
@@ -735,14 +772,15 @@ extension AnalysisExport {
             scope != .recent || $0.day >= cutoff
         }.sorted(by: oldestFirst)
         let tables = tablesAtSessionTime(sessions, maxes: input.maxes)
-        let headers = "record,workout,date,started_utc,routine,kind,timing,minutes,effort_1_5,finger_strain_1_5,daily_target,completed,planned,set,pull,edge_mm,fingers,position,hand,planned_s,held_s,peak_kg,avg_kg,target_low_kg,target_high_kg,max_at_start_kg,outcome,source,notes,ended_utc,time_source,max_reference,started_elapsed_s,ended_elapsed_s,gap_before_s,planned_rest_s,planned_lead_in_s,recorded,critical_force_kg,w_prime_kg_s,end_force_kg,body_mass_kg,rests_kept,rest_on_edge_s,protocol,max_basis".components(separatedBy: ",")
+        let cfTables = criticalForceTablesAtSessionTime(sessions, tests: input.criticalForceTests)
+        let headers = "record,workout,date,started_utc,routine,kind,timing,minutes,effort_1_5,finger_strain_1_5,daily_target,completed,planned,set,pull,edge_mm,fingers,position,hand,planned_s,held_s,peak_kg,avg_kg,target_low_kg,target_high_kg,max_at_start_kg,outcome,source,notes,ended_utc,time_source,max_reference,started_elapsed_s,ended_elapsed_s,gap_before_s,planned_rest_s,planned_lead_in_s,recorded,critical_force_kg,w_prime_kg_s,end_force_kg,body_mass_kg,rests_kept,rest_on_edge_s,protocol,max_basis,target_basis,cf_at_start_kg,cf_reference".components(separatedBy: ",")
         var rows = [headers.joined(separator: ",")]
         func row(_ fields: [String: String]) {
             rows.append(headers.map { csvCell(fields[$0] ?? "") }.joined(separator: ","))
         }
         let span = scope == .recent ? "since \(isoDay(cutoff))" : scope.rawValue
         row(["record": "guide", "date": isoDay(input.generatedOn),
-             "notes": "Get a Grip CSV v4. workout is a permanent UUID; (workout,pull) identifies a recorded pull. record=workout contains totals; set or pull rows describe the same work: do not add them to workout totals. Summary groups recorded pulls by set, grip, hand and identical prescription. recorded counts outcomes, including skips; completed counts completed outcomes only. Summary planned_s and held_s are sums, peak_kg is the maximum, avg_kg is weighted by credited held_s; outcome lists counts. Workbook planned is the full planned pull count, including unattempted pulls. Dates are local training days; UTC timestamps are absolute. Blank is unavailable, never zero. ended_utc is the stored finish: runner_completion for newly timed sessions; legacy_save_or_end may include time on an old save screen. Manual logs have no known end instant. started_elapsed_s and ended_elapsed_s are host-monotonic observations from session start, including pauses and waiting; ended marks outcome recording, not necessarily physical release. Old timing is not_recorded; not_started means no engagement before an outcome. Summary offsets span the group only when all performed pulls have timing. gap_before_s includes pauses and waiting, not just rest. planned_rest_s and planned_lead_in_s are saved prescriptions (sums on set rows); rest includes set breaks. kg is force in kilograms; held_s is credited time above threshold. timing is inferred: gauge if any pull has positive force, timerOnly otherwise; logged means manual or no surviving detail. Skips and timer-only pulls have no force values. Target bounds are frozen prescriptions. max_at_start_kg uses only records at or before start; max_reference distinguishes hand_specific, both_hands, both_hands_fallback and no_recorded_max_at_start. Missing does not prove a grip was never benchmarked. Never add hand maxes. max_basis names the kind of max: peak (the hardest single reading) or Ns, a timed max that is the average force held over N seconds; on a pull it is the max max_at_start_kg and max_reference describe, the one its percentage target was set against. Effort and strain are 1-5, not Borg CR10. Fingers: I=index M=middle R=ring L=little T=thumb. fingerCurl starts in half crimp. Formula-like text is apostrophe-protected. record=cf_test is a critical force test (24 all-out pulls, 7 s on and 3 s off on a fixed clock); workout carries the test's UUID, critical_force_kg is the mean force of the final six pulls, w_prime_kg_s the impulse above it inside the pull windows, end_force_kg the mean of the last second of the final three pulls, completed the pulls run, planned the protocol's pulls, rests_kept the rests with at most 1 s still on the edge, max_at_start_kg and body_mass_kg the values on file when tested. Pulls detail adds record=cf_pull rows: avg_kg is the mean force inside that pull's 7 s window and rest_on_edge_s the seconds still on the edge after its bell. Force after the bell is never counted. The export carries no raw force trace or gauge model. Scope: \(span); detail: \(detail.rawValue)."])
+             "notes": "Get a Grip CSV v5. workout is a permanent UUID; (workout,pull) identifies a recorded pull. record=workout contains totals; set or pull rows describe the same work: do not add them to workout totals. Summary groups recorded pulls by set, grip, hand and identical prescription. recorded counts outcomes, including skips; completed counts completed outcomes only. Summary planned_s and held_s are sums, peak_kg is the maximum, avg_kg is weighted by credited held_s; outcome lists counts. Workbook planned is the full planned pull count, including unattempted pulls. Dates are local training days; UTC timestamps are absolute. Blank is unavailable, never zero. ended_utc is the stored finish: runner_completion for newly timed sessions; legacy_save_or_end may include time on an old save screen. Manual logs have no known end instant. started_elapsed_s and ended_elapsed_s are host-monotonic observations from session start, including pauses and waiting; ended marks outcome recording, not necessarily physical release. Old timing is not_recorded; not_started means no engagement before an outcome. Summary offsets span the group only when all performed pulls have timing. gap_before_s includes pauses and waiting, not just rest. planned_rest_s and planned_lead_in_s are saved prescriptions (sums on set rows); rest includes set breaks. kg is force in kilograms; held_s is credited time above threshold. timing is inferred: gauge if any pull has positive force, timerOnly otherwise; logged means manual or no surviving detail. Skips and timer-only pulls have no force values. Target bounds are frozen prescriptions. max_at_start_kg uses only records at or before start; max_reference distinguishes hand_specific, both_hands, both_hands_fallback and no_recorded_max_at_start. Missing does not prove a grip was never benchmarked. Never add hand maxes. max_basis names the kind of max: peak (the hardest single reading) or Ns, a timed max that is the average force held over N seconds; on a pull it is the max max_at_start_kg and max_reference describe, the one its percentage target was set against. target_basis on pull and set rows is max or critical_force, what the percentage target was a percentage of (max for kg bands and untargeted pulls). For critical_force, max_at_start_kg, max_reference and max_basis are blank, and cf_at_start_kg is the critical force on file at or before start (newest standard 7:3x24 test, same hand rules) with cf_reference hand_specific, both_hands, both_hands_fallback or no_recorded_cf_at_start; for max, the cf columns are blank. Effort and strain are 1-5, not Borg CR10. Fingers: I=index M=middle R=ring L=little T=thumb. fingerCurl starts in half crimp. Formula-like text is apostrophe-protected. record=cf_test is a critical force test (24 all-out pulls, 7 s on and 3 s off on a fixed clock); workout carries the test's UUID, critical_force_kg is the mean force of the final six pulls, w_prime_kg_s the impulse above it inside the pull windows, end_force_kg the mean of the last second of the final three pulls, completed the pulls run, planned the protocol's pulls, rests_kept the rests with at most 1 s still on the edge, max_at_start_kg and body_mass_kg the values on file when tested. Pulls detail adds record=cf_pull rows: avg_kg is the mean force inside that pull's 7 s window and rest_on_edge_s the seconds still on the edge after its bell. Force after the bell is never counted. The export carries no raw force trace or gauge model. Scope: \(span); detail: \(detail.rawValue)."])
         let instant = ISO8601DateFormatter()
         instant.formatOptions = [.withInternetDateTime]
         var pullCount = 0
@@ -764,6 +802,7 @@ extension AnalysisExport {
                  "avg_kg": session.timing == .gauge ? csvNumber(session.avgKg) : "",
                  "notes": session.notes])
             let table = tables[session.id] ?? MaxTable()
+            let cfTable = cfTables[session.id] ?? CriticalForceTable()
             let slots = session.plan.map { PlanMath.sequence(for: $0) } ?? []
             let executable = session.plan?.executable
             var previousEnd: Double?
@@ -793,6 +832,20 @@ extension AnalysisExport {
                 fields["max_reference"] = table.exact(grip: rep.grip.key, side: rep.side, seconds: basis) != nil
                     ? (rep.side == .both ? "both_hands" : "hand_specific")
                     : (table.max(grip: rep.grip.key, side: rep.side, seconds: basis) != nil ? "both_hands_fallback" : "no_recorded_max_at_start")
+                // A percentage of CRITICAL FORCE reports against CF, never against a max
+                // it was not set against — the max columns go blank, the CF ones fill.
+                if targetBasis(of: rep, in: session) == .criticalForce {
+                    fields["target_basis"] = "critical_force"
+                    fields["max_at_start_kg"] = ""
+                    fields["max_reference"] = ""
+                    fields["max_basis"] = ""
+                    fields["cf_at_start_kg"] = cfTable.criticalForce(grip: rep.grip.key, side: rep.side).map(csvNumber) ?? ""
+                    fields["cf_reference"] = cfTable.exact(grip: rep.grip.key, side: rep.side) != nil
+                        ? (rep.side == .both ? "both_hands" : "hand_specific")
+                        : (cfTable.criticalForce(grip: rep.grip.key, side: rep.side) != nil ? "both_hands_fallback" : "no_recorded_cf_at_start")
+                } else {
+                    fields["target_basis"] = "max"
+                }
                 let end = validElapsed(rep.endedElapsedSeconds)
                 let start = validElapsed(rep.startedElapsedSeconds).flatMap { value in
                     end.map { value <= $0 ? value : nil } ?? nil

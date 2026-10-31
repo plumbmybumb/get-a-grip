@@ -179,7 +179,9 @@ final class RunnerSession {
     @ObservationIgnored private var lastStaleBatchHealAt: TimeInterval?
     @ObservationIgnored private var lastActivitySignature: ActivitySignature?
 
-    /// `maxes` is every max on file, by grip AND hand — `TemplateStore.maxTable`.
+    /// `maxes` is every max on file, by grip AND hand — `TemplateStore.maxTable` — and
+    /// `criticalForces` every critical force (`TemplateStore.currentCriticalForces`), for
+    /// sets prescribed as a percentage of CF. Both are captured here, once.
     /// Percentage targets become kilograms when the session begins and never move again,
     /// so a max recorded next month cannot rewrite what this morning told you to pull.
     ///
@@ -202,6 +204,7 @@ final class RunnerSession {
     /// `finishCueTail` keeps the cue engines up after the finish for the chord that
     /// announces it; nil ends them at the finish.
     init(template: SessionTemplate, device: DeviceStore, maxes: MaxTable = MaxTable(),
+         criticalForces: CriticalForceTable = CriticalForceTable(),
          timerOnly: Bool = false,
          liveActivity: any RunnerActivityPublishing = RunnerSession.defaultLiveActivity(),
          cues: any RunnerCuePlaying = RunnerSession.defaultCues(),
@@ -229,7 +232,7 @@ final class RunnerSession {
         // delta is an arrival gap and may only buy the cap; the Progressor's µs deltas are
         // truth. See `SessionRunner.maxCreditedSampleGapSeconds`.
         self.runner = SessionRunner(
-            plan: template.plan, maxes: maxes, timerOnly: timerOnly,
+            plan: template.plan, maxes: maxes, criticalForces: criticalForces, timerOnly: timerOnly,
             maxCreditedSampleGapSeconds: device.gaugeCapabilities.hasDeviceClock
                 ? nil : Self.syntheticClockGapCapSeconds,
             engagesOnFirstReading: device.gaugeCapabilities.isBroadcast)

@@ -42,7 +42,8 @@ extension SessionPlan {
         SetRowKey(holdSeconds: holdSeconds, restSeconds: restSeconds,
                   leadInSeconds: leadInSeconds, handMode: handMode,
                   targetLoPercent: targetLoPercent, targetHiPercent: targetHiPercent,
-                  targetMaxSeconds: targetMaxSeconds)
+                  targetMaxSeconds: targetMaxSeconds,
+                  targetBasisRaw: targetBasisRaw)
     }
 
     /// What the Rhythm page draws.
@@ -69,6 +70,7 @@ struct SetRowKey: Equatable {
     let targetLoPercent: Double?
     let targetHiPercent: Double?
     let targetMaxSeconds: Int?
+    let targetBasisRaw: String?
 }
 
 struct RhythmKey: Equatable {

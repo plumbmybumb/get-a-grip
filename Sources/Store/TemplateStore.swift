@@ -69,6 +69,11 @@ final class TemplateStore {
     /// card bodies read it on every frame of a slider drag, and a value that only
     /// changes when a max is recorded must not allocate on that hot path.
     private(set) var maxTable = MaxTable()
+    /// Every critical force on file as the engine consumes it — the newest valid
+    /// standard-protocol test per grip AND hand (`CriticalForceTable.folding`). What a set
+    /// prescribed as "% of critical force" resolves against. Stored and rebuilt on the max
+    /// fold's pass, for the same hot-path reason as `maxTable`.
+    private(set) var currentCriticalForces = CriticalForceTable()
     /// The first day the app had anything to track. Days before it are hairlines in
     /// the strip, not missed sessions.
     private(set) var trackingSince: DayStamp?
@@ -106,6 +111,8 @@ final class TemplateStore {
         let pausesAboveTargetBand: Bool
         let targetLoPercent: Double?
         let targetHiPercent: Double?
+        /// The routine band's basis — see `SessionTemplate.targetBasisRaw`.
+        let targetBasisRaw: String?
         let setsData: Data
         let sessionsPerDay: Int
         let remindersData: Data
@@ -185,6 +192,9 @@ final class TemplateStore {
     /// that brought no max skip the one unbounded fetch. Identity is a complete
     /// signature because `MaxRecord` is append-only. nil until the first fold.
     @ObservationIgnored private var foldedMaxIDs: Set<PersistentIdentifier>?
+    /// The same signature for `CriticalForceRecord`, folded on the same pass — a CF test
+    /// moves every "% of critical force" target exactly as a max moves a "% of max" one.
+    @ObservationIgnored private var foldedCriticalForceIDs: Set<PersistentIdentifier>?
     #if DEBUG
     /// How many times the max history has been fetched and folded — the only way a
     /// test can tell a skipped fold from one that found nothing new.
@@ -268,10 +278,11 @@ final class TemplateStore {
 
     private func maxRecordsMovedSinceFold() -> Bool {
         // No fold yet, or a read that failed: refold, which is always correct.
-        guard let folded = foldedMaxIDs,
-              let current = try? context.fetchIdentifiers(FetchDescriptor<MaxRecord>())
+        guard let folded = foldedMaxIDs, let foldedTests = foldedCriticalForceIDs,
+              let current = try? context.fetchIdentifiers(FetchDescriptor<MaxRecord>()),
+              let currentTests = try? context.fetchIdentifiers(FetchDescriptor<CriticalForceRecord>())
         else { return true }
-        return Set(current) != folded
+        return Set(current) != folded || Set(currentTests) != foldedTests
     }
 
     /// Recompute if the day moved under us, so a phone left open past midnight flips
@@ -293,8 +304,9 @@ final class TemplateStore {
     /// blank the consistency strip and, worse, hand `ReminderPlanner` an empty plan
     /// that deletes every scheduled reminder the user has.
     ///
-    /// `refoldingMaxes: false` skips the ONE unbounded fetch (`fetchMaxes`) and is the
-    /// caller stating that no `MaxRecord` moved. It defaults to true so external
+    /// `refoldingMaxes: false` skips the unbounded fetches (`fetchMaxes`,
+    /// `fetchCriticalForces`) and is the caller stating that no `MaxRecord` or
+    /// `CriticalForceRecord` moved. It defaults to true so external
     /// triggers (launch, midnight, the permission callback) refold unconditionally.
     func syncDerived(refoldingMaxes: Bool = true) {
         guard let routines = fetchRoutines() else { return }
@@ -304,9 +316,11 @@ final class TemplateStore {
         // Skipping the fetch and FAILING it must not collapse: a nil read bails like the
         // two above, a skip publishes the rest and leaves the max-derived values standing.
         var maxes: [MaxRecord]?
+        var criticalForces: [CriticalForceRecord]?
         if refoldingMaxes {
-            guard let fetched = fetchMaxes() else { return }
+            guard let fetched = fetchMaxes(), let tests = fetchCriticalForces() else { return }
             maxes = fetched
+            criticalForces = tests
         }
 
         // Every published value is compared before it is assigned: Observation fires on
@@ -338,6 +352,10 @@ final class TemplateStore {
             publish(\.maxTable, Self.table(from: newest))
             // `maxes` arrives sorted by `recordedAt`, so the last measured one is newest.
             publish(\.lastMeasuredMaxAt, maxes.last { $0.source == .measured }?.recordedAt)
+        }
+        if let criticalForces {
+            foldedCriticalForceIDs = Set(criticalForces.map(\.persistentModelID))
+            publish(\.currentCriticalForces, criticalForces.criticalForceTable())
         }
 
         // Replanned on the same pass as the completion counts, so finishing a session
@@ -433,6 +451,15 @@ final class TemplateStore {
     /// `MaxRecord` actually moved.
     private func fetchMaxes() -> [MaxRecord]? {
         try? context.fetch(FetchDescriptor<MaxRecord>(sortBy: [SortDescriptor(\.recordedAt)]))
+    }
+
+    /// Every critical force test, unbounded for the same reason as `fetchMaxes` and gated
+    /// with it. Only the columns the fold reads: the trace and pull blobs stay faulted.
+    private func fetchCriticalForces() -> [CriticalForceRecord]? {
+        var descriptor = FetchDescriptor<CriticalForceRecord>(sortBy: [SortDescriptor(\.recordedAt)])
+        descriptor.propertiesToFetch = [\.edgeMM, \.fingersRaw, \.positionRaw, \.sideRaw,
+                                        \.recordedAt, \.protocolKey, \.criticalForceKg]
+        return try? context.fetch(descriptor)
     }
 
     // MARK: - Derived computations (pure over what was fetched)
@@ -569,7 +596,8 @@ final class TemplateStore {
             // Against the live max table, so recording a max recolours the rung on the
             // next summary rebuild — intensity is a fact about TODAY's prescription,
             // unlike the runner's freeze-at-start rule for what a session displays.
-            peakIntensity: PlanMath.peakIntensity(of: plan, maxes: maxTable)
+            peakIntensity: PlanMath.peakIntensity(of: plan, maxes: maxTable,
+                                                  criticalForces: currentCriticalForces)
         )
     }
 
@@ -894,6 +922,7 @@ final class TemplateStore {
             pausesAboveTargetBand: template.pausesAboveTargetBand,
             targetLoPercent: template.targetLoPercent,
             targetHiPercent: template.targetHiPercent,
+            targetBasisRaw: template.targetBasisRaw,
             setsData: template.setsData,
             sessionsPerDay: template.sessionsPerDay,
             remindersData: template.remindersData,
@@ -950,6 +979,7 @@ final class TemplateStore {
         template.pausesAboveTargetBand = restorable.pausesAboveTargetBand
         template.targetLoPercent = restorable.targetLoPercent
         template.targetHiPercent = restorable.targetHiPercent
+        template.targetBasisRaw = restorable.targetBasisRaw
         template.setsData = restorable.setsData
         template.sessionsPerDay = restorable.sessionsPerDay
         template.remindersData = restorable.remindersData
@@ -1243,7 +1273,8 @@ final class TemplateStore {
                                      recordedAt: recordedAt))
         }
         stampBenchmarkDay()
-        persistAndSync(maxesChanged: !alsoMaxes.isEmpty)
+        // Always a refold: a new test moves every "% of critical force" target.
+        persistAndSync(maxesChanged: true)
         return saveError == nil ? records : nil
     }
 
@@ -1295,7 +1326,7 @@ final class TemplateStore {
         guard record.modelContext != nil else { return false }
         let restorable = DeletedCriticalForce(record)
         context.delete(record)
-        persistAndSync(maxesChanged: false)
+        persistAndSync(maxesChanged: true)
         guard saveError == nil else { return false }
         lastDeletedCriticalForce = restorable
         criticalForceUndoExpiry?.cancel()
@@ -1324,7 +1355,7 @@ final class TemplateStore {
         r.restsTotal = d.restsTotal; r.bodyMassKg = d.bodyMassKg; r.maxAtTestKg = d.maxAtTestKg
         r.repsData = d.repsData; r.traceData = d.traceData; r.note = d.note
         context.insert(r)
-        persistAndSync(maxesChanged: false)
+        persistAndSync(maxesChanged: true)
         if saveError == nil { lastDeletedCriticalForce = nil }
     }
 
@@ -1438,7 +1469,8 @@ final class TemplateStore {
     // MARK: - Side-effect pipeline
 
     /// `maxesChanged: false` is the caller asserting that this write touched no
-    /// `MaxRecord`, which is what lets `syncDerived` skip the unbounded fetch.
+    /// `MaxRecord` and no `CriticalForceRecord`, which is what lets `syncDerived` skip the
+    /// unbounded fetches.
     ///
     /// It defaults to TRUE so forgetting is conservative; the DEBUG assert catches a
     /// `false` that lies, which would leave `maxTable` (and every percent band) stale.
@@ -1448,7 +1480,7 @@ final class TemplateStore {
         if !maxesChanged {
             let pending = context.insertedModelsArray + context.changedModelsArray
                 + context.deletedModelsArray
-            assert(!pending.contains { $0 is MaxRecord },
+            assert(!pending.contains { $0 is MaxRecord || $0 is CriticalForceRecord },
                    "persistAndSync(maxesChanged: false) with a MaxRecord in the pending changes — "
                    + "the max table would not be refolded.")
         }

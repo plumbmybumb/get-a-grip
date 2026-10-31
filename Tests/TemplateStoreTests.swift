@@ -2485,3 +2485,71 @@ extension TemplateStoreTests {
         XCTAssertEqual(restored.trace.count, 2)
     }
 }
+
+// MARK: - Targets as a percentage of critical force
+
+extension TemplateStoreTests {
+    /// A test lands in the table a "% of critical force" set resolves against, on the same
+    /// save — and a deleted one leaves it, and Undo brings it back.
+    func testCriticalForceTestsFoldIntoTheTargetTable() throws {
+        let w = try makeWorld()
+        let grip = GripSpec(edgeMM: 20, fingers: .frontThree, position: .halfCrimp)
+        XCTAssertTrue(w.store.currentCriticalForces.isEmpty)
+        let record = try XCTUnwrap(w.store.recordCriticalForce(cfResult(cf: 15), trace: Data(), grip: grip,
+                                                               side: .left, bodyMassKg: nil))
+        XCTAssertEqual(w.store.currentCriticalForces.criticalForce(grip: grip.key, side: .left), 15)
+        XCTAssertNil(w.store.currentCriticalForces.criticalForce(grip: grip.key, side: .right))
+
+        XCTAssertTrue(w.store.deleteCriticalForce(record))
+        XCTAssertTrue(w.store.currentCriticalForces.isEmpty)
+        w.store.undoDeleteCriticalForce()
+        XCTAssertEqual(w.store.currentCriticalForces.criticalForce(grip: grip.key, side: .left), 15)
+    }
+
+    /// The set-level basis lives in the sets blob; the routine-level column survives a
+    /// delete and Undo (every column must be in `DeletedRoutine`).
+    func testTheBasisSurvivesSaveAndRoutineUndo() throws {
+        let w = try makeWorld()
+        var draft = RoutineDraft.blank(named: "Aerobic")
+        draft.remindersEnabled = false
+        var set = SetPlan(grip: GripSpec(), repsPerSide: 2, targetLoPercent: 0.7, targetHiPercent: 0.8)
+        set.targetBasis = .criticalForce
+        draft.plan.sets = [set]
+        let saved = try XCTUnwrap(w.store.save(draft))
+        XCTAssertEqual(saved.plan.sets[0].targetBasis, .criticalForce)
+        XCTAssertNil(saved.targetBasisRaw, "normalized demotes the routine band, so the column stays empty")
+
+        // A row written with a routine-level band (an older save path, or a newer build).
+        saved.targetLoPercent = 0.6
+        saved.targetHiPercent = 0.6
+        saved.targetBasisRaw = "criticalForce"
+        try w.context.save()
+        let id = saved.id
+        XCTAssertTrue(w.store.delete(saved))
+        w.store.undoDelete()
+        let restored = try XCTUnwrap(routines(w).first { $0.id == id })
+        XCTAssertEqual(restored.targetBasisRaw, "criticalForce")
+        XCTAssertEqual(restored.plan.targetBasis, .criticalForce)
+    }
+
+    /// Today's rung reads the live CF table: a CF routine is `unknown` (bleu) until both
+    /// a CF and a peak max exist for the grip, then a real fraction of max.
+    func testTheCardIntensityUsesCriticalForceOnlyWhenItResolves() throws {
+        let w = try makeWorld()
+        let grip = GripSpec()
+        var draft = RoutineDraft.blank(named: "Aerobic")
+        draft.remindersEnabled = false
+        draft.plan.handMode = .bothHands
+        var set = SetPlan(grip: grip, repsPerSide: 2, targetLoPercent: 0.7, targetHiPercent: 0.8)
+        set.targetBasis = .criticalForce
+        draft.plan.sets = [set]
+        let template = try XCTUnwrap(w.store.save(draft))
+        XCTAssertNil(w.store.summary(for: template).peakIntensity)
+        XCTAssertTrue(w.store.recordMaxes([MaxSave(grip: grip, side: .both, kg: 40, source: .manual)]))
+        XCTAssertNil(w.store.summary(for: template).peakIntensity, "a max alone cannot restate a CF band")
+        XCTAssertNotNil(w.store.recordCriticalForce(cfResult(cf: 16), trace: Data(), grip: grip,
+                                                    side: .both, bodyMassKg: nil))
+        let fraction = try XCTUnwrap(w.store.summary(for: template).peakIntensity)
+        XCTAssertEqual(fraction, 0.8 * 16 / 40, accuracy: 1e-12)
+    }
+}

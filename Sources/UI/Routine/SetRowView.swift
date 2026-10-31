@@ -27,6 +27,8 @@ struct SetRowView: View, Equatable {
     let canMoveDown: Bool
     /// Every max on file, by grip and hand — a value, so the row never touches the store.
     let maxes: MaxTable
+    /// Every critical force on file, for "% of critical force" bands — a value too.
+    let criticalForces: CriticalForceTable
     /// Folded once by the builder; per row, both summaries rescanned every set.
     let percentBandsVary: Bool
 
@@ -51,6 +53,7 @@ struct SetRowView: View, Equatable {
             && a.canMoveDown == b.canMoveDown
             && a.percentBandsVary == b.percentBandsVary
             && a.maxes == b.maxes
+            && a.criticalForces == b.criticalForces
             && a.defaults.setRowKey == b.defaults.setRowKey
     }
 
@@ -182,7 +185,11 @@ struct SetRowView: View, Equatable {
         }
         if let percent = set.targetPercentBand ?? defaults.targetPercentBand {
             let range = "\(percentText(percent.lowerBound))–\(percentText(percent.upperBound)) %"
-            // Named on the shut row too: 90 % of a 10 s max is not 90 % of the peak.
+            // Named on the shut row too: 90 % of a 10 s max is not 90 % of the peak, and
+            // 80 % of critical force is not 80 % of anything else.
+            if PlanMath.targetBasis(set, in: defaults) == .criticalForce {
+                return String(localized: "\(range) of critical force")
+            }
             if let seconds = PlanMath.maxSeconds(set, in: defaults) {
                 return String(localized: "\(range) of \(seconds) s max")
             }
@@ -270,7 +277,8 @@ struct SetRowView: View, Equatable {
             // The full band row (presets, trimmer, percent or kg) — it replaced a
             // kg-only toggle that could not show a per-set percent band, which the Max
             // day ramp is made of.
-            TargetBandRow(set: setBinding, maxes: maxes, handMode: defaults.handMode)
+            TargetBandRow(set: setBinding, maxes: maxes, criticalForces: criticalForces,
+                          handMode: defaults.handMode)
 
             // With no band of its own, the set follows the routine's, said under the
             // row that could override it.
@@ -293,11 +301,18 @@ struct SetRowView: View, Equatable {
         let range = "\(percentText(percent.lowerBound))–\(percentText(percent.upperBound)) %"
         // PER HAND, through the shared formatter, so no two screens quote different
         // loads for one routine.
-        guard let load = weightUnit.targetText(set, in: defaults, maxes: maxes) else {
+        guard let load = weightUnit.targetText(set, in: defaults, maxes: maxes,
+                                               criticalForces: criticalForces) else {
+            if defaults.targetBasis == .criticalForce {
+                return String(localized: "Routine target: \(range) of critical force. No critical force for this grip yet.")
+            }
             if let seconds = defaults.targetMaxSeconds {
                 return String(localized: "Routine target: \(range) of your \(seconds) s max. No \(seconds) s max for this grip yet.")
             }
             return String(localized: "Routine target: \(range) of max. No max for this grip yet.")
+        }
+        if defaults.targetBasis == .criticalForce {
+            return String(localized: "Routine target: \(range) of critical force, so \(load).")
         }
         return String(localized: "Routine target: \(range), so \(load).")
     }
@@ -416,6 +431,10 @@ struct SetRowView: View, Equatable {
         if let rest = set.restSeconds, rest != defaults.restSeconds { parts.append(String(localized: "\(rest) second rest")) }
         if let band = set.targetBand {
             parts.append(String(localized: "target \(weightUnit.number(band.lowerBound)) to \(weightUnit.number(band.upperBound)) \(weightUnit.spokenName)"))
+        } else if let percent = set.targetPercentBand ?? defaults.targetPercentBand,
+                  PlanMath.targetBasis(set, in: defaults) == .criticalForce {
+            // Always spoken, like a timed basis: it changes what the percentage means.
+            parts.append(String(localized: "target \(percentText(percent.lowerBound)) to \(percentText(percent.upperBound)) percent of your critical force"))
         } else if let percent = set.targetPercentBand ?? defaults.targetPercentBand,
                   let seconds = PlanMath.maxSeconds(set, in: defaults) {
             // A timed basis is always spoken: it changes what the percentage means.

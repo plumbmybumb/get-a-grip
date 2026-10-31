@@ -10,8 +10,9 @@ This document is written in English whatever language the app is set to, so that
 - **Plan s** is the hold the routine asked for. **Held s** is what was actually accrued while the load was over the rep's own threshold — so a pull that came off the edge halfway reads short rather than being rewritten.
 - **How held time was measured** is stated on every session header. `gauge` means the seconds came from the force gauge's own sample timestamps. `timer-only` means the session ran with no gauge attached and the seconds came off the WALL CLOCK; those sessions carry no kilograms at all. `logged` means the session was written down after the fact — no reps, only a duration.
 - **Peak kg / Avg kg are stored PER REP** — the numbers in the rep tables are that pull's own peak and its mean while engaged, not the session's. The session header's peak and average are the session-level figures kept beside them; for a session whose rep blob is missing or unreadable, the header figures are all that survives.
-- **% max** is that rep's own PEAK divided by the max on file for that grip AND hand **as it stood on the day of the session** — a max recorded later never rewrites what an older session was pulling at. Resolution is specific-beats-general: a left or right pull uses that hand's max and falls back to a both-hands max; a BOTH-hands pull resolves only against a both-hands max, never against the two hands added together. No max on file means a blank, never a number.
-- **Target kg** is what the rep was ASKED to pull for that hand, frozen at the time. Blank where the routine set no target or the grip had no max to take a percentage of.
+- **% max** is that rep's own PEAK divided by the max on file for that grip AND hand **as it stood on the day of the session** — a max recorded later never rewrites what an older session was pulling at. Resolution is specific-beats-general: a left or right pull uses that hand's max and falls back to a both-hands max; a BOTH-hands pull resolves only against a both-hands max, never against the two hands added together. No max on file means a blank, never a number. Blank too on a pull whose target was a percentage of critical force.
+- **% CF** is the same for a pull whose target was a PERCENTAGE OF CRITICAL FORCE: its own peak divided by the critical force on file for that grip and hand as it stood at the session's start (the newest standard 7:3x24 test, same hand rules as % max). Blank on every other pull, and where no critical force existed then.
+- **Target kg** is what the rep was ASKED to pull for that hand, frozen at the time. Blank where the routine set no target or the grip had no max (or, for a critical force target, no critical force) to take a percentage of.
 - **Outcome** is one of `completed`, `earlyRelease` (came off the edge), `skipped` (deliberately passed over — skipped pulls ARE recorded, and they count toward the planned total but never toward the completed one; their kilogram cells are blank because the pull never happened, not zero), `aborted` (the session or the link ended mid-rep).
 - **Hands**: `L` left, `R` right, `B` both.
 - **A climbing day counts as training.** A day at the gym is more finger load than the hangboard session it displaced, so `climbVolume`, `climbLimit` and `climbMaintenance` sessions settle a day the same way a routine session does. `benchmark` is a testing day, logged automatically the first time a gauge-measured max or a critical force test lands. `hangManual` is a weighted or max hang done away from the gauge.
@@ -82,71 +83,71 @@ Every session on record — the history begins 2026-07-05. Newest first.
 
 Pulls: 3 completed of 3 planned. Session peak 20.0 kg, session average 18.0 kg. Effort 1/5, fingers 1/5.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | 30% | completed |
-| 2 | R | 14mm F3 OH | 10 | 10.0 | 10.0 | 9.0 | — | — | completed |
-| 3 | B | 20mm F2 FC | 10 | 10.0 | 20.0 | 18.0 | — | 83% | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 12.0 | 10.8 | — | 30% | — | completed |
+| 2 | R | 14mm F3 OH | 10 | 10.0 | 10.0 | 9.0 | — | — | — | completed |
+| 3 | B | 20mm F2 FC | 10 | 10.0 | 20.0 | 18.0 | — | 83% | — | completed |
 
 ### 2026-08-19 · Routine 1 · hang · 20 min · held 30s · gauge
 
 Pulls: 3 completed of 3 planned. Session peak 21.0 kg, session average 18.9 kg. Effort 2/5, fingers 2/5.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 13.0 | 11.7 | — | 33% | completed |
-| 2 | R | 14mm F3 OH | 10 | 10.0 | 11.0 | 9.9 | — | — | completed |
-| 3 | B | 20mm F2 FC | 10 | 10.0 | 21.0 | 18.9 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 13.0 | 11.7 | — | 33% | — | completed |
+| 2 | R | 14mm F3 OH | 10 | 10.0 | 11.0 | 9.9 | — | — | — | completed |
+| 3 | B | 20mm F2 FC | 10 | 10.0 | 21.0 | 18.9 | — | — | — | completed |
 
 ### 2026-08-10 · Routine 2 · hang · 20 min · held 30s · gauge
 
 Pulls: 3 completed of 3 planned. Session peak 22.0 kg, session average 19.8 kg. Effort 3/5, fingers 3/5.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 14.0 | 12.6 | — | 35% | completed |
-| 2 | R | 14mm F3 OH | 10 | 10.0 | 12.0 | 10.8 | — | — | completed |
-| 3 | B | 20mm F2 FC | 10 | 10.0 | 22.0 | 19.8 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 14.0 | 12.6 | — | 35% | — | completed |
+| 2 | R | 14mm F3 OH | 10 | 10.0 | 12.0 | 10.8 | — | — | — | completed |
+| 3 | B | 20mm F2 FC | 10 | 10.0 | 22.0 | 19.8 | — | — | — | completed |
 
 ### 2026-08-01 · Routine 0 · hang · 20 min · held 30s · gauge
 
 Pulls: 3 completed of 3 planned. Session peak 23.0 kg, session average 20.7 kg. Effort 4/5, fingers 4/5.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 15.0 | 13.5 | — | 38% | completed |
-| 2 | R | 14mm F3 OH | 10 | 10.0 | 13.0 | 11.7 | — | — | completed |
-| 3 | B | 20mm F2 FC | 10 | 10.0 | 23.0 | 20.7 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 15.0 | 13.5 | — | 38% | — | completed |
+| 2 | R | 14mm F3 OH | 10 | 10.0 | 13.0 | 11.7 | — | — | — | completed |
+| 3 | B | 20mm F2 FC | 10 | 10.0 | 23.0 | 20.7 | — | — | — | completed |
 
 ### 2026-07-23 · Routine 1 · hang · 20 min · held 30s · gauge
 
 Pulls: 3 completed of 3 planned. Session peak 24.0 kg, session average 21.6 kg. Effort 5/5, fingers 5/5.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 16.0 | 14.4 | — | 40% | completed |
-| 2 | R | 14mm F3 OH | 10 | 10.0 | 14.0 | 12.6 | — | — | completed |
-| 3 | B | 20mm F2 FC | 10 | 10.0 | 24.0 | 21.6 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 16.0 | 14.4 | — | 40% | — | completed |
+| 2 | R | 14mm F3 OH | 10 | 10.0 | 14.0 | 12.6 | — | — | — | completed |
+| 3 | B | 20mm F2 FC | 10 | 10.0 | 24.0 | 21.6 | — | — | — | completed |
 
 ### 2026-07-14 · Routine 2 · hang · 20 min · held 30s · gauge
 
 Pulls: 3 completed of 3 planned. Session peak 25.0 kg, session average 22.5 kg. Effort 1/5, fingers 1/5.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 17.0 | 15.3 | — | 43% | completed |
-| 2 | R | 14mm F3 OH | 10 | 10.0 | 15.0 | 13.5 | — | — | completed |
-| 3 | B | 20mm F2 FC | 10 | 10.0 | 25.0 | 22.5 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 17.0 | 15.3 | — | 43% | — | completed |
+| 2 | R | 14mm F3 OH | 10 | 10.0 | 15.0 | 13.5 | — | — | — | completed |
+| 3 | B | 20mm F2 FC | 10 | 10.0 | 25.0 | 22.5 | — | — | — | completed |
 
 ### 2026-07-05 · Routine 0 · hang · 20 min · held 30s · gauge
 
 Pulls: 3 completed of 3 planned. Session peak 26.0 kg, session average 23.4 kg. Effort 2/5, fingers 2/5.
 
-| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | Outcome |
-| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | --- |
-| 1 | L | 20mm 4F HC | 10 | 10.0 | 18.0 | 16.2 | — | 45% | completed |
-| 2 | R | 14mm F3 OH | 10 | 10.0 | 16.0 | 14.4 | — | — | completed |
-| 3 | B | 20mm F2 FC | 10 | 10.0 | 26.0 | 23.4 | — | — | completed |
+| # | Hand | Grip | Plan s | Held s | Peak kg | Avg kg | Target kg | % max | % CF | Outcome |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 1 | L | 20mm 4F HC | 10 | 10.0 | 18.0 | 16.2 | — | 45% | — | completed |
+| 2 | R | 14mm F3 OH | 10 | 10.0 | 16.0 | 14.4 | — | — | — | completed |
+| 3 | B | 20mm F2 FC | 10 | 10.0 | 26.0 | 23.4 | — | — | — | completed |
 
 ## Older than 8 weeks, by week
 

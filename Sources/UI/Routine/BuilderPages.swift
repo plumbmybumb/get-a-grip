@@ -29,7 +29,8 @@ enum BuilderPage: Int, CaseIterable, Identifiable {
 #if DEBUG
 /// Headless states for `simctl` screenshots, which cannot tap: `-builderPage N`,
 /// `-builderExpandSet N`, `-builderSeedSets N`, `-builderCustomTiming N`,
-/// `-builderScrollTo expanded|end`.
+/// `-builderScrollTo expanded|end`, `-builderTargetBasis routine|set` (with `-builderSeedSets`),
+/// `-builderOpenTarget`.
 enum BuilderDebug {
     static func string(_ flag: String) -> String? {
         let args = ProcessInfo.processInfo.arguments
@@ -79,14 +80,20 @@ struct RoutineTargetRow: View, Equatable {
     let basis: Int?
     /// Timed lengths to offer beside "Peak max" — see `MaxBasisChips`.
     let basisOptions: [Int]
+    /// What the band is a percentage OF: the max, or critical force. See `TargetBasis`.
+    let targetBasis: TargetBasis
     /// Writes the routine band and clears every set's own target: one band for all.
     let onChange: (ClosedRange<Double>?) -> Void
     let onBasisChange: (Int?) -> Void
+    let onTargetBasisChange: (TargetBasis) -> Void
 
     nonisolated static func == (a: Self, b: Self) -> Bool {
         a.band == b.band && a.setsVary == b.setsVary
             && a.basis == b.basis && a.basisOptions == b.basisOptions
+            && a.targetBasis == b.targetBasis
     }
+
+    private var ofCriticalForce: Bool { targetBasis == .criticalForce }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -129,13 +136,30 @@ struct RoutineTargetRow: View, Equatable {
                                 value: percentBinding(\.upperBound), range: 1...100,
                                 limit: 1...100, control: .stepper)
                 }
-                if band != nil, !basisOptions.isEmpty {
+                // What the percentage is OF — kilograms stay per set, so two choices here.
+                if band != nil {
+                    ChipGrid(base: 2) {
+                        Chip(title: String(localized: "% of max"), isSelected: !ofCriticalForce) {
+                            onTargetBasisChange(.max)
+                        }
+                        Chip(title: String(localized: "% of critical force"), isSelected: ofCriticalForce) {
+                            onTargetBasisChange(.criticalForce)
+                        }
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(String(localized: "Target load unit"))
+                }
+                if band != nil, !ofCriticalForce, !basisOptions.isEmpty {
                     MaxBasisChips(selection: basis, options: basisOptions, onSelect: onBasisChange)
                 }
             }
         }
         .onAppear {
             if let band, !Self.bands.contains(where: { $0.range == band }) { custom = true }
+            #if DEBUG
+            // Headless screenshots: `-builderOpenTarget` opens the editor on appear.
+            if ProcessInfo.processInfo.arguments.contains("-builderOpenTarget") { expanded = true }
+            #endif
         }
     }
 
@@ -153,7 +177,11 @@ struct RoutineTargetRow: View, Equatable {
                         .font(.system(.subheadline, weight: .medium))
                         .foregroundStyle(Ink.primary)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let basis, band != nil {
+                    if band != nil, ofCriticalForce {
+                        Text("of your critical force")
+                            .font(.system(.caption))
+                            .foregroundStyle(Ink.secondary)
+                    } else if let basis, band != nil {
                         Text("of your \(basis) s max")
                             .font(.system(.caption))
                             .foregroundStyle(Ink.secondary)
@@ -180,7 +208,9 @@ struct RoutineTargetRow: View, Equatable {
         }
         .buttonStyle(PressFeedbackButtonStyle())
         .accessibilityLabel(String(localized: "Target load"))
-        .accessibilityValue(basis.map { band != nil ? String(localized: "\(valueText), of your \($0) second max") : valueText }
+        .accessibilityValue(band != nil && ofCriticalForce
+                            ? String(localized: "\(valueText), of your critical force")
+                            : basis.map { band != nil ? String(localized: "\(valueText), of your \($0) second max") : valueText }
                             ?? valueText)
     }
 

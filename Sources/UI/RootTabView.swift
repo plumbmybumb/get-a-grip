@@ -89,6 +89,17 @@ struct RootTabView: View {
             withAnimation(Motion.state(reduceMotion)) { selection = 0 }
             templates.receiveShareLink(url)
         }
+        #if DEBUG
+        // Headless: `-openShareLink <url>` delivers a routine link with no system
+        // "Open in…" prompt to tap through (`simctl openurl` raises one).
+        .task {
+            let args = ProcessInfo.processInfo.arguments
+            if let i = args.firstIndex(of: "-openShareLink"), i + 1 < args.count,
+               let url = URL(string: args[i + 1]), RoutineShare.isRoutineLink(url) {
+                templates.receiveShareLink(url)
+            }
+        }
+        #endif
         // Ceiling only: clamping the FLOOR forces reduced text back up to Large; the
         // ceiling protects the runner's fixed-height hero. The app's ONE clamp —
         // never re-clamp downstream.

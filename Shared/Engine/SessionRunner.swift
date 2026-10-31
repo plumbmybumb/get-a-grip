@@ -270,11 +270,14 @@ struct SessionRunner: Sendable {
     /// `maxes` is read ONCE here, which freezes the session's loads: percentage targets
     /// become kilograms per rep, per hand, so a max recorded next month cannot rewrite
     /// what this morning prescribed. Empty by default for callers testing timing only.
-    init(plan: SessionPlan, maxes: MaxTable = MaxTable(), timerOnly: Bool = false,
+    /// `criticalForces` is read once beside it, for sets prescribed as a percentage of
+    /// critical force (`TargetBasis`); empty resolves those sets to no target.
+    init(plan: SessionPlan, maxes: MaxTable = MaxTable(),
+         criticalForces: CriticalForceTable = CriticalForceTable(), timerOnly: Bool = false,
          maxCreditedSampleGapSeconds: Double? = nil, engagesOnFirstReading: Bool = false) {
         let executable = plan.executable
         self.plan = executable
-        let slots = PlanMath.sequence(for: executable, maxes: maxes)
+        let slots = PlanMath.sequence(for: executable, maxes: maxes, criticalForces: criticalForces)
         self.slots = slots
         self.setCount = executable.sets.count
         self.engageKg = executable.thresholdKg

@@ -135,7 +135,11 @@ enum MaxReceiptMath {
                         guard explicit != newBand else { continue }
                         let move = MaxImpact.KgOffer.Move(oldBand: explicit, newBand: newBand)
                         if !kgMoves.contains(move) { kgMoves.append(move) }
-                    } else if let percent = PlanMath.targetPercent(set, in: plan) {
+                    } else if let percent = PlanMath.targetPercent(set, in: plan),
+                              // A percentage of CRITICAL FORCE does not move when a max
+                              // does — and keyed as "peak" below it would hide a real peak
+                              // set at the same percentage.
+                              PlanMath.targetBasis(set, in: plan) == .max {
                         // Keyed with the basis too: 90 % of the peak and 90 % of a 10 s
                         // max are different targets on the same grip.
                         let basis = PlanMath.maxSeconds(set, in: plan).map { "\($0)s" } ?? "peak"
