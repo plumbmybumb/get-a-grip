@@ -20,26 +20,15 @@ struct GripToken: View {
     let grip: GripSpec
     var onEdit: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         Button(action: onEdit) {
-            HStack(spacing: 12) {
-                FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 7, gap: 3)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(grip.edgeMM) mm · \(grip.fingers.name)")
-                        .font(.system(.body, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Ink.primary)
-                    Text(grip.position.name.lowercased())
-                        .font(.system(.footnote))
-                        .foregroundStyle(Ink.secondary)
-                }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Ink.tertiary)
+            // Accessibility sizes STACK, exactly like the set-row header above it: beside
+            // the glyph and the chevron the name kept a third of the button at AX3 and
+            // broke inside its words ("20 / m / m · / Fro / nt").
+            Group {
+                if typeSize.isAccessibilitySize { stackedFace } else { compactFace }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -55,6 +44,50 @@ struct GripToken: View {
         .accessibilityLabel(String(localized: "Grip"))
         .accessibilityValue(grip.spoken)
         .accessibilityHint(String(localized: "Opens the grip picker"))
+    }
+
+    private var compactFace: some View {
+        HStack(spacing: 12) {
+            glyph
+            words
+            Spacer(minLength: 8)
+            chevron
+        }
+    }
+
+    /// Glyph and chevron on one line, then the words with the full width to wrap in.
+    private var stackedFace: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                glyph
+                Spacer(minLength: 8)
+                chevron
+            }
+            words
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var glyph: some View {
+        FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 7, gap: 3)
+    }
+
+    private var words: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(grip.edgeMM) mm · \(grip.fingers.name)")
+                .font(.system(.body, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(Ink.primary)
+            Text(grip.position.name.lowercased())
+                .font(.system(.footnote))
+                .foregroundStyle(Ink.secondary)
+        }
+    }
+
+    private var chevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(.footnote, weight: .semibold))
+            .foregroundStyle(Ink.tertiary)
     }
 }
 

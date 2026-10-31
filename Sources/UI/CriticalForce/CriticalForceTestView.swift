@@ -388,6 +388,8 @@ struct CriticalForceTestView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(maxOffers.count == 1 ? "Save your hardest pull as a max" : "Save your hardest pulls as maxes")
                             .font(.system(.subheadline, weight: .semibold))
+                            // Wraps rather than truncating beside the switch (XXXL, 13 mini).
+                            .fixedSize(horizontal: false, vertical: true)
                         Text(maxOffers.map(offerLine).joined(separator: "\n"))
                             .font(.system(.footnote))
                             .foregroundStyle(Ink.secondary)
@@ -506,19 +508,36 @@ struct CriticalForceTestView: View {
         Button {
             withAnimation(Motion.state(reduceMotion)) { editingGrip.toggle() }
         } label: {
-            HStack(spacing: 12) {
-                FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 8, gap: 3)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    CapsLabel(String(localized: "GRIP"))
-                    Text(grip.displayName)
-                        .font(.system(.headline))
-                        .foregroundStyle(Ink.primary)
+            let glyph = FingerGlyph(fingers: grip.fingers, position: grip.position, dot: 8, gap: 3)
+                .accessibilityHidden(true)
+            let words = VStack(alignment: .leading, spacing: 2) {
+                CapsLabel(String(localized: "GRIP"))
+                Text(grip.displayName)
+                    .font(.system(.headline))
+                    .foregroundStyle(Ink.primary)
+            }
+            let action = Text(editingGrip ? "Done" : "Change")
+                .font(.system(.subheadline, weight: .semibold))
+                .foregroundStyle(Accent.graphite)
+            Group {
+                // Accessibility sizes STACK, one thing per line: between the glyph and
+                // "Change" the words kept a sliver of the row and "GRIP" broke at AX3, and
+                // beside the glyph alone "Change" broke in turn on a 13 mini.
+                if typeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 6) {
+                        glyph
+                        words.fixedSize(horizontal: false, vertical: true)
+                        action
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    HStack(spacing: 12) {
+                        glyph
+                        words
+                        Spacer(minLength: 8)
+                        action
+                    }
                 }
-                Spacer(minLength: 8)
-                Text(editingGrip ? "Done" : "Change")
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(Accent.graphite)
             }
             .padding(14)
             .frame(minHeight: 60)

@@ -184,6 +184,7 @@ struct SettingsView: View {
                 }
             }
             .font(.system(.subheadline))
+            .modifier(DeviceFactsStack())
         }
     }
 
@@ -211,7 +212,9 @@ struct SettingsView: View {
                             .foregroundStyle(Ink.secondary)
                         Text(gaugeChoiceNote)
                             .font(.system(.footnote))
-                            .foregroundStyle(Ink.tertiary)
+                            // Secondary, not tertiary: it is a sentence to read, and
+                            // tertiary measured 4.07:1 in dark mode, under 4.5:1.
+                            .foregroundStyle(Ink.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 3)
                     }
@@ -410,6 +413,35 @@ struct SettingsView: View {
             Label(templates.storageMode.aboutLine, systemImage: "exclamationmark.triangle")
                 .font(.system(.footnote, weight: .medium))
                 .foregroundStyle(StatusTint.armed)
+        }
+    }
+}
+
+/// The Device card's facts STACK at accessibility sizes, label over value: the trailing
+/// column the default style leaves the value broke "Not connected" into "Not / connected"
+/// at AX3. Below accessibility sizes the default style draws, untouched.
+private struct DeviceFactsStack: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    func body(content: Content) -> some View {
+        if typeSize.isAccessibilitySize {
+            content.labeledContentStyle(Stacked())
+        } else {
+            content
+        }
+    }
+
+    private struct Stacked: LabeledContentStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            VStack(alignment: .leading, spacing: 2) {
+                configuration.label
+                    .foregroundStyle(Ink.primary)
+                configuration.content
+                    .foregroundStyle(Ink.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
         }
     }
 }

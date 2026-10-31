@@ -42,11 +42,9 @@ struct FineTuningSection: View, Equatable {
     // MARK: - Threshold
 
     private var thresholdBlock: some View {
+        // ONE statement of the question: the row's own title, beside its number. A block
+        // heading above it said the same words again, at every size.
         VStack(alignment: .leading, spacing: 10) {
-            Text("A pull counts above")
-                .font(.system(.subheadline, weight: .semibold))
-                .foregroundStyle(Ink.primary)
-
             ValueRow(title: String(localized: "A pull counts above"),
                      unit: weightUnit.symbol,
                      value: weightUnit.binding(access.binding(\.plan.thresholdKg, current: defaults.thresholdKg)),
@@ -95,11 +93,8 @@ struct FineTuningSection: View, Equatable {
     // MARK: - Lead-in
 
     private var leadInBlock: some View {
+        // The row's own title is the heading, as in `thresholdBlock`.
         VStack(alignment: .leading, spacing: 10) {
-            Text("Lead-in before each set")
-                .font(.system(.subheadline, weight: .semibold))
-                .foregroundStyle(Ink.primary)
-
             IntValueRow(title: String(localized: "Lead-in before each set"),
                         unit: String(localized: "s"),
                         value: access.binding(\.plan.leadInSeconds, current: defaults.leadInSeconds),

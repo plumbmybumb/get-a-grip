@@ -307,12 +307,17 @@ struct SetRowView: View, Equatable {
     }
 
     private var moveRow: some View {
-        HStack(spacing: 10) {
+        // Accessibility sizes give each its own line: side by side at AXM on a 17 Pro,
+        // "Move / down" wrapped while "Move up" beside it did not.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
+            : AnyLayout(HStackLayout(spacing: 10))
+        return layout {
             moveButton(String(localized: "Move up"), systemImage: "chevron.up",
                        enabled: canMoveUp, action: onMoveUp)
             moveButton(String(localized: "Move down"), systemImage: "chevron.down",
                        enabled: canMoveDown, action: onMoveDown)
-            Spacer(minLength: 0)
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
         }
     }
 

@@ -220,7 +220,7 @@ struct GaugeView: View {
     private var dock: some View {
         VStack(spacing: Self.dockSpacing) {
             if device.state.isConnected {
-                AdaptiveActionRow(spacing: Self.dockSpacing) {
+                OneLineActionRow(spacing: Self.dockSpacing) {
                     DockButton(device.isReadingLive ? String(localized: "Tare") : String(localized: "Wake"),
                                systemImage: device.isReadingLive ? "arrow.counterclockwise" : "arrow.clockwise",
                                fillsRowHeight: true) {
@@ -298,7 +298,7 @@ struct GaugeView: View {
     /// running beside a dead graph.
     private var timerRow: some View {
         let running = tally.stopwatch.isRunning
-        return AdaptiveActionRow(spacing: Self.dockSpacing) {
+        return OneLineActionRow(spacing: Self.dockSpacing) {
             DockButton(running ? String(localized: "Pause timer") : String(localized: "Start timer"),
                        systemImage: running ? "pause.fill" : "play.fill",
                        fillsRowHeight: true) {
@@ -459,18 +459,33 @@ private struct GaugeReadouts: View {
         return count > 0 ? sum / count : nil
     }
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         let average = averageKg
-        return HStack(spacing: 8) {
-            readout(String(localized: "Peak"), value: weightUnit.number(device.peakKg), unit: weightUnit.symbol)
+        let items = [
+            Item(title: String(localized: "Peak"), value: weightUnit.number(device.peakKg), unit: weightUnit.symbol),
             // The reading the flickering hero can't give: hang steady, read the
             // average. (Firmware version lives in Settings.)
-            readout(String(localized: "Average"),
-                    value: average.map { weightUnit.number($0) } ?? "—",
-                    unit: average == nil ? "" : weightUnit.symbol)
-            readout(String(localized: "Battery"),
-                    value: device.batteryFraction.map { "\(BatteryDisplay.percentage($0))" } ?? "—",
-                    unit: device.batteryFraction == nil ? "" : String(localized: "%"))
+            Item(title: String(localized: "Average"),
+                 value: average.map { weightUnit.number($0) } ?? "—",
+                 unit: average == nil ? "" : weightUnit.symbol),
+            Item(title: String(localized: "Battery"),
+                 value: device.batteryFraction.map { "\(BatteryDisplay.percentage($0))" } ?? "—",
+                 unit: device.batteryFraction == nil ? "" : String(localized: "%")),
+        ]
+        return Group {
+            // Accessibility sizes LIST them, label then value: three columns at AX3
+            // hyphenated the labels ("AV- / ER- / AGE") and cut the numbers to "2…kg".
+            if typeSize.isAccessibilitySize {
+                VStack(spacing: 8) {
+                    ForEach(items, id: \.title) { stackedReadout($0) }
+                }
+            } else {
+                HStack(spacing: 8) {
+                    ForEach(items, id: \.title) { readout($0.title, value: $0.value, unit: $0.unit) }
+                }
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("""
@@ -498,6 +513,46 @@ private struct GaugeReadouts: View {
             .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private struct Item {
+        let title: String
+        let value: String
+        let unit: String
+    }
+
+    /// One readout as a row, label leading and value trailing, or the label over the
+    /// value when even the row does not fit. Only the NUMBER may shrink: a label is
+    /// words, and words wrap at their own boundaries.
+    private func stackedReadout(_ item: Item) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                CapsLabel(item.title)
+                Spacer(minLength: 0)
+                stackedValue(item, shrinks: false)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                CapsLabel(item.title)
+                stackedValue(item, shrinks: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func stackedValue(_ item: Item, shrinks: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(item.value)
+                .font(.system(.title3, weight: .medium))
+                .monospacedDigit()
+                .contentTransition(.identity)
+                .lineLimit(1)
+                .minimumScaleFactor(shrinks ? 0.7 : 1)
+            if !item.unit.isEmpty {
+                Text(item.unit).font(.system(.caption)).foregroundStyle(Ink.tertiary)
+                    .fixedSize()
+            }
+        }
+        .foregroundStyle(Ink.primary)
     }
 }
 
@@ -609,5 +664,61 @@ private struct GaugeTimerRow: View {
 
     private func spoken(_ seconds: TimeInterval) -> String {
         Duration.seconds(Int(seconds)).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .wide))
+    }
+}
+
+/// The gauge dock's paired actions: side by side while every label fits on ONE line at
+/// an equal share of the row, one per line otherwise.
+///
+/// `AdaptiveActionRow` keeps two columns through a two-line label, which on a 13 mini
+/// at XXXL broke "Start / timer" while "Reset" beside it, and Tare and Disconnect above
+/// it, each stayed on one line: one row of the dock wrapping and its neighbours not.
+/// Measured from the labels' own ideal widths, so it holds in any language. Whenever
+/// both fit it places exactly what `AdaptiveActionRow` places.
+private struct OneLineActionRow: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? subviews.map { $0.sizeThatFits(.unspecified).width }.reduce(0, +)
+            + spacing * CGFloat(max(0, subviews.count - 1))
+        let rows = rows(width: width, subviews: subviews)
+        return CGSize(width: width, height: rows.last.map { $0.y + $0.height } ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for row in rows(width: bounds.width, subviews: subviews) {
+            for (column, index) in row.indices.enumerated() {
+                subviews[index].place(at: CGPoint(x: bounds.minX + CGFloat(column) * (row.width + spacing),
+                                                 y: bounds.minY + row.y),
+                                      anchor: .topLeading,
+                                      proposal: ProposedViewSize(width: row.width, height: row.height))
+            }
+        }
+    }
+
+    private struct Row {
+        let indices: Range<Int>
+        let width: CGFloat
+        let height: CGFloat
+        let y: CGFloat
+    }
+
+    private func rows(width: CGFloat, subviews: Subviews) -> [Row] {
+        guard !subviews.isEmpty else { return [] }
+        let shared = max(0, (width - spacing * CGFloat(subviews.count - 1)) / CGFloat(subviews.count))
+        let columns = subviews.allSatisfy { $0.sizeThatFits(.unspecified).width <= shared }
+            ? subviews.count : 1
+        var rows: [Row] = []
+        var y: CGFloat = 0
+        for start in stride(from: 0, to: subviews.count, by: columns) {
+            let end = min(start + columns, subviews.count)
+            let cellWidth = max(0, (width - spacing * CGFloat(end - start - 1)) / CGFloat(end - start))
+            let height = (start..<end).map {
+                subviews[$0].sizeThatFits(ProposedViewSize(width: cellWidth, height: nil)).height
+            }.max() ?? 0
+            rows.append(Row(indices: start..<end, width: cellWidth, height: height, y: y))
+            y += height + spacing
+        }
+        return rows
     }
 }
