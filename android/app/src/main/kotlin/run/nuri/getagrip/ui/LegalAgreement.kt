@@ -32,7 +32,10 @@ fun LegalSettingsContent() {
     // Keep genuine historical records available without requesting new acceptance.
     val keys = if (store.records.length() > 0) listOf("terms", "privacy", "receipt") else listOf("terms", "privacy")
     keys.forEach { key ->
-        TextButton(onClick = { selected = key }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        // No horizontal content padding: the material default indented "Terms of use" 12 dp
+        // from the card's own text edge. `SupportRow`'s padding, so the two cards align.
+        TextButton(onClick = { selected = key }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            contentPadding = PaddingValues(vertical = 8.dp)) {
             Text(bundle?.text(key, language) ?: if (language == "fr") "Documents juridiques" else "Legal documents", Modifier.weight(1f))
         }
     }

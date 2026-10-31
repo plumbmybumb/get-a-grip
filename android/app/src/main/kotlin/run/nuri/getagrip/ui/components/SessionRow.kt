@@ -11,6 +11,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import java.util.Locale
 import run.nuri.getagrip.data.WorkoutLogEntity
 import run.nuri.getagrip.engine.DayStamp
+import run.nuri.getagrip.engine.DisplayText
+import run.nuri.getagrip.engine.RPE
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.PlanMath
@@ -82,6 +86,7 @@ fun SessionRow(
     // the same 56 either way.
     val fontScale = LocalDensity.current.fontScale
     val artwork = minOf(ARTWORK_BASE * fontScale, ARTWORK_MAX)
+    val stacked = fontScale >= SESSION_ROW_STACK_SCALE
 
     Row(
         modifier = modifier
@@ -89,7 +94,7 @@ fun SessionRow(
             // The row is ONE thing to TalkBack; four separate stops to read one session is
             // the classic list-accessibility failure.
             .clearAndSetSemantics { contentDescription = spokenSession(log, name) },
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(ARTWORK_GAP),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ArtworkTile(log, leadingGrip, artwork)
@@ -102,41 +107,76 @@ fun SessionRow(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = palette.inkPrimary,
-                maxLines = 1,
+                maxLines = if (stacked) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // Large text: the accessories move UNDER the title. A fixed trailing column
+            // sized to "Sat 31 Oct" took the width first and the subtitle's numbers paid
+            // for it — "22.8 …" lost its unit at 1.5 and the duration went too at 2.0.
+            if (stacked) Accessories(log, Modifier.padding(vertical = 1.dp))
             Text(
                 subtitle(log),
                 style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
                 color = palette.inkSecondary,
-                maxLines = 1,
+                // Wraps after a dot (`DisplayText.dotted`) rather than ellipsizing a number.
+                maxLines = if (stacked) 3 else 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         // Music's trailing accessory slot, carrying the two things you scan a log for.
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(
-                shortDate(log),
-                style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                color = palette.inkTertiary,
-                maxLines = 1,
-            )
-            val grade = log.grade
-            if (grade != null) {
-                Text(
-                    grade.displayName,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = palette.inkSecondary,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .border(1.dp, palette.inkTertiary.copy(alpha = 0.35f), CircleShape)
-                        .padding(horizontal = 7.dp, vertical = 2.dp),
-                )
+        if (!stacked) {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                DateText(log)
+                log.grade?.let { GradeChip(it) }
             }
         }
     }
 }
+
+/// The date and the grade under the title, for large text. A flow, so at 2.0 on a
+/// narrow phone the chip drops to its own line instead of squeezing the date.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Accessories(log: WorkoutLogEntity, modifier: Modifier = Modifier) {
+    FlowRow(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        DateText(log)
+        log.grade?.let { GradeChip(it) }
+    }
+}
+
+@Composable
+private fun DateText(log: WorkoutLogEntity) {
+    Text(
+        shortDate(log),
+        style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+        color = LocalGripPalette.current.inkTertiary,
+        maxLines = 1,
+    )
+}
+
+@Composable
+private fun GradeChip(grade: RPE) {
+    val palette = LocalGripPalette.current
+    Text(
+        grade.displayName,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = palette.inkSecondary,
+        maxLines = 1,
+        modifier = Modifier
+            .border(1.dp, palette.inkTertiary.copy(alpha = 0.35f), CircleShape)
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+    )
+}
+
+/// From this font scale the trailing date column moves under the title: 1.3 is where the
+/// trailing column first squeezed the subtitle's numbers.
+internal const val SESSION_ROW_STACK_SCALE = 1.3f
 
 /// Music's artwork is a rounded square you read before the words. Ours is the app's own
 /// iconography — the grip you pulled, or a climber for a gym session.
@@ -177,6 +217,14 @@ private fun ArtworkTile(log: WorkoutLogEntity, leadingGrip: GripSpec?, side: and
 
 private val ARTWORK_BASE = 44.dp
 private val ARTWORK_MAX = 56.dp
+private val ARTWORK_GAP = 12.dp
+
+/// Where the row's TEXT starts, measured from the row's own content edge — the artwork at
+/// this font scale plus its gap. A list separator starts here so it lines up with the words
+/// at every text size, not with a fixed 60 dp that sat under the tile.
+@Composable
+fun sessionRowTextStart(): androidx.compose.ui.unit.Dp =
+    minOf(ARTWORK_BASE * LocalDensity.current.fontScale, ARTWORK_MAX) + ARTWORK_GAP
 
 private fun title(log: WorkoutLogEntity, name: String): String =
     if (log.kind.isLoggedByHand) log.kind.displayName else name
@@ -186,18 +234,22 @@ private fun title(log: WorkoutLogEntity, name: String): String =
 private fun subtitle(log: WorkoutLogEntity): String {
     if (log.kind.isLoggedByHand) {
         val parts = handLoggedDetails(log)
-        if (parts.isNotEmpty()) return parts.joinToString(" · ")
+        if (parts.isNotEmpty()) return DisplayText.dotted(parts)
         return if (log.kind.isClimb) L10n.tr("At the climbing gym") else L10n.tr("Away from the gauge")
     }
     if (log.kind == SessionKind.benchmark) return L10n.tr("Tested your maxes")
     val held = PlanMath.clockText(Math.round(log.totalHeldSeconds).toInt())
-    if (log.peakKg <= 0) return L10n.tr("%d/%d pulls · %s", log.completedReps, log.plannedReps, held)
-    return WeightUnits.tr(
-        "%d/%d pulls · %s · %s kg",
-        log.completedReps,
-        log.plannedReps,
-        held,
-        WeightUnits.number(log.peakKg, 1),
+    if (log.peakKg <= 0) {
+        return DisplayText.dotted(L10n.tr("%d/%d pulls · %s", log.completedReps, log.plannedReps, held))
+    }
+    return DisplayText.dotted(
+        WeightUnits.tr(
+            "%d/%d pulls · %s · %s kg",
+            log.completedReps,
+            log.plannedReps,
+            held,
+            WeightUnits.number(log.peakKg, 1),
+        )
     )
 }
 

@@ -283,13 +283,16 @@ class GripSpec(
     val key: String get() = "$edgeMM|${fingers.token}|${position.rawValue}"
 
     /// Sentence case, for a set row inside running copy: "20 mm · 4 fingers · half crimp".
+    /// Both forms wrap only after a dot (`DisplayText.dotted`): "half / crimp" never.
     /// Only the POSITION is lowercased; finger names are labels whose capital is kept.
     val line: String
-        get() = L10n.tr("%d mm · %s · %s", edgeMM, fingers.name, position.name.lowercase())
+        get() = DisplayText.dotted(
+            L10n.tr("%d mm · %s · %s", edgeMM, fingers.name, position.name.lowercase())
+        )
 
     /// Title case, for a heading or a picker: "20 mm · 4 fingers · Half crimp".
     val displayName: String
-        get() = L10n.tr("%d mm · %s · %s", edgeMM, fingers.name, position.name)
+        get() = DisplayText.dotted(L10n.tr("%d mm · %s · %s", edgeMM, fingers.name, position.name))
 
     /// The chip form, for anywhere a full line will not fit: "20mm F2 FC".
     val shortName: String

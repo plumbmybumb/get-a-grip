@@ -77,6 +77,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.core.content.FileProvider
 import java.io.File
 import java.time.Instant
@@ -335,8 +336,11 @@ private fun CardPreview(
         val boxPx = with(deviceDensity) { boxSide.toPx() }
         val scale = boxPx / exportPx
 
+        // fontScale 1: the export is a FIXED 1080 px picture for someone else's screen. It
+        // used to inherit this phone's text size, and at 2.0 "BEST PULL 30.5 KG · 20 MM…"
+        // ran off the card. The sheet's own controls still follow the reader's setting.
         CompositionLocalProvider(
-            LocalDensity provides Density(EXPORT_DENSITY, deviceDensity.fontScale),
+            LocalDensity provides Density(EXPORT_DENSITY, fontScale = 1f),
         ) {
             Box(
                 Modifier
@@ -431,12 +435,21 @@ private fun ShareCalendarExportCard(
                     horizontalArrangement = Arrangement.spacedBy(7.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Shrinks to fit, as iOS's `.minimumScaleFactor(0.55)`: a long grip name
+                    // ("4 FINGERS + THUMB · HALF CRIMP · L") is wider than the card, and one
+                    // line cut mid-phrase — or pushing the hand mark off the card — states a
+                    // different grip. Weighted, so the mark is measured first and keeps its place.
+                    val lineSize = MaterialTheme.typography.labelSmall.fontSize
                     Text(
                         bestPull.line,
+                        modifier = Modifier.weight(1f, fill = false),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = ink,
                         maxLines = 1,
+                        autoSize = TextAutoSize.StepBased(
+                            minFontSize = lineSize * 0.55f, maxFontSize = lineSize, stepSize = 0.25.sp,
+                        ),
                     )
                     ExportHandMark(bestPull.grip.fingers, ink)
                 }
