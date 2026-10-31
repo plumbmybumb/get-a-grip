@@ -190,6 +190,21 @@ timer, the app suspends). Settings on the Duo simulator does carry a StandBy row
   Group data path today (it renders only the Live Activity from `ContentState`), so per
   the brief it was skipped rather than half-built.
 
+## Hardware findings (Nuri's Duo, 2026-10-31)
+
+- The far view runs on the outer display in landscape with the phone on its side; first
+  build installed over USB (iOS 27.2).
+- **In nightstand landscape the camera cutout is at the BOTTOM RIGHT**, inside the
+  system's reserved side column. So there is nothing for an island hand to hang from in
+  this pose; the small glyph in the face stays. The sideways hand for CLOSED PORTRAIT (the
+  island is a vertical pill at the top of the right edge; fingers would reach in
+  horizontally) is an open design question, to be anchored on the occlusion reserved
+  region rather than a top inset.
+- Nuri's read of the first far view: dead space right of the controls column (the 84 pt
+  reserved column plus our 20 pt margin) — fix queued: margin dropped against a system
+  column, column grows, trace full-bleed under the cards; the identity row (glyph + grip)
+  must also show while CONNECTING.
+
 ## Owed to Nuri's hardware
 
 1. **Does iOS give the foreground app the outer display in tent pose?** Or does StandBy
