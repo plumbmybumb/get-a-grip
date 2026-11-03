@@ -397,7 +397,9 @@ the booted iPhone Duo, use its Device/Controls menu to open, fold and rotate, th
    longer coincides with the safe-area boundary, gave exactly 381; and Today's deck,
    unclipped for the context-menu lift, still drew the neighbour past the corrected
    frame, so a sideways-only clip with 1000 pt of vertical slack cuts the neighbour at
-   the column edge and leaves the lift intact. The hairline and the clip are active only
+   the column edge and leaves the lift intact. **SUPERSEDED 2026-11-03**: rails now run
+   under the column on purpose, so do not restore this clip from the text here; see "The
+   side column, used the way Flighty uses it". The hairline and the clip are active only
    where the window reports a side inset, re-read on every size change; the phone
    measures byte-identically (deck `0,243 402 × 327`), unit tests and
    `LongPressLiftUITests` pass.
@@ -519,7 +521,8 @@ strip as a full-width band below the grid, so it was taller, not shorter.
 
 **Closed outer, re-checked**: unchanged — compact width, deck + strip, the column now ends
 at y ≈ 597 (604 last survey), the deck still clipped at the column edge by
-`clearOfSideBars`. `LongPressLiftUITests` passes.
+`clearOfSideBars` (**SUPERSEDED 2026-11-03**, see "The side column, used the way Flighty
+uses it"). `LongPressLiftUITests` passes.
 
 ### Benchmarks at 669
 
@@ -615,11 +618,18 @@ through `ScreenScaffold`, `houseListRow`/`sessionListRow` and `columnPadding()`.
 - **Rails run under the column to the window edge.** Today's routine deck and History's
   trend and month decks: settled card 20–382, neighbour from 390 to 466, beneath the glass
   circle and the tab bar's pill. The sideways clip, the 20 pt `SideFade` and Today's extra
-  20 pt `sideColumnPeek` are deleted. A neighbour in the column takes no taps
-  (`inertInSideColumn`, `onScrollVisibilityChange` at 0.5): with ~76 pt of Today's
-  neighbour on screen its dark Start button sat beside the bar, and `SideColumnUITests`
-  proves a tap there started a session before the gate existed. Swipes begun on it still
-  page.
+  20 pt `sideColumnPeek` are deleted. A tap on Today's neighbour brings it forward
+  (`inertInSideColumn`): with ~76 pt of it on screen its dark Start button sat beside the
+  bar, `SideColumnUITests` proves a tap there started a session before the gate existed,
+  and a gate that only refused left a solid button that looked live and did nothing.
+  Swipes begun on it still page. "Neighbour" is measured on the deck's own axis (less than
+  half the card's width inside the rail). `onScrollVisibilityChange` was the first version
+  and counted the vertical page too, so a settled card half below the fold went dead.
+  **History's decks carry no guard**: UIKit hit-tests inside a `List` cell's content view,
+  which ends on the safe line, so nothing past 382 takes a touch there at all. A
+  `ScrollViewReader` around History's trend deck made its chip's state write stop
+  re-rendering on the Duo (launch tab and Today's strip, not the bar item), so paging on
+  a tap stays Today's alone. `SideColumnUITests` pins all three routes to History.
 - **The status band stays clear.** The column's top 174 pt is the reported occlusion
   region (camera, clock, wifi, battery; read through iOS 27.1's
   `GeometryProxy.reservedRegions(kind: .occlusion)`), drawn straight over our background
@@ -636,18 +646,25 @@ through `ScreenScaffold`, `houseListRow`/`sessionListRow` and `columnPadding()`.
   (the column side is layout-leading, cards 20–382 physical), but a deck beside the column
   opens one card toward its end — on every modifier order tried, and with an explicit
   `defaultScrollAnchor`. Unreachable today: the app ships English and French only.
-- **The graph goes as far as the line.** History's trend plot ends at x 351 (was 322);
-  the axis labels stay inside the card. Further would put the line under the pill.
+- **The graph goes to the card's edge, and no further.** Beside a column the value labels
+  of History's trend charts and the Benchmarks chart move to the leading side and the plot
+  runs on through the card's 16 pt margin: the line's last point ends at x 378, 4 pt inside
+  the card (382) so its dot stays on it, 16 pt short of the glass (394). Grid lines reach
+  the card's edge. Past that the plot would leave the card, so that is Nuri's call, not a
+  layout detail. The trend card's grip chips also run to the card's edge and slide off it
+  instead of being cut at the text margin.
 - **Keyed on the inset.** Phones (portrait-only) and iPads report no horizontal inset, so
   every modifier reduces to the old geometry; pixel-diffed against `main` on the iPhone 17
   Pro and an iPad Pro 11" at Large, and the unfolded 669 × 951 view: identical except the
-  glass/status-bar noise two captures of one build also show, and one deliberate
-  difference — `main` had stopped drawing Today's 20 pt neighbour peek on every iPhone
-  since `ClearOfSideBars`: the view dump's frames are identical (neighbour at 382–736),
-  but its clip and mask, wrapped around the deck's negative padding, drew nothing past the
-  unpadded column. History's decks, which have no negative padding, were unaffected.
-  The peek is back.
-- Sheets reset the value (`outsideSideColumns()`): an environment value flows into every
-  presentation, and a sheet is not beside the column.
+  glass/status-bar noise two captures of one build also show. That includes something
+  `main` did by accident: since `ClearOfSideBars` its mask, wrapped around Today's negative
+  padding, has stopped drawing the deck's 20 pt neighbour peek on every iPhone (the view
+  dump's frames are identical, neighbour at 382–736; only the drawing is cut). History's
+  decks, which have no negative padding, were unaffected. The deck's own comment says the
+  peek is the design, but this work promised phones would not change, so `SideColumnRail`
+  keeps the clip until Nuri chooses; deleting its outer mask brings the peek back.
+- Sheets and the builder cover reset the value (`outsideSideColumns()`): an environment
+  value flows into every presentation, and neither is beside the column. The undo bar ends
+  on the same line as the cards (`columnPadding()`).
 - Owed on hardware: real Split View (predicted ~76 pt inset, 16 pt bar margin) — the
   simulator's Split View size gives a bottom bar, inset 0, and so exercises nothing here.

@@ -748,6 +748,29 @@ private struct SupportCard: View {
     }
 }
 
+/// Headless screenshots: `-openGaugePicker` pushes the Gauge page (simctl can't tap).
+/// Nothing in a release build.
+private struct DebugOpensGaugePicker: ViewModifier {
+    #if DEBUG
+    @State private var open = false
+    /// `.task` runs on every appearance, and popping the page is one.
+    @State private var didOpen = false
+
+    func body(content: Content) -> some View {
+        content
+            .navigationDestination(isPresented: $open) { GaugePickerView() }
+            .task {
+                guard !didOpen,
+                      ProcessInfo.processInfo.arguments.contains("-openGaugePicker") else { return }
+                didOpen = true
+                open = true
+            }
+    }
+    #else
+    func body(content: Content) -> some View { content }
+    #endif
+}
+
 // MARK: - Gauge picker
 
 /// Which device the app measures with.
@@ -759,24 +782,6 @@ private struct SupportCard: View {
 /// A tap applies and pops back, like the grip picker. Nothing connects:
 /// `selectGaugeKind` leaves that to a Connect tap, because constructing a client raises
 /// the Bluetooth prompt.
-/// Headless screenshots: `-openGaugePicker` pushes the Gauge page (simctl can't tap).
-/// Nothing in a release build.
-private struct DebugOpensGaugePicker: ViewModifier {
-    #if DEBUG
-    @State private var open = false
-
-    func body(content: Content) -> some View {
-        content
-            .navigationDestination(isPresented: $open) { GaugePickerView() }
-            .task {
-                if ProcessInfo.processInfo.arguments.contains("-openGaugePicker") { open = true }
-            }
-    }
-    #else
-    func body(content: Content) -> some View { content }
-    #endif
-}
-
 private struct GaugePickerView: View {
     @Environment(DeviceStore.self) private var device
     @Environment(SettingsStore.self) private var settings

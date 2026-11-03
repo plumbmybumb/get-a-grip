@@ -392,13 +392,13 @@ struct TodayView: View {
                 ForEach(deck.cards) { card in
                     routineCard(card, deck: deck)
                         .containerRelativeFrame(.horizontal)
-                        .inertInSideColumn()
+                        .inertInSideColumn { bringForward(card.id) }
                 }
                 // The quiet door at the end of the deck: the next thing waits BEHIND the
                 // things you have, so creating never weighs the same as the ritual.
                 newRoutineGhost
                     .containerRelativeFrame(.horizontal)
-                    .inertInSideColumn()
+                    .inertInSideColumn { bringForward(Self.ghostID) }
                     .id(Self.ghostID)
             }
             .scrollTargetLayout()
@@ -443,6 +443,12 @@ struct TodayView: View {
             selectTick += 1
             chosenOnDay = clock.today
         }
+    }
+
+    /// A tap on the neighbour beside a side column: the settle a swipe would have made, so
+    /// choosing it runs through the same `deckPosition` handler.
+    private func bringForward(_ id: UUID) {
+        withAnimation(Motion.state(reduceMotion)) { deckPosition = id }
     }
 
     /// NOT a `MaterialCard`: a hairline outline reads as "provisional", like an unselected

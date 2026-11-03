@@ -45,7 +45,8 @@ struct UndoBar: View {
             .contentShape(.capsule)
         }
         .buttonStyle(PressFeedbackButtonStyle())
-        .padding(.horizontal, Metrics.hPadding)
+        // Ends where the page's cards do, beside a side column too.
+        .columnPadding()
         // One element: the message and "Undo" are halves of one statement.
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "Undo. \(message)"))

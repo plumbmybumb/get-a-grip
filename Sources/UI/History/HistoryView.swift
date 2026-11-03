@@ -600,7 +600,6 @@ struct HistoryView: View {
                 ForEach(0..<monthPageCount(ledger), id: \.self) { window in
                     monthCard(window, ledger)
                         .containerRelativeFrame(.horizontal)
-                        .inertInSideColumn()
                 }
             }
             .scrollTargetLayout()

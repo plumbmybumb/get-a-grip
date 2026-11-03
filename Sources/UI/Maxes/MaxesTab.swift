@@ -18,6 +18,7 @@ import SwiftUI
 struct MaxesTab: View {
     @Environment(\.weightUnit) private var weightUnit
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.sideColumns) private var side
     @ScaledMetric(relativeTo: .body) private var glyphTileSize: CGFloat = 44
     @ScaledMetric(relativeTo: .body) private var chartHeight: CGFloat = 130
     /// Oldest first — each grip's slice is then already in chart order.
@@ -713,6 +714,7 @@ struct MaxesTab: View {
                     }
                 }
             }
+            .chartXScale(range: .plotDimension(endPadding: side.chartEndPadding))
             .chartXAxis {
                 AxisMarks(values: .automatic(desiredCount: dynamicTypeSize.isAccessibilitySize ? 2 : 3)) { _ in
                     AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
@@ -721,12 +723,13 @@ struct MaxesTab: View {
             }
             .chartYAxisLabel(weightUnit.symbol)
         .chartYAxis {
-                AxisMarks { _ in
+                AxisMarks(position: side.chartValueAxis) { _ in
                     AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
                     AxisValueLabel()
                 }
             }
             .frame(height: chartHeight)
+            .chartReachesCardEdge()
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(chartSummary(group))
 

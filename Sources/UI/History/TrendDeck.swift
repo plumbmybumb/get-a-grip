@@ -33,6 +33,7 @@ struct TrendDeck: View, Equatable {
     }
 
     @Environment(\.weightUnit) private var weightUnit
+    @Environment(\.sideColumns) private var side
     /// Which grip's trend is on screen; nil means the most-trained one. ONE selection shared
     /// across the deck, so a grip picked on one routine stays picked as you swipe — how you
     /// compare a grip across routines. Cards without it fall back to their own and remember
@@ -114,7 +115,6 @@ struct TrendDeck: View, Equatable {
                 ForEach(routines) { routine in
                     trendCard(routine)
                         .containerRelativeFrame(.horizontal)
-                        .inertInSideColumn()
                 }
             }
             .scrollTargetLayout()
@@ -122,7 +122,8 @@ struct TrendDeck: View, Equatable {
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
         .scrollIndicators(.hidden)
         // Today's deck geometry, verbatim: cards on the house grid, the neighbour
-        // peeking 20 pt — or, beside a side column, running on under the glass.
+        // peeking 20 pt — or, beside a side column, running on under the glass, where a
+        // `List` row's bounds stop it taking touches at all (see `SideColumnRail`).
         .sideColumnRail(peek: 8, insideColumn: false)
     }
 
@@ -215,6 +216,7 @@ struct TrendDeck: View, Equatable {
             .padding(.vertical, 2)
         }
         .scrollIndicators(.hidden)
+        .cardEdgeRail()
         // MANDATORY in the deck: otherwise a chip row that FITS still claims every
         // horizontal drag on it — a dead stripe where paging stops.
         .scrollBounceBehavior(.basedOnSize)
@@ -265,27 +267,39 @@ struct TrendDeck: View, Equatable {
                 .foregroundStyle(Accent.bleu)
                 .symbolSize(28)
         }
-        .chartXScale(domain: 0...max(1, series.count - 1))
+        .chartXScale(domain: 0...max(1, series.count - 1),
+                     range: .plotDimension(endPadding: side.chartEndPadding))
         .chartXAxis {
             AxisMarks(values: ticks) { value in
                 AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
                 if let index = value.as(Int.self), series.indices.contains(index) {
-                    // The end labels hang INWARD, so neither runs off the plot.
-                    AxisValueLabel(anchor: index == 0 ? .topLeading
-                                   : index == series.count - 1 ? .topTrailing : .top) {
-                        Text(series[index].date, format: .dateTime.day().month(.abbreviated))
+                    let date = Text(series[index].date, format: .dateTime.day().month(.abbreviated))
+                    if index == series.count - 1, side.chartEndLabelInset > 0 {
+                        // Beside a column the plot passes the card's text margin; the label
+                        // does not. Its own branch: a label that is anything but a bare
+                        // `Text` lays out a pixel lower, on every label of the axis.
+                        AxisValueLabel(anchor: .topTrailing) {
+                            date.padding(.trailing, side.chartEndLabelInset)
+                        }
+                    } else {
+                        // The end labels hang INWARD, so neither runs off the plot.
+                        AxisValueLabel(anchor: index == 0 ? .topLeading
+                                       : index == series.count - 1 ? .topTrailing : .top) {
+                            date
+                        }
                     }
                 }
             }
         }
         .chartYAxisLabel(weightUnit.symbol)
         .chartYAxis {
-            AxisMarks { _ in
+            AxisMarks(position: side.chartValueAxis) { _ in
                 AxisGridLine().foregroundStyle(Ink.tertiary.opacity(0.2))
                 AxisValueLabel()
             }
         }
         .frame(height: Self.chartHeight)
+        .chartReachesCardEdge()
         .onGeometryChange(for: Bool.self, of: { $0.size.width < 300 }) { narrowChart = $0 }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)

@@ -47,6 +47,8 @@ struct RoutineBuilderView: View {
         // document states the skeleton first and the sets inherit it, which is how
         // protocols are written.
         BuilderDocument(mode: mode, seed: seed, onClose: onClose, onFinish: onFinish)
+            // A cover is not beside the side column; its `UndoBar` reads it.
+            .outsideSideColumns()
     }
 
     private var seed: RoutineDraft {

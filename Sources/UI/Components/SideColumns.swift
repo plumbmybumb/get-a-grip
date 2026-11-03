@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Original contributions Copyright 2026 Nuri Bruner.
 
+import Charts
 import SwiftUI
 
 /// **The system's side column, used the way Flighty uses it** (Nuri, 2026-11-03: "instead
@@ -17,7 +18,7 @@ import SwiftUI
 /// house 20 pt on top of it and every rail was clipped and faded at that line
 /// (`ClearOfSideBars`): a 32–41 pt dead gutter beside a column of bare background.
 ///
-/// Three rules, each a modifier below, all keyed on `SideColumns` from the environment:
+/// Four rules, each a modifier below, all keyed on `SideColumns` from the environment:
 /// - **The content column ends ON the safe-area line** on a side that carries a column
 ///   (`columnPadding()`, `houseListRow`, `sessionListRow`): zero padding there, the house
 ///   20 on the other side. Text and controls never enter the column, so nothing legible
@@ -29,18 +30,24 @@ import SwiftUI
 ///   camera, clock, wifi and battery, 0–174 pt) drawn straight over our background with no
 ///   glass. A rail passing through it dissolves over the band's last `statusFade` points,
 ///   like a scroll edge effect, so a card corner never collides with the battery dots.
+/// - **What a card holds reaches the card's edge** (`chartReachesCardEdge`,
+///   `cardEdgeRail`): a chart's plot and a chip rail end on the card's own rounded edge,
+///   not the card's text margin. A card is the end of the line: past it is the glass, so
+///   a plot goes no further unless it leaves the card.
 ///
 /// **Keyed on the inset, never on width or the idiom.** Every iPhone (portrait-only) and
 /// every iPad reports zero horizontal inset, so every modifier here reduces to exactly the
-/// layout it replaced — pixel-diffed on the iPhone 17 Pro and an iPad Pro. The Split View
+/// layout it replaced, Today's deck clip included (`SideColumnRail`) — pixel-diffed on the
+/// iPhone 17 Pro and an iPad Pro. The Split View
 /// simulator gives a BOTTOM bar (inset 0, correctly unchanged) where hardware gives a
 /// vertical one, which is why width can never stand in for this.
 ///
 /// Read ONCE, at the root (`readsSideColumns`), from the root's own geometry — the window
 /// — and re-read whenever it changes: a fold, a rotation, a Split View drag. Leading and
 /// trailing are layout-direction terms, so right-to-left mirrors with no extra code.
-/// **Sheets are not beside the column** and reset it (`MaxEditSheet`,
-/// `CriticalForceHistorySheet`): an environment value flows into every presentation.
+/// **Presentations are not beside the column** and reset it (`MaxEditSheet`,
+/// `CriticalForceHistorySheet`, the builder cover): an environment value flows into every
+/// one of them.
 struct SideColumns: Equatable {
     /// The column's width on each side, zero where there is none.
     var leading: CGFloat = 0
@@ -57,6 +64,21 @@ struct SideColumns: Equatable {
     /// everywhere else.
     var leadingPadding: CGFloat { leading > 0 ? 0 : Metrics.hPadding }
     var trailingPadding: CGFloat { trailing > 0 ? 0 : Metrics.hPadding }
+
+    /// A chart's value labels leave the trailing edge beside a column, so the plot can reach
+    /// the card's. `.automatic` everywhere else, which is the trailing edge.
+    var chartValueAxis: AxisMarkPosition { trailing > 0 ? .leading : .automatic }
+
+    /// The gap a chart's marks keep from the card's edge, enough to keep the last point's
+    /// dot (~6 pt across) on the card. Zero without a column: the plot is not at the edge.
+    var chartEndPadding: CGFloat { trailing > 0 ? 4 : 0 }
+
+    /// What a date label at the chart's end gives back, so it stays on the card's text
+    /// margin while the plot behind it runs to the edge.
+    var chartEndLabelInset: CGFloat { trailing > 0 ? SideColumns.cardPadding : 0 }
+
+    /// `MaterialCard`'s horizontal padding, which a card's edge-to-edge content cancels.
+    static let cardPadding: CGFloat = 16
 
     /// How far the status band dissolves a rail. The battery dots end 23 pt above the
     /// band's reported bottom (151 vs 174, pixel-measured), so the fade is clear of them.
@@ -137,6 +159,19 @@ private struct ColumnPadding: ViewModifier {
 /// its own (a scroll view extends into, and insets for, any safe-area edge it touches).
 /// Without a column all of this is the deck geometry it replaced, value for value:
 /// full-bleed inside the page column, the house margin leading, house + `peek` trailing.
+///
+/// **That includes the phone's clip, and it is a held decision, not a design.** Since
+/// b1f36d2 (2026-10-31) a rail inside a page column has been masked to that column on every
+/// window without a side column, so Today's 20 pt peek is laid out and never drawn, and
+/// 1.5.0 shipped that way. The deck's own comment says the peek is the intent, but bringing
+/// it back is a visible iPhone change and the side-column work promised none: `clipsToPage`
+/// keeps phones byte-identical until Nuri chooses. Deleting the outer mask restores it.
+///
+/// **A rail in a `List` row takes no touches in the column.** UIKit hit-tests inside the
+/// cell's content view, which ends on the safe-area line (0–382), so a tap on the part of
+/// History's decks past it reaches none of their views (measured; a swipe begun there is
+/// inferred from the same rule). Only Today's rail, in a plain `ScrollView`, has a live
+/// neighbour to guard (`inertInSideColumn`).
 private struct SideColumnRail: ViewModifier {
     @Environment(\.sideColumns) private var side
     /// Only without a column: beside one the neighbour's peek IS the column.
@@ -165,6 +200,14 @@ private struct SideColumnRail: ViewModifier {
             // is the rail's outermost `side.leading` / `side.trailing` points.
             .mask { SideColumnMask(side: side) }
             .padding(.horizontal, -widen)
+            // Always a mask, sized by slack, so the view's identity survives the column's
+            // first read at launch and the deck keeps its scroll position.
+            .mask {
+                let clipsToPage = insideColumn && side.isEmpty
+                Color.black
+                    .padding(.vertical, -1000)
+                    .padding(.horizontal, clipsToPage ? 0 : -1000)
+            }
     }
 }
 
@@ -217,31 +260,86 @@ private struct StatusBandFade: View {
     }
 }
 
-/// A deck card that has slid INTO the side column is a picture, not a control.
+/// A card of Today's deck that has slid INTO the side column is a way to that card, not its
+/// controls.
 ///
 /// Running the neighbour under the column puts ~76 pt of it on screen beside the bar
 /// (Today's: its title, its dark Start button), all of it live — a thumb reaching for the
-/// tab bar could start the routine it never chose. Less than half visible means it is
-/// the neighbour, and it takes no taps: they fall through to the rail, which still pans,
-/// so a swipe begun on the peek still turns the page. No coordinates are involved, so it
-/// holds in right-to-left and wherever the deck sits. On a window with no column nothing
-/// changes, the 20 pt peek included.
+/// tab bar could start the routine it never chose. So a neighbour's own controls take no
+/// taps, and a tap anywhere on it brings the card forward (`onTap`), the way a tap on a
+/// visible neighbour does in any carousel: inert alone left a solid Start button that
+/// looked live and refused the finger. A swipe begun on the neighbour still pans the rail.
+/// On a window with no column nothing changes.
+///
+/// **Measured along the deck's own axis.** A neighbour is a card with less than half its
+/// WIDTH inside the rail. `onScrollVisibilityChange` was the first version of this and is
+/// wrong: it counts every enclosing scroll view, so a settled card standing half below the
+/// fold of History's page went dead, grip chips and all.
 private struct InertInSideColumn: ViewModifier {
     @Environment(\.sideColumns) private var side
-    @State private var mostlyVisible = true
+    var onTap: () -> Void
+    @State private var isNeighbour = false
 
     func body(content: Content) -> some View {
         content
-            .allowsHitTesting(side.isEmpty || mostlyVisible)
-            .onScrollVisibilityChange(threshold: 0.5) { visible in
-                if visible != mostlyVisible { mostlyVisible = visible }
+            .allowsHitTesting(side.isEmpty || !isNeighbour)
+            .overlay {
+                if !side.isEmpty && isNeighbour {
+                    Color.clear
+                        .contentShape(.rect)
+                        .onTapGesture(perform: onTap)
+                        // The card's own elements stay what VoiceOver reads.
+                        .accessibilityHidden(true)
+                }
+            }
+            .onGeometryChange(for: Bool.self) { proxy in
+                guard let rail = proxy.bounds(of: .scrollView(axis: .horizontal)) else {
+                    return false
+                }
+                let card = proxy.frame(in: .local)
+                let inside = min(card.maxX, rail.maxX) - max(card.minX, rail.minX)
+                return inside < card.width / 2
+            } action: { neighbour in
+                isNeighbour = neighbour
             }
     }
 }
 
+/// A chart in a card, run to the card's edge on the column side.
+private struct ChartReachesCardEdge: ViewModifier {
+    @Environment(\.sideColumns) private var side
+
+    func body(content: Content) -> some View {
+        content.padding(.trailing, side.trailing > 0 ? -SideColumns.cardPadding : 0)
+    }
+}
+
+/// A rail of chips in a card, run to the card's edges beside a column: the chips slide off
+/// the card's edge instead of being cut 16 pt inside it, and at rest sit where they did.
+private struct CardEdgeRail: ViewModifier {
+    @Environment(\.sideColumns) private var side
+
+    func body(content: Content) -> some View {
+        let bleed = side.isEmpty ? 0 : SideColumns.cardPadding
+        content
+            .contentMargins(.horizontal, bleed, for: .scrollContent)
+            .padding(.horizontal, -bleed)
+    }
+}
+
 extension View {
-    /// On each card of a `sideColumnRail` deck — see `InertInSideColumn`.
-    func inertInSideColumn() -> some View { modifier(InertInSideColumn()) }
+    /// On each card of a `sideColumnRail` deck in a plain `ScrollView` — see
+    /// `InertInSideColumn`. `onTap` brings the card forward.
+    func inertInSideColumn(onTap: @escaping () -> Void) -> some View {
+        modifier(InertInSideColumn(onTap: onTap))
+    }
+
+    /// On a chart inside a `MaterialCard` — see `ChartReachesCardEdge`. Needs the chart's
+    /// value labels on `chartValueAxis`, or they run past the card's text margin.
+    func chartReachesCardEdge() -> some View { modifier(ChartReachesCardEdge()) }
+
+    /// On a horizontal chip scroller inside a `MaterialCard` — see `CardEdgeRail`.
+    func cardEdgeRail() -> some View { modifier(CardEdgeRail()) }
 
     /// At the root only: publishes the window's `SideColumns` to everything below.
     func readsSideColumns() -> some View { modifier(ReadsSideColumns()) }
@@ -258,6 +356,6 @@ extension View {
         modifier(SideColumnRail(peek: peek, insideColumn: insideColumn))
     }
 
-    /// For a sheet's root: a presentation is not beside the window's side column.
+    /// For a sheet's or cover's root: a presentation is not beside the window's side column.
     func outsideSideColumns() -> some View { environment(\.sideColumns, .none) }
 }
