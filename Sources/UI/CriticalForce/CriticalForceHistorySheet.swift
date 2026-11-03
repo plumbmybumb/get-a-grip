@@ -74,6 +74,8 @@ struct CriticalForceHistorySheet: View {
             }
             .sensoryFeedback(.success, trigger: undoTick)
         }
+        // A sheet is not beside the window's side column; `sessionListRow` reads it.
+        .outsideSideColumns()
         .onDisappear { templates.dismissCriticalForceUndo() }
     }
 

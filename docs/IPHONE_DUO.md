@@ -596,3 +596,58 @@ were NOT re-run here. Nothing in the runner changed.
 - Open landscape with the real trailing bars (Today's second row), and the book /
   tabletop poses — none reachable through `appResize`.
 - Whether the real inner display is 669 or 626 wide (both split into two columns).
+
+## The side column, used the way Flighty uses it (2026-11-03)
+
+Nuri, pointing at Flighty in Split View: "instead of it being a hard line, using the
+liquid glass … I want to be using that space to the right when device is closed (front
+screen) or it's in the split screen view." `ClearOfSideBars` is gone; its replacement is
+`Sources/UI/Components/SideColumns.swift`, and every tab root and pushed page reaches it
+through `ScreenScaffold`, `houseListRow`/`sessionListRow` and `columnPadding()`.
+
+- **The line.** The window's trailing safe-area inset on the closed outer display is 84 pt
+  and already encodes the system's geometry (24 pt bar margin + 48 pt glass + 12 pt gap,
+  from iOS 27.1's `UIView.LayoutRegion.bar(onEdge:extent:)`). Flighty's cards stop 11.9 pt
+  short of its glass (pixel-measured at 2.10 px/pt from Nuri's screenshots), so the
+  safe-area line IS Flighty's line. Content now ends there: zero trailing padding beside a
+  column, 20 pt leading as before. Cards measured 20–362 → **20–382** on Today, History,
+  Benchmarks, Settings, the session detail and the Gauge page; the glass starts at 394.
+- **Rails run under the column to the window edge.** Today's routine deck and History's
+  trend and month decks: settled card 20–382, neighbour from 390 to 466, beneath the glass
+  circle and the tab bar's pill. The sideways clip, the 20 pt `SideFade` and Today's extra
+  20 pt `sideColumnPeek` are deleted. A neighbour in the column takes no taps
+  (`inertInSideColumn`, `onScrollVisibilityChange` at 0.5): with ~76 pt of Today's
+  neighbour on screen its dark Start button sat beside the bar, and `SideColumnUITests`
+  proves a tap there started a session before the gate existed. Swipes begun on it still
+  page.
+- **The status band stays clear.** The column's top 174 pt is the reported occlusion
+  region (camera, clock, wifi, battery; read through iOS 27.1's
+  `GeometryProxy.reservedRegions(kind: .occlusion)`), drawn straight over our background
+  with no glass. Nothing but rails ever crosses the safe line, and a rail's column strip
+  dissolves over the band's last 22 pt (the battery dots end at 151), in window
+  coordinates so it holds still while the page scrolls the rail through it. Titles and
+  first rows never enter the column at all, so nothing sits under the clock.
+- **Order matters, measured.** `ignoresSafeArea(.horizontal)` applied OUTSIDE the rail's
+  negative padding grew Today's rail by the inset a second time (550 pt in a 466 pt
+  window, every card full-width under the glass); inside it, the rail ends exactly at
+  466. The widening is symmetric (the excess hangs off-screen on the side with no
+  column), so the rail stays centred on its page column.
+- **Right-to-left, forced** (`-AppleTextDirection YES`): page columns mirror correctly
+  (the column side is layout-leading, cards 20–382 physical), but a deck beside the column
+  opens one card toward its end — on every modifier order tried, and with an explicit
+  `defaultScrollAnchor`. Unreachable today: the app ships English and French only.
+- **The graph goes as far as the line.** History's trend plot ends at x 351 (was 322);
+  the axis labels stay inside the card. Further would put the line under the pill.
+- **Keyed on the inset.** Phones (portrait-only) and iPads report no horizontal inset, so
+  every modifier reduces to the old geometry; pixel-diffed against `main` on the iPhone 17
+  Pro and an iPad Pro 11" at Large, and the unfolded 669 × 951 view: identical except the
+  glass/status-bar noise two captures of one build also show, and one deliberate
+  difference — `main` had stopped drawing Today's 20 pt neighbour peek on every iPhone
+  since `ClearOfSideBars`: the view dump's frames are identical (neighbour at 382–736),
+  but its clip and mask, wrapped around the deck's negative padding, drew nothing past the
+  unpadded column. History's decks, which have no negative padding, were unaffected.
+  The peek is back.
+- Sheets reset the value (`outsideSideColumns()`): an environment value flows into every
+  presentation, and a sheet is not beside the column.
+- Owed on hardware: real Split View (predicted ~76 pt inset, 16 pt bar margin) — the
+  simulator's Split View size gives a bottom bar, inset 0, and so exercises nothing here.

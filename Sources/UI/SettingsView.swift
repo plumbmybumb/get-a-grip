@@ -45,6 +45,7 @@ struct SettingsView: View {
         ScreenScaffold(title: String(localized: "Settings")) {
             // WHICH gauge first: everything below describes whatever it selects.
             gaugeKindRow.staggerIn(0)
+                .modifier(DebugOpensGaugePicker())
             deviceCard.staggerIn(1)
             weightUnitsCard.staggerIn(2)
             bodyWeightCard.staggerIn(3)
@@ -758,6 +759,24 @@ private struct SupportCard: View {
 /// A tap applies and pops back, like the grip picker. Nothing connects:
 /// `selectGaugeKind` leaves that to a Connect tap, because constructing a client raises
 /// the Bluetooth prompt.
+/// Headless screenshots: `-openGaugePicker` pushes the Gauge page (simctl can't tap).
+/// Nothing in a release build.
+private struct DebugOpensGaugePicker: ViewModifier {
+    #if DEBUG
+    @State private var open = false
+
+    func body(content: Content) -> some View {
+        content
+            .navigationDestination(isPresented: $open) { GaugePickerView() }
+            .task {
+                if ProcessInfo.processInfo.arguments.contains("-openGaugePicker") { open = true }
+            }
+    }
+    #else
+    func body(content: Content) -> some View { content }
+    #endif
+}
+
 private struct GaugePickerView: View {
     @Environment(DeviceStore.self) private var device
     @Environment(SettingsStore.self) private var settings
@@ -782,7 +801,8 @@ private struct GaugePickerView: View {
                 }
                 footnotes
             }
-            .padding(.horizontal, Metrics.hPadding)
+            // Pushed inside Settings' stack, so it shares the tab's column — see `SideColumns`.
+            .columnPadding()
             .padding(.bottom, Metrics.spacing)
             .frame(maxWidth: Metrics.maxContentWidth)
             .frame(maxWidth: .infinity)

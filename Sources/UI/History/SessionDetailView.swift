@@ -204,7 +204,8 @@ struct SessionDetailView: View {
                                         showsReps: true, measured: content.measured)
                 }
             }
-            .padding(.horizontal, Metrics.hPadding)
+            // Pushed inside History's stack, so it shares the tab's column — see `SideColumns`.
+            .columnPadding()
             .padding(.vertical, Metrics.spacing)
             .frame(maxWidth: Metrics.maxContentWidth)
             .frame(maxWidth: .infinity)

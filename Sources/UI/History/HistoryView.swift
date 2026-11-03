@@ -279,7 +279,7 @@ struct HistoryView: View {
                 // still pages; the indicator says so.
                 monthDeck(ledger, peeks: !wide)
             } else {
-                monthCard(0, ledger).padding(.horizontal, Metrics.hPadding)
+                monthCard(0, ledger).columnPadding()
             }
         }
         // Stagger stops at the cards, the only rows guaranteed on screen at load. A
@@ -312,7 +312,7 @@ struct HistoryView: View {
     /// The all-time card — see `LifetimeCard`. Same margins as the two blocks above it.
     private func lifetimeBlock(_ lifetime: LifetimeStats) -> some View {
         LifetimeCard(stats: lifetime)
-            .padding(.horizontal, Metrics.hPadding)
+            .columnPadding()
     }
 
     /// The log itself: label, sessions, the door to the rest, the footnote. `List` rows
@@ -600,15 +600,15 @@ struct HistoryView: View {
                 ForEach(0..<monthPageCount(ledger), id: \.self) { window in
                     monthCard(window, ledger)
                         .containerRelativeFrame(.horizontal)
+                        .inertInSideColumn()
                 }
             }
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
         .scrollIndicators(peeks ? .hidden : .automatic)
-        .contentMargins(.leading, Metrics.hPadding, for: .scrollContent)
-        .contentMargins(.trailing, Metrics.hPadding + (peeks ? 8 : 0), for: .scrollContent)
-        .clearOfSideBars()
+        // Under a side column to the window edge — see `SideColumns`.
+        .sideColumnRail(peek: peeks ? 8 : 0, insideColumn: false)
     }
 
     /// How many windows have anything to show: from today back to the first day on

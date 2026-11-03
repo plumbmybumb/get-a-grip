@@ -60,6 +60,9 @@ struct RootTabView: View {
         .tabBarMinimizeBehavior(.onScrollDown)
         // iPad: the top tab bar that expands into a sidebar; iPhone: the ordinary bar.
         .tabViewStyle(.sidebarAdaptable)
+        // The window's side column (the Duo's vertical bar), read once for every tab and
+        // every page they push — see `SideColumns`.
+        .readsSideColumns()
         // A rolled-back write with nowhere else to surface: the builder shows
         // `saveError` inline, but delete, undo, reorder and "open on this one" fire
         // from a menu already gone when the store answers, and silence reads as "the

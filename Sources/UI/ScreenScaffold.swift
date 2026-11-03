@@ -73,7 +73,9 @@ struct ScreenScaffold<Content: View>: View {
         VStack(alignment: .leading, spacing: spacing) {
             content
         }
-        .padding(.horizontal, Metrics.hPadding)
+        // The house margin, except ON the safe-area line beside a system side column
+        // (the Duo's vertical bar) — see `SideColumns`.
+        .columnPadding()
         // 22 is the gutter content scrolls off into; a page that fits needs none.
         .padding(.bottom, fitsOnePage ? 6 : Metrics.spacing)
         .frame(maxWidth: sizeClass == .regular
@@ -145,11 +147,23 @@ extension View {
     /// screen needing a swipe uses a real `List` wearing this; a hand-rolled drag never
     /// matches UIKit's.
     func houseListRow(top: CGFloat = 5, bottom: CGFloat = 5) -> some View {
-        self
+        modifier(HouseListRow(top: top, bottom: bottom))
+    }
+}
+
+/// `houseListRow`'s body: a modifier only so it can read `SideColumns` — the row's
+/// trailing edge lands on the safe-area line beside a side column, as the page's does.
+private struct HouseListRow: ViewModifier {
+    var top: CGFloat
+    var bottom: CGFloat
+    @Environment(\.sideColumns) private var side
+
+    func body(content: Content) -> some View {
+        content
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: top, leading: Metrics.hPadding,
-                                      bottom: bottom, trailing: Metrics.hPadding))
+            .listRowInsets(EdgeInsets(top: top, leading: side.leadingPadding,
+                                      bottom: bottom, trailing: side.trailingPadding))
     }
 }
 
@@ -162,15 +176,26 @@ extension View {
     /// ten documents. The summary cards above keep `houseListRow` — they ARE separate
     /// objects, the grouping iOS uses everywhere.
     func sessionListRow(leadingInset: CGFloat = 60) -> some View {
-        self
+        modifier(SessionListRow(leadingInset: leadingInset))
+    }
+}
+
+/// `sessionListRow`'s body, a modifier for the same reason as `HouseListRow`: beside a
+/// side column the row and its separator end on the safe-area line, as Flighty's do.
+private struct SessionListRow: ViewModifier {
+    var leadingInset: CGFloat
+    @Environment(\.sideColumns) private var side
+
+    func body(content: Content) -> some View {
+        content
             .listRowBackground(Color.clear)
             .listRowSeparator(.visible)
             .listRowSeparatorTint(Ink.tertiary.opacity(0.25))
             // After the artwork, like Music: a separator under the thumbnail cuts the
             // row in half.
             .alignmentGuide(.listRowSeparatorLeading) { _ in leadingInset }
-            .listRowInsets(EdgeInsets(top: 6, leading: Metrics.hPadding,
-                                      bottom: 6, trailing: Metrics.hPadding))
+            .listRowInsets(EdgeInsets(top: 6, leading: side.leadingPadding,
+                                      bottom: 6, trailing: side.trailingPadding))
     }
 }
 

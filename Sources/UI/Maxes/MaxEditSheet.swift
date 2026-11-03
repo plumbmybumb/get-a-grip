@@ -59,6 +59,8 @@ struct MaxEditSheet: View {
                 MaxSaveReceiptView(receipt: saved) { receipt = nil }
             }
         }
+        // A sheet is not beside the window's side column; `MaxesView`'s rows read it.
+        .outsideSideColumns()
         .onAppear { loadOnce() }
         .sensoryFeedback(.selection, trigger: draft.repeatedTests)
         .onChange(of: templates.maxTable) { _, current in

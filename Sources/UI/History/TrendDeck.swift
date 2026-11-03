@@ -54,7 +54,7 @@ struct TrendDeck: View, Equatable {
             if let model {
                 cards(model.routines)
             } else {
-                placeholder.padding(.horizontal, Metrics.hPadding)
+                placeholder.columnPadding()
             }
         }
         .task(id: BuildKey(generation: generation, routineNames: routineNames)) {
@@ -83,13 +83,13 @@ struct TrendDeck: View, Equatable {
             VStack(spacing: 12) {
                 ForEach(routines) { trendCard($0) }
             }
-            .padding(.horizontal, Metrics.hPadding)
+            .columnPadding()
         } else if routines.count > 1 {
             deck(routines)
         } else if let only = routines.first {
-            trendCard(only).padding(.horizontal, Metrics.hPadding)
+            trendCard(only).columnPadding()
         } else {
-            emptyTrendCard.padding(.horizontal, Metrics.hPadding)
+            emptyTrendCard.columnPadding()
         }
     }
 
@@ -114,6 +114,7 @@ struct TrendDeck: View, Equatable {
                 ForEach(routines) { routine in
                     trendCard(routine)
                         .containerRelativeFrame(.horizontal)
+                        .inertInSideColumn()
                 }
             }
             .scrollTargetLayout()
@@ -121,10 +122,8 @@ struct TrendDeck: View, Equatable {
         .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
         .scrollIndicators(.hidden)
         // Today's deck geometry, verbatim: cards on the house grid, the neighbour
-        // peeking 20 pt.
-        .contentMargins(.leading, Metrics.hPadding, for: .scrollContent)
-        .contentMargins(.trailing, Metrics.hPadding + 8, for: .scrollContent)
-        .clearOfSideBars()
+        // peeking 20 pt — or, beside a side column, running on under the glass.
+        .sideColumnRail(peek: 8, insideColumn: false)
     }
 
     /// One routine's trend. `maxHeight: .infinity` makes every card stand the deck's full
