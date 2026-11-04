@@ -91,6 +91,8 @@ struct SideColumns: Equatable {
         leading = insets.leading
         trailing = insets.trailing
         guard leading > 0 || trailing > 0 else { return }
+        // `reservedRegions` is only in the 27.1 SDK, and CI builds on Xcode 26.
+        #if compiler(>=6.4)
         if #available(iOS 27.1, *) {
             let width = proxy.size.width
             let column = max(leading, trailing)
@@ -103,6 +105,7 @@ struct SideColumns: Equatable {
                 }
             }
         }
+        #endif
     }
 }
 
