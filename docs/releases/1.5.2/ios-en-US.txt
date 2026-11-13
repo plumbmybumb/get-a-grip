@@ -1,0 +1,3 @@
+• Fixes a crash that could happen at launch after adding a shared routine whose target load was out of range.
+• Routine codes, AI-written routines and gauge readings are checked more strictly before they reach your history.
+• The CSV export no longer turns negative numbers into text.

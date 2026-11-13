@@ -1,0 +1,3 @@
+• Corrige un plantage possible au lancement après l'ajout d'une routine partagée dont la charge cible était hors limites.
+• Les codes de routine, les routines écrites par une IA et les mesures des capteurs sont vérifiés plus strictement avant d'arriver dans ton historique.
+• L'export CSV ne transforme plus les nombres négatifs en texte.

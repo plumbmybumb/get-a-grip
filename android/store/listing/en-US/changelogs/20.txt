@@ -1,0 +1,1 @@
+Routine codes, AI-written routines and gauge readings are checked more strictly before they reach your history, and a shared routine with an out-of-range target load can no longer upset the app. Opening a routine link no longer offers the same import twice. The CSV export no longer turns negative numbers into text, and old export copies are cleaned up.
