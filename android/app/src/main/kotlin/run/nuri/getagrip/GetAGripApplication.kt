@@ -37,6 +37,7 @@ import run.nuri.getagrip.store.asHistorySource
 import run.nuri.getagrip.store.SettingsStore
 import run.nuri.getagrip.store.StorageMode
 import run.nuri.getagrip.store.TemplateStore
+import run.nuri.getagrip.ui.history.ShareCache
 
 /// Process-wide setup lives here, the engine's string lookup included.
 class GetAGripApplication : Application() {
@@ -102,6 +103,11 @@ class GetAGripApplication : Application() {
             storeScope.launch { templates.refreshIfDayChanged() }
         }
         observeProcessLifecycle()
+        // Export copies left behind by an earlier run. Off the main thread, and only what
+        // is older than a day — see `ShareCache` for why not everything.
+        storeScope.launch(Dispatchers.IO) {
+            ShareCache.purge(ShareCache.directory(this@GetAGripApplication), ShareCache.staleAfterMillis)
+        }
         storeScope.launch {
             Seeds.apply(database, intent)
             templates.syncDerived()

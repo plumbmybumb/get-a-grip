@@ -161,9 +161,11 @@ fun AnalysisExportSheet(request: AnalysisExportRequest, onClose: () -> Unit) {
     }
 }
 
-/** Each share is immutable so another export cannot replace an attachment in flight. */
+/** Each share gets a directory of its own, so the file a receiver was handed is never
+ * rewritten under it. The directories before it are removed first — see `ShareCache`. */
 private suspend fun shareDocument(context: Context, document: AnalysisExport.CSVDocument): Boolean = runCatching {
     val uri = withContext(Dispatchers.IO) {
+        ShareCache.purge(ShareCache.directory(context))
         val dir = File(context.cacheDir, "$SHARE_DIR/${UUID.randomUUID()}").apply { mkdirs() }
         val file = File(dir, document.filename)
         file.writeText(document.text)
@@ -181,3 +183,47 @@ private suspend fun shareDocument(context: Context, document: AnalysisExport.CSV
 }.getOrDefault(false)
 
 internal const val SHARE_DIR = "shared"
+
+/**
+ * `<cache>/shared`, the one folder the `FileProvider` hands out. What lands in it is a COPY
+ * of somebody's training history, written for one share — and until now never removed, so
+ * every export ever made sat there, each in its own directory, until the system chose to
+ * reclaim the cache.
+ *
+ * **Emptied before each new export is written**, so at most one share's files exist at a
+ * time. A receiver that already has the old file open keeps reading it (an unlinked file
+ * lives as long as its descriptor); one that was handed the link and has not opened it yet
+ * loses it, which is the price of not keeping every copy.
+ *
+ * **At launch only what is older than a day.** Reading a shared `content://` link is itself
+ * what starts this process when it is not running, so emptying the folder at every start
+ * would race the very read that woke the app.
+ */
+internal object ShareCache {
+    const val staleAfterMillis: Long = 24L * 60 * 60 * 1000
+
+    fun directory(context: Context): File = File(context.cacheDir, SHARE_DIR)
+
+    /** Everything under [directory], or with [olderThanMillis] only what was last written
+     * longer ago than that. Never throws: a file that will not go is left for next time. */
+    fun purge(
+        directory: File,
+        olderThanMillis: Long? = null,
+        now: Long = System.currentTimeMillis(),
+    ) {
+        runCatching {
+            directory.listFiles()?.forEach { entry ->
+                if (olderThanMillis == null || now - newestWrite(entry) > olderThanMillis) {
+                    entry.deleteRecursively()
+                }
+            }
+        }
+    }
+
+    /** An export's age is its newest FILE's. A directory's own timestamp says when an
+     * entry was last added or removed, which is not when anything in it was written; it is
+     * the answer only for a directory with nothing in it. */
+    private fun newestWrite(entry: File): Long =
+        entry.walkTopDown().filter { it.isFile }.maxOfOrNull { it.lastModified() }
+            ?: entry.lastModified()
+}

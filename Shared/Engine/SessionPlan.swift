@@ -170,6 +170,22 @@ struct SetPlan: Identifiable, Hashable, Sendable, Codable {
     /// 1 %…100 %: a max-effort routine is legitimate to author, and a 0 % target is a
     /// target of nothing.
     static let percentRange = 0.01...1.0
+    /// A typed kilogram target as STORED. Not the editor's range — that one grows with
+    /// the band and the strongest max on file — but a ceiling no hand reaches, the same
+    /// order as the gauges' own plausibility bounds. It exists because these two fields
+    /// were the only numbers in a routine the decoder took on trust: a share link carrying
+    /// `1e30` read as a 2e28-fold intensity against any max on file, and the card that
+    /// speaks that percentage trapped converting it. Every other consumer divides by,
+    /// multiplies by or formats this number; a bound here is a bound everywhere.
+    static let kgRange = 0.0...1000.0
+
+    /// One decoded kilogram endpoint: absent stays absent, a non-finite value carries
+    /// nothing, and anything else lands inside `kgRange`. Applied on EVERY decode, stored
+    /// blobs included, so a routine saved before the bound existed heals on its next read.
+    static func kilograms(_ raw: Double?) -> Double? {
+        guard let raw, raw.isFinite else { return nil }
+        return kgRange.clamping(raw)
+    }
 
     var overridesTiming: Bool { holdSeconds != nil || restSeconds != nil }
 
@@ -236,8 +252,8 @@ extension SetPlan {
         let rest: Int? = c.optional(.restSeconds)
         self.holdSeconds = hold.map { Self.holdRange.clamping($0) }
         self.restSeconds = rest.map { Self.restRange.clamping($0) }
-        self.targetLoKg = c.optional(.targetLoKg)
-        self.targetHiKg = c.optional(.targetHiKg)
+        self.targetLoKg = Self.kilograms(c.optional(.targetLoKg))
+        self.targetHiKg = Self.kilograms(c.optional(.targetHiKg))
         self.targetLoPercent = c.optional(.targetLoPercent).map { Self.percentRange.clamping($0) }
         self.targetHiPercent = c.optional(.targetHiPercent).map { Self.percentRange.clamping($0) }
         self.targetMaxSeconds = Self.maxSeconds(c.optional(.targetMaxSeconds))

@@ -203,7 +203,12 @@ enum AgentRoutine {
     // MARK: - Reading a reply
 
     static let maxSets = 50
-    static let maxNameCharacters = 60
+    /// Kept for the note that reports a shortened name; the cap itself is
+    /// `RoutineShare.maxNameScalars`, the same number.
+    static let maxNameCharacters = RoutineShare.maxNameScalars
+    /// 128 KiB of UTF-16: hundreds of times the longest reply an assistant writes around
+    /// a routine, and small enough that reading it is not a pause.
+    static let maxInputUnits = 128 * 1024
     static let timedMaxRange = 3...60
     static let sessionsPerDayRange = RoutineDraft.sessionsRange
     static let kgRange = 0.0...250.0
@@ -212,6 +217,10 @@ enum AgentRoutine {
 
     /// `makeID` is a seam for fixtures, which need the same set ids on every run.
     static func read(_ text: String, makeID: () -> UUID = { UUID() }) -> Result<Reading, Failure> {
+        // A routine is a few hundred characters. The reader copies its input several
+        // times and runs on the main actor, so a clipboard holding megabytes was a stall
+        // waiting for one tap. UTF-16 units, the one length Swift and Kotlin both have.
+        guard text.utf16.count <= maxInputUnits else { return .failure(.unreadable) }
         guard let source = Lenient.extractObject(from: text) else { return .failure(.noRoutine) }
         guard case .object(var root)? = Lenient.parse(source) else { return .failure(.unreadable) }
         // An assistant that wraps it — {"routine": {...}} — still wrote a routine.
@@ -243,8 +252,10 @@ enum AgentRoutine {
 
         // Identity
         if case .string(let name)? = Lenient.field(top, "name") {
-            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-            plan.name = String(trimmed.prefix(maxNameCharacters))
+            // The share link's own cleaning, not a second one: a pasted name reaches the
+            // same card, lock screen and CSV row, and a cap counted in Characters let one
+            // base letter carry thousands of combining marks through it.
+            plan.name = RoutineShare.sanitizedName(name)
         }
 
         // Hands

@@ -1,5 +1,68 @@
 # Release record and the queue behind it
 
+## Hardening pass — branch `security-hardening`, unreleased (12 Nov 2026)
+
+An audit of the repository, both apps and both engines, followed by fuzzing the share-link,
+AI-import and gauge decoders. Ship this as its own release BEFORE the branch is pushed:
+the diff states what the shipped builds accept.
+
+**What changed, both platforms unless noted.** The cross-platform cases are in
+`Fixtures/share/urls.json` (22 new) and `Fixtures/codec/motherboard.json` (4 new).
+
+- **Kilogram targets are clamped where a set is decoded** (`SetPlan.kgRange`, 0–1000 kg;
+  non-finite reads as absent). They were the only numbers in a routine taken on trust, and
+  the clamp sits in the plan decoder so a stored routine heals on its next read.
+- **Every `Double` that becomes an `Int` on screen saturates** (`Int(saturating:)` in
+  `Shared/Engine/Leniency.swift`, 48 call sites on iOS and the watch).
+- **A routine code carries words, not text.** A grip position and a target basis must
+  match `^[A-Za-z][A-Za-z0-9]{0,31}$` (an unknown word such as `sloper` still imports);
+  the name loses bidi controls, has controls and line breaks turned into spaces, and is
+  capped at 60 Unicode scalars; nesting deeper than 64 and an inflated payload over
+  32 KiB (was 256 KiB) are refused; the whole link is length-checked in bytes before its
+  fragment is read. The encoder refuses what the decoder would.
+- **A pasted AI reply longer than 131,072 UTF-16 units is refused before it is read**, and
+  its name takes the same cleaning.
+- **Motherboard:** a 1000 kg ceiling like its sibling codecs, non-finite calibration rows
+  refused, 64 rows per sensor. **Every reading** now passes one plausibility check where
+  it becomes app state (`DeviceStore`, finite and within ±1500 kg).
+- **Frez request:** the device-supplied serial must look like a serial
+  (`^[A-Za-z0-9._:-]{1,64}$`) before it touches the cache or the network, one lookup per
+  connection, redirects refused, the response read up to 16 KiB.
+- **CSV:** the formula test reads the first Unicode scalar, cells containing `;` or TAB
+  are quoted, and a plain number is no longer prefixed into text.
+- **Android only:** a routine link is read once (not on a recreated Activity, not on a
+  relaunch from Recents), export copies in `cache/shared` are purged before each new
+  export and after a day, the clipboard is read as text only, and deep JSON nesting
+  fails closed inside the engine.
+- **watchOS:** the watch target ships a privacy manifest.
+- **Repository:** actions pinned to commits, `.github/dependabot.yml`, a workflow
+  concurrency group and timeouts; rulesets protect `main` and the release tags.
+
+**Verified on 12 Nov 2026.** iOS unit suite 1,032 tests (24 new in
+`Tests/SecurityHardeningTests.swift`); `UITests/ShareLinkImportUITests.swift` passes on
+this branch and ends in "run.nuri.doigt crashed" on `main` at ecfbb44; watch and iOS
+Release builds; Android `:engine:test` 578 and `:app:testDebugUnitTest` 874, debug and R8
+release builds; `oracle` share (120 links), export, agent, runner and target-basis all
+verify. The fuzz corpus that found the gaps (2,904 hostile links, 5,369 pasted texts,
+mutated frames for every codec) runs clean through both engines.
+
+**Owed before release.**
+
+- [ ] A real Frez Dyno: the lookup still succeeds through the new transport (redirect
+      refusal and the streamed, capped read cannot be exercised in the Simulator), and
+      its serial matches the accepted shape.
+- [ ] Android on a phone: open a routine link, background the app with the preview up,
+      return; rotate with the preview up.
+- [ ] Import a routine code and an AI reply on each platform.
+
+**Deliberately not done.** Binding a gauge to a remembered identifier (changes which
+peripheral is adopted, and needs hardware to verify); an export flag on the three
+Bluetooth-state receivers (they hear one protected system broadcast, the case the platform
+says to register without a flag, and a not-exported receiver that missed "Bluetooth off"
+on some phone would be a regression bought for nothing); Gradle dependency verification
+metadata (platform-specific artifacts make it fail on CI unless generated there); signed
+commits and tags (needs the owner's key); moving the Frez key behind a relay.
+
 ## Feedback queue — not started (Gleb, support mail, 31 Oct 2026; iOS 1.4.0, Progressor)
 
 1. **Open a past workout from History.** Rows export but do not open. Build: tapping a row

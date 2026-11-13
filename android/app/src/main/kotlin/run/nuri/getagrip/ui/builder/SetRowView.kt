@@ -57,7 +57,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.util.UUID
-import kotlin.math.roundToInt
 import run.nuri.getagrip.engine.CriticalForceTable
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.MaxTable
@@ -66,6 +65,7 @@ import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
+import run.nuri.getagrip.engine.roundToIntSaturating
 import run.nuri.getagrip.l10n.trQuantity
 import run.nuri.getagrip.ui.components.FingerGlyph
 import run.nuri.getagrip.ui.components.IntValueRow
@@ -413,8 +413,8 @@ internal fun loadText(set: SetPlan, context: SetRowContext): String? {
     val percent = set.targetPercentBand ?: context.plan.targetPercentBand ?: return null
     val range = L10n.tr(
         "%d–%d %%",
-        (percent.start * 100).roundToInt(),
-        (percent.endInclusive * 100).roundToInt(),
+        (percent.start * 100).roundToIntSaturating(),
+        (percent.endInclusive * 100).roundToIntSaturating(),
     )
     // Named on the shut row too: 90 % of a 10 s max is not 90 % of the peak, and 80 % of
     // critical force is not 80 % of anything else.
@@ -444,7 +444,7 @@ internal fun inheritedTargetText(
 ): String? {
     if (set.hasTarget || set.hasPercentTarget) return null
     val percent = plan.targetPercentBand ?: return null
-    val range = "${(percent.start * 100).roundToInt()}–${(percent.endInclusive * 100).roundToInt()} %"
+    val range = "${(percent.start * 100).roundToIntSaturating()}–${(percent.endInclusive * 100).roundToIntSaturating()} %"
     val ofCriticalForce = plan.targetBasis == TargetBasis.criticalForce
     val seconds = plan.targetMaxSeconds
     val load = perHandLoadText(set, plan, maxes, criticalForces)
@@ -504,16 +504,16 @@ internal fun spokenOverride(set: SetPlan, context: SetRowContext, percentBandsVa
         parts.add(
             L10n.tr(
                 "target %s to %s percent of your critical force",
-                (anyPercent.start * 100).roundToInt().toString(),
-                (anyPercent.endInclusive * 100).roundToInt().toString(),
+                (anyPercent.start * 100).roundToIntSaturating().toString(),
+                (anyPercent.endInclusive * 100).roundToIntSaturating().toString(),
             )
         )
     } else if (percentBandsVary && percent != null) {
         parts.add(
             L10n.tr(
                 "target %s to %s percent of your max",
-                (percent.start * 100).roundToInt(),
-                (percent.endInclusive * 100).roundToInt(),
+                (percent.start * 100).roundToIntSaturating(),
+                (percent.endInclusive * 100).roundToIntSaturating(),
             )
         )
     }

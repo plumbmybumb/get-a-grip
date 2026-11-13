@@ -485,11 +485,11 @@ struct CriticalForceTest: Sendable {
             return cues
         }
 
-        let rep = min(Int(elapsed / proto.cycleSeconds), proto.reps - 1)
+        let rep = min(Int(saturating: elapsed / proto.cycleSeconds), proto.reps - 1)
         let intoCycle = elapsed - proto.workStart(rep)
 
         // Bells that have rung. Several at once only after a stalled main thread.
-        let rung = min(proto.reps, Int(((elapsed - proto.workSeconds) / proto.cycleSeconds).rounded(.down)) + 1)
+        let rung = min(proto.reps, Int(saturating: ((elapsed - proto.workSeconds) / proto.cycleSeconds).rounded(.down)) + 1)
         if rung > repsRun {
             for bell in repsRun..<rung { cues.append(.letGo(rep: bell)) }
             repsRun = rung
@@ -512,7 +512,7 @@ struct CriticalForceTest: Sendable {
         } else {
             phase = .resting(afterRep: rep)
             let untilPull = proto.cycleSeconds - intoCycle
-            let whole = Int(untilPull.rounded(.up))
+            let whole = Int(saturating: untilPull.rounded(.up))
             // 2, 1: the bell itself was the "3".
             if whole <= 2, whole >= 1, lastCountdown != whole {
                 lastCountdown = whole

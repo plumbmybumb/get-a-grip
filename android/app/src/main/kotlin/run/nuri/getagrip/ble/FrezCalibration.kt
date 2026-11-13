@@ -4,18 +4,27 @@
 package run.nuri.getagrip.ble
 
 import android.content.SharedPreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
 import run.nuri.getagrip.BuildConfig
 import run.nuri.getagrip.engine.L10n
+import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.URLEncoder
+import java.util.concurrent.atomic.AtomicBoolean
 
 // Remote calibration for a gauge whose stream is raw counts (`requiresRemoteCalibration`).
 //
@@ -166,7 +175,9 @@ class FrezCoefficientResolver(
         val timeoutSeconds: Double,
     )
 
-    data class Response(val statusCode: Int, val body: String)
+    /// `bodyTooLarge`: the body ran past `maxResponseBytes` and was abandoned there, so
+    /// `body` is empty rather than the first sixteen kilobytes of something else.
+    data class Response(val statusCode: Int, val body: String, val bodyTooLarge: Boolean = false)
 
     /// Throws for a request that never completed; every HTTP status is a `Response`.
     fun interface Transport {
@@ -183,9 +194,49 @@ class FrezCoefficientResolver(
 
         /// Frez's own example uses five seconds: long enough for a slow first lookup, short
         /// enough that a stuck one does not hold the gauge screen hostage.
+        ///
+        /// **For the WHOLE request, connect and read together** — iOS's
+        /// `timeoutIntervalForResource`. `HttpURLConnection`'s own timeouts are per phase,
+        /// and the read one starts over with every byte, so a server that dripped one byte
+        /// every four seconds held the screen for as long as it liked.
         const val timeoutSeconds: Double = 5.0
 
+        /// The answer is `{"a": 0.0000123}`. Sixteen kilobytes is hundreds of times that and
+        /// still nothing to buffer; a body that keeps coming is not a calibration.
+        const val maxResponseBytes = 16 * 1024
+
         fun cacheKey(serial: String): String = "frez.coefficient.$serial"
+
+        /// `^[A-Za-z0-9._:-]{1,64}$`. A serial is whatever the PERIPHERAL says it is, and
+        /// any device can claim to be a Dyno. This one string becomes a preferences key and
+        /// a request carrying the app's access key, so it has to look like a serial number:
+        /// ASCII letters, digits and the four separators serials use, at most 64 of them.
+        /// Deliberately looser than Frez's documented `FrezDyno-######` — a rule that
+        /// refused a real unit would cost its owner the gauge.
+        fun isWellFormed(serial: String): Boolean =
+            serial.length in 1..64 && serial.all { character ->
+                character in '0'..'9' || character in 'A'..'Z' || character in 'a'..'z' ||
+                    character == '.' || character == '_' || character == ':' || character == '-'
+            }
+
+        /// The body, or null the moment it proves longer than `limit` — never more than
+        /// `limit + 1` bytes read, however much the server has to send. `expired` is asked
+        /// before every read, so a body that drips cannot outlast the deadline either.
+        internal fun readBody(
+            stream: InputStream,
+            limit: Int = maxResponseBytes,
+            expired: () -> Boolean = { false },
+        ): ByteArray? {
+            val out = ByteArrayOutputStream()
+            val buffer = ByteArray(4096)
+            while (true) {
+                if (expired()) throw SocketTimeoutException("calibration request deadline passed")
+                val read = stream.read(buffer, 0, minOf(buffer.size, limit + 1 - out.size()))
+                if (read < 0) return out.toByteArray()
+                out.write(buffer, 0, read)
+                if (out.size() > limit) return null
+            }
+        }
 
         /// The build's key, or null. An empty string is "none": `app/build.gradle.kts`
         /// defaults the property to "" so forks and CI build without one.
@@ -219,13 +270,33 @@ class FrezCoefficientResolver(
 
         /// One request, one connection, closed on the way out: `HttpURLConnection` on
         /// `Dispatchers.IO`, the platform's own client, nothing left running.
+        ///
+        /// Three things the platform's defaults do that this must not: FOLLOW A REDIRECT
+        /// (the request carries the access key, and a 3xx would send it wherever it was
+        /// pointed — refused, so the 3xx arrives as the answer and reads as a bad one),
+        /// BUFFER WHATEVER ARRIVES (the body is read up to `maxResponseBytes` and abandoned
+        /// past it), and WAIT PHASE BY PHASE (see `timeoutSeconds`).
+        ///
+        /// The deadline is a watchdog that closes the socket, because a blocked read hears
+        /// nothing else — not a coroutine cancellation, not an interrupt. It closes the
+        /// socket on cancellation too, so a lookup for a link that has gone stops with it.
         val oneShotTransport = Transport { request ->
             withContext(Dispatchers.IO) {
                 val connection = URL(request.url).openConnection() as HttpURLConnection
+                val deadlineMillis = (request.timeoutSeconds * 1000).toLong()
+                val expired = AtomicBoolean(false)
+                val watchdog = launch {
+                    try {
+                        delay(deadlineMillis)
+                        expired.set(true)
+                    } finally {
+                        connection.disconnect()
+                    }
+                }
                 try {
                     connection.requestMethod = "GET"
-                    connection.connectTimeout = (request.timeoutSeconds * 1000).toInt()
-                    connection.readTimeout = (request.timeoutSeconds * 1000).toInt()
+                    connection.connectTimeout = deadlineMillis.toInt()
+                    connection.readTimeout = deadlineMillis.toInt()
                     connection.useCaches = false
                     connection.instanceFollowRedirects = false
                     for ((name, value) in request.headers) {
@@ -236,9 +307,26 @@ class FrezCoefficientResolver(
                     // and would report a named status as a network fault.
                     val stream: InputStream? =
                         if (status in 200..299) connection.inputStream else connection.errorStream
-                    val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
-                    Response(statusCode = status, body = body)
+                    // A length the server states up front is refused without reading a byte.
+                    val body = when {
+                        stream == null -> ByteArray(0)
+                        connection.contentLengthLong > maxResponseBytes -> null
+                        else -> stream.use { readBody(it, maxResponseBytes, expired::get) }
+                    }
+                    Response(
+                        statusCode = status,
+                        body = body?.toString(Charsets.UTF_8) ?: "",
+                        bodyTooLarge = body == null,
+                    )
+                } catch (error: Exception) {
+                    // The watchdog closed the socket under a blocked call: say what
+                    // happened rather than "Socket closed".
+                    if (expired.get() && error !is CancellationException) {
+                        throw SocketTimeoutException("no answer within ${request.timeoutSeconds} s")
+                    }
+                    throw error
                 } finally {
+                    watchdog.cancel()
                     connection.disconnect()
                 }
             }
@@ -246,10 +334,15 @@ class FrezCoefficientResolver(
     }
 
     override suspend fun calibration(serial: String): GaugeCalibrationAnswer {
+        // Before the cache as well as the network: the key below is built from it.
+        if (!isWellFormed(serial)) {
+            return GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.InvalidRequest)
+        }
         // The cache first, before the key check: a Dyno calibrated on a keyed build keeps
-        // working on one without.
+        // working on one without. (Guarded: a value of another type under this key throws,
+        // and an unreadable cache is an empty one.)
         val key = cacheKey(serial)
-        val cached = preferences.getString(key, null)?.toDoubleOrNull()
+        val cached = runCatching { preferences.getString(key, null) }.getOrNull()?.toDoubleOrNull()
         if (cached != null && isUsable(cached)) {
             return GaugeCalibrationAnswer.Resolved(
                 GaugeCalibration(coefficient = cached, cached = true),
@@ -265,8 +358,21 @@ class FrezCoefficientResolver(
             timeoutSeconds = timeoutSeconds,
         )
 
+        // The deadline again, around WHATEVER the transport is: the one above bounds a
+        // socket, this one bounds the answer, so no transport can hold the screen longer.
         val response = try {
-            transport.send(request)
+            withTimeoutOrNull((timeoutSeconds * 1000).toLong()) { transport.send(request) }
+                ?: return GaugeCalibrationAnswer.Unavailable(
+                    GaugeCalibrationFailure.Network("no answer within $timeoutSeconds s"),
+                )
+        } catch (cancelled: CancellationException) {
+            // THIS lookup being cancelled (its link went away) is not an answer, and is
+            // passed on. A cancellation that merely surfaced here — a transport's own
+            // timeout — is one, and swallowing it would leave the screen on "resolving".
+            currentCoroutineContext().ensureActive()
+            return GaugeCalibrationAnswer.Unavailable(
+                GaugeCalibrationFailure.Network(cancelled.message ?: cancelled.toString()),
+            )
         } catch (error: Exception) {
             return GaugeCalibrationAnswer.Unavailable(
                 GaugeCalibrationFailure.Network(error.message ?: error.toString()),
@@ -274,6 +380,13 @@ class FrezCoefficientResolver(
         }
         if (response.statusCode != 200) {
             return GaugeCalibrationAnswer.Unavailable(failure(response.statusCode))
+        }
+        // A 200 that kept coming is not a calibration. Measured here as well as in the
+        // transport, so the rule holds for any transport that hands a body over whole.
+        if (response.bodyTooLarge || response.body.length > maxResponseBytes ||
+            response.body.toByteArray(Charsets.UTF_8).size > maxResponseBytes
+        ) {
+            return GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.BadResponse)
         }
         val coefficient = coefficient(response.body)
             ?: return GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.BadResponse)

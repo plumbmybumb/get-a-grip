@@ -24,7 +24,7 @@ struct WatchGaugeView: View {
                 HStack(spacing: 16) {
                     stat(WeightUnit.kg.number(readout.peakKg), String(localized: "peak"))
                     // Inline: `BatteryDisplay` is a phone component, not in this target.
-                    stat(device.batteryFraction.map { "\(Int(($0 * 100).rounded()))%" } ?? "—",
+                    stat(device.batteryFraction.map { "\(Int(saturating: ($0 * 100).rounded()))%" } ?? "—",
                          String(localized: "battery"))
                 }
                 if device.state.isConnected {

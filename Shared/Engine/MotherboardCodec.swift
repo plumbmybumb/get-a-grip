@@ -65,6 +65,19 @@ enum MotherboardCodec {
     /// it. 1 KB is thirty lines of slack.
     static let maxBufferedBytes = 1024
 
+    /// The ceiling every sibling codec has and this one lacked. The Motherboard's
+    /// kilograms are not measured, they are COMPUTED from a calibration table the device
+    /// sends as text, so a corrupt row — or a device that only claims to be a
+    /// Motherboard — set the scale: fuzzing damaged tables produced readings of 1e33 kg,
+    /// in both signs, each one a session peak and a candidate max. Checked on the
+    /// magnitude because the sum of three signed cells can be absurd downwards too.
+    static let maxPlausibleKilograms: Double = 1000
+
+    /// Rows one sensor's table may hold. A real dump is a handful of points per sensor;
+    /// only row index 0 ever cleared a slot, so a peer streaming any other index grew
+    /// the table, and the per-packet walk through it, for the life of the link.
+    static let maxCalibrationRows = 64
+
     // MARK: - Calibration
 
     /// Map one raw sample through one sensor's calibration table.
@@ -209,7 +222,9 @@ enum MotherboardCodec {
                 total += (sensor == 0 ? force : -force)
             }
 
-            guard total.isFinite else { return nil }
+            guard total.isFinite, abs(total) <= MotherboardCodec.maxPlausibleKilograms else {
+                return nil
+            }
             return GaugeReading(kg: total)
         }
 
@@ -237,7 +252,12 @@ enum MotherboardCodec {
             guard let slot = Int(exactly: numbers[0]), slot >= 0,
                   slot < MotherboardCodec.calibrationSlotCount else { return }
 
+            // `Double(_:)` reads "nan" and "inf" as numbers. A table holding one maps
+            // every sample through it to nothing, so the row is refused, not stored.
+            guard numbers.allSatisfy(\.isFinite) else { return }
+
             if numbers[1] == 0 { calibration[slot].removeAll(keepingCapacity: true) }
+            guard calibration[slot].count < MotherboardCodec.maxCalibrationRows else { return }
             calibration[slot].append(Array(numbers[1...]))
         }
     }

@@ -159,10 +159,12 @@ class LiveProgressorClient(
             }
         }
         radioReceiver = receiver
-        appContext.registerReceiver(
-            receiver,
-            IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
-        )
+        // No export flag, on purpose: this receiver hears ONE broadcast and it is a protected
+        // system one, which is the case the platform says to register without a flag. A
+        // not-exported receiver hears only senders running as the system uid, and whether
+        // the Bluetooth stack's own process counts is not something to find out on a
+        // user's phone by missing "Bluetooth turned off".
+        appContext.registerReceiver(receiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
     }
 
     private fun unregisterRadioReceiver() {

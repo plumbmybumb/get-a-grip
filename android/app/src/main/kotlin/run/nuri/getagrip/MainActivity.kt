@@ -128,7 +128,12 @@ class MainActivity : ComponentActivity() {
         app.startStores(intent)
         // A shared routine that COLD-LAUNCHED the app: queued before the first composition,
         // swept by `TodayScreen` when it appears.
-        receiveShareLink(intent)
+        //
+        // **On a FRESH start only.** A recreated Activity (rotation, or the process
+        // reclaimed and the task restored) is handed the SAME launch intent again, and
+        // reading it again queued the same import a second time — after it had been added,
+        // or after it had been declined.
+        if (savedInstanceState == null) receiveShareLink(intent)
 
         setContent {
             GetAGripTheme {
@@ -178,9 +183,18 @@ class MainActivity : ComponentActivity() {
     /// is still wrong.
     ///
     /// `isRoutineLink` is asked FIRST — see `ShareLinkRouting`.
+    ///
+    /// **A link is read ONCE.** Once queued, the intent's data is cleared: this is the
+    /// Activity's own intent object (`onNewIntent` has just made it so), which is what a
+    /// rotation hands back, so there is nothing left in it to queue again.
     private fun receiveShareLink(intent: Intent?) {
-        val url = ShareLinkRouting.routineLink(intent?.action, intent?.data?.toString()) ?: return
+        val url = ShareLinkRouting.routineLink(
+            action = intent?.action,
+            data = intent?.data?.toString(),
+            flags = intent?.flags ?: 0,
+        ) ?: return
         templates.receiveShareLink(url)
+        intent?.data = null
     }
 
     /// **Refresh the clock, THEN ask the store to recompute.** A phone open past midnight
@@ -269,8 +283,15 @@ object ShareLinkRouting {
     ///
     /// `ACTION_VIEW` only: the app declares no `SEND` filter, so accepting a `getagrip://`
     /// URL as `ACTION_SEND` text would answer for a door that does not exist.
-    fun routineLink(action: String?, data: String?): String? {
+    ///
+    /// **Not when the system is replaying history.** Reopening the app from Recents after
+    /// its task was closed relaunches it with the task's ORIGINAL intent — the link that
+    /// first opened it, days ago — and marks it `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`.
+    /// That is not somebody opening a link, and clearing our own copy of the intent
+    /// cannot reach the copy the system kept.
+    fun routineLink(action: String?, data: String?, flags: Int = 0): String? {
         if (action != Intent.ACTION_VIEW) return null
+        if (flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return null
         val url = data?.takeIf { it.isNotBlank() } ?: return null
         return url.takeIf { RoutineShare.isRoutineLink(it) }
     }

@@ -33,10 +33,10 @@ import java.util.zip.Inflater
 //      `Deflater(level, nowrap = true)` / `Inflater(nowrap = true)`.
 //   2. `URL` becomes `java.net.URI`; a string URI cannot parse at all is the same
 //      answer as Swift's `URL(string:)` returning nil — `notARoutineLink`.
-//   3. Swift's `String.prefix`/`count` are GRAPHEME counts and Kotlin's `take`/`length`
-//      are UTF-16 code units. Every capped string here is a name, a note or base64, so
-//      the two agree on everything the format actually carries; a name of astral
-//      emoji would cap one glyph differently, which is a cap, not a correctness rule.
+//   3. Lengths. A NAME is capped in Unicode scalars (code points) on both sides — the
+//      one unit Swift and Kotlin count alike, and the only one a base letter under
+//      thousands of combining marks cannot hide in. The WHOLE LINK is measured in UTF-8
+//      bytes on iOS and UTF-16 units here; a link is ASCII, where those are one number.
 //   4. Foundation inflates first and measures after; `Inflater` is incremental, so the
 //      decompressed cap is enforced WHILE inflating. Same verdict, less allocation.
 
@@ -88,6 +88,9 @@ object RoutineShare {
     fun url(draft: RoutineDraft): String? {
         var plan = draft.plan
         if (plan.executable.sets.isEmpty() || plan.sets.size > maxSets) return null
+        // A position or basis the decoder would refuse (see `hasWireSafeStrings`) is the
+        // same dead code as a 51-set routine: refused here, where the sharer hears of it.
+        if (!hasWireSafeStrings(plan)) return null
         plan = plan.copy(name = sanitizedName(plan.name))
         val envelope = Envelope(
             v = currentVersion,
@@ -112,6 +115,11 @@ object RoutineShare {
     /// Everything past this point is UNTRUSTED camera input: every step is capped or
     /// fails closed, and nothing is trusted to be the size it says it is.
     fun draft(from: String): RoutineDraft {
+        // The WHOLE link, before anything is derived from it — the URI parse included,
+        // which walks and copies the string. The gate used to sit after `getFragment()`,
+        // which had already decoded and copied the fragment, so a 40 MB link allocated
+        // multiples of itself on the main thread just to be refused.
+        if (from.length > maxLinkLength) throw RoutineShareError.unreadable
         val url = parse(from) ?: throw RoutineShareError.notARoutineLink
         if (!isRoutineLink(url)) throw RoutineShareError.notARoutineLink
         // PERCENT-DECODED: base64url needs no encoding, but a scanner or link shortener
@@ -120,9 +128,8 @@ object RoutineShare {
         // (`URI.getFragment()` is the decoded form; `getRawFragment()` is not.)
         val fragment = url.fragment ?: throw RoutineShareError.notARoutineLink
         if (fragment.isEmpty()) throw RoutineShareError.unreadable
-        // Length-bounded BEFORE any string work, or a 40 MB link allocates multiples of
-        // itself on the main thread just to be refused. 4/3 is base64's expansion, so this
-        // is `maxCompressedBytes` measured in characters.
+        // 4/3 is base64's expansion, so this is `maxCompressedBytes` measured in base64
+        // characters.
         if (fragment.length > maxCompressedBytes * 4 / 3 + 4) throw RoutineShareError.unreadable
 
         val compressed = dataFromBase64url(fragment) ?: throw RoutineShareError.unreadable
@@ -131,6 +138,10 @@ object RoutineShare {
         // The compressed cap is the real bound on inflation (see `maxCompressedBytes`);
         // the decompressed check is a backstop.
         val inflated = inflate(compressed, maxDecompressedBytes) ?: throw RoutineShareError.unreadable
+        // Nesting, before a parser recurses into it. The tree reader here has no depth
+        // limit and overflowed its stack on a 59-character link; Foundation stops at its
+        // own. One explicit number gives both platforms the same answer.
+        if (exceedsNestingDepth(inflated)) throw RoutineShareError.unreadable
         val document = BlobCodec.parse(String(inflated, Charsets.UTF_8))
             ?: throw RoutineShareError.unreadable
 
@@ -144,6 +155,11 @@ object RoutineShare {
         // Counted on the RAW sets, not the executable ones: this cap is about the size of
         // the thing that arrived, not about how much of it would run.
         if (envelope.plan.sets.size > maxSets) throw RoutineShareError.tooLarge
+        // The plan decoder keeps a grip position and a target basis VERBATIM, which is
+        // right for a blob this app wrote and wrong for a stranger's: a 687-character link
+        // once carried a 255,000-character "position" into the preview, the saved routine
+        // and every pull of every session logged from it.
+        if (!hasWireSafeStrings(envelope.plan)) throw RoutineShareError.unreadable
 
         var plan = envelope.plan
         // NO sets at all is damage: the encoder never builds a code for an empty plan, and
@@ -272,13 +288,130 @@ object RoutineShare {
     /// output at ~4 MB (enforced while inflating here — see `inflate`). A legal 50-set
     /// routine is ~1.6 KB.
     const val maxCompressedBytes = 4 * 1024
-    const val maxDecompressedBytes = 256 * 1024
-    const val maxSets = 50
-    const val maxNameCharacters = 60
 
-    /// One trim + cap, applied on encode AND decode, so the sharer's screen and the
-    /// recipient's can never disagree about what a too-long name became.
-    fun sanitizedName(name: String): String = name.trim().take(maxNameCharacters)
+    /// A backstop behind the compressed cap, sized to the payload rather than to the
+    /// transient: the largest legal routine (50 sets, every field set) inflates to about
+    /// 6 KB, so 32 KB is five times the real thing and an eighth of what this used to
+    /// admit. Everything a stranger can smuggle rides inside this number.
+    const val maxDecompressedBytes = 32 * 1024
+
+    /// The link as a string, in UTF-16 units (`String.length`, which costs nothing to
+    /// ask). A full 4 KB payload is 5,462 base64 characters; a scanner that percent-encodes
+    /// every one of them triples that. 20 KB clears the worst honest case and refuses
+    /// everything else before a single copy is made.
+    const val maxLinkLength = 20 * 1024
+    const val maxSets = 50
+
+    /// Unicode SCALARS (code points), not UTF-16 units and not grapheme clusters: one
+    /// cluster can be a base letter under thousands of combining marks, so a cluster cap
+    /// bounds what is drawn and nothing about what is stored. Scalars are also the one
+    /// unit Swift and Kotlin count alike.
+    const val maxNameScalars = 60
+
+    /// A real payload nests five deep (envelope, plan, sets, set, grip).
+    const val maxNestingDepth = 64
+
+    /// A vocabulary word from a stranger: see `isWireToken`.
+    const val maxTokenLength = 32
+
+    /// One cleaning, applied on encode AND decode, so the sharer's screen and the
+    /// recipient's can never disagree about what a name became. It is the routine's title
+    /// on the card, the lock screen and a notification, so it has to be TEXT:
+    ///
+    /// - bidi controls are dropped — they reorder what surrounds them, which is how a
+    ///   name dresses itself as something else;
+    /// - control characters and the two Unicode line breaks become a space — a title is
+    ///   one line everywhere it is drawn, and a CSV row is one line too;
+    /// - then trim, cap at `maxNameScalars`, and trim what the cut exposed.
+    ///
+    /// TRANSLATION NOTE: Swift walks `unicodeScalars`; the twin is `codePointAt`, so a
+    /// surrogate pair is read, kept and counted as the one scalar it is and the cap can
+    /// never cut through one. The trim is Foundation's set (`FoundationWhitespace`), not
+    /// Kotlin's `trim()`, which would leave a ZERO WIDTH SPACE that iOS removes.
+    fun sanitizedName(name: String): String {
+        val cleaned = StringBuilder(name.length)
+        var index = 0
+        while (index < name.length) {
+            val scalar = name.codePointAt(index)
+            index += Character.charCount(scalar)
+            when (scalar) {
+                0x061C, 0x200E, 0x200F, in 0x202A..0x202E, in 0x2066..0x2069 -> Unit
+                in 0x00..0x1F, in 0x7F..0x9F, 0x2028, 0x2029 -> cleaned.append(' ')
+                else -> cleaned.appendCodePoint(scalar)
+            }
+        }
+        val trimmed = FoundationWhitespace.trimmed(cleaned.toString())
+        val capped = if (trimmed.codePointCount(0, trimmed.length) <= maxNameScalars) {
+            trimmed
+        } else {
+            trimmed.substring(0, trimmed.offsetByCodePoints(0, maxNameScalars))
+        }
+        return FoundationWhitespace.trimmed(capped)
+    }
+
+    /// Every string the plan decoder keeps verbatim, checked as a vocabulary word. The
+    /// name is cleaned instead (`sanitizedName`); fingers and hands decode into closed
+    /// types and keep nothing of what arrived.
+    private fun hasWireSafeStrings(plan: SessionPlan): Boolean {
+        if (plan.targetBasisRaw?.let { isWireToken(it) } == false) return false
+        return plan.sets.all { set ->
+            isWireToken(set.grip.position.rawValue) &&
+                set.targetBasisRaw?.let { isWireToken(it) } != false
+        }
+    }
+
+    /// `^[A-Za-z][A-Za-z0-9]{0,31}$` — an ASCII letter followed by at most 31 ASCII
+    /// letters or digits: the shape of every position and basis this app has ever written
+    /// (`halfCrimp`, `criticalForce`) and of any a newer build is likely to add, so
+    /// `sloper` still round-trips. What it refuses is everything that is not a word:
+    /// length, separators that would forge a `GripSpec.key` or a CSV column, and text
+    /// that renders as something else.
+    ///
+    /// Spelled out rather than handed to `Regex`: `$` there also matches before a final
+    /// line break, and a position ending in "\n" is not a word.
+    private fun isWireToken(raw: String): Boolean {
+        if (raw.length !in 1..maxTokenLength || !isASCIILetter(raw[0])) return false
+        return raw.all { isASCIILetter(it) || it in '0'..'9' }
+    }
+
+    private fun isASCIILetter(character: Char): Boolean =
+        character in 'A'..'Z' || character in 'a'..'z'
+
+    /// Brackets outside JSON strings, counted without parsing. Unbalanced input may read
+    /// shallow here; it is not JSON, and the decoder says so a line later.
+    private fun exceedsNestingDepth(json: ByteArray): Boolean {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for (byte in json) {
+            if (inString) {
+                if (escaped) {
+                    escaped = false
+                } else if (byte == BACKSLASH) {
+                    escaped = true
+                } else if (byte == QUOTE) {
+                    inString = false
+                }
+                continue
+            }
+            when (byte) {
+                QUOTE -> inString = true
+                OPEN_BRACKET, OPEN_BRACE -> {
+                    depth += 1
+                    if (depth > maxNestingDepth) return true
+                }
+                CLOSE_BRACKET, CLOSE_BRACE -> depth -= 1
+            }
+        }
+        return false
+    }
+
+    private const val QUOTE: Byte = 0x22
+    private const val BACKSLASH: Byte = 0x5C
+    private const val OPEN_BRACKET: Byte = 0x5B
+    private const val CLOSE_BRACKET: Byte = 0x5D
+    private const val OPEN_BRACE: Byte = 0x7B
+    private const val CLOSE_BRACE: Byte = 0x7D
 
     // MARK: - Compression
 

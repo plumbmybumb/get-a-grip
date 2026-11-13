@@ -884,9 +884,24 @@ final class DeviceStore {
         }
     }
 
+    /// Above every codec's own ceiling (the highest is 1000 kg) and far above any hand,
+    /// so it never competes with them — it only catches what none of them caught.
+    nonisolated static let maxAcceptedKilograms: Double = 1500
+
+    /// Finite, and within `maxAcceptedKilograms` either way: a software tare can push a
+    /// reading negative, and an absurd negative poisons an average as surely as a peak.
+    nonisolated static func isPlausible(_ kg: Double) -> Bool {
+        kg.isFinite && abs(kg) <= maxAcceptedKilograms
+    }
+
     private func handle(_ event: ProgressorEvent) {
         switch event {
         case .sample(let sample):
+            // THE ONE DOOR. Every codec has its own plausibility ceiling, and the one
+            // that did not let a 1e33 kg reading through to the peak, the runner and
+            // history. A ceiling in each codec is a rule the next codec forgets; this is
+            // where a reading becomes app state, for every client there is or will be.
+            guard Self.isPlausible(sample.kg) else { return }
             // A queued notification can outlive Stop. It is historical wire traffic,
             // not a new live reading, peak, or runner sample after measurement ended.
             guard isStreaming else { return }

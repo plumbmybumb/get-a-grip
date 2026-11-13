@@ -1144,10 +1144,44 @@ object AnalysisExport {
     private fun csvGrip(grip: GripSpec, side: Side) = mapOf("edge_mm" to grip.edgeMM.toString(),
         "fingers" to grip.fingers.token, "position" to grip.position.rawValue, "hand" to side.rawValue)
     private fun csvNumber(value: Double): String = if (value.isFinite()) kgText(value) else ""
-    private fun csvCell(value: String): String {
+
+    /// RFC 4180 quoting, with formula protection for user-authored names and notes.
+    /// Spaces before a formula prefix are ignored by some spreadsheet importers.
+    fun csvCell(value: String): String {
+        // A plain number is DATA. The guard below used to run on these too, so a
+        // negative reading left as the text `'-0.3` and no spreadsheet could sum it.
+        if (isPlainNumber(value)) return value
         var text = value
-        if (text.trim().firstOrNull()?.let { it in "=+-@" } == true) text = "'$text"
+        // The first SCALAR after Foundation's own trim (`FoundationWhitespace`, not
+        // `trim()`, which cuts in different places): a spreadsheet reads the first code
+        // point, whatever combining mark rides on it. All four are ASCII, so the first
+        // UTF-16 unit is that scalar.
+        val first = FoundationWhitespace.trimmed(text).firstOrNull()
+        if (first == '=' || first == '+' || first == '-' || first == '@') text = "'$text"
         if (text.firstOrNull() == '\t' || text.firstOrNull() == '\r') text = "'$text"
-        return if (text.any { it in ",\"\r\n" }) "\"" + text.replace("\"", "\"\"") + "\"" else text
+        // RFC 4180's quote, comma and line breaks — and `;` and TAB, which are the field
+        // separator wherever the list separator is not a comma (French, German). Unquoted,
+        // `x;=HYPERLINK(…)` re-split there into a cell that began with `=`.
+        return if (text.any { it == '"' || it == ',' || it == '\r' || it == '\n' || it == ';' || it == '\t' }) {
+            "\"" + text.replace("\"", "\"\"") + "\""
+        } else {
+            text
+        }
+    }
+
+    /// `^-?[0-9]+(\.[0-9]+)?$` — exactly what `csvNumber` and the integer columns write.
+    /// Walked by hand like the Swift twin: `Regex`'s `$` also matches before a final line
+    /// break, and "-1\n" is not a number.
+    private fun isPlainNumber(text: String): Boolean {
+        var index = if (text.startsWith('-')) 1 else 0
+        val wholeStart = index
+        while (index < text.length && text[index] in '0'..'9') index += 1
+        if (index == wholeStart) return false
+        if (index == text.length) return true
+        if (text[index] != '.') return false
+        index += 1
+        val fractionStart = index
+        while (index < text.length && text[index] in '0'..'9') index += 1
+        return index > fractionStart && index == text.length
     }
 }

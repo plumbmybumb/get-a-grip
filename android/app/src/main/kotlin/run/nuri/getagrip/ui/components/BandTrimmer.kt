@@ -49,8 +49,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import run.nuri.getagrip.engine.L10n
+import run.nuri.getagrip.engine.roundToIntSaturating
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
@@ -92,7 +92,7 @@ fun BandTrimmer(
 
     val span = (scale.endInclusive - scale.start).takeIf { it > 0 } ?: 1.0
 
-    fun snap(value: Double) = (value / step).roundToInt() * step
+    fun snap(value: Double) = (value / step).roundToIntSaturating() * step
 
     fun apply(newLo: Double, newHi: Double) {
         if (newLo == lo && newHi == hi) return
@@ -328,7 +328,7 @@ private fun BandTrimmerPreview() {
                 hi = hi,
                 scale = 0.05..1.0,
                 step = 0.05,
-                format = { L10n.tr("%d %%", (it * 100).roundToInt()) },
+                format = { L10n.tr("%d %%", (it * 100).roundToIntSaturating()) },
                 spokenUnit = tr("percent of max"),
             ) { newLo, newHi -> lo = newLo; hi = newHi }
         }
@@ -343,7 +343,7 @@ internal object BandTrimmerMath {
         val width = (upper - lower).coerceIn(0.0, scale.endInclusive - scale.start)
         val lastLower = maxOf(scale.start, scale.endInclusive - width)
         val proposed = (lower + delta).coerceIn(scale.start, lastLower)
-        val snapped = (proposed / step).roundToInt() * step
+        val snapped = (proposed / step).roundToIntSaturating() * step
         val result = snapped.coerceIn(scale.start, lastLower)
         return result..(result + width)
     }

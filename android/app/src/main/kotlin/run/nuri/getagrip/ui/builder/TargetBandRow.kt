@@ -44,7 +44,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 import kotlin.math.ceil
-import kotlin.math.roundToInt
 import run.nuri.getagrip.BuildConfig
 import run.nuri.getagrip.engine.CriticalForceTable
 import run.nuri.getagrip.engine.FingerSet
@@ -57,6 +56,7 @@ import run.nuri.getagrip.engine.PlanMath
 import run.nuri.getagrip.engine.SetPlan
 import run.nuri.getagrip.engine.Side
 import run.nuri.getagrip.engine.TargetBasis
+import run.nuri.getagrip.engine.roundToIntSaturating
 import run.nuri.getagrip.ui.components.BandTrimmer
 import run.nuri.getagrip.ui.components.Chip
 import run.nuri.getagrip.ui.components.ChipGrid
@@ -588,10 +588,10 @@ private fun kgScaleTop(
 }
 
 private fun percentText(band: ClosedFloatingPointRange<Double>): String =
-    L10n.tr("%d–%d %%", (band.start * 100).roundToInt(), (band.endInclusive * 100).roundToInt())
+    L10n.tr("%d–%d %%", (band.start * 100).roundToIntSaturating(), (band.endInclusive * 100).roundToIntSaturating())
 
 private fun percentUnit(fraction: Double): String =
-    L10n.tr("%d %%", (fraction * 100).roundToInt())
+    L10n.tr("%d %%", (fraction * 100).roundToIntSaturating())
 
 /// One kilogram figure, to one decimal. LOCALE-SENSITIVE like every number a person reads;
 /// the locale-free `Fmt.fixed` is for keys and exports.

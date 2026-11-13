@@ -626,7 +626,7 @@ private struct GaugeTimerRow: View {
     }
 
     private func spoken(_ seconds: TimeInterval) -> String {
-        Duration.seconds(Int(seconds)).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .wide))
+        Duration.seconds(Int(saturating: seconds)).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .wide))
     }
 }
 

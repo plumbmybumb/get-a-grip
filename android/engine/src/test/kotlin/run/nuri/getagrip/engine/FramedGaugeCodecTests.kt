@@ -541,6 +541,99 @@ class FramedGaugeCodecTests {
         )
     }
 
+    /// The ceiling every sibling codec has. The Motherboard's kilograms are COMPUTED from a
+    /// table the device sends as text, so a corrupt table — or a device that only claims to
+    /// be a Motherboard — sets the scale. Checked on the magnitude: three signed cells can
+    /// sum to something absurd downwards too.
+    @Test
+    fun motherboardDropsAReadingBeyondThePlausibilityCeilingInEitherDirection() {
+        assertEquals(1000.0, MotherboardCodec.maxPlausibleKilograms)
+
+        // 0…100 counts map to 0…100,000 kg: every count is a tonne.
+        val decoder = MotherboardCodec.Decoder()
+        decoder.ingest(motherboardCalibration(rows = listOf(0 to 0, 100_000 to 100)))
+
+        // One count is exactly 1000 kg — on the ceiling, which is inclusive.
+        assertEquals(
+            1000.0,
+            decoder.ingest(motherboardPacket(samples = listOf(1, 0, 0))).single().kg,
+            0.0001,
+        )
+        // Two counts, 2000 kg: dropped. And the same load on an inverted cell, −2000 kg.
+        assertEquals(noReadings, decoder.ingest(motherboardPacket(samples = listOf(2, 0, 0))))
+        assertEquals(noReadings, decoder.ingest(motherboardPacket(samples = listOf(0, 2, 0))))
+        assertEquals(
+            -1000.0,
+            decoder.ingest(motherboardPacket(samples = listOf(0, 1, 0))).single().kg,
+            0.0001,
+        )
+        // The stream is not poisoned by the dropped packets.
+        assertEquals(1, decoder.ingest(motherboardPacket(samples = listOf(1, 0, 0))).size)
+    }
+
+    /// "NaN" and "Infinity" are numbers to `toDoubleOrNull`, and "1e999" is the second. A
+    /// table holding one maps every sample through it to nothing, so the ROW is refused —
+    /// it neither lands in its slot nor, with index 0, clears the table already in force.
+    @Test
+    fun motherboardIgnoresACalibrationRowHoldingANonFiniteNumber() {
+        val decoder = MotherboardCodec.Decoder()
+        decoder.ingest(motherboardCalibration())
+        val full = decoder.calibrationRowCounts
+
+        val badRows = listOf(
+            "0,0,NaN,0\n", "0,0,0,NaN\n", "0,1,Infinity,100\n", "0,1,100,-Infinity\n",
+            "0,NaN,0,0\n", "0,Infinity,0,0\n", "0,1,1e999,100\n", "0,0,0,1e999\n",
+        )
+        for (line in badRows) {
+            assertEquals(noReadings, decoder.ingest(line.toByteArray(Charsets.UTF_8)), line)
+            assertEquals(full, decoder.calibrationRowCounts, "$line must not clear or extend a slot")
+        }
+        assertEquals(
+            60.0,
+            decoder.ingest(motherboardPacket(samples = listOf(10, -20, -30))).single().kg,
+            0.0001,
+        )
+    }
+
+    /// Only row index 0 ever cleared a slot, so a peer streaming any other index grew the
+    /// table — and the walk through it, three times per packet — for the life of the link.
+    @Test
+    fun motherboardHoldsAtMostSixtyFourCalibrationRowsPerSlot() {
+        assertEquals(64, MotherboardCodec.maxCalibrationRows)
+        val decoder = MotherboardCodec.Decoder()
+
+        // 200 rows for slot 0, none of them a fresh dump after the first.
+        val flood = StringBuilder()
+        for (index in 0 until 200) flood.append("0,$index,$index,$index\n")
+        decoder.ingest(flood.toString().toByteArray(Charsets.UTF_8))
+        assertEquals(64, decoder.calibrationRowCounts[0])
+
+        // Still full: later rows are ignored, whatever their index…
+        decoder.ingest("0,7,7,7\n0,500,500,500\n".toByteArray(Charsets.UTF_8))
+        assertEquals(64, decoder.calibrationRowCounts[0])
+        // …and the cap is per SLOT: the neighbours are untouched.
+        assertEquals(listOf(64, 0, 0, 0), decoder.calibrationRowCounts)
+
+        // A row with index 0 starts a new dump, which clears the slot as it always did.
+        decoder.ingest("0,0,0,0\n0,1,100,100\n".toByteArray(Charsets.UTF_8))
+        assertEquals(2, decoder.calibrationRowCounts[0])
+
+        // And the 64 kept were the FIRST 64: the table is the head of the dump, in order.
+        val head = MotherboardCodec.Decoder()
+        head.ingest(motherboardCalibration())
+        val rows = StringBuilder("0,0,0,0\n")
+        for (index in 1 until 200) rows.append("0,$index,$index,$index\n")
+        head.ingest(rows.toString().toByteArray(Charsets.UTF_8))
+        // Row 63 is the last one held, so 62 counts still map and 64 is off the top of the
+        // table — where rows 64…199, had they been kept, would have answered.
+        assertEquals(
+            62.0,
+            head.ingest(motherboardPacket(samples = listOf(62, 0, 0))).single().kg,
+            0.0001,
+        )
+        assertEquals(noReadings, head.ingest(motherboardPacket(samples = listOf(64, 0, 0))))
+    }
+
     /// "C" then "S30": the calibration request has to precede the stream, or the
     /// packets that arrive first mean nothing — and the reference's own 2500 ms wait
     /// between the two is carried by the profile rather than lost in a two-write burst.

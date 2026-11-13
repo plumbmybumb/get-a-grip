@@ -31,7 +31,7 @@ struct SessionSummaryView: View {
     @State private var didLoadCandidates = false
 
     private var completed: [RepSummary] { reps.filter { $0.outcome == .completed } }
-    private var heldSeconds: Int { Int(reps.reduce(0.0) { $0 + $1.heldSeconds }.rounded()) }
+    private var heldSeconds: Int { Int(saturating: reps.reduce(0.0) { $0 + $1.heldSeconds }.rounded()) }
     private var peakKg: Double { reps.map(\.peakKg).max() ?? 0 }
     /// Time-weighted, like the log's own: a rep that dropped off after a second must
     /// not weigh as much as a full hang.

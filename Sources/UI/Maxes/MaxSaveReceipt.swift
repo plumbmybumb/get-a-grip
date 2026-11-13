@@ -166,7 +166,7 @@ extension MaxImpact.PercentMove {
     /// **The move, in one sentence** — `25–30 % · now 8.0–12.0 kg · was 7.0–10.0`. The unit
     /// is stated once, after the newer number.
     func line(unit: WeightUnit) -> String {
-        let pct = String(localized: "\(Int((loPercent * 100).rounded()))–\(Int((hiPercent * 100).rounded())) %")
+        let pct = String(localized: "\(Int(saturating: (loPercent * 100).rounded()))–\(Int(saturating: (hiPercent * 100).rounded())) %")
         var line = String(localized: "\(pct) · now \(unit.bandText(newBand, withUnit: false)) \(unit.symbol)")
         if let oldBand, oldBand != newBand {
             line += String(localized: " · was \(unit.bandText(oldBand, withUnit: false))")

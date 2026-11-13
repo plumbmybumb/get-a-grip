@@ -318,7 +318,7 @@ struct SetRowView: View, Equatable {
     }
 
     private func percentText(_ fraction: Double) -> String {
-        "\(Int((fraction * 100).rounded()))"
+        "\(Int(saturating: (fraction * 100).rounded()))"
     }
 
     private var moveRow: some View {

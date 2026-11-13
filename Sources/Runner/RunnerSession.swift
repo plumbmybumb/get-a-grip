@@ -805,10 +805,10 @@ final class RunnerSession {
         guard let slot = runner.currentSlot else { return 0 }
         switch runner.phase {
         case .working:
-            return max(0, Int(ceil(Double(slot.holdSeconds) - runner.heldSeconds)))
+            return max(0, Int(saturating: ceil(Double(slot.holdSeconds) - runner.heldSeconds)))
         case .paused(let inner):
             if case .working = inner {
-                return max(0, Int(ceil(Double(slot.holdSeconds) - runner.heldSeconds)))
+                return max(0, Int(saturating: ceil(Double(slot.holdSeconds) - runner.heldSeconds)))
             }
             return slot.holdSeconds
         default:

@@ -75,6 +75,19 @@ object MotherboardCodec {
     /// it. 1 KB is thirty lines of slack.
     const val maxBufferedBytes = 1024
 
+    /// The ceiling every sibling codec has and this one lacked. The Motherboard's
+    /// kilograms are not measured, they are COMPUTED from a calibration table the device
+    /// sends as text, so a corrupt row — or a device that only claims to be a
+    /// Motherboard — set the scale: fuzzing damaged tables produced readings of 1e33 kg,
+    /// in both signs, each one a session peak and a candidate max. Checked on the
+    /// magnitude because the sum of three signed cells can be absurd downwards too.
+    const val maxPlausibleKilograms: Double = 1000.0
+
+    /// Rows one sensor's table may hold. A real dump is a handful of points per sensor;
+    /// only row index 0 ever cleared a slot, so a peer streaming any other index grew
+    /// the table, and the per-packet walk through it, for the life of the link.
+    const val maxCalibrationRows = 64
+
     private const val lineFeed = 0x0A
     private const val carriageReturn = 0x0D
 
@@ -226,7 +239,7 @@ object MotherboardCodec {
                 total += if (sensor == 0) force else -force
             }
 
-            if (!total.isFinite()) return null
+            if (!total.isFinite() || kotlin.math.abs(total) > maxPlausibleKilograms) return null
             return GaugeReading(kg = total)
         }
 
@@ -249,12 +262,18 @@ object MotherboardCodec {
 
             // TRANSLATION NOTE: Swift guards with `Int(exactly:)` (nil for NaN, ±inf,
             // fractions and out-of-range; a plain `Int(_:)` trapped). `toInt()` saturates
-            // instead, and the equality guard below rejects the same rows. `toDoubleOrNull`
-            // refuses "nan"/"inf" outright, which only drops those one guard earlier.
+            // instead, and the equality guard below rejects the same rows.
             val slot = numbers[0].toInt()
             if (numbers[0] != slot.toDouble() || slot < 0 || slot >= calibrationSlotCount) return
 
+            // `toDoubleOrNull` reads "NaN" and "Infinity" as numbers (and "1e999" as the
+            // latter), where Swift's `Double(_:)` reads "nan" and "inf". A table holding
+            // one maps every sample through it to nothing, so the row is refused, not
+            // stored — whichever spelling it arrived in.
+            if (numbers.any { !it.isFinite() }) return
+
             if (numbers[1] == 0.0) calibration[slot].clear()
+            if (calibration[slot].size >= maxCalibrationRows) return
             calibration[slot].add(numbers.subList(1, numbers.size).toList())
         }
     }

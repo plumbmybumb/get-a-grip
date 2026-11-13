@@ -446,7 +446,7 @@ struct MaxesTab: View {
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
                                 weightText(test.criticalForceKg, style: .title2)
                                 if let pct = test.percentOfMax {
-                                    Text("\(Int(pct.rounded())) %")
+                                    Text("\(Int(saturating: pct.rounded())) %")
                                         .font(.system(.footnote))
                                         .foregroundStyle(Ink.secondary)
                                 }
@@ -454,7 +454,7 @@ struct MaxesTab: View {
                         }
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(String(localized: "Critical force, \(side == .both ? String(localized: "both hands") : side.name)"))
-                        .accessibilityValue(test.percentOfMax.map { "\(weightUnit.text(test.criticalForceKg)), \(Int($0.rounded())) % of max" }
+                        .accessibilityValue(test.percentOfMax.map { "\(weightUnit.text(test.criticalForceKg)), \(Int(saturating: $0.rounded())) % of max" }
                                             ?? weightUnit.text(test.criticalForceKg))
                     }
                 }

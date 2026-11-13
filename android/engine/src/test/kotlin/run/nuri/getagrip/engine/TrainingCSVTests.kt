@@ -55,6 +55,75 @@ class TrainingCSVTests {
         assertTrue(csv.contains("\"'=HYPERLINK(\"\"test\"\")\""))
         assertTrue(csv.contains("\"Flexion, café\n\"\"felt good\"\"\""))
     }
+    /// A plain number is DATA. The formula guard used to run on these too, so a negative
+    /// reading left as the text `'-0.3` and no spreadsheet could sum the column.
+    @Test fun aPlainNumberIsWrittenAsIsWithNoFormulaPrefix() {
+        for (number in listOf("-0.3", "-12", "0", "42", "12.5", "-1000.0", "007")) {
+            assertEquals(number, AnalysisExport.csvCell(number))
+        }
+        // Anything short of `-?digits(.digits)?` is text, and text beginning with a sign
+        // is still guarded.
+        assertEquals("'-", AnalysisExport.csvCell("-"))
+        assertEquals("'-.5", AnalysisExport.csvCell("-.5"))
+        assertEquals("'-1.", AnalysisExport.csvCell("-1."))
+        assertEquals("'--1", AnalysisExport.csvCell("--1"))
+        assertEquals("'-1e5", AnalysisExport.csvCell("-1e5"))
+        assertEquals("'+1", AnalysisExport.csvCell("+1"))
+        assertEquals("'-1+cmd|' /C calc'!A0", AnalysisExport.csvCell("-1+cmd|' /C calc'!A0"))
+        assertEquals("\"'-1\n\"", AnalysisExport.csvCell("-1\n"), "a regex end anchor would call this a number")
+        assertEquals("'- 1", AnalysisExport.csvCell("- 1"))
+        assertEquals("١٢", AnalysisExport.csvCell("١٢"), "not ASCII digits, and not a formula either")
+
+        // In a document: a pull that read below the tared zero stays a number.
+        val s = session().copy(reps = listOf(RepSummary(peakKg = -0.3, avgKg = -0.3)))
+        val pull = records(pullCSV(input(listOf(s))), "pull")[0]
+        assertEquals("-0.3", pull["peak_kg"])
+        assertEquals("-0.3", pull["avg_kg"])
+    }
+
+    /// The first SCALAR after trimming decides, because that is what a spreadsheet reads.
+    @Test fun theFormulaGuardReadsTheFirstScalarAfterTrimming() {
+        for (lead in listOf("=", "+", "-", "@")) {
+            assertEquals("'${lead}SUM(A1)", AnalysisExport.csvCell("${lead}SUM(A1)"))
+            assertEquals("'  ${lead}SUM(A1)", AnalysisExport.csvCell("  ${lead}SUM(A1)"))
+        }
+        // `=` under a combining mark is still `=` to the importer.
+        assertEquals("'=\u0301SUM(A1)", AnalysisExport.csvCell("=\u0301SUM(A1)"))
+        // Foundation's whitespace, so iOS writes the same bytes: a ZERO WIDTH SPACE and a
+        // NEXT LINE are trimmed away before the test, a unit separator is not.
+        assertEquals("'\u200B=1", AnalysisExport.csvCell("\u200B=1"))
+        assertEquals("'\u0085=1", AnalysisExport.csvCell("\u0085=1"))
+        assertEquals("\u001F=1", AnalysisExport.csvCell("\u001F=1"))
+        // The leading tab / CR rule stands, and such a cell is now quoted as well.
+        assertEquals("\"'\tx\"", AnalysisExport.csvCell("\tx"))
+        assertEquals("\"'\rx\"", AnalysisExport.csvCell("\rx"))
+        // Nothing to guard.
+        assertEquals("Daily", AnalysisExport.csvCell("Daily"))
+        assertEquals("a=b", AnalysisExport.csvCell("a=b"))
+        assertEquals("", AnalysisExport.csvCell(""))
+    }
+
+    /// RFC 4180's quote, comma and line breaks — and `;` and TAB, the field separator
+    /// wherever the list separator is not a comma. Unquoted, `x;=HYPERLINK(…)` re-split
+    /// there into a cell that began with `=`.
+    @Test fun aCellIsQuotedWhenItHoldsAnySeparatorOrLineBreak() {
+        assertEquals("\"a,b\"", AnalysisExport.csvCell("a,b"))
+        assertEquals("\"say \"\"hi\"\"\"", AnalysisExport.csvCell("say \"hi\""))
+        assertEquals("\"a\nb\"", AnalysisExport.csvCell("a\nb"))
+        assertEquals("\"a\rb\"", AnalysisExport.csvCell("a\rb"))
+        assertEquals("\"a\r\nb\"", AnalysisExport.csvCell("a\r\nb"))
+        assertEquals("\"x;=HYPERLINK(1)\"", AnalysisExport.csvCell("x;=HYPERLINK(1)"))
+        assertEquals("\"x\t=HYPERLINK(1)\"", AnalysisExport.csvCell("x\t=HYPERLINK(1)"))
+        assertEquals("a b", AnalysisExport.csvCell("a b"))
+        assertEquals("a|b:c", AnalysisExport.csvCell("a|b:c"))
+
+        // In a document: a routine named with a semicolon stays one field.
+        val s = session().copy(routineName = "7;3 repeaters", notes = "tab\there")
+        val csv = pullCSV(input(listOf(s))).text
+        assertTrue(csv.contains(",\"7;3 repeaters\","))
+        assertTrue(csv.contains(",\"tab\there\","))
+    }
+
     @Test fun curlAndFrozenPrescriptionRemainExplicit() {
         val s = session().copy(reps = listOf(RepSummary(grip = GripSpec(position = GripPosition.fingerCurl),
             targetLoKg = 8.0, targetHiKg = 12.0, outcome = RepOutcome.earlyRelease)))

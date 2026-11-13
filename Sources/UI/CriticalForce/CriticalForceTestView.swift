@@ -755,9 +755,9 @@ struct CriticalForcePanel: View {
     /// Before the first pull the clock shows the full pull it is waiting to start; once
     /// the last bell has rung, nothing is left.
     private var clock: String {
-        if nextHandWord != nil { return "\(Int(session.proto.workSeconds))" }
+        if nextHandWord != nil { return "\(Int(saturating: session.proto.workSeconds))" }
         if let seconds { return "\(seconds)" }
-        return session.phase == .armed ? "\(Int(session.proto.workSeconds))" : "0"
+        return session.phase == .armed ? "\(Int(saturating: session.proto.workSeconds))" : "0"
     }
 
     private var word: String {

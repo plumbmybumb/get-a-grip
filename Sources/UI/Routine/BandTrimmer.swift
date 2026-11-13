@@ -272,7 +272,7 @@ private extension Comparable {
     @Previewable @State var hi = 0.90
     VStack(spacing: 30) {
         BandTrimmer(lo: $lo, hi: $hi, scale: 0...1, step: 0.05,
-                    format: { "\(Int(($0 * 100).rounded())) %" }, spokenUnit: "percent")
+                    format: { "\(Int(saturating: ($0 * 100).rounded())) %" }, spokenUnit: "percent")
     }
     .padding(24)
     .background { AppBackground() }

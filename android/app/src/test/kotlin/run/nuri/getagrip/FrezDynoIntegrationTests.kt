@@ -5,6 +5,7 @@ package run.nuri.getagrip
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -275,6 +276,183 @@ class FrezDynoIntegrationTests {
             GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.BadResponse),
             result,
         )
+    }
+
+    // MARK: - A serial, a body and a wait that are not what they should be
+
+    /// A serial is whatever the PERIPHERAL says it is, and any device can claim to be a
+    /// Dyno. This one string becomes a preferences key and a request carrying the app's
+    /// access key, so one that does not look like a serial number goes nowhere: not to the
+    /// network, and not to the cache — even a cache that would have answered.
+    @Test
+    fun aSerialThatIsNotASerialTouchesNeitherTheNetworkNorTheCache() = runTest {
+        val notSerials = listOf(
+            "", " ", "Frez Dyno", "FrezDyno-000123\n", "FrezDyno/000123", "../frez",
+            "x?serial=y", "a&b", "a#b", "a%20b", "sérial", "Frez\tDyno",
+            "x".repeat(65), "x".repeat(5_000),
+        )
+        for (serial in notSerials) {
+            assertFalse(FrezCoefficientResolver.isWellFormed(serial), "<$serial>")
+            val spy = TransportSpy()
+            val preferences = freshPreferences()
+            // A coefficient sitting under exactly the key this string would make.
+            preferences.edit().putString(FrezCoefficientResolver.cacheKey(serial), "2.0E-5").commit()
+            val before = preferences.all.toMap()
+
+            val result = FrezCoefficientResolver("k3y", preferences, spy.transport).calibration(serial)
+
+            assertEquals(
+                GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.InvalidRequest),
+                result,
+                "<$serial>",
+            )
+            assertTrue(spy.requests.isEmpty(), "<$serial> must not reach the network")
+            assertEquals(before, preferences.all.toMap(), "<$serial> must not touch the cache")
+        }
+
+        // Letters, digits and the four separators serials use, up to 64 of them.
+        for (serial in listOf("FrezDyno-000123", "A", "0", "AB:CD:EF_01.2-3", "x".repeat(64))) {
+            assertTrue(FrezCoefficientResolver.isWellFormed(serial), serial)
+            val spy = TransportSpy()
+            val result = FrezCoefficientResolver("k3y", freshPreferences(), spy.transport).calibration(serial)
+            assertTrue(result is GaugeCalibrationAnswer.Resolved, serial)
+            assertEquals(1, spy.requests.size, serial)
+        }
+    }
+
+    /// The answer is `{"a": 0.0000123}`. A body that keeps coming is not a calibration, and
+    /// is not remembered as one.
+    @Test
+    fun aBodyLongerThanSixteenKilobytesIsABadResponse() = runTest {
+        assertEquals(16 * 1024, FrezCoefficientResolver.maxResponseBytes)
+        fun body(bytes: Int): String {
+            val answer = """{"a": 0.5}"""
+            return answer + " ".repeat(bytes - answer.length)
+        }
+
+        // On the line: sixteen kilobytes of valid JSON is still an answer.
+        val onTheLine = TransportSpy().also { it.body = body(16 * 1024) }
+        assertEquals(
+            GaugeCalibrationAnswer.Resolved(GaugeCalibration(0.5, cached = false)),
+            FrezCoefficientResolver("k3y", freshPreferences(), onTheLine.transport)
+                .calibration("FrezDyno-000123"),
+        )
+
+        // One byte over, and a megabyte over, read the same — whatever the JSON says.
+        for (bytes in listOf(16 * 1024 + 1, 1024 * 1024)) {
+            val spy = TransportSpy().also { it.body = body(bytes) }
+            val preferences = freshPreferences()
+            val result = FrezCoefficientResolver("k3y", preferences, spy.transport)
+                .calibration("FrezDyno-000123")
+            assertEquals(
+                GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.BadResponse),
+                result,
+                "$bytes bytes",
+            )
+            assertNull(cached(preferences, "FrezDyno-000123"), "$bytes bytes")
+        }
+
+        // Bytes, not characters: 6,000 three-byte characters are 18 KB.
+        val wide = TransportSpy().also { it.body = """{"a": 0.5, "pad": "${"\u20AC".repeat(6_000)}"}""" }
+        assertEquals(
+            GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.BadResponse),
+            FrezCoefficientResolver("k3y", freshPreferences(), wide.transport).calibration("FrezDyno-000123"),
+        )
+
+        // What the real transport reports when it stopped reading: no body, and the flag.
+        val abandoned = FrezCoefficientResolver.Transport {
+            FrezCoefficientResolver.Response(statusCode = 200, body = "", bodyTooLarge = true)
+        }
+        assertEquals(
+            GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.BadResponse),
+            FrezCoefficientResolver("k3y", freshPreferences(), abandoned).calibration("FrezDyno-000123"),
+        )
+        // A named status stays the named status: its body is never read as an answer.
+        val limited = TransportSpy().also { it.status = 429; it.body = body(1024 * 1024) }
+        assertEquals(
+            GaugeCalibrationAnswer.Unavailable(GaugeCalibrationFailure.RateLimited),
+            FrezCoefficientResolver("k3y", freshPreferences(), limited.transport).calibration("FrezDyno-000123"),
+        )
+    }
+
+    /// The reader the transport uses: never more than the cap plus one byte, however much
+    /// there is to read — the one extra is how "exactly the cap" is told from "more".
+    @Test
+    fun theBodyReaderStopsOneByteAfterTheCap() {
+        val cap = FrezCoefficientResolver.maxResponseBytes
+
+        assertEquals(0, FrezCoefficientResolver.readBody(ByteArray(0).inputStream())?.size)
+        assertEquals(cap, FrezCoefficientResolver.readBody(ByteArray(cap) { 0x20 }.inputStream())?.size)
+        assertNull(FrezCoefficientResolver.readBody(ByteArray(cap + 1) { 0x20 }.inputStream()))
+
+        // A body with no end at all, counting what was actually taken from it.
+        var served = 0L
+        val endless = object : java.io.InputStream() {
+            override fun read(): Int { served += 1; return 0x20 }
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                served += length
+                buffer.fill(0x20, offset, offset + length)
+                return length
+            }
+        }
+        assertNull(FrezCoefficientResolver.readBody(endless))
+        assertEquals(cap + 1L, served)
+
+        // And a body that only drips cannot outlast the deadline: the reader asks before
+        // every read, and stops the moment the answer is yes.
+        var asked = 0
+        val failure = kotlin.runCatching {
+            FrezCoefficientResolver.readBody(endless, cap) { asked += 1; asked > 2 }
+        }.exceptionOrNull()
+        assertTrue(failure is java.net.SocketTimeoutException, "got $failure")
+    }
+
+    /// Five seconds for the WHOLE request. A transport that never answers is a network
+    /// failure at the deadline, not a gauge screen held for as long as a server likes.
+    @Test
+    fun aRequestThatNeverAnswersFailsAtTheDeadline() = runTest {
+        var sent = 0
+        val silent = FrezCoefficientResolver.Transport {
+            sent += 1
+            kotlinx.coroutines.awaitCancellation()
+        }
+        val preferences = freshPreferences()
+        val result = FrezCoefficientResolver("k3y", preferences, silent).calibration("FrezDyno-000123")
+
+        val failure = (result as? GaugeCalibrationAnswer.Unavailable)?.failure
+        assertTrue(failure is GaugeCalibrationFailure.Network, "expected a network failure, got $result")
+        assertEquals(1, sent)
+        assertEquals((FrezCoefficientResolver.timeoutSeconds * 1000).toLong(), testScheduler.currentTime)
+        assertNull(cached(preferences, "FrezDyno-000123"))
+    }
+
+    /// A cancellation that merely SURFACES in the lookup — a transport's own timeout — is an
+    /// answer (the request failed). Swallowed as a cancellation it would leave the screen
+    /// on "looking up" for good. The lookup itself being cancelled is the opposite case:
+    /// its link went away, and it must stop without answering or caching anything.
+    @Test
+    fun aTransportsOwnTimeoutIsAnAnswerAndACancelledLookupIsNot() = runTest {
+        val impatient = FrezCoefficientResolver.Transport {
+            kotlinx.coroutines.withTimeout(10) { kotlinx.coroutines.awaitCancellation() }
+        }
+        val result = FrezCoefficientResolver("k3y", freshPreferences(), impatient).calibration("FrezDyno-000123")
+        assertTrue(
+            (result as? GaugeCalibrationAnswer.Unavailable)?.failure is GaugeCalibrationFailure.Network,
+            "expected a network failure, got $result",
+        )
+
+        val silent = FrezCoefficientResolver.Transport { kotlinx.coroutines.awaitCancellation() }
+        val preferences = freshPreferences()
+        var answer: GaugeCalibrationAnswer? = null
+        val lookup = launch {
+            answer = FrezCoefficientResolver("k3y", preferences, silent).calibration("FrezDyno-000123")
+        }
+        testScheduler.runCurrent()
+        lookup.cancel()
+        testScheduler.runCurrent()
+        assertTrue(lookup.isCancelled)
+        assertNull(answer, "a cancelled lookup reports nothing")
+        assertNull(cached(preferences, "FrezDyno-000123"))
     }
 
     // MARK: - The store

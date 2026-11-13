@@ -81,7 +81,7 @@ struct WatchSummaryView: View {
     }
 
     private var heldText: String {
-        let whole = Int(heldSeconds.rounded())
+        let whole = Int(saturating: heldSeconds.rounded())
         return whole >= 60 ? String(localized: "\(whole / 60) min \(whole % 60) s")
                            : String(localized: "\(whole) s")
     }

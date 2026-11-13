@@ -8,6 +8,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.math.roundToInt
 
 // Decoding leniency, in one place.
 //
@@ -35,6 +36,50 @@ fun <T : Comparable<T>> ClosedRange<T>.clamping(v: T): T = when {
     v < start -> start
     v > endInclusive -> endInclusive
     else -> v
+}
+
+/// A `Double` rounded to an `Int`, SATURATING — the only rounding a number from outside may
+/// take on its way to the screen.
+///
+/// A kilogram figure that arrived in a share link, a stored blob or a gauge frame is not
+/// ours to vouch for, and on iOS a percentage computed from one took the app down at
+/// launch. NaN reads as 0; everything else lands on the nearest representable value.
+///
+/// TRANSLATION NOTE: the twin of Swift's `Int(saturating:)` (Shared/Engine/Leniency.swift),
+/// which exists because Swift's `Int(_:)` TRAPS. On this side `toInt()` already saturates
+/// and reads NaN as 0, so the one conversion that can throw is `roundToInt()`, on NaN —
+/// and that is the call this replaces. Its rounding is otherwise `roundToInt()`'s own.
+fun Double.roundToIntSaturating(): Int = if (isNaN()) 0 else roundToInt()
+
+/// The `Float` twin, for a slider's own value.
+fun Float.roundToIntSaturating(): Int = if (isNaN()) 0 else roundToInt()
+
+/// Foundation's two whitespace sets, scalar for scalar — what Swift's
+/// `trimmingCharacters(in:)` removes, so a trim on this side cuts exactly where iOS cuts.
+///
+/// MEASURED on macOS 26 Foundation (2026-11-12) by trimming every Unicode scalar in turn:
+///   `.whitespacesAndNewlines`  U+0009–000D, 0020, 0085, 00A0, 1680, 2000–200B, 2028, 2029,
+///                              202F, 205F, 3000
+///   `.whitespaces`             the same without U+000A–000D, 0085, 2028 and 2029
+///
+/// Kotlin's `trim()` is NOT this set: it also strips U+001C–001F and keeps U+0085 and
+/// U+200B (ZERO WIDTH SPACE, which Foundation still counts as a space). Every member is in
+/// the BMP, so testing UTF-16 units is testing scalars.
+object FoundationWhitespace {
+    /// `.whitespaces`: the horizontal ones.
+    fun isWhitespace(code: Int): Boolean = when (code) {
+        0x09, 0x20, 0xA0, 0x1680, in 0x2000..0x200B, 0x202F, 0x205F, 0x3000 -> true
+        else -> false
+    }
+
+    /// `.whitespacesAndNewlines`.
+    fun isWhitespaceOrNewline(code: Int): Boolean = when (code) {
+        in 0x0A..0x0D, 0x85, 0x2028, 0x2029 -> true
+        else -> isWhitespace(code)
+    }
+
+    /// `text.trimmingCharacters(in: .whitespacesAndNewlines)`.
+    fun trimmed(text: String): String = text.trim { isWhitespaceOrNewline(it.code) }
 }
 
 /// The typed reads Foundation would perform, each returning null exactly where Swift

@@ -59,7 +59,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.util.UUID
-import kotlin.math.roundToInt
 import run.nuri.getagrip.engine.FingerSet
 import run.nuri.getagrip.engine.GripSpec
 import run.nuri.getagrip.engine.L10n
@@ -69,6 +68,7 @@ import run.nuri.getagrip.engine.RepOutcome
 import run.nuri.getagrip.engine.RepSummary
 import run.nuri.getagrip.engine.SessionPlan
 import run.nuri.getagrip.engine.Side
+import run.nuri.getagrip.engine.roundToIntSaturating
 import run.nuri.getagrip.runner.MaxCandidate
 import run.nuri.getagrip.runner.SessionOutcome
 import run.nuri.getagrip.runner.WorkoutSummaryState
@@ -110,7 +110,7 @@ fun SessionSummaryScreen(
     val candidates = remember(outcome) { outcome.maxCandidates }
 
     val reps = outcome.results
-    val heldSeconds = outcome.totalHeldSeconds.roundToInt()
+    val heldSeconds = outcome.totalHeldSeconds.roundToIntSaturating()
 
     fun finish(save: Boolean) {
         // Guard against a double tap producing two logs — the button is on screen while the

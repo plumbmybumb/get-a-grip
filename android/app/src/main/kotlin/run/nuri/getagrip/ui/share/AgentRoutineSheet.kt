@@ -94,7 +94,15 @@ fun AgentRoutineSheet(onRoutine: (AgentRoutine.Reading) -> Unit, onClose: () -> 
 
     fun paste() {
         if (leaving) return
-        when (val outcome = AgentRoutine.read(clipboardText(context))) {
+        // A clipboard past the cap is not handed to the reader at all; it reads as the
+        // reader itself would call it.
+        val pasted = clipboardText(context)
+        val outcome = if (pasted == null) {
+            AgentRoutine.Outcome.Failed(AgentRoutine.Failure.unreadable)
+        } else {
+            AgentRoutine.read(pasted)
+        }
+        when (outcome) {
             is AgentRoutine.Outcome.Success -> {
                 failure = null
                 leaving = true
@@ -207,12 +215,33 @@ private fun StepCard(title: String, body: String, content: @Composable () -> Uni
     }
 }
 
-/// Every item joined, as iOS joins the pasted strings: a clip of several texts is still one
-/// reply. Read only on the Paste tap.
-private fun clipboardText(context: Context): String = runCatching {
+/// Every item's text joined, as iOS joins the pasted strings: a clip of several texts is
+/// still one reply. Read only on the Paste tap. null when it is longer than the reader's cap.
+///
+/// **`text`, never `coerceToText`.** That call turns an item that is a `content://` link
+/// into text by OPENING it — in this app's name, with this app's access — and reading
+/// whatever the provider returns, for as long as it keeps returning. Whoever filled the
+/// clipboard chooses the link. An item with no text of its own is not a pasted routine.
+private fun clipboardText(context: Context): String? = runCatching {
     val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip ?: return ""
-    (0 until clip.itemCount).joinToString("\n") { clip.getItemAt(it).coerceToText(context).toString() }
+    pastedText((0 until clip.itemCount).map { clip.getItemAt(it).text })
 }.getOrDefault("")
+
+/// The items that carry text, joined by newlines — or null as soon as the whole would pass
+/// `cap`, decided on the lengths so the over-long string is never built.
+internal fun pastedText(items: List<CharSequence?>, cap: Int = AgentRoutine.maxInputUnits): String? {
+    val out = StringBuilder()
+    var first = true
+    for (item in items) {
+        val text = item ?: continue
+        val separator = if (first) 0 else 1
+        if (out.length + separator + text.length > cap) return null
+        if (!first) out.append('\n')
+        out.append(text)
+        first = false
+    }
+    return out.toString()
+}
 
 private fun copyInstructions(context: Context): Boolean = runCatching {
     val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return false

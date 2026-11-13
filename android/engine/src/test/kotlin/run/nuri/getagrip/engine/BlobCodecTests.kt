@@ -239,4 +239,56 @@ class BlobCodecTests {
         assertEquals(10, (3..120).clamping(10))
         assertEquals(0, (0..20).clamping(-4))
     }
+
+    /// The tree reader recurses once per `[` with no limit of its own, and a stack overflow
+    /// is an `Error` that no `catch (Exception)` sees. A document nested too deep to read is
+    /// unreadable — for a stored blob and a draft rescue as much as for a share link.
+    @Test
+    fun aDocumentNestedTooDeepToReadIsNullNotACrash() {
+        val deep = "[".repeat(100_000) + "]".repeat(100_000)
+        assertNull(BlobCodec.parse(deep))
+        assertNull(BlobCodec.decode(deep) { SessionPlan.fromJson(it) })
+        assertEquals(emptyList(), BlobCodec.decodeArray(deep) { SetPlan.fromJson(it) })
+        assertNull(BlobCodec.parse("[".repeat(100_000)))
+        // And the reader is still usable afterwards.
+        assertNotNull(BlobCodec.parse("[[[[1]]]]"))
+    }
+
+    /// The one rounding a number from outside may take on its way to the screen:
+    /// `roundToInt()` THROWS on NaN, and a kilogram figure from a link or a gauge frame is
+    /// not ours to vouch for.
+    @Test
+    fun roundingForDisplayNeverThrows() {
+        assertEquals(0, Double.NaN.roundToIntSaturating())
+        assertEquals(Int.MAX_VALUE, Double.POSITIVE_INFINITY.roundToIntSaturating())
+        assertEquals(Int.MIN_VALUE, Double.NEGATIVE_INFINITY.roundToIntSaturating())
+        assertEquals(Int.MAX_VALUE, 1e30.roundToIntSaturating())
+        assertEquals(0, Float.NaN.roundToIntSaturating())
+        // Everywhere else it IS `roundToInt()`, so no screen changes what it prints.
+        for (value in listOf(0.0, 0.4, 0.5, 1.5, 2.5, -0.5, -1.5, -2.5, 72.49999, 1e9)) {
+            assertEquals(Math.round(value).toInt(), value.roundToIntSaturating(), "$value")
+        }
+        assertEquals(73, 72.5.roundToIntSaturating())
+    }
+
+    /// Foundation's two whitespace sets, pinned to what was measured on iOS — this is the
+    /// set every trim that has to agree across the two engines goes through.
+    @Test
+    fun foundationsWhitespaceSetIsReproducedScalarForScalar() {
+        val both = listOf(0x09, 0x20, 0xA0, 0x1680) + (0x2000..0x200B) + listOf(0x202F, 0x205F, 0x3000)
+        val newlines = listOf(0x0A, 0x0B, 0x0C, 0x0D, 0x85, 0x2028, 0x2029)
+        for (code in 0..0xFFFF) {
+            assertEquals(code in both, FoundationWhitespace.isWhitespace(code), "U+%04X".format(code))
+            assertEquals(
+                code in both || code in newlines,
+                FoundationWhitespace.isWhitespaceOrNewline(code),
+                "U+%04X".format(code),
+            )
+        }
+        // Where Kotlin's own `trim()` disagrees, in both directions.
+        assertEquals("x", FoundationWhitespace.trimmed("\u200Bx\u0085"))
+        assertEquals("\u200Bx\u0085", "\u200Bx\u0085".trim())
+        assertEquals("\u001Cx", FoundationWhitespace.trimmed("\u001Cx"))
+        assertEquals("x", "\u001Cx".trim())
+    }
 }

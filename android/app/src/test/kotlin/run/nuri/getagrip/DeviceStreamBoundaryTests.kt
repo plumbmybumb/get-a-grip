@@ -4,6 +4,7 @@ package run.nuri.getagrip
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
 import run.nuri.getagrip.engine.ForceSample
+import run.nuri.getagrip.engine.GaugeKind
 import run.nuri.getagrip.engine.ProgressorEvent
 import run.nuri.getagrip.store.DeviceStore
 import run.nuri.getagrip.store.DiagnosticBreadcrumb
@@ -33,6 +34,55 @@ class DeviceStreamBoundaryTests {
         assertEquals(2, delivered)
         assertEquals(3.0, device.currentKg)
         device.stopStreaming(StreamStopCause.userStopped)
+    }
+    /// **THE ONE DOOR.** Every codec has its own plausibility ceiling, and the one that did
+    /// not let a 1e33 kg reading through to the peak, the runner and history. The store is
+    /// where a reading becomes app state, so it holds the rule for every client there is or
+    /// will be — asserted here for every kind, with a client that decodes nothing itself.
+    @Test fun anImplausibleSampleFromAnyClientNeverBecomesAppState() {
+        assertEquals(1500.0, DeviceStore.maxAcceptedKilograms)
+        val nonsense = listOf(
+            Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY,
+            1e33, -1e33, 1500.0001, -1500.0001,
+        )
+        for (kind in GaugeKind.entries) {
+            val client = RecordingProgressorClient(kind)
+            val clock = FakeClock()
+            val device = DeviceStore(client = client, scope = inertScope(), clock = clock)
+            client.connect()
+            val delivered = mutableListOf<Double>()
+            val traced = mutableListOf<Double>()
+            device.onSample = { delivered += it.kg }
+            device.onTracePoint = { traced += it.kg }
+            device.startStreaming(StreamStartCause.manualMeasurement)
+            client.emit(ProgressorEvent.Sample(ForceSample(12.0, 0u)))
+
+            // Five seconds on, the gauge sends only nonsense.
+            clock.wall += 5.0
+            var micros = 0u
+            for (kg in nonsense) {
+                micros += 12_500u
+                client.emit(ProgressorEvent.Sample(ForceSample(kg, micros)))
+                assertEquals(12.0, device.currentKg, "$kind: $kg must not be the reading")
+                assertEquals(12.0, device.peakKg, "$kind: $kg must not be the peak")
+            }
+            assertEquals(listOf(12.0), delivered, "$kind: the runner never sees one")
+            assertEquals(listOf(12.0), traced, "$kind: nor does anything timed off the trace")
+            assertEquals(listOf(12.0), device.trace.map { it.kg }, "$kind")
+            assertEquals(12.0, device.lastSample?.kg, "$kind")
+            // Nonsense is not a signal either: the stream has been quiet for five seconds.
+            assertEquals(5.0, device.secondsSinceLastSample(), "$kind")
+
+            // The bound itself is a reading, in both directions.
+            client.emit(ProgressorEvent.Sample(ForceSample(1500.0, micros + 12_500u)))
+            assertEquals(1500.0, device.peakKg, "$kind")
+            client.emit(ProgressorEvent.Sample(ForceSample(-1500.0, micros + 25_000u)))
+            assertEquals(-1500.0, device.currentKg, "$kind")
+            assertEquals(3, delivered.size, "$kind")
+            device.stopStreaming(StreamStopCause.userStopped)
+        }
+        for (kg in nonsense) assertFalse(DeviceStore.isPlausible(kg), "$kg")
+        for (kg in listOf(0.0, -0.0, 62.5, -3.0, 1500.0, -1500.0)) assertTrue(DeviceStore.isPlausible(kg), "$kg")
     }
     @Test fun disconnectedTareDoesNotWrite() {
         val client = RecordingProgressorClient()

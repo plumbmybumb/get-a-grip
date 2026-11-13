@@ -407,6 +407,292 @@ class RoutineShareCodecTests {
         assertEquals("Daily no-hangs", blank.normalized.plan.name)
     }
 
+    // MARK: - A stranger's link, held to its size and its vocabulary
+
+    /// The two numbers in a routine the decoder used to take on trust. A band of 1e30 kg
+    /// read as a 2e28-fold intensity against any max on file; now it is a band at the
+    /// ceiling, which every screen that divides by, multiplies by or prints it survives.
+    @Test
+    fun kilogramTargetsAreClampedAtDecode() {
+        fun set(lo: String, hi: String) = """{"v":1,"plan":{"sets":[
+            {"grip":{"edgeMM":20,"fingers":"IMRL","position":"halfCrimp"},"repsPerSide":6,
+            "targetLoKg":$lo,"targetHiKg":$hi}]}}""".trimIndent().replace("\n", "")
+
+        val absurd = RoutineShare.draft(link(set("1e30", "1e30"))).plan.sets[0]
+        assertEquals(1000.0, absurd.targetLoKg)
+        assertEquals(1000.0, absurd.targetHiKg)
+
+        val negative = RoutineShare.draft(link(set("-5", "12.5"))).plan.sets[0]
+        assertEquals(0.0, negative.targetLoKg)
+        assertEquals(12.5, negative.targetHiKg, "a real band is left exactly as it was written")
+
+        // Past what a double holds is not a big number, it is no number: the endpoint is
+        // absent, exactly as if the key had never been written.
+        val overflowing = RoutineShare.draft(link(set("1e999", "20"))).plan.sets[0]
+        assertNull(overflowing.targetLoKg)
+        assertEquals(20.0, overflowing.targetHiKg)
+
+        // EVERY decode, not only a link's: a routine stored before the bound existed
+        // heals the next time its blob is read.
+        val stored = BlobCodec.decodeArray(
+            """[{"grip":{"edgeMM":20,"fingers":"IMRL","position":"halfCrimp"},""" +
+                """"repsPerSide":6,"targetLoKg":1e30,"targetHiKg":1e30}]""",
+        ) { SetPlan.fromJson(it) }
+        assertEquals(1000.0, stored.single().targetLoKg)
+        assertEquals(1000.0, stored.single().targetHiKg)
+        assertEquals(0.0..1000.0, SetPlan.kgRange)
+    }
+
+    /// The plan decoder keeps a position VERBATIM so a newer build's vocabulary survives —
+    /// which is right for a blob this app wrote and wrong for a stranger's. A position
+    /// from a link has to be a WORD.
+    @Test
+    fun aGripPositionFromALinkMustBeAVocabularyWord() {
+        fun withPosition(position: String) =
+            link("""{"v":1,"plan":{"sets":[{"grip":{"edgeMM":20,"fingers":"IMRL",""" +
+                """"position":"$position"},"repsPerSide":6}]}}""")
+
+        assertImportFails(RoutineShareError.unreadable, withPosition("a".repeat(5_000)))
+        // A separator would forge a `GripSpec.key` (`20|IMRL|half|crimp`) or a CSV column.
+        assertImportFails(RoutineShareError.unreadable, withPosition("half/crimp"))
+        assertImportFails(RoutineShareError.unreadable, withPosition("half|crimp"))
+        assertImportFails(RoutineShareError.unreadable, withPosition("half crimp"))
+        assertImportFails(RoutineShareError.unreadable, withPosition("half,crimp"))
+        assertImportFails(RoutineShareError.unreadable, withPosition(""))
+        assertImportFails(RoutineShareError.unreadable, withPosition("2finger"))
+        assertImportFails(RoutineShareError.unreadable, withPosition("crimpé"))
+        // A regex `$` would let this one through: it matches before a final line break.
+        assertImportFails(RoutineShareError.unreadable, withPosition("halfCrimp\\n"))
+        assertImportFails(RoutineShareError.unreadable, withPosition("a".repeat(33)))
+
+        // The cap is 32, and a position sitting on it still imports.
+        assertEquals("a".repeat(32), RoutineShare.draft(withPosition("a".repeat(32))).plan.sets[0].grip.position.rawValue)
+
+        // An unknown-but-well-formed position is a newer build's word, not an attack: it
+        // imports, keys, and goes back out on the wire unchanged.
+        val sloper = RoutineShare.draft(withPosition("sloper"))
+        assertEquals("20|IMRL|sloper", sloper.plan.sets[0].grip.key)
+        val again = RoutineShare.draft(assertNotNull(RoutineShare.url(sloper)))
+        assertEquals(GripPosition("sloper"), again.plan.sets[0].grip.position)
+    }
+
+    /// The other string kept verbatim: what a percentage is OF, on a set and on the plan.
+    @Test
+    fun aTargetBasisFromALinkMustBeAVocabularyWord() {
+        fun onSet(basis: String) = link(
+            """{"v":1,"plan":{"sets":[{"grip":{"edgeMM":20,"fingers":"IMRL","position":"halfCrimp"},""" +
+                """"repsPerSide":6,"targetLoPercent":0.7,"targetHiPercent":0.8,"targetBasis":"$basis"}]}}""",
+        )
+        fun onPlan(basis: String) = link(
+            """{"v":1,"plan":{"targetLoPercent":0.7,"targetHiPercent":0.8,"targetBasis":"$basis","sets":[$oneSetJSON]}}""",
+        )
+
+        for (bad in listOf("critical force", "critical/force", "x".repeat(5_000), "9lives")) {
+            assertImportFails(RoutineShareError.unreadable, onSet(bad))
+            assertImportFails(RoutineShareError.unreadable, onPlan(bad))
+        }
+
+        assertEquals("criticalForce", RoutineShare.draft(onSet("criticalForce")).plan.sets[0].targetBasisRaw)
+        assertEquals("criticalForce", RoutineShare.draft(onPlan("criticalForce")).plan.targetBasisRaw)
+        // A basis this build has never heard of still survives verbatim, as it always did.
+        assertEquals("anaerobicCapacity", RoutineShare.draft(onSet("anaerobicCapacity")).plan.sets[0].targetBasisRaw)
+        // An empty basis carries nothing and reads as absent, so there is nothing to refuse.
+        assertNull(RoutineShare.draft(onSet("")).plan.sets[0].targetBasisRaw)
+    }
+
+    /// The encoder half of the same rule: a draft the decoder would refuse makes no code.
+    @Test
+    fun theEncoderRefusesAPositionOrBasisTheDecoderWouldRefuse() {
+        fun draft(set: SetPlan, basis: String? = null) = RoutineDraft().let { d ->
+            d.copy(plan = d.plan.copy(sets = listOf(set), targetBasisRaw = basis))
+        }
+
+        assertNull(RoutineShare.url(draft(SetPlan(grip = GripSpec(position = GripPosition("half/crimp"))))))
+        assertNull(RoutineShare.url(draft(SetPlan(grip = GripSpec(position = GripPosition("a".repeat(33)))))))
+        assertNull(RoutineShare.url(draft(SetPlan(grip = GripSpec(position = GripPosition(""))))))
+        assertNull(RoutineShare.url(draft(SetPlan(targetBasisRaw = "not a word"))))
+        assertNull(RoutineShare.url(draft(SetPlan(), basis = "not a word")))
+        // A ZERO-rep set travels too, so its strings are held to the same rule.
+        assertNull(RoutineShare.url(draft(SetPlan()).let { d ->
+            d.copy(plan = d.plan.copy(sets = d.plan.sets +
+                SetPlan(grip = GripSpec(position = GripPosition("half crimp")), repsPerSide = 0)))
+        }))
+
+        assertNotNull(RoutineShare.url(draft(SetPlan(grip = GripSpec(position = GripPosition("sloper"))))))
+        assertNotNull(RoutineShare.url(draft(SetPlan().withTargetBasis(TargetBasis.criticalForce))))
+    }
+
+    /// Nesting is refused by COUNTING, before a parser recurses into it: a 59-character
+    /// link of nothing but brackets once overflowed the stack. Depth is how many `[` and
+    /// `{` are open at once, the envelope's own brace included.
+    @Test
+    fun nestingDeeperThanSixtyFourIsUnreadableWithoutBeingParsed() {
+        fun nested(arrays: Int) = link(
+            """{"v":1,"plan":{"sets":[$oneSetJSON]},"future":""" +
+                "[".repeat(arrays) + "]".repeat(arrays) + "}",
+        )
+
+        // 1 (the envelope) + 63 = 64: the ceiling, not the wall.
+        assertEquals(1, RoutineShare.draft(nested(63)).plan.sets.size)
+        // 1 + 64 = 65.
+        assertImportFails(RoutineShareError.unreadable, nested(64))
+        // The attack itself: tens of kilobytes of brackets in a few dozen characters.
+        assertImportFails(RoutineShareError.unreadable, nested(15_000))
+        assertImportFails(
+            RoutineShareError.unreadable,
+            "getagrip://routine#" + base64url(compressed("[".repeat(30_000))),
+        )
+
+        // Brackets inside a STRING are text, however many there are — including after an
+        // escaped quote, which does not end the string.
+        val quoted = link(
+            """{"v":1,"plan":{"name":"\"${"[{".repeat(100)}","sets":[$oneSetJSON]}}""",
+        )
+        assertEquals(
+            ("\"" + "[{".repeat(100)).take(RoutineShare.maxNameScalars),
+            RoutineShare.draft(quoted).plan.name,
+            "read as a name (and capped like one), never counted as structure",
+        )
+    }
+
+    /// The decompressed cap is a backstop sized to the payload: the largest legal routine
+    /// inflates to about 6 KB.
+    @Test
+    fun aPayloadThatInflatesPastThirtyTwoKilobytesIsUnreadable() {
+        fun padded(bytes: Int): String {
+            val frame = """{"v":1,"plan":{"sets":[$oneSetJSON]},"pad":""}"""
+            return link(frame.replace("\"pad\":\"\"", "\"pad\":\"${"a".repeat(bytes - frame.length)}\""))
+        }
+
+        assertEquals(32 * 1024, RoutineShare.maxDecompressedBytes)
+        // Exactly on the cap still reads; one byte over, and a clean 33 KB, do not.
+        assertEquals(1, RoutineShare.draft(padded(32 * 1024)).plan.sets.size)
+        assertImportFails(RoutineShareError.unreadable, padded(32 * 1024 + 1))
+        assertImportFails(RoutineShareError.unreadable, padded(33 * 1024))
+    }
+
+    /// The whole link is measured before anything is derived from it. The https form lets
+    /// the test pad a WORKING link to either side of the line.
+    @Test
+    fun aLinkLongerThanTwentyKilobytesIsRefusedBeforeItIsParsed() {
+        val payload = assertNotNull(RoutineShare.url(RoutineDraft.starter)).substringAfter('#')
+        fun ofLength(length: Int): String {
+            val head = "https://example.com/"
+            val tail = "/routine#$payload"
+            return head + "a".repeat(length - head.length - tail.length) + tail
+        }
+
+        assertEquals(20 * 1024, RoutineShare.maxLinkLength)
+        val onTheLine = ofLength(RoutineShare.maxLinkLength)
+        assertEquals(RoutineShare.maxLinkLength, onTheLine.length)
+        assertEquals(6, RoutineShare.draft(onTheLine).plan.sets.size)
+        assertImportFails(RoutineShareError.unreadable, ofLength(RoutineShare.maxLinkLength + 1))
+        // The iOS suite's own case: a fragment a scanner percent-encoded three for one.
+        assertImportFails(RoutineShareError.unreadable, "getagrip://routine#" + "%41".repeat(7_000))
+
+        // Before ANY other work: an over-long string is refused as unreadable without
+        // first being parsed to find out whether it was a routine link at all.
+        assertImportFails(RoutineShareError.unreadable, "x".repeat(RoutineShare.maxLinkLength + 1))
+        assertImportFails(RoutineShareError.notARoutineLink, "x".repeat(RoutineShare.maxLinkLength))
+    }
+
+    // MARK: - The name is text
+
+    /// A routine's name is its title on the card, a notification and a CSV row. Bidi
+    /// controls reorder what surrounds them — how a name dresses itself as something
+    /// else — so they are dropped, every one.
+    @Test
+    fun bidiControlsAreDroppedFromAName() {
+        assertEquals("Dailygnp.exe", RoutineShare.sanitizedName("Daily\u202Egnp.exe"))
+        val everyControl = listOf(
+            0x061C, 0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+            0x2066, 0x2067, 0x2068, 0x2069,
+        )
+        for (control in everyControl) {
+            val name = "Max" + String(Character.toChars(control)) + "day"
+            assertEquals("Maxday", RoutineShare.sanitizedName(name), "U+%04X".format(control))
+        }
+        // Its neighbours on either side are ordinary characters and stay.
+        assertEquals("a\u2065b", RoutineShare.sanitizedName("a\u2065b"))
+        assertEquals("a\u202Fb", RoutineShare.sanitizedName("a\u202Fb"))
+    }
+
+    /// A title is one line everywhere it is drawn.
+    @Test
+    fun controlCharactersAndLineBreaksInANameBecomeASpace() {
+        assertEquals("Line one Line two", RoutineShare.sanitizedName("Line one\nLine two"))
+        assertEquals("a  b", RoutineShare.sanitizedName("a\r\nb"), "two controls, two spaces")
+        for (control in listOf(0x00, 0x09, 0x1B, 0x1F, 0x7F, 0x85, 0x9F, 0x2028, 0x2029)) {
+            val name = "a" + String(Character.toChars(control)) + "b"
+            assertEquals("a b", RoutineShare.sanitizedName(name), "U+%04X".format(control))
+        }
+        // …and one at either end is then trimmed away with the rest of the whitespace.
+        assertEquals("Daily", RoutineShare.sanitizedName("\n\tDaily\u0000\u2028"))
+        // The iOS suite's own three, so the two engines are pinned to the same strings.
+        assertEquals("Max day for two", RoutineShare.sanitizedName("Max\u202E day\nfor\u2028two\u200F"))
+        assertEquals("Daily  no-hangs", RoutineShare.sanitizedName("  \u0007Daily\u0000 no-hangs\r\n "))
+        assertEquals("R\u00E9glette 20 mm \u00B7 \u4E0A", RoutineShare.sanitizedName("R\u00E9glette 20 mm \u00B7 \u4E0A"))
+        // Either side of the two ranges is left alone.
+        assertEquals("a~b", RoutineShare.sanitizedName("a~b"))
+        assertEquals("a\u00A1b", RoutineShare.sanitizedName("a\u00A1b"))
+    }
+
+    /// Sixty SCALARS. Counted in UTF-16 units the cap could cut an emoji in half; counted
+    /// in grapheme clusters one base letter carried thousands of combining marks through.
+    @Test
+    fun aNameIsCappedAtSixtyCodePointsWithoutSplittingOne() {
+        assertEquals(60, RoutineShare.maxNameScalars)
+
+        // The 60th scalar is an astral emoji: two UTF-16 units, kept whole.
+        val grin = String(Character.toChars(0x1F600))
+        val emoji = RoutineShare.sanitizedName("a".repeat(59) + grin + "b".repeat(10))
+        assertEquals("a".repeat(59) + grin, emoji)
+        assertEquals(60, emoji.codePointCount(0, emoji.length))
+        assertEquals(61, emoji.length)
+        // Sixty of them: 120 units, and still not one more scalar than sixty.
+        val allEmoji = RoutineShare.sanitizedName(grin.repeat(200))
+        assertEquals(grin.repeat(60), allEmoji)
+
+        // One base letter under 5,000 combining acute accents is ONE grapheme cluster.
+        val stacked = RoutineShare.sanitizedName("e" + "\u0301".repeat(5_000))
+        assertEquals(60, stacked.codePointCount(0, stacked.length))
+        assertEquals("e" + "\u0301".repeat(59), stacked)
+
+        // The cut can expose a space; the second trim takes it.
+        assertEquals("a".repeat(59), RoutineShare.sanitizedName("a".repeat(59) + " " + "b".repeat(10)))
+        // Dropped and replaced characters are gone BEFORE the count, so they cost nothing.
+        assertEquals("a".repeat(60), RoutineShare.sanitizedName("\u202E".repeat(30) + "a".repeat(70)))
+    }
+
+    /// The trim is Foundation's set, not `trim()`'s: iOS removes a ZERO WIDTH SPACE at
+    /// either end of a name, and a recipient must not see a different name than the sender.
+    @Test
+    fun aNameIsTrimmedExactlyWhereIOSTrimsIt() {
+        assertEquals("Name", RoutineShare.sanitizedName("\u200BName\u200B"))
+        assertEquals("Name", RoutineShare.sanitizedName("\u00A0\u3000 Name \u2003\u205F"))
+        // An ordinary name is untouched, and cleaning a clean name changes nothing.
+        for (name in listOf("Daily no-hangs", "Séance du matin", "7:3 × 6", "日课", "")) {
+            assertEquals(name, RoutineShare.sanitizedName(name))
+            assertEquals(name, RoutineShare.sanitizedName(RoutineShare.sanitizedName(name)))
+        }
+    }
+
+    /// Applied at BOTH ends, so the sharer's screen and the recipient's cannot disagree.
+    @Test
+    fun aNameIsCleanedOnTheWayOutAndOnTheWayIn() {
+        val dressed = RoutineDraft.starter.let { d ->
+            d.copy(plan = d.plan.copy(name = "  Max\u202E day\nplan  "))
+        }
+        val outbound = RoutineShare.draft(assertNotNull(RoutineShare.url(dressed)))
+        assertEquals("Max day plan", outbound.plan.name)
+
+        // A code some other encoder wrote: the JSON escapes decode to the raw characters.
+        val inbound = RoutineShare.draft(
+            link("""{"v":1,"plan":{"name":"Max\u202E day\nplan","sets":[$oneSetJSON]}}"""),
+        )
+        assertEquals("Max day plan", inbound.plan.name)
+    }
+
     // MARK: - The future universal link
 
     /// Today's build must read the link tomorrow's build hands out, or every code shared

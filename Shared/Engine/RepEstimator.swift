@@ -134,7 +134,7 @@ struct Stopwatch: Equatable, Sendable {
 
     /// "0:42.3", "12:05.0", "1:02:03.4" — tenths always, hours only when there are any.
     static func label(_ seconds: TimeInterval) -> String {
-        let tenths = Int((Swift.max(0, seconds) * 10).rounded(.down))
+        let tenths = Int(saturating: (Swift.max(0, seconds) * 10).rounded(.down))
         let hours = tenths / 36_000
         let minutes = tenths / 600 % 60
         let secs = tenths / 10 % 60

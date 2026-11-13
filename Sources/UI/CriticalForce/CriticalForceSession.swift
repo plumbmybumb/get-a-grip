@@ -134,7 +134,7 @@ final class CriticalForceSession {
     private func publish() {
         publishPhase()
         let p = test.phase
-        let left = Int(test.remaining(at: now()).rounded(.up))
+        let left = Int(saturating: test.remaining(at: now()).rounded(.up))
         if secondsLeft != left { secondsLeft = left }
         let pull: Int = switch p {
         case .pulling(let rep): rep + 1

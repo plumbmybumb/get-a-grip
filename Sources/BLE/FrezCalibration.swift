@@ -120,6 +120,25 @@ final class FrezCoefficientResolver: GaugeCalibrationResolver {
 
     nonisolated static func cacheKey(serial: String) -> String { "frez.coefficient.\(serial)" }
 
+    /// The answer is `{"a": 0.0000123}`. Sixteen kilobytes is hundreds of times that and
+    /// still nothing to buffer; a body that keeps coming is not a calibration.
+    nonisolated static let maxResponseBytes = 16 * 1024
+
+    /// A serial is whatever the PERIPHERAL says it is, and any device can claim to be a
+    /// Dyno. This one string becomes a defaults key and a request carrying the app's
+    /// access key, so it has to look like a serial number: letters, digits and the four
+    /// separators serials use, at most 64 of them. Deliberately looser than Frez's
+    /// documented `FrezDyno-######` — that shape is unverified on hardware here, and a
+    /// rule that refused a real unit would cost its owner the gauge.
+    nonisolated static func isWellFormed(serial: String) -> Bool {
+        let bytes = serial.utf8
+        guard (1...64).contains(bytes.count) else { return false }
+        return bytes.allSatisfy { byte in
+            (0x30...0x39).contains(byte) || (0x41...0x5A).contains(byte) || (0x61...0x7A).contains(byte)
+                || byte == 0x2E || byte == 0x5F || byte == 0x3A || byte == 0x2D      // . _ : -
+        }
+    }
+
     /// The bundled key, or nil when the build carries none. An empty string is "none":
     /// `project.yml` defaults the setting to "" so forks and CI build without a key.
     static var bundledAccessKey: String? {
@@ -141,6 +160,8 @@ final class FrezCoefficientResolver: GaugeCalibrationResolver {
     }
 
     func calibration(forSerial serial: String) async -> Result<GaugeCalibration, GaugeCalibrationFailure> {
+        // Before the cache as well as the network: the key below is built from it.
+        guard Self.isWellFormed(serial: serial) else { return .failure(.invalidRequest) }
         // The cache first, and before the key check on purpose: a Dyno calibrated on a
         // build that had a key keeps working on one that does not.
         let key = Self.cacheKey(serial: serial)
@@ -163,6 +184,10 @@ final class FrezCoefficientResolver: GaugeCalibrationResolver {
         let response: HTTPURLResponse
         do {
             (data, response) = try await transport(request)
+        } catch let error as URLError where error.code == .dataLengthExceedsMaximum {
+            // The server answered and kept talking. That is an answer this app will not
+            // read, not a missing connection, and the two say different things on screen.
+            return .failure(.badResponse)
         } catch {
             return .failure(.network(error.localizedDescription))
         }
@@ -209,15 +234,40 @@ final class FrezCoefficientResolver: GaugeCalibrationResolver {
 
     /// One request, one ephemeral session, invalidated on the way out. No cookies, no
     /// cache, no background configuration, nothing that outlives the answer.
+    ///
+    /// Two things the default session does that this one must not: FOLLOW A REDIRECT
+    /// (`URLSession` re-sends custom headers to wherever it is pointed, and the header
+    /// here is the access key), and BUFFER WHATEVER ARRIVES (the body is read up to
+    /// `maxResponseBytes` and the transfer is cancelled past it).
     static let oneShotSession: Transport = { request in
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = timeoutSeconds
         configuration.timeoutIntervalForResource = timeoutSeconds
         configuration.waitsForConnectivity = false
         let session = URLSession(configuration: configuration)
-        defer { session.finishTasksAndInvalidate() }
-        let (data, response) = try await session.data(for: request)
+        // Cancel, not finish: on the over-long path the transfer is still running.
+        defer { session.invalidateAndCancel() }
+        let (bytes, response) = try await session.bytes(for: request, delegate: RedirectRefuser())
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        guard http.expectedContentLength <= Int64(maxResponseBytes) else {
+            throw URLError(.dataLengthExceedsMaximum)
+        }
+        var data = Data()
+        for try await byte in bytes {
+            guard data.count < maxResponseBytes else { throw URLError(.dataLengthExceedsMaximum) }
+            data.append(byte)
+        }
         return (data, http)
+    }
+
+    /// Answers every redirect with "no". The 3xx then arrives as the response itself,
+    /// which is not a 200 and reads as a bad answer — the key never leaves for a second
+    /// host. Stateless, hence safely `Sendable`.
+    private final class RedirectRefuser: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+        func urlSession(_ session: URLSession, task: URLSessionTask,
+                        willPerformHTTPRedirection response: HTTPURLResponse,
+                        newRequest request: URLRequest) async -> URLRequest? {
+            nil
+        }
     }
 }

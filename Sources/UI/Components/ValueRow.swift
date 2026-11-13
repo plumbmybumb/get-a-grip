@@ -596,7 +596,7 @@ struct IntValueRow: View {
             title: title,
             unit: unit,
             value: Binding(get: { Double(value) },
-                           set: { value = Int($0.rounded()) }),
+                           set: { value = Int(saturating: $0.rounded()) }),
             range: Double(range.lowerBound)...Double(range.upperBound),
             limit: limit.map { Double($0.lowerBound)...Double($0.upperBound) },
             step: Double(stepBy ?? step),

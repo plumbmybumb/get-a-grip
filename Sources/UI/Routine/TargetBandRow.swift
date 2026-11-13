@@ -181,7 +181,7 @@ struct TargetBandRow: View {
                 } else {
                     BandTrimmer(lo: trimLoBinding, hi: trimHiBinding,
                                 scale: SetPlan.percentRange, step: 0.05,
-                                format: { "\(Int(($0 * 100).rounded())) %" },
+                                format: { "\(Int(saturating: ($0 * 100).rounded())) %" },
                                 spokenUnit: unit == .criticalForce
                                     ? String(localized: "percent of critical force")
                                     : String(localized: "percent of max"))
@@ -508,7 +508,7 @@ struct TargetBandRow: View {
     }
 
     private func percentText(_ band: ClosedRange<Double>) -> String {
-        "\(Int((band.lowerBound * 100).rounded()))–\(Int((band.upperBound * 100).rounded())) %"
+        "\(Int(saturating: (band.lowerBound * 100).rounded()))–\(Int(saturating: (band.upperBound * 100).rounded())) %"
     }
 
 }

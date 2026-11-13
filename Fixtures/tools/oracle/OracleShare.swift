@@ -310,6 +310,66 @@ private func handBuiltCases() -> [(name: String, url: String)] {
         ("nestedHTTPSPathComponent", "https://getagrip.example/app/routine#" + starterPayload),
         ("percentEncodedFragment",
          "getagrip://routine#" + String(format: "%%%02X", firstByte) + String(starterPayload.dropFirst())),
+    ] + hostileCases()
+}
+
+/// What a stranger's code may NOT carry (2026-11 hardening). Each of these once decoded
+/// into something the app then had to live with: a kilogram target no `Int` could hold, a
+/// "position" a quarter of a megabyte long, nesting deep enough to overflow a parser's
+/// stack. The accepted neighbours are here too, so the rule is pinned from both sides.
+private func hostileCases() -> [(name: String, url: String)] {
+    func oneSet(position: String = "halfCrimp", extra: String = "") -> String {
+        #"{"grip":{"edgeMM":20,"fingers":"IMRL","position":"\#(position)"},"repsPerSide":3\#(extra)}"#
+    }
+    func plan(_ set: String, planExtra: String = "", envelopeExtra: String = "") -> String {
+        #"{"v":1\#(envelopeExtra),"plan":{"sets":[\#(set)]\#(planExtra)}}"#
+    }
+    func nested(_ depth: Int) -> String {
+        String(repeating: "[", count: depth) + String(repeating: "]", count: depth)
+    }
+    // The envelope with an empty pad, measured, so the pad can land the inflated payload
+    // exactly ON the 32 KiB cap and one byte past it.
+    let padded = { (pad: Int) in plan(oneSet(), envelopeExtra: #","pad":"\#(String(repeating: "A", count: pad))""#) }
+    let emptyPadBytes = padded(0).utf8.count
+    let cap = 32 * 1024
+
+    return [
+        // Kilogram targets: clamped by the plan decoder, never trusted.
+        ("absurdKilogramTargetIsClamped",
+         link(plan(oneSet(extra: #","targetLoKg":1e30,"targetHiKg":1e30"#)))),
+        ("negativeAndHugeKilogramTargetsAreClamped",
+         link(plan(oneSet(extra: #","targetLoKg":-5,"targetHiKg":1e308"#)))),
+        ("ordinaryKilogramTargetIsUntouched",
+         link(plan(oneSet(extra: #","targetLoKg":12.5,"targetHiKg":18"#)))),
+        // A position is a vocabulary word.
+        ("positionAtTheWordLimit", link(plan(oneSet(position: "a" + String(repeating: "B", count: 31))))),
+        ("positionOneLongerThanAWord", link(plan(oneSet(position: "a" + String(repeating: "B", count: 32))))),
+        ("positionFiveThousandCharacters", link(plan(oneSet(position: String(repeating: "x", count: 5000))))),
+        ("positionWithAKeySeparator", link(plan(oneSet(position: "half|Crimp")))),
+        ("positionWithASlash", link(plan(oneSet(position: "half/crimp")))),
+        ("positionStartingWithADigit", link(plan(oneSet(position: "2finger")))),
+        ("positionThatIsEmpty", link(plan(oneSet(position: "")))),
+        ("positionWithNonASCIILetters", link(plan(oneSet(position: #"r\u00e9glette"#)))),
+        // So is a target basis, on a set and on the plan.
+        ("unknownBasisWordSurvives", link(plan(oneSet(extra: #","targetBasis":"futureBasis""#)))),
+        ("setBasisThatIsNotAWord", link(plan(oneSet(extra: #","targetBasis":"critical force""#)))),
+        ("planBasisThatIsNotAWord", link(plan(oneSet(), planExtra: #","targetBasis":"max;x""#))),
+        // Nesting: the envelope is depth 1, so 63 brackets reach 64 and 64 reach 65.
+        ("nestingSixtyFourDeepIsRead", link(plan(oneSet(), envelopeExtra: #","x":\#(nested(63))"#))),
+        ("nestingSixtyFiveDeepIsRefused", link(plan(oneSet(), envelopeExtra: #","x":\#(nested(64))"#))),
+        ("bracketsInsideAStringAreNotNesting",
+         link(plan(oneSet(), planExtra: #","name":"\#(String(repeating: "[", count: 200))""#))),
+        // The inflated cap, from both sides.
+        ("payloadExactlyAtTheInflatedCap", link(padded(cap - emptyPadBytes))),
+        ("payloadOneByteOverTheInflatedCap", link(padded(cap - emptyPadBytes + 1))),
+        // A name is one line of text.
+        ("nameLosesBidiControlsAndLineBreaks",
+         link(plan(oneSet(), planExtra: #","name":"Max\u202e day\nfor\u2028 two\u200f""#))),
+        ("nameOfOneLetterUnderFiveHundredMarks",
+         link(plan(oneSet(), planExtra: #","name":"a\#(String(repeating: #"\u0301"#, count: 500))""#))),
+        ("nameCapNeverSplitsAnAstralScalar",
+         link(plan(oneSet(), planExtra:
+            #","name":"\#(String(repeating: "A", count: 59))\ud83d\ude00\ud83d\ude00""#))),
     ]
 }
 

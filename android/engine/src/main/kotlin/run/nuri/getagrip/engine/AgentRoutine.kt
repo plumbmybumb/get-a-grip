@@ -214,7 +214,14 @@ object AgentRoutine {
     // MARK: - Reading a reply
 
     const val maxSets = 50
-    const val maxNameCharacters = 60
+
+    /// Kept for the note that reports a shortened name; the cap itself is
+    /// `RoutineShare.maxNameScalars`, the same number.
+    const val maxNameCharacters = RoutineShare.maxNameScalars
+
+    /// 128 KiB of UTF-16: hundreds of times the longest reply an assistant writes around
+    /// a routine, and small enough that reading it is not a pause.
+    const val maxInputUnits = 128 * 1024
     val timedMaxRange = 3..60
     val sessionsPerDayRange = RoutineDraft.sessionsRange
     val kgRange = 0.0..250.0
@@ -223,6 +230,10 @@ object AgentRoutine {
 
     /// `makeID` is a seam for fixtures, which need the same set ids on every run.
     fun read(text: String, makeID: () -> UUID = { UUID.randomUUID() }): Outcome {
+        // A routine is a few hundred characters. The reader copies its input several
+        // times and runs on the main thread, so a clipboard holding megabytes was a stall
+        // waiting for one tap. UTF-16 units, the one length Swift and Kotlin both have.
+        if (text.length > maxInputUnits) return Outcome.Failed(Failure.unreadable)
         val source = Lenient.extractObject(text) ?: return Outcome.Failed(Failure.noRoutine)
         var root = (Lenient.parse(source) as? Lenient.Value.Obj)?.fields
             ?: return Outcome.Failed(Failure.unreadable)
@@ -253,7 +264,10 @@ object AgentRoutine {
 
         // Identity
         (Lenient.field(top, "name") as? Lenient.Value.Str)?.let { name ->
-            plan = plan.copy(name = Lenient.prefix(Lenient.trimmed(name.value), maxNameCharacters))
+            // The share link's own cleaning, not a second one: a pasted name reaches the
+            // same card, notification and CSV row, and a cap counted in grapheme clusters
+            // let one base letter carry thousands of combining marks through it.
+            plan = plan.copy(name = RoutineShare.sanitizedName(name.value))
         }
 
         // Hands
@@ -732,22 +746,13 @@ object Lenient {
         return if (characters.size <= count) text else characters.take(count).joinToString("")
     }
 
-    /// Foundation's `.whitespacesAndNewlines` trim: Z*, U+0009–U+000D and U+0085. Kotlin's
-    /// `trim()` also strips U+001C–U+001F, which Foundation keeps.
-    fun trimmed(text: String): String = text.trim { isWhitespaceOrNewline(it.code) }
+    /// Foundation's `.whitespacesAndNewlines` trim — the measured set in
+    /// `FoundationWhitespace`. Kotlin's `trim()` also strips U+001C–U+001F, which
+    /// Foundation keeps, and keeps U+0085 and U+200B, which Foundation strips.
+    fun trimmed(text: String): String = FoundationWhitespace.trimmed(text)
 
-    private fun isWhitespaceOrNewline(code: Int): Boolean =
-        code in 0x09..0x0D || code == 0x85 || isSeparator(code)
-
-    /// Foundation's `.whitespaces`: Zs and the tab.
-    private fun isHorizontalWhitespace(code: Int): Boolean =
-        code == 0x09 || Character.getType(code) == Character.SPACE_SEPARATOR.toInt()
-
-    private fun isSeparator(code: Int): Boolean = when (Character.getType(code)) {
-        Character.SPACE_SEPARATOR.toInt(), Character.LINE_SEPARATOR.toInt(),
-        Character.PARAGRAPH_SEPARATOR.toInt() -> true
-        else -> false
-    }
+    /// Foundation's `.whitespaces`.
+    private fun isHorizontalWhitespace(code: Int): Boolean = FoundationWhitespace.isWhitespace(code)
 
     private fun isAlphanumeric(cp: Int): Boolean = when (Character.getType(cp)) {
         Character.UPPERCASE_LETTER.toInt(), Character.LOWERCASE_LETTER.toInt(),

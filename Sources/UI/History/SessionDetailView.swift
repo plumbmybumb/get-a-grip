@@ -90,7 +90,7 @@ struct SessionDetailContent: Identifiable, Hashable {
             : []
         plannedReps = log.plannedReps
         completedReps = log.completedReps
-        heldSeconds = Int(log.totalHeldSeconds.rounded())
+        heldSeconds = Int(saturating: log.totalHeldSeconds.rounded())
         peakKg = log.peakKg
         avgKg = log.avgKg
         grade = log.grade

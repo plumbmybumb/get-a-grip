@@ -242,7 +242,7 @@ struct RoutineCard: View, Equatable {
     /// The spoken (and colourblind-proof) form of the rung's colour.
     private var intensitySuffix: String {
         guard let peak = summary.peakIntensity else { return "" }
-        return String(localized: ". Peak target \(Int((peak * 100).rounded())) percent of max.")
+        return String(localized: ". Peak target \(Int(saturating: (peak * 100).rounded())) percent of max.")
     }
 
     @ViewBuilder private var menuItems: some View {

@@ -31,6 +31,7 @@ import run.nuri.getagrip.ble.ProgressorClient
 import run.nuri.getagrip.ble.PacketBoundary
 import run.nuri.getagrip.ble.ProgressorClientDiagnostic
 import run.nuri.getagrip.ble.ProgressorConnectionState
+import run.nuri.getagrip.ble.SamplePlausibility
 import run.nuri.getagrip.ble.ScanStartBudget
 import run.nuri.getagrip.ble.StreamStartCause
 import run.nuri.getagrip.ble.StreamStopCause
@@ -836,6 +837,15 @@ class DeviceStore(
     }
 
     private fun ingest(sample: ForceSample) {
+        // THE ONE DOOR. Every codec has its own plausibility ceiling, and the one that did
+        // not let a 1e33 kg reading through to the peak, the runner and history. A ceiling
+        // in each codec is a rule the next codec forgets; this is where a reading becomes
+        // app state — current kg, peak, trace, `onSample`, `onTracePoint` — for every
+        // client there is or will be. A refused reading is not a signal either: it leaves
+        // the freshness clock alone, so a gauge sending only nonsense reads as silent.
+        if (!isPlausible(sample.kg)) return
+        // A queued notification can outlive Stop. It is historical wire traffic, not a new
+        // live reading, peak or runner sample after measurement ended.
         if (!isStreaming) return
         pipelineDiagnostics.sample()
         publishCurrentKg(sample.kg)
@@ -1011,6 +1021,12 @@ class DeviceStore(
     }
 
     companion object {
+        /// The most a reading may be, either way, and still become app state — see
+        /// `SamplePlausibility`, which the app-side tare shares, and `ingest`.
+        const val maxAcceptedKilograms: Double = SamplePlausibility.maxAcceptedKilograms
+
+        fun isPlausible(kg: Double): Boolean = SamplePlausibility.isPlausible(kg)
+
         /// ~6 s of history: the shape of a pull without an unreadable smear. Sized in
         /// seconds, not points: 480 points was six seconds at the Progressor's 80 Hz but
         /// under two at the Dyno's 250 Hz.

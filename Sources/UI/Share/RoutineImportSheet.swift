@@ -137,7 +137,7 @@ struct RoutineImportSheet: View {
 
     private var intensitySuffix: String {
         guard let peak = summary.peakIntensity else { return "" }
-        return String(localized: ". Peak target \(Int((peak * 100).rounded())) percent of max.")
+        return String(localized: ". Peak target \(Int(saturating: (peak * 100).rounded())) percent of max.")
     }
 
     // MARK: - The plan
@@ -226,8 +226,8 @@ struct RoutineImportSheet: View {
         if let band = set.targetBand {
             parts.append(String(localized: "\(weightUnit.number(band.lowerBound))–\(weightUnit.number(band.upperBound)) \(weightUnit.symbol) target"))
         } else if let band = set.targetPercentBand {
-            let lo = Int((band.lowerBound * 100).rounded())
-            let hi = Int((band.upperBound * 100).rounded())
+            let lo = Int(saturating: (band.lowerBound * 100).rounded())
+            let hi = Int(saturating: (band.upperBound * 100).rounded())
             // Which max it is of: a percentage of a timed max is a different load, and a
             // percentage of critical force is not of a max at all.
             if set.targetBasis == .criticalForce {

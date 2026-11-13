@@ -882,7 +882,7 @@ struct SessionRunner: Sendable {
         if nearest >= 1, abs(remaining - nearest) <= tolerance {
             return Int(nearest)
         }
-        return Int(ceil(remaining))
+        return Int(saturating: ceil(remaining))
     }
 
     /// The fraction of the CURRENT phase remaining, 1…0 as its clock runs down.

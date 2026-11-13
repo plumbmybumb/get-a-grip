@@ -216,14 +216,14 @@ struct RoutineTargetRow: View, Equatable {
 
     private var valueText: String {
         if let band {
-            return "\(Int((band.lowerBound * 100).rounded()))–\(Int((band.upperBound * 100).rounded())) %"
+            return "\(Int(saturating: (band.lowerBound * 100).rounded()))–\(Int(saturating: (band.upperBound * 100).rounded())) %"
         }
         return setsVary ? String(localized: "Per set") : String(localized: "None")
     }
 
     private func percentBinding(_ edge: KeyPath<ClosedRange<Double>, Double>) -> Binding<Int> {
         Binding(
-            get: { Int(((band ?? 0.20...0.30)[keyPath: edge] * 100).rounded()) },
+            get: { Int(saturating: ((band ?? 0.20...0.30)[keyPath: edge] * 100).rounded()) },
             set: { new in
                 let current = band ?? 0.20...0.30
                 let value = Double(min(max(new, 1), 100)) / 100

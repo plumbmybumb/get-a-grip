@@ -102,10 +102,10 @@ struct CriticalForceHeadline: View {
     private var ratioLine: String? {
         var parts: [String] = []
         if let pct = summary.percentOfMax {
-            parts.append(String(localized: "\(Int(pct.rounded())) % of your max"))
+            parts.append(String(localized: "\(Int(saturating: pct.rounded())) % of your max"))
         }
         if let pct = summary.percentOfBodyMass {
-            parts.append(String(localized: "\(Int(pct.rounded())) % of body weight"))
+            parts.append(String(localized: "\(Int(saturating: pct.rounded())) % of body weight"))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -185,7 +185,7 @@ struct CriticalForceHandColumn: View {
                 .foregroundStyle(Ink.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
-                Text(summary.percentOfMax.map { String(localized: "\(Int($0.rounded())) % of max") } ?? " ")
+                Text(summary.percentOfMax.map { String(localized: "\(Int(saturating: $0.rounded())) % of max") } ?? " ")
                     .font(.system(.footnote))
                     .foregroundStyle(Ink.secondary)
             }

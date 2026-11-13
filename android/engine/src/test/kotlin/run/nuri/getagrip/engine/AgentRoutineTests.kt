@@ -87,6 +87,47 @@ class AgentRoutineTests {
         assertEquals(AgentRoutine.Failure.newerFormat, failure("""{"format": "get-a-grip-routine/2", "sets": [{}]}"""))
     }
 
+    /// A routine is a few hundred characters; the reader copies its input several times on
+    /// the main thread. Past the cap the paste is not read at all — however good the
+    /// routine sitting at the front of it.
+    @Test
+    fun aPasteLongerThanTheCapIsNotRead() {
+        assertEquals(131_072, AgentRoutine.maxInputUnits)
+        val routine = """{"sets": [{"edgeMm": 20, "pulls": 6}]}"""
+
+        val onTheLine = routine + " ".repeat(AgentRoutine.maxInputUnits - routine.length)
+        assertEquals(AgentRoutine.maxInputUnits, onTheLine.length)
+        assertEquals(1, read(onTheLine).draft.plan.sets.size)
+
+        assertEquals(AgentRoutine.Failure.unreadable, failure("$onTheLine "))
+        assertEquals(AgentRoutine.Failure.unreadable, failure("x".repeat(4_000_000)))
+        // UTF-16 units, the one length both platforms have: an astral emoji is two.
+        val grin = String(Character.toChars(0x1F600))
+        assertEquals(
+            AgentRoutine.Failure.unreadable,
+            failure(routine + grin.repeat((AgentRoutine.maxInputUnits - routine.length) / 2 + 1)),
+        )
+    }
+
+    /// A pasted name reaches the same card, notification and CSV row as a scanned one, so
+    /// it takes the share link's own cleaning rather than a second, weaker one.
+    @Test
+    fun aPastedNameIsCleanedLikeAScannedOne() {
+        fun named(name: String) =
+            read("""{"name": "$name", "sets": [{"edgeMm": 20, "pulls": 6}]}""").draft.plan.name
+
+        assertEquals("Recovery 7:3", named("  Recovery 7:3  "))
+        assertEquals("Maxday", named("Max\u202Eday"))
+        assertEquals("Line one Line two", named("Line one\\nLine two"))
+        assertEquals("a".repeat(60), named("a".repeat(200)))
+        // One grapheme cluster, 5,001 scalars: the old cap counted it as one character.
+        val stacked = named("e" + "\u0301".repeat(5_000))
+        assertEquals(60, stacked.codePointCount(0, stacked.length))
+        // Controls are dropped before the count, as on iOS, so they cost none of the sixty.
+        assertEquals("a".repeat(60), named("\u202E".repeat(10) + "a".repeat(70)))
+        assertEquals(RoutineShare.maxNameScalars, AgentRoutine.maxNameCharacters)
+    }
+
     /// Kotlin-only: the places Swift's `Character` and number formatting differ from the
     /// JVM's defaults, each of which would make the two readers disagree.
     @Test
@@ -102,5 +143,9 @@ class AgentRoutineTests {
         assertEquals(AgentRoutine.Failure.noSets, failure("{hold: 1f}"))
         assertEquals(10.0, Lenient.seconds(Lenient.Value.Str("10s")))
         assertEquals(120.0, Lenient.seconds(Lenient.Value.Str("2 min")))
+        // Foundation's whitespace, measured: a ZERO WIDTH SPACE and a NEXT LINE are trimmed,
+        // a unit separator (which `trim()` would take) is not.
+        assertEquals("x", Lenient.trimmed("\u200B\u0085 x\u3000\u2029"))
+        assertEquals("\u001Fx", Lenient.trimmed("\u001Fx"))
     }
 }

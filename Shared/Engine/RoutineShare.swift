@@ -60,7 +60,8 @@ enum RoutineShare {
     /// recipient see the same truncated name.
     static func url(for draft: RoutineDraft) -> URL? {
         var plan = draft.plan
-        guard !plan.executable.sets.isEmpty, plan.sets.count <= maxSets else { return nil }
+        guard !plan.executable.sets.isEmpty, plan.sets.count <= maxSets,
+              hasWireSafeStrings(plan) else { return nil }
         plan.name = sanitizedName(plan.name)
         let envelope = Envelope(v: currentVersion,
                                 plan: plan,
@@ -81,6 +82,14 @@ enum RoutineShare {
     /// fails closed, and nothing is trusted to be the size it says it is.
     static func draft(from url: URL) throws -> RoutineDraft {
         guard isRoutineLink(url) else { throw RoutineShareError.notARoutineLink }
+        // The WHOLE link, in BYTES, before anything is derived from it. The gate used to
+        // sit after `fragment(percentEncoded:)` — which had already decoded and copied
+        // the fragment — and counted Characters, so a few base letters each carrying
+        // megabytes of combining marks walked through it. Bytes of the string as it
+        // arrived cannot be dressed up as fewer.
+        guard url.absoluteString.utf8.count <= maxLinkBytes else {
+            throw RoutineShareError.unreadable
+        }
         // PERCENT-DECODED: base64url needs no encoding, but a scanner or link shortener
         // may percent-encode unreserved characters, and refusing that fails an intact
         // code. nil (no '#': a bare typed scheme) differs from empty (a bad scan).
@@ -88,10 +97,10 @@ enum RoutineShare {
             throw RoutineShareError.notARoutineLink
         }
         guard !fragment.isEmpty else { throw RoutineShareError.unreadable }
-        // Length-bounded BEFORE any string work, or a 40 MB link allocates multiples of
-        // itself on the main actor just to be refused. 4/3 is base64's expansion, so this
-        // is `maxCompressedBytes` measured in characters.
-        guard fragment.count <= maxCompressedBytes * 4 / 3 + 4 else {
+        // 4/3 is base64's expansion, so this is `maxCompressedBytes` measured in base64
+        // characters — and in UTF-8 BYTES, which for base64url is the same number and for
+        // anything else is larger.
+        guard fragment.utf8.count <= maxCompressedBytes * 4 / 3 + 4 else {
             throw RoutineShareError.unreadable
         }
 
@@ -106,6 +115,10 @@ enum RoutineShare {
         }
         let json = inflated as Data
         guard json.count <= maxDecompressedBytes else { throw RoutineShareError.unreadable }
+        // Nesting, before a parser recurses into it. Foundation stops at its own depth
+        // limit; the Kotlin parser does not and overflowed its stack on a 59-character
+        // link. One explicit number gives both platforms the same answer.
+        guard !exceedsNestingDepth(json) else { throw RoutineShareError.unreadable }
 
         // Version BEFORE the full decode: a future format may reshape the plan and must
         // read as "update the app", not "damaged", which the strict plan decode would say.
@@ -121,6 +134,11 @@ enum RoutineShare {
         // Counted on the RAW sets, not the executable ones: this cap is about the size of
         // the thing that arrived, not about how much of it would run.
         guard envelope.plan.sets.count <= maxSets else { throw RoutineShareError.tooLarge }
+        // The plan decoder keeps a grip position and a target basis VERBATIM, which is
+        // right for a blob this app wrote and wrong for a stranger's: a 687-character
+        // link once carried a 255,000-character "position" into the preview, the saved
+        // routine and every pull of every session logged from it.
+        guard hasWireSafeStrings(envelope.plan) else { throw RoutineShareError.unreadable }
 
         var plan = envelope.plan
         // NO sets at all is damage: the encoder never builds a code for an empty plan, and
@@ -233,15 +251,108 @@ enum RoutineShare {
     /// before it exists, so 4 KB compressed caps the transient allocation at ~4 MB. A
     /// legal 50-set routine is ~1.6 KB.
     private static let maxCompressedBytes = 4 * 1024
-    private static let maxDecompressedBytes = 256 * 1024
+    /// A backstop behind the compressed cap, sized to the payload rather than to the
+    /// transient: the largest legal routine (50 sets, every field set) inflates to about
+    /// 6 KB, so 32 KB is five times the real thing and an eighth of what this used to
+    /// admit. Everything a stranger can smuggle rides inside this number.
+    private static let maxDecompressedBytes = 32 * 1024
+    /// The link as a string. A full 4 KB payload is 5,462 base64 characters; a scanner
+    /// that percent-encodes every one of them triples that. 20 KB clears the worst
+    /// honest case and refuses everything else before a single copy is made.
+    private static let maxLinkBytes = 20 * 1024
     private static let maxSets = 50
-    private static let maxNameCharacters = 60
+    /// Unicode SCALARS, not Characters: one Character can be a base letter under
+    /// thousands of combining marks, so a grapheme cap bounds what is drawn and nothing
+    /// about what is stored. Scalars are also the one unit Swift and Kotlin count alike.
+    static let maxNameScalars = 60
+    /// A real payload nests five deep (envelope, plan, sets, set, grip).
+    private static let maxNestingDepth = 64
+    /// A vocabulary word from a stranger: see `isWireToken`.
+    private static let maxTokenBytes = 32
 
-    /// One trim + cap, applied on encode AND decode, so the sharer's screen and the
-    /// recipient's can never disagree about what a too-long name became.
-    private static func sanitizedName(_ name: String) -> String {
-        String(name.trimmingCharacters(in: .whitespacesAndNewlines)
-            .prefix(maxNameCharacters))
+    /// One cleaning, applied on encode AND decode, so the sharer's screen and the
+    /// recipient's can never disagree about what a name became. It is the routine's
+    /// title on the card, the lock screen and a notification, so it has to be TEXT:
+    ///
+    /// - bidi controls are dropped — they reorder what surrounds them, which is how a
+    ///   name dresses itself as something else;
+    /// - control characters and the two Unicode line breaks become a space — a title is
+    ///   one line everywhere it is drawn, and a CSV row is one line too;
+    /// - then trim, cap at `maxNameScalars`, and trim what the cut exposed.
+    static func sanitizedName(_ name: String) -> String {
+        var cleaned = String.UnicodeScalarView()
+        for scalar in name.unicodeScalars {
+            switch scalar.value {
+            case 0x061C, 0x200E, 0x200F, 0x202A...0x202E, 0x2066...0x2069:
+                continue
+            case 0x00...0x1F, 0x7F...0x9F, 0x2028, 0x2029:
+                cleaned.append(" ")
+            default:
+                cleaned.append(scalar)
+            }
+        }
+        let trimmed = String(cleaned).trimmingCharacters(in: .whitespacesAndNewlines)
+        let capped = String(String.UnicodeScalarView(trimmed.unicodeScalars.prefix(maxNameScalars)))
+        return capped.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Every string the plan decoder keeps verbatim, checked as a vocabulary word. The
+    /// name is cleaned instead (`sanitizedName`); fingers and hands decode into closed
+    /// types and keep nothing of what arrived.
+    private static func hasWireSafeStrings(_ plan: SessionPlan) -> Bool {
+        guard plan.targetBasisRaw.map(isWireToken) ?? true else { return false }
+        return plan.sets.allSatisfy { set in
+            isWireToken(set.grip.position.rawValue)
+                && (set.targetBasisRaw.map(isWireToken) ?? true)
+        }
+    }
+
+    /// An ASCII letter followed by at most 31 ASCII letters or digits — the shape of
+    /// every position and basis this app has ever written (`halfCrimp`, `criticalForce`)
+    /// and of any a newer build is likely to add, so `sloper` still round-trips. What it
+    /// refuses is everything that is not a word: length, separators that would forge a
+    /// `GripSpec.key` or a CSV column, and text that renders as something else.
+    private static func isWireToken(_ raw: String) -> Bool {
+        let bytes = raw.utf8
+        guard (1...maxTokenBytes).contains(bytes.count),
+              let first = bytes.first, isASCIILetter(first) else { return false }
+        return bytes.allSatisfy { isASCIILetter($0) || (0x30...0x39).contains($0) }
+    }
+
+    private static func isASCIILetter(_ byte: UInt8) -> Bool {
+        (0x41...0x5A).contains(byte) || (0x61...0x7A).contains(byte)
+    }
+
+    /// Brackets outside JSON strings, counted without parsing. Unbalanced input may read
+    /// shallow here; it is not JSON, and the decoder says so a line later.
+    private static func exceedsNestingDepth(_ json: Data) -> Bool {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for byte in json {
+            if inString {
+                if escaped {
+                    escaped = false
+                } else if byte == 0x5C {
+                    escaped = true
+                } else if byte == 0x22 {
+                    inString = false
+                }
+                continue
+            }
+            switch byte {
+            case 0x22:
+                inString = true
+            case 0x5B, 0x7B:
+                depth += 1
+                if depth > maxNestingDepth { return true }
+            case 0x5D, 0x7D:
+                depth -= 1
+            default:
+                break
+            }
+        }
+        return false
     }
 
     /// `.sortedKeys` gives the round-trip tests one canonical form. Not a cross-device
@@ -271,7 +382,7 @@ enum RoutineShare {
         var padded = string
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
-        let remainder = padded.count % 4
+        let remainder = padded.utf8.count % 4
         if remainder == 1 { return nil }
         if remainder > 0 { padded += String(repeating: "=", count: 4 - remainder) }
         return Data(base64Encoded: padded)

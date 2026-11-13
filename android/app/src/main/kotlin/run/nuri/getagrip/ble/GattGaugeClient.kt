@@ -16,6 +16,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -801,6 +802,11 @@ class GattGaugeClient(
             }
         }
         radioReceiver = receiver
+        // No export flag, on purpose: this receiver hears ONE broadcast and it is a protected
+        // system one, which is the case the platform says to register without a flag. A
+        // not-exported receiver hears only senders running as the system uid, and whether
+        // the Bluetooth stack's own process counts is not something to find out on a
+        // user's phone by missing "Bluetooth turned off".
         appContext.registerReceiver(receiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
     }
 
@@ -909,6 +915,16 @@ class GattGaugeClient(
             )
             return
         }
+        // A serial is whatever the PERIPHERAL says it is, and any device can claim to be a
+        // gauge that needs one. Refused HERE, before it is published in a status, handed to
+        // a resolver or turned into a cache key — and without the string itself, which is
+        // not a serial and has no business in the app's state.
+        if (!FrezCoefficientResolver.isWellFormed(serial)) {
+            reportCalibration(
+                GaugeCalibrationStatus.Failed(null, GaugeCalibrationFailure.InvalidRequest),
+            )
+            return
+        }
         val resolver = calibration
         if (resolver == null) {
             reportCalibration(
@@ -920,7 +936,18 @@ class GattGaugeClient(
         val resolveGeneration = generation
         calibrationJob?.cancel()
         calibrationJob = scope.launch(Dispatchers.Main.immediate) {
-            val answer = resolver.calibration(serial)
+            // Nothing may leave this coroutine but a cancellation: the scope has no
+            // handler, so an exception a resolver let slip would take the app down over a
+            // calibration lookup. It is reported as the lookup failing, which it did.
+            val answer = try {
+                resolver.calibration(serial)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                GaugeCalibrationAnswer.Unavailable(
+                    GaugeCalibrationFailure.Network(error.message ?: error.toString()),
+                )
+            }
             if (generation != resolveGeneration || !state.isConnected) return@launch
             calibrationJob = null
             when (answer) {

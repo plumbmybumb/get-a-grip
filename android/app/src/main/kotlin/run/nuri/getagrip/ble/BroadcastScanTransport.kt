@@ -73,6 +73,11 @@ internal class AndroidBroadcastScanTransport(context: Context) : BroadcastScanTr
                 if (intent?.action == BluetoothAdapter.ACTION_STATE_CHANGED) onChanged()
             }
         }
+        // No export flag, on purpose: this receiver hears ONE broadcast and it is a protected
+        // system one, which is the case the platform says to register without a flag. A
+        // not-exported receiver hears only senders running as the system uid, and whether
+        // the Bluetooth stack's own process counts is not something to find out on a
+        // user's phone by missing "Bluetooth turned off".
         appContext.registerReceiver(next, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
         receiver = next
     }

@@ -984,7 +984,7 @@ private struct SessionRow: View {
             return log.kind.isClimb ? String(localized: "At the climbing gym") : String(localized: "Away from the gauge")
         }
         guard log.kind != .benchmark else { return String(localized: "Tested your maxes") }
-        let effort = String(localized: "\(log.completedReps)/\(log.plannedReps) pulls · \(PlanMath.clockText(Int(log.totalHeldSeconds.rounded())))")
+        let effort = String(localized: "\(log.completedReps)/\(log.plannedReps) pulls · \(PlanMath.clockText(Int(saturating: log.totalHeldSeconds.rounded())))")
         guard log.peakKg > 0 else { return effort }
         return effort + " · " + String(localized: "\(weightUnit.number(log.peakKg)) \(weightUnit.symbol)")
     }
@@ -1065,7 +1065,7 @@ private struct SessionRow: View {
                 name,
                 when,
                 String(localized: "\(log.completedReps) of \(log.plannedReps) pulls completed"),
-                String(localized: "\(Int(log.totalHeldSeconds.rounded())) seconds under tension"),
+                String(localized: "\(Int(saturating: log.totalHeldSeconds.rounded())) seconds under tension"),
             ]
             if log.peakKg > 0 {
                 parts.append(String(localized: "peak \(weightUnit.number(log.peakKg)) \(weightUnit.spokenName)"))

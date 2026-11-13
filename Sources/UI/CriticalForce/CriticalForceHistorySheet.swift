@@ -88,7 +88,7 @@ struct CriticalForceHistorySheet: View {
                 Text(record.side == .both ? String(localized: "Both hands") : record.side.name)
                     .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(Ink.secondary)
-                Text(record.percentOfMax.map { String(localized: "\(Int($0.rounded())) % of max") }
+                Text(record.percentOfMax.map { String(localized: "\(Int(saturating: $0.rounded())) % of max") }
                      ?? String(localized: "\(record.repsRun) pulls"))
                     .font(.system(.footnote))
                     .foregroundStyle(Ink.tertiary)

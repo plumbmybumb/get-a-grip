@@ -319,8 +319,8 @@ enum AnalysisExport {
             a.recordedAt != b.recordedAt ? a.recordedAt < b.recordedAt : a.id.uuidString < b.id.uuidString
         }
         for t in ordered {
-            let pctMax = t.maxAtTestKg.flatMap { $0 > 0 ? String(Int((t.criticalForceKg / $0 * 100).rounded())) : nil } ?? "—"
-            let pctBW = t.bodyMassKg.flatMap { $0 > 0 ? String(Int((t.criticalForceKg / $0 * 100).rounded())) : nil } ?? "—"
+            let pctMax = t.maxAtTestKg.flatMap { $0 > 0 ? String(Int(saturating: (t.criticalForceKg / $0 * 100).rounded())) : nil } ?? "—"
+            let pctBW = t.bodyMassKg.flatMap { $0 > 0 ? String(Int(saturating: (t.criticalForceKg / $0 * 100).rounded())) : nil } ?? "—"
             out.append("| \(isoDay(t.day)) | \(gripCode(t.grip)) | \(handCode(t.side)) | \(kgText(t.criticalForceKg)) | \(pctMax) | \(pctBW) | \(String(format: "%.0f", t.wPrimeKgS)) | \(t.endForceKg.map(kgText) ?? "—") | \(t.repsRun) | \(t.restsKept)/\(t.restsTotal) |")
         }
         out.append("")
@@ -693,7 +693,7 @@ enum AnalysisExport {
 
     static func percentText(_ kg: Double, maxKg: Double?) -> String {
         guard let maxKg, maxKg > 0, kg.isFinite, kg > 0 else { return blank }
-        return "\(Int((kg / maxKg * 100).rounded()))%"
+        return "\(Int(saturating: (kg / maxKg * 100).rounded()))%"
     }
 
     static func axisText(_ raw: Int?) -> String {
@@ -713,7 +713,7 @@ enum AnalysisExport {
     }
 
     static func durationText(_ seconds: Double) -> String {
-        let total = Int(seconds.rounded())
+        let total = Int(saturating: seconds.rounded())
         guard total > 0 else { return "0s" }
         let hours = total / 3600
         let minutes = (total % 3600) / 60
@@ -982,16 +982,40 @@ extension AnalysisExport {
 
     /// RFC 4180 quoting, with formula protection for user-authored names and notes.
     /// Spaces before a formula prefix are ignored by some spreadsheet importers.
-    private static func csvCell(_ value: String) -> String {
+    static func csvCell(_ value: String) -> String {
+        // A plain number is DATA. The guard below used to run on these too, so a
+        // negative reading left as the text `'-0.3` and no spreadsheet could sum it.
+        if isPlainNumber(value) { return value }
         var text = value
-        if let first = text.trimmingCharacters(in: .whitespacesAndNewlines).first,
-           "=+-@".contains(first) { text = "'" + text }
-        if text.first == "\t" || text.first == "\r" { text = "'" + text }
-        // Scalars matter: Swift treats CRLF as one Character. Match both isolated
-        // line endings and CRLF without relying on grapheme comparisons.
-        if text.unicodeScalars.contains(where: { [34, 44, 13, 10].contains($0.value) }) {
+        // SCALARS throughout, never Characters: `=` under a combining mark or a variation
+        // selector is one Character that does not equal "=", and a spreadsheet does not
+        // care — it reads the first code point. CRLF is likewise one Character.
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let first = trimmed.unicodeScalars.first, [61, 43, 45, 64].contains(first.value) {
+            text = "'" + text                                   // = + - @
+        }
+        if let first = text.unicodeScalars.first, first.value == 9 || first.value == 13 {
+            text = "'" + text
+        }
+        // RFC 4180's quote, comma and line breaks — and `;` and TAB, which are the field
+        // separator wherever the list separator is not a comma (French, German). Unquoted,
+        // `x;=HYPERLINK(…)` re-split there into a cell that began with `=`.
+        if text.unicodeScalars.contains(where: { [34, 44, 13, 10, 59, 9].contains($0.value) }) {
             return "\"" + text.replacingOccurrences(of: "\"", with: "\"\"") + "\""
         }
         return text
+    }
+
+    /// `^-?[0-9]+(\.[0-9]+)?$` — exactly what `csvNumber` and the integer columns write.
+    private static func isPlainNumber(_ text: String) -> Bool {
+        var bytes = Array(text.utf8)[...]
+        if bytes.first == 0x2D { bytes = bytes.dropFirst() }
+        let whole = bytes.prefix { (0x30...0x39).contains($0) }
+        guard !whole.isEmpty else { return false }
+        bytes = bytes.dropFirst(whole.count)
+        if bytes.isEmpty { return true }
+        guard bytes.first == 0x2E else { return false }
+        let fraction = bytes.dropFirst()
+        return !fraction.isEmpty && fraction.allSatisfy { (0x30...0x39).contains($0) }
     }
 }

@@ -234,6 +234,24 @@ data class SetPlan(
         /// target of nothing.
         val percentRange = 0.01..1.0
 
+        /// A typed kilogram target as STORED. Not the editor's range — that one grows with
+        /// the band and the strongest max on file — but a ceiling no hand reaches, the same
+        /// order as the gauges' own plausibility bounds. It exists because these two fields
+        /// were the only numbers in a routine the decoder took on trust: a share link
+        /// carrying `1e30` read as a 2e28-fold intensity against any max on file. Every
+        /// consumer divides by, multiplies by or formats this number; a bound here is a
+        /// bound everywhere.
+        val kgRange = 0.0..1000.0
+
+        /// One decoded kilogram endpoint: absent stays absent, a non-finite value carries
+        /// nothing, and anything else lands inside `kgRange`. Applied on EVERY decode,
+        /// stored blobs included, so a routine saved before the bound existed heals on its
+        /// next read.
+        fun kilograms(raw: Double?): Double? {
+            if (raw == null || !raw.isFinite()) return null
+            return kgRange.clamping(raw)
+        }
+
         /// A timed-max length as stored: positive and within the hold range, else null (the
         /// peak) — the meaning every routine had before the field existed.
         fun maxSeconds(raw: Int?): Int? = raw?.takeIf { it > 0 }?.let { holdRange.clamping(it) }
@@ -271,8 +289,8 @@ data class SetPlan(
             repsPerSide = repsRange.clamping(o.intOr("repsPerSide", 6)),
             holdSeconds = o.optionalInt("holdSeconds")?.let { holdRange.clamping(it) },
             restSeconds = o.optionalInt("restSeconds")?.let { restRange.clamping(it) },
-            targetLoKg = o.optionalDouble("targetLoKg"),
-            targetHiKg = o.optionalDouble("targetHiKg"),
+            targetLoKg = kilograms(o.optionalDouble("targetLoKg")),
+            targetHiKg = kilograms(o.optionalDouble("targetHiKg")),
             targetLoPercent = o.optionalDouble("targetLoPercent")?.let { percentRange.clamping(it) },
             targetHiPercent = o.optionalDouble("targetHiPercent")?.let { percentRange.clamping(it) },
             targetMaxSeconds = maxSeconds(o.optionalInt("targetMaxSeconds")),

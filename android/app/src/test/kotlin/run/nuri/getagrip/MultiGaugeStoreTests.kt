@@ -277,6 +277,42 @@ class MultiGaugeStoreTests {
         )
     }
 
+    /// **The offset can only ever be a reading the store would have taken.** A NaN captured
+    /// as the zero turned every later reading into NaN for as long as the link lived, and a
+    /// 1e33 buried them all — so an implausible reading is never remembered, and a tare
+    /// tapped right after one zeroes against the last real reading instead.
+    @Test
+    fun softwareTareNeverCapturesANonFiniteOrAbsurdReading() {
+        val nonsense = listOf(
+            Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY,
+            1e33, -1e33, 1500.5, -1500.5,
+        )
+
+        val tare = SoftwareTare()
+        tare.value(3.0)
+        for (raw in nonsense) {
+            tare.value(raw)
+            tare.capture()
+            assertEquals(3.0, tare.offset, 1e-9, "$raw must not become the zero")
+            assertEquals(0.0, tare.value(3.0), 1e-9, "and the readings after it are still readings")
+        }
+
+        // Nothing but nonsense seen: there is no reading to zero against at all.
+        for (raw in nonsense) {
+            val fresh = SoftwareTare()
+            fresh.value(raw)
+            assertFalse(fresh.hasReading, "$raw")
+            fresh.capture()
+            assertEquals(0.0, fresh.offset, 1e-9, "$raw")
+        }
+
+        // The bound is the store's own, and a reading on it is still a reading.
+        val edge = SoftwareTare()
+        edge.value(-DeviceStore.maxAcceptedKilograms)
+        edge.capture()
+        assertEquals(-1500.0, edge.offset, 1e-9)
+    }
+
     // MARK: - Tare liveness
 
     /// **The Tare button's mode and the tap's own re-check must read the same bound, or they

@@ -224,7 +224,7 @@ final class LiveMaxSession {
         if isPulling != draft.log.isPulling { isPulling = draft.log.isPulling }
         let live = draft.log.pullKg
         if pullKg != live { pullKg = live }
-        let left = draft.log.pullRemainingSeconds.map { Int($0.rounded(.up)) }
+        let left = draft.log.pullRemainingSeconds.map { Int(saturating: $0.rounded(.up)) }
         if pullSecondsLeft != left { pullSecondsLeft = left }
         let short = draft.log.lastShortSeconds
         if shortPullSeconds != short { shortPullSeconds = short }

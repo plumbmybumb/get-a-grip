@@ -73,6 +73,35 @@ class ShareLinkRoutingTests {
         assertNull(ShareLinkRouting.routineLink(Intent.ACTION_SEND, url))
     }
 
+    /// **Reopening the app from Recents is not opening a link.** When the task was closed
+    /// and is brought back from the overview, the system relaunches it with the intent that
+    /// FIRST opened it — the same routine link, days later — and says so with a flag. Reading
+    /// it again queued an import nobody asked for.
+    @Test
+    fun aLinkReplayedFromRecentsIsNotRoutedAgain() {
+        val url = "getagrip://routine#H4sIAAAAAAAA"
+        assertNull(
+            ShareLinkRouting.routineLink(
+                Intent.ACTION_VIEW, url, Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY,
+            ),
+        )
+        assertNull(
+            ShareLinkRouting.routineLink(
+                Intent.ACTION_VIEW, url,
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY,
+            ),
+        )
+        // Every other flag a real tap arrives with leaves the link exactly as routable.
+        assertEquals(
+            url,
+            ShareLinkRouting.routineLink(
+                Intent.ACTION_VIEW, url,
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT,
+            ),
+        )
+        assertEquals(url, ShareLinkRouting.routineLink(Intent.ACTION_VIEW, url, 0))
+    }
+
     /// **A link with our shape but no payload IS routed**, deliberately. It is ours to answer
     /// for, and the store turns it into a readable "this code couldn't be read" — silence
     /// would be indistinguishable from a tap that missed.

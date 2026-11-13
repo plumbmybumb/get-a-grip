@@ -39,3 +39,27 @@ extension ClosedRange {
         return v
     }
 }
+
+extension Int {
+    /// A `Double` as an `Int`, SATURATING — the only conversion a number from outside may
+    /// take on its way to the screen.
+    ///
+    /// `Int(_:)` TRAPS on NaN, on ±infinity and on any finite value no `Int` holds. A
+    /// kilogram figure that arrived in a share link, a synced blob or a gauge frame is
+    /// not ours to vouch for, and a percentage computed from one once took the app down
+    /// at launch, on every device the routine had synced to. NaN reads as 0; everything
+    /// else lands on the nearest representable value. Kotlin's `toInt()` saturates the
+    /// same way, so both platforms print the same absurd number instead of one of them
+    /// dying.
+    init(saturating value: Double) {
+        if value.isNaN {
+            self = 0
+        } else if value >= Double(Int.max) {
+            self = .max
+        } else if value <= Double(Int.min) {
+            self = .min
+        } else {
+            self = Int(value)
+        }
+    }
+}

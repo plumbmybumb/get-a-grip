@@ -53,9 +53,21 @@ object BlobCodec {
 
     /// Empty text → null, not a decode error: a freshly inserted record has empty blob
     /// columns by definition, and that is not a failure worth surfacing.
+    ///
+    /// **A document nested too deep to read is unreadable, not a crash.** The tree reader
+    /// recurses once per `[`, with no limit of its own, so a few kilobytes of brackets
+    /// overflowed the stack — an `Error`, which no `catch (Exception)` sees — and a
+    /// 59-character share link took the app down. `RoutineShare` refuses that depth before
+    /// it gets here; this is the same answer for every other caller, a stored blob included.
     fun parse(text: String): JsonElement? {
         if (text.isEmpty()) return null
-        return try { parser.parseToJsonElement(text) } catch (_: Exception) { null }
+        return try {
+            parser.parseToJsonElement(text)
+        } catch (_: Exception) {
+            null
+        } catch (_: StackOverflowError) {
+            null
+        }
     }
 
     fun <T> decode(text: String, read: (JsonElement) -> T?): T? {

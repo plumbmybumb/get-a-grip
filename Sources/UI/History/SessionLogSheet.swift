@@ -133,7 +133,7 @@ struct SessionLogSheet: View {
             HStack {
                 CapsLabel(String(localized: "HOW LONG"))
                 Spacer()
-                Text(Self.durationLabel(Int(durationMinutes)))
+                Text(Self.durationLabel(Int(saturating: durationMinutes)))
                     .font(.system(.title3, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(Ink.primary)
@@ -145,7 +145,7 @@ struct SessionLogSheet: View {
             // three dials announce as indistinguishable unnamed "adjustable"s.
             DialTrack(value: $durationMinutes,
                       values: Self.durationStops,
-                      format: { Self.durationLabel(Int($0)) },
+                      format: { Self.durationLabel(Int(saturating: $0)) },
                       spokenUnit: "")
                 .accessibilityLabel("How long the session was")
             // Two hours pre-filled: close enough beats nil for the load model, and it is
@@ -215,7 +215,7 @@ struct SessionLogSheet: View {
         guard let kind else { return }
         failed = false
         guard templates.recordLoggedSession(kind, daysAgo: daysAgo,
-                                            minutes: Int(durationMinutes),
+                                            minutes: Int(saturating: durationMinutes),
                                             rpe: rpe,
                                             fingerStrain: fingerStrain) != nil else {
             // STAYS OPEN on a rollback: dismissing loses the input and claims success.

@@ -634,6 +634,9 @@ private suspend fun saveToPhotos(context: Context, png: ByteArray, title: String
 /// Share-cache writes run off main; the chooser still opens on the caller's UI context.
 private suspend fun shareImage(context: Context, png: ByteArray): Boolean = try {
     val uri = withContext(Dispatchers.IO) {
+        // One share's files at a time: an earlier export's copy does not outlive the next
+        // share, whichever sheet that share comes from. See `ShareCache`.
+        ShareCache.purge(ShareCache.directory(context))
         val dir = File(context.cacheDir, SHARE_DIR).apply { mkdirs() }
         val file = File(dir, "get-a-grip-5-weeks.png")
         file.writeBytes(png)

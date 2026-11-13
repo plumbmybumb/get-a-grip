@@ -52,6 +52,7 @@ import run.nuri.getagrip.data.CriticalForceRecordEntity
 import run.nuri.getagrip.engine.CriticalForceResult
 import run.nuri.getagrip.engine.CriticalForceRules
 import run.nuri.getagrip.engine.L10n
+import run.nuri.getagrip.engine.roundToIntSaturating
 import run.nuri.getagrip.ui.components.CapsLabel
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.LocalGripPalette
@@ -63,7 +64,6 @@ import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.pow
-import kotlin.math.roundToInt
 
 /// What a critical force test says, as a value: shared by the result screen and a saved
 /// test's detail, so the two can never describe one test differently.
@@ -368,7 +368,7 @@ fun CriticalForcePullChart(summary: CriticalForceSummary, modifier: Modifier = M
 }
 
 private fun axisText(value: Double): String =
-    if (abs(value - value.roundToInt()) < 1e-6) "${value.roundToInt()}" else WeightUnits.formatDisplayed(value, 1)
+    if (abs(value - value.roundToIntSaturating()) < 1e-6) "${value.roundToIntSaturating()}" else WeightUnits.formatDisplayed(value, 1)
 
 /// A round top for three gridlines: 1, 2, 2.5 or 5 × a power of ten, times three.
 private fun niceCeiling(value: Double): Double {

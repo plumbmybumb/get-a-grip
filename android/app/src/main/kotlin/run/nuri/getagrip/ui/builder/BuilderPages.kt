@@ -47,9 +47,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 import run.nuri.getagrip.engine.L10n
 import run.nuri.getagrip.engine.TargetBasis
+import run.nuri.getagrip.engine.roundToIntSaturating
 import run.nuri.getagrip.ui.components.Chip
 import run.nuri.getagrip.ui.components.ChipGrid
 import run.nuri.getagrip.ui.components.HouseSegmentedRow
@@ -299,7 +299,7 @@ internal fun RoutineTargetRow(
     }
 }
 
-private fun percent(fraction: Double): Int = (fraction * 100).roundToInt()
+private fun percent(fraction: Double): Int = (fraction * 100).roundToIntSaturating()
 
 private fun ordered(a: Double, b: Double): ClosedFloatingPointRange<Double> {
     val lo = a.coerceIn(0.01, 1.0)

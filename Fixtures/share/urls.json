@@ -226,5 +226,137 @@
     "name" : "percentEncodedFragment",
     "outcome" : "ok",
     "url" : "getagrip:\/\/routine#%72ZPBTgIxEIZfxcy5JIDCYW8iGoluMIs342Gks7uNpd20XQwhvLtTQBIXEmRjD00z0-k3_6T_GpSfmjEt0EhIctSeBFQaDSRrKDmYWkmQAOpAzmCge5yXGVUgoLRazmhujfSQ9LoCNKGcmENoIMDgIhaPUenVlbEdfrDwXFph7cnfftglvaIrKIy2-OBq-klO6-CVPJF25MOB0Wes57wj_DwEh7sgn97WUDhVRS0kC0rTXUWuTEGO8zBJs-fYj_UqKMuiWbPO75xaVLARoJgK3f3qnNj2qwexr8q_kJupOK_hRvwB_Q_kfivyb7CtyDzGCV_AvW5y--e5TcFtuDctuE29ea31xYMeNMG98-Cm4Fbg4TH4nf93QBcYtJ1fwtbLA98LJbsj-vKp4F4EfKEKD9ZlxNb0NKLcOsrYPzsvbaJNvOfe4uNjXG1rlpHwDQ"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3,\"targetHiKg\":1000,\"targetLoKg\":1000}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "absurdKilogramTargetIsClamped",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#Nc0xC8IwEMXx7_LmDNVut7ooNiA6ikOg1_OgNuESXEK-u3Ho-nv8eRVf0MEhrWEDVWQuGfSsENP0B56FvQcdB4dFN2HrOy7-PqFXMWvR2Eu8w7qcTD8JzcE45RvbQ2cGjQ4lmHCZ4lX6GY_DLmfdpb1a-wE"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3,\"targetHiKg\":1000,\"targetLoKg\":0}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "negativeAndHugeKilogramTargetsAreClamped",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#NYsxC8IwFAb_yzdHaC2CvNVFsQHRURwCfY0PahNegkvIfzcdHO-OK_iCeoO4uBVUkDgn0LPAq8RN8OTZWtC-M5hl9ayt42LvI9oVkmQJ7cTbLfNJ5RNRDZRjurE-ZGLQYJCdes5juHrQ7vDns2zc89Ad66vWHw"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3,\"targetHiKg\":18,\"targetLoKg\":12.5}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "ordinaryKilogramTargetIsUntouched",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#Nc3BCsIwEIThd5lzkFoRSq5eFBsQPYqHQLfrQm3CJngJeXej4PUbfqbgDbs1iItfYQsS5QR7L2CV-AWamJyD7TuDWVYmbTtO7jqiVSFJltBKPP0yH1ReEdVAKaYL6U0mgt0ZZK9MeQxnbmf9Zv-Xo_xkqI9aPw"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"aBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "positionAtTheWordLimit",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#fYs7CoAwEAXv8uoUfrot7QQDoqVYBFzDgiQhEZuQuxsv4JQzTMYDahXCZRwoI_GdQFuGjRI-wYdlrUFdo3CKsxxrx6iXCfXySW7x9YQZ_kFRiBzSzHGVg0F92Ut5AQ"
+  },
+  {
+    "envelope" : null,
+    "name" : "positionOneLongerThanAWord",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#hYs7CoAwEAXv8uoUfrot7QQDoqVYBFzDgiQhEZuQuxtP4JQzTMYDahXCZRwoI_GdQFuGjRI-wYdlrUFdo3CKsxxrx6iXCfXySW7x9YQZfkBRiBzSzHGVg0F92Ut5AQ"
+  },
+  {
+    "envelope" : null,
+    "name" : "positionFiveThousandCharacters",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#7cs7CgIxGEXhvdw6hY8uOxAMiJZiMTC_ISAzIRlECNm7cRF25yvv5TS95fdO-TUt8k3Vtip_b4ol5d9gc7QQ5A87p2daopXx6xSuZ41qrWlL6yj1AQAAAAAAAPB36k7Fcr1YuaXZ5I_90fsX"
+  },
+  {
+    "envelope" : null,
+    "name" : "positionWithAKeySeparator",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#FcuxCsMgFEbhd_lnhzbZ7tqpUCEkY-kgeGMvJCpX6WJ999r1HL6GD-hqkA8XQQ2FawE9G4JK_gf2ga0FTReDXWJgHR93uz4wVCpSJQ2Jtzv2703lzOgGyrksrJt4Bs391fsP"
+  },
+  {
+    "envelope" : null,
+    "name" : "positionWithASlash",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#FcvBCkIhEEbhd_nXwq3ubt4gSIhaRgvJ0QZMZZQ24rtn23P4Br6go0FNLoMGGvcGegxElfoP7CNbCzodDILkyLo-zvZ2wVKlSZeyJN4uhe2l8qmYBsq1XVnv4hm0z-ecPw"
+  },
+  {
+    "envelope" : null,
+    "name" : "positionStartingWithADigit",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#JcuxCoAgFEbhd_lnh7LtvkGQEDVGQ9BNLoSKSov47hmt5-MUPKBeIdyHAxUkzgm0Fdgo4Qt8WjYGpDuFS5zl2ByjWSa0yyfJ4tsJ_SOqQuSQZo6rnAwa6l7rCw"
+  },
+  {
+    "envelope" : null,
+    "name" : "positionThatIsEmpty",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#Fcs7CoAwEEXRvbw6hZ9udiAYEC3FQnAMA5KEJNiE2buxvZdT8YJ6g_icHlSRuWTQXuGSxD_w5dha0NAZ3OIdp_Yx2XVGUyFLkdAkoAaJY144bXIxaNRD9QM"
+  },
+  {
+    "envelope" : null,
+    "name" : "positionWithNonASCIILetters",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#FcuxCsIwFIXhdzlzhlQn7xsUDJQ6aodCj-FCacNNdAl5d-P6_3wVX8jgkPb1gFRklgx5VkTT9A_cIkOAXLzDW49I6x9jmO_o6sxa9OwS9vp4z1vcWQrRHIwpT7SHboRc29LaDw"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3,\"targetBasis\":\"futureBasis\"}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "unknownBasisWordSurvives",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#Jcu7CsMwEETRf5laRR6dyrgKRBCSMqQQeKUsOLbYXacR-nfLpJw7nIof_NGhTHGGr1AyhX9VZOGyBxozhQB_OjgknjNJ_3ENjxu6WpSNly7xiVMahL8FzUGo6J3kySPBnx0sSia7ROUdp9VWof9q79Y2"
+  },
+  {
+    "envelope" : null,
+    "name" : "setBasisThatIsNotAWord",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#Fcu7DgIhEEbhVzF_TeGlo9TKRBKjpbEg7ICT4EJmiA3h3WXbc_J1_GAPBjX7FbZDqSnsqyMJ1y3Qksg52OPeIPKaSObH1T1umKooNy5T4uNzvAh_K4aBUNU7yZMXgj0ZNC-J2tkrbzjIRMHnXSwSCOM9xh8"
+  },
+  {
+    "envelope" : null,
+    "name" : "planBasisThatIsNotAWord",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#Fcu7CsMwDEbhd_lnD71s6pZOhRpKM5YOgiiuIBcjmxIwfvc46zl8BX_Q2SFOvIAKkuQE-hQE03gEGYJ4D7qcHEZdglj7ePj3E02tSbOuTeLH03g3nSOqg0lML7FeBwFd69chswXJHSc9-MzbbUOtOw"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "nestingSixtyFourDeepIsRead",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#pY6xCoMwFEX_5c4ZbN3e6lRoQHQUByEv6QOr4UVECPn3pt_gGc_lwM04QQ-DCzTdY76HQVyXDZSR-Ej1TUZQiX_BLrC1oGdj4GULrHXHyw5v1GpPcsheS3yW1Xcq34hioBxTzzqKY1Bb5lJ-"
+  },
+  {
+    "envelope" : null,
+    "name" : "nestingSixtyFiveDeepIsRefused",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#pY6xCoMwFEX_5c4ZbN3e6lRoQHQUByEv6QOr4UVECPn3pt_gGc_lwM04QQ-DCzTdZL6JQVyXDZSR-Ej1T0ZQiX_BLrC1oGdj4GULrHXHyw5v1GpPcsheS3yW1Xcq34hioBxTzzqKY1Bb5lJ-"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "bracketsInsideAStringAreNotNesting",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#3YuxCoMwFEX_5c4Zaru9tZNgoLSjOAR8iQ80hhdxCfn3xt_wTJdzOQUnqDNIq4uggsxHBo0FQSVdgufA1oKeDwMvMbC2H739DmjVnuWQvZVY3OrfKltCNVBO-cP6k5lBrzoZRLe1ifEmoNY_"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Daily no-hangs\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "payloadExactlyAtTheInflatedCap",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#7cuxagJBGIXRd_nrLWLSTSdWQhZCUgaLhR3XAaPDrKRZ9t3Vt7A4p7yXb4n_SJsu6jBGii0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAvJ7oop6HS6Ql5nybI_0uMbVSn0Mep9z3kd7fujiWy5Tb4499__35rK5zuZXro4zTcD7uWvmrsXbRcp2_cvspY470sR7W9Q4"
+  },
+  {
+    "envelope" : null,
+    "name" : "payloadOneByteOverTheInflatedCap",
+    "outcome" : "unreadable",
+    "url" : "getagrip:\/\/routine#7cuxagJBGIXRd_nrLWLSTSdWQhZCUgaLhR3XAaPDrKRZ9t3Vt7A4p7yXb4n_SJsu6jBGii0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAvKDoop6HS6Ql5nybI_0uMbVSn0Mep9z3kd7fujiWy5Tb4499__35rK5zuZXro4zTcD7uWvmrsXbRcp2_cvspY470sR7W9Q4"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"Max day for  two\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "nameLosesBidiControlsAndLineBreaks",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#HYu9CsMgGEVfJdzZwaZLce1UqFCasekg-GmFREXtH-K713Q79x5OxQtixxAX5SEqMpUMcauwycXtIG1JSoiRMxjnLaXucZLXM3oVsisu9BIPtZhjcmtEY0gU84XS5DRB7Nudwau1I6T6zM-RjzRo9Z29Cek_D0N5h424QWs_"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"á́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́́\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "nameOfOneLetterUnderFiveHundredMarks",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#7cuxCgIxEATQf5k6Rc7rtrUSDIiWahG4vbhwlwvJaRPy78a_sNjmMcwwFR_QYJAWH0EVhfcCuleELOlX8BTYOdDBGswSA-e-4-SuZ_TXVmSXrT_x8st8zLImNIPMqVw432Ri0NieBtGvPcI_3na0g6qqqqqqqqqq_yxa-wI"
+  },
+  {
+    "envelope" : "{\"isOnDemand\":false,\"plan\":{\"handMode\":\"alternateEachRep\",\"holdSeconds\":10,\"leadInSeconds\":5,\"name\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA😀\",\"pausesAboveTargetBand\":true,\"pausesOutsideTargetBand\":true,\"restSeconds\":20,\"setBreakSeconds\":60,\"sets\":[{\"grip\":{\"edgeMM\":20,\"fingers\":\"IMRL\",\"position\":\"halfCrimp\"},\"id\":\"00000000-0000-0000-0000-000000000000\",\"repsPerSide\":3}],\"startingHand\":\"left\",\"thresholdKg\":2,\"waitForReleaseBeforeRest\":true},\"sessionsPerDay\":2,\"v\":1}",
+    "name" : "nameCapNeverSplitsAnAstralScalar",
+    "outcome" : "ok",
+    "url" : "getagrip:\/\/routine#nYuxCgIxEET_ZeoU0WtkO7ESDIiWahHIXly4y4XNaRPy78bO2imGxwyv4g3aGOTJJ1BF4bWAbhVRJX8HDpGdA22twSgpsvYfR3c5oVtLkVWWbuLpp_GgMmc0A-VczqxXCQwa2sMg-bkj9v_n_gq7IfRma38ZrX0A"
   }
 ]

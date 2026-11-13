@@ -139,6 +139,10 @@ final class GattGaugeClient: NSObject, ProgressorClient {
     /// The lookup in flight for THIS link. Cancelled with the link: a coefficient that
     /// arrives for a connection that has since gone must not mint a decoder for the next.
     private var calibrationTask: Task<Void, Never>?
+    /// "One lookup per link" as a FACT rather than a hope. The serial characteristic is
+    /// read once, but a peer may answer it — or notify on it — as often as it likes, and
+    /// each answer used to start a fresh key-bearing request for whatever string it sent.
+    private var calibrationRequested = false
 
     /// Alternate notify characteristics found anywhere in the table, and the subscription
     /// bookkeeping for the whole set.
@@ -685,6 +689,7 @@ final class GattGaugeClient: NSObject, ProgressorClient {
         // A coefficient still in flight belongs to the link that asked for it.
         calibrationTask?.cancel()
         calibrationTask = nil
+        calibrationRequested = false
         pendingServiceDiscoveries = 0
         discoveryFinished = false
         writeQueue.removeAll()
@@ -766,7 +771,10 @@ struct SoftwareTare {
     /// Observe and convert in ONE call, so the "remember the raw reading" half can never
     /// be forgotten at a call site and leave `capture()` zeroing against a stale value.
     mutating func value(for raw: Double) -> Double {
-        latestRawKg = raw
+        // Only a reading the store would accept is remembered: a non-finite one captured
+        // as the offset turns every later reading into NaN, and an absurd one shifts them
+        // all by its own size, for as long as the link lives.
+        if DeviceStore.isPlausible(raw) { latestRawKg = raw }
         return raw - offsetKg
     }
 
@@ -1075,9 +1083,17 @@ extension GattGaugeClient: @preconcurrency CBPeripheralDelegate {
     /// The serial arrived (or failed to). One lookup per link, tied to the generation that
     /// asked, so an answer for a connection that has since gone mints nothing.
     private func resolveCalibration(serial rawSerial: String?) {
+        guard !calibrationRequested else { return }
+        calibrationRequested = true
         let serial = rawSerial?.trimmingCharacters(in: .whitespacesAndNewlines.union(["\0"])) ?? ""
         guard !serial.isEmpty else {
             onDiagnostic?(.calibration(.failed(serial: nil, failure: .missingSerial)))
+            return
+        }
+        // Refused here as well as in the resolver, so a string that is not a serial is
+        // never PUBLISHED as one: the statuses below reach the gauge screen.
+        guard FrezCoefficientResolver.isWellFormed(serial: serial) else {
+            onDiagnostic?(.calibration(.failed(serial: nil, failure: .invalidRequest)))
             return
         }
         guard let calibration else {

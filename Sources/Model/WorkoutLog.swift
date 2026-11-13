@@ -272,7 +272,7 @@ extension WorkoutLog {
         if let durationMinutes, durationMinutes > 0 { return durationMinutes }
         let elapsed = finishedAt.timeIntervalSince(startedAt)
         guard elapsed > 0 else { return nil }
-        let minutes = Int((elapsed / 60).rounded())
+        let minutes = Int(saturating: (elapsed / 60).rounded())
         return minutes > 0 ? minutes : nil
     }
 }

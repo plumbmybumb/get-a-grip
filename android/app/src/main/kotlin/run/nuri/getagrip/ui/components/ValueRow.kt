@@ -54,8 +54,8 @@ import androidx.compose.ui.unit.dp
 import java.text.NumberFormat
 import kotlin.math.abs
 import kotlin.math.pow
-import kotlin.math.roundToInt
 import run.nuri.getagrip.engine.L10n
+import run.nuri.getagrip.engine.roundToIntSaturating
 import run.nuri.getagrip.ui.l10n.tr
 import run.nuri.getagrip.ui.theme.GetAGripTheme
 import run.nuri.getagrip.ui.theme.LocalGripPalette
@@ -332,7 +332,7 @@ fun IntValueRow(
         caption = caption,
         control = control,
         spokenUnit = spokenUnit,
-    ) { onValueChange(it.roundToInt()) }
+    ) { onValueChange(it.roundToIntSaturating()) }
 }
 
 /// The ladder's step rule, lifted out so it is asserted in a JVM test.
@@ -589,7 +589,7 @@ object ValueFieldParser {
 /// nonsensical step degrades to continuous (0), not a crash.
 internal fun sliderSteps(range: ClosedFloatingPointRange<Double>, step: Double): Int {
     if (step <= 0.0) return 0
-    val intervals = ((range.endInclusive - range.start) / step).roundToInt()
+    val intervals = ((range.endInclusive - range.start) / step).roundToIntSaturating()
     return maxOf(0, intervals - 1)
 }
 
