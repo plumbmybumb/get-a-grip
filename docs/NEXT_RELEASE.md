@@ -1,6 +1,6 @@
 # Release record and the queue behind it
 
-## iOS 1.5.2 (32) and Android 1.5.1 (20) — the hardening pass (prepared 13 Nov 2026)
+## iOS 1.5.2 (32) and Android 1.5.1 (20) — the hardening pass (submitted 13 Nov 2026)
 
 An audit of the repository, both apps and both engines, followed by fuzzing the share-link,
 AI-import and gauge decoders. Ship this as its own release BEFORE the branch is pushed:

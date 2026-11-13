@@ -8,8 +8,8 @@ Version numbers are per platform and deliberately not kept in step.
 
 | Version | Date | Status | Record |
 | --- | --- | --- | --- |
-| iOS 1.5.2 (32) | 13 Nov 2026 | Prepared and signed, not uploaded. The hardening pass: a shared routine with an out-of-range target can no longer crash the app at launch; routine codes, AI replies and gauge readings are bounded before they reach history | [Record](docs/releases/notes/RELEASE_2026-11-13_1.5.2.md) |
-| Android 1.5.1 (20) | 13 Nov 2026 | Prepared and signed, not uploaded. The same hardening pass; a routine link is read once and old export copies are purged | [Record](docs/releases/notes/RELEASE_2026-11-13_1.5.2.md) |
+| iOS 1.5.2 (32) | 13 Nov 2026 | Submitted for App Store review (automatic release). The hardening pass: a shared routine with an out-of-range target can no longer crash the app at launch; routine codes, AI replies and gauge readings are bounded before they reach history | [Record](docs/releases/notes/RELEASE_2026-11-13_1.5.2.md) |
+| Android 1.5.1 (20) | 13 Nov 2026 | Sent for Google Play review (full rollout). The same hardening pass; a routine link is read once and old export copies are purged | [Record](docs/releases/notes/RELEASE_2026-11-13_1.5.2.md) |
 | iOS 1.5.1 (31) | 4 Nov 2026 | Submitted for App Store review (automatic release). iPhone Duo: content uses the side column beside the glass on the front screen | [Record](docs/releases/notes/RELEASE_2026-11-04_1.5.1.md) |
 | iOS 1.5.0 (30) | 31 Oct 2026 | Approved and released on the App Store (1 Nov 2026). History session detail, "Hardest 5 %" trend chart, targets as % of critical force, gauge auto-restart + Reset, demo mode removed, Sound settings, 0.6 s holds, large-text sweep, iPhone Duo layouts + the first Duo screenshots | [Record](docs/releases/notes/RELEASE_2026-10-31_1.5.0.md) |
 | Android 1.5.0 (19) | 31 Oct 2026 | Sent for Google Play review (production, full rollout). The same features without the Duo work | [Record](docs/releases/notes/RELEASE_2026-10-31_1.5.0.md) |
