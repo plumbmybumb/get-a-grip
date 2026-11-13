@@ -1,0 +1,28 @@
+# Dependency updates, proposed as pull requests and never merged on their own.
+#
+# Two ecosystems carry everything this repository pulls from outside: the GitHub Actions
+# the test workflow runs (pinned to commits, so without this they would simply go stale),
+# and the Android build's Gradle dependencies and plugins. The iOS app has no third-party
+# packages at all.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Compose, lifecycle, activity and friends release together and are tested together.
+      androidx:
+        patterns: ["androidx.*"]
+      kotlin:
+        patterns: ["org.jetbrains.kotlin*", "com.google.devtools.ksp"]
