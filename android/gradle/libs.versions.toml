@@ -3,9 +3,9 @@
 # (runs on JDK 17–26), Kotlin 2.4.10, AGP 9.4.0 (needs Gradle ≥ 9.6, JDK ≥ 17), Compose BOM
 # 2026.08.00 (material3 1.4.0, ui 1.12.0).
 [versions]
-kotlin = "2.4.10"
+kotlin = "2.4.21"
 agp = "9.4.0"
-kotlinx-serialization = "1.11.0"
+kotlinx-serialization = "1.12.0"
 kotlinx-coroutines = "1.11.0"
 compose-bom = "2026.08.00"
 activity-compose = "1.13.0"
@@ -20,7 +20,7 @@ room = "2.8.4"
 # (2026-08-03) is the newest published — there is no 2.4.x line yet. It is KSP2, which
 # runs on the Kotlin Analysis API rather than as a compiler plugin, so it tolerates a
 # newer Kotlin than its own name; see the note in app/build.gradle.kts.
-ksp = "2.3.11"
+ksp = "2.3.13"
 datastore = "1.2.1"
 nordic-ble = "2.11.0"
 zxing = "3.5.4"
