@@ -1,10 +1,10 @@
 # Release record and the queue behind it
 
-## iOS 1.5.2 (32) and Android 1.5.1 (20) — the hardening pass (submitted 13 Nov 2026)
+## iOS 1.5.2 (32) and Android 1.5.1 (20) — the hardening pass (released 13 and 14 Nov 2026)
 
 An audit of the repository, both apps and both engines, followed by fuzzing the share-link,
-AI-import and gauge decoders. Ship this as its own release BEFORE the branch is pushed:
-the diff states what the shipped builds accept.
+AI-import and gauge decoders. It shipped as its own release before the branch was pushed,
+because the diff states what the earlier builds accept.
 
 **What changed, both platforms unless noted.** The cross-platform cases are in
 `Fixtures/share/urls.json` (22 new) and `Fixtures/codec/motherboard.json` (4 new).
